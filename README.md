@@ -110,6 +110,10 @@ files are named in `split.py`'s `SYMBOLS` (`_mpAdd`, `_XeCryptSha`, `__assert`,
 references alone would put data in the wrong object, `DATA_OWNERS` assigns it
 (the AES tables, defined in aestab.c but used only by aescrypt/aeskey).
 
+The first application file in C is `app/crc32.c`: Gary S. Brown's table and
+an `UPDC32` loop. It matches at both -O2 and -O3; `build.sh` uses -O2 for
+`app/*` until some file tells the two apart.
+
 From Git Bash, set `MSYS_NO_PATHCONV=1` before calling `wsl` with paths.
 
 `disasm.sh` runs ddisasm 1.9.5 and prints with

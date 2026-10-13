@@ -18,6 +18,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
       crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
                 cflags="-O3 -Isrc/crypto" ;;
+      # original path unknown (no assert in the app); -O2 or -O3 match so far
+      app/*) orig="$f.c"
+             cflags="-O2" ;;
       *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
     esac
     { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |

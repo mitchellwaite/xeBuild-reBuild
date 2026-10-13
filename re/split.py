@@ -58,7 +58,7 @@ NAMES = {
     23: ('app/consoleinfo', 'options/launch ini writing, console info response parsing'),
     24: ('app/console_hdd', 'manifest + avatar/kinect data to console HDD, remote dirs'),
     25: ('app/log', 'build.log, verbose levels; called by every app unit'),
-    26: ('app/crc32', 'table-driven crc32'),
+    26: ('app/crc32', "table-driven crc32; Gary S. Brown's (per xeBuild's docs), byte match from C"),
     27: ('crypto/xecrypt', 'XeCrypt-style API: SHA/HMAC (0x36/0x5c pads), RC4, DES, AES, RSA'),
     28: ('crypto/xecryptBn', 'big-endian qword bignum helpers, Montgomery inverse (XeCrypt xecryptBn.c)'),
     29: ('crypto/aes/aes_modes', 'Gladman AES: ECB/CBC over the block functions'),
@@ -190,6 +190,8 @@ SYMBOLS = {
     # des/des
     0x445fd0: '_des_ecb_decrypt', 0x445f60: '_des_ecb_encrypt', 0x445e50: '_des_setup',
     0x4460e0: '_des3_ecb_decrypt', 0x446050: '_des3_ecb_encrypt', 0x445ea0: '_des3_setup',
+    # app/crc32 (src/app/crc32.c); Gary S. Brown's crc32
+    0x433800: '_crc32',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

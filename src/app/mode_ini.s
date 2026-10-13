@@ -175,7 +175,7 @@ L_4184a4:
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EAX
           jne L_418580
-          call FUN_433800
+          call _crc32
           mov DWORD PTR [ESP+28],EAX
           lea EAX,DWORD PTR [ESP+59]
           mov DWORD PTR [ESP+8],16
@@ -217,7 +217,7 @@ L_418570:
           .byte 0x76
           .byte 0x0
 L_418580:
-          call FUN_433800
+          call _crc32
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP+8],EAX
 L_41858d:
@@ -352,7 +352,7 @@ FUN_418680:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+16]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP],OFFSET L_454577
@@ -361,7 +361,7 @@ FUN_418680:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+20]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP+8],EAX
           mov EBX,1

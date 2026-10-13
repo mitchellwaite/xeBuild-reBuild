@@ -61,7 +61,7 @@ FUN_40bd80:
           sub EAX,4
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],EBX
-          call FUN_433800
+          call _crc32
           mov EBP,EAX
           movzx EAX,BYTE PTR [ESI+256]
           mov DWORD PTR [ESP+4],OFFSET L_450480

@@ -291,7 +291,7 @@ L_4277ee:
           mov DWORD PTR [ESP+4],EBP
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov EBX,EAX
           mov EAX,DWORD PTR [ESP+80]
           mov DWORD PTR [ESP+4],OFFSET L_458d1b
@@ -786,7 +786,7 @@ L_427ed5:
           mov DWORD PTR [ESP+4],EBP
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov ESI,EAX
           mov EAX,DWORD PTR [ESP+1132]
           mov DWORD PTR [ESP+4],OFFSET L_458d1b
@@ -1030,7 +1030,7 @@ L_4281b2:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EDI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov EBP,EAX
           mov EAX,DWORD PTR [ESP+1148]
           mov DWORD PTR [ESP+4],OFFSET L_458d1b
@@ -1167,7 +1167,7 @@ L_428400:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EDI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov EBP,EAX
           mov EAX,DWORD PTR [ESP+1148]
           mov DWORD PTR [ESP+4],OFFSET L_458d1b
@@ -1265,7 +1265,7 @@ L_428580:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EDI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_433800
+          call _crc32
           mov EBP,EAX
           mov EAX,DWORD PTR [ESP+1148]
           mov DWORD PTR [ESP+4],OFFSET L_458d1b
@@ -2775,7 +2775,7 @@ L_429b8d:
 L_429bb0:
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_433800
+          call _crc32
           cmp DWORD PTR [ESP+60],EAX
           jne L_429ca0
 L_429bc6:
@@ -2797,7 +2797,7 @@ L_429bd0:
           mov DWORD PTR [EBX+28],0
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_433800
+          call _crc32
           lea EAX,DWORD PTR [EBX+4]
           mov DWORD PTR [ESP],EAX
           call FUN_420ab0
@@ -2836,7 +2836,7 @@ L_429c50:
           rep stosd DWORD PTR ES:[EDI]
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_433800
+          call _crc32
           cmp EAX,DWORD PTR [ESP+60]
           je L_429bc6
           .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
@@ -2878,7 +2878,7 @@ L_429d00:
           mov DWORD PTR [EBX+28],0
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_433800
+          call _crc32
           cmp DWORD PTR [ESP+60],EAX
           jne L_429ca0
           lea EAX,DWORD PTR [EBX+4]
@@ -2914,7 +2914,7 @@ L_429d80:
           rep stosd DWORD PTR ES:[EDI]
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_433800
+          call _crc32
           cmp DWORD PTR [ESP+60],EAX
           jne L_429ca0
           lea EAX,DWORD PTR [EBX+22]
