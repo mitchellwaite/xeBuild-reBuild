@@ -803,7 +803,7 @@ FUN_40bae0:
           sub ESP,44
           mov DWORD PTR [ESP],0
           mov EDI,DWORD PTR [ESP+64]
-          call FUN_449050
+          call __time32
           mov EBX,EAX
           mov EAX,10000000
           mov DWORD PTR [ESP+8],10000000
@@ -938,10 +938,10 @@ L_40bc9b:
           movzx EAX,WORD PTR [ESP+24]
           mov WORD PTR [EDI+4],AX
           mov DWORD PTR [ESP],0
-          call FUN_449050
+          call __time32
           mov DWORD PTR [ESP],EAX
-          call FUN_449090
-          call FUN_4490c0
+          call _srand
+          call _rand
           mov EDX,107481665
           mov ECX,EAX
           mul EDX

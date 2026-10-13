@@ -283,7 +283,7 @@ FUN_4423a0:
 L_4423b4:
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],0
-          call FUN_446a90
+          call _spPseudoRand
           mov DWORD PTR [EDI+EBX*4],EAX
           add EBX,1
           cmp ESI,EBX

@@ -7,8 +7,8 @@
 #   .text          004418e0-00441f00
 
 .intel_syntax noprefix
-.globl FUN_441be0
-.globl FUN_441c80
+.globl _mpIsPrime
+.globl _mpRabinMiller
 
 .text
 .p2align 4
@@ -41,7 +41,7 @@ L_441910:
           mov DWORD PTR [ESP+4],997
           mov ESI,OFFSET L_462620
           mov DWORD PTR [ESP],EAX
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           mov EDI,DWORD PTR [ESP+1616]
           jg L_44194b
@@ -59,7 +59,7 @@ L_44194b:
           mov EAX,DWORD PTR [ESI]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_440f80
+          call _mpShortMod
           test EAX,EAX
           jne L_441940
           jmp L_4418fd
@@ -72,7 +72,7 @@ L_44196e:
           mov EAX,DWORD PTR [ESI]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           jne L_441963
 L_441984:
@@ -91,16 +91,16 @@ L_441994:
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+1072]
           mov DWORD PTR [ESP],EAX
-          call FUN_441780
+          call _mpShortSub
           lea EAX,DWORD PTR [ESP+1072]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP],EAX
-          call FUN_446200
+          call _mpSetEqual
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EBP
-          call FUN_4410e0
+          call _mpSetZero
           test BYTE PTR [ESP+48],1
           jne L_441a2b
           nop
@@ -110,12 +110,12 @@ L_4419f0:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],EAX
-          call FUN_446230
+          call _mpShiftRight
           mov DWORD PTR [ESP+12],EBX
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBP
-          call FUN_4425d0
+          call _mpShortAdd
           test BYTE PTR [ESP+48],1
           je L_4419f0
 L_441a2b:
@@ -129,23 +129,23 @@ L_441a50:
           lea EAX,DWORD PTR [ESP+560]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_4410e0
+          call _mpSetZero
 L_441a63:
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],2
-          call FUN_446a90
+          call _spPseudoRand
           mov DWORD PTR [ESP+560],EAX
           mov EAX,DWORD PTR [ESP+1616]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+560]
           mov DWORD PTR [ESP],EAX
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           jns L_441a63
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_4410e0
+          call _mpSetZero
           mov EAX,DWORD PTR [ESP+1616]
           mov DWORD PTR [ESP+16],EBX
           mov DWORD PTR [ESP],EDI
@@ -154,7 +154,7 @@ L_441a63:
           mov DWORD PTR [ESP+8],EAX
           lea EAX,DWORD PTR [ESP+560]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_440fc0
+          call _mpModExp
           jmp L_441af8
           .byte 0x90
           .byte 0x8d
@@ -168,19 +168,19 @@ L_441ae0:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],ESI
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           jns L_4418fd
 L_441af8:
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_441f00
+          call _mpIsZero
           test EAX,EAX
           je L_441b24
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],EDI
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           je L_441bc3
 L_441b24:
@@ -188,18 +188,18 @@ L_441b24:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           je L_441bc3
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_441f00
+          call _mpIsZero
           test EAX,EAX
           jne L_441b6f
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],EDI
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           je L_4418fd
 L_441b6f:
@@ -207,11 +207,11 @@ L_441b6f:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],ESI
-          call FUN_4425d0
+          call _mpShortAdd
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],ESI
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           jns L_441ae0
           mov EAX,DWORD PTR [ESP+1616]
@@ -220,7 +220,7 @@ L_441b6f:
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+12],EAX
-          call FUN_442130
+          call _mpModMult
           jmp L_441ae0
 L_441bc3:
           add DWORD PTR [ESP+44],1
@@ -230,7 +230,7 @@ L_441bc3:
           jmp L_441984
           .byte 0x66
           .byte 0x90
-FUN_441be0:
+_mpIsPrime:
           push EBP
           push EDI
           push ESI
@@ -255,7 +255,7 @@ L_441c00:
           mov DWORD PTR [ESP+4],997
           mov EBX,OFFSET L_462620
           mov DWORD PTR [ESP],ESI
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           jle L_441c4e
           mov EBP,OFFSET L_4628bc
@@ -269,7 +269,7 @@ L_441c2b:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_440f80
+          call _mpShortMod
           test EAX,EAX
           jne L_441c24
           jmp L_441bf4
@@ -282,7 +282,7 @@ L_441c4e:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           jne L_441c43
 L_441c64:
@@ -294,7 +294,7 @@ L_441c64:
           pop EBP
           ret 
 L_441c71:
-          jmp FUN_441c80
+          jmp _mpRabinMiller
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -308,7 +308,7 @@ L_441c71:
           nop
           nop
           nop
-FUN_441c80:
+_mpRabinMiller:
           push EBP
           push EDI
           push ESI
@@ -322,16 +322,16 @@ FUN_441c80:
           lea EAX,DWORD PTR [ESP+1072]
           mov DWORD PTR [ESP+12],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_441780
+          call _mpShortSub
           lea EAX,DWORD PTR [ESP+1072]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP],EAX
-          call FUN_446200
+          call _mpSetEqual
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EBP
-          call FUN_4410e0
+          call _mpSetZero
           test BYTE PTR [ESP+48],1
           jne L_441d2b
           .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
@@ -341,12 +341,12 @@ L_441cf0:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],EAX
-          call FUN_446230
+          call _mpShiftRight
           mov DWORD PTR [ESP+12],EBX
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBP
-          call FUN_4425d0
+          call _mpShortAdd
           test BYTE PTR [ESP+48],1
           je L_441cf0
 L_441d2b:
@@ -360,23 +360,23 @@ L_441d50:
           lea EAX,DWORD PTR [ESP+560]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_4410e0
+          call _mpSetZero
 L_441d63:
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],2
-          call FUN_446a90
+          call _spPseudoRand
           mov DWORD PTR [ESP+560],EAX
           mov EAX,DWORD PTR [ESP+1616]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+560]
           mov DWORD PTR [ESP],EAX
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           jns L_441d63
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_4410e0
+          call _mpSetZero
           mov EAX,DWORD PTR [ESP+1616]
           mov DWORD PTR [ESP+16],EBX
           mov DWORD PTR [ESP],EDI
@@ -385,7 +385,7 @@ L_441d63:
           mov DWORD PTR [ESP+8],EAX
           lea EAX,DWORD PTR [ESP+560]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_440fc0
+          call _mpModExp
           jmp L_441df8
           .byte 0x90
           .byte 0x8d
@@ -399,19 +399,19 @@ L_441de0:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],ESI
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           jns L_441ef0
 L_441df8:
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_441f00
+          call _mpIsZero
           test EAX,EAX
           je L_441e24
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],EDI
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           je L_441ec3
 L_441e24:
@@ -419,18 +419,18 @@ L_441e24:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           je L_441ec3
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_441f00
+          call _mpIsZero
           test EAX,EAX
           jne L_441e6f
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],EDI
-          call FUN_446a40
+          call _mpShortCmp
           test EAX,EAX
           je L_441ef0
 L_441e6f:
@@ -438,11 +438,11 @@ L_441e6f:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],ESI
-          call FUN_4425d0
+          call _mpShortAdd
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],ESI
-          call FUN_441800
+          call _mpCompare
           test EAX,EAX
           jns L_441de0
           mov EAX,DWORD PTR [ESP+1616]
@@ -451,7 +451,7 @@ L_441e6f:
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+12],EAX
-          call FUN_442130
+          call _mpModMult
           jmp L_441de0
 L_441ec3:
           add DWORD PTR [ESP+44],1
@@ -1325,7 +1325,7 @@ L_4628bc:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_441be0 - .
+          .long _mpIsPrime - .
           .byte 0x91
           .byte 0x0
           .byte 0x0
@@ -1406,7 +1406,7 @@ L_4628bc:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_441c80 - .
+          .long _mpRabinMiller - .
           .byte 0x7d
           .byte 0x2
           .byte 0x0

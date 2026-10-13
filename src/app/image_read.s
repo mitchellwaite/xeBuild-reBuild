@@ -4934,12 +4934,12 @@ L_417809:
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP+32],ECX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
           mov DWORD PTR [ESP+4],OFFSET L_45417c
           mov DWORD PTR [ESP],1
           call FUN_433690

@@ -171,7 +171,7 @@ FUN_4339d0:
           mov DWORD PTR [ESP],ECX
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP+8],ESI
-          call FUN_4490f0
+          call _memset
           mov BYTE PTR [EBX+ESI*1-1],0
           mov BYTE PTR [EBX+ESI*1-2],1
           mov DWORD PTR [ESP+8],20
@@ -385,7 +385,7 @@ L_433c80:
           mov DWORD PTR [ESP+8],ECX
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],ESI
-          call FUN_4490f0
+          call _memset
           mov BYTE PTR [ESP+EBX*1+31],0
           mov BYTE PTR [ESP+EBX*1+30],1
           mov DWORD PTR [ESP+8],20
@@ -402,7 +402,7 @@ L_433ce0:
           mov DWORD PTR [ESP+8],ECX
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],ESI
-          call FUN_4490f0
+          call _memset
           mov BYTE PTR [ESP+EBX*1+31],0
           mov BYTE PTR [ESP+EBX*1+30],1
           mov DWORD PTR [ESP+8],20
@@ -443,7 +443,7 @@ L_433d80:
           mov DWORD PTR [ESP+8],ECX
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],ESI
-          call FUN_4490f0
+          call _memset
           mov BYTE PTR [ESP+EBX*1+31],0
           mov BYTE PTR [ESP+EBX*1+30],1
           mov DWORD PTR [ESP+8],20
@@ -1112,12 +1112,12 @@ L_434660:
           lea EDI,DWORD PTR [ESP+16]
           mov DWORD PTR [ESP],0
           lea ESI,DWORD PTR [ESP+32]
-          call FUN_449050
+          call __time32
           mov EBX,EDI
           mov DWORD PTR [ESP],EAX
-          call FUN_449090
+          call _srand
 L_434684:
-          call FUN_4490c0
+          call _rand
           add EBX,1
           mov BYTE PTR [EBX-1],AL
           cmp EBX,ESI
@@ -1156,7 +1156,7 @@ L_4346ea:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP+12],EDI
           mov DWORD PTR [ESP+8],EDI
@@ -1221,12 +1221,12 @@ L_4347c0:
           mov DWORD PTR [ESP],0
           lea EBP,DWORD PTR [ESP+32]
           lea EBX,DWORD PTR [ESP+48]
-          call FUN_449050
+          call __time32
           mov DWORD PTR [ESP],EAX
-          call FUN_449090
+          call _srand
           .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
 L_4347e0:
-          call FUN_4490c0
+          call _rand
           add EBP,1
           mov BYTE PTR [EBP-1],AL
           cmp EBP,EBX
@@ -1855,7 +1855,7 @@ L_434f70:
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],EBX
-          call FUN_4490f0
+          call _memset
           mov EAX,DWORD PTR [ESP+48]
           mov BYTE PTR [EBX+ESI*1-1],0
           mov BYTE PTR [EBX+ESI*1-2],1

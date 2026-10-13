@@ -284,7 +284,7 @@ L_40ec26:
           sub EAX,EDI
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP],EDX
-          call FUN_4490f0
+          call _memset
           jmp L_40e9af
 L_40ec75:
           test EAX,EAX
@@ -553,7 +553,7 @@ L_40ef92:
           and EAX,4294950912
           sub EAX,ESI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
 L_40efc0:
           mov EBP,DWORD PTR [ESP+36]
           mov DWORD PTR [ESP+24],0
@@ -869,11 +869,11 @@ L_40f420:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],EBX
-          call FUN_4490f0
+          call _memset
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],EBP
-          call FUN_4490f0
+          call _memset
           mov EDX,OFFSET L_4c97c0
           xor EAX,EAX
           mov ECX,2048
@@ -2618,7 +2618,7 @@ L_410a69:
           and EAX,4294950912
           sub EAX,ECX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
           jmp L_410628
 L_410a9c:
           mov ECX,DWORD PTR [ESP+152]
@@ -2975,7 +2975,7 @@ L_410f3d:
           and EAX,4294950912
           sub EAX,EDI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
           jmp L_410d06
 L_410f70:
           movzx EBX,BYTE PTR [EAX+1]
@@ -3572,7 +3572,7 @@ FUN_411680:
           mov EAX,DWORD PTR [L_479ed8]
           sub EAX,-128
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
           xor EDX,EDX
           .byte 0x66   # nop
           nop
@@ -4930,7 +4930,7 @@ L_412989:
           mov DWORD PTR [ESP+4],0
           add EAX,ESI
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
 L_4129c6:
           mov DWORD PTR [ESP+4],OFFSET L_451cdd
           mov DWORD PTR [ESP],1
@@ -4964,7 +4964,7 @@ L_4129dc:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
           cmp DWORD PTR [L_479ef0],1
           mov EAX,DWORD PTR [L_479ee0]
           lea EDX,DWORD PTR [EAX+ESI*1]

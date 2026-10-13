@@ -1644,7 +1644,7 @@ FUN_428b10:
           mov DWORD PTR [ESP+4],255
           mov EDI,EAX
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
           mov EAX,DWORD PTR [ESP+80]
           mov EAX,DWORD PTR [EAX+1036]
           mov DWORD PTR [ESP+8],ESI

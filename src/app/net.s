@@ -404,7 +404,7 @@ L_41ed37:
 FUN_41ed50:
           sub ESP,28
           mov DWORD PTR [ESP],OFFSET L_4cd844
-          call FUN_449050
+          call __time32
           add ESP,28
           ret 
           .byte 0x8d
@@ -424,7 +424,7 @@ FUN_41ed70:
           sub ESP,44
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_449050
+          call __time32
           mov EAX,DWORD PTR [L_4cd844]
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+28]
@@ -440,7 +440,7 @@ L_41edb0:
           sub ESP,44
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_449050
+          call __time32
           mov EAX,DWORD PTR [L_4cd844]
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+28]
@@ -1701,7 +1701,7 @@ FUN_41fe20:
           push EBX
           sub ESP,56
           mov DWORD PTR [ESP],OFFSET L_4cd844
-          call FUN_449050
+          call __time32
           mov DWORD PTR [ESP+4],OFFSET L_45796c
           mov DWORD PTR [ESP],0
           call FUN_433690
@@ -1759,7 +1759,7 @@ L_41fe90:
 L_41ff07:
           lea EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EAX
-          call FUN_449050
+          call __time32
           mov EAX,DWORD PTR [L_4cd844]
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+44]
@@ -1878,7 +1878,7 @@ L_42008c:
           call FUN_433690
 L_4200a0:
           mov DWORD PTR [ESP],ESI
-          call FUN_449050
+          call __time32
           mov EAX,DWORD PTR [L_4cd844]
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+28]

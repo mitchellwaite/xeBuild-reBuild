@@ -2437,7 +2437,7 @@ L_444e24:
           add EAX,60
           mov DWORD PTR [ESP],EDX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f0
+          call _memset
 L_444e6d:
           mov DWORD PTR [ESP+8],64
           mov DWORD PTR [ESP+4],EDI
@@ -2455,7 +2455,7 @@ L_444e83:
           cmovg EDX,ECX
           mov DWORD PTR [ESP+8],EDX
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
 L_444eb2:
           mov EAX,DWORD PTR [ESI+24]
           mov DWORD PTR [ESI+84],EAX

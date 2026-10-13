@@ -6,11 +6,11 @@
 #   .text          00440fc0-004410e0
 
 .intel_syntax noprefix
-.globl FUN_440fc0
+.globl _mpModExp
 
 .text
 .p2align 4
-FUN_440fc0:
+_mpModExp:
           push EBP
           push EDI
           push ESI
@@ -23,7 +23,7 @@ FUN_440fc0:
           mov EAX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_4417d0
+          call _mpSizeof
           mov EDX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+44],EAX
           mov ECX,32
@@ -47,7 +47,7 @@ L_441018:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_446200
+          call _mpSetEqual
           mov EAX,DWORD PTR [ESP+44]
           test EAX,EAX
           je L_4410c0
@@ -60,7 +60,7 @@ L_44103e:
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+12],EAX
-          call FUN_442130
+          call _mpModMult
           mov EAX,DWORD PTR [ESP+88]
           test DWORD PTR [EAX+EBP*4],ESI
           jne L_441080
@@ -89,7 +89,7 @@ L_441080:
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [ESP+84]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_442130
+          call _mpModMult
           cmp ESI,1
           jne L_441068
 L_4410a5:
@@ -209,7 +209,7 @@ L_4410d7:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_440fc0 - .
+          .long _mpModExp - .
           .byte 0x1e
           .byte 0x1
           .byte 0x0

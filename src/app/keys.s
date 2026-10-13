@@ -3245,7 +3245,7 @@ L_41d910:
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+8],EDX
           mov DWORD PTR [ESP+60],EDX
-          call FUN_4490f0
+          call _memset
           mov EDX,DWORD PTR [ESP+60]
           jmp L_41d75b
           .byte 0x90

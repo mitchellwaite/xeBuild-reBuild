@@ -3,7 +3,9 @@
 python re/split.py <xeBuild.exe> <build/xeBuild.lines.json> <src_dir>
 
 Writes <src_dir>/<group>/<name>.s for every object, <src_dir>/objects.txt (link
-order) and prints the data-assignment summary.  How the pieces are found:
+order) and prints the data-assignment summary.  Objects that have a C source
+(<src_dir>/<group>/<name>.c) get no .s; functions they share with the .s files
+are named by SYMBOLS.  How the pieces are found:
 
   .text      exact: every gcc object has its own CIE in .eh_frame, in link
              order, and its FDEs list its functions (units.py).  Objects
@@ -125,7 +127,26 @@ NAMES = {
     92: ('runtime/libmingwex/invalid_parameter_handler', 'get/set (xchg) of one global'),
     93: ('runtime/crtend', 'gcc crtend.o: register_frame_ctor, .jcr, eh_frame terminator'),
 }
-CHKSTK = (0x447c00, 'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
+# Real names for functions shared with C sources (src/<obj>.c): gcc objects
+# define and call these names, so the .s files must use them too.  Address ->
+# symbol (with the leading underscore of i386 PE).
+SYMBOLS = {
+    # BigDigits (src/bigdigits/*.c); names from the library
+    0x43e550: '_mpSubtract', 0x440e20: '_mpMultiply', 0x440f80: '_mpShortMod',
+    0x440fc0: '_mpModExp', 0x4410e0: '_mpSetZero', 0x441110: '_mpShortDiv',
+    0x441540: '_mpModInv', 0x441710: '_mpModulo', 0x441780: '_mpShortSub',
+    0x4417d0: '_mpSizeof', 0x441800: '_mpCompare', 0x4418a0: '_mpSetDigit',
+    0x441be0: '_mpIsPrime', 0x441c80: '_mpRabinMiller', 0x441f00: '_mpIsZero',
+    0x441f40: '_mpShiftLeft', 0x442050: '_spMultiply', 0x4420b0: '_mpAdd',
+    0x442130: '_mpModMult', 0x4425d0: '_mpShortAdd', 0x446200: '_mpSetEqual',
+    0x446230: '_mpShiftRight', 0x446360: '_mpDivide', 0x446830: '_spDivide',
+    0x446a40: '_mpShortCmp', 0x446a90: '_spPseudoRand',
+    # runtime functions the C code calls
+    0x448760: '__assert',       # libmingwex wassert.o
+    0x449050: '__time32',       # import stub, msvcrt `time`
+    0x449090: '_srand', 0x4490c0: '_rand', 0x4490f0: '_memset',  # import stubs
+}
+CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
 STARTUP = 0x4492c0          # .text.startup begins (main)
 LISTS = (0x4497a0, 0x4497b4, 'runtime/ctor_dtor_lists', '__CTOR_LIST__/__DTOR_LIST__ from the link script')
@@ -377,6 +398,11 @@ def main():
             continue
         piece_lines[pc].append(l)
 
+    # ---- real names (after the address-based analysis above)
+    rename = re.compile(r'(?<![\w.$])FUN_(%s)(?![\w$])' % '|'.join('%x' % a for a in SYMBOLS))
+    for pc, ls in piece_lines.items():
+        piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
+
     # ---- globals: labels referenced from another file
     defined = {}
     used = collections.defaultdict(set)
@@ -400,7 +426,10 @@ def main():
         mine = [pc for pc in pieces if pc[3] == f and piece_lines[pc]]
         if not mine:
             continue
-        out = ['# %s.s -- %s' % (f, info[f]), '#', '# original placement:']
+        if os.path.exists(os.path.join(outdir, f + '.c')):
+            written.append(f)   # rebuilt from C source; keep it in the link order
+            continue
+        out =['# %s.s -- %s' % (f, info[f]), '#', '# original placement:']
         for pc in sorted(mine, key=lambda x: (x[0], x[1])):
             out.append('#   %-14s %08x-%08x' % (pc[4], pc[1], pc[2]))
         out += ['', '.intel_syntax noprefix']

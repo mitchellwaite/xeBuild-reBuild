@@ -1198,7 +1198,7 @@ L_432b45:
           mov DWORD PTR [ESP+8],265228
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],OFFSET L_4cdc60
-          call FUN_4490f0
+          call _memset
           mov DWORD PTR [ESP],EBX
           call FUN_4225a0
           test EAX,EAX

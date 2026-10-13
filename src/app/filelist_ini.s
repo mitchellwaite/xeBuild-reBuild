@@ -2707,7 +2707,7 @@ L_40af0f:
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],255
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],OFFSET L_4502cd
           mov DWORD PTR [ESP],1

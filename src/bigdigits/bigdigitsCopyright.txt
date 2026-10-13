@@ -1,0 +1,25 @@
+/************************* COPYRIGHT NOTICE*************************
+This source code is part of the BigDigits multiple-precision
+arithmetic library Version 1.0 originally written by David Ireland,
+copyright (c) 2001 D.I. Management Services Pty Limited, all rights
+reserved. You are permitted to use compiled versions of this code as
+part of your own executable files and to distribute unlimited copies
+of such executable files for any purposes including commercial ones
+provided you keep the copyright notices intact in the source code
+and that you ensure that the following characters remain in any
+object or executable files you distribute:
+
+"Contains multiple-precision arithmetic code originally written
+by David Ireland, copyright (c) 2001 by D.I. Management Services
+Pty Limited <www.di-mgt.com.au>, and is used with permission."
+
+David Ireland and DI Management Services Pty Limited make no
+representations concerning either the merchantability of this
+software or the suitability of this software for any particular
+purpose. It is provided "as is" without express or implied warranty
+of any kind.
+
+Please forward any comments and bug reports to <code@di-mgt.com.au>.
+The latest version of the source code can be downloaded from
+www.di-mgt.com.au/crypto.html.
+****************** END OF COPYRIGHT NOTICE*************************/

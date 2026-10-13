@@ -887,7 +887,7 @@ FUN_40de60:
           mov DWORD PTR [ESP+8],325904
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],OFFSET L_479ea0
-          call FUN_4490f0
+          call _memset
           mov EAX,12078
           mov EDX,12142
           mov ECX,47

@@ -7,7 +7,7 @@
 #   .text          00448600-00448820
 
 .intel_syntax noprefix
-.globl FUN_448760
+.globl __assert
 
 .text
 .p2align 4
@@ -103,7 +103,7 @@ L_448737:
           call FUN_4491b0
           nop
           .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-FUN_448760:
+__assert:
           push EBP
           push EDI
           push ESI
@@ -460,7 +460,7 @@ L_463568:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448760 - .
+          .long __assert - .
           .byte 0xb1
           .byte 0x0
           .byte 0x0

@@ -18,7 +18,7 @@ L_441850:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP],EAX
-          call FUN_4490f0
+          call _memset
           xor EAX,EAX
           add ESP,28
           ret 

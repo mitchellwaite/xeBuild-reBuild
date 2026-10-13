@@ -6,7 +6,6 @@
 .intel_syntax noprefix
 .globl FUN_449040
 .globl FUN_449048
-.globl FUN_449050
 .globl FUN_449058
 .globl FUN_449060
 .globl FUN_449068
@@ -14,19 +13,16 @@
 .globl FUN_449078
 .globl FUN_449080
 .globl FUN_449088
-.globl FUN_449090
 .globl FUN_449098
 .globl FUN_4490a0
 .globl FUN_4490a8
 .globl FUN_4490b0
 .globl FUN_4490b8
-.globl FUN_4490c0
 .globl FUN_4490c8
 .globl FUN_4490d0
 .globl FUN_4490d8
 .globl FUN_4490e0
 .globl FUN_4490e8
-.globl FUN_4490f0
 .globl FUN_4490f8
 .globl FUN_449100
 .globl FUN_449108
@@ -79,6 +75,10 @@
 .globl FUN_449290
 .globl L_4491c0
 .globl L_449270
+.globl __time32
+.globl _memset
+.globl _rand
+.globl _srand
 
 .text
 .p2align 3
@@ -98,7 +98,7 @@ FUN_449048:
           jmp DWORD PTR [vfprintf]
           .byte 0x90
           .byte 0x90
-FUN_449050:
+__time32:
           jmp DWORD PTR [time]
           .byte 0x90
           .byte 0x90
@@ -130,7 +130,7 @@ FUN_449088:
           jmp DWORD PTR [strcat]
           .byte 0x90
           .byte 0x90
-FUN_449090:
+_srand:
           jmp DWORD PTR [srand]
           .byte 0x90
           .byte 0x90
@@ -154,7 +154,7 @@ FUN_4490b8:
           jmp DWORD PTR [remove]
           .byte 0x90
           .byte 0x90
-FUN_4490c0:
+_rand:
           jmp DWORD PTR [rand]
           .byte 0x90
           .byte 0x90
@@ -178,7 +178,7 @@ FUN_4490e8:
           jmp DWORD PTR [mktime]
           .byte 0x90
           .byte 0x90
-FUN_4490f0:
+_memset:
           jmp DWORD PTR [memset]
           .byte 0x90
           .byte 0x90

@@ -15,7 +15,8 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C, fix bugs | Next |
+| Move functions to C | **Started: 23 of the 26 BigDigits files build from C (upstream source + reconstructed edits)** |
+| Fix bugs | Next |
 
 ## What the binary is
 
@@ -32,12 +33,13 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ```
 xeBuild.exe              reference binary (do not modify)
-build.sh                 assemble src/ + link + stamp + verify -> build/xeBuild.exe
+build.sh                 compile/assemble src/ + link + stamp + verify -> build/xeBuild.exe
 src/objects.txt          link order
 src/link.ld              link script (default i386pe order for the sections used)
 src/app/                 the application (25 files)
 src/crypto/              XeCrypt layer, AES (Gladman), RC4/SHA-1/MD5 (OpenSSL), DES, RSA
-src/bigdigits/           BigDigits bignum library, one function per file
+src/bigdigits/           BigDigits bignum library, one function per file (.c, or .s
+                         where the C doesn't match yet), with its licence files
 src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
                          .idata/.CRT/.tls/.rsrc, ctor/dtor lists
 src/common_bss.s         COMMON (uninitialized global) block
@@ -81,7 +83,9 @@ wsl -d Ubuntu -- bash tools/ddisasm/install.sh
 sh build.sh
 ```
 
-Assembles every file in `src/objects.txt` with binutils 2.27, links them with
+Builds every object in `src/objects.txt`: `src/<obj>.c` with gcc 6.2.0 if it
+exists (flags and original `__FILE__` path per directory in `build.sh`), otherwise
+`src/<obj>.s` with binutils 2.27. Links them with
 `ld -T src/link.ld --no-insert-timestamp -s`, writes the original link time
 (`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
 take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA256.
@@ -94,6 +98,11 @@ python re/ddfix.py xeBuild.exe build/xeBuild.dbg.s build/xeBuild.s
 python re/split.py xeBuild.exe build/xeBuild.lines.json src
 sh build.sh
 ```
+
+Hand-written sources began with the BigDigits C files (October 2026). `split.py`
+still writes every `.s`, overwriting those, but skips any object that has a `.c`.
+So the `.c` files are maintained by hand. The functions they share with `.s`
+files are named in `split.py`'s `SYMBOLS` (`_mpAdd`, `__assert`, `_memset`, ...).
 
 From Git Bash, set `MSYS_NO_PATHCONV=1` before calling `wsl` with paths.
 
@@ -170,6 +179,51 @@ its original addresses. Library files use the library's own file names.
 | crypto/rc4_enc, rc4_skey, sha1dgst, md5_dgst | OpenSSL-style RC4 (`"rc4(idx,int)"`), SHA-1, MD5 |
 | crypto/des, rsa, hash, base64, memwipe | DES/3DES, RSA keygen/OAEP/PSS, hash wrappers, base64 |
 | bigdigits/mp*, sp* | BigDigits functions (mpAdd, mpModExp, spMultiply, ...) |
+
+### BigDigits in C
+
+XeCrypt's `bign/` is David Ireland's BigDigits **version 1.0** (June 2001, one
+function per file), with local edits, compiled at **-O3** (the other code looks
+like -O2. Only -O3's loop-to-`memset` distribution reproduces mpSetZero,
+mpSetDigit and mpDivide). di-mgt.com.au now only offers the latest version. The
+old archives are on the Wayback Machine: `di-mgt.com.au/src/BigDigits.zip`
+(still 1.0 in 2005), `BigDigits20.zip` and `BigDigits210.zip`. Do not mix in
+files from later versions.
+
+The 23 `.c` files are the upstream files with their copyright notices intact
+(`bigdigitsCopyright.txt`, and `bigdigitsCopyright-2.1.txt` for the 2.1 code).
+Each edit is marked `XeCrypt change` and was confirmed by an identical object:
+
+- unchanged 1.0: mpCompare, mpDivide, mpIsZero, mpSetDigit, mpSetZero,
+  mpShortAdd/Cmp/Div/Sub, mpSizeof, spDivide, spMultiply, spPseudoRand
+- `MAX_DIG_LEN` 51 -> 64 (sizes the stack temporaries)
+- temporaries are no longer wiped (`mpSetZero` calls removed): mpModulo,
+  mpModMult, mpShortMod, mpModInv
+- `assert`s in mpAdd, mpSubtract (`w != v`) and mpMultiply (`w != u && w != v`),
+  which also clears `w` with `mpSetZero`. The original files had less above the
+  function (assert lines 18/18/17), which `#line` reproduces.
+- mpSetEqual copies from the top digit down
+- mpShiftLeft/mpShiftRight are the 2.1 versions (shifts >= 32 bits)
+
+`build.sh` feeds each file through stdin behind `#line 1 "H:/x360sdk/.../bign/X.c"`
+so that `__FILE__` matches.
+
+Still assembly:
+- **mpModExp**: the 1.0 source is the right logic. gcc lays out a few blocks
+  differently, so some source detail is still off.
+- **mpIsPrime**: four functions. (1) The 1.0 combined test, with the 2.1
+  small-prime check (primes to 997) and fixed arrays, never called. (2)
+  `mpIsPrime`: the 2.1 small-prime check, but it returns 1 where 2.1 calls
+  Rabin-Miller. This is what crypto/rsa calls. (3) A 5-byte `jmp _mpRabinMiller`
+  with no FDE, probably a gcc `-fipa-icf` thunk for an identical copy of (4).
+  (4) `mpRabinMiller`: the 1.0 loop without wipes. A C version matches except
+  for where gcc places (3).
+- **mpUtil**: not BigDigits code (alloc/free wrappers, `"%08x "` printing,
+  string conversion).
+
+Licence: both versions allow distributing compiled code only if the
+attribution text in the copyright file stays in the executable. `xeBuild.exe`
+doesn't contain it, so builds distributed after bug fixes should add it.
 
 ## Symbolization checks
 
