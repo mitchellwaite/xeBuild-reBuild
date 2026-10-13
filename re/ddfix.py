@@ -17,7 +17,7 @@ the 2-byte `66 90` padding as two `nop`s).  Repeats until nothing changes.
 
 Then prepare the source for linking with src/xeBuild.ld (see prepare_link).
 """
-import re, struct, subprocess, sys, os, tempfile
+import collections, re, struct, subprocess, sys, os, tempfile
 
 ADDR = re.compile(r'^\s+([0-9a-f]+):\s*(.*)$')
 SYMREF = re.compile(r'(?<![\w.$])(FUN_[0-9a-f]+|\.L_[0-9a-f]+|[A-Za-z_.$][\w.$@]*)')
@@ -166,6 +166,155 @@ def imports(img):
         o += 20
 
 
+LABELDEF = re.compile(r'^((?:FUN|\.L)_([0-9a-f]+)(?:_END)?):\s*$')
+DECIMAL = re.compile(r'(?<![\w.$+\-*])(\d{7})(?![\w])')
+LO, HI = 0x401000, 0x513000
+
+
+class Refs:
+    """Name image addresses with labels, adding `.L_<va>` labels where needed."""
+
+    def __init__(self, lines, addr):
+        self.lines, self.addr = lines, addr
+        self.first = {}
+        for i, a in enumerate(addr):
+            if a is not None:
+                self.first.setdefault(a, i)
+        self.starts = sorted(self.first)
+        self.names = {}  # va -> label already defined in the source
+        for l in lines:
+            m = LABELDEF.match(l.strip())
+            if m:
+                self.names.setdefault(int(m.group(2), 16), m.group(1))
+        self.new = {}  # line index -> label to insert before it
+
+    def __call__(self, va):
+        if va in self.names:
+            return self.names[va]
+        if va in self.first:
+            name = '.L_%x' % va
+            self.new[self.first[va]] = name
+            self.names[va] = name
+            return name
+        base = max(a for a in self.names if a <= va)  # mid-line: label + offset
+        return '%s+%d' % (self.names[base], va - base)
+
+    def labels(self):
+        return {i: n + ':' for i, n in self.new.items()}
+
+
+def replace_word(lines, addr, refs, va, text):
+    """Replace the line(s) covering exactly [va, va+4) with `text`."""
+    i = refs.first[va]
+    j = i + 1
+    while j < len(addr) and (addr[j] is None or addr[j] < va + 4):
+        if addr[j] is not None:
+            lines[j], addr[j] = '', None
+        elif lines[j].rstrip().endswith(':') and any(a is not None and a < va + 4 for a in addr[j:j + 8]):
+            sys.exit('replace_word: label %s inside the word at %x' % (lines[j].strip(), va))
+        j += 1
+    if j < len(addr) and addr[j] != va + 4 and addr[j] is not None:
+        sys.exit('replace_word: %x does not end on a line boundary' % va)
+    lines[i] = '          ' + text
+
+
+def symbolize(lines, addr, img):
+    """Turn addresses ddisasm left as numbers into label expressions.
+
+    The output stays byte-identical; this is what lets code and data move:
+      * .idata: descriptor/thunk RVAs -> `.rva label`
+      * .rsrc: resource data entry RVAs -> `.rva label`
+      * .eh_frame: FDE pc_begin (pcrel sdata4) -> `.long label - .`
+      * .CRT/.tls: pointer tables, any in-image word -> `.long label`
+      * instruction operands: 7-digit decimals inside the image -> label+off
+    """
+    refs = Refs(lines, addr)
+    word = lambda va: struct.unpack('<I', img.read(va, 4))[0]
+    counts = collections.Counter()
+
+    # .idata
+    _, ida, idsz, _, _ = img.sec('.idata')
+    rva = lambda va, r: replace_word(lines, addr, refs, va, '.rva %s' % refs(img.base + r))
+    d = img.base + img.dirs[1][0]
+    while word(d + 12):
+        for off in (0, 12, 16):
+            if word(d + off):
+                rva(d + off, word(d + off))
+                counts['idata'] += 1
+        for t in (word(d), word(d + 16)):
+            p = img.base + t
+            while word(p):
+                if not word(p) & 0x80000000:
+                    rva(p, word(p))
+                    counts['idata'] += 1
+                p += 4
+        d += 20
+
+    # .rsrc
+    _, rs, _, _, _ = img.sec('.rsrc')
+    def walk(off):
+        n = struct.unpack('<HH', img.read(rs + off + 12, 4))
+        for k in range(sum(n)):
+            e = rs + off + 16 + 8 * k
+            tgt = word(e + 4)
+            if tgt & 0x80000000:
+                walk(tgt & 0x7fffffff)
+            else:
+                rva(rs + tgt, word(rs + tgt))
+                counts['rsrc'] += 1
+    walk(0)
+
+    # .eh_frame (every CIE here is "zR" with FDE encoding pcrel|sdata4, checked)
+    _, eh, ehsz, _, _ = img.sec('.eh_fram')
+    off, cies = 0, {}
+    while off < ehsz:
+        ln, cid = struct.unpack('<II', img.read(eh + off, 8))
+        if ln == 0:  # zero terminator from one input's .eh_frame; more may follow
+            off += 4
+            continue
+        if cid == 0:
+            # version, "zR\0", code align, data align, RA reg, aug length, R encoding
+            raw = img.read(eh + off + 8, ln - 4)
+            aug = raw[1:raw.index(b'\0', 1)]
+            if aug != b'zR' or raw[len(aug) + 6] != 0x1b:
+                sys.exit('symbolize: unexpected CIE at %x' % (eh + off))
+        else:
+            f = eh + off + 8
+            tgt = (f + word(f)) & 0xffffffff
+            replace_word(lines, addr, refs, f, '.long %s - .' % refs(tgt))
+            counts['eh_frame'] += 1
+        off += 4 + ln
+
+    # .CRT / .tls pointer tables
+    for name in ('.CRT', '.tls'):
+        _, va, vsz, _, _ = img.sec(name)
+        for p in range(va, va + vsz, 4):
+            i = refs.first.get(p)
+            if i is not None and not re.match(r'\s*\.long\s+\S', lines[i]) and LO <= word(p) < HI:
+                replace_word(lines, addr, refs, p, '.long %s' % refs(word(p)))
+                counts[name] += 1
+
+    # instruction operands still holding image addresses as numbers
+    _, tva, tvsz, _, _ = img.sec('.text')
+    for i, a in enumerate(addr):
+        if a is None or not tva <= a < tva + tvsz or lines[i].lstrip().startswith('.'):
+            continue
+        code, sep, cmt = lines[i].partition('#')
+        def sub(m):
+            v = int(m.group(1))
+            if not LO <= v < HI:
+                return m.group(0)
+            counts['operand'] += 1
+            in_mem = code[:m.start()].rstrip().endswith('[')
+            return refs(v) if in_mem else 'OFFSET ' + refs(v)
+        lines[i] = DECIMAL.sub(sub, code) + sep + cmt
+
+    for i, l in sorted(refs.labels().items(), reverse=True):
+        lines.insert(i, l)
+        addr.insert(i, None)
+    print('symbolized: ' + ', '.join('%s %d' % kv for kv in sorted(counts.items())))
+
+
 def prepare_link(lines, addr, img):
     """Make the single-object source link into the original image with src/xeBuild.ld.
 
@@ -272,6 +421,7 @@ def main():
     for i, t in sorted(unfixable.items())[:40]:
         print('UNFIXED %x (orig %d bytes, gas %d): %s' % (addr[i], olen[i], len(emitted.get(i + 1, b'')), t))
     print('pinned %d lines, %d unfixable' % (pinned, len(unfixable)))
+    symbolize(lines, addr, img)
     lines = prepare_link(lines, addr, img)
     open(out, 'w', encoding='utf-8', newline='\n').write('\n'.join(lines) + '\n')
 
