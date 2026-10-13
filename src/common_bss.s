@@ -8,7 +8,6 @@
 .globl L_479ea0
 .globl L_479ea4
 .globl L_479ea7
-.globl L_479ea8
 .globl L_479eac
 .globl L_479eb0
 .globl L_479eb4
@@ -97,7 +96,6 @@
 .globl L_47a114
 .globl L_47a118
 .globl L_47a11b
-.globl L_47a11c
 .globl L_47a120
 .globl L_47a124
 .globl L_47a128
@@ -106,7 +104,6 @@
 .globl L_47a134
 .globl L_47a138
 .globl L_47a13c
-.globl L_47a140
 .globl L_47a144
 .globl L_47a148
 .globl L_47a14c
@@ -263,11 +260,14 @@
 .globl L_50ec94
 .globl _XeCryptRandomState
 .globl _buildMode
+.globl _cpuKey
 .globl _flashFiles
+.globl _g479ea8
 .globl _g479f4c
 .globl _g47a080
 .globl _iniBuf
 .globl _iniSize
+.globl _masterPub
 
 .bss
 .p2align 2
@@ -279,7 +279,7 @@ L_479ea4:
           .zero 3
 L_479ea7:
           .zero 1
-L_479ea8:
+_g479ea8:
           .zero 4
 L_479eac:
           .zero 4
@@ -461,7 +461,7 @@ L_47a118:
           .zero 3
 L_47a11b:
           .zero 1
-L_47a11c:
+_cpuKey:
           .zero 4
 L_47a120:
           .zero 4
@@ -479,7 +479,7 @@ L_47a138:
           .zero 4
 L_47a13c:
           .zero 4
-L_47a140:
+_masterPub:
           .zero 4
 L_47a144:
           .zero 4

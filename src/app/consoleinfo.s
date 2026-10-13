@@ -421,7 +421,7 @@ L_43091c:
           test EBX,EBX
           js L_430a80
           test EBX,536870912
-          mov DWORD PTR [L_479ea8],3
+          mov DWORD PTR [_g479ea8],3
           jne L_430a20
           test EBX,1073741824
           jne L_430a43
@@ -510,7 +510,7 @@ L_430a43:
 L_430a80:
           mov EAX,DWORD PTR [ESP+112]
           mov DWORD PTR [ESP+4],OFFSET L_45b943
-          mov DWORD PTR [L_479ea8],2
+          mov DWORD PTR [_g479ea8],2
           mov DWORD PTR [ESP],EAX
           call _log_printf
           jmp L_43096a
@@ -779,7 +779,7 @@ FUN_430e00:
           mov EAX,EDI
           and EAX,7
           or DWORD PTR [L_479f00],EAX
-          cmp DWORD PTR [L_479ea8],2
+          cmp DWORD PTR [_g479ea8],2
           je L_430f00
 L_430e50:
           movzx EAX,BYTE PTR [EBX+79]
@@ -1297,7 +1297,7 @@ L_4315f4:
           mov EAX,DWORD PTR [L_479580]
           add EAX,816
           test EDI,EDI
-          mov DWORD PTR [L_47a140],EAX
+          mov DWORD PTR [_masterPub],EAX
           je L_43128b
 L_43162f:
           mov DWORD PTR [ESP+12],272
@@ -1373,7 +1373,7 @@ L_431730:
           je L_43176c
           mov EAX,DWORD PTR [L_479580]
           add EAX,816
-          mov DWORD PTR [L_47a140],EAX
+          mov DWORD PTR [_masterPub],EAX
           jmp L_43162f
 L_431764:
           test EDI,EDI
@@ -1397,7 +1397,7 @@ L_431780:
           je L_43133a
           mov EAX,DWORD PTR [L_479580]
           add EAX,816
-          mov DWORD PTR [L_47a140],EAX
+          mov DWORD PTR [_masterPub],EAX
           jmp L_43128b
           .byte 0x90
           .byte 0x8d

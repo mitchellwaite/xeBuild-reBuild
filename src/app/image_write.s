@@ -814,7 +814,7 @@ FUN_40f330:
           push ESI
           push EBX
           sub ESP,44
-          cmp DWORD PTR [L_479ea8],1
+          cmp DWORD PTR [_g479ea8],1
           je L_40fa60
 L_40f344:
           mov EAX,DWORD PTR [L_479ea4]
@@ -837,7 +837,7 @@ L_40f344:
           mov EAX,69206016
           jmp L_40f420
 L_40f3c5:
-          mov ESI,DWORD PTR [L_479ea8]
+          mov ESI,DWORD PTR [_g479ea8]
           lea EDX,DWORD PTR [ESI-6]
           and EDX,4294967293
           jne L_40f5d0
@@ -896,7 +896,7 @@ L_40f420:
           mov EDI,EDX
           mov DWORD PTR [L_4cd7c0],1611091967
           rep stosd DWORD PTR ES:[EDI]
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_40f784
           sub EAX,8
@@ -919,7 +919,7 @@ L_40f420:
           shl ESI,8
           call FUN_427650
           shr EAX,24
-          mov ECX,DWORD PTR [L_479ea8]
+          mov ECX,DWORD PTR [_g479ea8]
           and ESI,16711680
           lea EDX,DWORD PTR [EBX+EAX*1]
           shr EDI,8
@@ -1061,12 +1061,12 @@ L_40f784:
           mov BYTE PTR [L_44a58a],55
 L_40f805:
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _checkZeros
           test EAX,EAX
           je L_40f900
 L_40f821:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
 L_40f826:
           mov EDX,DWORD PTR [L_44a580]
           cmp EAX,1
@@ -1119,13 +1119,13 @@ L_40f900:
           mov DWORD PTR [ESP+4],OFFSET L_451760
           mov DWORD PTR [ESP],0
           call _log_printf
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_40f944
           mov DWORD PTR [ESP+4],OFFSET L_45179c
           mov DWORD PTR [ESP],0
           call _log_printf
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
 L_40f944:
           mov BYTE PTR [L_479f15],1
           jmp L_40f826
@@ -2071,7 +2071,7 @@ FUN_410360:
           je L_410400
           add EBX,131071
           and EBX,4294836224
-          cmp DWORD PTR [L_479ea8],1
+          cmp DWORD PTR [_g479ea8],1
           je L_410410
 L_410397:
           mov EDX,EBX
@@ -3344,7 +3344,7 @@ L_41141b:
           test EAX,EAX
           jne L_411570
           mov EAX,DWORD PTR [L_479ea4]
-          mov ESI,DWORD PTR [L_479ea8]
+          mov ESI,DWORD PTR [_g479ea8]
           and EAX,268435456
           cmp EAX,1
           sbb EBX,EBX
@@ -3441,7 +3441,7 @@ L_411567:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_411570:
-          mov ESI,DWORD PTR [L_479ea8]
+          mov ESI,DWORD PTR [_g479ea8]
 L_411576:
           cmp ESI,2
           jne L_411552
@@ -4879,7 +4879,7 @@ L_4128d7:
           mov EDX,DWORD PTR [L_479ef0]
           test EDX,EDX
           jne L_412ac7
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           mov EBX,16896
           mov DWORD PTR [ESP+40],16896
           sub EAX,6

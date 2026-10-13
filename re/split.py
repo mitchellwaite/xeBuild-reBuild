@@ -242,6 +242,12 @@ SYMBOLS = {
     0x40c260: '_suGetDir', 0x40cc80: '_suLoad', 0x40c650: '_suGetCF', 0x40c700: '_suGetCG',
     0x40c940: '_suFirstFile', 0x40c860: '_suNextFile', 0x40c7b0: '_suGetFile',
     0x418ee0: '_loadKeyFile', 0x41b740: '_checkKeys',
+    # app/keyvault (src/app/keyvault.c); names are ours
+    0x413090: '_kvGetType', 0x4130b0: '_kvIsLoaded', 0x4130c0: '_kvCheckHash',
+    0x4131a0: '_kvSet', 0x413370: '_kvGetGameRegion', 0x4133d0: '_kvGetDvdKey',
+    0x4133f0: '_kvGetConsoleId', 0x413410: '_kvGetSerial', 0x4134f0: '_kvGetConsoleCert',
+    0x413510: '_kvGetMfgDate', 0x413590: '_kvHashIsOk', 0x4135a0: '_kvSetDvdKey',
+    0x47a140: '_masterPub', 0x47a11c: '_cpuKey', 0x479ea8: '_g479ea8',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

@@ -40,7 +40,7 @@ FUN_401630:
           lea EBP,DWORD PTR [EDI+16]
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           mov BYTE PTR [ESP+62],7
           mov BYTE PTR [ESP+63],18
           call _XeCryptHmacSha
@@ -61,7 +61,7 @@ FUN_401630:
           mov DWORD PTR [ESP+24],0
           mov DWORD PTR [ESP+20],2
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _XeCryptHmacSha
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EDI
@@ -653,7 +653,7 @@ FUN_401e60:
           lea EBP,DWORD PTR [ESI+16]
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           mov DWORD PTR [ESP+60],EAX
           mov DWORD PTR [ESP+80],0
           mov DWORD PTR [ESP+84],0
@@ -677,7 +677,7 @@ FUN_401e60:
           mov DWORD PTR [ESP+20],0
           mov DWORD PTR [ESP+16],0
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _XeCryptHmacSha
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],ESI
@@ -765,7 +765,7 @@ FUN_402020:
           test EDX,EDX
           je L_402170
           lea ESI,DWORD PTR [ESP+88]
-          mov DWORD PTR [ESP+4],OFFSET L_47a11c
+          mov DWORD PTR [ESP+4],OFFSET _cpuKey
           mov DWORD PTR [ESP],ESI
           call _XeCryptAesKey
 L_40205b:
@@ -938,7 +938,7 @@ L_402281:
           .byte 0x0
 L_4022d0:
           lea EBP,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESP+4],OFFSET L_47a11c
+          mov DWORD PTR [ESP+4],OFFSET _cpuKey
           mov DWORD PTR [ESP],EBP
           call _XeCryptAesKey
           jmp L_402281
@@ -1155,7 +1155,7 @@ L_402610:
           call _getBeU32
           mov EBX,DWORD PTR [L_47a144]
           test EAX,EAX
-          cmovns EBX,DWORD PTR [L_47a140]
+          cmovns EBX,DWORD PTR [_masterPub]
           test EBX,EBX
           je L_4026f0
           lea EAX,DWORD PTR [ESI+256]
@@ -1169,7 +1169,7 @@ L_402610:
           mov DWORD PTR [ESP+16],0
           mov DWORD PTR [ESP+12],64
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _XeCryptHmacSha
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],ESI
@@ -1245,7 +1245,7 @@ FUN_402720:
           call _getBeU32
           mov ESI,DWORD PTR [L_47a144]
           test EAX,EAX
-          cmovns ESI,DWORD PTR [L_47a140]
+          cmovns ESI,DWORD PTR [_masterPub]
           test ESI,ESI
           je L_4029b0
           lea EAX,DWORD PTR [EBX+256]
@@ -1259,7 +1259,7 @@ FUN_402720:
           mov DWORD PTR [ESP+16],0
           mov DWORD PTR [ESP+12],64
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _XeCryptHmacSha
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],EBX
@@ -1334,7 +1334,7 @@ L_402850:
           test EAX,EAX
           je L_402990
           lea EAX,DWORD PTR [ESP+104]
-          mov DWORD PTR [ESP+4],OFFSET L_47a11c
+          mov DWORD PTR [ESP+4],OFFSET _cpuKey
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+60],EAX
           call _XeCryptAesKey

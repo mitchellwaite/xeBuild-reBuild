@@ -724,7 +724,7 @@ L_4095c2:
           mov DWORD PTR [ESP+4],OFFSET L_44fc52
           mov DWORD PTR [ESP],1
           call _log_printf
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_40a161
           lea EDX,DWORD PTR [EAX-6]
@@ -773,7 +773,7 @@ L_4096bb:
           test ECX,ECX
           jle L_409798
 L_4096d2:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_409a90
           lea EDX,DWORD PTR [EAX-6]
@@ -990,7 +990,7 @@ L_409963:
           mov DWORD PTR [ESP+4],OFFSET L_44a3e0
           mov DWORD PTR [ESP],EBX
           call _strcpy
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_4099a7
           mov EDX,DWORD PTR [L_479eb0]
@@ -1316,7 +1316,7 @@ L_409df5:
           mov DWORD PTR [ESP+52],0
           jmp L_40975e
 L_409e1a:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_409e2d
           cmp EAX,5

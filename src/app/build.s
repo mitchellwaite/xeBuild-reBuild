@@ -3379,7 +3379,7 @@ L_42a44b:
           pop EBP
           ret 
 L_42a455:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,1
           je L_42a430
           cmp EAX,5
@@ -3404,7 +3404,7 @@ L_42a455:
           mov EDI,EAX
           jmp L_42a423
 L_42a4b4:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           je L_42a4cc
           mov EDI,DWORD PTR [L_479eb4]
@@ -3430,7 +3430,7 @@ L_42a4df:
           mov EDI,EAX
           rep movsd 
 L_42a50a:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           sub EAX,4
           cmp EAX,1
           ja L_42a430
@@ -3455,7 +3455,7 @@ L_42a532:
           rep movsd 
           jmp L_42a430
 L_42a562:
-          cmp DWORD PTR [L_479ea8],1
+          cmp DWORD PTR [_g479ea8],1
           je L_42a430
           mov DWORD PTR [ESP],EBP
           call FUN_428780
@@ -3784,7 +3784,7 @@ L_42aa4a:
           mov DWORD PTR [ESP],1
           call _log_printf
 L_42aa78:
-          cmp DWORD PTR [L_479ea8],5
+          cmp DWORD PTR [_g479ea8],5
           jbe L_42a430
           cmp ESI,14
           jne L_42a430
@@ -3855,7 +3855,7 @@ L_42ab8a:
           mov EDX,DWORD PTR [L_4c4f9c]
           jmp L_42a3f5
 L_42ab95:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           sub EAX,4
           cmp EAX,1
           jbe L_42a51b
@@ -3926,7 +3926,7 @@ L_42acb5:
           mov DWORD PTR [ESP+4],OFFSET L_459998
           mov DWORD PTR [ESP],0
           call _log_printf
-          cmp DWORD PTR [L_479ea8],5
+          cmp DWORD PTR [_g479ea8],5
           jbe L_42a8d4
           cmp ESI,14
           mov EDI,4294967295
@@ -3967,7 +3967,7 @@ L_42ad40:
           test EAX,EAX
           mov EDI,EAX
           jne L_42a8d9
-          cmp DWORD PTR [L_479ea8],5
+          cmp DWORD PTR [_g479ea8],5
           jbe L_42a430
           jmp L_42aa8e
           .byte 0x8d
@@ -4063,7 +4063,7 @@ L_42aeb0:
           .byte 0x0
           .byte 0x0
 L_42aee0:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,1
           je L_42af50
           cmp EAX,5
@@ -4339,7 +4339,7 @@ FUN_42b2b0:
           mov BYTE PTR [EAX+75],1
           test BYTE PTR [L_479f00],9
           jne L_42b350
-          cmp DWORD PTR [L_479ea8],2
+          cmp DWORD PTR [_g479ea8],2
           je L_42b37b
 L_42b2d9:
           mov DWORD PTR [L_479f10],0
@@ -4379,7 +4379,7 @@ L_42b350:
           mov DWORD PTR [ESP+4],OFFSET L_459e3c
           mov DWORD PTR [ESP],1
           call _log_printf
-          cmp DWORD PTR [L_479ea8],2
+          cmp DWORD PTR [_g479ea8],2
           mov EAX,DWORD PTR [L_479ed8]
           mov EDX,1
           jne L_42b2d9
@@ -5381,7 +5381,7 @@ L_42c11b:
           mov EDX,DWORD PTR [L_479eb4]
           test EDX,EDX
           jne L_42c380
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           sub EAX,4
           cmp EAX,1
           jbe L_42c380
@@ -5408,7 +5408,7 @@ L_42c15b:
           test EAX,EAX
           je L_42c146
 L_42c193:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,2
           jne L_42c0d0
           cmp EDI,14
@@ -5571,7 +5571,7 @@ L_42c3e6:
 L_42c3f2:
           call FUN_410460
           mov EBP,EAX
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,1
           je L_42c2ee
           cmp EAX,5
@@ -5597,7 +5597,7 @@ L_42c440:
           mov EBP,DWORD PTR [L_479eb4]
           test EBP,EBP
           je L_42c5a2
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           lea EBP,DWORD PTR [EDX+96]
 L_42c466:
           cmp EAX,1
@@ -5698,7 +5698,7 @@ L_42c596:
           jne L_42c583
           jmp L_42c1f0
 L_42c5a2:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           lea EBP,DWORD PTR [EDX+16]
           lea ECX,DWORD PTR [EAX-4]
           cmp ECX,1
@@ -5816,7 +5816,7 @@ L_42c6eb:
           mov EAX,DWORD PTR [L_479eb4]
           test EAX,EAX
           jne L_42c72c
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           sub EAX,4
           cmp EAX,1
           jbe L_42c72c
@@ -6450,7 +6450,7 @@ L_42cfc0:
           test EAX,EAX
           je L_42d050
 L_42cfe9:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           mov EBP,DWORD PTR [EBX-16]
           cmp EAX,2
           je L_42d860
@@ -6788,7 +6788,7 @@ L_42d420:
           call FUN_41d0e0
           jmp L_42d050
 L_42d435:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           sub EAX,4
           cmp EAX,1
           jbe L_42da00
@@ -6808,7 +6808,7 @@ L_42d435:
           mov DWORD PTR [ESP+4],EDI
           call _showExpectedFuses
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _checkZeros
           test EAX,EAX
           je L_42d9ea
@@ -6956,7 +6956,7 @@ L_42d6a3:
 L_42d6aa:
           mov EAX,271044
 L_42d6af:
-          cmp DWORD PTR [L_479ea8],1
+          cmp DWORD PTR [_g479ea8],1
           mov EDX,DWORD PTR [EBX-4]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+12],EDX
@@ -6972,7 +6972,7 @@ L_42d6e0:
           test ECX,ECX
           je L_42d050
           mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_47a11c
+          mov DWORD PTR [ESP],OFFSET _cpuKey
           call _checkZeros
           mov ECX,DWORD PTR [L_4c4f98]
           mov EDI,EAX
@@ -7138,7 +7138,7 @@ L_42d900:
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EAX
           call _showExpectedFuses
-          cmp DWORD PTR [L_479ea8],1
+          cmp DWORD PTR [_g479ea8],1
           je L_42d9ea
 L_42d94c:
           mov EAX,DWORD PTR [EBX-4]
@@ -7710,7 +7710,7 @@ FUN_42e160:
           push ESI
           push EBX
           sub ESP,16
-          mov ECX,DWORD PTR [L_479ea8]
+          mov ECX,DWORD PTR [_g479ea8]
           cmp ECX,2
           je L_42e465
           cmp ECX,5
@@ -8209,7 +8209,7 @@ L_42e760:
           push EBX
           mov EBX,1
           sub ESP,1180
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           mov DWORD PTR [ESP+84],0
           mov DWORD PTR [ESP+88],0
           mov DWORD PTR [ESP+92],0
@@ -8266,7 +8266,7 @@ L_42e832:
           mov ESI,EAX
           shr ESI,14
 L_42e863:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,3
           je L_42fecc
           sub EAX,4
@@ -8276,7 +8276,7 @@ L_42e87d:
           mov EBP,DWORD PTR [L_47a088]
           test EBP,EBP
           jne L_42e8b0
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,1
           je L_42e8b0
           cmp EAX,5
@@ -8319,7 +8319,7 @@ L_42e909:
           mov EAX,DWORD PTR [EAX+L_4bc150+12]
           mov DWORD PTR [ESP],EAX
           call FUN_41b320
-          cmp DWORD PTR [L_479ea8],2
+          cmp DWORD PTR [_g479ea8],2
           je L_42e940
           call FUN_410460
           mov EDI,EAX
@@ -8384,7 +8384,7 @@ L_42ea00:
           test EAX,EAX
           jne L_42fa4b
 L_42ea0d:
-          cmp DWORD PTR [L_479ea8],2
+          cmp DWORD PTR [_g479ea8],2
           je L_42ff3e
           mov ECX,DWORD PTR [L_4c4f98]
           test ECX,ECX
@@ -8596,7 +8596,7 @@ L_42ecf0:
           .byte 0x76
           .byte 0x0
 L_42ed20:
-          cmp DWORD PTR [L_479ea8],2
+          cmp DWORD PTR [_g479ea8],2
           mov EDX,ESI
           je L_42eeb2
 L_42ed2f:
@@ -8980,7 +8980,7 @@ L_42f2d0:
           and EAX,1
           mov DWORD PTR [ESP+8],EAX
           xor EAX,EAX
-          cmp DWORD PTR [L_479ea8],5
+          cmp DWORD PTR [_g479ea8],5
           seta AL
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_479ef0]
@@ -9023,7 +9023,7 @@ L_42f391:
           and EAX,1
           mov DWORD PTR [ESP+8],EAX
           xor EAX,EAX
-          cmp DWORD PTR [L_479ea8],5
+          cmp DWORD PTR [_g479ea8],5
           seta AL
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_479ef0]
@@ -9505,7 +9505,7 @@ L_42fb20:
           mov ESI,EBX
           repe cmpsb BYTE PTR [ESI],BYTE PTR ES:[EDI]
           jne L_42fbf0
-          call FUN_413370
+          call _kvGetGameRegion
           test EAX,EAX
           mov ESI,EAX
           mov DWORD PTR [ESP+8],EBX
@@ -9513,7 +9513,7 @@ L_42fb20:
           mov DWORD PTR [ESP+4],OFFSET L_45b0d4
           mov DWORD PTR [ESP],0
           call _log_printf
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           cmp EAX,1
           je L_42f252
           cmp EAX,5

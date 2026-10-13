@@ -2268,7 +2268,7 @@ L_42588f:
           jmp L_42524e
 L_4258b4:
           mov DWORD PTR [ESP],EDI
-          call FUN_4135a0
+          call _kvSetDvdKey
           test EAX,EAX
           je L_425230
           or DWORD PTR [L_479f00],33554432
@@ -2493,7 +2493,7 @@ L_425b3f:
           mov DWORD PTR [ESP],0
           call _log_printf
 L_425b73:
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           sub EAX,2
           cmp EAX,3
           mov EAX,DWORD PTR [L_479f00]
@@ -2519,7 +2519,7 @@ L_425bc5:
           test EAX,8388608
           je L_426552
 L_425bd0:
-          mov EDX,DWORD PTR [L_479ea8]
+          mov EDX,DWORD PTR [_g479ea8]
 L_425bd6:
           cmp EDX,2
           jne L_425c42
@@ -2654,7 +2654,7 @@ L_425de2:
           test EAX,EAX
           je L_425c4d
           mov DWORD PTR [ESP],EAX
-          call FUN_4135a0
+          call _kvSetDvdKey
           test EAX,EAX
           je L_425c4d
           or DWORD PTR [L_479f00],33554432
@@ -3429,7 +3429,7 @@ L_426bb0:
           mov DWORD PTR [ESP],0
           call _log_printf
 L_426be4:
-          mov EDX,DWORD PTR [L_479ea8]
+          mov EDX,DWORD PTR [_g479ea8]
           mov EAX,DWORD PTR [L_479f00]
           jmp L_425bd6
 L_426bf4:

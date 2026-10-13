@@ -318,7 +318,7 @@ L_413993:
           test EAX,EAX
           mov ESI,EAX
           jne L_413939
-          mov EAX,DWORD PTR [L_479ea8]
+          mov EAX,DWORD PTR [_g479ea8]
           lea EDX,DWORD PTR [EAX-6]
           cmp EDX,1
           jbe L_413ab0
