@@ -543,7 +543,7 @@ L_41b014:
           .byte 0x0
 L_41b020:
           mov DWORD PTR [ESP],ESI
-          call FUN_422350
+          call _validateString
           test EAX,EAX
           mov EBX,EAX
           je L_41b0e0
@@ -552,7 +552,7 @@ L_41b034:
           mov DWORD PTR [ESP],ESI
           add EBX,1
           add ESI,2
-          call FUN_421300
+          call _myatox8
           mov BYTE PTR [EBX+L_47a11b],AL
           cmp EBX,16
           jne L_41b034
@@ -572,7 +572,7 @@ L_41b063:
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
           mov EBX,1
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           jne L_41b014
           mov DWORD PTR [ESP+4],OFFSET L_47a11c
@@ -632,10 +632,10 @@ FUN_41b120:
           call _log_printf
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_41b1a0
 L_41b184:
@@ -709,13 +709,13 @@ L_41b242:
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+8],EBX
-          call FUN_420b50
+          call _setBeU64
           lea EAX,DWORD PTR [ESI+64]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EBP
           add ESI,72
           mov DWORD PTR [ESP+8],EAX
-          call FUN_420b50
+          call _setBeU64
           mov DWORD PTR [ESP+4],OFFSET L_4567fe
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -898,7 +898,7 @@ FUN_41b420:
           call _XeCryptRc4
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a12c
-          call FUN_422ae0
+          call _sumBytes
           add ESP,104
           pop EBX
           ret 
@@ -918,7 +918,7 @@ L_41b520:
           sub ESP,24
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
-          call FUN_422ae0
+          call _sumBytes
           mov EBX,EAX
           call FUN_41b420
           cmp EBX,2435
@@ -930,7 +930,7 @@ L_41b520:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a10c
           mov DWORD PTR [ESP],1
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+8],2435
           mov DWORD PTR [ESP+4],OFFSET L_456873
           mov DWORD PTR [ESP],1
@@ -940,7 +940,7 @@ L_41b520:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a12c
           mov DWORD PTR [ESP],1
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+8],2048
           mov DWORD PTR [ESP+4],OFFSET L_4568a5
           mov DWORD PTR [ESP],1
@@ -979,7 +979,7 @@ FUN_41b600:
           mov DWORD PTR [L_47a110],ECX
           mov DWORD PTR [L_47a114],EDX
           mov DWORD PTR [L_47a118],EAX
-          call FUN_422ae0
+          call _sumBytes
           mov EBX,EAX
           call FUN_41b420
           cmp EBX,2435
@@ -991,7 +991,7 @@ FUN_41b600:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a10c
           mov DWORD PTR [ESP],1
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+8],2435
           mov DWORD PTR [ESP+4],OFFSET L_456873
           mov DWORD PTR [ESP],1
@@ -1001,7 +1001,7 @@ FUN_41b600:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a12c
           mov DWORD PTR [ESP],1
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+8],2048
           mov DWORD PTR [ESP+4],OFFSET L_4568a5
           mov DWORD PTR [ESP],1
@@ -1018,7 +1018,7 @@ L_41b6f0:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a10c
           mov DWORD PTR [ESP],0
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+4],OFFSET L_4568e0
           mov DWORD PTR [ESP],0
           call _log_printf
@@ -1067,7 +1067,7 @@ L_41b775:
           .byte 0x0
 L_41b780:
           mov DWORD PTR [ESP],EDI
-          call FUN_422350
+          call _validateString
           test EAX,EAX
           je L_41b8b0
           mov ESI,EDI
@@ -1076,13 +1076,13 @@ L_41b794:
           mov DWORD PTR [ESP],ESI
           add EBX,1
           add ESI,2
-          call FUN_421300
+          call _myatox8
           mov BYTE PTR [EBX+L_47a10b],AL
           cmp EBX,16
           jne L_41b794
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
-          call FUN_422ae0
+          call _sumBytes
           mov EBX,EAX
           call FUN_41b420
           cmp EBX,2435
@@ -1094,7 +1094,7 @@ L_41b794:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a10c
           mov DWORD PTR [ESP],1
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+8],2435
           mov DWORD PTR [ESP+4],OFFSET L_456873
           mov DWORD PTR [ESP],1
@@ -1104,7 +1104,7 @@ L_41b794:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a12c
           mov DWORD PTR [ESP],1
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+8],2048
           mov DWORD PTR [ESP+4],OFFSET L_4568a5
           mov DWORD PTR [ESP],1
@@ -1228,7 +1228,7 @@ L_41b9c7:
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP+8],EBX
-          call FUN_420b50
+          call _setBeU64
           lea EAX,DWORD PTR [EBX+8]
           mov DWORD PTR [ESP+80],ESI
           mov DWORD PTR [ESP+84],EDI
@@ -1238,7 +1238,7 @@ L_41b9c7:
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_420b50
+          jmp _setBeU64
 L_41b9f6:
           xor ESI,ESI
           xor EDI,EDI
@@ -1324,7 +1324,7 @@ FUN_41ba80:
           call _memcpy
           mov DWORD PTR [ESP+4],4
           mov DWORD PTR [ESP],ESI
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           jne L_41bb15
           mov DWORD PTR [ESP+4],OFFSET L_4569e4
@@ -1346,7 +1346,7 @@ FUN_41ba80:
 L_41bb15:
           mov DWORD PTR [ESP+4],4
           mov DWORD PTR [ESP],ESI
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           jne L_41bc60
 L_41bb2d:
@@ -1424,13 +1424,13 @@ L_41bc17:
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+8],EBX
-          call FUN_420b50
+          call _setBeU64
           mov EAX,DWORD PTR [ESP+100]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EDI
           add EAX,8
           mov DWORD PTR [ESP+8],EAX
-          call FUN_420b50
+          call _setBeU64
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EAX
           call _free
@@ -1904,7 +1904,7 @@ FUN_41c370:
           mov EBX,DWORD PTR [ESP+116]
           lea EAX,DWORD PTR [EBP+6]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           mov EDX,DWORD PTR [L_44a694]
           mov EDI,EAX
           mov ECX,OFFSET L_479560
@@ -2800,7 +2800,7 @@ L_41d156:
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+52],EBP
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           mov ECX,DWORD PTR [ESP+56]
           je L_41d300
@@ -2809,7 +2809,7 @@ L_41d156:
           mov DWORD PTR [ESP+56],ECX
           add EAX,88
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           mov ECX,DWORD PTR [ESP+56]
           je L_41d503
@@ -3003,7 +3003,7 @@ L_41d540:
           mov DWORD PTR [ESP+60],ECX
           add EAX,56
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           mov ECX,DWORD PTR [ESP+60]
           jne L_41d620
@@ -3118,7 +3118,7 @@ L_41d713:
           call _memcpy
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],ESI
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_41d880
           mov EDX,DWORD PTR [EBX+1040]
@@ -3295,7 +3295,7 @@ L_41da18:
           mov EAX,DWORD PTR [EBX+1036]
           add EAX,32
           mov DWORD PTR [ESP],EAX
-          call FUN_4223f0
+          call _memcpyrev
           mov EAX,DWORD PTR [EBX+1036]
           mov BYTE PTR [EAX+24],1
           movzx EDX,BYTE PTR [L_479f15]
@@ -3484,7 +3484,7 @@ L_41dce0:
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+40],EAX
           mov DWORD PTR [ESP+4],EDX
-          call FUN_4223f0
+          call _memcpyrev
           mov EAX,DWORD PTR [L_44a620]
           mov EDX,DWORD PTR [L_44a630]
           mov ECX,DWORD PTR [L_44a634]
@@ -3654,7 +3654,7 @@ FUN_41dfa0:
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+8],8
-          call FUN_4223f0
+          call _memcpyrev
           movzx EAX,BYTE PTR [L_479f15]
           mov BYTE PTR [EBX+319],AL
           mov DWORD PTR [ESP+8],ESI
@@ -4022,7 +4022,7 @@ FUN_41e620:
 L_41e685:
           lea EAX,DWORD PTR [EBX+284]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,16383
           ja L_41e783
           mov ESI,DWORD PTR [ESP+596]

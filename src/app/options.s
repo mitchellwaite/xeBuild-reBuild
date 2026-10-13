@@ -29,9 +29,9 @@ L_4236f0:
           call _strcpy
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_449088
+          call _strcat
           mov DWORD PTR [ESP],EBX
-          call FUN_4225a0
+          call _FileExists
           add ESP,1044
           pop EBX
           pop ESI
@@ -112,9 +112,9 @@ L_4237c5:
           call _strcpy
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBP
-          call FUN_449088
+          call _strcat
           mov DWORD PTR [ESP],EBP
-          call FUN_4225a0
+          call _FileExists
           cmp BYTE PTR [L_47ad4c],0
           mov EDI,EAX
           je L_4237b8
@@ -123,9 +123,9 @@ L_4237c5:
           call _strcpy
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EBP
-          call FUN_449088
+          call _strcat
           mov DWORD PTR [ESP],EBP
-          call FUN_4225a0
+          call _FileExists
           add ESP,2076
           or EDI,EAX
           pop EBX
@@ -1832,7 +1832,7 @@ L_42518b:
           jne L_4251e0
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f18],EAX
           je L_425230
@@ -1862,7 +1862,7 @@ L_4251e0:
           jne L_42532c
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f20],EAX
           jne L_4253d8
@@ -1901,7 +1901,7 @@ L_425260:
 L_425282:
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f1c],EAX
           je L_425230
@@ -1961,7 +1961,7 @@ L_42532c:
           jne L_4253fa
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f28],EAX
           je L_425230
@@ -1974,7 +1974,7 @@ L_42532c:
 L_425398:
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f24],EAX
           je L_425230
@@ -1999,7 +1999,7 @@ L_4253fa:
           jne L_42544e
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f2c],EAX
           je L_425230
@@ -2017,7 +2017,7 @@ L_42544e:
           jne L_4254a2
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f30],EAX
           je L_425230
@@ -2035,7 +2035,7 @@ L_4254a2:
           jne L_4254f6
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f34],EAX
           je L_425230
@@ -2053,7 +2053,7 @@ L_4254f6:
           jne L_425550
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f38],EAX
           je L_425230
@@ -2077,7 +2077,7 @@ L_425550:
           jne L_4255ab
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f3c],EAX
           je L_425230
@@ -2098,7 +2098,7 @@ L_4255ab:
           jne L_4255ff
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [L_479f40],EAX
           je L_425230
@@ -2167,7 +2167,7 @@ L_4256e0:
           jne L_42573a
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           cmp AL,32
           mov BYTE PTR [L_479f15],AL
           ja L_425788
@@ -2211,7 +2211,7 @@ L_425788:
           jmp L_425718
 L_4257b4:
           mov DWORD PTR [ESP],EDI
-          call FUN_422350
+          call _validateString
           test EAX,EAX
           je L_42588f
           mov DWORD PTR [ESP+4],OFFSET L_4587e4
@@ -2219,7 +2219,7 @@ L_4257b4:
           call _log_printf
           mov DWORD PTR [ESP],EDI
           add EDI,2
-          call FUN_421300
+          call _myatox8
           mov BYTE PTR [L_479f44],AL
           movzx EAX,AL
           mov DWORD PTR [ESP+4],OFFSET L_458801
@@ -2233,7 +2233,7 @@ L_425803:
           call _log_printf
           mov DWORD PTR [ESP],EDI
           add EDI,2
-          call FUN_421300
+          call _myatox8
           mov BYTE PTR [ESI+L_479f44],AL
           movzx EAX,AL
           mov DWORD PTR [ESP+4],OFFSET L_458801
@@ -2487,7 +2487,7 @@ L_425b3f:
           call _log_printf
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],0
-          call FUN_423420
+          call _showHexPairs
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],OFFSET L_458a10
           mov DWORD PTR [ESP],0
@@ -2923,7 +2923,7 @@ L_4262f0:
           jmp L_425ba4
 L_426304:
           mov DWORD PTR [ESP],EBX
-          call FUN_422350
+          call _validateString
           test EAX,EAX
           je L_4266a2
           xor ESI,ESI
@@ -2933,7 +2933,7 @@ L_426320:
           mov DWORD PTR [ESP],EBX
           add ESI,1
           add EBX,2
-          call FUN_421300
+          call _myatox8
           mov BYTE PTR [ESI+L_479f43],AL
           cmp ESI,6
           jne L_426320
@@ -3672,7 +3672,7 @@ L_42704b:
           mov ESI,DWORD PTR [L_4c8fe0]
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EDI
-          call FUN_421860
+          call _myatou32
           imul ESI,ESI,1028
           mov DWORD PTR [ESI+L_4c53a0],EAX
           mov EAX,DWORD PTR [L_4c8fe0]

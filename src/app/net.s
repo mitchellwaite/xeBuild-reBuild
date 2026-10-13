@@ -76,7 +76,7 @@ FUN_41e800:
           cmp EAX,1
           jbe L_41ea35
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,-1
           mov EBX,EAX
           je L_41e99b
@@ -297,11 +297,11 @@ L_41eb84:
           call DWORD PTR [recvfrom]
           sub ESP,24
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,1314092658
           je L_41ecf0
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           mov DWORD PTR [ESP+12],1314092658
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],OFFSET L_457608
@@ -372,7 +372,7 @@ L_41ecc0:
 L_41ecf0:
           lea EAX,DWORD PTR [ESP+56]
           mov DWORD PTR [ESP],EAX
-          call FUN_420af0
+          call _getLeU32
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+32],EAX
           call DWORD PTR [closesocket]
@@ -533,7 +533,7 @@ FUN_41ee30:
           cmp EAX,1
           jbe L_41f165
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,-1
           mov ESI,EAX
           je L_41efe9
@@ -757,7 +757,7 @@ FUN_41f1a0:
           lea EBX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_420b20
+          call _setBeU32
           mov EAX,DWORD PTR [L_44a6c0]
           mov DWORD PTR [ESP+12],0
           mov DWORD PTR [ESP+8],4
@@ -903,7 +903,7 @@ L_41f35d:
           ret 
 L_41f365:
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           sete AL
           movzx EAX,AL
@@ -1141,7 +1141,7 @@ L_41f4c0:
           shr EAX,28
           add EAX,1
           mov DWORD PTR [ESP],EAX
-          call FUN_420a90
+          call _getConsoleTypeStr
           mov DWORD PTR [ESP+4],OFFSET L_457746
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP],0
@@ -1521,7 +1521,7 @@ L_41fbe8:
           .byte 0x90
 L_41fc10:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           sete AL
           cmp EBX,OFFSET L_479578
@@ -1614,7 +1614,7 @@ L_41fd18:
           .byte 0x90
 L_41fd40:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           sete AL
           cmp EBX,OFFSET L_479578
@@ -1750,7 +1750,7 @@ L_41fe90:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+64]
           mov DWORD PTR [ESP],EAX
-          call FUN_420d00
+          call _writeFile
           test EAX,EAX
           je L_41ff70
           mov DWORD PTR [ESP+4],OFFSET L_45773c
@@ -1907,7 +1907,7 @@ L_4200e0:
           .byte 0x0
 L_420100:
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_42007c
           cmp EBX,OFFSET L_479578
@@ -2086,7 +2086,7 @@ L_4202d9:
           nop
 L_4202f0:
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_4202cf
           cmp EBX,OFFSET L_479578
@@ -2175,7 +2175,7 @@ L_4203d0:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_4203f0:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_4203c6
           cmp EBX,OFFSET L_479578
@@ -2325,7 +2325,7 @@ L_42058f:
           jmp L_420532
 L_4205a1:
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_420585
           cmp EBX,OFFSET L_479578
@@ -2390,7 +2390,7 @@ L_420630:
           ret 
 L_420645:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_420626
           cmp EBX,OFFSET L_479578
@@ -2454,7 +2454,7 @@ L_4206d0:
           ret 
 L_4206e5:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_4206c6
           cmp EBX,OFFSET L_479578
@@ -2563,7 +2563,7 @@ L_4207f0:
           .byte 0x0
 L_420810:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_4207e6
           cmp EBX,OFFSET L_479578
@@ -2672,7 +2672,7 @@ L_420955:
           lea EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_420b20
+          call _setBeU32
           lea EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP+12],0
           mov DWORD PTR [ESP+8],4
@@ -2749,7 +2749,7 @@ L_420a40:
           jmp L_42094b
 L_420a63:
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           cmp AX,20299
           jne L_420a1a
           cmp EBX,OFFSET L_479578

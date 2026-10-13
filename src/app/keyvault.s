@@ -52,7 +52,7 @@ L_4130d2:
           mov EAX,DWORD PTR [L_4709f0]
           add EAX,EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           sub EAX,1
           cmp EAX,-3
           jbe L_413103
@@ -151,7 +151,7 @@ L_413270:
           mov EAX,DWORD PTR [L_4709f0]
           add EAX,EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           sub EAX,1
           cmp EAX,-3
           jbe L_4132c0
@@ -464,7 +464,7 @@ L_4135d4:
           .byte 0x0
 L_4135e0:
           mov DWORD PTR [ESP],ESI
-          call FUN_422350
+          call _validateString
           test EAX,EAX
           je L_413671
           xor EBX,EBX
@@ -472,7 +472,7 @@ L_4135f2:
           mov DWORD PTR [ESP],ESI
           add EBX,1
           add ESI,2
-          call FUN_421300
+          call _myatox8
           mov BYTE PTR [EBX+L_4709f3],AL
           cmp EBX,16
           jne L_4135f2

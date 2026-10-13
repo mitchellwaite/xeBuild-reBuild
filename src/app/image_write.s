@@ -1062,7 +1062,7 @@ L_40f784:
 L_40f805:
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_40f900
 L_40f821:
@@ -4107,10 +4107,10 @@ L_411e03:
           movzx EAX,WORD PTR [ESP+48]
           mov DWORD PTR [ESP+4],OFFSET L_4c9180
           mov DWORD PTR [ESP],EAX
-          call FUN_420b00
+          call _setBeU16
           mov DWORD PTR [ESP+4],OFFSET L_4c9182
           mov DWORD PTR [ESP],0
-          call FUN_420b00
+          call _setBeU16
           mov EAX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP+96],EAX
           add ESP,76
@@ -4470,7 +4470,7 @@ FUN_412260:
           mov EAX,DWORD PTR [L_479ed8]
           mov DWORD PTR [ESP+4],50331648
           mov DWORD PTR [ESP],EAX
-          call FUN_449118
+          call _fwrite
           cmp EAX,1
           jne L_4123d1
           mov EDI,DWORD PTR [L_4c97a8]
@@ -4495,7 +4495,7 @@ L_412320:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_479ee0]
           mov DWORD PTR [ESP],EAX
-          call FUN_449118
+          call _fwrite
           cmp EAX,1
           jne L_412380
           mov ECX,DWORD PTR [L_4c97a8]
@@ -4559,7 +4559,7 @@ L_4123f3:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],OFFSET L_4c93a8
-          call FUN_423490
+          call _writeSha1File
           jmp L_4122f7
           .byte 0x8d
           .byte 0xb4
@@ -4612,7 +4612,7 @@ L_412509:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],OFFSET L_4c93a8
-          call FUN_423490
+          call _writeSha1File
           jmp L_412364
           .byte 0x8d
           .byte 0xb6

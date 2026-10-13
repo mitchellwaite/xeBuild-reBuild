@@ -6,11 +6,11 @@
 #   .text          00448ff0-00449030
 
 .intel_syntax noprefix
-.globl FUN_448ff0
+.globl _ftello64
 
 .text
 .p2align 4
-FUN_448ff0:
+_ftello64:
           sub ESP,44
           lea EAX,DWORD PTR [ESP+24]
           mov DWORD PTR [ESP+4],EAX
@@ -117,7 +117,7 @@ L_449020:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448ff0 - .
+          .long _ftello64 - .
           .byte 0x3c
           .byte 0x0
           .byte 0x0

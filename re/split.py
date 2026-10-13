@@ -196,6 +196,24 @@ SYMBOLS = {
     0x433570: '_log_set_verbose', 0x4335a0: '_log_verbose_flag', 0x433600: '_log_get_verbose',
     0x433610: '_log_set_name', 0x433690: '_log_printf', 0x433740: '_log_init',
     0x4337a0: '_log_finish',
+    # app/fileutil (src/app/fileutil.c); the author's names where his tools'
+    # util.c has the function (cOzInABox/XeBuild tools/*/util.c), else ours
+    0x420a90: '_getConsoleTypeStr', 0x420ab0: '_getBeU16', 0x420ad0: '_getBeU32',
+    0x420ae0: '_getBeU64', 0x420af0: '_getLeU32', 0x420b00: '_setBeU16',
+    0x420b20: '_setBeU32', 0x420b50: '_setBeU64', 0x420bb0: '_display_buffer_hex',
+    0x420c30: '_dump_buffer_hex', 0x420d00: '_writeFile', 0x420d80: '_writeFileIn',
+    0x420e40: '_writeKeyFile', 0x420f10: '_writeFuseFile', 0x421000: '_findInst',
+    0x4210b0: '_countInst', 0x421170: '_findInstExists', 0x421200: '_replaceInst',
+    0x4212d0: '_myatox', 0x421300: '_myatox8', 0x421380: '_myatox32', 0x421840: '_myatol',
+    0x421860: '_myatou32', 0x421de0: '_myatoh32', 0x422350: '_validateString',
+    0x4223b0: '_checkZeros', 0x4223f0: '_memcpyrev', 0x422420: '_getFileSize',
+    0x422470: '_getFileSizeName', 0x4224d0: '_getFileSize64', 0x422530: '_getFileSize64Name',
+    0x4225a0: '_FileExists', 0x4225d0: '_FileExistsIn', 0x422670: '_FileToBuffer',
+    0x422740: '_readFileTo', 0x4227e0: '_readFileInTo', 0x4228c0: '_readFileIn',
+    0x422aa0: '_calcConfigSum', 0x422ae0: '_sumBytes', 0x422b10: '_showExpectedFuses',
+    0x4232e0: '_showFuses', 0x423370: '_showKey', 0x4233b0: '_showMac',
+    0x423420: '_showHexPairs', 0x423490: '_writeSha1File', 0x423650: '_createDir',
+    0x4236c0: '_makeBranch',
     # app/timeutil (src/app/timeutil.c); Wine's names, cdecl
     0x40b130: '_RtlTimeFieldsToTime', 0x40b330: '_RtlTimeToTimeFields',
     0x40b500: '_FileTimeToSystemTime', 0x40b700: '_SystemTimeToFileTime',
@@ -215,6 +233,9 @@ SYMBOLS = {
     0x449188: '_feof', 0x449190: '_fclose', 0x4491a8: '_atoi', 0x449200: '__lrotl',
     0x449080: '_strcpy', 0x4490b0: '_rename', 0x4490b8: '_remove', 0x449158: '_fprintf',
     0x4490e8: '__mktime32', 0x449110: '__gmtime32',   # msvcrt mktime/gmtime
+    0x449088: '_strcat', 0x4490a8: '_rewind', 0x449118: '_fwrite', 0x449128: '_ftell',
+    0x449138: '_fseek', 0x449148: '_fread', 0x449150: '_fputc', 0x4491f0: '__mkdir',
+    0x448af0: '_fseeko64', 0x448ff0: '_ftello64',   # libmingwex
     # libgcc (64-bit division) and the vsnprintf mingw's stdio.h calls
     0x447c30: '___divdi3', 0x447d70: '___moddi3', 0x447f20: '___udivdi3',
     0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',

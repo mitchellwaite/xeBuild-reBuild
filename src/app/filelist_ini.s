@@ -50,7 +50,7 @@ L_408f0e:
           call _strcpy
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_449088
+          call _strcat
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
@@ -607,7 +607,7 @@ FUN_409430:
           je L_409dbc
           mov DWORD PTR [ESP],EAX
           mov EBX,EAX
-          call FUN_422420
+          call _getFileSize
           mov EDI,EAX
           lea EAX,DWORD PTR [EAX+1]
           mov DWORD PTR [ESP],EAX
@@ -620,7 +620,7 @@ FUN_409430:
           mov EBP,EAX
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EAX
-          call FUN_449148
+          call _fread
           mov DWORD PTR [ESP],EBX
           call _fclose
           cmp BYTE PTR [EBP],255
@@ -1007,11 +1007,11 @@ L_4099a7:
           and EAX,7
           mov EAX,DWORD PTR [EAX*4+L_450400]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_449088
+          call _strcat
 L_4099c2:
           mov DWORD PTR [ESP+4],OFFSET L_47a14c
           mov DWORD PTR [ESP],EBX
-          call FUN_449088
+          call _strcat
           cmp BYTE PTR [L_4c4f54],0
           jne L_409d40
 L_4099df:
@@ -1227,7 +1227,7 @@ L_409c80:
           mov DWORD PTR [ESP+4],0
           imul EDI,EDI,1068
           mov DWORD PTR [ESP],EAX
-          call FUN_421380
+          call _myatox32
           mov DWORD PTR [EDI+L_4bc150],EAX
           mov EDI,DWORD PTR [ESP+56]
           add EDI,DWORD PTR [L_479e84]
@@ -1263,7 +1263,7 @@ L_409cfd:
 L_409d40:
           mov DWORD PTR [ESP+4],OFFSET L_4c4f54
           mov DWORD PTR [ESP],EBX
-          call FUN_449088
+          call _strcat
           jmp L_4099df
 L_409d55:
           mov EAX,DWORD PTR [L_479ea4]
@@ -1500,7 +1500,7 @@ L_40a00c:
           lea EBP,DWORD PTR [EBX+EBP*1+1]
           mov DWORD PTR [ESP+4],4294967295
           mov DWORD PTR [ESP],EAX
-          call FUN_421860
+          call _myatou32
           cmp EAX,-1
           mov DWORD PTR [ESI+1024],EAX
           je L_40a8f1
@@ -1921,7 +1921,7 @@ L_40a60d:
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],0
           mov BYTE PTR [ESP+152],0
-          call FUN_421380
+          call _myatox32
           mov EDI,DWORD PTR [ESP+52]
           mov DWORD PTR [EDI*4+L_4bb94c],EAX
           jmp L_40a604
@@ -2047,7 +2047,7 @@ L_40a808:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EBP
           mov BYTE PTR [ESP+152],0
-          call FUN_421380
+          call _myatox32
           mov DWORD PTR [EDI*4+L_4c9138],EAX
 L_40a844:
           lea EBP,DWORD PTR [EBX+ESI*1+1]
@@ -2530,7 +2530,7 @@ L_40ad9d:
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_421860
+          jmp _myatou32
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -2614,7 +2614,7 @@ L_40ae7e:
 L_40ae9a:
           mov EDI,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EDI
-          call FUN_422350
+          call _validateString
           test EAX,EAX
           jne L_40aee0
           add ESP,60
@@ -2627,14 +2627,14 @@ L_40ae9a:
 L_40aeb4:
           movsx EAX,BYTE PTR [EBX+1]
           mov DWORD PTR [ESP],EAX
-          call FUN_421840
+          call _myatol
           cmp AL,120
           jne L_40ae9a
           mov EDI,DWORD PTR [ESP+28]
           mov EAX,EDI
           add EAX,2
           mov DWORD PTR [ESP],EAX
-          call FUN_422350
+          call _validateString
           mov EDX,EAX
           mov EAX,EDI
           test EDX,EDX
@@ -2696,7 +2696,7 @@ L_40af0f:
           mov EDI,EAX
           je L_40b0e0
           mov DWORD PTR [ESP],EAX
-          call FUN_422420
+          call _getFileSize
           lea ESI,DWORD PTR [EAX+1]
           mov DWORD PTR [L_4c97ac],EAX
           mov DWORD PTR [ESP],ESI
@@ -2718,7 +2718,7 @@ L_40af0f:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_4c93a4]
           mov DWORD PTR [ESP],EAX
-          call FUN_449148
+          call _fread
           mov DWORD PTR [ESP],EDI
           call _fclose
           mov DWORD PTR [ESP+8],EBX

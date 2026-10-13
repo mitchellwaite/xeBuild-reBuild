@@ -267,7 +267,7 @@ L_431f20:
           sub ESP,20
           mov ESI,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP],ESI
-          call FUN_420ab0
+          call _getBeU16
           test AX,AX
           jne L_431f54
           mov DWORD PTR [ESP+4],OFFSET L_45be8d
@@ -307,7 +307,7 @@ FUN_431f80:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+80]
           mov DWORD PTR [ESP],EAX
-          call FUN_422670
+          call _FileToBuffer
           test EAX,EAX
           mov EBX,EAX
           je L_432096
@@ -542,7 +542,7 @@ L_432285:
           mov EAX,EDX
           add EAX,EBP
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           mov DWORD PTR [ESP+40],EAX
           mov EAX,DWORD PTR [EBX-56]
           test EAX,EAX
@@ -562,7 +562,7 @@ L_4322d0:
           add EAX,ESI
           lea ESI,DWORD PTR [EBP+EAX*1]
           mov DWORD PTR [ESP],ESI
-          call FUN_420ab0
+          call _getBeU16
           test AX,AX
           jne L_432350
           mov DWORD PTR [ESP+4],OFFSET L_45be8d
@@ -619,7 +619,7 @@ L_432385:
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+592]
           mov DWORD PTR [ESP],EAX
-          call FUN_449088
+          call _strcat
           lea EAX,DWORD PTR [ESP+592]
           mov DWORD PTR [ESP+4],OFFSET L_45bf79
           mov DWORD PTR [ESP],1
@@ -643,7 +643,7 @@ L_432385:
           lea ESI,DWORD PTR [EAX+ECX*1]
           add ESI,EBP
           mov DWORD PTR [ESP],ESI
-          call FUN_420ab0
+          call _getBeU16
           test AX,AX
           jne L_432580
           mov DWORD PTR [ESP+4],OFFSET L_45be8d
@@ -1198,7 +1198,7 @@ L_432b45:
           mov DWORD PTR [ESP],OFFSET L_4cdc60
           call _memset
           mov DWORD PTR [ESP],EBX
-          call FUN_4225a0
+          call _FileExists
           test EAX,EAX
           je L_432c20
 L_432bb8:
@@ -1208,7 +1208,7 @@ L_432bb8:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_4ce064
           mov DWORD PTR [ESP],EBX
-          call FUN_422670
+          call _FileToBuffer
           test EAX,EAX
           mov DWORD PTR [L_4cdc60],EAX
           je L_432bf6
@@ -1277,7 +1277,7 @@ L_432c3a:
           mov DWORD PTR [EAX+8],1718185569
           mov DWORD PTR [EAX+12],7631717
           mov DWORD PTR [ESP],EBX
-          call FUN_4225a0
+          call _FileExists
           test EAX,EAX
           mov EDI,EAX
           jne L_432bb8
@@ -1739,7 +1739,7 @@ L_433300:
           lea EAX,DWORD PTR [ESP+36]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_422670
+          call _FileToBuffer
           test EAX,EAX
           mov ESI,EAX
           je L_4331b1
@@ -1829,7 +1829,7 @@ FUN_433440:
           mov EBX,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP+4],OFFSET L_45c444
           mov DWORD PTR [ESP],EBX
-          call FUN_4225d0
+          call _FileExistsIn
           test EAX,EAX
           je L_4334f5
           mov DWORD PTR [ESP+4],OFFSET L_45c44c

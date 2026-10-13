@@ -68,7 +68,7 @@ L_4056d9:
 L_4056f0:
           mov DWORD PTR [ESP+4],24
           mov DWORD PTR [ESP],EBX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_4057d0
           xor ESI,ESI
@@ -241,7 +241,7 @@ L_405990:
           lea ESI,DWORD PTR [EDI+64]
           add EAX,EDI
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           jne L_405ab0
           mov EAX,DWORD PTR [EBP+16]
@@ -444,7 +444,7 @@ L_405bfc:
           mov EAX,DWORD PTR [ESP+64]
           mov DWORD PTR [ESP+4],20
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           mov EDI,EAX
           jne L_405c50
@@ -573,7 +573,7 @@ L_405d70:
           shl EBX,6
           add EDX,EBX
           mov DWORD PTR [ESP],EDX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_405da0
           xor EAX,EAX
@@ -768,7 +768,7 @@ FUN_405fa0:
           mov EBX,DWORD PTR [ESP+64]
           mov ESI,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP],EDI
-          call FUN_4225a0
+          call _FileExists
           test EAX,EAX
           je L_406230
           test ESI,ESI
@@ -776,7 +776,7 @@ FUN_405fa0:
           lea EAX,DWORD PTR [EBX+8]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_422670
+          call _FileToBuffer
           test EAX,EAX
           mov EDI,EAX
           mov DWORD PTR [EBX],EAX
@@ -927,7 +927,7 @@ L_4061b5:
           mov EAX,DWORD PTR [ESP+84]
           mov DWORD PTR [ESP+4],20
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           jne L_406203
           mov EAX,DWORD PTR [ESP+84]
@@ -973,7 +973,7 @@ L_406252:
           lea EAX,DWORD PTR [EBX+8]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_422670
+          call _FileToBuffer
           test EAX,EAX
           mov DWORD PTR [EBX],EAX
           je L_4060ba

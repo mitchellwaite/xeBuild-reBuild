@@ -7,7 +7,7 @@
 #   .text          00448a20-00448ff0
 
 .intel_syntax noprefix
-.globl FUN_448af0
+.globl _fseeko64
 
 .text
 .p2align 4
@@ -96,7 +96,7 @@ L_448ad0:
           mov EAX,4294967295
           jmp L_448a3d
 L_448ae1:
-          jmp FUN_448af0
+          jmp _fseeko64
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -110,7 +110,7 @@ L_448ae1:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-FUN_448af0:
+_fseeko64:
           push EBP
           push EDI
           push ESI
@@ -1142,7 +1142,7 @@ L_4635a4:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448af0 - .
+          .long _fseeko64 - .
           .byte 0xa9
           .byte 0x0
           .byte 0x0

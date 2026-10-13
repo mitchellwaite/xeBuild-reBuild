@@ -55,7 +55,7 @@ FUN_40e5a0:
           lea ESI,DWORD PTR [ESP+44]
           lea EAX,DWORD PTR [EBX+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           add EAX,15
           mov DWORD PTR [ESP+16],ESI
           mov DWORD PTR [ESP],EBX
@@ -327,7 +327,7 @@ FUN_40e8a0:
           mov EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [EBX+16],EAX
           mov DWORD PTR [ESP],ESI
-          call FUN_420ab0
+          call _getBeU16
           mov EDX,OFFSET L_44a540
           cmp AX,21316
           mov EAX,OFFSET L_44a54c

@@ -99,7 +99,7 @@ FUN_40bd80:
           movzx EDI,BYTE PTR [ESI+257]
           mov DWORD PTR [ESP],EAX
           mov BYTE PTR [ESP+44],CL
-          call FUN_420a90
+          call _getConsoleTypeStr
           movzx ECX,BYTE PTR [ESP+44]
           mov DWORD PTR [ESP+24],EBP
           mov DWORD PTR [ESP+20],EDI
@@ -157,7 +157,7 @@ L_40bf22:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+100]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_421170
+          call _findInstExists
           test EAX,EAX
           jne L_40bee6
           lea EAX,DWORD PTR [ESP+60]
@@ -166,7 +166,7 @@ L_40bf22:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+100]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_421170
+          call _findInstExists
           test EAX,EAX
           setne AL
           movzx EAX,AL
@@ -176,7 +176,7 @@ L_40bf73:
           movzx EBP,BYTE PTR [ESI+258]
           movzx EDI,BYTE PTR [ESI+257]
           mov DWORD PTR [ESP],EAX
-          call FUN_420a90
+          call _getConsoleTypeStr
           mov DWORD PTR [ESP+4],OFFSET L_450494
           mov DWORD PTR [ESP+8],EAX
           mov EDX,EBX
@@ -315,7 +315,7 @@ L_40c0fc:
           mov DWORD PTR [ESP+48],582193314
           mov DWORD PTR [ESP+56],8899
           mov DWORD PTR [ESP+8],EAX
-          call FUN_421200
+          call _replaceInst
           test EAX,EAX
           je L_40c1f0
           mov DWORD PTR [ESP+4],OFFSET L_4504f8
@@ -336,7 +336,7 @@ L_40c160:
           mov DWORD PTR [ESP+56],2282468
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+60],0
-          call FUN_421200
+          call _replaceInst
           test EAX,EAX
           je L_40c1d0
           mov DWORD PTR [ESP+4],OFFSET L_450568
@@ -388,7 +388,7 @@ FUN_40c210:
           shl EDX,16
           shl EBX,24
           or EBX,EDX
-          call FUN_422aa0
+          call _calcConfigSum
           cmp EBX,EAX
           sete AL
           add ESP,24

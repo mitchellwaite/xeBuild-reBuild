@@ -148,7 +148,7 @@ L_4017ac:
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_4223b0
+          jmp _checkZeros
 FUN_4017d0:
           push EBP
           push EDI
@@ -174,7 +174,7 @@ L_4017f2:
           jne L_4017e8
           lea EAX,DWORD PTR [EBX+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           lea ESI,DWORD PTR [EAX+15]
           and ESI,4294967280
           mov DWORD PTR [ESP],ESI
@@ -209,7 +209,7 @@ L_4017f2:
           lea EAX,DWORD PTR [EDI+624]
           mov DWORD PTR [ESP+4],288
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           jne L_4018e0
           mov DWORD PTR [ESP+4],OFFSET L_44c09c
@@ -224,7 +224,7 @@ L_4018d7:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_4018e0:
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           xor AL,AL
           mov DWORD PTR [ESP+4],OFFSET L_44c064
           mov DWORD PTR [ESP],1
@@ -260,7 +260,7 @@ L_401930:
           jne L_401927
           lea EAX,DWORD PTR [EBX+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           lea ESI,DWORD PTR [EAX+15]
           and ESI,4294967280
           cmp DWORD PTR [ESP+84],ESI
@@ -292,12 +292,12 @@ L_401951:
           lea EAX,DWORD PTR [EBX+496]
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_40194d
           add EBX,540
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           jmp L_401927
           .byte 0x8d
           .byte 0xb6
@@ -373,7 +373,7 @@ L_401a80:
           mov BYTE PTR [ESP+60],0
 L_401a90:
           mov DWORD PTR [ESP],EBP
-          call FUN_420ad0
+          call _getBeU32
           lea EBP,DWORD PTR [EAX+15]
           and EBP,4294967280
           cmp EBX,EBP
@@ -401,12 +401,12 @@ L_401a90:
           lea EAX,DWORD PTR [EDI+496]
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_401bc4
           lea EAX,DWORD PTR [EDI+540]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           test EAX,EAX
           mov EBX,EAX
           je L_401cce
@@ -424,7 +424,7 @@ L_401b73:
           jne L_401a4c
           lea EBP,DWORD PTR [EDI+12]
           mov DWORD PTR [ESP],EBP
-          call FUN_420ad0
+          call _getBeU32
           lea ESI,DWORD PTR [EAX+15]
           and ESI,4294967280
           cmp EBX,ESI
@@ -486,12 +486,12 @@ L_401be3:
           lea EAX,DWORD PTR [EDI+496]
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
-          call FUN_4223b0
+          call _checkZeros
           test EAX,EAX
           je L_401b92
           lea EAX,DWORD PTR [EDI+540]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           test EAX,EAX
           mov ESI,EAX
           je L_401a4c
@@ -549,7 +549,7 @@ L_401d00:
           jne L_401cf4
           lea EAX,DWORD PTR [EBX+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           lea ESI,DWORD PTR [EAX+15]
           and ESI,4294967280
           cmp ESI,DWORD PTR [ESP+84]
@@ -577,7 +577,7 @@ L_401d00:
           call _XeCryptRc4
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EBX
-          call FUN_4223b0
+          call _checkZeros
           mov EDX,1
           test EAX,EAX
           cmovne EAX,EDX
@@ -623,7 +623,7 @@ FUN_401dc0:
           mov DWORD PTR [ESP+12],EAX
           call _XeCryptRc4
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,1179648
           sete AL
           add ESP,68
@@ -704,7 +704,7 @@ L_401f80:
           sub ESP,44
           mov EAX,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,1129466960
           je L_401fc0
           mov EAX,1
@@ -850,7 +850,7 @@ L_402190:
           test EAX,EAX
           je L_4021a8
           mov DWORD PTR [ESP],EBX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,1129466960
           je L_4021c0
 L_4021a8:
@@ -1152,7 +1152,7 @@ L_402610:
           mov ESI,DWORD PTR [ESP+96]
           lea EAX,DWORD PTR [ESI+272]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           mov EBX,DWORD PTR [L_47a144]
           test EAX,EAX
           cmovns EBX,DWORD PTR [L_47a140]
@@ -1242,7 +1242,7 @@ FUN_402720:
           mov EBX,DWORD PTR [ESP+624]
           lea EAX,DWORD PTR [EBX+272]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           mov ESI,DWORD PTR [L_47a144]
           test EAX,EAX
           cmovns ESI,DWORD PTR [L_47a140]
@@ -1310,7 +1310,7 @@ L_402830:
 L_402850:
           lea EAX,DWORD PTR [EBX+284]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           cmp EAX,16383
           ja L_4029d0
           mov ESI,DWORD PTR [ESP+628]
@@ -1469,7 +1469,7 @@ L_402a70:
           jne L_402bc0
           lea EAX,DWORD PTR [ESI+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           lea EDI,DWORD PTR [EAX+15]
           mov DWORD PTR [ESP+4],1
           and EDI,4294967280
@@ -1618,7 +1618,7 @@ L_402c70:
           ja L_402df3
           lea EAX,DWORD PTR [EBP+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           lea ESI,DWORD PTR [EAX+15]
           mov DWORD PTR [ESP+4],1
           and ESI,4294967280
@@ -1783,7 +1783,7 @@ L_402ec0:
           jne L_403000
           lea EAX,DWORD PTR [EBP+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           lea ESI,DWORD PTR [EAX+15]
           mov DWORD PTR [ESP+4],1
           and ESI,4294967280

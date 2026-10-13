@@ -313,17 +313,17 @@ FUN_418680:
           mov EAX,DWORD PTR [ESP+16]
           add EAX,20
           mov DWORD PTR [ESP],EAX
-          call FUN_420ab0
+          call _getBeU16
           movzx EBX,AX
           mov EAX,DWORD PTR [ESP+16]
           add EAX,12
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           mov DWORD PTR [ESP+24],EAX
           mov EAX,DWORD PTR [ESP+20]
           add EAX,12
           mov DWORD PTR [ESP],EAX
-          call FUN_420ad0
+          call _getBeU32
           mov EDI,DWORD PTR [ESP+16]
           mov DWORD PTR [ESP+28],EAX
           xor EAX,EAX

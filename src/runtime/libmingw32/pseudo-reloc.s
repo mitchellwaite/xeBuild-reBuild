@@ -23,7 +23,7 @@ FUN_446fe0:
           mov DWORD PTR [ESP],OFFSET L_4633c4
           add EAX,64
           mov DWORD PTR [ESP+12],EAX
-          call FUN_449118
+          call _fwrite
           mov EAX,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EAX

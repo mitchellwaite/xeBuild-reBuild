@@ -232,7 +232,7 @@ FUN_418ee0:
 L_418f33:
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_449088
+          call _strcat
           mov DWORD PTR [ESP+4],OFFSET L_4554e9
           mov DWORD PTR [ESP],EBX
           call _fopen
@@ -248,7 +248,7 @@ L_418f33:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EBP
-          call FUN_449148
+          call _fread
           mov DWORD PTR [ESP],EDI
           mov EBX,EAX
           call _fclose
@@ -310,14 +310,14 @@ FUN_418fd0:
           mov DWORD PTR [ESP],EAX
           call _strcpy
           mov DWORD PTR [ESP],EDI
-          call FUN_4225a0
+          call _FileExists
           test EAX,EAX
           je L_419060
 L_419024:
           lea EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_422670
+          call _FileToBuffer
           test EAX,EAX
           mov DWORD PTR [EBX],EAX
           je L_4190e0
@@ -352,7 +352,7 @@ L_419087:
 L_419090:
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EAX
-          call FUN_422ae0
+          call _sumBytes
           cmp EAX,DWORD PTR [ESP+1120]
           je L_419120
           mov EDX,DWORD PTR [ESP+1120]
@@ -563,7 +563,7 @@ L_419417:
 L_41946e:
           mov DWORD PTR [ESP+4],OFFSET L_47a14c
           mov DWORD PTR [ESP],EBX
-          call FUN_449088
+          call _strcat
           mov EDX,EBX
 L_419480:
           mov ECX,DWORD PTR [EDX]
@@ -883,7 +883,7 @@ L_4199e5:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
-          call FUN_449148
+          call _fread
           mov DWORD PTR [ESP],EBX
           mov ESI,EAX
           call _fclose
@@ -962,7 +962,7 @@ L_419b25:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
-          call FUN_449148
+          call _fread
           mov DWORD PTR [ESP],EBX
           mov ESI,EAX
           call _fclose

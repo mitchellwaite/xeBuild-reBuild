@@ -518,13 +518,13 @@ L_40d7d7:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a11c
           mov DWORD PTR [ESP],0
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+4],OFFSET L_45106b
           mov DWORD PTR [ESP],0
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a10c
           mov DWORD PTR [ESP],0
-          call FUN_423370
+          call _showKey
           mov DWORD PTR [ESP+4],OFFSET L_450ec3
           mov DWORD PTR [ESP],0
           call _log_printf
