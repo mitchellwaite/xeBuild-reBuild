@@ -229,6 +229,10 @@ SYMBOLS = {
     0x44a4e0: '_separator', 0x44a524: '_promptEnter', 0x4c8fe4: '_flashFiles',
     0x4c9160: '_buildMode', 0x479f4c: '_g479f4c', 0x47a080: '_g47a080',
     0x50f318: '__imp___iob',
+    # app/xboxrom (src/app/xboxrom.c); names are ours
+    0x40e520: '_kvVerifySig', 0x40e5a0: '_cbVerifySig', 0x40e620: '_blVerifySig',
+    0x40e690: '_blSign', 0x40e7b0: '_blCheckHash', 0x40e810: '_blUpdateHash',
+    0x40e8a0: '_blHashAndSign', 0x44a540: '_romSalts',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

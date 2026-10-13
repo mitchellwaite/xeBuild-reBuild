@@ -79,7 +79,7 @@ L_413103:
           mov DWORD PTR [ESP+8],OFFSET L_47a11c
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],OFFSET L_470a20
-          call FUN_40e520
+          call _kvVerifySig
           test EAX,EAX
           je L_413150
           mov DWORD PTR [ESP+4],OFFSET L_451fe5
@@ -183,7 +183,7 @@ L_4132c0:
           mov DWORD PTR [ESP+8],OFFSET L_47a11c
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],OFFSET L_470a20
-          call FUN_40e520
+          call _kvVerifySig
           test EAX,EAX
           je L_413314
           mov DWORD PTR [ESP+4],OFFSET L_451fe5

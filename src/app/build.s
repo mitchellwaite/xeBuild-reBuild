@@ -3055,7 +3055,7 @@ L_429f40:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e5a0
+          call _cbVerifySig
           test EAX,EAX
           mov DWORD PTR [ESP+8],ESI
           jne L_429fe0
@@ -3111,7 +3111,7 @@ L_42a000:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e7b0
+          call _blCheckHash
           test EAX,EAX
           jne L_42a2c0
           mov EDX,DWORD PTR [L_47a148]
@@ -3173,7 +3173,7 @@ L_42a078:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e8a0
+          call _blHashAndSign
           test EAX,EAX
           mov DWORD PTR [ESP+8],ESI
           jne L_42a2e2
@@ -3205,7 +3205,7 @@ L_42a16d:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e620
+          call _blVerifySig
           test EAX,EAX
           jne L_429fdc
           mov EAX,DWORD PTR [L_47a148]
@@ -3235,7 +3235,7 @@ L_42a16d:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESI+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e690
+          call _blSign
           test EAX,EAX
           mov DWORD PTR [ESP+8],ESI
           jne L_42a300
@@ -3776,7 +3776,7 @@ L_42aa4a:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e5a0
+          call _cbVerifySig
           test EAX,EAX
           mov DWORD PTR [ESP+8],EBP
           je L_42acb5
@@ -4701,7 +4701,7 @@ L_42b7bd:
           mov EAX,DWORD PTR [EBX+L_4bc150+12]
           add EBX,OFFSET L_479ea0
           mov DWORD PTR [ESP],EAX
-          call FUN_40e620
+          call _blVerifySig
           test EAX,EAX
           jne L_42ba63
           mov EDX,DWORD PTR [L_47a148]
@@ -4732,7 +4732,7 @@ L_42b7bd:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_40e690
+          call _blSign
           test EAX,EAX
           mov DWORD PTR [ESP+8],EDI
           jne L_42baa7

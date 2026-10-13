@@ -1518,7 +1518,7 @@ L_402b6b:
           je L_402be0
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],EBX
-          call FUN_40e5a0
+          call _cbVerifySig
           test EAX,EAX
           movzx EAX,BYTE PTR [EBX]
           mov DWORD PTR [ESP+8],EAX
@@ -1675,7 +1675,7 @@ L_402d7c:
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [ESP+100]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_40e620
+          call _blVerifySig
           test EAX,EAX
           movzx EAX,BYTE PTR [EBX+1]
           mov DWORD PTR [ESP+12],EAX
@@ -1823,7 +1823,7 @@ L_402ec0:
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_40e7b0
+          call _blCheckHash
           test EAX,EAX
           movzx EAX,BYTE PTR [EBX+1]
           mov DWORD PTR [ESP+12],EAX
