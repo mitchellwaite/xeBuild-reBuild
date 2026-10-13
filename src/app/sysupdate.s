@@ -139,7 +139,7 @@ L_40c360:
           mov DWORD PTR [ESP],OFFSET L_46f194
           mov DWORD PTR [ESP+12],ESI
           mov DWORD PTR [ESP+8],EBX
-          call FUN_405d50
+          call _stfsGetFile
           test EAX,EAX
           je L_40c584
 L_40c38c:
@@ -275,7 +275,7 @@ L_40c596:
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP+67],778334325
           mov DWORD PTR [ESP+71],7235938
-          call FUN_405d50
+          call _stfsGetFile
           test EAX,EAX
           jne L_40c38c
           jmp L_40c2f0
@@ -443,7 +443,7 @@ L_40c7c0:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+80]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_405d50
+          call _stfsGetFile
           mov EDX,EAX
           mov EAX,1
           test EDX,EDX
@@ -481,7 +481,7 @@ L_40c812:
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [ESP+84]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_405d50
+          call _stfsGetFile
           jmp L_40c7f3
 _suNextFile:
           push EDI
@@ -700,7 +700,7 @@ L_40ca5e:
           je L_40cb40
 L_40cae9:
           mov DWORD PTR [ESP],OFFSET L_46f194
-          call FUN_405f20
+          call _stfsInit
           mov DWORD PTR [ESP+24],1
           mov DWORD PTR [ESP+20],0
           mov DWORD PTR [ESP+16],4294838225
@@ -708,7 +708,7 @@ L_40cae9:
           mov DWORD PTR [ESP+8],1398100036
           mov DWORD PTR [ESP+4],OFFSET L_46f5c0
           mov DWORD PTR [ESP],OFFSET L_46f194
-          call FUN_405fa0
+          call _stfsLoad
           test EAX,EAX
           jne L_40cc60
           add ESP,36
@@ -928,7 +928,7 @@ L_40ceb4:
           mov DWORD PTR [ESP],0
           call _log_printf
           mov DWORD PTR [ESP],OFFSET L_46f194
-          call FUN_405f20
+          call _stfsInit
           mov DWORD PTR [ESP+24],1
           mov DWORD PTR [ESP+20],0
           mov DWORD PTR [ESP+16],4294838225
@@ -936,7 +936,7 @@ L_40ceb4:
           mov DWORD PTR [ESP+8],1398100036
           mov DWORD PTR [ESP+4],OFFSET L_46f5c0
           mov DWORD PTR [ESP],OFFSET L_46f194
-          call FUN_405fa0
+          call _stfsLoad
           test EAX,EAX
           je L_40cf50
           mov DWORD PTR [L_46f190],1
@@ -1000,7 +1000,7 @@ L_40cfd2:
 L_40cfed:
           mov DWORD PTR [ESP],OFFSET L_46f194
           mov DWORD PTR [L_46f190],0
-          call FUN_405f50
+          call _stfsFree
           add ESP,28
           ret 
           .byte 0x90

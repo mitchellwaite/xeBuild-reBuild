@@ -39,6 +39,7 @@
 .globl __imp___errno
 .globl __imp___exit
 .globl __imp___iob
+.globl __imp___stricmp
 .globl __imp___strnicmp
 .globl __initenv
 .globl __lconv_init
@@ -66,7 +67,6 @@
 .globl _onexit
 .globl _snwprintf
 .globl _stat
-.globl _stricmp
 .globl _unlock
 .globl _vsnprintf
 .globl _write
@@ -562,8 +562,8 @@ L_50f334:
 _stat:
           .rva L_50f7b2
 L_50f338:
-.globl _stricmp
-_stricmp:
+.globl __imp___stricmp
+__imp___stricmp:
           .rva L_50f7ba
 L_50f33c:
 .globl __imp___strnicmp

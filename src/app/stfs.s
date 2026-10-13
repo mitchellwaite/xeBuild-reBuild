@@ -1,5 +1,7 @@
 # app/stfs.s -- container header/content/manifest hash checks, STFS file listing
 #
+# mixed: `#@C name` lines are functions from stfs.c (re/splice.py)
+#
 # original placement:
 #   .eh_frame      0046599c-00465b68
 #   .rdata         0044deb8-0044e10c
@@ -7,14 +9,23 @@
 #   .text          00405610-00406330
 
 .intel_syntax noprefix
-.globl FUN_405d50
-.globl FUN_405f20
-.globl FUN_405f50
-.globl FUN_405fa0
+.globl _sCorrupt
+.globl _sDone
+.globl _sFnamelen
+.globl _sFound
+.globl _sManifestBad
+.globl _sManifestOk
+.globl _sName
+.globl _sNotFound
+.globl _sValid
+.globl _sValidVer
+.globl _stfsCheckHashes
+.globl _stfsGetFile
+.globl _stfsListFiles
 
 .text
 .p2align 4
-FUN_405610:
+_stfsCheckHashes:
           push EBP
           push EDI
           push ESI
@@ -226,7 +237,7 @@ L_40595b:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_405980:
+_stfsListFiles:
           push EBP
           push EDI
           xor EDI,EDI
@@ -285,7 +296,7 @@ L_405990:
           add ECX,EDX
           movzx EDX,BYTE PTR [EAX+43]
           mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44df18
+          mov DWORD PTR [ESP+4],OFFSET _sName
           mov DWORD PTR [ESP],1
           shl EDX,16
           add EDX,ECX
@@ -309,7 +320,7 @@ L_405990:
           mov DWORD PTR [ESP+12],EAX
           movzx EAX,BYTE PTR [EDI+40]
           mov EDI,ESI
-          mov DWORD PTR [ESP+4],OFFSET L_44df54
+          mov DWORD PTR [ESP+4],OFFSET _sFnamelen
           mov DWORD PTR [ESP],1
           and EAX,63
           mov DWORD PTR [ESP+8],EAX
@@ -331,170 +342,7 @@ L_405ab0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_405ac0:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,32
-          mov EBX,DWORD PTR [ESP+48]
-          mov EDX,DWORD PTR [ESP+56]
-          mov ESI,DWORD PTR [EBX]
-          mov EAX,DWORD PTR [ESI+832]
-          mov EDI,EAX
-          mov ECX,EAX
-          shr ECX,24
-          shl EDI,24
-          lea EDI,DWORD PTR [EDI+ECX*1+4095]
-          mov ECX,EAX
-          shr EAX,8
-          shl ECX,8
-          and EAX,65280
-          and ECX,16711680
-          add ECX,EDI
-          add EAX,ECX
-          and EAX,4294963200
-          test EDX,EDX
-          mov DWORD PTR [EBX+12],EAX
-          je L_405b42
-          mov EAX,DWORD PTR [ESI+836]
-          mov ECX,EAX
-          mov EDI,EAX
-          shl ECX,24
-          shr EDI,24
-          add EDI,ECX
-          mov ECX,EAX
-          shr EAX,8
-          shl ECX,8
-          and EAX,65280
-          and ECX,16711680
-          add ECX,EDI
-          add EAX,ECX
-          cmp EDX,EAX
-          je L_405b42
-L_405b37:
-          xor EDI,EDI
-L_405b39:
-          add ESP,32
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_405b42:
-          mov EAX,DWORD PTR [ESP+60]
-          test EAX,EAX
-          jne L_405c80
-L_405b4e:
-          mov EDI,DWORD PTR [ESI+38682]
-          mov EDX,EDI
-          mov ECX,EDI
-          mov EAX,EDI
-          shl EDX,24
-          shr ECX,24
-          shl EAX,8
-          and EAX,16711680
-          add ECX,EDX
-          shr EDI,8
-          lea EDX,DWORD PTR [ECX+EAX*1]
-          and EDI,65280
-          lea EAX,DWORD PTR [EDX+EDI*1]
-          mov EDI,DWORD PTR [ESP+52]
-          test EDI,EDI
-          je L_405b87
-          cmp DWORD PTR [ESP+52],EAX
-          jne L_405b37
-L_405b87:
-          xor EDI,EDI
-          cmp EAX,1398100036
-          je L_405cc0
-L_405b94:
-          mov EAX,DWORD PTR [EBX+8]
-          shr EAX,12
-          lea EAX,DWORD PTR [EAX*4+4]
-          mov DWORD PTR [ESP],EAX
-          call _malloc
-          test EAX,EAX
-          mov DWORD PTR [EBX+4],EAX
-          je L_405b37
-          mov ECX,DWORD PTR [ESP+68]
-          test ECX,ECX
-          je L_405bfc
-          test EDI,EDI
-          je L_405cf0
-          mov EAX,EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44df80
-          mov DWORD PTR [ESP],1
-          movzx EAX,AL
-          mov DWORD PTR [ESP+20],EAX
-          mov EAX,EDI
-          shr EAX,8
-          movzx EAX,AX
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,EDI
-          shr EDI,28
-          shr EAX,24
-          mov DWORD PTR [ESP+8],EDI
-          and EAX,15
-          mov DWORD PTR [ESP+12],EAX
-          call _log_printf
-L_405bfc:
-          mov EDX,DWORD PTR [ESP+64]
-          test EDX,EDX
-          je L_405c50
-          mov EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+4],20
-          mov DWORD PTR [ESP],EAX
-          call _checkZeros
-          test EAX,EAX
-          mov EDI,EAX
-          jne L_405c50
-          mov EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [ESI+812]
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_405d30
-          mov EAX,DWORD PTR [ESP+68]
-          test EAX,EAX
-          jne L_405d10
-L_405c50:
-          mov EAX,DWORD PTR [ESP+68]
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+8],EAX
-          call FUN_405610
-          test EAX,EAX
-          setne AL
-          add ESP,32
-          movzx EAX,AL
-          mov EDI,EAX
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_405c80:
-          mov EAX,DWORD PTR [ESI+864]
-          mov EDX,EAX
-          mov ECX,EAX
-          shl EDX,24
-          shr ECX,24
-          add ECX,EDX
-          mov EDX,EAX
-          shr EAX,8
-          shl EDX,8
-          and EAX,65280
-          and EDX,16711680
-          add EDX,ECX
-          add EAX,EDX
-          cmp DWORD PTR [ESP+60],EAX
-          jne L_405b37
-          jmp L_405b4e
-          .byte 0x90
+#@C _stfsCheckHeader
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -502,60 +350,7 @@ L_405c80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_405cc0:
-          mov EAX,DWORD PTR [ESI+38690]
-          mov EDI,EAX
-          mov EDX,EAX
-          shl EDI,24
-          shr EDX,24
-          add EDX,EDI
-          mov EDI,EAX
-          shr EAX,8
-          shl EDI,8
-          and EAX,65280
-          and EDI,16711680
-          add EDI,EDX
-          add EDI,EAX
-          jmp L_405b94
-          .byte 0x66
-          .byte 0x90
-L_405cf0:
-          mov DWORD PTR [ESP+4],OFFSET L_44dfa9
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_405bfc
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_405d10:
-          mov DWORD PTR [ESP+4],OFFSET L_44dff0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_405c50
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_405d30:
-          mov DWORD PTR [ESP+4],OFFSET L_44dfc0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_405b39
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-FUN_405d50:
+_stfsGetFile:
           push EBP
           push EDI
           push ESI
@@ -596,7 +391,7 @@ L_405da0:
           mov DWORD PTR [ESP],EBP
           add EAX,EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           mov EDX,DWORD PTR [EDI+16]
           jne L_405e1a
@@ -719,312 +514,16 @@ L_405ef2:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_405f20:
-          mov EAX,DWORD PTR [ESP+4]
-          mov DWORD PTR [EAX+8],0
-          mov DWORD PTR [EAX+12],0
-          mov DWORD PTR [EAX+16],0
-          mov DWORD PTR [EAX],0
-          mov DWORD PTR [EAX+4],0
-          ret 
+#@C _stfsInit
 L_405f47:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_405f50:
-          push EBX
-          sub ESP,24
-          mov EBX,DWORD PTR [ESP+32]
-          mov EAX,DWORD PTR [EBX]
-          mov DWORD PTR [EBX+8],0
-          mov DWORD PTR [EBX+12],0
-          mov DWORD PTR [EBX+16],0
-          test EAX,EAX
-          je L_405f7b
-          mov DWORD PTR [ESP],EAX
-          call _free
-L_405f7b:
-          mov EAX,DWORD PTR [EBX+4]
-          mov DWORD PTR [EBX],0
-          test EAX,EAX
-          je L_405f90
-          mov DWORD PTR [ESP],EAX
-          call _free
-L_405f90:
-          mov DWORD PTR [EBX+4],0
-          add ESP,24
-          pop EBX
-          ret 
+#@C _stfsFree
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_405fa0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,44
-          mov EDI,DWORD PTR [ESP+68]
-          mov EBX,DWORD PTR [ESP+64]
-          mov ESI,DWORD PTR [ESP+88]
-          mov DWORD PTR [ESP],EDI
-          call _FileExists
-          test EAX,EAX
-          je L_406230
-          test ESI,ESI
-          jne L_406252
-          lea EAX,DWORD PTR [EBX+8]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EAX
-          call _FileToBuffer
-          test EAX,EAX
-          mov EDI,EAX
-          mov DWORD PTR [EBX],EAX
-          je L_4060ba
-L_405fe6:
-          mov EAX,DWORD PTR [EDI+832]
-          mov EBP,DWORD PTR [ESP+76]
-          mov ECX,EAX
-          mov EDX,EAX
-          shr EDX,24
-          shl ECX,24
-          lea ECX,DWORD PTR [ECX+EDX*1+4095]
-          mov EDX,EAX
-          shr EAX,8
-          shl EDX,8
-          and EAX,65280
-          and EDX,16711680
-          add EDX,ECX
-          add EAX,EDX
-          and EAX,4294963200
-          test EBP,EBP
-          mov DWORD PTR [EBX+12],EAX
-          jne L_4060c4
-          mov ECX,DWORD PTR [ESP+80]
-          test ECX,ECX
-          je L_406103
-L_406034:
-          mov EAX,DWORD PTR [EDI+864]
-          mov EDX,EAX
-          mov ECX,EAX
-          shl EDX,24
-          shr ECX,24
-          add ECX,EDX
-          mov EDX,EAX
-          shr EAX,8
-          shl EDX,8
-          and EAX,65280
-          and EDX,16711680
-          add EDX,ECX
-          add EAX,EDX
-          cmp DWORD PTR [ESP+80],EAX
-          je L_406103
-L_406067:
-          mov DWORD PTR [ESP+4],OFFSET L_44e0e8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [EBX]
-          mov DWORD PTR [EBX+8],0
-          mov DWORD PTR [EBX+12],0
-          mov DWORD PTR [EBX+16],0
-          test EAX,EAX
-          je L_40609e
-          mov DWORD PTR [ESP],EAX
-          call _free
-L_40609e:
-          mov EAX,DWORD PTR [EBX+4]
-          mov DWORD PTR [EBX],0
-          test EAX,EAX
-          je L_4060b3
-          mov DWORD PTR [ESP],EAX
-          call _free
-L_4060b3:
-          mov DWORD PTR [EBX+4],0
-L_4060ba:
-          xor EAX,EAX
-L_4060bc:
-          add ESP,44
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_4060c4:
-          mov EAX,DWORD PTR [EDI+836]
-          mov EDX,EAX
-          mov ECX,EAX
-          shl EDX,24
-          shr ECX,24
-          add ECX,EDX
-          mov EDX,EAX
-          shr EAX,8
-          shl EDX,8
-          and EAX,65280
-          and EDX,16711680
-          add EDX,ECX
-          add EAX,EDX
-          cmp DWORD PTR [ESP+76],EAX
-          jne L_406067
-          mov ECX,DWORD PTR [ESP+80]
-          test ECX,ECX
-          jne L_406034
-L_406103:
-          mov EBP,DWORD PTR [EDI+38682]
-          mov EDX,EBP
-          mov ECX,EBP
-          mov EAX,EBP
-          shl EDX,24
-          shr ECX,24
-          shl EAX,8
-          and EAX,16711680
-          add ECX,EDX
-          shr EBP,8
-          lea EDX,DWORD PTR [ECX+EAX*1]
-          and EBP,65280
-          lea EAX,DWORD PTR [EDX+EBP*1]
-          mov EDX,DWORD PTR [ESP+72]
-          test EDX,EDX
-          je L_406140
-          cmp DWORD PTR [ESP+72],EAX
-          jne L_406067
-L_406140:
-          xor EBP,EBP
-          cmp EAX,1398100036
-          je L_4062a5
-L_40614d:
-          mov EAX,DWORD PTR [EBX+8]
-          shr EAX,12
-          lea EAX,DWORD PTR [EAX*4+4]
-          mov DWORD PTR [ESP],EAX
-          call _malloc
-          test EAX,EAX
-          mov DWORD PTR [EBX+4],EAX
-          je L_406067
-          test ESI,ESI
-          je L_4061b5
-          test EBP,EBP
-          je L_4062d3
-          mov EAX,EBP
-          mov DWORD PTR [ESP+4],OFFSET L_44df80
-          mov DWORD PTR [ESP],1
-          movzx EAX,AL
-          mov DWORD PTR [ESP+20],EAX
-          mov EAX,EBP
-          shr EAX,8
-          movzx EAX,AX
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,EBP
-          shr EBP,28
-          shr EAX,24
-          mov DWORD PTR [ESP+8],EBP
-          and EAX,15
-          mov DWORD PTR [ESP+12],EAX
-          call _log_printf
-L_4061b5:
-          mov EAX,DWORD PTR [ESP+84]
-          test EAX,EAX
-          je L_406203
-          mov EAX,DWORD PTR [ESP+84]
-          mov DWORD PTR [ESP+4],20
-          mov DWORD PTR [ESP],EAX
-          call _checkZeros
-          test EAX,EAX
-          jne L_406203
-          mov EAX,DWORD PTR [ESP+84]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [EDI+812]
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_406310
-          test ESI,ESI
-          jne L_4062f0
-L_406203:
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EBX
-          call FUN_405610
-          mov EDX,EAX
-          mov EAX,1
-          test EDX,EDX
-          je L_406067
-          jmp L_4060bc
-L_406227:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_406230:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44e0bc
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,44
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_406252:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44e06c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          lea EAX,DWORD PTR [EBX+8]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EAX
-          call _FileToBuffer
-          test EAX,EAX
-          mov DWORD PTR [EBX],EAX
-          je L_4060ba
-          mov EAX,DWORD PTR [EBX+8]
-          mov DWORD PTR [ESP+4],OFFSET L_44e084
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EDI,DWORD PTR [EBX]
-          jmp L_405fe6
-L_4062a5:
-          mov EAX,DWORD PTR [EDI+38690]
-          mov EBP,EAX
-          mov EDX,EAX
-          shl EBP,24
-          shr EDX,24
-          add EDX,EBP
-          mov EBP,EAX
-          shr EAX,8
-          shl EBP,8
-          and EAX,65280
-          and EBP,16711680
-          add EBP,EDX
-          add EBP,EAX
-          jmp L_40614d
-L_4062d3:
-          mov DWORD PTR [ESP+4],OFFSET L_44dfa9
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_4061b5
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_4062f0:
-          mov DWORD PTR [ESP+4],OFFSET L_44dff0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_406203
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_406310:
-          mov DWORD PTR [ESP+4],OFFSET L_44dfc0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_406067
+#@C _stfsLoad
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -1040,33 +539,33 @@ L_44deb8:
           .zero 1
 L_44dee8:
           .string "content hashes seem OK, everything looks good!\n"
-L_44df18:
+_sName:
           .string "name: %s vb: 0x%x ab: 0x%x fb: 0x%x (off 0x%x) size 0x%x\n"
           .zero 2
-L_44df54:
+_sFnamelen:
           .string "\tfnamelen: %d cont: %d dir: %d idx: 0x%x\n"
           .zero 2
-L_44df80:
+_sValidVer:
           .string "header seems valid, version %d.%d.%d.%d\n"
-L_44dfa9:
+_sValid:
           .string "header seems valid\n"
           .zero 3
-L_44dfc0:
+_sManifestBad:
           .string "manifest hash does not match container header!\n"
-L_44dff0:
+_sManifestOk:
           .string "manifest hash matches container header!\n"
           .zero 3
 L_44e01c:
           .string "\n\n***** WARNING !!! file %s is not contiguous and contents are being skipped!\n\n"
-L_44e06c:
+_sFound:
           .string "%s found, loading..."
           .zero 3
-L_44e084:
+_sDone:
           .string "done!\n\tRead 0x%x bytes to memory\nchecking integrity...\n"
-L_44e0bc:
+_sNotFound:
           .string "container not found at %s, skipping load\n"
           .zero 2
-L_44e0e8:
+_sCorrupt:
           .string "checks failed! Container corrupt!\n"
           .zero 1
 
@@ -1151,7 +650,7 @@ L_44e0e8:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_405610 - .
+          .long _stfsCheckHashes - .
           .byte 0x6c
           .byte 0x3
           .byte 0x0
@@ -1236,7 +735,7 @@ L_44e0e8:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_405980 - .
+          .long _stfsListFiles - .
           .byte 0x38
           .byte 0x1
           .byte 0x0
@@ -1297,7 +796,7 @@ L_44e0e8:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_405ac0 - .
+          .long _stfsCheckHeader - .
           .byte 0x89
           .byte 0x2
           .byte 0x0
@@ -1370,7 +869,7 @@ L_44e0e8:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_405d50 - .
+          .long _stfsGetFile - .
           .byte 0xc4
           .byte 0x1
           .byte 0x0
@@ -1431,7 +930,7 @@ L_44e0e8:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_405f20 - .
+          .long _stfsInit - .
           .byte 0x27
           .byte 0x0
           .byte 0x0
@@ -1448,7 +947,7 @@ L_44e0e8:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_405f50 - .
+          .long _stfsFree - .
           .byte 0x4c
           .byte 0x0
           .byte 0x0
@@ -1481,7 +980,7 @@ L_44e0e8:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_405fa0 - .
+          .long _stfsLoad - .
           .byte 0x89
           .byte 0x3
           .byte 0x0

@@ -60,7 +60,7 @@ L_408f0e:
           js L_408f00
           mov DWORD PTR [ESP+4],OFFSET L_44a340
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_408f82
           mov DWORD PTR [ESP+4],EBX
@@ -84,7 +84,7 @@ L_408f77:
 L_408f82:
           mov DWORD PTR [ESP+4],OFFSET L_44a360
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_408fb0
           mov DWORD PTR [ESP+4],EBX
@@ -99,7 +99,7 @@ L_408f82:
 L_408fb0:
           mov DWORD PTR [ESP+4],OFFSET L_44a3e0
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_408f00
           mov DWORD PTR [ESP+4],EBX

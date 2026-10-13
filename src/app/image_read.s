@@ -52,7 +52,7 @@ L_4136d2:
           add EDX,EDI
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EDX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4136c0
           mov EAX,DWORD PTR [L_44a5d8]
@@ -1342,7 +1342,7 @@ L_41479e:
           add EDX,EBP
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EDX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_414790
           mov EAX,DWORD PTR [L_44a5d8]

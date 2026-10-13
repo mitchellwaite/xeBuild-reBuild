@@ -737,107 +737,107 @@ L_424185:
 L_424190:
           mov DWORD PTR [ESP+4],OFFSET L_457e3a
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4244a0
           mov DWORD PTR [ESP+4],OFFSET L_457e61
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4243c0
           mov DWORD PTR [ESP+4],OFFSET L_457e8a
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424500
           mov DWORD PTR [ESP+4],OFFSET L_457eb6
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424430
           mov DWORD PTR [ESP+4],OFFSET L_457ebd
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424430
           mov DWORD PTR [ESP+4],OFFSET L_457eea
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424566
           mov DWORD PTR [ESP+4],OFFSET L_457f21
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_42458d
           mov DWORD PTR [ESP+4],OFFSET L_457f58
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4245f4
           mov DWORD PTR [ESP+4],OFFSET L_457f62
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424660
           mov DWORD PTR [ESP+4],OFFSET L_4581f8
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4246c9
           mov DWORD PTR [ESP+4],OFFSET L_457f6c
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_42473a
           mov DWORD PTR [ESP+4],OFFSET L_457f97
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424770
           mov DWORD PTR [ESP+4],OFFSET L_457fd1
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4247a7
           mov DWORD PTR [ESP+4],OFFSET L_45801d
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_42484c
           mov DWORD PTR [ESP+4],OFFSET L_458046
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424815
           mov DWORD PTR [ESP+4],OFFSET L_45807c
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4247de
           mov DWORD PTR [ESP+4],OFFSET L_4580c8
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424908
           mov DWORD PTR [ESP+4],OFFSET L_4580fa
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4248aa
           mov DWORD PTR [ESP+4],OFFSET L_45812e
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424883
           mov DWORD PTR [ESP+4],OFFSET L_458166
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4248e1
           mov DWORD PTR [ESP+4],OFFSET L_4581a4
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424183
           or DWORD PTR [L_479ea4],1610612743
@@ -1458,12 +1458,12 @@ FUN_424bb0:
           je L_424c18
           mov DWORD PTR [ESP+4],OFFSET L_4582ad
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424c00
           mov DWORD PTR [ESP+4],OFFSET L_458478
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424c60
           or DWORD PTR [L_479f04],2
@@ -1481,13 +1481,13 @@ L_424bf5:
 L_424c00:
           mov DWORD PTR [ESP+4],OFFSET L_4582b3
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424d10
 L_424c18:
           mov DWORD PTR [ESP+4],OFFSET L_458478
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424c90
           mov EAX,DWORD PTR [L_479f00]
@@ -1510,7 +1510,7 @@ L_424c18:
 L_424c60:
           mov DWORD PTR [ESP+4],OFFSET L_45847e
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424d70
           or DWORD PTR [L_479f04],6
@@ -1528,24 +1528,24 @@ L_424c60:
 L_424c90:
           mov DWORD PTR [ESP+4],OFFSET L_45847e
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424d20
           mov DWORD PTR [ESP+4],OFFSET L_458485
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424d45
           mov DWORD PTR [ESP+4],OFFSET L_45848c
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_424d99
           xor EBX,EBX
 L_424cd6:
           mov DWORD PTR [ESP+4],OFFSET L_458346
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424dbe
           test EBX,EBX
@@ -1588,7 +1588,7 @@ L_424d45:
 L_424d70:
           mov DWORD PTR [ESP+4],OFFSET L_458485
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424ebe
           or DWORD PTR [L_479f04],1
@@ -1604,7 +1604,7 @@ L_424d99:
 L_424dbe:
           mov DWORD PTR [ESP+4],OFFSET L_458365
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424e12
           test EBX,EBX
@@ -1622,7 +1622,7 @@ L_424dea:
 L_424e12:
           mov DWORD PTR [ESP+4],OFFSET L_458388
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424e66
           test EBX,EBX
@@ -1640,7 +1640,7 @@ L_424e3e:
 L_424e66:
           mov DWORD PTR [ESP+4],OFFSET L_4583a5
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424f14
           test EBX,EBX
@@ -1659,7 +1659,7 @@ L_424ebe:
           mov DWORD PTR [ESP+4],OFFSET L_45848c
           mov DWORD PTR [ESP],ESI
           mov EBX,1
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424cd6
           or DWORD PTR [L_479f04],8
@@ -1675,7 +1675,7 @@ L_424eec:
 L_424f14:
           mov DWORD PTR [ESP+4],OFFSET L_4583c8
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424f40
           test EBX,EBX
@@ -1686,7 +1686,7 @@ L_424f14:
 L_424f40:
           mov DWORD PTR [ESP+4],OFFSET L_4583e3
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424fbc
           test EBX,EBX
@@ -1711,7 +1711,7 @@ L_424f94:
 L_424fbc:
           mov DWORD PTR [ESP+4],OFFSET L_458406
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424fe8
           test EBX,EBX
@@ -1722,7 +1722,7 @@ L_424fbc:
 L_424fe8:
           mov DWORD PTR [ESP+4],OFFSET L_458413
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_425064
           test EBX,EBX
@@ -1747,7 +1747,7 @@ L_42503c:
 L_425064:
           mov DWORD PTR [ESP+4],OFFSET L_458432
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_425090
           test EBX,EBX
@@ -1758,7 +1758,7 @@ L_425064:
 L_425090:
           mov DWORD PTR [ESP+4],OFFSET L_458455
           mov DWORD PTR [ESP],ESI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_424d10
           test EBX,EBX
@@ -1827,7 +1827,7 @@ L_42515c:
 L_42518b:
           mov DWORD PTR [ESP+4],OFFSET L_4584e0
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4251e0
           mov DWORD PTR [ESP+4],4294967295
@@ -1852,12 +1852,12 @@ L_42518b:
 L_4251e0:
           mov DWORD PTR [ESP+4],OFFSET L_458508
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_425282
           mov DWORD PTR [ESP+4],OFFSET L_458530
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_42532c
           mov DWORD PTR [ESP+4],4294967295
@@ -1951,12 +1951,12 @@ L_42530a:
 L_42532c:
           mov DWORD PTR [ESP+4],OFFSET L_45855e
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_425398
           mov DWORD PTR [ESP+4],OFFSET L_458590
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4253fa
           mov DWORD PTR [ESP+4],4294967295
@@ -1994,7 +1994,7 @@ L_4253d8:
 L_4253fa:
           mov DWORD PTR [ESP+4],OFFSET L_4585c0
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_42544e
           mov DWORD PTR [ESP+4],4294967295
@@ -2012,7 +2012,7 @@ L_4253fa:
 L_42544e:
           mov DWORD PTR [ESP+4],OFFSET L_4585f6
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4254a2
           mov DWORD PTR [ESP+4],4294967295
@@ -2030,7 +2030,7 @@ L_42544e:
 L_4254a2:
           mov DWORD PTR [ESP+4],OFFSET L_45861f
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4254f6
           mov DWORD PTR [ESP+4],4294967295
@@ -2048,7 +2048,7 @@ L_4254a2:
 L_4254f6:
           mov DWORD PTR [ESP+4],OFFSET L_458647
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_425550
           mov DWORD PTR [ESP+4],4294967295
@@ -2072,7 +2072,7 @@ L_4254f6:
 L_425550:
           mov DWORD PTR [ESP+4],OFFSET L_458673
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4255ab
           mov DWORD PTR [ESP+4],4294967295
@@ -2093,7 +2093,7 @@ L_4255a4:
 L_4255ab:
           mov DWORD PTR [ESP+4],OFFSET L_4586a5
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4255ff
           mov DWORD PTR [ESP+4],4294967295
@@ -2111,7 +2111,7 @@ L_4255ab:
 L_4255ff:
           mov DWORD PTR [ESP+4],OFFSET L_4586d4
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_42564a
           mov DWORD PTR [ESP],EDI
@@ -2128,7 +2128,7 @@ L_4255ff:
 L_42564a:
           mov DWORD PTR [ESP+4],OFFSET L_458703
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_425695
           mov DWORD PTR [ESP],EDI
@@ -2145,7 +2145,7 @@ L_42564a:
 L_425695:
           mov DWORD PTR [ESP+4],OFFSET L_458734
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4256e0
           mov DWORD PTR [ESP],EDI
@@ -2162,7 +2162,7 @@ L_425695:
 L_4256e0:
           mov DWORD PTR [ESP+4],OFFSET L_458761
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_42573a
           mov DWORD PTR [ESP+4],0
@@ -2184,7 +2184,7 @@ L_425718:
 L_42573a:
           mov DWORD PTR [ESP+4],OFFSET L_4587de
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           mov ESI,EAX
           jne L_425850
@@ -2246,7 +2246,7 @@ L_425803:
 L_425850:
           mov DWORD PTR [ESP+4],OFFSET L_45889a
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           je L_4258b4
           test EBP,EBP
@@ -3879,7 +3879,7 @@ L_4272a4:
 L_4272b6:
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EDI
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_4272a4
           mov DWORD PTR [ESP+8],EBP
@@ -4024,7 +4024,7 @@ L_427446:
           lea EAX,DWORD PTR [ESP+544]
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EAX
-          call FUN_4491d8
+          call _stricmp
           test EAX,EAX
           jne L_427430
           mov DWORD PTR [ESP+28],EAX

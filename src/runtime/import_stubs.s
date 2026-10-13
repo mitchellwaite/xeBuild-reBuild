@@ -19,7 +19,6 @@
 .globl FUN_4491b0
 .globl FUN_4491b8
 .globl FUN_4491c8
-.globl FUN_4491d8
 .globl FUN_4491e0
 .globl FUN_4491e8
 .globl FUN_4491f8
@@ -77,6 +76,7 @@
 .globl _srand
 .globl _strcat
 .globl _strcpy
+.globl _stricmp
 .globl _strlen
 .globl _strnicmp
 
@@ -294,8 +294,8 @@ _strnicmp:
           jmp DWORD PTR [__imp___strnicmp]
           .byte 0x90
           .byte 0x90
-FUN_4491d8:
-          jmp DWORD PTR [_stricmp]
+_stricmp:
+          jmp DWORD PTR [__imp___stricmp]
           .byte 0x90
           .byte 0x90
 FUN_4491e0:

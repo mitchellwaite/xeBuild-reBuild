@@ -394,7 +394,7 @@ L_4320b0:
           je L_432170
           lea EBX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EBX
-          call FUN_405f20
+          call _stfsInit
           mov EAX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+24],0
           mov DWORD PTR [ESP+16],0
@@ -404,7 +404,7 @@ L_4320b0:
           mov DWORD PTR [ESP+20],EAX
           mov EAX,DWORD PTR [ESP+80]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_405fa0
+          call _stfsLoad
           test EAX,EAX
           je L_43214c
           cmp DWORD PTR [ESP+52],ESI
@@ -425,7 +425,7 @@ L_432130:
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EBX
-          call FUN_405f50
+          call _stfsFree
 L_43214c:
           mov DWORD PTR [ESP+4],OFFSET L_45bf21
           mov DWORD PTR [ESP],1
@@ -770,7 +770,7 @@ L_4325a4:
           je L_432773
           lea EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [ESP],EAX
-          call FUN_405f20
+          call _stfsInit
           lea EAX,DWORD PTR [ESP+592]
           mov DWORD PTR [ESP+24],0
           mov DWORD PTR [ESP+20],ESI
@@ -780,7 +780,7 @@ L_4325a4:
           lea EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP],EAX
-          call FUN_405fa0
+          call _stfsLoad
           test EAX,EAX
           je L_432751
           mov EDX,DWORD PTR [ESP+40]
@@ -855,7 +855,7 @@ L_432731:
           call _log_printf
           lea EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [ESP],EAX
-          call FUN_405f50
+          call _stfsFree
 L_432751:
           mov DWORD PTR [ESP+4],OFFSET L_45bf21
           mov DWORD PTR [ESP],1

@@ -248,6 +248,13 @@ SYMBOLS = {
     0x4133f0: '_kvGetConsoleId', 0x413410: '_kvGetSerial', 0x4134f0: '_kvGetConsoleCert',
     0x413510: '_kvGetMfgDate', 0x413590: '_kvHashIsOk', 0x4135a0: '_kvSetDvdKey',
     0x47a140: '_masterPub', 0x47a11c: '_cpuKey', 0x479ea8: '_g479ea8',
+    # app/stfs (src/app/stfs.c); names are ours
+    0x405610: '_stfsCheckHashes', 0x405980: '_stfsListFiles', 0x405ac0: '_stfsCheckHeader',
+    0x405d50: '_stfsGetFile', 0x405f20: '_stfsInit', 0x405f50: '_stfsFree',
+    0x405fa0: '_stfsLoad',
+    0x44df18: '_sName', 0x44df54: '_sFnamelen', 0x44df80: '_sValidVer', 0x44dfa9: '_sValid',
+    0x44dfc0: '_sManifestBad', 0x44dff0: '_sManifestOk', 0x44e06c: '_sFound', 0x44e084: '_sDone',
+    0x44e0bc: '_sNotFound', 0x44e0e8: '_sCorrupt',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls
@@ -268,19 +275,21 @@ SYMBOLS = {
     # libgcc (64-bit division) and the vsnprintf mingw's stdio.h calls
     0x447c30: '___divdi3', 0x447d70: '___moddi3', 0x447f20: '___udivdi3',
     0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',
-    0x4491d0: '_strnicmp', 0x449198: '_exit', 0x449178: '_fgetc',
+    0x4491d0: '_strnicmp', 0x4491d8: '_stricmp', 0x449198: '_exit', 0x449178: '_fgetc',
     # IAT slots that dllimport declarations reference directly
     0x50f2f0: '__imp___errno',
 }
 # IAT slot labels (ddfix names them after the import) that clash with a
 # SYMBOLS name: msvcrt's `_strnicmp`/`_exit` slots vs the stubs for strnicmp/exit.
-IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit'}
+IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
+             '_stricmp': '__imp___stricmp'}
 # Functions already in C inside objects that are otherwise still assembly
 # (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
+    0x405ac0, 0x405f20, 0x405f50, 0x405fa0,   # app/stfs
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

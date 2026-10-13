@@ -63,7 +63,7 @@ def norm(lines):
         # immediates as signed, at the operand's width
         l = re.sub(r'(?<![\w$-])(\d{10})(?!\w)',
                    lambda m: str(int(m.group(1)) - (1 << 32)) if int(m.group(1)) >= 1 << 31 else m.group(1), l)
-        m = re.match(r'^(.*(?: (byte|word) ptr \[[^\]]*\]| ([abcd][lh])|( [abcd]x|si|di|bp)),)(\d+)$', l)
+        m = re.match(r'^(.*(?: (byte|word) ptr \[[^\]]*\]| ([abcd][lh])|( [abcd]x|[ ,](?:si|di|bp))),)(\d+)$', l)
         if m:
             bits = 8 if (m.group(2) == 'byte' or m.group(3)) else 16
             v = int(m.group(5))
