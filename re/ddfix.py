@@ -14,6 +14,8 @@ original encoding:
     (or `.byte L-.-1` for short forms).
 Lines without symbol operands must also match byte for byte (e.g. ddisasm prints
 the 2-byte `66 90` padding as two `nop`s).  Repeats until nothing changes.
+
+Then prepare the source for linking with src/xeBuild.ld (see prepare_link).
 """
 import re, struct, subprocess, sys, os, tempfile
 
@@ -35,12 +37,25 @@ class Image:
         nsec = struct.unpack_from('<H', self.d, pe + 6)[0]
         opt = struct.unpack_from('<H', self.d, pe + 20)[0]
         self.base = struct.unpack_from('<I', self.d, pe + 24 + 28)[0]
-        self.secs = []
+        self.secs, self.flags = [], {}
         for i in range(nsec):
             o = pe + 24 + opt + 40 * i
             name = self.d[o:o + 8].rstrip(b'\0').decode()
             vsz, va, rsz, raw = struct.unpack_from('<IIII', self.d, o + 8)
             self.secs.append((name, self.base + va, vsz, raw, rsz))
+            self.flags[name] = struct.unpack_from('<I', self.d, o + 36)[0]
+        self.dirs = [struct.unpack_from('<II', self.d, pe + 24 + 96 + 8 * i) for i in range(16)]
+
+    def align(self, name):
+        """Section alignment recorded in the header (ld writes it into images too)."""
+        return 1 << ((self.flags[name] >> 20 & 0xf) - 1)
+
+    def offset(self, rva):
+        va = self.base + rva
+        for _, sva, vsz, raw, rsz in self.secs:
+            if sva <= va < sva + max(vsz, rsz):
+                return raw + va - sva
+        raise ValueError(hex(va))
 
     def sec(self, name):
         return next(s for s in self.secs if s[0] == name)
@@ -117,6 +132,108 @@ def pin(insn, orig):
     return None
 
 
+# exe section name -> (directive starting it in the source, flags of its `$zz` tail).
+# .text$zz is code+data: in the original that tail is the end of the
+# __CTOR_LIST__/__DTOR_LIST__ words the default link script writes into .text,
+# which is why the exe's .text carries IMAGE_SCN_CNT_INITIALIZED_DATA too.
+SECTIONS = {'.text': ('.text', 'dxr'), '.data': ('.data', 'dw'), '.rdata': ('.section .rdata,"dr"', None),
+            '.eh_fram': ('.section .eh_frame,"dr"', None), '.bss': ('.bss', 'b'),
+            '.idata': ('.section .idata,"dw"', None), '.CRT': ('.section .CRT,"dw"', None),
+            '.tls': ('.section .tls,"dw"', None), '.rsrc': ('.section .rsrc,"dw"', None)}
+SECDIR = re.compile(r'^(?:\.section\s+([^\s,]+)\s*,.*|(\.text|\.data|\.bss))$')
+ALIGN = re.compile(r'^\s*\.align\s+(\d+)\s*$')
+ZERO = re.compile(r'^(\s*)\.zero\s+(\d+)\s*$')
+
+
+def imports(img):
+    """{IAT slot VA: function name} from the exe's import directory."""
+    d, out = img.d, {}
+    o = img.offset(img.dirs[1][0])
+    while True:
+        oft, _, _, name, ft = struct.unpack_from('<IIIII', d, o)
+        if not name:
+            return out
+        thunks, slot = img.offset(oft or ft), img.base + ft
+        while True:
+            t = struct.unpack_from('<I', d, thunks)[0]
+            if not t:
+                break
+            if not t & 0x80000000:
+                h = img.offset(t) + 2
+                out[slot] = d[h:d.index(b'\0', h)].decode()
+            thunks += 4
+            slot += 4
+        o += 20
+
+
+def prepare_link(lines, addr, img):
+    """Make the single-object source link into the original image with src/xeBuild.ld.
+
+    * section directives get the exe's flags and alignment (`.eh_fram` is the
+      8-char truncation of `.eh_frame`); `.align`s above that alignment are
+      dropped (layout is explicit, so they were no-ops);
+    * gas pads a section's size to its alignment, but the exe's sections end on
+      4-byte boundaries (the original last object in each had 4-byte alignment),
+      so the bytes after the last aligned boundary move to `<name>$zz`;
+    * imports become labels on their IAT slots; ld fills the IAT and TLS data
+      directories from `__IAT_start__`/`__IAT_end__` and `__tls_used`.
+    """
+    labels = {va: [name] for va, name in imports(img).items()}
+    iat, iatsz = img.dirs[12]
+    tls = img.dirs[9][0]
+    for va, name in ((img.base + iat, '__IAT_start__'), (img.base + iat + iatsz, '__IAT_end__'),
+                     (img.base + tls, '__tls_used')):
+        labels.setdefault(va, []).append(name)
+    cuts = {va + vsz - vsz % img.align(n): n for n, va, vsz, _, _ in img.secs if vsz % img.align(n)}
+    out, sec_align, done, bss_tail = [], 0, set(), False
+    for line, a in zip(lines, addr):
+        m = SECDIR.match(line.strip())
+        if bss_tail and not m and a is None and line.strip() and not line.startswith('#'):
+            sys.exit('prepare_link: unexpected %r in .bss tail' % line)
+        if m:
+            bss_tail = False
+            src = m.group(1) or m.group(2)
+            cur = '.eh_fram' if src == '.eh_frame' else src
+            sec_align = img.align(cur)
+            out.append(SECTIONS[cur][0])
+            out.append('.p2align %d' % (sec_align.bit_length() - 1))
+            continue
+        m = ALIGN.match(line)
+        if m and int(m.group(1)) > sec_align:
+            continue
+        if line.strip() == '__EntryPoint:':
+            out.append('.globl __EntryPoint')
+        if a is not None:
+            z = ZERO.match(line)
+            end = a + (int(z.group(2)) if z else 1)
+            cut = next((c for c in cuts if c not in done and a <= c < end), None)
+            if cut is not None and (cut == a or z):
+                if cut > a:  # split a .zero that straddles the cut
+                    out.append('%s.zero %d' % (z.group(1), cut - a))
+                    line = '%s.zero %d' % (z.group(1), end - cut)
+                done.add(cut)
+                if cuts[cut] == '.bss':
+                    # gas gives any section but .bss itself file contents, so the
+                    # tail becomes a COMMON block (as the original's likely was)
+                    _, va, vsz, _, _ = img.sec('.bss')
+                    out.append('.comm __bss_tail,%d,2' % (va + vsz - cut))
+                    bss_tail = True
+                    continue
+                out.append('.section %s$zz,"%s"' % (cuts[cut], SECTIONS[cuts[cut]][1]))
+                out.append('.p2align 2')
+            if bss_tail:
+                if not ZERO.match(line) or a in labels:
+                    sys.exit('prepare_link: .bss tail holds more than zeros at %x' % a)
+                continue
+            for l in labels.pop(a, []):
+                out += ['.globl ' + l, l + ':']
+        out.append(line)
+    if labels or len(done) != len(cuts):
+        sys.exit('prepare_link: unplaced labels %s / cuts %s' % (
+            {hex(k): v for k, v in labels.items()}, [hex(c) for c in cuts if c not in done]))
+    return out
+
+
 def main():
     exe, dbg, out = sys.argv[1:4]
     as_exe = os.path.abspath(sys.argv[4] if len(sys.argv) > 4 else os.path.join(
@@ -155,6 +272,7 @@ def main():
     for i, t in sorted(unfixable.items())[:40]:
         print('UNFIXED %x (orig %d bytes, gas %d): %s' % (addr[i], olen[i], len(emitted.get(i + 1, b'')), t))
     print('pinned %d lines, %d unfixable' % (pinned, len(unfixable)))
+    lines = prepare_link(lines, addr, img)
     open(out, 'w', encoding='utf-8', newline='\n').write('\n'.join(lines) + '\n')
 
 

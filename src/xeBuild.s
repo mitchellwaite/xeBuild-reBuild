@@ -5,6 +5,7 @@
 
 #===================================
 .text
+.p2align 4
 #===================================
 
 .align 16
@@ -468,6 +469,7 @@ FUN_401000:
           .byte 0x0
           .byte 0x0
 .align 16
+.globl __EntryPoint
 __EntryPoint:
 
 
@@ -104066,6 +104068,8 @@ FUN_449640:
           .byte 0xff
           .byte 0xff
 .L_4497b0:
+.section .text$zz,"dxr"
+.p2align 2
           .zero 4
 #===================================
 # end section .text
@@ -104073,6 +104077,7 @@ FUN_449640:
 
 #===================================
 .data
+.p2align 5
 #===================================
 
 .align 16
@@ -109458,6 +109463,8 @@ FUN_449640:
           .byte 0xff
           .byte 0xff
           .byte 0xff
+.section .data$zz,"dw"
+.p2align 2
           .long FUN_448820
           .long .L_4492a0
           .long FUN_4492b0
@@ -109478,7 +109485,8 @@ FUN_449640:
 #===================================
 
 #===================================
-.section .rdata ,""
+.section .rdata,"dr"
+.p2align 5
 #===================================
 
 .align 16
@@ -144531,10 +144539,10 @@ FUN_449640:
 #===================================
 
 #===================================
-.section .eh_fram ,""
+.section .eh_frame,"dr"
+.p2align 2
 #===================================
 
-.align 16
           .byte 0x14
           .byte 0x0
           .byte 0x0
@@ -184710,6 +184718,7 @@ FUN_449640:
 
 #===================================
 .bss
+.p2align 5
 #===================================
 
 .align 16
@@ -185492,16 +185501,17 @@ FUN_449640:
 .L_50ec90:
           .zero 4
 .L_50ec94:
-          .zero 20
+          .zero 12
+.comm __bss_tail,8,2
 #===================================
 # end section .bss
 #===================================
 
 #===================================
-.section .idata ,""
+.section .idata,"dw"
+.p2align 2
 #===================================
 
-.align 16
           .byte 0x64
           .byte 0xf0
           .byte 0x10
@@ -186103,126 +186113,178 @@ FUN_449640:
           .byte 0x0
           .byte 0x0
 .L_50f258:
+.globl DeleteCriticalSection
+DeleteCriticalSection:
+.globl __IAT_start__
+__IAT_start__:
           .byte 0x4c
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f25c:
+.globl EnterCriticalSection
+EnterCriticalSection:
           .byte 0x64
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f260:
+.globl FreeLibrary
+FreeLibrary:
           .byte 0x7c
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f264:
+.globl GetCurrentProcess
+GetCurrentProcess:
           .byte 0x8a
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f268:
+.globl GetCurrentProcessId
+GetCurrentProcessId:
           .byte 0x9e
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f26c:
+.globl GetCurrentThreadId
+GetCurrentThreadId:
           .byte 0xb4
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f270:
+.globl GetFileAttributesA
+GetFileAttributesA:
           .byte 0xca
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f274:
+.globl GetLastError
+GetLastError:
           .byte 0xe0
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f278:
+.globl GetModuleFileNameW
+GetModuleFileNameW:
           .byte 0xf0
           .byte 0xf4
           .byte 0x10
           .byte 0x0
 .L_50f27c:
+.globl GetModuleHandleA
+GetModuleHandleA:
           .byte 0x6
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f280:
+.globl GetProcAddress
+GetProcAddress:
           .byte 0x1a
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f284:
+.globl GetStartupInfoA
+GetStartupInfoA:
           .byte 0x2c
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f288:
+.globl GetSystemTimeAsFileTime
+GetSystemTimeAsFileTime:
           .byte 0x3e
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f28c:
+.globl GetTickCount
+GetTickCount:
           .byte 0x58
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f290:
+.globl InitializeCriticalSection
+InitializeCriticalSection:
           .byte 0x68
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f294:
+.globl LeaveCriticalSection
+LeaveCriticalSection:
           .byte 0x84
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f298:
+.globl LoadLibraryA
+LoadLibraryA:
           .byte 0x9c
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f29c:
+.globl QueryPerformanceCounter
+QueryPerformanceCounter:
           .byte 0xac
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f2a0:
+.globl SetUnhandledExceptionFilter
+SetUnhandledExceptionFilter:
           .byte 0xc6
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f2a4:
+.globl Sleep
+Sleep:
           .byte 0xe4
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f2a8:
+.globl TerminateProcess
+TerminateProcess:
           .byte 0xec
           .byte 0xf5
           .byte 0x10
           .byte 0x0
 .L_50f2ac:
+.globl TlsGetValue
+TlsGetValue:
           .byte 0x0
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2b0:
+.globl UnhandledExceptionFilter
+UnhandledExceptionFilter:
           .byte 0xe
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2b4:
+.globl VirtualProtect
+VirtualProtect:
           .byte 0x2a
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2b8:
+.globl VirtualQuery
+VirtualQuery:
           .byte 0x3c
           .byte 0xf6
           .byte 0x10
@@ -186232,411 +186294,575 @@ FUN_449640:
           .byte 0x0
           .byte 0x0
 .L_50f2c0:
+.globl __dllonexit
+__dllonexit:
           .byte 0x4c
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2c4:
+.globl __doserrno
+__doserrno:
           .byte 0x5a
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2c8:
+.globl __getmainargs
+__getmainargs:
           .byte 0x68
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2cc:
+.globl __initenv
+__initenv:
           .byte 0x78
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2d0:
+.globl __lconv_init
+__lconv_init:
           .byte 0x84
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2d4:
+.globl __pioinfo
+__pioinfo:
           .byte 0x94
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2d8:
+.globl __set_app_type
+__set_app_type:
           .byte 0xa0
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2dc:
+.globl __setusermatherr
+__setusermatherr:
           .byte 0xb2
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2e0:
+.globl _acmdln
+_acmdln:
           .byte 0xc6
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2e4:
+.globl _amsg_exit
+_amsg_exit:
           .byte 0xd0
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2e8:
+.globl _cexit
+_cexit:
           .byte 0xde
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2ec:
+.globl _chdir
+_chdir:
           .byte 0xe8
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2f0:
+.globl _errno
+_errno:
           .byte 0xf2
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2f4:
+.globl _exit
+_exit:
           .byte 0xfc
           .byte 0xf6
           .byte 0x10
           .byte 0x0
 .L_50f2f8:
+.globl _filelengthi64
+_filelengthi64:
           .byte 0x4
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f2fc:
+.globl _fileno
+_fileno:
           .byte 0x16
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f300:
+.globl _findclose
+_findclose:
           .byte 0x20
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f304:
+.globl _findfirst
+_findfirst:
           .byte 0x2e
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f308:
+.globl _findnext
+_findnext:
           .byte 0x3c
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f30c:
+.globl _fmode
+_fmode:
           .byte 0x48
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f310:
+.globl _fullpath
+_fullpath:
           .byte 0x52
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f314:
+.globl _initterm
+_initterm:
           .byte 0x5e
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f318:
+.globl _iob
+_iob:
           .byte 0x6a
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f31c:
+.globl _lock
+_lock:
           .byte 0x72
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f320:
+.globl _lrotl
+_lrotl:
           .byte 0x7a
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f324:
+.globl _lseeki64
+_lseeki64:
           .byte 0x84
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f328:
+.globl _mkdir
+_mkdir:
           .byte 0x90
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f32c:
+.globl _onexit
+_onexit:
           .byte 0x9a
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f330:
+.globl _snwprintf
+_snwprintf:
           .byte 0xa4
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f334:
+.globl _stat
+_stat:
           .byte 0xb2
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f338:
+.globl _stricmp
+_stricmp:
           .byte 0xba
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f33c:
+.globl _strnicmp
+_strnicmp:
           .byte 0xc6
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f340:
+.globl _unlock
+_unlock:
           .byte 0xd2
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f344:
+.globl _vsnprintf
+_vsnprintf:
           .byte 0xdc
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f348:
+.globl _write
+_write:
           .byte 0xea
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f34c:
+.globl abort
+abort:
           .byte 0xf4
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f350:
+.globl atoi
+atoi:
           .byte 0xfc
           .byte 0xf7
           .byte 0x10
           .byte 0x0
 .L_50f354:
+.globl calloc
+calloc:
           .byte 0x4
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f358:
+.globl exit
+exit:
           .byte 0xe
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f35c:
+.globl fclose
+fclose:
           .byte 0x16
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f360:
+.globl feof
+feof:
           .byte 0x20
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f364:
+.globl fflush
+fflush:
           .byte 0x28
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f368:
+.globl fgetc
+fgetc:
           .byte 0x32
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f36c:
+.globl fgetpos
+fgetpos:
           .byte 0x3a
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f370:
+.globl fgets
+fgets:
           .byte 0x44
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f374:
+.globl fopen
+fopen:
           .byte 0x4c
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f378:
+.globl fprintf
+fprintf:
           .byte 0x54
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f37c:
+.globl fputc
+fputc:
           .byte 0x5e
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f380:
+.globl fread
+fread:
           .byte 0x66
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f384:
+.globl free
+free:
           .byte 0x6e
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f388:
+.globl fseek
+fseek:
           .byte 0x76
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f38c:
+.globl fsetpos
+fsetpos:
           .byte 0x7e
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f390:
+.globl ftell
+ftell:
           .byte 0x88
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f394:
+.globl fwprintf
+fwprintf:
           .byte 0x90
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f398:
+.globl fwrite
+fwrite:
           .byte 0x9c
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f39c:
+.globl gmtime
+gmtime:
           .byte 0xa6
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3a0:
+.globl malloc
+malloc:
           .byte 0xb0
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3a4:
+.globl memcmp
+memcmp:
           .byte 0xba
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3a8:
+.globl memcpy
+memcpy:
           .byte 0xc4
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3ac:
+.globl memset
+memset:
           .byte 0xce
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3b0:
+.globl mktime
+mktime:
           .byte 0xd8
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3b4:
+.globl printf
+printf:
           .byte 0xe2
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3b8:
+.globl putchar
+putchar:
           .byte 0xec
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3bc:
+.globl puts
+puts:
           .byte 0xf6
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3c0:
+.globl raise
+raise:
           .byte 0xfe
           .byte 0xf8
           .byte 0x10
           .byte 0x0
 .L_50f3c4:
+.globl rand
+rand:
           .byte 0x6
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3c8:
+.globl remove
+remove:
           .byte 0xe
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3cc:
+.globl rename
+rename:
           .byte 0x18
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3d0:
+.globl rewind
+rewind:
           .byte 0x22
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3d4:
+.globl signal
+signal:
           .byte 0x2c
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3d8:
+.globl sprintf
+sprintf:
           .byte 0x36
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3dc:
+.globl srand
+srand:
           .byte 0x40
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3e0:
+.globl strcat
+strcat:
           .byte 0x48
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3e4:
+.globl strcpy
+strcpy:
           .byte 0x52
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3e8:
+.globl strlen
+strlen:
           .byte 0x5c
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3ec:
+.globl strncat
+strncat:
           .byte 0x66
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3f0:
+.globl strncmp
+strncmp:
           .byte 0x70
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3f4:
+.globl strncpy
+strncpy:
           .byte 0x7a
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3f8:
+.globl strrchr
+strrchr:
           .byte 0x84
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f3fc:
+.globl time
+time:
           .byte 0x8e
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f400:
+.globl vfprintf
+vfprintf:
           .byte 0x96
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f404:
+.globl wcscpy
+wcscpy:
           .byte 0xa2
           .byte 0xf9
           .byte 0x10
@@ -186646,6 +186872,8 @@ FUN_449640:
           .byte 0x0
           .byte 0x0
 .L_50f40c:
+.globl MessageBoxW
+MessageBoxW:
           .byte 0xac
           .byte 0xf9
           .byte 0x10
@@ -186655,66 +186883,92 @@ FUN_449640:
           .byte 0x0
           .byte 0x0
 .L_50f414:
+.globl WSAGetLastError
+WSAGetLastError:
           .byte 0xba
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f418:
+.globl WSAStartup
+WSAStartup:
           .byte 0xcc
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f41c:
+.globl WSAStringToAddressA
+WSAStringToAddressA:
           .byte 0xda
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f420:
+.globl bind
+bind:
           .byte 0xf0
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f424:
+.globl closesocket
+closesocket:
           .byte 0xf8
           .byte 0xf9
           .byte 0x10
           .byte 0x0
 .L_50f428:
+.globl connect
+connect:
           .byte 0x6
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f42c:
+.globl htons
+htons:
           .byte 0x10
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f430:
+.globl recv
+recv:
           .byte 0x18
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f434:
+.globl recvfrom
+recvfrom:
           .byte 0x20
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f438:
+.globl select
+select:
           .byte 0x2c
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f43c:
+.globl send
+send:
           .byte 0x36
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f440:
+.globl setsockopt
+setsockopt:
           .byte 0x3e
           .byte 0xfa
           .byte 0x10
           .byte 0x0
 .L_50f444:
+.globl socket
+socket:
           .byte 0x4c
           .byte 0xfa
           .byte 0x10
@@ -186723,6 +186977,8 @@ FUN_449640:
           .byte 0x0
           .byte 0x0
           .byte 0x0
+.globl __IAT_end__
+__IAT_end__:
           .byte 0xd6
           .byte 0x0
           .byte 0x44
@@ -188812,10 +189068,10 @@ FUN_449640:
 #===================================
 
 #===================================
-.section .CRT ,""
+.section .CRT,"dw"
+.p2align 2
 #===================================
 
-.align 16
 .L_510000:
           .zero 4
           .long .L_401130
@@ -188838,12 +189094,14 @@ FUN_449640:
 #===================================
 
 #===================================
-.section .tls ,""
+.section .tls,"dw"
+.p2align 2
 #===================================
 
-.align 16
 .L_511000:
           .zero 4
+.globl __tls_used
+__tls_used:
           .long .L_511000
           .long .L_51101c
           .long .L_479e30
@@ -188856,10 +189114,10 @@ FUN_449640:
 #===================================
 
 #===================================
-.section .rsrc ,""
+.section .rsrc,"dw"
+.p2align 2
 #===================================
 
-.align 16
           .byte 0x0
           .byte 0x0
           .byte 0x0
