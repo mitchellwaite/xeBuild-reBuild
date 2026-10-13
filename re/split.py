@@ -223,6 +223,12 @@ SYMBOLS = {
     0x40b500: '_FileTimeToSystemTime', 0x40b700: '_SystemTimeToFileTime',
     0x40b910: '_FileTimeToDosDateTime', 0x40ba30: '_DosDateTimeToFileTime',
     0x40bae0: '_GetSystemTime',
+    # app/mode_extract (src/app/mode_extract.c); names are ours
+    0x40e020: '_extract_usage', 0x40e200: '_mode_extract',
+    0x417680: '_loadDump', 0x414650: '_listFlashFiles', 0x411800: '_checkBootImage',
+    0x44a4e0: '_separator', 0x44a524: '_promptEnter', 0x4c8fe4: '_flashFiles',
+    0x4c9160: '_buildMode', 0x479f4c: '_g479f4c', 0x47a080: '_g47a080',
+    0x50f318: '__imp___iob',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls
@@ -243,9 +249,13 @@ SYMBOLS = {
     # libgcc (64-bit division) and the vsnprintf mingw's stdio.h calls
     0x447c30: '___divdi3', 0x447d70: '___moddi3', 0x447f20: '___udivdi3',
     0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',
+    0x4491d0: '_strnicmp', 0x449198: '_exit', 0x449178: '_fgetc',
     # IAT slots that dllimport declarations reference directly
     0x50f2f0: '__imp___errno',
 }
+# IAT slot labels (ddfix names them after the import) that clash with a
+# SYMBOLS name: msvcrt's `_strnicmp`/`_exit` slots vs the stubs for strnicmp/exit.
+IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit'}
 # Functions already in C inside objects that are otherwise still assembly
 # (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
@@ -548,8 +558,10 @@ def main():
         piece_lines[pc].append(l)
 
     # ---- real names (after the address-based analysis above)
+    irename = re.compile(r'(?<![\w.$])(%s)(?![\w$])' % '|'.join(map(re.escape, IAT_NAMES)))
     rename = re.compile(r'(?<![\w.$])(?:FUN|L)_(%s)(?![\w$])' % '|'.join('%x' % a for a in SYMBOLS))
     for pc, ls in piece_lines.items():
+        ls = [irename.sub(lambda m: IAT_NAMES[m.group(1)], l) for l in ls]
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
 
     # gcc's labels inside a C function are its own; nothing else may use ours

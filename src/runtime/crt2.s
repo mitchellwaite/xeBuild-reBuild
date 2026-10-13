@@ -362,7 +362,7 @@ L_4014a4:
           jmp L_4013a2
 L_4014ab:
           mov DWORD PTR [ESP],EAX
-          call FUN_449198
+          call _exit
           .byte 0x8d,0xb6,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_4014c0:

@@ -61,7 +61,6 @@
 .globl L_479f47
 .globl L_479f48
 .globl L_479f49
-.globl L_479f4c
 .globl L_479f50
 .globl L_479f54
 .globl L_479f58
@@ -76,7 +75,6 @@
 .globl L_479ff8
 .globl L_47a078
 .globl L_47a07c
-.globl L_47a080
 .globl L_47a084
 .globl L_47a088
 .globl L_47a08c
@@ -158,7 +156,6 @@
 .globl L_4c4fa0
 .globl L_4c53a0
 .globl L_4c8fe0
-.globl L_4c8fe4
 .globl L_4c8fe8
 .globl L_4c8ffa
 .globl L_4c8ffe
@@ -199,7 +196,6 @@
 .globl L_4c9130
 .globl L_4c9134
 .globl L_4c9138
-.globl L_4c9160
 .globl L_4c9164
 .globl L_4c917f
 .globl L_4c9180
@@ -266,6 +262,10 @@
 .globl L_50ec90
 .globl L_50ec94
 .globl _XeCryptRandomState
+.globl _buildMode
+.globl _flashFiles
+.globl _g479f4c
+.globl _g47a080
 .globl _iniBuf
 .globl _iniSize
 
@@ -385,7 +385,7 @@ L_479f48:
           .zero 1
 L_479f49:
           .zero 3
-L_479f4c:
+_g479f4c:
           .zero 4
 L_479f50:
           .zero 4
@@ -415,7 +415,7 @@ L_47a078:
           .zero 4
 L_47a07c:
           .zero 4
-L_47a080:
+_g47a080:
           .zero 4
 L_47a084:
           .zero 4
@@ -579,7 +579,7 @@ L_4c53a0:
           .zero 15424
 L_4c8fe0:
           .zero 4
-L_4c8fe4:
+_flashFiles:
           .zero 4
 L_4c8fe8:
           .zero 18
@@ -661,7 +661,7 @@ L_4c9134:
           .zero 4
 L_4c9138:
           .zero 40
-L_4c9160:
+_buildMode:
           .zero 4
 L_4c9164:
           .zero 27

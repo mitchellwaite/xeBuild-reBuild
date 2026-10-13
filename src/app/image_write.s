@@ -33,7 +33,6 @@
 .globl FUN_4112f0
 .globl FUN_411600
 .globl FUN_411680
-.globl FUN_411800
 .globl FUN_411bd0
 .globl FUN_412110
 .globl FUN_412230
@@ -45,6 +44,7 @@
 .globl FUN_413030
 .globl L_470000
 .globl L_47006e
+.globl _checkBootImage
 
 .text
 .p2align 4
@@ -1268,7 +1268,7 @@ L_40fb35:
           mov DWORD PTR [ESP],EAX
           call _free
 L_40fb46:
-          mov EAX,DWORD PTR [L_47a080]
+          mov EAX,DWORD PTR [_g47a080]
           test EAX,EAX
           je L_40fb57
           mov DWORD PTR [ESP],EAX
@@ -3661,13 +3661,13 @@ L_4117d6:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_411800:
+_checkBootImage:
           push EBP
           push EDI
           push ESI
           push EBX
           sub ESP,44
-          mov EDI,DWORD PTR [L_47a080]
+          mov EDI,DWORD PTR [_g47a080]
           mov EAX,DWORD PTR [EDI+108]
           mov EBP,DWORD PTR [EDI+96]
           mov ECX,EAX
@@ -3739,7 +3739,7 @@ FUN_411800:
           test BP,4096
           jne L_411a90
 L_4118ff:
-          mov EAX,DWORD PTR [L_47a080]
+          mov EAX,DWORD PTR [_g47a080]
           add EAX,EBX
           movzx EDI,WORD PTR [EAX]
           movzx EDX,WORD PTR [EAX+2]
@@ -3776,7 +3776,7 @@ L_4118ff:
           cmp DI,17220
           jne L_411b13
           lea ESI,DWORD PTR [EBX+ESI*1+15]
-          mov EDI,DWORD PTR [L_47a080]
+          mov EDI,DWORD PTR [_g47a080]
           and ESI,4294967280
           add EDI,ESI
           mov EAX,DWORD PTR [EDI+12]
@@ -3839,7 +3839,7 @@ L_4118ff:
           test EAX,EAX
           jne L_411bb1
           mov EDX,DWORD PTR [L_47a084]
-          mov EAX,DWORD PTR [L_47a080]
+          mov EAX,DWORD PTR [_g47a080]
           mov ECX,8187
           call FUN_40e950
 L_411a7f:
@@ -3858,7 +3858,7 @@ L_411a7f:
           .byte 0x0
           .byte 0x0
 L_411a90:
-          mov EAX,DWORD PTR [L_47a080]
+          mov EAX,DWORD PTR [_g47a080]
           add EAX,EBX
           movzx EDI,WORD PTR [EAX]
           movzx EDX,WORD PTR [EAX+2]
@@ -3904,7 +3904,7 @@ L_411b13:
           pop EBP
           ret 
 L_411b22:
-          mov EAX,DWORD PTR [L_47a080]
+          mov EAX,DWORD PTR [_g47a080]
           add EAX,EBX
           movzx EDI,WORD PTR [EAX]
           movzx EDX,WORD PTR [EAX+2]
@@ -3946,7 +3946,7 @@ L_411ba5:
           jmp L_4118ff
 L_411bb1:
           mov EDX,DWORD PTR [L_47a084]
-          mov EAX,DWORD PTR [L_47a080]
+          mov EAX,DWORD PTR [_g47a080]
           mov ECX,61937
           call FUN_40e950
           add ESP,44
@@ -5018,7 +5018,7 @@ L_412b2e:
           mov DWORD PTR [ESP+40],EAX
           mov EAX,DWORD PTR [ESP+48]
 L_412b40:
-          mov ESI,DWORD PTR [L_479f4c]
+          mov ESI,DWORD PTR [_g479f4c]
           lea EDI,DWORD PTR [EBX+4]
           and EDI,4294967292
           add ESI,EDX
@@ -7263,7 +7263,7 @@ L_451f80:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_411800 - .
+          .long _checkBootImage - .
           .byte 0xd0
           .byte 0x3
           .byte 0x0

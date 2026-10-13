@@ -37,6 +37,9 @@
 .globl __doserrno
 .globl __getmainargs
 .globl __imp___errno
+.globl __imp___exit
+.globl __imp___iob
+.globl __imp___strnicmp
 .globl __initenv
 .globl __lconv_init
 .globl __pioinfo
@@ -47,7 +50,6 @@
 .globl _cexit
 .globl _chdir
 .globl _errno
-.globl _exit
 .globl _filelengthi64
 .globl _fileno
 .globl _findclose
@@ -65,7 +67,6 @@
 .globl _snwprintf
 .globl _stat
 .globl _stricmp
-.globl _strnicmp
 .globl _unlock
 .globl _vsnprintf
 .globl _write
@@ -493,8 +494,8 @@ __imp___errno:
 _errno:
           .rva L_50f6f2
 L_50f2f4:
-.globl _exit
-_exit:
+.globl __imp___exit
+__imp___exit:
           .rva L_50f6fc
 L_50f2f8:
 .globl _filelengthi64
@@ -528,7 +529,7 @@ L_50f314:
 .globl _initterm
 _initterm:
           .rva L_50f75e
-L_50f318:
+__imp___iob:
 .globl _iob
 _iob:
           .rva L_50f76a
@@ -565,8 +566,8 @@ L_50f338:
 _stricmp:
           .rva L_50f7ba
 L_50f33c:
-.globl _strnicmp
-_strnicmp:
+.globl __imp___strnicmp
+__imp___strnicmp:
           .rva L_50f7c6
 L_50f340:
 .globl _unlock

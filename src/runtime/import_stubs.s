@@ -15,13 +15,10 @@
 .globl FUN_449120
 .globl FUN_449130
 .globl FUN_449170
-.globl FUN_449178
 .globl FUN_449180
-.globl FUN_449198
 .globl FUN_4491b0
 .globl FUN_4491b8
 .globl FUN_4491c8
-.globl FUN_4491d0
 .globl FUN_4491d8
 .globl FUN_4491e0
 .globl FUN_4491e8
@@ -52,8 +49,10 @@
 .globl __time32
 .globl _atoi
 .globl _calloc
+.globl _exit
 .globl _fclose
 .globl _feof
+.globl _fgetc
 .globl _fgets
 .globl _fopen
 .globl _fprintf
@@ -79,6 +78,7 @@
 .globl _strcat
 .globl _strcpy
 .globl _strlen
+.globl _strnicmp
 
 .text
 .p2align 3
@@ -246,7 +246,7 @@ FUN_449170:
           jmp DWORD PTR [fgetpos]
           .byte 0x90
           .byte 0x90
-FUN_449178:
+_fgetc:
           jmp DWORD PTR [fgetc]
           .byte 0x90
           .byte 0x90
@@ -262,7 +262,7 @@ _fclose:
           jmp DWORD PTR [fclose]
           .byte 0x90
           .byte 0x90
-FUN_449198:
+_exit:
           jmp DWORD PTR [exit]
           .byte 0x90
           .byte 0x90
@@ -290,8 +290,8 @@ FUN_4491c8:
           jmp DWORD PTR [_unlock]
           .byte 0x90
           .byte 0x90
-FUN_4491d0:
-          jmp DWORD PTR [_strnicmp]
+_strnicmp:
+          jmp DWORD PTR [__imp___strnicmp]
           .byte 0x90
           .byte 0x90
 FUN_4491d8:
@@ -351,7 +351,7 @@ FUN_449240:
           .byte 0x90
           .byte 0x90
 FUN_449248:
-          jmp DWORD PTR [_exit]
+          jmp DWORD PTR [__imp___exit]
           .byte 0x90
           .byte 0x90
 FUN_449250:

@@ -23,7 +23,7 @@ void log_set_verbose(int level)
 	verbose_level = v;
 }
 
-void log_verbose_flag(char c)
+void log_verbose_flag(unsigned char c)
 {
 	/* '\0' has its own copy of the level-1 body: gcc merges them, but the
 	 * original block order only comes out this way */

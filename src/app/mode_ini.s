@@ -14,7 +14,7 @@
 .p2align 4
 FUN_418240:
           sub ESP,28
-          mov DWORD PTR [ESP+4],OFFSET L_44a4e0
+          mov DWORD PTR [ESP+4],OFFSET _separator
           mov DWORD PTR [ESP],0
           call _log_printf
           mov DWORD PTR [ESP+8],OFFSET L_4541f8
@@ -48,22 +48,22 @@ FUN_418240:
           mov DWORD PTR [ESP+4],OFFSET L_454380
           mov DWORD PTR [ESP],0
           call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44a4e0
+          mov DWORD PTR [ESP+4],OFFSET _separator
           mov DWORD PTR [ESP],0
           call _log_printf
-          mov EAX,DWORD PTR [L_44a524]
+          mov EAX,DWORD PTR [_promptEnter]
           test EAX,EAX
           jne L_418354
 L_418348:
           mov DWORD PTR [ESP],1
-          call FUN_449198
+          call _exit
 L_418354:
           mov DWORD PTR [ESP+4],OFFSET L_4543ce
           mov DWORD PTR [ESP],0
           call _log_printf
           mov EAX,DWORD PTR [_iob]
           mov DWORD PTR [ESP],EAX
-          call FUN_449178
+          call _fgetc
           jmp L_418348
 L_418377:
           mov ESI,ESI
@@ -168,7 +168,7 @@ L_4184a4:
           mov DWORD PTR [ESP+8],7
           mov DWORD PTR [ESP+4],OFFSET L_45440f
           mov DWORD PTR [ESP],EBX
-          call FUN_4491d0
+          call _strnicmp
           test EAX,EAX
           mov EAX,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP+4],EAX
@@ -181,7 +181,7 @@ L_4184a4:
           mov DWORD PTR [ESP+8],16
           mov DWORD PTR [ESP+4],OFFSET L_454417
           mov DWORD PTR [ESP],EAX
-          call FUN_4491d0
+          call _strnicmp
           test EAX,EAX
           jne L_4185e1
           mov DWORD PTR [ESP],OFFSET L_454428
@@ -191,7 +191,7 @@ L_418520:
           mov DWORD PTR [ESP+8],12
           mov DWORD PTR [ESP+4],OFFSET L_4544cc
           mov DWORD PTR [ESP],EAX
-          call FUN_4491d0
+          call _strnicmp
           test EAX,EAX
           jne L_4185a0
           mov EAX,DWORD PTR [ESP+28]
@@ -231,7 +231,7 @@ L_4185a0:
           mov DWORD PTR [ESP+8],6
           mov DWORD PTR [ESP+4],OFFSET L_4544fc
           mov DWORD PTR [ESP],EAX
-          call FUN_4491d0
+          call _strnicmp
           test EAX,EAX
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP+8],EAX
@@ -246,7 +246,7 @@ L_4185e1:
           mov DWORD PTR [ESP+8],17
           mov DWORD PTR [ESP+4],OFFSET L_454454
           mov DWORD PTR [ESP],EAX
-          call FUN_4491d0
+          call _strnicmp
           test EAX,EAX
           jne L_418612
           mov DWORD PTR [ESP],OFFSET L_454468
@@ -257,7 +257,7 @@ L_418612:
           mov DWORD PTR [ESP+8],16
           mov DWORD PTR [ESP+4],OFFSET L_454495
           mov DWORD PTR [ESP],EAX
-          call FUN_4491d0
+          call _strnicmp
           test EAX,EAX
           jne L_418520
           mov DWORD PTR [ESP],OFFSET L_4544a4
