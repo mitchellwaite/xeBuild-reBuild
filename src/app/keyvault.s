@@ -115,7 +115,7 @@ FUN_4131a0:
           mov DWORD PTR [ESP+8],16384
           mov DWORD PTR [ESP],OFFSET L_470a20
           mov DWORD PTR [ESP+4],EBX
-          call FUN_4490f8
+          call _memcpy
           mov DWORD PTR [ESP+4],OFFSET L_452068
           mov DWORD PTR [ESP],1
           mov DWORD PTR [L_4709ec],1
@@ -363,7 +363,7 @@ L_4134b0:
           mov EBX,1
           mov DWORD PTR [ESP+12],EDX
           mov DWORD PTR [ESP+4],OFFSET L_4520e1
-          call FUN_449098
+          call _sprintf
           add ESP,32
           mov EAX,EBX
           pop EBX
@@ -415,7 +415,7 @@ FUN_413510:
           mov DWORD PTR [ESP+4],OFFSET L_4520ec
           mov DWORD PTR [ESP],EDX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_449098
+          call _sprintf
           mov EAX,1
           add ESP,44
           ret 
@@ -442,7 +442,7 @@ FUN_4135a0:
           sub ESP,36
           mov ESI,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP],ESI
-          call FUN_449078
+          call _strlen
           cmp EAX,32
           je L_4135e0
           mov DWORD PTR [ESP+12],EAX

@@ -24,7 +24,7 @@ FUN_430460:
           mov DWORD PTR [ESP],EBX
           call FUN_449080
           mov DWORD PTR [ESP],ESI
-          call FUN_449078
+          call _strlen
           cmp BYTE PTR [ESP+EAX*1+28],47
           je L_4304d0
           mov EDX,EBX

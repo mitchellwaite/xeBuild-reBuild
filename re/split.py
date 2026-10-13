@@ -87,7 +87,7 @@ NAMES = {
     52: ('bigdigits/spMultiply', '32x32->64 multiply via 16-bit halves'),
     53: ('bigdigits/mpAdd', 'assert path .../XeCrypt/bign/mpAdd.c'),
     54: ('bigdigits/mpModMult', 'mpMultiply then mpModulo'),
-    55: ('bigdigits/mpUtil', 'digit alloc/free, hex print, random fill, string conversion'),
+    55: ('bigdigits/bigdUtils', 'digit alloc/free, hex print, random fill, string conversion (bign/bigdUtils.c)'),
     56: ('bigdigits/mpShortAdd', 'add one digit with carry'),
     57: ('crypto/rc4_enc', 'RC4 stream (OpenSSL RC4())'),
     58: ('crypto/rc4_skey', 'RC4 key setup; RC4_options() "rc4(idx,int)"'),
@@ -141,10 +141,14 @@ SYMBOLS = {
     0x442130: '_mpModMult', 0x4425d0: '_mpShortAdd', 0x446200: '_mpSetEqual',
     0x446230: '_mpShiftRight', 0x446360: '_mpDivide', 0x446830: '_spDivide',
     0x446a40: '_mpShortCmp', 0x446a90: '_spPseudoRand',
+    0x4421a0: '_mpMalloc', 0x4421f0: '_mpFree', 0x4423a0: '_mpMakeRandom',
     # runtime functions the C code calls
     0x448760: '__assert',       # libmingwex wassert.o
     0x449050: '__time32',       # import stub, msvcrt `time`
-    0x449090: '_srand', 0x4490c0: '_rand', 0x4490f0: '_memset',  # import stubs
+    # import stubs
+    0x449078: '_strlen', 0x449090: '_srand', 0x449098: '_sprintf', 0x4490c0: '_rand',
+    0x4490d8: '_putchar', 0x4490e0: '_printf', 0x4490f0: '_memset', 0x4490f8: '_memcpy',
+    0x449108: '_malloc', 0x449140: '_free', 0x4491a0: '_calloc',
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

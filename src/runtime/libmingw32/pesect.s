@@ -93,7 +93,7 @@ L_447900:
           sub ESP,28
           mov EDI,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP],EDI
-          call FUN_449078
+          call _strlen
           cmp EAX,8
           ja L_447925
           cmp WORD PTR [__ImageBase],23117

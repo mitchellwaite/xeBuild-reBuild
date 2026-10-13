@@ -173,7 +173,7 @@ L_433727:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_433730:
           mov DWORD PTR [ESP],ESI
-          call FUN_4490e0
+          call _printf
           jmp L_4336d1
           .byte 0x8d
           .byte 0xb6
@@ -198,7 +198,7 @@ L_433767:
 L_433770:
           mov DWORD PTR [ESP+4],OFFSET L_45c782
           mov DWORD PTR [ESP],OFFSET L_45c790
-          call FUN_4490e0
+          call _printf
           mov DWORD PTR [L_479aa0],1
           add ESP,28
           ret 

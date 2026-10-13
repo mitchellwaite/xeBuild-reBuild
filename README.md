@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **Started: 25 of the 26 BigDigits files build from their original C source** |
+| Move functions to C | **Started: all 26 BigDigits files build from their original C source** |
 | Fix bugs | Next |
 
 ## What the binary is
@@ -39,8 +39,8 @@ src/objects.txt          link order
 src/link.ld              link script (default i386pe order for the sections used)
 src/app/                 the application (25 files)
 src/crypto/              XeCrypt layer, AES (Gladman), RC4/SHA-1/MD5 (OpenSSL), DES, RSA
-src/bigdigits/           BigDigits bignum library, one function per file (.c, or .s
-                         where the C doesn't match yet), with its licence files
+src/bigdigits/           BigDigits bignum library (XeCrypt's bign/), all C, with
+                         its licence files
 src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
                          .idata/.CRT/.tls/.rsrc, ctor/dtor lists
 src/common_bss.s         COMMON (uninitialized global) block
@@ -188,7 +188,7 @@ XeCrypt's `bign/` is Dang Nguyen Duc's extension of David Ireland's BigDigits
 code looks like -O2; only -O3's loop-to-`memset` distribution reproduces
 mpSetZero, mpSetDigit and mpDivide.
 
-The 25 `.c` files plus `bigdigits.h` and `mcrypto.h` are copied unmodified
+The 26 `.c` files plus `bigdigits.h` and `mcrypto.h` are copied unmodified
 (LF line endings) from `bign/` in [cOzInABox/XeCrypt](https://github.com/cOzInABox/XeCrypt)
 at commit `7d619af`, and each one compiles to the reference object.
 `LICENSE-XeCrypt.txt` is that repo's licence: MIT, plus a BigDigits section
@@ -209,8 +209,9 @@ which the disassembly showed as a call.
 `build.sh` feeds each file through stdin behind `#line 1 "H:/x360sdk/.../bign/X.c"`
 so that `__FILE__` matches.
 
-Still assembly: **mpUtil** (alloc/free, `"%08x "` printing, string
-conversion), which looks like the repo's `bigdUtils.c`.
+`bigdUtils.c` (alloc/free, printing, random fill, string conversion) is
+the object formerly called mpUtil. gcc turns its `malloc` + `memset(0)` into
+`calloc`, as in the original.
 
 Licence note: BigDigits 1.0's own notice asks that the attribution text in
 `bigdigitsCopyright.txt` stay in distributed executables. `xeBuild.exe`

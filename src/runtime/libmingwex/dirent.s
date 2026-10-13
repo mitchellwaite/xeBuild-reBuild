@@ -58,7 +58,7 @@ L_448224:
           sub ESI,EDI
           lea EAX,DWORD PTR [ESI+563]
           mov DWORD PTR [ESP],EAX
-          call FUN_449108
+          call _malloc
           test EAX,EAX
           mov EBX,EAX
           je L_44833f
@@ -68,7 +68,7 @@ L_448224:
           mov DWORD PTR [ESP+8],EDX
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+28],EDX
-          call FUN_4490f8
+          call _memcpy
           cmp BYTE PTR [EBX+556],0
           je L_4482b4
           movzx EAX,BYTE PTR [EBX+ESI*1+555]
@@ -171,7 +171,7 @@ FUN_448360:
 L_4483b9:
           lea ESI,DWORD PTR [EBX+20]
           mov DWORD PTR [ESP],ESI
-          call FUN_449078
+          call _strlen
           mov WORD PTR [EBX+286],AX
           lea EAX,DWORD PTR [EBX+288]
           mov DWORD PTR [ESP+4],ESI
@@ -250,7 +250,7 @@ FUN_448470:
           mov ESI,EAX
 L_44849f:
           mov DWORD PTR [ESP],EBX
-          call FUN_449140
+          call _free
 L_4484a7:
           add ESP,20
           mov EAX,ESI

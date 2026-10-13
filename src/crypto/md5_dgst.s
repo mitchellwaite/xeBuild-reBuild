@@ -805,7 +805,7 @@ L_445805:
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_4490f8
+          jmp _memcpy
 L_445821:
           movzx ECX,WORD PTR [EDI+EAX*1-2]
           mov WORD PTR [EDX+EAX*1-2],CX

@@ -82,7 +82,7 @@ L_447680:
 L_447690:
           mov DWORD PTR [ESP+4],12
           mov DWORD PTR [ESP],1
-          call FUN_4491a0
+          call _calloc
           test EAX,EAX
           mov EBX,EAX
           je L_4476ed
@@ -180,7 +180,7 @@ L_447770:
           mov DWORD PTR [EDX+8],ECX
 L_447776:
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
           mov DWORD PTR [ESP],OFFSET L_479e58
           call DWORD PTR [LeaveCriticalSection]
           sub ESP,4
@@ -235,7 +235,7 @@ L_4477ed:
 L_447800:
           mov EBX,DWORD PTR [EAX+8]
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
           test EBX,EBX
           mov EAX,EBX
           jne L_447800

@@ -25,7 +25,7 @@ FUN_448820:
           mov BYTE PTR [ESP+31],DL
           je L_4488e0
           mov DWORD PTR [ESP],ESI
-          call FUN_449078
+          call _strlen
           cmp EAX,1
           mov EBP,EAX
           jle L_4488e0
@@ -47,13 +47,13 @@ L_44887c:
           jne L_4488e2
 L_44888d:
           mov DWORD PTR [ESP],EBP
-          call FUN_449108
+          call _malloc
           mov EDI,EAX
           lea EAX,DWORD PTR [EBP-1]
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4490f8
+          call _memcpy
           lea EAX,DWORD PTR [ESP+44]
           mov BYTE PTR [EDI+EBP*1-1],0
           mov DWORD PTR [ESP],EDI
@@ -63,7 +63,7 @@ L_44888d:
           mov EBP,EAX
           je L_4488f4
           mov DWORD PTR [ESP],EDI
-          call FUN_449140
+          call _free
           jmp L_4488f4
           .byte 0x90
 L_4488d0:

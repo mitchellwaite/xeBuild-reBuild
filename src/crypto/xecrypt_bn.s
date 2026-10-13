@@ -573,7 +573,7 @@ L_436f50:
           mov EBX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP],OFFSET L_45cbec
           mov ESI,DWORD PTR [ESP+48]
-          call FUN_4490e0
+          call _printf
           test EBX,EBX
           jg L_436fa9
           jmp L_436fc0
@@ -591,14 +591,14 @@ L_436f72:
           mov DWORD PTR [ESP+4],EAX
           movzx EDX,DL
           mov DWORD PTR [ESP+8],EDX
-          call FUN_4490e0
+          call _printf
           cmp EBX,EDI
           je L_436fc0
 L_436fa9:
           test EDI,3
           jne L_436f72
           mov DWORD PTR [ESP],OFFSET L_45cbf0
-          call FUN_4490e0
+          call _printf
           jmp L_436f72
           .byte 0x90
 L_436fc0:
@@ -607,7 +607,7 @@ L_436fc0:
           pop EBX
           pop ESI
           pop EDI
-          jmp FUN_4490d8
+          jmp _putchar
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -630,7 +630,7 @@ FUN_436fe0:
           mov EBX,DWORD PTR [ESP+36]
           lea ESI,DWORD PTR [EAX+EAX*1]
           mov DWORD PTR [ESP],ESI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           mov EDI,EAX
           je L_43702a
@@ -745,7 +745,7 @@ L_4370d0:
           mov ESI,DWORD PTR [ESP+32]
           lea EDI,DWORD PTR [ESI*4]
           mov DWORD PTR [ESP],EDI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           mov EBX,EAX
           je L_437101
@@ -1775,7 +1775,7 @@ FUN_4380f0:
           mov EBX,DWORD PTR [ESP+96]
           lea ESI,DWORD PTR [EBX*4]
           mov DWORD PTR [ESP],ESI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           je L_4381c0
           mov DWORD PTR [ESP+4],ESI
@@ -1810,23 +1810,23 @@ L_43817c:
           xor EBX,EBX
 L_43817e:
           mov DWORD PTR [ESP],EBP
-          call FUN_4421f0
+          call _mpFree
 L_438186:
           cmp BYTE PTR [ESP+43],0
           je L_438195
           mov DWORD PTR [ESP],ESI
-          call FUN_4421f0
+          call _mpFree
 L_438195:
           test EDI,EDI
           je L_4381a1
           mov DWORD PTR [ESP],EDI
-          call FUN_4421f0
+          call _mpFree
 L_4381a1:
           mov EAX,DWORD PTR [ESP+36]
           test EAX,EAX
           je L_4381b1
           mov DWORD PTR [ESP],EAX
-          call FUN_4421f0
+          call _mpFree
 L_4381b1:
           add ESP,60
           mov EAX,EBX
@@ -1934,7 +1934,7 @@ FUN_4382c0:
           lea EDI,DWORD PTR [ESI*8]
           lea EBP,DWORD PTR [ESI+ESI*1]
           mov DWORD PTR [ESP],EDI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           je L_438380
           mov DWORD PTR [ESP+4],EDI
@@ -1969,18 +1969,18 @@ L_43834b:
           xor ESI,ESI
 L_43834d:
           mov DWORD PTR [ESP],EBX
-          call FUN_4421f0
+          call _mpFree
 L_438355:
           cmp BYTE PTR [ESP+27],0
           je L_438364
           mov DWORD PTR [ESP],EDI
-          call FUN_4421f0
+          call _mpFree
 L_438364:
           mov EAX,DWORD PTR [ESP+20]
           test EAX,EAX
           je L_438374
           mov DWORD PTR [ESP],EAX
-          call FUN_4421f0
+          call _mpFree
 L_438374:
           add ESP,44
           mov EAX,ESI
@@ -2084,7 +2084,7 @@ FUN_438460:
           mov ESI,DWORD PTR [ESP+96]
           lea EDI,DWORD PTR [ESI*4]
           mov DWORD PTR [ESP],EDI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           je L_438530
           mov DWORD PTR [ESP+4],EDI
@@ -2125,17 +2125,17 @@ L_4384fb:
           xor ESI,ESI
 L_4384fd:
           mov DWORD PTR [ESP],EBX
-          call FUN_4421f0
+          call _mpFree
 L_438505:
           cmp BYTE PTR [ESP+39],0
           je L_438514
           mov DWORD PTR [ESP],EDI
-          call FUN_4421f0
+          call _mpFree
 L_438514:
           test EBP,EBP
           je L_438520
           mov DWORD PTR [ESP],EBP
-          call FUN_4421f0
+          call _mpFree
 L_438520:
           add ESP,60
           mov EAX,ESI
@@ -2427,7 +2427,7 @@ FUN_438860:
           mov ESI,DWORD PTR [ESP+76]
           lea EDI,DWORD PTR [ESI*4]
           mov DWORD PTR [ESP],EDI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           mov EBX,EAX
           je L_438892
@@ -2458,17 +2458,17 @@ L_4388cd:
           je L_4388d9
 L_4388d1:
           mov DWORD PTR [ESP],EBX
-          call FUN_4421f0
+          call _mpFree
 L_4388d9:
           test EDI,EDI
           je L_4388e5
           mov DWORD PTR [ESP],EDI
-          call FUN_4421f0
+          call _mpFree
 L_4388e5:
           test EBP,EBP
           je L_4388f1
           mov DWORD PTR [ESP],EBP
-          call FUN_4421f0
+          call _mpFree
 L_4388f1:
           mov EAX,DWORD PTR [ESP+24]
           add ESP,44
@@ -2562,7 +2562,7 @@ FUN_4389b0:
           mov ESI,DWORD PTR [ESP+76]
           lea EDI,DWORD PTR [ESI*4]
           mov DWORD PTR [ESP],EDI
-          call FUN_4421a0
+          call _mpMalloc
           test EAX,EAX
           mov EBX,EAX
           je L_4389e2
@@ -2593,17 +2593,17 @@ L_438a1d:
           je L_438a29
 L_438a21:
           mov DWORD PTR [ESP],EBX
-          call FUN_4421f0
+          call _mpFree
 L_438a29:
           test EDI,EDI
           je L_438a35
           mov DWORD PTR [ESP],EDI
-          call FUN_4421f0
+          call _mpFree
 L_438a35:
           test EBP,EBP
           je L_438a41
           mov DWORD PTR [ESP],EBP
-          call FUN_4421f0
+          call _mpFree
 L_438a41:
           mov EAX,DWORD PTR [ESP+24]
           add ESP,44

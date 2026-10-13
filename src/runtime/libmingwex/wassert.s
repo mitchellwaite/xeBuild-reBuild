@@ -20,7 +20,7 @@ FUN_448600:
           mov EBX,DWORD PTR [ESP+596]
           mov DWORD PTR [ESP],16384
           mov ESI,DWORD PTR [ESP+592]
-          call FUN_449108
+          call _malloc
           test EBX,EBX
           mov EBP,EAX
           je L_448710
@@ -114,16 +114,16 @@ __assert:
           mov EDI,DWORD PTR [ESP+72]
           mov DWORD PTR [ESP],ECX
           mov DWORD PTR [ESP+28],ECX
-          call FUN_449078
+          call _strlen
           lea EAX,DWORD PTR [EAX+EAX*1+2]
           mov DWORD PTR [ESP],EAX
-          call FUN_449108
+          call _malloc
           mov DWORD PTR [ESP],ESI
           mov EBX,EAX
-          call FUN_449078
+          call _strlen
           lea EAX,DWORD PTR [EAX+EAX*1+2]
           mov DWORD PTR [ESP],EAX
-          call FUN_449108
+          call _malloc
           mov ECX,DWORD PTR [ESP+28]
           mov EBP,EAX
           xor EAX,EAX
@@ -159,14 +159,14 @@ L_4487e2:
           mov DWORD PTR [ESP],EBX
           call FUN_448600
           mov DWORD PTR [ESP],EBX
-          call FUN_449140
+          call _free
           mov DWORD PTR [ESP+64],EBP
           add ESP,44
           pop EBX
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_449140
+          jmp _free
           .byte 0x90
           .byte 0x90
           .byte 0x90

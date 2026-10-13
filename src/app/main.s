@@ -22,7 +22,7 @@ L_40d010:
           sub ESP,24
           mov EBX,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP],OFFSET L_450884
-          call FUN_4490e0
+          call _printf
           cmp EBX,22
           ja L_40d090
           jmp DWORD PTR [EBX*4+L_450990]
@@ -96,7 +96,7 @@ FUN_40d120:
           jne L_40d173
 L_40d14c:
           mov DWORD PTR [ESP],EDX
-          call FUN_449140
+          call _free
 L_40d154:
           mov DWORD PTR [ESI*4+L_479ea0],0
           mov DWORD PTR [EDI*4+L_479ea8],0
@@ -1032,31 +1032,31 @@ L_4493b5:
           test EAX,EAX
           je L_4493d0
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
 L_4493d0:
           mov EAX,DWORD PTR [L_47a13c]
           test EAX,EAX
           je L_4493e1
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
 L_4493e1:
           mov EAX,DWORD PTR [L_47a144]
           test EAX,EAX
           je L_4493f2
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
 L_4493f2:
           mov EAX,DWORD PTR [L_47a140]
           test EAX,EAX
           je L_449403
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
 L_449403:
           mov EAX,DWORD PTR [L_47a148]
           test EAX,EAX
           je L_449414
           mov DWORD PTR [ESP],EAX
-          call FUN_449140
+          call _free
 L_449414:
           mov DWORD PTR [ESP+4],OFFSET L_44a4e0
           mov DWORD PTR [ESP],0

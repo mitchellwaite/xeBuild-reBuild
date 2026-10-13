@@ -54,7 +54,7 @@ bigdigits/mpShiftLeft
 bigdigits/spMultiply
 bigdigits/mpAdd
 bigdigits/mpModMult
-bigdigits/mpUtil
+bigdigits/bigdUtils
 bigdigits/mpShortAdd
 crypto/rc4_enc
 crypto/rc4_skey

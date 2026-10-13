@@ -268,7 +268,7 @@ L_401334:
           lea EAX,DWORD PTR [EAX*4+4]
           mov DWORD PTR [EBP-116],EAX
           mov DWORD PTR [ESP],EAX
-          call FUN_449108
+          call _malloc
           test ESI,ESI
           mov DWORD PTR [EBP-108],EAX
           mov EDI,DWORD PTR [L_46f014]
@@ -278,10 +278,10 @@ L_401334:
 L_401365:
           mov EAX,DWORD PTR [ESI+EBX*4]
           mov DWORD PTR [ESP],EAX
-          call FUN_449078
+          call _strlen
           lea EDI,DWORD PTR [EAX+1]
           mov DWORD PTR [ESP],EDI
-          call FUN_449108
+          call _malloc
           mov ECX,DWORD PTR [EBP-108]
           mov DWORD PTR [ECX+EBX*4],EAX
           mov ECX,DWORD PTR [ESI+EBX*4]
@@ -289,7 +289,7 @@ L_401365:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+4],ECX
-          call FUN_4490f8
+          call _memcpy
           cmp DWORD PTR [EBP-112],EBX
           jne L_401365
           mov EAX,DWORD PTR [EBP-116]
