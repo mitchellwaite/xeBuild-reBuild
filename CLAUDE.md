@@ -26,7 +26,9 @@ Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pi
 - Commit without asking whenever a milestone is verified: a coherent step
   (for example a component moved to C, or a pipeline change) is finished and
   `sh build.sh` reproduces the SHA256. Don't commit a build that doesn't match.
-  Don't push unless asked.
+  Push to `origin` after each commit.
+- Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
+  pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `re/stamp.py` (timestamp + checksum);
   every other difference must be fixed in the source, linker script or ddfix.
 - Only use the pinned toolchain in `tools/toolchain-4745/` (gcc 6.2.0, binutils
