@@ -1,6 +1,6 @@
 """Make ddisasm's GNU-syntax output re-assemble to the exe's original encodings.
 
-python re/ddfix.py <xeBuild.exe> <xeBuild.dbg.s> <out.s> [path/to/as.exe]
+python re/ddfix.py <xeBuild.exe> <xeBuild.dbg.s> <build/xeBuild.s> [path/to/as.exe]
 
 as.exe defaults to the binutils 2.27 in tools/toolchain-4745.
 
@@ -15,9 +15,10 @@ original encoding:
 Lines without symbol operands must also match byte for byte (e.g. ddisasm prints
 the 2-byte `66 90` padding as two `nop`s).  Repeats until nothing changes.
 
-Then prepare the source for linking with src/xeBuild.ld (see prepare_link).
+Also writes <out>.lines.json (lines + original addresses) for re/split.py, and
+prepares the single-file source for linking with re/single.ld (see prepare_link).
 """
-import collections, re, struct, subprocess, sys, os, tempfile
+import collections, json, re, struct, subprocess, sys, os, tempfile
 
 ADDR = re.compile(r'^\s+([0-9a-f]+):\s*(.*)$')
 SYMREF = re.compile(r'(?<![\w.$])(FUN_[0-9a-f]+|\.L_[0-9a-f]+|[A-Za-z_.$][\w.$@]*)')
@@ -315,24 +316,42 @@ def symbolize(lines, addr, img):
     print('symbolized: ' + ', '.join('%s %d' % kv for kv in sorted(counts.items())))
 
 
-def prepare_link(lines, addr, img):
-    """Make the single-object source link into the original image with src/xeBuild.ld.
-
-    * section directives get the exe's flags and alignment (`.eh_fram` is the
-      8-char truncation of `.eh_frame`); `.align`s above that alignment are
-      dropped (layout is explicit, so they were no-ops);
-    * gas pads a section's size to its alignment, but the exe's sections end on
-      4-byte boundaries (the original last object in each had 4-byte alignment),
-      so the bytes after the last aligned boundary move to `<name>$zz`;
-    * imports become labels on their IAT slots; ld fills the IAT and TLS data
-      directories from `__IAT_start__`/`__IAT_end__` and `__tls_used`.
-    """
+def add_link_labels(lines, addr, img):
+    """Global labels the link needs: imports on their IAT slots (ddisasm leaves
+    them undefined), `__IAT_start__`/`__IAT_end__` and `__tls_used` (ld fills
+    the IAT and TLS data directories from them) and the entry point."""
     labels = {va: [name] for va, name in imports(img).items()}
     iat, iatsz = img.dirs[12]
     tls = img.dirs[9][0]
     for va, name in ((img.base + iat, '__IAT_start__'), (img.base + iat + iatsz, '__IAT_end__'),
                      (img.base + tls, '__tls_used')):
         labels.setdefault(va, []).append(name)
+    out, oaddr = [], []
+    for line, a in zip(lines, addr):
+        if line.strip() == '__EntryPoint:':
+            out.append('.globl __EntryPoint')
+            oaddr.append(None)
+        for l in labels.pop(a, []) if a is not None else []:
+            out += ['.globl ' + l, l + ':']
+            oaddr += [None, None]
+        out.append(line)
+        oaddr.append(a)
+    if labels:
+        sys.exit('add_link_labels: unplaced %s' % {hex(k): v for k, v in labels.items()})
+    lines[:], addr[:] = out, oaddr
+
+
+def prepare_link(lines, addr, img):
+    """Make the single-object source link into the original image with re/single.ld.
+
+    * section directives get the exe's flags and alignment (`.eh_fram` is the
+      8-char truncation of `.eh_frame`); `.align`s above that alignment are
+      dropped (layout is explicit, so they were no-ops);
+    * gas pads a section's size to its alignment, but the exe's sections end on
+      4-byte boundaries (the original last object in each had 4-byte alignment),
+      so the bytes after the last aligned boundary move to `<name>$zz`.
+    """
+    labels = {}
     cuts = {va + vsz - vsz % img.align(n): n for n, va, vsz, _, _ in img.secs if vsz % img.align(n)}
     out, sec_align, done, bss_tail = [], 0, set(), False
     for line, a in zip(lines, addr):
@@ -350,8 +369,6 @@ def prepare_link(lines, addr, img):
         m = ALIGN.match(line)
         if m and int(m.group(1)) > sec_align:
             continue
-        if line.strip() == '__EntryPoint:':
-            out.append('.globl __EntryPoint')
         if a is not None:
             z = ZERO.match(line)
             end = a + (int(z.group(2)) if z else 1)
@@ -371,15 +388,12 @@ def prepare_link(lines, addr, img):
                 out.append('.section %s$zz,"%s"' % (cuts[cut], SECTIONS[cuts[cut]][1]))
                 out.append('.p2align 2')
             if bss_tail:
-                if not ZERO.match(line) or a in labels:
+                if not ZERO.match(line):
                     sys.exit('prepare_link: .bss tail holds more than zeros at %x' % a)
                 continue
-            for l in labels.pop(a, []):
-                out += ['.globl ' + l, l + ':']
         out.append(line)
-    if labels or len(done) != len(cuts):
-        sys.exit('prepare_link: unplaced labels %s / cuts %s' % (
-            {hex(k): v for k, v in labels.items()}, [hex(c) for c in cuts if c not in done]))
+    if len(done) != len(cuts):
+        sys.exit('prepare_link: unplaced cuts %s' % [hex(c) for c in cuts if c not in done])
     return out
 
 
@@ -422,6 +436,9 @@ def main():
         print('UNFIXED %x (orig %d bytes, gas %d): %s' % (addr[i], olen[i], len(emitted.get(i + 1, b'')), t))
     print('pinned %d lines, %d unfixable' % (pinned, len(unfixable)))
     symbolize(lines, addr, img)
+    add_link_labels(lines, addr, img)
+    # address-annotated lines for re/split.py
+    json.dump({'lines': lines, 'addr': addr}, open(os.path.splitext(out)[0] + '.lines.json', 'w'))
     lines = prepare_link(lines, addr, img)
     open(out, 'w', encoding='utf-8', newline='\n').write('\n'.join(lines) + '\n')
 

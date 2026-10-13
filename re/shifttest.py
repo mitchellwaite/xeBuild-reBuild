@@ -1,6 +1,6 @@
 """Relink src/xeBuild.s with everything moved and check every pointer followed.
 
-python re/shifttest.py <xeBuild.exe> <src/xeBuild.s> <build_dir>
+python re/shifttest.py <xeBuild.exe> <build/xeBuild.s> <build_dir>
 
 Inserts 16 bytes before every function (ahead of its `.align 16`) and before
 every data label in .data/.rdata/.bss, links build_dir/shift.exe with symbols,
@@ -53,7 +53,7 @@ def main():
     s, o, x = (os.path.join(bd, 'shift' + e) for e in ('.s', '.o', '.exe'))
     pad_source(src, s)
     run(os.path.join(TC, 'as.exe'), '--32', '-L', s, '-o', o)
-    ld = os.path.join(os.path.dirname(src), 'xeBuild.ld')
+    ld = os.path.join(os.path.dirname(__file__), 'single.ld')
     run(os.path.join(TC, 'ld.exe'), '-m', 'i386pe', '-T', ld, '--image-base', '0x400000',
         '-e', '__EntryPoint', '--subsystem', 'console', '-o', x, o)
 
