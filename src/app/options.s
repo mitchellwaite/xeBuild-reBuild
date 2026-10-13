@@ -2454,7 +2454,7 @@ L_425a9a:
           cmp BYTE PTR [L_479f49],255
           jne L_425b73
           mov DWORD PTR [ESP],OFFSET L_4587de
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           mov EBX,EAX
           je L_425b73
@@ -2560,7 +2560,7 @@ L_425c5a:
           ret 
 L_425c60:
           mov DWORD PTR [ESP],OFFSET L_4586d4
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           mov EBX,EAX
           je L_42698e
@@ -2612,7 +2612,7 @@ L_425d40:
           test AL,4
           je L_425bba
           mov DWORD PTR [ESP],OFFSET L_458703
-          call FUN_40aa10
+          call _getIniValue
           xor EDX,EDX
           test EAX,EAX
           mov EBX,EAX
@@ -2637,7 +2637,7 @@ L_425da3:
           .byte 0x0
 L_425db0:
           mov DWORD PTR [ESP],OFFSET L_458ade
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           je L_425c5a
           mov DWORD PTR [ESP+8],EAX
@@ -2650,7 +2650,7 @@ L_425db0:
           ret 
 L_425de2:
           mov DWORD PTR [ESP],OFFSET L_45889a
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           je L_425c4d
           mov DWORD PTR [ESP],EAX
@@ -3153,7 +3153,7 @@ L_4266af:
           .byte 0x0
 L_426730:
           mov DWORD PTR [ESP],OFFSET L_458734
-          call FUN_40aa10
+          call _getIniValue
           xor EDX,EDX
           test EAX,EAX
           mov EBX,EAX
@@ -3937,7 +3937,7 @@ FUN_427340:
           push EBX
           sub ESP,1580
           mov DWORD PTR [ESP],OFFSET L_458c9c
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           je L_42748e
           mov DWORD PTR [ESP],EAX

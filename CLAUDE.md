@@ -17,9 +17,15 @@ Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pi
   the per-directory flags and original `__FILE__` path set there. When moving
   an object to C, put names for the functions it shares with `.s` files in
   `split.py`'s `SYMBOLS` and regenerate. Keep third-party licence notices intact.
-- To match a C file before wiring it in, compare its `.text` against
-  `build/obj/<obj>.o` from the asm build (objdump without addresses), then run
-  the full build.
+- Move big objects to C one function at a time (mixed objects, README): add
+  the function's address to `split.py`'s `C_FUNCS` and its name to `SYMBOLS`,
+  write it in `src/<obj>.c`, regenerate. Leave hard functions in asm and come
+  back to them later. C functions in a mixed object can't emit data (string
+  literals, switch tables); use `extern` names for the `.s`'s data.
+- To match a function before a full build: `python re/fncmp.py src/<obj>.c
+  <name> [flags]` (MATCH or a diff against the original). For a whole C
+  file, compare its `.text` against `build/obj/<obj>.o` from the asm build
+  (objdump without addresses). Then run the full build.
 - File names and boundaries live in `re/split.py` (`NAMES`, with the evidence
   for each). Data boundaries are inferred; keep 4-byte alignment of every
   section piece (gas pads sections to 4).

@@ -1028,7 +1028,7 @@ FUN_4492c0:
 L_4493b5:
           call FUN_40cfa0
           call FUN_40fb10
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           test EAX,EAX
           je L_4493d0
           mov DWORD PTR [ESP],EAX

@@ -208,10 +208,8 @@
 .globl L_4c9186
 .globl L_4c9360
 .globl L_4c9364
-.globl L_4c93a4
 .globl L_4c93a8
 .globl L_4c97a8
-.globl L_4c97ac
 .globl L_4c97c0
 .globl L_4c97d6
 .globl L_4c97d8
@@ -268,6 +266,8 @@
 .globl L_50ec90
 .globl L_50ec94
 .globl _XeCryptRandomState
+.globl _iniBuf
+.globl _iniSize
 
 .bss
 .p2align 2
@@ -679,13 +679,13 @@ L_4c9360:
           .zero 4
 L_4c9364:
           .zero 64
-L_4c93a4:
+_iniBuf:
           .zero 4
 L_4c93a8:
           .zero 1024
 L_4c97a8:
           .zero 4
-L_4c97ac:
+_iniSize:
           .zero 20
 L_4c97c0:
           .zero 22

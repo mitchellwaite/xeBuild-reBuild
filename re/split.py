@@ -5,7 +5,9 @@ python re/split.py <xeBuild.exe> <build/xeBuild.lines.json> <src_dir>
 Writes <src_dir>/<group>/<name>.s for every object, <src_dir>/objects.txt (link
 order) and prints the data-assignment summary.  Objects that have a C source
 (<src_dir>/<group>/<name>.c) get no .s; functions they share with the .s files
-are named by SYMBOLS.  How the pieces are found:
+are named by SYMBOLS.  Mixed objects, with some functions in C (C_FUNCS), get
+both: the .s keeps everything else and marks where each C function goes.  How
+the pieces are found:
 
   .text      exact: every gcc object has its own CIE in .eh_frame, in link
              order, and its FDEs list its functions (units.py).  Objects
@@ -196,6 +198,8 @@ SYMBOLS = {
     0x433570: '_log_set_verbose', 0x4335a0: '_log_verbose_flag', 0x433600: '_log_get_verbose',
     0x433610: '_log_set_name', 0x433690: '_log_printf', 0x433740: '_log_init',
     0x4337a0: '_log_finish',
+    # app/filelist_ini (src/app/filelist_ini.c, mixed); names are ours
+    0x40aa10: '_getIniValue', 0x4c93a4: '_iniBuf', 0x4c97ac: '_iniSize',
     # app/fileutil (src/app/fileutil.c); the author's names where his tools'
     # util.c has the function (cOzInABox/XeBuild tools/*/util.c), else ours
     0x420a90: '_getConsoleTypeStr', 0x420ab0: '_getBeU16', 0x420ad0: '_getBeU32',
@@ -241,6 +245,13 @@ SYMBOLS = {
     0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',
     # IAT slots that dllimport declarations reference directly
     0x50f2f0: '__imp___errno',
+}
+# Functions already in C inside objects that are otherwise still assembly
+# (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
+# build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
+# ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
+C_FUNCS = {
+    0x40aa10,   # app/filelist_ini getIniValue
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
@@ -481,6 +492,18 @@ def main():
         bad = sum(1 for k in range(len(atoms_s)) if refset_s[k] and participants[assign[k]] not in refset_s[k])
         summary[s] = (len(atoms_s), len(runs), bad)
 
+    # ---- functions in C (mixed objects): [start, end) -> marker
+    fde_len = {a: n for _, f in us for a, n in f}
+    cranges = sorted((a, a + fde_len[a]) for a in C_FUNCS)
+    cstarts = [a for a, _ in cranges]
+    mixed = {text_owner(a) for a in C_FUNCS}
+    def cfunc_at(i):
+        if secof[i] != '.text' or pos[i] is None:
+            return None
+        k = bisect.bisect_right(cstarts, pos[i]) - 1
+        return cranges[k][0] if k >= 0 and pos[i] < cranges[k][1] else None
+    marked, cfunc_labels = set(), {}
+
     # ---- distribute lines to pieces
     by_sec = collections.defaultdict(list)
     for pc in pieces:
@@ -502,6 +525,15 @@ def main():
         pc = lst[k]
         if pos[i] >= pc[2] and not (pos[i] == pc[2] == sec[s][1]):
             sys.exit('line %d %r at %x not in a piece of %s' % (i, st, pos[i], s))
+        cf = cfunc_at(i)
+        if cf is not None:
+            if cf not in marked:
+                marked.add(cf)
+                piece_lines[pc].append('#@C ' + SYMBOLS[cf])
+            m = LABEL.match(st)
+            if m and m.group(1) != 'FUN_%x' % cf:
+                cfunc_labels[m.group(1)] = cf
+            continue
         z = ZERO.match(l)
         if z and A[i] is not None and A[i] + int(z.group(2)) > pc[2]:
             # .zero straddling a piece boundary: split it
@@ -519,6 +551,14 @@ def main():
     rename = re.compile(r'(?<![\w.$])(?:FUN|L)_(%s)(?![\w$])' % '|'.join('%x' % a for a in SYMBOLS))
     for pc, ls in piece_lines.items():
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
+
+    # gcc's labels inside a C function are its own; nothing else may use ours
+    for pc, ls in piece_lines.items():
+        for l in ls:
+            for t in SYM.findall(l.split('#')[0]):
+                if t in cfunc_labels:
+                    sys.exit('%s (inside C function at %x) is referenced from %s: %r'
+                             % (t, cfunc_labels[t], pc[3], l))
 
     # ---- globals: labels referenced from another file
     defined = {}
@@ -547,10 +587,14 @@ def main():
         mine = [pc for pc in pieces if pc[3] == f and piece_lines[pc]]
         if not mine:
             continue
-        if os.path.exists(os.path.join(outdir, f + '.c')):
+        if os.path.exists(os.path.join(outdir, f + '.c')) and f not in mixed:
             written.append(f)   # rebuilt from C source; keep it in the link order
             continue
-        out =['# %s.s -- %s' % (f, info[f]), '#', '# original placement:']
+        out =['# %s.s -- %s' % (f, info[f]), '#']
+        if f in mixed:
+            out += ['# mixed: `#@C name` lines are functions from %s.c (re/splice.py)' %
+                    os.path.basename(f), '#']
+        out.append('# original placement:')
         for pc in sorted(mine, key=lambda x: (x[0], x[1])):
             out.append('#   %-14s %08x-%08x' % (pc[4], pc[1], pc[2]))
         out += ['', '.intel_syntax noprefix']

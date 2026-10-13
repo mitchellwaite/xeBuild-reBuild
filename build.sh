@@ -26,8 +26,17 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
              cflags="-O3" ;;
       *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
     esac
-    { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
-      "$TC/gcc.exe" -c $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.o"
+    if [ -f "src/$f.s" ]; then
+      # mixed object: splice the C functions into the .s (re/splice.py)
+      { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
+        "$TC/gcc.exe" -S $cflags -fno-asynchronous-unwind-tables \
+          -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
+      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s"
+      "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
+    else
+      { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
+        "$TC/gcc.exe" -c $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.o"
+    fi
   else
     "$TC/as.exe" --32 "src/$f.s" -o "$OBJ/$f.o"
   fi

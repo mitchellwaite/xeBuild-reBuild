@@ -526,7 +526,7 @@ L_4193c1:
           je L_419ccd
 L_4193de:
           call FUN_40aef0
-          mov EAX,DWORD PTR [L_4c97ac]
+          mov EAX,DWORD PTR [_iniSize]
           test EAX,EAX
           jne L_419c80
 L_4193f0:
@@ -891,7 +891,7 @@ L_4199e5:
           je L_419d62
 L_419a86:
           mov DWORD PTR [ESP],OFFSET L_45665d
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           mov EBX,EAX
           je L_419417
@@ -970,7 +970,7 @@ L_419b25:
           je L_41a018
 L_419bd8:
           mov DWORD PTR [ESP],OFFSET L_456656
-          call FUN_40aa10
+          call _getIniValue
           test EAX,EAX
           mov EBX,EAX
           je L_41940a
@@ -997,7 +997,7 @@ L_419c3c:
           test EAX,EAX
           jne L_4193fd
           mov DWORD PTR [ESP],OFFSET L_45647b
-          call FUN_40aa10
+          call _getIniValue
           mov DWORD PTR [ESP],EAX
           call FUN_424170
           test EAX,EAX

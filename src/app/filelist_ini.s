@@ -1,5 +1,7 @@
 # app/filelist_ini.s -- "parsing ini at", file list ini labels
 #
+# mixed: `#@C name` lines are functions from filelist_ini.c (re/splice.py)
+#
 # original placement:
 #   .data          0044a020-0044a480
 #   .eh_frame      00466040-004663b0
@@ -9,7 +11,6 @@
 
 .intel_syntax noprefix
 .globl FUN_409430
-.globl FUN_40aa10
 .globl FUN_40aad0
 .globl FUN_40abf0
 .globl FUN_40acf0
@@ -2165,85 +2166,7 @@ L_40a9fb:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40aa10:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          xor EBX,EBX
-          sub ESP,44
-          mov ESI,DWORD PTR [L_4c97ac]
-          mov EBP,DWORD PTR [ESP+64]
-          test ESI,ESI
-          je L_40aab7
-          mov DWORD PTR [ESP],EBP
-          mov EDI,DWORD PTR [L_4c93a4]
-          call _strlen
-          sub ESI,EAX
-          test ESI,ESI
-          mov DWORD PTR [ESP+28],ESI
-          jle L_40aab7
-          movsx ECX,BYTE PTR [EBP]
-          lea ESI,DWORD PTR [EAX+1]
-          mov DWORD PTR [ESP+16],ESI
-          mov DWORD PTR [ESP+24],ECX
-          lea ECX,DWORD PTR [EDI+EAX*1]
-          mov DWORD PTR [ESP+20],ECX
-          xor ECX,ECX
-          jmp L_40aa6e
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_40aa60:
-          add ECX,1
-          add DWORD PTR [ESP+20],1
-          cmp ECX,DWORD PTR [ESP+28]
-          je L_40aac1
-L_40aa6e:
-          movzx EDX,BYTE PTR [EDI+ECX*1]
-          cmp EDX,DWORD PTR [ESP+24]
-          jne L_40aa60
-          xor EDX,EDX
-          test EAX,EAX
-          jg L_40aa93
-          jmp L_40aa9a
-L_40aa80:
-          lea EBX,DWORD PTR [EDI+EDX*1]
-          movzx ESI,BYTE PTR [EBX+ECX*1]
-          movsx EBX,BYTE PTR [EBP+EDX*1]
-          cmp ESI,EBX
-          cmovne EDX,DWORD PTR [ESP+16]
-L_40aa93:
-          add EDX,1
-          cmp EAX,EDX
-          jg L_40aa80
-L_40aa9a:
-          cmp EAX,EDX
-          jne L_40aa60
-          mov ESI,DWORD PTR [ESP+20]
-          lea EDX,DWORD PTR [EAX+ECX*1]
-          cmp BYTE PTR [ESI],0
-          je L_40aa60
-          cmp EDX,-1
-          mov EBX,0
-          cmovne EBX,DWORD PTR [ESP+20]
-L_40aab7:
-          add ESP,44
-          mov EAX,EBX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40aac1:
-          add ESP,44
-          xor EBX,EBX
-          mov EAX,EBX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _getIniValue
           .byte 0x8d
           .byte 0x76
           .byte 0x0
@@ -2253,7 +2176,7 @@ FUN_40aad0:
           push ESI
           push EBX
           sub ESP,60
-          mov EBX,DWORD PTR [L_4c97ac]
+          mov EBX,DWORD PTR [_iniSize]
           mov EDI,DWORD PTR [ESP+80]
           test EBX,EBX
           jne L_40aaf1
@@ -2267,7 +2190,7 @@ L_40aae9:
           pop EBP
           ret 
 L_40aaf1:
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EDI
           mov ESI,EAX
           mov DWORD PTR [ESP+24],EAX
@@ -2353,11 +2276,11 @@ FUN_40abf0:
           push ESI
           push EBX
           sub ESP,60
-          mov EBX,DWORD PTR [L_4c97ac]
+          mov EBX,DWORD PTR [_iniSize]
           mov EDI,DWORD PTR [ESP+80]
           test EBX,EBX
           je L_40ace0
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EDI
           mov ESI,EAX
           mov DWORD PTR [ESP+24],EAX
@@ -2446,7 +2369,7 @@ FUN_40acf0:
           push ESI
           push EBX
           sub ESP,60
-          mov EBX,DWORD PTR [L_4c97ac]
+          mov EBX,DWORD PTR [_iniSize]
           mov EAX,DWORD PTR [ESP+84]
           mov EDI,DWORD PTR [ESP+80]
           test EBX,EBX
@@ -2468,7 +2391,7 @@ L_40ad0d:
           .byte 0x0
           .byte 0x0
 L_40ad20:
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EDI
           mov ESI,EAX
           mov DWORD PTR [ESP+20],EAX
@@ -2551,11 +2474,11 @@ FUN_40ade0:
           push ESI
           push EBX
           sub ESP,60
-          mov EBX,DWORD PTR [L_4c97ac]
+          mov EBX,DWORD PTR [_iniSize]
           mov EDI,DWORD PTR [ESP+80]
           test EBX,EBX
           je L_40aee0
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EDI
           mov ESI,EAX
           mov DWORD PTR [ESP+24],EAX
@@ -2698,11 +2621,11 @@ L_40af0f:
           mov DWORD PTR [ESP],EAX
           call _getFileSize
           lea ESI,DWORD PTR [EAX+1]
-          mov DWORD PTR [L_4c97ac],EAX
+          mov DWORD PTR [_iniSize],EAX
           mov DWORD PTR [ESP],ESI
           call _malloc
           test EAX,EAX
-          mov DWORD PTR [L_4c93a4],EAX
+          mov DWORD PTR [_iniBuf],EAX
           je L_40b104
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],255
@@ -2712,11 +2635,11 @@ L_40af0f:
           mov DWORD PTR [ESP+4],OFFSET L_4502cd
           mov DWORD PTR [ESP],1
           call _log_printf
-          mov EAX,DWORD PTR [L_4c97ac]
+          mov EAX,DWORD PTR [_iniSize]
           mov DWORD PTR [ESP+12],EDI
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EAX
           call _fread
           mov DWORD PTR [ESP],EDI
@@ -2725,27 +2648,27 @@ L_40af0f:
           mov DWORD PTR [ESP+4],OFFSET L_4502dd
           mov DWORD PTR [ESP],1
           call _log_printf
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           cmp BYTE PTR [EAX],255
           je L_40b093
           cmp BYTE PTR [EAX+1],255
           je L_40b093
-          mov EDX,DWORD PTR [L_4c97ac]
+          mov EDX,DWORD PTR [_iniSize]
           mov BYTE PTR [EAX+EDX*1],255
           mov DWORD PTR [ESP+4],OFFSET L_450347
           mov DWORD PTR [ESP],1
           call _log_printf
-          mov EAX,DWORD PTR [L_4c97ac]
+          mov EAX,DWORD PTR [_iniSize]
           mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EAX
           call FUN_408fe0
           mov DWORD PTR [ESP+4],OFFSET L_4502dd
           mov DWORD PTR [ESP],1
-          mov DWORD PTR [L_4c97ac],EAX
+          mov DWORD PTR [_iniSize],EAX
           call _log_printf
-          mov EAX,DWORD PTR [L_4c97ac]
-          mov EDX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniSize]
+          mov EDX,DWORD PTR [_iniBuf]
           mov BYTE PTR [EDX+EAX*1],0
           mov EAX,1
 L_40b089:
@@ -2759,11 +2682,11 @@ L_40b093:
           mov DWORD PTR [ESP+4],OFFSET L_4502e4
           mov DWORD PTR [ESP],0
           call _log_printf
-          mov EAX,DWORD PTR [L_4c93a4]
+          mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EAX
           call _free
-          mov DWORD PTR [L_4c93a4],0
-          mov DWORD PTR [L_4c97ac],0
+          mov DWORD PTR [_iniBuf],0
+          mov DWORD PTR [_iniSize],0
           add ESP,1040
           pop EBX
           xor EAX,EAX
@@ -4257,7 +4180,7 @@ L_450400:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40aa10 - .
+          .long _getIniValue - .
           .byte 0xbd
           .byte 0x0
           .byte 0x0

@@ -88,7 +88,8 @@ sh build.sh
 
 Builds every object in `src/objects.txt`: `src/<obj>.c` with gcc 6.2.0 if it
 exists (flags and original `__FILE__` path per directory in `build.sh`), otherwise
-`src/<obj>.s` with binutils 2.27. Links them with
+`src/<obj>.s` with binutils 2.27; with both, the `.c`'s functions are spliced
+into the `.s` (mixed objects, below). Links them with
 `ld -T src/link.ld --no-insert-timestamp -s`, writes the original link time
 (`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
 take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA256.
@@ -115,6 +116,47 @@ use it even if no other `.s` does; that includes import stubs, libgcc's
 (`__imp___errno`). `END_POINTERS` rewrites one-past-the-end pointers that
 ddisasm symbolized as the following label (console_hdd's `L_45c644+16` had
 pulled log's strings into console_hdd).
+
+#### Mixed objects: moving a file to C one function at a time
+
+An object doesn't have to move to C all at once. Functions listed in
+`split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.
+The `.s` is still generated, with a `#@C _name` marker in place of each such
+function's FDE range. `build.sh` sees both files, compiles the C with `-S
+-fno-asynchronous-unwind-tables`, and `re/splice.py` puts each function's
+code in place of its marker, between `.att_syntax`/`.intel_syntax`. Data,
+the ident and `.eh_frame` (including the C functions' FDEs) stay in the `.s`.
+The padding after each function is already in the `.s`, so gcc's `.p2align`
+does nothing.
+
+- Why not a C file with the rest as top-level `__asm__`: gcc 6 puts all
+  top-level asm before every function. `-fno-toplevel-reorder` keeps the
+  order, but it also changes the order functions are compiled in, which
+  changed `readFileIn`. `-fno-asynchronous-unwind-tables` changes no code in
+  the app's C files.
+- The C functions can't emit data (string literals, jump tables,
+  statics); `splice.py` refuses. Declare the `.s`'s data `extern` under
+  `SYMBOLS` names instead (`iniBuf`, `iniSize`). Literals and switches move
+  when the whole object goes to C.
+- `split.py` refuses a C function whose internal labels the `.s` still
+  uses (e.g. an asm jump table that points into it).
+- A function matched alongside asm neighbours is only provisionally matched.
+  gcc can't inline into, or know the registers used by, asm functions, so
+  matched code can change when its neighbours become C. Re-check it then.
+- When every function is in C, move the data into the `.c`, drop the
+  object's `C_FUNCS` entries and let `split.py` skip the `.s` as usual.
+
+`python re/fncmp.py src/<obj>.c <name> [gcc flags]` diffs one function's
+gcc output against the original instructions (`build/xeBuild.lines.json`),
+with ddisasm's and gcc's spellings normalised. It ignores padding and
+encodings, so `sh build.sh` has the last word. It reports MATCH for every
+function already in C. Its default flags are `-O3`; give fileutil's
+`--param` or crypto's `-Isrc/crypto` explicitly.
+
+Mixed so far: `app/filelist_ini` (`getIniValue`, with a `findInst`-style
+`findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
+helper). The slot order needed `key[0] == buf[i]`, the reverse of
+`findInst`.
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 
