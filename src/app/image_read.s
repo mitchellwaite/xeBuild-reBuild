@@ -2674,7 +2674,7 @@ L_4159ce:
           mov EAX,DWORD PTR [_g479f4c]
           add EAX,ESI
           mov DWORD PTR [ESP],EAX
-          call FUN_40c210
+          call _smcConfigOk
           test EAX,EAX
           je L_4159c0
           mov DWORD PTR [ESP],1024

@@ -1449,7 +1449,7 @@ L_41bc60:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+96]
           mov DWORD PTR [ESP],EAX
-          call FUN_40bd80
+          call _smcCheck
           mov EDX,DWORD PTR [L_479ea8]
           cmp EDX,1
           je L_41bde0
@@ -1568,7 +1568,7 @@ L_41be11:
           mov EAX,DWORD PTR [ESP+96]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_40c020
+          call _smcPatch
           jmp L_41bcc7
 L_41be2a:
           cmp EDX,3

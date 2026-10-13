@@ -233,6 +233,9 @@ SYMBOLS = {
     0x40e520: '_kvVerifySig', 0x40e5a0: '_cbVerifySig', 0x40e620: '_blVerifySig',
     0x40e690: '_blSign', 0x40e7b0: '_blCheckHash', 0x40e810: '_blUpdateHash',
     0x40e8a0: '_blHashAndSign', 0x44a540: '_romSalts',
+    # app/smc (src/app/smc.c); names are ours
+    0x40bd30: '_smcFindResetLimit', 0x40bd80: '_smcCheck', 0x40c020: '_smcPatch',
+    0x40c210: '_smcConfigOk', 0x44a480: '_knownSmcs',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

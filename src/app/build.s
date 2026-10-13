@@ -2540,7 +2540,7 @@ L_429865:
           ja L_4299b0
           lea EAX,DWORD PTR [EDI+EBX*1]
           mov DWORD PTR [ESP],EAX
-          call FUN_40c210
+          call _smcConfigOk
           cmp EAX,1
           jne L_429863
 L_429883:
@@ -2635,7 +2635,7 @@ L_4299c2:
           ja L_4299e1
           lea EAX,DWORD PTR [EDI+EBX*1]
           mov DWORD PTR [ESP],EAX
-          call FUN_40c210
+          call _smcConfigOk
           cmp EAX,1
           jne L_4299c0
           jmp L_429883

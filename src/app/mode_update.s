@@ -727,7 +727,7 @@ L_403b60:
           call _log_printf
           mov EAX,DWORD PTR [L_47a0fc]
           mov DWORD PTR [ESP],EAX
-          call FUN_40c210
+          call _smcConfigOk
           test EAX,EAX
           je L_403b36
           mov DWORD PTR [ESP+4],OFFSET L_44d171
