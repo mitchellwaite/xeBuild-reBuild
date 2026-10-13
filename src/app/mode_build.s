@@ -8,8 +8,8 @@
 
 .intel_syntax noprefix
 .globl FUN_418a10
-.globl FUN_418ee0
 .globl FUN_419230
+.globl _loadKeyFile
 
 .text
 .p2align 4
@@ -206,7 +206,7 @@ L_418eb4:
 L_418ed7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_418ee0:
+_loadKeyFile:
           push EBP
           push EDI
           mov ECX,255
@@ -900,7 +900,7 @@ L_419a86:
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EBX
-          call FUN_41b740
+          call _checkKeys
           test EAX,EAX
           je L_41a5a4
           mov DWORD PTR [ESP],EBX
@@ -1055,7 +1055,7 @@ L_419d62:
           lea EAX,DWORD PTR [ESP+88]
           mov BYTE PTR [ESP+120],0
           mov DWORD PTR [ESP],EAX
-          call FUN_41b740
+          call _checkKeys
           test EAX,EAX
           jne L_419417
           jmp L_419a86
@@ -1637,7 +1637,7 @@ L_41a648:
           cmp EAX,32
           jne L_41a70d
           mov DWORD PTR [ESP],EDI
-          call FUN_41b740
+          call _checkKeys
           test EAX,EAX
           je L_41a0b1
           mov EAX,DWORD PTR [ESI]
@@ -2322,7 +2322,7 @@ L_45665d:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_418ee0 - .
+          .long _loadKeyFile - .
           .byte 0xe4
           .byte 0x0
           .byte 0x0

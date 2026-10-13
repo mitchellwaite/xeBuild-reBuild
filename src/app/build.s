@@ -1012,7 +1012,7 @@ L_4281b2:
           mov DWORD PTR [ESP+8],EAX
           lea EAX,DWORD PTR [EDI+1036]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40c7b0
+          call _suGetFile
           test EAX,EAX
           movzx EDX,BYTE PTR [ESP+44]
           je L_4280f2
@@ -3559,7 +3559,7 @@ L_42a6a0:
           lea EAX,DWORD PTR [EBX+4]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40c700
+          call _suGetCG
           test EAX,EAX
           je L_42a8d9
           mov EAX,DWORD PTR [EBX-12]
@@ -3866,7 +3866,7 @@ L_42abb0:
           lea EAX,DWORD PTR [EBX+4]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40c650
+          call _suGetCF
           test EAX,EAX
           je L_42a8d9
 L_42abc7:
@@ -4143,7 +4143,7 @@ L_42afb0:
           lea EAX,DWORD PTR [EBX+4]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40c700
+          call _suGetCG
           test EAX,EAX
           je L_42b299
           nop
@@ -4318,7 +4318,7 @@ L_42b27e:
           lea EAX,DWORD PTR [EBX+4]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40c650
+          call _suGetCF
           test EAX,EAX
           jne L_42b020
 L_42b299:
@@ -8782,7 +8782,7 @@ L_42efee:
           add EAX,OFFSET L_4bc150+12
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP+8],EDX
-          call FUN_40c7b0
+          call _suGetFile
           test EAX,EAX
           jne L_42f9a0
 L_42f017:

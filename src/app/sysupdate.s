@@ -8,15 +8,15 @@
 #   .text          0040c240-0040d010
 
 .intel_syntax noprefix
-.globl FUN_40c260
-.globl FUN_40c650
-.globl FUN_40c700
-.globl FUN_40c7b0
-.globl FUN_40c860
-.globl FUN_40c940
 .globl FUN_40ca30
-.globl FUN_40cc80
 .globl FUN_40cfa0
+.globl _suFirstFile
+.globl _suGetCF
+.globl _suGetCG
+.globl _suGetDir
+.globl _suGetFile
+.globl _suLoad
+.globl _suNextFile
 
 .text
 .p2align 4
@@ -38,7 +38,7 @@ L_40c240:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40c260:
+_suGetDir:
           mov EAX,DWORD PTR [L_46f190]
           mov EDX,0
           test EAX,EAX
@@ -300,7 +300,7 @@ L_40c637:
           mov DWORD PTR [ESP],1
           call _log_printf
           jmp L_40c34f
-FUN_40c650:
+_suGetCF:
           mov EDX,DWORD PTR [L_46f18c]
           xor EAX,EAX
           test EDX,EDX
@@ -361,7 +361,7 @@ L_40c6f1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40c700:
+_suGetCG:
           mov EDX,DWORD PTR [L_46f188]
           xor EAX,EAX
           test EDX,EDX
@@ -422,7 +422,7 @@ L_40c7a1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40c7b0:
+_suGetFile:
           mov EAX,DWORD PTR [L_46f190]
           test EAX,EAX
           jne L_40c7c0
@@ -483,7 +483,7 @@ L_40c812:
           mov DWORD PTR [ESP+8],EAX
           call FUN_405d50
           jmp L_40c7f3
-FUN_40c860:
+_suNextFile:
           push EDI
           push ESI
           push EBX
@@ -570,7 +570,7 @@ L_40c8b0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40c940:
+_suFirstFile:
           mov EAX,DWORD PTR [L_46f190]
           test EAX,EAX
           jne L_40c950
@@ -791,7 +791,7 @@ L_40cc60:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40cc80:
+_suLoad:
           push ESI
           push EBX
           sub ESP,36
@@ -1147,7 +1147,7 @@ L_450850:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40c260 - .
+          .long _suGetDir - .
           .byte 0x15
           .byte 0x0
           .byte 0x0
@@ -1246,7 +1246,7 @@ L_450850:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40c650 - .
+          .long _suGetCF - .
           .byte 0xa3
           .byte 0x0
           .byte 0x0
@@ -1279,7 +1279,7 @@ L_450850:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40c700 - .
+          .long _suGetCG - .
           .byte 0xa3
           .byte 0x0
           .byte 0x0
@@ -1312,7 +1312,7 @@ L_450850:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40c7b0 - .
+          .long _suGetFile - .
           .byte 0xb0
           .byte 0x0
           .byte 0x0
@@ -1345,7 +1345,7 @@ L_450850:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40c860 - .
+          .long _suNextFile - .
           .byte 0xda
           .byte 0x0
           .byte 0x0
@@ -1414,7 +1414,7 @@ L_450850:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40c940 - .
+          .long _suFirstFile - .
           .byte 0xea
           .byte 0x0
           .byte 0x0
@@ -1512,7 +1512,7 @@ L_450850:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40cc80 - .
+          .long _suLoad - .
           .byte 0x15
           .byte 0x3
           .byte 0x0

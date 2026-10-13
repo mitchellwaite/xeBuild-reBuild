@@ -236,6 +236,12 @@ SYMBOLS = {
     # app/smc (src/app/smc.c); names are ours
     0x40bd30: '_smcFindResetLimit', 0x40bd80: '_smcCheck', 0x40c020: '_smcPatch',
     0x40c210: '_smcConfigOk', 0x44a480: '_knownSmcs',
+    # app/mode_ini (src/app/mode_ini.c); names are ours
+    0x418240: '_ini_usage', 0x418380: '_iniSetFile', 0x4183d0: '_iniPrintf',
+    0x418450: '_iniWriteFlashfs', 0x418680: '_iniWriteBl', 0x418830: '_mode_ini',
+    0x40c260: '_suGetDir', 0x40cc80: '_suLoad', 0x40c650: '_suGetCF', 0x40c700: '_suGetCG',
+    0x40c940: '_suFirstFile', 0x40c860: '_suNextFile', 0x40c7b0: '_suGetFile',
+    0x418ee0: '_loadKeyFile', 0x41b740: '_checkKeys',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

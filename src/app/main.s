@@ -1023,7 +1023,7 @@ FUN_4492c0:
           call _log_printf
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_418830
+          call _mode_ini
           mov EBX,EAX
 L_4493b5:
           call FUN_40cfa0

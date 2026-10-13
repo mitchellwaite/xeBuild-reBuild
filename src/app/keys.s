@@ -28,7 +28,6 @@
 .globl FUN_41b120
 .globl FUN_41b320
 .globl FUN_41b600
-.globl FUN_41b740
 .globl FUN_41ba80
 .globl FUN_41bf50
 .globl FUN_41c0c0
@@ -48,6 +47,7 @@
 .globl FUN_41e180
 .globl FUN_41e620
 .globl FUN_41e7b0
+.globl _checkKeys
 
 .text
 .p2align 4
@@ -1039,7 +1039,7 @@ L_41b6f0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41b740:
+_checkKeys:
           push EDI
           push ESI
           push EBX
@@ -5391,7 +5391,7 @@ L_45745c:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_41b740 - .
+          .long _checkKeys - .
           .byte 0x91
           .byte 0x1
           .byte 0x0
