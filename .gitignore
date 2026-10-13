@@ -1,0 +1,19 @@
+# Downloaded / unpacked toolchain (re-create with tools/fetch_toolchain.sh)
+tools/pkgs/
+tools/toolchain-*/
+
+# Build and analysis outputs (ddisasm IR, listings, objects, IDA exports)
+build/
+
+# IDA databases
+*.i64
+*.idb
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+
+# Python
+__pycache__/
+*.pyc

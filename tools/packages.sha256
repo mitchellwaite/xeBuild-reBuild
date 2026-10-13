@@ -1,0 +1,14 @@
+eb8d06bdf396c8af79fd0a99cf16882a59957f582ee0c368662894cca9714fef *mingw-w64-i686-binutils-2.27-2-any.pkg.tar.xz
+40da111f6f5fbdcd342b806e500cc4cd913ddb911145ce7b1426015ec9358d25 *mingw-w64-i686-crt-git-5.0.0.4609.566d621-1-any.pkg.tar.xz
+dfe375e5b25cb7eab1cc49859108375e4a953d97f5f641fc4ec3ab4f30f15660 *mingw-w64-i686-crt-git-5.0.0.4745.d2384c2-1-any.pkg.tar.xz
+3b319b3bf0f37d0150c088519558612b8faca5b9d3edfc3d05188ce90e999931 *mingw-w64-i686-gcc-6.2.0-2-any.pkg.tar.xz
+424742fdb3d14ed2ff66181146e0151f393f074742d3f4b0d3aeae701a543682 *mingw-w64-i686-gcc-libs-6.2.0-2-any.pkg.tar.xz
+3a9b60674ceeed91a52fb0a8efec555fc13cbf1e54e39ad3acaccf7b7aa971f4 *mingw-w64-i686-gmp-6.1.1-1-any.pkg.tar.xz
+03370aea9c4abcb71dc1eb80087caad2b248c4a9fdf201e230d07dfca204e923 *mingw-w64-i686-headers-git-5.0.0.4609.566d621-1-any.pkg.tar.xz
+962109f252973b656f3bbe8271f064901c12dd6174668549a07c40155e00e50b *mingw-w64-i686-headers-git-5.0.0.4747.0f8f626-1-any.pkg.tar.xz
+dacd59a1b05834fc65c6f018c82ccce96ae8fad1153f7128fac568b58b8e6a7c *mingw-w64-i686-libiconv-1.14-5-any.pkg.tar.xz
+9411d706784517200efe15b739d1ee7f32e8a35a4e730919d060e1cc95b82084 *mingw-w64-i686-libwinpthread-git-5.0.0.4741.2c8939a-1-any.pkg.tar.xz
+478a79d6cb6693ebee8469762e00b8836b8a06ff31abbdbdd00f82b201455910 *mingw-w64-i686-windows-default-manifest-6.4-2-any.pkg.tar.xz
+56323bc39c7de0ff727915c09c4aaa25b8396efc0d7eda0006d5951bb6a6b983 *mingw-w64-i686-windows-default-manifest-6.4-3-any.pkg.tar.xz
+cdb0dc6ae28eb901365e5f14465bca906e866d5a97fa7d00f617daa6210ec69b *mingw-w64-i686-winpthreads-git-5.0.0.4741.2c8939a-1-any.pkg.tar.xz
+a8e03b337d5d6125aa3e631866e7653f77d13df01e916b4020aba760e9d3ecdb *mingw-w64-i686-zlib-1.2.8-10-any.pkg.tar.xz
