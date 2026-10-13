@@ -75,7 +75,7 @@ L_446f6d:
           mov EAX,DWORD PTR [_iob]
           add EAX,64
           mov DWORD PTR [ESP],EAX
-          call FUN_449158
+          call _fprintf
           xor EAX,EAX
           add ESP,60
           ret 

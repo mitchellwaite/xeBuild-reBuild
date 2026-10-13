@@ -36,6 +36,7 @@
 .globl __dllonexit
 .globl __doserrno
 .globl __getmainargs
+.globl __imp___errno
 .globl __initenv
 .globl __lconv_init
 .globl __pioinfo
@@ -487,7 +488,7 @@ L_50f2ec:
 .globl _chdir
 _chdir:
           .rva L_50f6e8
-L_50f2f0:
+__imp___errno:
 .globl _errno
 _errno:
           .rva L_50f6f2

@@ -10,15 +10,10 @@
 .globl FUN_449060
 .globl FUN_449068
 .globl FUN_449070
-.globl FUN_449080
 .globl FUN_449088
 .globl FUN_4490a0
 .globl FUN_4490a8
-.globl FUN_4490b0
-.globl FUN_4490b8
 .globl FUN_4490c8
-.globl FUN_4490e8
-.globl FUN_449110
 .globl FUN_449118
 .globl FUN_449120
 .globl FUN_449128
@@ -26,7 +21,6 @@
 .globl FUN_449138
 .globl FUN_449148
 .globl FUN_449150
-.globl FUN_449158
 .globl FUN_449170
 .globl FUN_449178
 .globl FUN_449180
@@ -59,7 +53,9 @@
 .globl FUN_449290
 .globl L_4491c0
 .globl L_449270
+.globl __gmtime32
 .globl __lrotl
+.globl __mktime32
 .globl __time32
 .globl _atoi
 .globl _calloc
@@ -67,6 +63,7 @@
 .globl _feof
 .globl _fgets
 .globl _fopen
+.globl _fprintf
 .globl _free
 .globl _malloc
 .globl _memcmp
@@ -76,8 +73,11 @@
 .globl _putchar
 .globl _puts
 .globl _rand
+.globl _remove
+.globl _rename
 .globl _sprintf
 .globl _srand
+.globl _strcpy
 .globl _strlen
 
 .text
@@ -122,7 +122,7 @@ _strlen:
           jmp DWORD PTR [strlen]
           .byte 0x90
           nop
-FUN_449080:
+_strcpy:
           jmp DWORD PTR [strcpy]
           .byte 0x90
           .byte 0x90
@@ -146,11 +146,11 @@ FUN_4490a8:
           jmp DWORD PTR [rewind]
           .byte 0x90
           .byte 0x90
-FUN_4490b0:
+_rename:
           jmp DWORD PTR [rename]
           .byte 0x90
           .byte 0x90
-FUN_4490b8:
+_remove:
           jmp DWORD PTR [remove]
           .byte 0x90
           .byte 0x90
@@ -174,7 +174,7 @@ _printf:
           jmp DWORD PTR [printf]
           .byte 0x90
           .byte 0x90
-FUN_4490e8:
+__mktime32:
           jmp DWORD PTR [mktime]
           .byte 0x90
           .byte 0x90
@@ -194,7 +194,7 @@ _malloc:
           jmp DWORD PTR [malloc]
           .byte 0x90
           .byte 0x90
-FUN_449110:
+__gmtime32:
           jmp DWORD PTR [gmtime]
           .byte 0x90
           .byte 0x90
@@ -230,7 +230,7 @@ FUN_449150:
           jmp DWORD PTR [fputc]
           .byte 0x90
           nop
-FUN_449158:
+_fprintf:
           jmp DWORD PTR [fprintf]
           .byte 0x90
           nop

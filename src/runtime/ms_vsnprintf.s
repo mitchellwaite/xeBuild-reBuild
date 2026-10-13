@@ -6,11 +6,11 @@
 #   .text          00449030-00449038
 
 .intel_syntax noprefix
-.globl FUN_449030
+.globl ___ms_vsnprintf
 
 .text
 .p2align 3
-FUN_449030:
+___ms_vsnprintf:
           jmp L_4491c0
           .byte 0x90
           .byte 0x90
@@ -97,7 +97,7 @@ FUN_449030:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_449030 - .
+          .long ___ms_vsnprintf - .
           .byte 0x5
           .byte 0x0
           .byte 0x0

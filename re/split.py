@@ -192,6 +192,15 @@ SYMBOLS = {
     0x4460e0: '_des3_ecb_decrypt', 0x446050: '_des3_ecb_encrypt', 0x445ea0: '_des3_setup',
     # app/crc32 (src/app/crc32.c); Gary S. Brown's crc32
     0x433800: '_crc32',
+    # app/log (src/app/log.c); names are ours
+    0x433570: '_log_set_verbose', 0x4335a0: '_log_verbose_flag', 0x433600: '_log_get_verbose',
+    0x433610: '_log_set_name', 0x433690: '_log_printf', 0x433740: '_log_init',
+    0x4337a0: '_log_finish',
+    # app/timeutil (src/app/timeutil.c); Wine's names, cdecl
+    0x40b130: '_RtlTimeFieldsToTime', 0x40b330: '_RtlTimeToTimeFields',
+    0x40b500: '_FileTimeToSystemTime', 0x40b700: '_SystemTimeToFileTime',
+    0x40b910: '_FileTimeToDosDateTime', 0x40ba30: '_DosDateTimeToFileTime',
+    0x40bae0: '_GetSystemTime',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls
@@ -204,6 +213,13 @@ SYMBOLS = {
     0x449108: '_malloc', 0x449140: '_free', 0x4491a0: '_calloc',
     0x4490d0: '_puts', 0x449100: '_memcmp', 0x449160: '_fopen', 0x449168: '_fgets',
     0x449188: '_feof', 0x449190: '_fclose', 0x4491a8: '_atoi', 0x449200: '__lrotl',
+    0x449080: '_strcpy', 0x4490b0: '_rename', 0x4490b8: '_remove', 0x449158: '_fprintf',
+    0x4490e8: '__mktime32', 0x449110: '__gmtime32',   # msvcrt mktime/gmtime
+    # libgcc (64-bit division) and the vsnprintf mingw's stdio.h calls
+    0x447c30: '___divdi3', 0x447d70: '___moddi3', 0x447f20: '___udivdi3',
+    0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',
+    # IAT slots that dllimport declarations reference directly
+    0x50f2f0: '__imp___errno',
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
@@ -216,6 +232,12 @@ DATA_OWNERS = [
     (0x45cc20, 0x461c60, 'crypto/aes/aestab',
      'aestab.c defines t_im, t_il, t_in, t_fl, t_fn, t_rc; only aescrypt/aeskey code uses them'),
 ]
+# One-past-the-end pointers that ddisasm symbolized as the label that follows
+# (an object's next data).  instruction address -> (target, expression).
+END_POINTERS = {
+    # console_hdd loops over the 4-pointer table at 45c644; 45c654 starts log's strings
+    0x431cc5: (0x45c654, 'L_45c644+16'),
+}
 COMMON = (0x479e84,'common_bss', 'COMMON globals, laid out by ld in hash order')
 WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import libraries)'),
          '.CRT': ('runtime/crt_tls_sections', '.CRT initializer tables and .tls directory'),
@@ -248,6 +270,11 @@ def main():
     d = json.load(open(lj))
     L = [re.sub(r'(?<![\w.$])\.L_', 'L_', l) for l in d['lines']]
     A = d['addr']
+    for i, a in enumerate(A):
+        if a in END_POINTERS:
+            t, expr = END_POINTERS[a]
+            L[i], n = re.subn(r'(?<![\w.$])L_%x(?![\w$+])' % t, expr, L[i])
+            assert n == 1, (hex(a), L[i])
     sec = {n: (va, va + max(vsz, rsz) if n == '.bss' else va + vsz) for n, va, vsz, _, rsz in img.secs}
     sec['.bss'] = (sec['.bss'][0], img.sec('.bss')[1] + img.sec('.bss')[2])
     us = units(img)
@@ -487,6 +514,10 @@ def main():
         for t in syms:
             if t in defined and defined[t] != f:
                 need_global[defined[t]].add(t)
+    # SYMBOLS names are there for the C objects, whose references aren't seen
+    for t in SYMBOLS.values():
+        if t in defined:
+            need_global[defined[t]].add(t)
 
     # ---- write
     secname = {'.eh_fram': '.eh_frame'}

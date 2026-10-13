@@ -20,8 +20,8 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## What the binary is
 
-- 32-bit PE, linked November 2019, stripped, built at `-O2` or higher (`main`
-  is in `.text.startup`). 104 objects compiled by
+- 32-bit PE, linked November 2019, stripped, built at `-O3` (`main` is in
+  `.text.startup`; XeCrypt's Makefile and the app's timeutil both need -O3). 104 objects compiled by
   `GCC: (Rev2, Built by MSYS2 project) 6.2.0` (one `GCC:` ident each), DWARF-2
   exception handling. Linked with the default libraries plus `-lws2_32`.
 - The program is 66 objects with code: 25 application files, 15 crypto files
@@ -109,10 +109,26 @@ files are named in `split.py`'s `SYMBOLS` (`_mpAdd`, `_XeCryptSha`, `__assert`,
 `_memset`, ...; data too, e.g. the COMMON `_XeCryptRandomState`). Where
 references alone would put data in the wrong object, `DATA_OWNERS` assigns it
 (the AES tables, defined in aestab.c but used only by aescrypt/aeskey).
+Every `SYMBOLS` name is `.globl` where the `.s` defines it, so a C object can
+use it even if no other `.s` does; that includes import stubs, libgcc's
+64-bit division, and IAT slots that dllimport declarations reference
+(`__imp___errno`). `END_POINTERS` rewrites one-past-the-end pointers that
+ddisasm symbolized as the following label (console_hdd's `L_45c644+16` had
+pulled log's strings into console_hdd).
 
-The first application file in C is `app/crc32.c`: Gary S. Brown's table and
-an `UPDC32` loop. It matches at both -O2 and -O3; `build.sh` uses -O2 for
-`app/*` until some file tells the two apart.
+Application files in C (all **-O3**; timeutil doesn't match at -O2):
+
+- `app/crc32.c`: Gary S. Brown's CRC-32 table and an `UPDC32` loop.
+- `app/log.c`: verbosity, `build.log`, renaming it to `<name>.log`. The
+  verbose-flag switch needs the `'\0'` case written as a separate copy of the
+  level-1 body (gcc merges the copies, but block order follows them).
+- `app/timeutil.c`: Wine's ntdll/kernel32 time code (`RtlTimeFieldsToTime`,
+  `RtlTimeToTimeFields`, `SystemTimeToFileTime`, `FileTimeToSystemTime`,
+  `FileTimeToDosDateTime`, `DosDateTimeToFileTime`, `GetSystemTime`) as cdecl
+  functions with own WORD-based types, `errno = EINVAL` for SetLastError, and
+  `time()`/`rand()` for the clock (GetSystemTime fills milliseconds with
+  `rand() % 999`). FileTimeToDosDateTime rounds up to whole, then even, seconds.
+  The names are Wine's; a file that also includes `windows.h` would clash.
 
 From Git Bash, set `MSYS_NO_PATHCONV=1` before calling `wsl` with paths.
 

@@ -213,13 +213,13 @@ L_40586a:
 L_405942:
           mov DWORD PTR [ESP+4],OFFSET L_44deb8
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_4056b7
 L_40595b:
           mov DWORD PTR [ESP+4],OFFSET L_44dee8
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+44],EAX
-          call FUN_433690
+          call _log_printf
           mov EAX,DWORD PTR [ESP+44]
           jmp L_4057c4
           .byte 0x8d
@@ -290,7 +290,7 @@ L_405990:
           shl EDX,16
           add EDX,ECX
           mov DWORD PTR [ESP+12],EDX
-          call FUN_433690
+          call _log_printf
           add EDI,DWORD PTR [EBP+16]
           movzx EDX,WORD PTR [EDI+50]
           mov EAX,EDX
@@ -313,7 +313,7 @@ L_405990:
           mov DWORD PTR [ESP],1
           and EAX,63
           mov DWORD PTR [ESP+8],EAX
-          call FUN_433690
+          call _log_printf
           jmp L_405990
           .byte 0x90
 L_405ab0:
@@ -436,7 +436,7 @@ L_405b94:
           mov DWORD PTR [ESP+8],EDI
           and EAX,15
           mov DWORD PTR [ESP+12],EAX
-          call FUN_433690
+          call _log_printf
 L_405bfc:
           mov EDX,DWORD PTR [ESP+64]
           test EDX,EDX
@@ -522,7 +522,7 @@ L_405cc0:
 L_405cf0:
           mov DWORD PTR [ESP+4],OFFSET L_44dfa9
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_405bfc
           .byte 0x8d
           .byte 0xb4
@@ -534,7 +534,7 @@ L_405cf0:
 L_405d10:
           mov DWORD PTR [ESP+4],OFFSET L_44dff0
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_405c50
           .byte 0x8d
           .byte 0xb4
@@ -546,7 +546,7 @@ L_405d10:
 L_405d30:
           mov DWORD PTR [ESP+4],OFFSET L_44dfc0
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_405b39
           .byte 0x8d
           .byte 0xb4
@@ -636,7 +636,7 @@ L_405e1a:
 L_405e22:
           mov DWORD PTR [ESP+4],OFFSET L_44e01c
           mov DWORD PTR [ESP],0
-          call FUN_433690
+          call _log_printf
           mov EDX,DWORD PTR [EDI+16]
           jmp L_405e1a
 L_405e3b:
@@ -822,7 +822,7 @@ L_406034:
 L_406067:
           mov DWORD PTR [ESP+4],OFFSET L_44e0e8
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           mov EAX,DWORD PTR [EBX]
           mov DWORD PTR [EBX+8],0
           mov DWORD PTR [EBX+12],0
@@ -919,7 +919,7 @@ L_40614d:
           mov DWORD PTR [ESP+8],EBP
           and EAX,15
           mov DWORD PTR [ESP+12],EAX
-          call FUN_433690
+          call _log_printf
 L_4061b5:
           mov EAX,DWORD PTR [ESP+84]
           test EAX,EAX
@@ -957,7 +957,7 @@ L_406230:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP+4],OFFSET L_44e0bc
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           add ESP,44
           xor EAX,EAX
           pop EBX
@@ -969,7 +969,7 @@ L_406252:
           mov DWORD PTR [ESP+8],EDI
           mov DWORD PTR [ESP+4],OFFSET L_44e06c
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           lea EAX,DWORD PTR [EBX+8]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
@@ -981,7 +981,7 @@ L_406252:
           mov DWORD PTR [ESP+4],OFFSET L_44e084
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+8],EAX
-          call FUN_433690
+          call _log_printf
           mov EDI,DWORD PTR [EBX]
           jmp L_405fe6
 L_4062a5:
@@ -1002,7 +1002,7 @@ L_4062a5:
 L_4062d3:
           mov DWORD PTR [ESP+4],OFFSET L_44dfa9
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_4061b5
           .byte 0x8d
           .byte 0x74
@@ -1011,7 +1011,7 @@ L_4062d3:
 L_4062f0:
           mov DWORD PTR [ESP+4],OFFSET L_44dff0
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_406203
           .byte 0x8d
           .byte 0xb4
@@ -1023,7 +1023,7 @@ L_4062f0:
 L_406310:
           mov DWORD PTR [ESP+4],OFFSET L_44dfc0
           mov DWORD PTR [ESP],1
-          call FUN_433690
+          call _log_printf
           jmp L_406067
           .byte 0x90
           .byte 0x90

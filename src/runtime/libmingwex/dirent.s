@@ -176,7 +176,7 @@ L_4483b9:
           lea EAX,DWORD PTR [EBX+288]
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EAX
-          call FUN_449080
+          call _strcpy
           lea EAX,DWORD PTR [EBX+280]
 L_4483e3:
           add ESP,20

@@ -6,11 +6,11 @@
 #   .text          00447d70-00447f20
 
 .intel_syntax noprefix
-.globl FUN_447d70
+.globl ___moddi3
 
 .text
 .p2align 4
-FUN_447d70:
+___moddi3:
           push EBP
           push EDI
           push ESI
@@ -273,7 +273,7 @@ L_447f03:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_447d70 - .
+          .long ___moddi3 - .
           .byte 0xac
           .byte 0x1
           .byte 0x0
