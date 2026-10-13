@@ -5,8 +5,7 @@
  * (tools/opt_idx/opt_idx/util.cpp, tools/su_check/su_check/util.c):
  * MIT License, Copyright (c) 2026 [cOz].
  *
- * readFileIn is still the original instructions as inline asm
- * (re/asmfunc.py); its C shape is not found yet.
+ * readFileIn needs compiler hints to match (see the comment above it).
  */
 
 int _mkdir(const char *path);	/* msvcrt, called through its import stub */
@@ -492,215 +491,61 @@ u32 readFileInTo(const char *dir, const char *name, void *buf, int size)
 	return 0;
 }
 
+/*
+ * readFileIn: the plain C (one ok flag, a single return of buf) gives the
+ * reference control flow, but gcc's branch estimates and register choices
+ * differ.  The hints below only steer those; none of them emits code:
+ * - rf_hint() is a guarded call at profile_estimate time (PRED_CALL), which
+ *   cancels the call heuristic from log_printf on the alloc-failure edge.
+ *   It is inlined later (hence no-early-inlining) and its store to the
+ *   write-only rf_sink is deleted with the variable.
+ * - __builtin_expect probabilities come from build.sh's
+ *   --param builtin-expect-probability for this file.
+ * - The empty asm ties size/buf/alloc to edi/ebx/esi as in the reference.
+ */
+static int rf_sink;
+static void rf_hint(void) { rf_sink = 1; }
+
+__attribute__((optimize("no-early-inlining")))
 void *readFileIn(const char *dir, const char *name, size_t *psize, size_t align)
 {
-	__asm__ __volatile__(
-		".intel_syntax noprefix\n"
-		"push EBP\n"
-		".cfi_def_cfa_offset 8\n"
-		".cfi_offset ebp, -8\n"
-		"push EDI\n"
-		".cfi_def_cfa_offset 12\n"
-		".cfi_offset edi, -12\n"
-		"push ESI\n"
-		".cfi_def_cfa_offset 16\n"
-		".cfi_offset esi, -16\n"
-		"push EBX\n"
-		".cfi_def_cfa_offset 20\n"
-		".cfi_offset ebx, -20\n"
-		"sub ESP,1068\n"
-		".cfi_def_cfa_offset 1088\n"
-		"mov EAX,DWORD PTR [ESP+1088]\n"
-		"mov EDX,DWORD PTR [ESP+1092]\n"
-		"mov EBX,DWORD PTR [ESP+1100]\n"
-		"test EAX,EAX\n"
-		"je .L_4229a0\n"
-		"test EDX,EDX\n"
-		"je .L_4229a0\n"
-		"lea EBP,DWORD PTR [ESP+32]\n"
-		"mov DWORD PTR [ESP+12],EDX\n"
-		"mov DWORD PTR [ESP+8],EAX\n"
-		"mov DWORD PTR [ESP+4],OFFSET %c0\n"
-		"xor EDI,EDI\n"
-		"mov DWORD PTR [ESP],EBP\n"
-		"call _sprintf\n"
-		"mov DWORD PTR [ESP+4],OFFSET %c1\n"
-		"mov DWORD PTR [ESP],EBP\n"
-		"call _fopen\n"
-		"test EAX,EAX\n"
-		"mov ESI,EAX\n"
-		"je .L_42294d\n"
-		"mov DWORD PTR [ESP+8],2\n"
-		"mov DWORD PTR [ESP+4],0\n"
-		"mov DWORD PTR [ESP],EAX\n"
-		"call _fseek\n"
-		"mov DWORD PTR [ESP],ESI\n"
-		"call _ftell\n"
-		"mov DWORD PTR [ESP],ESI\n"
-		"mov EDI,EAX\n"
-		"call _fclose\n"
-		".L_42294d:\n"
-		"test EBX,EBX\n"
-		"mov ESI,EDI\n"
-		"jne .L_422992\n"
-		".L_422953:\n"
-		"mov DWORD PTR [ESP+4],1\n"
-		"mov DWORD PTR [ESP],ESI\n"
-		"call _calloc\n"
-		"test EAX,EAX\n"
-		"mov EBX,EAX\n"
-		"je .L_422a30\n"
-		"test EDI,EDI\n"
-		"jne .L_4229b0\n"
-		".L_422971:\n"
-		"mov EAX,DWORD PTR [ESP+1096]\n"
-		"test EAX,EAX\n"
-		"je .L_422985\n"
-		"mov EAX,DWORD PTR [ESP+1096]\n"
-		"mov DWORD PTR [EAX],ESI\n"
-		".L_422985:\n"
-		"add ESP,1068\n"
-		".cfi_remember_state\n"
-		".cfi_def_cfa_offset 20\n"
-		"mov EAX,EBX\n"
-		"pop EBX\n"
-		".cfi_restore ebx\n"
-		".cfi_def_cfa_offset 16\n"
-		"pop ESI\n"
-		".cfi_restore esi\n"
-		".cfi_def_cfa_offset 12\n"
-		"pop EDI\n"
-		".cfi_restore edi\n"
-		".cfi_def_cfa_offset 8\n"
-		"pop EBP\n"
-		".cfi_restore ebp\n"
-		".cfi_def_cfa_offset 4\n"
-		"ret\n"
-		".L_422992:\n"
-		".cfi_restore_state\n"
-		"lea ESI,DWORD PTR [EDI+EBX*1-1]\n"
-		"neg EBX\n"
-		"and ESI,EBX\n"
-		"jmp .L_422953\n"
-		".byte 0x8d\n"
-		".byte 0x74\n"
-		".byte 0x26\n"
-		".byte 0x0\n"
-		".L_4229a0:\n"
-		"add ESP,1068\n"
-		".cfi_remember_state\n"
-		".cfi_def_cfa_offset 20\n"
-		"xor EBX,EBX\n"
-		"mov EAX,EBX\n"
-		"pop EBX\n"
-		".cfi_restore ebx\n"
-		".cfi_def_cfa_offset 16\n"
-		"pop ESI\n"
-		".cfi_restore esi\n"
-		".cfi_def_cfa_offset 12\n"
-		"pop EDI\n"
-		".cfi_restore edi\n"
-		".cfi_def_cfa_offset 8\n"
-		"pop EBP\n"
-		".cfi_restore ebp\n"
-		".cfi_def_cfa_offset 4\n"
-		"ret\n"
-		".byte 0x90\n"
-		".L_4229b0:\n"
-		".cfi_restore_state\n"
-		"mov DWORD PTR [ESP],EBP\n"
-		"mov DWORD PTR [ESP+4],OFFSET %c1\n"
-		"call _fopen\n"
-		"test EAX,EAX\n"
-		"mov EBP,EAX\n"
-		"je .L_4229fa\n"
-		"mov DWORD PTR [ESP+8],2\n"
-		"mov DWORD PTR [ESP+4],0\n"
-		"mov DWORD PTR [ESP],EAX\n"
-		"call _fseek\n"
-		"mov DWORD PTR [ESP],EBP\n"
-		"call _ftell\n"
-		"mov DWORD PTR [ESP],EBP\n"
-		"mov DWORD PTR [ESP+28],EAX\n"
-		"call _rewind\n"
-		"mov EAX,DWORD PTR [ESP+28]\n"
-		"cmp EAX,EDI\n"
-		"jae .L_422a71\n"
-		".L_4229fa:\n"
-		"mov EDX,DWORD PTR [ESP+1096]\n"
-		"test EDX,EDX\n"
-		"je .L_422a12\n"
-		"mov EAX,DWORD PTR [ESP+1096]\n"
-		"mov DWORD PTR [EAX],0\n"
-		".L_422a12:\n"
-		"mov DWORD PTR [ESP],EBX\n"
-		"xor EBX,EBX\n"
-		"call _free\n"
-		"add ESP,1068\n"
-		".cfi_remember_state\n"
-		".cfi_def_cfa_offset 20\n"
-		"mov EAX,EBX\n"
-		"pop EBX\n"
-		".cfi_restore ebx\n"
-		".cfi_def_cfa_offset 16\n"
-		"pop ESI\n"
-		".cfi_restore esi\n"
-		".cfi_def_cfa_offset 12\n"
-		"pop EDI\n"
-		".cfi_restore edi\n"
-		".cfi_def_cfa_offset 8\n"
-		"pop EBP\n"
-		".cfi_restore ebp\n"
-		".cfi_def_cfa_offset 4\n"
-		"ret\n"
-		".byte 0x8d\n"
-		".byte 0xb4\n"
-		".byte 0x26\n"
-		".byte 0x0\n"
-		".byte 0x0\n"
-		".byte 0x0\n"
-		".byte 0x0\n"
-		".L_422a30:\n"
-		".cfi_restore_state\n"
-		"mov DWORD PTR [ESP+8],ESI\n"
-		"mov DWORD PTR [ESP+4],OFFSET %c2\n"
-		"mov DWORD PTR [ESP],1\n"
-		"call _log_printf\n"
-		"mov ECX,DWORD PTR [ESP+1096]\n"
-		"test ECX,ECX\n"
-		"je .L_422985\n"
-		"mov EAX,DWORD PTR [ESP+1096]\n"
-		"mov DWORD PTR [EAX],0\n"
-		"add ESP,1068\n"
-		".cfi_remember_state\n"
-		".cfi_def_cfa_offset 20\n"
-		"mov EAX,EBX\n"
-		"pop EBX\n"
-		".cfi_restore ebx\n"
-		".cfi_def_cfa_offset 16\n"
-		"pop ESI\n"
-		".cfi_restore esi\n"
-		".cfi_def_cfa_offset 12\n"
-		"pop EDI\n"
-		".cfi_restore edi\n"
-		".cfi_def_cfa_offset 8\n"
-		"pop EBP\n"
-		".cfi_restore ebp\n"
-		".cfi_def_cfa_offset 4\n"
-		"ret\n"
-		".L_422a71:\n"
-		".cfi_restore_state\n"
-		"mov DWORD PTR [ESP+12],EBP\n"
-		"mov DWORD PTR [ESP+8],1\n"
-		"mov DWORD PTR [ESP+4],EDI\n"
-		"mov DWORD PTR [ESP],EBX\n"
-		"call _fread\n"
-		"mov DWORD PTR [ESP],EBP\n"
-		"call _fclose\n"
-		"jmp .L_422971\n"
-		".att_syntax prefix\n"
-		: : "i" ("%s%s"), "i" ("rb"), "i" ("unable to allocate file buffer of 0x%x size!\n"));
-	__builtin_unreachable();
+	char path[1024];
+	void *buf = NULL;
+	size_t size, alloc;
+	int ok = 0;
+
+	if (dir == NULL || name == NULL)
+		return NULL;
+	sprintf(path, "%s%s", dir, name);
+	size = getFileSizeName(path);
+	alloc = size;
+	if (align) {
+		alloc = size + align - 1;
+		alloc &= -align;
+	}
+	buf = calloc(alloc, 1);
+	if (buf == NULL)
+		log_printf(1, "unable to allocate file buffer of 0x%x size!\n", alloc);
+	else {
+		__asm__("" : : "D" (size), "b" (buf), "S" (alloc));
+		rf_hint();
+		if (__builtin_expect(size != 0, 0)) {
+			if (readFileTo(path, buf, size) == size)
+				ok = 1;
+		} else
+			ok = 1;
+	}
+	if (psize) {
+		if (ok)
+			*psize = alloc;
+		else
+			*psize = 0;
+	}
+	if (__builtin_expect(!ok && buf, 0)) {
+		free(buf);
+		buf = NULL;
+	}
+	return buf;
 }
 
 unsigned int calcConfigSum(const unsigned char *p)

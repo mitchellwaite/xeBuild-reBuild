@@ -18,6 +18,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
       crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
                 cflags="-O3 -Isrc/crypto" ;;
+      # readFileIn's __builtin_expect hints are tuned to this probability
+      app/fileutil) orig="$f.c"
+             cflags="-O3 --param builtin-expect-probability=65" ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;
