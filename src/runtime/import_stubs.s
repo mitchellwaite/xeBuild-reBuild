@@ -17,9 +17,7 @@
 .globl FUN_4490b0
 .globl FUN_4490b8
 .globl FUN_4490c8
-.globl FUN_4490d0
 .globl FUN_4490e8
-.globl FUN_449100
 .globl FUN_449110
 .globl FUN_449118
 .globl FUN_449120
@@ -29,15 +27,10 @@
 .globl FUN_449148
 .globl FUN_449150
 .globl FUN_449158
-.globl FUN_449160
-.globl FUN_449168
 .globl FUN_449170
 .globl FUN_449178
 .globl FUN_449180
-.globl FUN_449188
-.globl FUN_449190
 .globl FUN_449198
-.globl FUN_4491a8
 .globl FUN_4491b0
 .globl FUN_4491b8
 .globl FUN_4491c8
@@ -47,7 +40,6 @@
 .globl FUN_4491e8
 .globl FUN_4491f0
 .globl FUN_4491f8
-.globl FUN_449200
 .globl FUN_449208
 .globl FUN_449210
 .globl FUN_449218
@@ -67,14 +59,22 @@
 .globl FUN_449290
 .globl L_4491c0
 .globl L_449270
+.globl __lrotl
 .globl __time32
+.globl _atoi
 .globl _calloc
+.globl _fclose
+.globl _feof
+.globl _fgets
+.globl _fopen
 .globl _free
 .globl _malloc
+.globl _memcmp
 .globl _memcpy
 .globl _memset
 .globl _printf
 .globl _putchar
+.globl _puts
 .globl _rand
 .globl _sprintf
 .globl _srand
@@ -162,7 +162,7 @@ FUN_4490c8:
           jmp DWORD PTR [raise]
           .byte 0x90
           .byte 0x90
-FUN_4490d0:
+_puts:
           jmp DWORD PTR [puts]
           .byte 0x90
           .byte 0x90
@@ -186,7 +186,7 @@ _memcpy:
           jmp DWORD PTR [memcpy]
           .byte 0x90
           .byte 0x90
-FUN_449100:
+_memcmp:
           jmp DWORD PTR [memcmp]
           .byte 0x90
           .byte 0x90
@@ -234,11 +234,11 @@ FUN_449158:
           jmp DWORD PTR [fprintf]
           .byte 0x90
           nop
-FUN_449160:
+_fopen:
           jmp DWORD PTR [fopen]
           .byte 0x90
           .byte 0x90
-FUN_449168:
+_fgets:
           jmp DWORD PTR [fgets]
           .byte 0x90
           .byte 0x90
@@ -254,11 +254,11 @@ FUN_449180:
           jmp DWORD PTR [fflush]
           .byte 0x90
           .byte 0x90
-FUN_449188:
+_feof:
           jmp DWORD PTR [feof]
           .byte 0x90
           .byte 0x90
-FUN_449190:
+_fclose:
           jmp DWORD PTR [fclose]
           .byte 0x90
           .byte 0x90
@@ -270,7 +270,7 @@ _calloc:
           jmp DWORD PTR [calloc]
           .byte 0x90
           .byte 0x90
-FUN_4491a8:
+_atoi:
           jmp DWORD PTR [atoi]
           .byte 0x90
           .byte 0x90
@@ -314,7 +314,7 @@ FUN_4491f8:
           jmp DWORD PTR [_lseeki64]
           .byte 0x90
           .byte 0x90
-FUN_449200:
+__lrotl:
           jmp DWORD PTR [_lrotl]
           .byte 0x90
           .byte 0x90

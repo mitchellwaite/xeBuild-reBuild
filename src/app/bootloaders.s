@@ -43,14 +43,14 @@ FUN_401630:
           mov DWORD PTR [ESP],OFFSET L_47a11c
           mov BYTE PTR [ESP+62],7
           mov BYTE PTR [ESP+63],18
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [ESP+116]
           mov DWORD PTR [ESP+8],EBP
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],16
           lea ESI,DWORD PTR [EAX-16]
           mov DWORD PTR [ESP+12],ESI
-          call FUN_4345b0
+          call _XeCryptRc4
           lea EAX,DWORD PTR [ESP+62]
           mov DWORD PTR [ESP+32],EBX
           mov DWORD PTR [ESP+12],ESI
@@ -62,11 +62,11 @@ FUN_401630:
           mov DWORD PTR [ESP+20],2
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
-          call FUN_434110
+          call _XeCryptHmacSha
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+8],16
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           sete AL
           add ESP,92
@@ -199,13 +199,13 @@ L_4017f2:
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
           mov DWORD PTR [ESP+60],EAX
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [ESP+12],ESI
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           lea EAX,DWORD PTR [EDI+624]
           mov DWORD PTR [ESP+4],288
           mov DWORD PTR [ESP],EAX
@@ -282,13 +282,13 @@ L_401951:
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
-          call FUN_434110
+          call _XeCryptHmacSha
           lea EAX,DWORD PTR [EBX+48]
           mov DWORD PTR [ESP+12],ESI
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           lea EAX,DWORD PTR [EBX+496]
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
@@ -391,13 +391,13 @@ L_401a90:
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
-          call FUN_434110
+          call _XeCryptHmacSha
           lea EAX,DWORD PTR [EDI+48]
           mov DWORD PTR [ESP+12],EBP
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           lea EAX,DWORD PTR [EDI+496]
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
@@ -475,14 +475,14 @@ L_401be3:
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
           mov DWORD PTR [ESP+60],EDX
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EDX,DWORD PTR [ESP+60]
           lea EAX,DWORD PTR [EDI+48]
           mov DWORD PTR [ESP+12],ESI
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP],EDX
-          call FUN_4345b0
+          call _XeCryptRc4
           lea EAX,DWORD PTR [EDI+496]
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EAX
@@ -567,14 +567,14 @@ L_401d00:
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
-          call FUN_434110
+          call _XeCryptHmacSha
           lea EAX,DWORD PTR [EBX+48]
           mov DWORD PTR [ESP+12],ESI
           add EBX,496
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           mov DWORD PTR [ESP+4],32
           mov DWORD PTR [ESP],EBX
           call FUN_4223b0
@@ -614,14 +614,14 @@ FUN_401dc0:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+84]
           mov DWORD PTR [ESP],EAX
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],16
           sub EAX,32
           mov DWORD PTR [ESP+12],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           mov DWORD PTR [ESP],EBX
           call FUN_420ad0
           cmp EAX,1179648
@@ -659,7 +659,7 @@ FUN_401e60:
           mov DWORD PTR [ESP+84],0
           mov DWORD PTR [ESP+88],0
           mov DWORD PTR [ESP+92],0
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [ESP+132]
           mov DWORD PTR [ESP+8],EBP
           mov DWORD PTR [ESP+4],16
@@ -667,7 +667,7 @@ FUN_401e60:
           mov EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [ESP+12],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           mov DWORD PTR [ESP+32],EDI
           mov DWORD PTR [ESP+12],EBX
           mov DWORD PTR [ESP+8],EBP
@@ -678,11 +678,11 @@ FUN_401e60:
           mov DWORD PTR [ESP+16],0
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
-          call FUN_434110
+          call _XeCryptHmacSha
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+8],16
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           sete AL
           add ESP,108
@@ -734,7 +734,7 @@ L_401fc0:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP],EAX
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           test EAX,EAX
           mov DWORD PTR [ESP+28],EAX
           jne L_402002
@@ -767,7 +767,7 @@ FUN_402020:
           lea ESI,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+4],OFFSET L_47a11c
           mov DWORD PTR [ESP],ESI
-          call FUN_434850
+          call _XeCryptAesKey
 L_40205b:
           lea EBP,DWORD PTR [ESP+36]
           lea EAX,DWORD PTR [EBX+304]
@@ -775,7 +775,7 @@ L_40205b:
           mov DWORD PTR [ESP+12],0
           mov DWORD PTR [ESP+8],EBP
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4348a0
+          call _XeCryptAesEcb
           mov EAX,DWORD PTR [ESP+36]
           mov DWORD PTR [EBX+304],EAX
           mov EAX,DWORD PTR [ESP+40]
@@ -787,7 +787,7 @@ L_40205b:
           mov DWORD PTR [ESP+4],EBP
           lea EBP,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP],ESI
-          call FUN_434850
+          call _XeCryptAesKey
           mov EAX,DWORD PTR [EBX+288]
           mov DWORD PTR [ESP+52],EAX
           mov EAX,DWORD PTR [EBX+292]
@@ -803,7 +803,7 @@ L_40205b:
           lea EAX,DWORD PTR [EBX+320]
           mov DWORD PTR [ESP+12],EAX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4348f0
+          call _XeCryptAesCbc
           lea EAX,DWORD PTR [EBX+336]
           lea EDX,DWORD PTR [EDI-336]
           mov DWORD PTR [ESP],ESI
@@ -813,7 +813,7 @@ L_40205b:
           mov DWORD PTR [ESP+12],EAX
           mov DWORD PTR [ESP+8],EDX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4348f0
+          call _XeCryptAesCbc
           mov DWORD PTR [ESP+20],ESI
           mov DWORD PTR [ESP+16],336
           mov DWORD PTR [ESP+12],20
@@ -836,7 +836,7 @@ L_402170:
           lea ESI,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+4],OFFSET L_47a12c
           mov DWORD PTR [ESP],ESI
-          call FUN_434850
+          call _XeCryptAesKey
           jmp L_40205b
           .byte 0x8d
           .byte 0xb4
@@ -875,7 +875,7 @@ L_4021c0:
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           test EAX,EAX
           jne L_4021f2
           mov DWORD PTR [ESP+4],OFFSET L_44c14e
@@ -913,7 +913,7 @@ FUN_402210:
           lea EBP,DWORD PTR [ESP+56]
           mov DWORD PTR [ESP+4],OFFSET L_47a12c
           mov DWORD PTR [ESP],EBP
-          call FUN_434850
+          call _XeCryptAesKey
 L_402281:
           lea EAX,DWORD PTR [ESP+40]
           add ESI,304
@@ -925,7 +925,7 @@ L_402281:
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+20],0
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4348f0
+          call _XeCryptAesCbc
           mov DWORD PTR [ESP+576],EDI
           add ESP,556
           pop EBX
@@ -940,7 +940,7 @@ L_4022d0:
           lea EBP,DWORD PTR [ESP+56]
           mov DWORD PTR [ESP+4],OFFSET L_47a11c
           mov DWORD PTR [ESP],EBP
-          call FUN_434850
+          call _XeCryptAesKey
           jmp L_402281
           .byte 0x8d
           .byte 0x76
@@ -972,14 +972,14 @@ L_4022f0:
           mov DWORD PTR [ESP+80],0
           mov DWORD PTR [ESP+84],0
           mov DWORD PTR [ESP+88],0
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [L_47a144]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+128]
           add EAX,32
           mov DWORD PTR [ESP+4],EAX
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           mov DWORD PTR [ESP+60],EAX
           test EAX,EAX
           mov EAX,DWORD PTR [ESP+136]
@@ -1108,14 +1108,14 @@ L_402507:
           mov DWORD PTR [ESP+80],0
           mov DWORD PTR [ESP+84],0
           mov DWORD PTR [ESP+88],0
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [L_47a144]
           mov DWORD PTR [ESP+8],EAX
           lea EAX,DWORD PTR [EBX+32]
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+92]
           mov DWORD PTR [ESP],EAX
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           test EAX,EAX
           mov ECX,DWORD PTR [ESP+60]
           je L_4025e9
@@ -1170,11 +1170,11 @@ L_402610:
           mov DWORD PTR [ESP+12],64
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
-          call FUN_434110
+          call _XeCryptHmacSha
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EDI
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           test EAX,EAX
           mov EBX,EAX
           jne L_4026d0
@@ -1260,11 +1260,11 @@ FUN_402720:
           mov DWORD PTR [ESP+12],64
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a11c
-          call FUN_434110
+          call _XeCryptHmacSha
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EDI
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           test EAX,EAX
           jne L_402830
           mov DWORD PTR [ESP+4],OFFSET L_44c200
@@ -1326,18 +1326,18 @@ L_402850:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EDI
-          call FUN_434a30
+          call _XeCryptSha
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           je L_402990
           lea EAX,DWORD PTR [ESP+104]
           mov DWORD PTR [ESP+4],OFFSET L_47a11c
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+60],EAX
-          call FUN_434850
+          call _XeCryptAesKey
           mov EAX,DWORD PTR [ESP+60]
           lea EDX,DWORD PTR [ESP+68]
           mov DWORD PTR [ESP+20],0
@@ -1346,7 +1346,7 @@ L_402850:
           mov DWORD PTR [ESP+16],EDX
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EAX
-          call FUN_4348f0
+          call _XeCryptAesCbc
           mov DWORD PTR [ESP+28],20
           mov DWORD PTR [ESP+24],EBP
           mov DWORD PTR [ESP+20],0
@@ -1355,11 +1355,11 @@ L_402850:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EDI
-          call FUN_434a30
+          call _XeCryptSha
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBX
-          call FUN_449100
+          call _memcmp
           mov EDX,EAX
           mov EAX,1
           test EDX,EDX
@@ -1437,11 +1437,11 @@ FUN_402a00:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],492
           mov DWORD PTR [ESP],EAX
-          call FUN_434a30
+          call _XeCryptSha
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+8],20
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           sete AL
           add ESP,68
@@ -1494,14 +1494,14 @@ L_402a70:
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],OFFSET L_47a10c
-          call FUN_434110
+          call _XeCryptHmacSha
           lea EAX,DWORD PTR [EDI-32]
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+12],EAX
           lea EAX,DWORD PTR [EBX+32]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           test EBP,EBP
           je L_402b6b
           mov EAX,DWORD PTR [ESP+48]
@@ -1644,14 +1644,14 @@ L_402c70:
           mov DWORD PTR [ESP+16],0
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
-          call FUN_434110
+          call _XeCryptHmacSha
           lea EDX,DWORD PTR [ESI-32]
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+12],EDX
           lea EDX,DWORD PTR [EBX+32]
           mov DWORD PTR [ESP+8],EDX
-          call FUN_4345b0
+          call _XeCryptRc4
           test EDI,EDI
           je L_402d7c
           mov EAX,DWORD PTR [ESP+48]
@@ -1808,14 +1808,14 @@ L_402ec0:
           mov DWORD PTR [ESP+12],16
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EDI
-          call FUN_434110
+          call _XeCryptHmacSha
           lea EAX,DWORD PTR [ESI-32]
           mov DWORD PTR [ESP+4],16
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+12],EAX
           lea EAX,DWORD PTR [EBX+32]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_4345b0
+          call _XeCryptRc4
           mov ECX,DWORD PTR [ESP+108]
           test ECX,ECX
           je L_403020

@@ -174,7 +174,7 @@ L_4471a0:
           lea EAX,DWORD PTR [EAX*4+30]
           shr EAX,4
           shl EAX,4
-          call FUN_447c00
+          call ___chkstk_ms
           mov DWORD PTR [L_479e40],0
           sub ESP,EAX
           lea EAX,DWORD PTR [ESP+31]

@@ -104,7 +104,7 @@ FUN_4183d0:
           call _printf
           mov DWORD PTR [ESP+4],OFFSET L_454402
           mov DWORD PTR [ESP],OFFSET L_479160
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           je L_418438
           mov ESI,EAX
@@ -112,7 +112,7 @@ FUN_4183d0:
           mov DWORD PTR [ESP],EAX
           call FUN_449158
           mov DWORD PTR [ESP],ESI
-          call FUN_449190
+          call _fclose
 L_418438:
           add ESP,532
           pop EBX

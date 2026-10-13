@@ -48,7 +48,7 @@ FUN_4335a0:
 L_4335b2:
           mov DWORD PTR [L_479aa4],1
           mov DWORD PTR [ESP+4],OFFSET L_45c654
-          jmp FUN_4490d0
+          jmp _puts
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -59,7 +59,7 @@ L_4335b2:
 L_4335d0:
           mov DWORD PTR [L_479aa4],2
           mov DWORD PTR [ESP+4],OFFSET L_45c66b
-          jmp FUN_4490d0
+          jmp _puts
 L_4335e7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
@@ -67,7 +67,7 @@ L_4335f0:
           repz ret 
 L_4335f2:
           mov DWORD PTR [ESP+4],OFFSET L_45c684
-          jmp FUN_4490d0
+          jmp _puts
           .byte 0x90
 FUN_433600:
           mov EAX,DWORD PTR [L_479aa4]
@@ -155,7 +155,7 @@ L_4336df:
 L_4336f0:
           mov DWORD PTR [ESP+4],OFFSET L_45c780
           mov DWORD PTR [ESP],OFFSET L_45c782
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           mov EBX,EAX
           je L_4336df
@@ -163,7 +163,7 @@ L_4336f0:
           mov DWORD PTR [ESP],EAX
           call FUN_449158
           mov DWORD PTR [ESP],EBX
-          call FUN_449190
+          call _fclose
           add ESP,532
           pop EBX
           pop ESI
@@ -185,11 +185,11 @@ FUN_433740:
           sub ESP,28
           mov DWORD PTR [ESP+4],OFFSET L_45c78c
           mov DWORD PTR [ESP],OFFSET L_45c782
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           je L_433770
           mov DWORD PTR [ESP],EAX
-          call FUN_449190
+          call _fclose
           add ESP,28
           ret 
 L_433767:
@@ -232,11 +232,11 @@ L_4337c0:
           sub ESP,28
           mov DWORD PTR [ESP+4],OFFSET L_45c7cf
           mov DWORD PTR [ESP],OFFSET L_45c782
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           je L_4337f7
           mov DWORD PTR [ESP],EAX
-          call FUN_449190
+          call _fclose
           mov DWORD PTR [ESP+4],OFFSET L_4796a0
           mov DWORD PTR [ESP],OFFSET L_45c782
           call FUN_4490b0

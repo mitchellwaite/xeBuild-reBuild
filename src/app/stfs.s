@@ -35,13 +35,13 @@ FUN_405610:
           mov EAX,DWORD PTR [EDI]
           add EAX,836
           mov DWORD PTR [ESP],EAX
-          call FUN_434a30
+          call _XeCryptSha
           lea EAX,DWORD PTR [ESP+76]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESI+812]
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_405860
           mov EBX,DWORD PTR [EDI+12]
@@ -94,14 +94,14 @@ L_405730:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],4096
           mov DWORD PTR [ESP],EBX
-          call FUN_434a30
+          call _XeCryptSha
           mov EAX,DWORD PTR [ESP+56]
           add EAX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+76]
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_405860
 L_405798:
@@ -139,12 +139,12 @@ L_4057d0:
           mov EAX,DWORD PTR [EDI]
           add EAX,EBP
           mov DWORD PTR [ESP],EAX
-          call FUN_434a30
+          call _XeCryptSha
           lea EAX,DWORD PTR [ESP+76]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_405860
           mov EAX,DWORD PTR [EDI+4]
@@ -177,13 +177,13 @@ L_40586a:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],4096
           mov DWORD PTR [ESP],EBX
-          call FUN_434a30
+          call _XeCryptSha
           lea EAX,DWORD PTR [ESP+76]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+60]
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_405860
           lea EAX,DWORD PTR [ESP+76]
@@ -197,12 +197,12 @@ L_40586a:
           mov EAX,DWORD PTR [EDI+12]
           add EAX,DWORD PTR [EDI]
           mov DWORD PTR [ESP],EAX
-          call FUN_434a30
+          call _XeCryptSha
           lea EAX,DWORD PTR [ESP+76]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_405860
           mov DWORD PTR [ESP+56],EBX
@@ -453,7 +453,7 @@ L_405bfc:
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESI+812]
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_405d30
           mov EAX,DWORD PTR [ESP+68]
@@ -935,7 +935,7 @@ L_4061b5:
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [EDI+812]
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_406310
           test ESI,ESI

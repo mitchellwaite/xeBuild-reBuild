@@ -71,7 +71,7 @@ L_4304d2:
           mov DWORD PTR [EDX+8],6909545
           mov DWORD PTR [ESP+4],OFFSET L_45b4a4
           mov DWORD PTR [ESP],EBX
-          call FUN_449160
+          call _fopen
           mov DWORD PTR [L_47957c],EAX
 L_43052b:
           add ESP,292
@@ -99,7 +99,7 @@ L_430540:
           call FUN_449180
           mov EAX,DWORD PTR [L_47957c]
           mov DWORD PTR [ESP],EAX
-          call FUN_449190
+          call _fclose
           add ESP,28
 L_430564:
           repz ret 
@@ -1645,7 +1645,7 @@ L_431aec:
           call FUN_449180
           mov EAX,DWORD PTR [L_47957c]
           mov DWORD PTR [ESP],EAX
-          call FUN_449190
+          call _fclose
 L_431b01:
           add ESP,20
           mov EAX,EBX

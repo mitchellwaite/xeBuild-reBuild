@@ -235,11 +235,11 @@ L_431e50:
           lea EAX,DWORD PTR [EBX+312]
           add EBX,36
           mov DWORD PTR [ESP],EAX
-          call FUN_434a30
+          call _XeCryptSha
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
-          call FUN_449100
+          call _memcmp
           mov EDX,EAX
           mov EAX,1
           test EDX,EDX
@@ -325,12 +325,12 @@ FUN_431f80:
           mov DWORD PTR [ESP+12],0
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP],EBX
-          call FUN_434a30
+          call _XeCryptSha
           mov EAX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_432080
           mov DWORD PTR [ESP+4],OFFSET L_45be9b
@@ -1006,12 +1006,12 @@ L_4328d0:
           add EDX,ECX
           add EAX,EDX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_434a30
+          call _XeCryptSha
           lea EAX,DWORD PTR [ESI+36]
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+4],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_432a80
           mov EAX,DWORD PTR [ESI+332]

@@ -4,11 +4,11 @@
 #   .text          00447c00-00447c30
 
 .intel_syntax noprefix
-.globl FUN_447c00
+.globl ___chkstk_ms
 
 .text
 .p2align 4
-FUN_447c00:
+___chkstk_ms:
           push ECX
           push EAX
           cmp EAX,4096

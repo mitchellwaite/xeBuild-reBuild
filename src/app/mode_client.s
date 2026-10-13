@@ -1023,7 +1023,7 @@ L_4072b0:
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_407247
           mov DWORD PTR [ESP+4],OFFSET L_44f140
@@ -1279,7 +1279,7 @@ L_407640:
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EDI
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           jne L_407540
           mov DWORD PTR [ESP+4],OFFSET L_44f140

@@ -4455,7 +4455,7 @@ FUN_412260:
           call FUN_433690
           mov DWORD PTR [ESP+4],OFFSET L_451b7a
           mov DWORD PTR [ESP],ESI
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           je L_412593
           mov DWORD PTR [ESP+8],ESI
@@ -4481,7 +4481,7 @@ L_4122f7:
           mov DWORD PTR [ESP],1
           call FUN_433690
           mov DWORD PTR [ESP],EBX
-          call FUN_449190
+          call _fclose
           xor EAX,EAX
 L_412315:
           add ESP,160
@@ -4524,7 +4524,7 @@ L_4123a6:
           mov DWORD PTR [ESP],0
           call FUN_433690
           mov DWORD PTR [ESP],EBX
-          call FUN_449190
+          call _fclose
           add ESP,160
           mov EAX,1
           pop EBX
@@ -4552,7 +4552,7 @@ L_4123f3:
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],50331648
-          call FUN_434a30
+          call _XeCryptSha
           mov DWORD PTR [ESP+4],OFFSET L_451c18
           mov DWORD PTR [ESP],1
           call FUN_433690
@@ -4574,13 +4574,13 @@ L_412480:
           mov DWORD PTR [ESP],1
           call FUN_433690
           mov DWORD PTR [ESP],EDI
-          call FUN_434950
+          call _XeCryptShaInit
           imul EAX,DWORD PTR [L_479ee4],16896
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [L_479ee0]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_434960
+          call _XeCryptShaUpdate
           mov EDX,DWORD PTR [L_479f6c]
           mov EAX,DWORD PTR [L_4c97a8]
           test EDX,EDX
@@ -4605,7 +4605,7 @@ L_412509:
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+4],EDI
-          call FUN_4349c0
+          call _XeCryptShaFinal
           mov DWORD PTR [ESP+4],OFFSET L_451c18
           mov DWORD PTR [ESP],1
           call FUN_433690

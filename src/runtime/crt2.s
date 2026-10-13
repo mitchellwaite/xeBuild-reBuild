@@ -136,7 +136,7 @@ L_401170:
           sub ESP,124
           rep stosd DWORD PTR ES:[EDI]
           mov EAX,48
-          call FUN_447c00
+          call ___chkstk_ms
           sub ESP,EAX
           lea EAX,DWORD PTR [ESP+27]
           and EAX,4294967280

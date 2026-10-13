@@ -263,11 +263,11 @@
 .globl L_4f0000
 .globl L_500000
 .globl L_50000a
-.globl L_50e880
 .globl L_50ec88
 .globl L_50ec8c
 .globl L_50ec90
 .globl L_50ec94
+.globl _XeCryptRandomState
 
 .bss
 .p2align 2
@@ -789,7 +789,7 @@ L_500000:
           .zero 10
 L_50000a:
           .zero 59510
-L_50e880:
+_XeCryptRandomState:
           .zero 1032
 L_50ec88:
           .zero 4

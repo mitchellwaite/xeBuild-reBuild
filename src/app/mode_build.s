@@ -235,7 +235,7 @@ L_418f33:
           call FUN_449088
           mov DWORD PTR [ESP+4],OFFSET L_4554e9
           mov DWORD PTR [ESP],EBX
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           mov EDI,EAX
           je L_418f9c
@@ -251,7 +251,7 @@ L_418f33:
           call FUN_449148
           mov DWORD PTR [ESP],EDI
           mov EBX,EAX
-          call FUN_449190
+          call _fclose
           cmp EBX,1
           je L_418fb0
 L_418f9c:
@@ -869,7 +869,7 @@ L_4199e5:
           mov DWORD PTR [ESP+2176],1802265137
           mov DWORD PTR [ESP+2180],1949202789
           mov WORD PTR [ESP+2184],AX
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           mov EBX,EAX
           je L_419a86
@@ -886,7 +886,7 @@ L_4199e5:
           call FUN_449148
           mov DWORD PTR [ESP],EBX
           mov ESI,EAX
-          call FUN_449190
+          call _fclose
           cmp ESI,1
           je L_419d62
 L_419a86:
@@ -948,7 +948,7 @@ L_419b25:
           mov BYTE PTR [EDX+10],0
           mov DWORD PTR [ESP+4],OFFSET L_4554e9
           mov DWORD PTR [ESP],ESI
-          call FUN_449160
+          call _fopen
           test EAX,EAX
           mov EBX,EAX
           je L_419bd8
@@ -965,7 +965,7 @@ L_419b25:
           call FUN_449148
           mov DWORD PTR [ESP],EBX
           mov ESI,EAX
-          call FUN_449190
+          call _fclose
           cmp ESI,1
           je L_41a018
 L_419bd8:

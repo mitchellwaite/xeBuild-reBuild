@@ -37,12 +37,12 @@ FUN_40e520:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+104]
           mov DWORD PTR [ESP],EAX
-          call FUN_434110
+          call _XeCryptHmacSha
           mov EAX,DWORD PTR [ESP+100]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_435b00
+          call _XeKeysPkcs1Verify
           add ESP,84
           pop EBX
           pop ESI
@@ -67,13 +67,13 @@ FUN_40e5a0:
           lea EAX,DWORD PTR [EBX+320]
           add EBX,64
           mov DWORD PTR [ESP+8],EAX
-          call FUN_434c00
+          call _XeCryptRotSumSha
           mov EAX,DWORD PTR [ESP+84]
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+8],OFFSET L_44a558
           mov DWORD PTR [ESP+12],EAX
-          call FUN_435440
+          call _XeCryptBnQwBeSigVerify
           add ESP,68
           pop EBX
           pop ESI
@@ -108,14 +108,14 @@ FUN_40e620:
           lea EAX,DWORD PTR [EBX+288]
           add EBX,32
           mov DWORD PTR [ESP+8],EAX
-          call FUN_434c00
+          call _XeCryptRotSumSha
           mov EAX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [ESP+92]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_435440
+          call _XeCryptBnQwBeSigVerify
           add ESP,68
           pop EBX
           pop ESI
@@ -158,13 +158,13 @@ FUN_40e690:
           mov DWORD PTR [ESP+12],EAX
           lea EAX,DWORD PTR [EDI+288]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_434c00
+          call _XeCryptRotSumSha
           mov EAX,DWORD PTR [ESP+380]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+12],EAX
-          call FUN_435530
+          call _XeCryptBnQwBeSigCreate
           test EAX,EAX
           jne L_40e740
 L_40e72b:
@@ -189,7 +189,7 @@ L_40e740:
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+8],EAX
-          call FUN_435820
+          call _XeCryptBnQwNeRsaPrvCrypt
           test EAX,EAX
           je L_40e72b
           mov EAX,DWORD PTR [ESP+376]
@@ -197,7 +197,7 @@ L_40e740:
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+12],EAX
-          call FUN_435440
+          call _XeCryptBnQwBeSigVerify
           test EAX,EAX
           je L_40e72b
           mov EAX,DWORD PTR [ESI]
@@ -234,12 +234,12 @@ FUN_40e7b0:
           mov DWORD PTR [ESP+12],EAX
           lea EAX,DWORD PTR [EDX+32]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_434c00
+          call _XeCryptRotSumSha
           mov EAX,DWORD PTR [ESP+88]
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP],EAX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           sete AL
           add ESP,72
@@ -263,11 +263,11 @@ L_40e810:
           mov DWORD PTR [ESP+12],EAX
           lea EAX,DWORD PTR [EDX+32]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_434c00
+          call _XeCryptRotSumSha
           mov DWORD PTR [ESP+8],20
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
-          call FUN_449100
+          call _memcmp
           test EAX,EAX
           je L_40e88e
           mov EAX,DWORD PTR [ESP+44]
@@ -315,7 +315,7 @@ FUN_40e8a0:
           mov DWORD PTR [ESP+12],EAX
           lea EAX,DWORD PTR [EDX+32]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_434c00
+          call _XeCryptRotSumSha
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [EBX],EAX
           mov EAX,DWORD PTR [ESP+48]

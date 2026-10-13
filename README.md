@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **Started: all 26 BigDigits files build from their original C source** |
+| Move functions to C | **Started: all 41 XeCrypt files (crypto + BigDigits) build from their original C source** |
 | Fix bugs | Next |
 
 ## What the binary is
@@ -38,8 +38,10 @@ build.sh                 compile/assemble src/ + link + stamp + verify -> build/
 src/objects.txt          link order
 src/link.ld              link script (default i386pe order for the sections used)
 src/app/                 the application (25 files)
-src/crypto/              XeCrypt layer, AES (Gladman), RC4/SHA-1/MD5 (OpenSSL), DES, RSA
-src/bigdigits/           BigDigits bignum library (XeCrypt's bign/), all C, with
+src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCrypt
+                         API, aes/ (Gladman), rc4/ sha/ (OpenSSL), md5/, des/, and
+                         bign/ (BigDigits bignum library + PKCS#1 RSA, hash,
+                         base64), with its licence files
                          its licence files
 src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
                          .idata/.CRT/.tls/.rsrc, ctor/dtor lists
@@ -100,10 +102,13 @@ python re/split.py xeBuild.exe build/xeBuild.lines.json src
 sh build.sh
 ```
 
-Hand-written sources began with the BigDigits C files (October 2026). `split.py`
+Hand-written sources began with XeCrypt's C files (October 2026). `split.py`
 still writes every `.s`, overwriting those, but skips any object that has a `.c`.
 So the `.c` files are maintained by hand. The functions they share with `.s`
-files are named in `split.py`'s `SYMBOLS` (`_mpAdd`, `__assert`, `_memset`, ...).
+files are named in `split.py`'s `SYMBOLS` (`_mpAdd`, `_XeCryptSha`, `__assert`,
+`_memset`, ...; data too, e.g. the COMMON `_XeCryptRandomState`). Where
+references alone would put data in the wrong object, `DATA_OWNERS` assigns it
+(the AES tables, defined in aestab.c but used only by aescrypt/aeskey).
 
 From Git Bash, set `MSYS_NO_PATHCONV=1` before calling `wsl` with paths.
 
@@ -175,25 +180,39 @@ its original addresses. Library files use the library's own file names.
 | app/filelist_ini | file list ini parser |
 | app/consoleinfo, console_hdd, net | console info/options ini, HDD transfer, winsock |
 | app/log, fileutil, timeutil, crc32, xboxrom | logging, file helpers, dates, crc32, ROM names |
-| crypto/xecrypt, xecrypt_bn | XeCrypt-style API and big-endian bignum helpers |
-| crypto/aes_modes, aestab, aescrypt, aeskey | Brian Gladman's AES |
-| crypto/rc4_enc, rc4_skey, sha1dgst, md5_dgst | OpenSSL-style RC4 (`"rc4(idx,int)"`), SHA-1, MD5 |
-| crypto/des, rsa, hash, base64, memwipe | DES/3DES, RSA keygen/OAEP/PSS, hash wrappers, base64 |
-| bigdigits/mp*, sp* | BigDigits functions (mpAdd, mpModExp, spMultiply, ...) |
+| crypto/xecrypt, xecryptBn | XeCrypt API and big-endian bignum helpers (C source) |
+| crypto/aes/aes_modes, aestab, aescrypt, aeskey | Brian Gladman's AES (C source) |
+| crypto/rc4/rc4_enc, rc4_skey, sha/sha1dgst, md5/md5 | OpenSSL RC4 (`"rc4(idx,int)"`), SHA-1; MD5 (C source) |
+| crypto/des/des, bign/pkcs1-rsa, hash, base64, common | DES/3DES, RSA keygen/OAEP/PSS, hash wrappers, base64 (C source) |
+| crypto/bign/mp*, sp*, bigdUtils | BigDigits functions (mpAdd, mpModExp, spMultiply, ...) (C source) |
 
-### BigDigits in C
+### XeCrypt in C
+
+All 41 crypto objects are XeCrypt, copied unmodified (LF line endings) from
+[cOzInABox/XeCrypt](https://github.com/cOzInABox/XeCrypt) at commit `7d619af`
+into `src/crypto/`, which mirrors that repo's tree (its headers include
+`"bign/bigdigits.h"`, `"../sha/sha.h"` and so on). Only the files the program
+links, and the headers they include, are copied. The whole library was built
+at **-O3** (its Makefile's `-s -O3`; -O2 gives different code for 12 of the 15
+crypto files outside BigDigits), and each file compiles to the reference object.
+`src/crypto/LICENSE-XeCrypt.txt` is that repo's licence: MIT, plus the notices
+of the projects it includes (Gladman AES, Eric Young's RC4/SHA, MD5, DES,
+BigDigits). The BigDigits section says the 1.0 extension was released into
+the public domain with Ireland's permission. `bign/bigdigitsCopyright.txt` is
+the original 1.0 notice.
+
+Library objects use XeCrypt's file names: the objects first named
+crypto/xecrypt_bn, rsa, memwipe and md5_dgst are xecryptBn.c,
+bign/pkcs1-rsa.c, bign/common.c and md5/md5.c. aestab.c defines the AES
+tables, which the inferred data split had placed in aescrypt/aeskey (see
+`DATA_OWNERS` in `split.py`). xecrypt.c's `XeCryptRandomState` is a tentative
+definition, so it stays in the COMMON block (`common_bss.s` names it).
+
+#### BigDigits
 
 XeCrypt's `bign/` is Dang Nguyen Duc's extension of David Ireland's BigDigits
-**version 1.0** (2001, one function per file), compiled at **-O3**. The other
-code looks like -O2; only -O3's loop-to-`memset` distribution reproduces
-mpSetZero, mpSetDigit and mpDivide.
-
-The 26 `.c` files plus `bigdigits.h` and `mcrypto.h` are copied unmodified
-(LF line endings) from `bign/` in [cOzInABox/XeCrypt](https://github.com/cOzInABox/XeCrypt)
-at commit `7d619af`, and each one compiles to the reference object.
-`LICENSE-XeCrypt.txt` is that repo's licence: MIT, plus a BigDigits section
-saying the 1.0 extension was released into the public domain with Ireland's
-permission. `bigdigitsCopyright.txt` is the original 1.0 notice.
+**version 1.0** (2001, one function per file). Only -O3's loop-to-`memset`
+distribution reproduces mpSetZero, mpSetDigit and mpDivide.
 
 The header matters: mpModExp only matches with its `const` prototypes.
 Compared with upstream 1.0, the edits include `MAX_DIG_LEN` 64, no wiping of
@@ -202,12 +221,13 @@ Upstream 1.0 can be found as `di-mgt.com.au/src/BigDigits.zip` on the Wayback
 Machine.
 
 mpIsPrime.c holds `mpIsPrime` (full test, unused), `mpIsPrimeShort` (trial
-division only; crypto/rsa calls it) and `mpIsPrimeRabin`. The 15-byte gap
+division only; bign/pkcs1-rsa calls it) and `mpIsPrimeRabin`. The 15-byte gap
 before `mpIsPrimeRabin` is gas alignment padding: a short `jmp` over nops,
 which the disassembly showed as a call.
 
-`build.sh` feeds each file through stdin behind `#line 1 "H:/x360sdk/.../bign/X.c"`
-so that `__FILE__` matches.
+`build.sh` feeds each file through stdin behind
+`#line 1 "H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/<path>.c"` so that `__FILE__`
+matches (only bign's `assert`s use it).
 
 `bigdUtils.c` (alloc/free, printing, random fill, string conversion) is
 the object formerly called mpUtil. gcc turns its `malloc` + `memset(0)` into

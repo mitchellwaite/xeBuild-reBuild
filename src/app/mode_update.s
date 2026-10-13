@@ -1588,7 +1588,7 @@ FUN_404770:
           mov EAX,4140
           push ESI
           push EBX
-          call FUN_447c00
+          call ___chkstk_ms
           mov ECX,254
           sub ESP,EAX
           xor EAX,EAX

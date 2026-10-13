@@ -60,46 +60,46 @@ NAMES = {
     25: ('app/log', 'build.log, verbose levels; called by every app unit'),
     26: ('app/crc32', 'table-driven crc32'),
     27: ('crypto/xecrypt', 'XeCrypt-style API: SHA/HMAC (0x36/0x5c pads), RC4, DES, AES, RSA'),
-    28: ('crypto/xecrypt_bn', 'big-endian qword bignum helpers, Montgomery inverse'),
-    29: ('crypto/aes_modes', 'Gladman AES: ECB/CBC over the block functions'),
-    30: ('crypto/aestab', 'Gladman AES: aes_init() returning 0 (static tables)'),
-    31: ('crypto/aescrypt', 'Gladman AES: block encrypt/decrypt'),
-    32: ('crypto/aeskey', 'Gladman AES: key schedules for 128/192/256'),
-    33: ('bigdigits/mpSubtract', 'assert path .../XeCrypt/bign/mpSubtract.c'),
-    34: ('crypto/rsa', 'RSA key generation, PKCS#1 v1.5/OAEP/PSS'),
-    35: ('bigdigits/mpMultiply', 'assert path .../XeCrypt/bign/mpMultiply.c'),
-    36: ('bigdigits/mpShortMod', 'remainder of mpShortDiv'),
-    37: ('bigdigits/mpModExp', 'square-and-multiply over mpModMult'),
-    38: ('bigdigits/mpSetZero', 'memset digits'),
-    39: ('bigdigits/mpShortDiv', 'divide by one digit'),
-    40: ('crypto/base64', 'base64 alphabet, encode/decode'),
-    41: ('crypto/hash', 'hash-id size table, SHA-1 one-shot wrappers'),
-    42: ('bigdigits/mpModInv', 'extended Euclid'),
-    43: ('bigdigits/mpModulo', 'mpDivide keeping the remainder'),
-    44: ('bigdigits/mpShortSub', 'subtract one digit with borrow'),
-    45: ('bigdigits/mpSizeof', 'count significant digits'),
-    46: ('bigdigits/mpCompare', 'compare from the top digit'),
-    47: ('crypto/memwipe', 'memset wrapper + two empty functions'),
-    48: ('bigdigits/mpSetDigit', 'set low digit, zero the rest'),
-    49: ('bigdigits/mpIsPrime', 'small-prime sieve + Rabin-Miller'),
-    50: ('bigdigits/mpIsZero', 'all digits zero'),
-    51: ('bigdigits/mpShiftLeft', 'multi-digit shift left'),
-    52: ('bigdigits/spMultiply', '32x32->64 multiply via 16-bit halves'),
-    53: ('bigdigits/mpAdd', 'assert path .../XeCrypt/bign/mpAdd.c'),
-    54: ('bigdigits/mpModMult', 'mpMultiply then mpModulo'),
-    55: ('bigdigits/bigdUtils', 'digit alloc/free, hex print, random fill, string conversion (bign/bigdUtils.c)'),
-    56: ('bigdigits/mpShortAdd', 'add one digit with carry'),
-    57: ('crypto/rc4_enc', 'RC4 stream (OpenSSL RC4())'),
-    58: ('crypto/rc4_skey', 'RC4 key setup; RC4_options() "rc4(idx,int)"'),
-    59: ('crypto/sha1dgst', 'SHA-1 init/block/update/final'),
-    60: ('crypto/md5_dgst', 'MD5 init/block/update/final'),
-    61: ('crypto/des', 'DES/3DES key schedule and block functions'),
-    62: ('bigdigits/mpSetEqual', 'copy digits'),
-    63: ('bigdigits/mpShiftRight', 'multi-digit shift right'),
-    64: ('bigdigits/mpDivide', 'long division (quotient, remainder)'),
-    65: ('bigdigits/spDivide', '64/32 digit division'),
-    66: ('bigdigits/mpShortCmp', 'compare with one digit'),
-    67: ('bigdigits/spPseudoRand', 'rand()-based random digit'),
+    28: ('crypto/xecryptBn', 'big-endian qword bignum helpers, Montgomery inverse (XeCrypt xecryptBn.c)'),
+    29: ('crypto/aes/aes_modes', 'Gladman AES: ECB/CBC over the block functions'),
+    30: ('crypto/aes/aestab', 'Gladman AES: aes_init() returning 0, and the tables'),
+    31: ('crypto/aes/aescrypt', 'Gladman AES: block encrypt/decrypt'),
+    32: ('crypto/aes/aeskey', 'Gladman AES: key schedules for 128/192/256'),
+    33: ('crypto/bign/mpSubtract', 'assert path .../XeCrypt/bign/mpSubtract.c'),
+    34: ('crypto/bign/pkcs1-rsa', 'RSA key generation, PKCS#1 v1.5/OAEP/PSS (XeCrypt bign/pkcs1-rsa.c)'),
+    35: ('crypto/bign/mpMultiply', 'assert path .../XeCrypt/bign/mpMultiply.c'),
+    36: ('crypto/bign/mpShortMod', 'remainder of mpShortDiv'),
+    37: ('crypto/bign/mpModExp', 'square-and-multiply over mpModMult'),
+    38: ('crypto/bign/mpSetZero', 'memset digits'),
+    39: ('crypto/bign/mpShortDiv', 'divide by one digit'),
+    40: ('crypto/bign/base64', 'base64 alphabet, encode/decode'),
+    41: ('crypto/bign/hash', 'hash-id size table, SHA-1 one-shot wrappers'),
+    42: ('crypto/bign/mpModInv', 'extended Euclid'),
+    43: ('crypto/bign/mpModulo', 'mpDivide keeping the remainder'),
+    44: ('crypto/bign/mpShortSub', 'subtract one digit with borrow'),
+    45: ('crypto/bign/mpSizeof', 'count significant digits'),
+    46: ('crypto/bign/mpCompare', 'compare from the top digit'),
+    47: ('crypto/bign/common', 'memset wrapper + two empty functions (XeCrypt bign/common.c)'),
+    48: ('crypto/bign/mpSetDigit', 'set low digit, zero the rest'),
+    49: ('crypto/bign/mpIsPrime', 'small-prime sieve + Rabin-Miller'),
+    50: ('crypto/bign/mpIsZero', 'all digits zero'),
+    51: ('crypto/bign/mpShiftLeft', 'multi-digit shift left'),
+    52: ('crypto/bign/spMultiply', '32x32->64 multiply via 16-bit halves'),
+    53: ('crypto/bign/mpAdd', 'assert path .../XeCrypt/bign/mpAdd.c'),
+    54: ('crypto/bign/mpModMult', 'mpMultiply then mpModulo'),
+    55: ('crypto/bign/bigdUtils', 'digit alloc/free, hex print, random fill, string conversion (bign/bigdUtils.c)'),
+    56: ('crypto/bign/mpShortAdd', 'add one digit with carry'),
+    57: ('crypto/rc4/rc4_enc', 'RC4 stream (OpenSSL RC4())'),
+    58: ('crypto/rc4/rc4_skey', 'RC4 key setup; RC4_options() "rc4(idx,int)"'),
+    59: ('crypto/sha/sha1dgst', 'SHA-1 init/block/update/final'),
+    60: ('crypto/md5/md5', 'MD5 init/block/update/final (XeCrypt md5/md5.c)'),
+    61: ('crypto/des/des', 'DES/3DES key schedule and block functions'),
+    62: ('crypto/bign/mpSetEqual', 'copy digits'),
+    63: ('crypto/bign/mpShiftRight', 'multi-digit shift right'),
+    64: ('crypto/bign/mpDivide', 'long division (quotient, remainder)'),
+    65: ('crypto/bign/spDivide', '64/32 digit division'),
+    66: ('crypto/bign/mpShortCmp', 'compare with one digit'),
+    67: ('crypto/bign/spPseudoRand', 'rand()-based random digit'),
     68: ('runtime/libmingw32/atonexit', 'byte match'),
     69: ('runtime/libmingw32/gccmain', 'byte match'),
     70: ('runtime/libmingw32/charmax', 'byte match; calls __lconv_init'),
@@ -127,11 +127,12 @@ NAMES = {
     92: ('runtime/libmingwex/invalid_parameter_handler', 'get/set (xchg) of one global'),
     93: ('runtime/crtend', 'gcc crtend.o: register_frame_ctor, .jcr, eh_frame terminator'),
 }
-# Real names for functions shared with C sources (src/<obj>.c): gcc objects
-# define and call these names, so the .s files must use them too.  Address ->
-# symbol (with the leading underscore of i386 PE).
+# Real names for functions and data shared with C sources (src/<obj>.c): gcc
+# objects define and use these names, so the .s files must use them too
+# (FUN_/L_ labels at the address).  Address -> symbol (with the leading
+# underscore of i386 PE).
 SYMBOLS = {
-    # BigDigits (src/bigdigits/*.c); names from XeCrypt's bign sources
+    # BigDigits (src/crypto/bign/*.c); names from XeCrypt's bign sources
     0x43e550: '_mpSubtract', 0x440e20: '_mpMultiply', 0x440f80: '_mpShortMod',
     0x440fc0: '_mpModExp', 0x4410e0: '_mpSetZero', 0x441110: '_mpShortDiv',
     0x441540: '_mpModInv', 0x441710: '_mpModulo', 0x441780: '_mpShortSub',
@@ -142,20 +143,78 @@ SYMBOLS = {
     0x446230: '_mpShiftRight', 0x446360: '_mpDivide', 0x446830: '_spDivide',
     0x446a40: '_mpShortCmp', 0x446a90: '_spPseudoRand',
     0x4421a0: '_mpMalloc', 0x4421f0: '_mpFree', 0x4423a0: '_mpMakeRandom',
+    # XeCrypt (src/crypto/**/*.c); names from its sources
+    # xecrypt
+    0x4348f0: '_XeCryptAesCbc', 0x4348a0: '_XeCryptAesEcb', 0x434850: '_XeCryptAesKey',
+    0x433e10: '_XeCryptBnQw_SwapDwQwLeBe', 0x435210: '_XeCryptBnQwBeSigCompute',
+    0x435530: '_XeCryptBnQwBeSigCreate', 0x435020: '_XeCryptBnQwBeSigFormat',
+    0x435440: '_XeCryptBnQwBeSigVerify', 0x435820: '_XeCryptBnQwNeRsaPrvCrypt',
+    0x434090: '_XeCryptHammingWeight', 0x434110: '_XeCryptHmacSha',
+    0x4346c0: '_XeCryptRandom', 0x4345b0: '_XeCryptRc4', 0x434be0: '_XeCryptRotSum',
+    0x434c00: '_XeCryptRotSumSha', 0x434a30: '_XeCryptSha', 0x4349c0: '_XeCryptShaFinal',
+    0x434950: '_XeCryptShaInit', 0x434960: '_XeCryptShaUpdate',
+    0x433ff0: '_XeCryptUidEccEncode', 0x435b00: '_XeKeysPkcs1Verify',
+    # xecryptBn
+    0x436e50: '_BnQwBeBufSwap', 0x437040: '_mpGetBeQwBigNum', 0x436fe0: '_mpSetBeQwBigNum',
+    0x436d80: '_XeCryptBnQw_Copy', 0x436df0: '_XeCryptBnQw_Zero',
+    0x4389b0: '_XeCryptBnQwNeAdd', 0x438620: '_XeCryptBnQwNeCompare',
+    0x438460: '_XeCryptBnQwNeMod', 0x4380f0: '_XeCryptBnQwNeModExp',
+    0x437120: '_XeCryptBnQwNeModInv', 0x4372a0: '_XeCryptBnQwNeModMul',
+    0x4382c0: '_XeCryptBnQwNeMul', 0x438860: '_XeCryptBnQwNeSub',
+    0x436b00: '_XeCryptLoadQuad', 0x436e20: '_XeCryptMemcpyRev',
+    0x436c50: '_XeCryptStoreQuad',
+    # aes/aestab
+    0x439eb0: '_aes_init',
+    # aes/aescrypt
+    0x43aca0: '_aes_decrypt', 0x439ec0: '_aes_encrypt',
+    # aes/aeskey
+    0x43e4e0: '_aes_decrypt_key', 0x43c6f0: '_aes_encrypt_key',
+    # bign/pkcs1-rsa
+    0x43f6b0: '_PKCS1_EME_OAEP_DEC', 0x43e870: '_PKCS1_RSA_FreeKey',
+    0x43e940: '_PKCS1_RSA_GenKey',
+    # bign/base64
+    0x441330: '_mpBase64Decode',
+    # bign/hash
+    0x441400: '_GenSeed', 0x441480: '_Hash', 0x441410: '_HashLenQuery',
+    # bign/common
+    0x441890: '_mcrypto_dump',
+    # rc4/rc4_enc
+    0x442630: '_RC4',
+    # rc4/rc4_skey
+    0x4429d0: '_RC4_set_key',
+    # sha/sha1dgst
+    0x442b40: '_sha1_block', 0x444da0: '_SHA1_Final', 0x442b00: '_SHA1_Init',
+    0x4448d0: '_SHA1_Update',
+    # md5/md5
+    0x445830: '_MD5_Final', 0x445690: '_MD5_Init', 0x4456c0: '_MD5_Update',
+    # des/des
+    0x445fd0: '_des_ecb_decrypt', 0x445f60: '_des_ecb_encrypt', 0x445e50: '_des_setup',
+    0x4460e0: '_des3_ecb_decrypt', 0x446050: '_des3_ecb_encrypt', 0x445ea0: '_des3_setup',
+    # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
+    0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls
     0x448760: '__assert',       # libmingwex wassert.o
+    0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
     0x449050: '__time32',       # import stub, msvcrt `time`
     # import stubs
     0x449078: '_strlen', 0x449090: '_srand', 0x449098: '_sprintf', 0x4490c0: '_rand',
     0x4490d8: '_putchar', 0x4490e0: '_printf', 0x4490f0: '_memset', 0x4490f8: '_memcpy',
     0x449108: '_malloc', 0x449140: '_free', 0x4491a0: '_calloc',
+    0x4490d0: '_puts', 0x449100: '_memcmp', 0x449160: '_fopen', 0x449168: '_fgets',
+    0x449188: '_feof', 0x449190: '_fclose', 0x4491a8: '_atoi', 0x449200: '__lrotl',
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
 STARTUP = 0x4492c0          # .text.startup begins (main)
 LISTS = (0x4497a0, 0x4497b4, 'runtime/ctor_dtor_lists', '__CTOR_LIST__/__DTOR_LIST__ from the link script')
 NOCODE = ('runtime/no_code_objects', '10 gcc objects without code (idents only; data merged into neighbours)')
-COMMON = (0x479e84, 'common_bss', 'COMMON globals, laid out by ld in hash order')
+# Data whose defining object is known from its C source, where references
+# alone would place it wrongly: (lo, hi, file, evidence).
+DATA_OWNERS = [
+    (0x45cc20, 0x461c60, 'crypto/aes/aestab',
+     'aestab.c defines t_im, t_il, t_in, t_fl, t_fn, t_rc; only aescrypt/aeskey code uses them'),
+]
+COMMON = (0x479e84,'common_bss', 'COMMON globals, laid out by ld in hash order')
 WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import libraries)'),
          '.CRT': ('runtime/crt_tls_sections', '.CRT initializer tables and .tls directory'),
          '.tls': ('runtime/crt_tls_sections', None),
@@ -325,6 +384,10 @@ def main():
                     changed = True
         if not changed:
             break
+    for lo, hi, p, _ in DATA_OWNERS:
+        for k, (a0, a1, _s) in enumerate(flat):
+            if lo <= a0 and a1 <= hi:
+                refset[k] = {p}
     summary = {}
     for s, al in atoms.items():
         rsets = [refset[atom_of(a0)] for a0, _ in al]
@@ -403,7 +466,7 @@ def main():
         piece_lines[pc].append(l)
 
     # ---- real names (after the address-based analysis above)
-    rename = re.compile(r'(?<![\w.$])FUN_(%s)(?![\w$])' % '|'.join('%x' % a for a in SYMBOLS))
+    rename = re.compile(r'(?<![\w.$])(?:FUN|L)_(%s)(?![\w$])' % '|'.join('%x' % a for a in SYMBOLS))
     for pc, ls in piece_lines.items():
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
 

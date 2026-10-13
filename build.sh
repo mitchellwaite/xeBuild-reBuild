@@ -15,7 +15,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
     case "$f" in
       # original build path, for __FILE__ in assert(); fed through stdin so
       # the #line can name it (gcc 6 has no -ffile-prefix-map)
-      bigdigits/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/bign/$(basename "$f").c"; cflags=-O3 ;;
+      # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
+      crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
+                cflags="-O3 -Isrc/crypto" ;;
       *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
     esac
     { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |

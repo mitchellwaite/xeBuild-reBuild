@@ -28,32 +28,32 @@ L_40d010:
           jmp DWORD PTR [EBX*4+L_450990]
 L_40d030:
           mov DWORD PTR [ESP],OFFSET L_4508b0
-          call FUN_4490d0
+          call _puts
           .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
 L_40d040:
           mov DWORD PTR [ESP],OFFSET L_450983
-          call FUN_4490d0
+          call _puts
           mov DWORD PTR [ESP],4
           call FUN_449198
 L_40d058:
           mov DWORD PTR [ESP],OFFSET L_450925
-          call FUN_4490d0
+          call _puts
           jmp L_40d040
 L_40d066:
           mov DWORD PTR [ESP],OFFSET L_450909
-          call FUN_4490d0
+          call _puts
           jmp L_40d040
 L_40d074:
           mov DWORD PTR [ESP],OFFSET L_4508e8
-          call FUN_4490d0
+          call _puts
           jmp L_40d040
 L_40d082:
           mov DWORD PTR [ESP],OFFSET L_450937
-          call FUN_4490d0
+          call _puts
           jmp L_40d040
 L_40d090:
           mov DWORD PTR [ESP],OFFSET L_450954
-          call FUN_4490d0
+          call _puts
           jmp L_40d040
           .byte 0x66
           .byte 0x90
