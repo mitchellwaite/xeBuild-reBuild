@@ -1,21 +1,8 @@
 /* mpShortDiv.c */
 
-/******************* SHORT COPYRIGHT NOTICE*************************
-This source code is part of the BigDigits multiple-precision
-arithmetic library Version 1.0 originally written by David Ireland,
-copyright (c) 2001 D.I. Management Services Pty Limited, all rights
-reserved. It is provided "as is" with no warranties. You may use
-this software under the terms of the full copyright notice
-"bigdigitsCopyright.txt" that should have been included with
-this library. To obtain a copy send an email to
-<code@di-mgt.com.au> or visit <www.di-mgt.com.au/crypto.html>.
-This notice must be retained in any copy.
-****************** END OF COPYRIGHT NOTICE*************************/
-
 #include "bigdigits.h"
 
-DIGIT_T mpShortDiv(DIGIT_T q[], DIGIT_T u[], DIGIT_T v, 
-				   unsigned int ndigits)
+DIGIT_T mpShortDiv(DIGIT_T q[], const DIGIT_T u[], DIGIT_T v, UINT ndigits)
 {
 	/*	Calculates quotient q = u div v
 		Returns remainder r = u mod v
@@ -26,9 +13,9 @@ DIGIT_T mpShortDiv(DIGIT_T q[], DIGIT_T u[], DIGIT_T v,
 		
 		Ref: Knuth Vol 2 Ch 4.3.1 Exercise 16 p625
 	*/
-	unsigned int j;
+	UINT j;
 	DIGIT_T t[2], r;
-	unsigned int shift;
+	UINT shift;
 	DIGIT_T bitmask, overflow, *uu;
 
 	if (ndigits == 0) return 0;
@@ -40,8 +27,7 @@ DIGIT_T mpShortDiv(DIGIT_T q[], DIGIT_T u[], DIGIT_T v,
 		i.e. d = 2^shift, u' = u * d, v' = v * d.
 	*/
 	bitmask = HIBITMASK;
-	for (shift = 0; shift < BITS_PER_DIGIT; shift++)
-	{
+	for (shift = 0; shift < BITS_PER_DIGIT; shift++){
 		if (v & bitmask)
 			break;
 		bitmask >>= 1;
@@ -54,8 +40,7 @@ DIGIT_T mpShortDiv(DIGIT_T q[], DIGIT_T u[], DIGIT_T v,
 	/* Step S1 - modified for extra digit. */
 	r = overflow;	/* New digit Un */
 	j = ndigits;
-	while (j--)
-	{
+	while (j--){
 		/* Step S2. */
 		t[1] = r;
 		t[0] = uu[j];

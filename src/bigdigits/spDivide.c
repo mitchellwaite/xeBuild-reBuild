@@ -1,17 +1,5 @@
 /* spDivide.c */
 
-/******************* SHORT COPYRIGHT NOTICE*************************
-This source code is part of the BigDigits multiple-precision
-arithmetic library Version 1.0 originally written by David Ireland,
-copyright (c) 2001 D.I. Management Services Pty Limited, all rights
-reserved. It is provided "as is" with no warranties. You may use
-this software under the terms of the full copyright notice
-"bigdigitsCopyright.txt" that should have been included with
-this library. To obtain a copy send an email to
-<code@di-mgt.com.au> or visit <www.di-mgt.com.au/crypto.html>.
-This notice must be retained in any copy.
-****************** END OF COPYRIGHT NOTICE*************************/
-
 #include "bigdigits.h"
 #define B (MAX_HALF_DIGIT + 1)
 
@@ -20,7 +8,16 @@ static void spMultSub(DIGIT_T uu[2], DIGIT_T qhat,
 
 
 DIGIT_T spDivide(DIGIT_T *q, DIGIT_T *r, DIGIT_T u[2], DIGIT_T v)
-{	/*	Computes quotient q = u / v, remainder r = u mod v
+{	
+#if MCRYPTO_USE_ASM==1	
+	/* use inline assembly for this routine */
+	#ifdef __GNUC__
+	/* gnu c uses AT&T syntax */
+	#else
+	/* for compiler uses Intel syntax, say Intel C++ */
+	#endif	
+#else
+	/*	Computes quotient q = u / v, remainder r = u mod v
 		where u is a double digit
 		and q, v, r are single precision digits.
 		Returns high digit of quotient (max value is 1)
@@ -153,7 +150,9 @@ DIGIT_T spDivide(DIGIT_T *q, DIGIT_T *r, DIGIT_T u[2], DIGIT_T v)
 
 	/* Remainder is in (u1u0) i.e. uu[0] */
 	*r = uu[0];
+	
 	return q2;
+#endif
 }
 
 static void spMultSub(DIGIT_T uu[2], DIGIT_T qhat, 

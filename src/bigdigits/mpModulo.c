@@ -1,23 +1,8 @@
 /* mpModulo.c */
 
-/******************* SHORT COPYRIGHT NOTICE*************************
-This source code is part of the BigDigits multiple-precision
-arithmetic library Version 1.0 originally written by David Ireland,
-copyright (c) 2001 D.I. Management Services Pty Limited, all rights
-reserved. It is provided "as is" with no warranties. You may use
-this software under the terms of the full copyright notice
-"bigdigitsCopyright.txt" that should have been included with
-this library. To obtain a copy send an email to
-<code@di-mgt.com.au> or visit <www.di-mgt.com.au/crypto.html>.
-This notice must be retained in any copy.
-****************** END OF COPYRIGHT NOTICE*************************/
-
-/* XeCrypt change (reconstructed from xeBuild.exe): temporaries are not wiped */
-
 #include "bigdigits.h"
 
-int mpModulo(DIGIT_T r[], DIGIT_T u[], unsigned int udigits, 
-			 DIGIT_T v[], unsigned int vdigits)
+int mpModulo(DIGIT_T r[], const DIGIT_T u[], UINT udigits, DIGIT_T v[], UINT vdigits)
 {
 	/*	Calculates r = u mod v
 		where r, v are multiprecision integers of length vdigits
@@ -39,7 +24,6 @@ int mpModulo(DIGIT_T r[], DIGIT_T u[], unsigned int udigits,
 	mpDivide(qq, rr, u, udigits, v, vdigits);
 
 	mpSetEqual(r, rr, vdigits);
-
 	return 0;
 }
 

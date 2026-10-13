@@ -131,12 +131,12 @@ NAMES = {
 # define and call these names, so the .s files must use them too.  Address ->
 # symbol (with the leading underscore of i386 PE).
 SYMBOLS = {
-    # BigDigits (src/bigdigits/*.c); names from the library
+    # BigDigits (src/bigdigits/*.c); names from XeCrypt's bign sources
     0x43e550: '_mpSubtract', 0x440e20: '_mpMultiply', 0x440f80: '_mpShortMod',
     0x440fc0: '_mpModExp', 0x4410e0: '_mpSetZero', 0x441110: '_mpShortDiv',
     0x441540: '_mpModInv', 0x441710: '_mpModulo', 0x441780: '_mpShortSub',
     0x4417d0: '_mpSizeof', 0x441800: '_mpCompare', 0x4418a0: '_mpSetDigit',
-    0x441be0: '_mpIsPrime', 0x441c80: '_mpRabinMiller', 0x441f00: '_mpIsZero',
+    0x441be0: '_mpIsPrimeShort', 0x441c80: '_mpIsPrimeRabin', 0x441f00: '_mpIsZero',
     0x441f40: '_mpShiftLeft', 0x442050: '_spMultiply', 0x4420b0: '_mpAdd',
     0x442130: '_mpModMult', 0x4425d0: '_mpShortAdd', 0x446200: '_mpSetEqual',
     0x446230: '_mpShiftRight', 0x446360: '_mpDivide', 0x446830: '_spDivide',

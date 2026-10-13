@@ -1,38 +1,43 @@
 /* bigdigits.h */
 
-/******************* SHORT COPYRIGHT NOTICE*************************
-This source code is part of the BigDigits multiple-precision
-arithmetic library Version 1.0 originally written by David Ireland,
-copyright (c) 2001 D.I. Management Services Pty Limited, all rights
-reserved. It is provided "as is" with no warranties. You may use
-this software under the terms of the full copyright notice
-"bigdigitsCopyright.txt" that should have been included with
-this library. To obtain a copy send an email to
-<code@di-mgt.com.au> or visit <www.di-mgt.com.au/crypto.html>.
-This notice must be retained in any copy.
-****************** END OF COPYRIGHT NOTICE*************************/
+/*
+  Most of this multi-precision arithmetic library was developed by David Ireland,
+  the author of BIGDIGITS library, copyright (c) 2001-8 by D.I. Management
+  Services Pty Limited - www.di-mgt.com.au.
+
+  The bigdigits library version 1.0 has been extended by Dang Nguyen Duc and posted
+  on public domain with permission from Davia Ireland.
+*/
+
 
 #ifndef _BIGDIGITS_H_
 #define _BIGDIGITS_H_ 1
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "mcrypto.h"
+
 /* Define type of DIGIT here */
-typedef unsigned long DIGIT_T;
+typedef unsigned int DIGIT_T;
 typedef unsigned short HALF_DIGIT_T;
 
-/* Sizes to suit your machine */
-#define MAX_DIGIT 0xffffffff
-#define MAX_HALF_DIGIT 0xffff
-#define BITS_PER_DIGIT 32
-#define HIBITMASK 0x80000000
+/* Sizes to suit your machine - todo: move to mcrypto.h */
+#define MAX_DIGIT 	(DIGIT_T)(0xffffffff)
+#define MAX_HALF_DIGIT 	(DIGIT_T)(0xffff)
+#define BITS_PER_DIGIT 	32
+#define HIBITMASK 	(DIGIT_T)(0x80000000)
 
-/* Max number of digits expected in a mp array */
-#define MAX_DIG_LEN 64	/* XeCrypt change: was 51 */
-/*	This is required for temp storage only in:
+/* Max number of digits expected in a mp array ~ 2048 bits */
+#define MAX_DIG_LEN 64
+
+/*	temp storage to be used in:
 	mpModulo, mpShortMod, mpModMult, mpGcd,
-	mpModInv, mpIsPrime
+	mpModInv, mpIsPrime, have max number of digits
 */
 
-/* Useful macros */
+/* Useful macros - todo: move to mcrypto.h */
 #define LOHALF(x) ((DIGIT_T)((x) & 0xffff))
 #define HIHALF(x) ((DIGIT_T)((x) >> 16 & 0xffff))
 #define TOHIGH(x) ((DIGIT_T)((x) << 16))
@@ -45,194 +50,253 @@ typedef unsigned short HALF_DIGIT_T;
 
 #define mpNEXTBITMASK(mask, n) if(mask==1){mask=HIBITMASK;n--;}else{mask>>=1;}
 
+#define NBYTE(len)	(len)*BITS_PER_DIGIT / 8
+#define NDIGIT(n)	((n) % BITS_PER_DIGIT) ? ((n) / BITS_PER_DIGIT) + 1 : ((n) / BITS_PER_DIGIT)
 
-char *copyright_notice(void);
-	/* Forces linker to include copyright notice in executable */
+/* memory management rountines */
+	/* allocate memory for big integer with ndigits digits */
+DIGIT_T *mpMalloc(UINT ndigits);
 
+	/* allocate memory for big integer with nbits-bit long */
+DIGIT_T *mpMallocB(UINT nbits, UINT *ndigits);
 
-/*	Multiple precision calculations	
+	/* free memory allocated to p */
+void mpFree(DIGIT_T *p);
+
+/*	Multiple precision calculations
 	Using known, equal ndigits
 	except where noted
 */
 
-DIGIT_T mpAdd(DIGIT_T w[], DIGIT_T u[], DIGIT_T v[], 
-			   unsigned int ndigits);
 	/* Computes w = u + v, returns carry */
+DIGIT_T mpAdd(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T v[], UINT ndigits);
 
-DIGIT_T mpSubtract(DIGIT_T w[], DIGIT_T u[], DIGIT_T v[], 
-			   unsigned int ndigits);
 	/* Computes w = u - v, returns borrow */
+DIGIT_T mpSubtract(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T v[], UINT ndigits);
 
-int mpMultiply(DIGIT_T w[], DIGIT_T u[], DIGIT_T v[], 
-					unsigned int ndigits);
-	/* Computes product w = u * v 
+	/* Computes product w = u * v
 	   u, v = ndigits long; w = 2 * ndigits long */
+int mpMultiply(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T v[], UINT ndigits);
 
-int mpDivide(DIGIT_T q[], DIGIT_T r[], DIGIT_T u[], 
-	unsigned int udigits, DIGIT_T v[], unsigned int vdigits);
-	/* Computes quotient q = u / v and remainder r = u mod v 
+	/* Computes quotient q = u / v and remainder r = u mod v
 	   q, r, u = udigits long; v = vdigits long
 	   Warning: Trashes q and r first */
+int mpDivide(DIGIT_T q[], DIGIT_T r[], const DIGIT_T u[], UINT udigits, DIGIT_T v[], UINT vdigits);
 
-int mpModulo(DIGIT_T r[], DIGIT_T u[], unsigned int udigits, 
-			 DIGIT_T v[], unsigned int vdigits);
-	/* Computes r = u mod v 
+	/* Compute w = u^2 */
+int mpSquare(DIGIT_T w[], const DIGIT_T u[], UINT ndigits);
+
+	/* Computes r = u mod v
 	   u = udigits long; r, v = vdigits long */
+int mpModulo(DIGIT_T r[], const DIGIT_T u[], UINT udigits, DIGIT_T v[], UINT vdigits);
 
-int mpModMult(DIGIT_T a[], DIGIT_T x[], DIGIT_T y[], DIGIT_T m[], unsigned int ndigits);
 	/* Computes a = (x * y) mod m */
+int mpModMult(DIGIT_T a[], const DIGIT_T x[], const DIGIT_T y[], const DIGIT_T m[], UINT ndigits);
 
-int mpModExp(DIGIT_T y[], DIGIT_T x[], 
-			DIGIT_T n[], DIGIT_T d[], unsigned int ndigits);
+	/* Compute w = u^2 mod p */
+int mpModSquare(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T p[], UINT ndigits);
+
 	/* Computes y = x^n mod d */
+int mpModExp(DIGIT_T y[], const DIGIT_T x[], const DIGIT_T n[], const DIGIT_T d[], UINT ndigits);
 
-int mpModInv(DIGIT_T inv[], DIGIT_T u[], DIGIT_T v[], unsigned int ndigits);
 	/*	Computes inv = u^-1 mod v */
+int mpModInv(DIGIT_T inv[], const DIGIT_T u[], const DIGIT_T v[], UINT ndigits);
 
-int mpGcd(DIGIT_T g[], DIGIT_T x[], DIGIT_T y[], unsigned int ndigits);
+	/* Compute w = u + v mod m */
+int mpModAdd(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T v[], const DIGIT_T m[], UINT ndigits);
+
+	/* Compute w = u - v mod m */
+int mpModSubtract(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T v[], const DIGIT_T m[], UINT ndigits);
+
+	/* Compute Jacobian symbol val = (a/m) where m is an odd integer */
+int mpJacobi(int *val, const DIGIT_T a[], const DIGIT_T m[], UINT len);
+
+	/* Compute Legendre symbol val = (a/p) where p is an odd prime */
+int mpLegendre(int *val, const DIGIT_T a[], const DIGIT_T p[], UINT len);
+
+	/*
+	   Compute modulo p square root of a, x^2 = a mod p
+	   a1 = a^-1 mod p
+	   p-1 = Q*2^S, Q is odd
+	   V = W^Q mod p where W is a quadratic nonresidue modulo p
+	   V, S, Q are computed using mpModSquareRootPre
+	   a1 can be computed by mpModInv or mpModExp (a^(-1) = a^(p-2) mod p)
+	*/
+int mpModSquareRoot(DIGIT_T x[], const DIGIT_T a[], const DIGIT_T p[], UINT S, const DIGIT_T Q[], const DIGIT_T V[], const DIGIT_T a1[], UINT len);
+
+	/* Precomputation for mpModSquareRoot */
+int mpModSquareRootPre(UINT *S, DIGIT_T Q[], DIGIT_T V[], const DIGIT_T p[], UINT len);
+
 	/* Computes g = gcd(x, y) */
+int mpGcd(DIGIT_T g[], const DIGIT_T x[], const DIGIT_T y[], UINT ndigits);
 
-int mpEqual(DIGIT_T a[], DIGIT_T b[], unsigned int ndigits);
 	/* Returns true if a == b, else false */
+int mpEqual(const DIGIT_T a[], const DIGIT_T b[], UINT ndigits);
 
-int mpCompare(DIGIT_T a[], DIGIT_T b[], unsigned int ndigits);
 	/* Returns sign of (a - b) */
+int mpCompare(const DIGIT_T a[], const DIGIT_T b[], UINT ndigits);
 
-int mpIsZero(DIGIT_T a[], unsigned int ndigits);
 	/* Returns true if a == 0, else false */
+int mpIsZero(const DIGIT_T a[], UINT ndigits);
+
+	/* Returns true if a == 1, else false */
+int mpIsOne(const DIGIT_T a[], UINT ndigits);
+
+	/* Swap two integers */
+int mpSwap(DIGIT_T a[], DIGIT_T b[], UINT len);
 
 /* Bitwise operations */
 
-DIGIT_T mpShiftLeft(DIGIT_T a[], DIGIT_T b[],
-	unsigned int x, unsigned int ndigits);
-	/* Computes a = b << x, x < BITS_PER_DIGIT */
+DIGIT_T mpShiftLeft(DIGIT_T a[], const DIGIT_T b[], UINT x, UINT ndigits);
+	/* Computes a = b << x */
 
-DIGIT_T mpShiftRight(DIGIT_T a[], DIGIT_T b[],
-	unsigned int x, unsigned int ndigits);
-	/* Computes a = b >> x, x < BITS_PER_DIGIT */
+DIGIT_T mpShiftRight(DIGIT_T a[], const DIGIT_T b[], UINT x, UINT ndigits);
+	/* Computes a = b >> x */
+
+	/* Bitwise AND */
+void mpAND(DIGIT_T a[], const DIGIT_T x[], const DIGIT_T y[], UINT ndigits);
+
+	/* Bitwise OR */
+void mpOR(DIGIT_T a[], const DIGIT_T x[], const DIGIT_T y[], UINT ndigits);
+
+	/* Bitwise XOR */
+void mpXOR(DIGIT_T a[], const DIGIT_T x[], const DIGIT_T y[], UINT ndigits);
+
+	/* Bitwise Complement */
+void mpComplement(DIGIT_T a[], const DIGIT_T b[], UINT ndigits);
 
 /* Other mp utilities */
 
-void mpSetZero(DIGIT_T a[], unsigned int ndigits);
 	/* Sets a = 0 */
+void mpSetZero(DIGIT_T a[], UINT ndigits);
 
-void mpSetDigit(DIGIT_T a[], DIGIT_T d, unsigned int ndigits);
 	/* Sets a = d where d is a single digit */
+void mpSetDigit(DIGIT_T a[], DIGIT_T d, UINT ndigits);
 
-void mpSetEqual(DIGIT_T a[], DIGIT_T b[], unsigned int ndigits);
 	/* Sets a = b */
+void mpSetEqual(DIGIT_T a[], const DIGIT_T b[], UINT ndigits);
 
-unsigned int mpSizeof(DIGIT_T a[], unsigned int ndigits);
 	/* Returns size of significant non-zero digits in a */
+UINT mpSizeof(const DIGIT_T a[], UINT ndigits);
 
-int mpIsPrime(DIGIT_T w[], unsigned int ndigits, unsigned int t);
-	/* Returns true if w is a probable prime 
+	/* Return actual bit length of d */
+UINT mpBitLength(const DIGIT_T d[], UINT ndigits);
+
+	/* Returns true if w is a probable prime
 	   t tests using FIPS-186-2/Rabin-Miller */
+int mpIsPrime(const DIGIT_T w[], UINT ndigits, UINT t);
 
+	/* Returns true if w is a probable prime using only
+	mpIsPrime faster short integer primes test */
+int mpIsPrimeShort(const DIGIT_T w[], UINT ndigits);
+
+	/* Returns true if w is a probable prime using only
+	t tests using FIPS-186-2/Rabin-Miller */
+int mpIsPrimeRabin(const DIGIT_T w[], UINT ndigits, UINT t);
+
+	/* generate Solinas' prime of the form p = 2^a + 2^b + 1, return b if succeeded and 0 if failed */
+UINT mpSolinasPrime(DIGIT_T p[], UINT ndigits, UINT bit_len);
 
 /* mpShort = mp x single digit calculations */
 
-DIGIT_T mpShortAdd(DIGIT_T w[], DIGIT_T u[], DIGIT_T d, 
-			   unsigned int ndigits);
 	/* Computes w = u + d, returns carry */
+DIGIT_T mpShortAdd(DIGIT_T w[], const DIGIT_T u[], DIGIT_T d, UINT ndigits);
 
-DIGIT_T mpShortSub(DIGIT_T w[], DIGIT_T u[], DIGIT_T v, 
-			   unsigned int ndigits);
 	/* Computes w = u - v, returns borrow */
+DIGIT_T mpShortSub(DIGIT_T w[], const DIGIT_T u[], DIGIT_T v, UINT ndigits);
 
-DIGIT_T mpShortMult(DIGIT_T p[], DIGIT_T x[], DIGIT_T y, 
-					unsigned int ndigits);
 	/* Computes product p = x * y */
+DIGIT_T mpShortMult(DIGIT_T p[], const DIGIT_T x[], DIGIT_T y, UINT ndigits);
 
-DIGIT_T mpShortDiv(DIGIT_T q[], DIGIT_T u[], DIGIT_T v, 
-				   unsigned int ndigits);
 	/* Computes q = u / v, returns remainder */
+DIGIT_T mpShortDiv(DIGIT_T q[], const DIGIT_T u[], DIGIT_T v, UINT ndigits);
 
-DIGIT_T mpShortMod(DIGIT_T a[], DIGIT_T d, unsigned int ndigits);
-	/* Computes r = a mod d */
+	/* Return r = a mod d */
+DIGIT_T mpShortMod(const DIGIT_T a[], DIGIT_T d, UINT ndigits);
 
-int mpShortCmp(DIGIT_T a[], DIGIT_T b, unsigned int ndigits);
-	/* Returns sign of (a - b) where b is a single digit */
+	/* Return sign of (a - b) where b is a single digit */
+int mpShortCmp(const DIGIT_T a[], DIGIT_T b, UINT ndigits);
 
+	/* Compute w = u*v mod m */
+int mpShortModMult(DIGIT_T w[], const DIGIT_T u[], DIGIT_T v, DIGIT_T m[], UINT ndigits);
 
 /* Short division using only half-digit divisor */
 
-DIGIT_T mpHalfDiv(DIGIT_T q[], DIGIT_T a[], HALF_DIGIT_T d, 
-				   unsigned int ndigits);
 	/* Computes q = a mod d, returns remainder */
+DIGIT_T mpHalfDiv(DIGIT_T q[], const DIGIT_T a[], HALF_DIGIT_T d, UINT ndigits);
 
-DIGIT_T mpHalfMod(DIGIT_T a[], HALF_DIGIT_T d, unsigned int ndigits);
-	/* Computes r = a mod d */
-
+	/* Return r = a mod d */
+DIGIT_T mpHalfMod(const DIGIT_T a[], HALF_DIGIT_T d, UINT ndigits);
 
 /* Single precision calculations (double where necessary) */
 
-int spMultiply(DIGIT_T p[2], DIGIT_T x, DIGIT_T y);
 	/* Computes p = x * y */
+int spMultiply(DIGIT_T p[2], DIGIT_T x, DIGIT_T y);
 
-DIGIT_T spDivide(DIGIT_T *q, DIGIT_T *r, DIGIT_T u[2], DIGIT_T v);
 	/* Computes quotient q = u / v, remainder r = u mod v */
+DIGIT_T spDivide(DIGIT_T *q, DIGIT_T *r, DIGIT_T u[2], DIGIT_T v);
 
-int spModExp(DIGIT_T *exp, DIGIT_T x, DIGIT_T n, DIGIT_T d);
 	/* Computes exp = x^n mod d */
+int spModExp(DIGIT_T *exp, DIGIT_T x, DIGIT_T n, DIGIT_T d);
 
-int spModMult(DIGIT_T *a, DIGIT_T x, DIGIT_T y, DIGIT_T m);
 	/* Computes a = (x * y) mod m */
+int spModMult(DIGIT_T *a, DIGIT_T x, DIGIT_T y, DIGIT_T m);
 
-int spModInv(DIGIT_T *inv, DIGIT_T u, DIGIT_T v);
 	/* Computes inv = u^-1 mod v */
+int spModInv(DIGIT_T *inv, DIGIT_T u, DIGIT_T v);
 
-DIGIT_T spGcd(DIGIT_T x, DIGIT_T y);
 	/* Returns gcd(x, y) */
+DIGIT_T spGcd(DIGIT_T x, DIGIT_T y);
 
-int spIsPrime(DIGIT_T w, unsigned int t);
-	/* Returns true if w is prime, else false; t tests */
+	/* Returns true if w is prime, else false; try t tests */
+int spIsPrime(DIGIT_T w, UINT t);
 
-DIGIT_T spPseudoRand(DIGIT_T lower, DIGIT_T upper);
 	/* Returns single pseudo-random digit between lower and upper */
+DIGIT_T spPseudoRand(DIGIT_T lower, DIGIT_T upper);
 
+/* Utilities */
 
-/* Print utilities */
-
-void mpPrint(DIGIT_T *p, unsigned int len);
 	/* Print all digits incl leading zero digits */
-void mpPrintNL(DIGIT_T *p, unsigned int len);
+void mpPrint(const DIGIT_T *p, UINT len);
+
 	/* Print all digits with newlines */
-void mpPrintTrim(DIGIT_T *p, unsigned int len);
+void mpPrintNL(const DIGIT_T *p, UINT len);
+
 	/* Print but trim leading zero digits */
-void mpPrintTrimNL(DIGIT_T *p, unsigned int len);
+void mpPrintTrim(const DIGIT_T *p, UINT len);
+
 	/* Print, trim leading zeroes, add newlines */
+void mpPrintTrimNL(const DIGIT_T *p, UINT len);
 
+	/* Generate a pseudorandom number */
+void mpMakeRandom(DIGIT_T a[], UINT ndigits);
 
-/* "BigDigits" with memory management - not complete yet */
+	/* convert an ascii string to a big integer of length len */
+BYTE *mpASC2BIN(const char *s, UINT len, UINT *nread);
 
-typedef struct
-{
-	DIGIT_T *digits;	/* Ptr to array of digits, least sig. first */
-	unsigned int ndigits;	/* No of non-zero significant digits */
-	unsigned int maxdigits;	/* Max size allocated */
-} BIGD_T;
+	/* convert a big integer of length len to an ascii string */
+char *mpBIN2ASC(const BYTE *p, UINT len);
 
-BIGD_T *bpInit(BIGD_T *b, unsigned int precision);
-	/* Return ptr to initialised BIGD structure 
-	   with precision digits */
+	/* Convert an hexa string to binary data */
+BYTE *mpHex2Bin(const char *s, UINT len, UINT *nread);
 
-void bpFinal(BIGD_T *b);
-	/* Zeroise and free memory */
+	/* Convert binary data to an hexa string */
+char *mpBin2Hex(const BYTE *p, UINT len);
 
-BIGD_T *bpResize(BIGD_T *b, unsigned int newsize);
-	/* Increase allocated memory to newsize digits */
+	/* Convert a decimal string to binary data */
+BYTE *mpDec2Bin(const char *s, UINT *nread);
 
-int bpAdd(BIGD_T *w, BIGD_T *u, BIGD_T *v);
-	/* Compute w = u + v */
+	/* Convert an octal string to binary data */
+BYTE *mpOct2Hex(const char *s, UINT *nread);
 
-int bpSubtract(BIGD_T *w, BIGD_T *u, BIGD_T *v);
-	/* Compute w = u - v, return borrow */
+	/* convert binary data to an integer string in base64 */
+char *mpBase64Encode(DIGIT_T *p, UINT len);
 
-int bpEqual(BIGD_T *a, BIGD_T *b);
-	/* Returns true if a == b, else false */
+	/* convert an integer string in base 64 to binary data */
+DIGIT_T *mpBase64Decode(UINT *len, char *str);
 
-void bpPrint(BIGD_T *p);
-	/* Print all significant digits in BIGD_T */
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _BIGDIGITS_H_ */

@@ -52,7 +52,7 @@ L_43e640:
           mov DWORD PTR [ESP+8],200
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EBX
-          call _mpRabinMiller
+          call _mpIsPrimeRabin
           test EAX,EAX
           jne L_43e6db
 L_43e664:
@@ -71,7 +71,7 @@ L_43e687:
           call FUN_4490d8
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EBX
-          call _mpIsPrime
+          call _mpIsPrimeShort
           test EAX,EAX
           je L_43e664
           mov EAX,DWORD PTR [ESP+20]

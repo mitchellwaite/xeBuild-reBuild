@@ -1,26 +1,9 @@
 /* mpAdd.c */
 
-/******************* SHORT COPYRIGHT NOTICE*************************
-This source code is part of the BigDigits multiple-precision
-arithmetic library Version 1.0 originally written by David Ireland,
-copyright (c) 2001 D.I. Management Services Pty Limited, all rights
-reserved. It is provided "as is" with no warranties. You may use
-this software under the terms of the full copyright notice
-"bigdigitsCopyright.txt" that should have been included with
-this library. To obtain a copy send an email to
-<code@di-mgt.com.au> or visit <www.di-mgt.com.au/crypto.html>.
-This notice must be retained in any copy.
-****************** END OF COPYRIGHT NOTICE*************************/
-
-/* XeCrypt change (reconstructed from xeBuild.exe): assert(w != v) */
-
 #include <assert.h>
 #include "bigdigits.h"
 
-/* original line numbers, for the assert below */
-#line 6
-DIGIT_T mpAdd(DIGIT_T w[], DIGIT_T u[], DIGIT_T v[], 
-			   unsigned int ndigits)
+DIGIT_T mpAdd(DIGIT_T w[], const DIGIT_T u[], const DIGIT_T v[], UINT ndigits)
 {
 	/*	Calculates w = u + v
 		where w, u, v are multiprecision integers of ndigits each
@@ -30,14 +13,14 @@ DIGIT_T mpAdd(DIGIT_T w[], DIGIT_T u[], DIGIT_T v[],
 	*/
 
 	DIGIT_T k;
-	unsigned int j;
+	UINT j;
+	
 	assert(w != v);
 
 	/* Step A1. Initialise */
 	k = 0;
 
-	for (j = 0; j < ndigits; j++)
-	{
+	for (j = 0; j < ndigits; j++) {
 		/*	Step A2. Add digits w_j = (u_j + v_j + k)
 			Set k = 1 if carry (overflow) occurs
 		*/
