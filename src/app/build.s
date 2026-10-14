@@ -8234,7 +8234,7 @@ L_42e7b4:
           call FUN_411680
 L_42e7da:
           mov DWORD PTR [ESP],OFFSET L_47b14c
-          call FUN_40ca30
+          call _suLoadDir
           mov DWORD PTR [ESP+4],OFFSET L_45ab50
           mov DWORD PTR [ESP],1
           call _log_printf

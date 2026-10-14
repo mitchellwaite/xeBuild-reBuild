@@ -10,10 +10,10 @@
 .globl FUN_401730
 .globl FUN_4017d0
 .globl FUN_401a00
-.globl FUN_401ce0
-.globl FUN_401dc0
 .globl FUN_402210
 .globl FUN_402a00
+.globl _cfDecrypt
+.globl _cgDecrypt
 .globl _verifyCrl
 .globl _verifyDae
 .globl _verifyExtended
@@ -523,7 +523,7 @@ L_401cce:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_401ce0:
+_cfDecrypt:
           push EDI
           push ESI
           push EBX
@@ -595,7 +595,7 @@ L_401d00:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_401dc0:
+_cgDecrypt:
           push ESI
           push EBX
           sub ESP,68
@@ -2411,7 +2411,7 @@ L_44c6b0:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_401ce0 - .
+          .long _cfDecrypt - .
           .byte 0xd3
           .byte 0x0
           .byte 0x0
@@ -2464,7 +2464,7 @@ L_44c6b0:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_401dc0 - .
+          .long _cgDecrypt - .
           .byte 0x97
           .byte 0x0
           .byte 0x0

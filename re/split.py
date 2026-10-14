@@ -241,6 +241,10 @@ SYMBOLS = {
     0x418450: '_iniWriteFlashfs', 0x418680: '_iniWriteBl', 0x418830: '_mode_ini',
     0x40c260: '_suGetDir', 0x40cc80: '_suLoad', 0x40c650: '_suGetCF', 0x40c700: '_suGetCG',
     0x40c940: '_suFirstFile', 0x40c860: '_suNextFile', 0x40c7b0: '_suGetFile',
+    # app/sysupdate (src/app/sysupdate.c); names are ours
+    0x40c240: '_suGetPath', 0x40c280: '_suFreeBl', 0x40c2e0: '_suExtractBl',
+    0x40ca30: '_suLoadDir', 0x401ce0: '_cfDecrypt', 0x401dc0: '_cgDecrypt',
+    0x449070: '_strncat',
     0x418ee0: '_loadKeyFile', 0x41b740: '_checkKeys',
     # app/keyvault (src/app/keyvault.c); names are ours
     0x413090: '_kvGetType', 0x4130b0: '_kvIsLoaded', 0x4130c0: '_kvCheckHash',
