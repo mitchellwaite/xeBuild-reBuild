@@ -1,6 +1,5 @@
-/* stfs: container header/content/manifest hash checks, STFS file listing.
-   Mixed object: file extraction (stfsGetFile) is still in stfs.s
-   (re/splice.py). */
+/* stfs: container header/content/manifest hash checks, STFS file listing
+   and extraction */
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,20 +13,6 @@ int FileExists(const char *name);
 void *FileToBuffer(const char *name, size_t *psize);
 void XeCryptSha(u8 *pbInp1, u32 cbInp1, u8 *pbInp2, u32 cbInp2,
 		u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
-
-/* strings stay in stfs.s while it is a mixed object */
-extern const char sHashOk[];
-extern const char sContentOk[];
-extern const char sName[];
-extern const char sFnamelen[];
-extern const char sValidVer[];
-extern const char sValid[];
-extern const char sManifestBad[];
-extern const char sManifestOk[];
-extern const char sFound[];
-extern const char sDone[];
-extern const char sCorrupt[];
-extern const char sNotFound[];
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
@@ -71,7 +56,7 @@ int stfsCheckHashes(stfs_t *c, u8 *hdr, int verbose)
 	ent = c->data + c->hdrSize;
 	c->fileTable = c->data + blk;
 	if (verbose)
-		log_printf(1, sHashOk);
+		log_printf(1, "header hash is OK, checking content hashes...\n");
 	while (more) {
 		for (i = 0; i < 170 && more; i++) {
 			if (checkZeros(ent, 24))
@@ -111,7 +96,7 @@ int stfsCheckHashes(stfs_t *c, u8 *hdr, int verbose)
 		}
 	}
 	if (verbose)
-		log_printf(1, sContentOk);
+		log_printf(1, "content hashes seem OK, everything looks good!\n");
 	return 1;
 }
 
@@ -125,10 +110,10 @@ void stfsListFiles(stfs_t *c)
 			done = 1;
 		else {
 			e = (stfsEnt *)(c->fileTable + i * 64);
-			log_printf(1, sName,
+			log_printf(1, "name: %s vb: 0x%x ab: 0x%x fb: 0x%x (off 0x%x) size 0x%x\n",
 				e->name, LE24(e->vb), LE24(e->ab), LE24(e->fb), c->blocks[LE24(e->fb)], SWAP32(e->size));
 			e = (stfsEnt *)(c->fileTable + i * 64);
-			log_printf(1, sFnamelen,
+			log_printf(1, "\tfnamelen: %d cont: %d dir: %d idx: 0x%x\n",
 				e->namelen, e->contig, e->dir, SWAP16(e->idx));
 			i++;
 		}
@@ -155,22 +140,58 @@ int stfsCheckHeader(stfs_t *c, u32 magic, u32 id1, u32 id2, u8 *manifestHash, in
 		return 0;
 	if (verbose) {
 		if (ver)
-			log_printf(1, sValidVer,
+			log_printf(1, "header seems valid, version %d.%d.%d.%d\n",
 				ver >> 28, (ver >> 24) & 0xf, (ver >> 8) & 0xffff, ver & 0xff);
 		else
-			log_printf(1, sValid);
+			log_printf(1, "header seems valid\n");
 	}
 	if (manifestHash && !checkZeros(manifestHash, 20)) {
 		if (memcmp(hdr + 0x32c, manifestHash, 20)) {
-			log_printf(1, sManifestBad);
+			log_printf(1, "manifest hash does not match container header!\n");
 			return 0;
 		}
 		if (verbose)
-			log_printf(1, sManifestOk);
+			log_printf(1, "manifest hash matches container header!\n");
 	}
 	if (stfsCheckHashes(c, hdr, verbose))
 		return 1;
 	return 0;
+}
+
+int stfsGetFile(stfs_t *c, const char *name, u8 **out, u32 *len)
+{
+	int i = 0, done = 0;
+	int j, n, fb;
+	stfsEnt *e;
+	u8 *buf;
+
+	while (!done) {
+		if (checkZeros(c->fileTable + i * 64, 64))
+			done = 1;
+		else if (!stricmp(name, (char *)(c->fileTable + i * 64))) {
+			e = (stfsEnt *)(c->fileTable + i * 64);
+			if (e->contig) {
+				buf = malloc((SWAP32(e->size) + 0xfff) & ~0xfff);
+				if (buf)
+					goto found;
+			} else
+				log_printf(0, "\n\n***** WARNING !!! file %s is not contiguous and contents are being skipped!\n\n");
+		}
+		i++;
+	}
+	return 0;
+found:
+	n = LE24(e->ab);
+	fb = LE24(e->fb);
+	/* code-free hint: the empty asm asks for fb in esi (the original's
+	   allocation); its block folds into the loop guard */
+	if (__builtin_expect(n != 0, 1))
+		__asm__("" : : "S"(fb));
+	for (j = 0; j < n; j++)
+		memcpy(buf + j * 0x1000, c->data + c->blocks[j + fb], 0x1000);
+	*out = buf;
+	*len = SWAP32(e->size);
+	return 1;
 }
 
 void stfsInit(stfs_t *c)
@@ -202,21 +223,21 @@ u32 stfsLoad(stfs_t *c, const char *path, int magic, u32 id1, u32 id2, u8 *manif
 
 	if (FileExists(path)) {
 		if (verbose)
-			log_printf(1, sFound, path);
+			log_printf(1, "%s found, loading...", path);
 		p = FileToBuffer(path, &c->size);
 		c->data = p;
 		if (p) {
 			if (verbose)
-				log_printf(1, sDone, c->size);
+				log_printf(1, "done!\n\tRead 0x%x bytes to memory\nchecking integrity...\n", c->size);
 			ret = stfsCheckHeader(c, magic, id1, id2, manifestHash, verbose);
 			if (!ret) {
-				log_printf(1, sCorrupt);
+				log_printf(1, "checks failed! Container corrupt!\n");
 				stfsFree(c);
 			}
 			return ret;
 		}
 		return 0;
 	}
-	log_printf(1, sNotFound, path);
+	log_printf(1, "container not found at %s, skipping load\n", path);
 	return 0;
 }
