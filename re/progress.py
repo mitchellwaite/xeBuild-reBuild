@@ -95,21 +95,46 @@ def main():
         c, n = count(fs)
         out.append('| `%s/` | %d / %d | %d / %d |' % (
             g, sum(count(objs[o])[0] == len(objs[o]) for o in os_), len(os_), c, n))
-    out += ['', '| Object | State | Functions in C |', '|---|---|---|']
-    for obj, fs in objs.items():
-        if obj.startswith('app/'):
-            out.append('| `%s` | %s | %d / %d |' % (obj, state(obj, fs), *count(fs)))
-    cr = groups['crypto']
-    out.append('| `crypto/*` (%d XeCrypt objects) | %s | %d / %d |' % (
-        len(cr), 'C' if all(count(objs[o])[0] == len(objs[o]) for o in cr) else 'mixed',
-        *count([f for o in cr for f in objs[o]])))
-    out += ['', 'Per-function status (✅ C, ⬜ assembly), in address order:', '']
-    for obj, fs in objs.items():
-        c, n = count(fs)
-        out += ['<details>',
-                '<summary><code>%s</code>: %d / %d in C</summary>' % (obj, c, n), '']
-        out += ['- %s `%s` (0x%x)' % ('✅' if inc else '⬜', name, a) for a, name, inc in fs]
-        out += ['', '</details>']
+    def item(f):
+        a, name, inc = f
+        return '- %s `%s` (0x%x)' % ('✅' if inc else '⬜', name, a)
+
+    def details(summary, body):
+        return ['<details>', '<summary>%s</summary>' % summary, ''] + body + ['', '</details>']
+
+    done = [o for o, fs in objs.items() if count(fs)[0] == len(fs)]
+    todo = [o for o in objs if o not in done]
+    out += ['', '### In progress', '',
+            'Objects with functions still in assembly. Per-function status '
+            '(✅ C, ⬜ assembly) in address order.', '',
+            '| Object | State | Functions in C |', '|---|---|---|']
+    for obj in todo:
+        out.append('| `%s` | %s | %d / %d |' % (obj, state(obj, objs[obj]), *count(objs[obj])))
+    out.append('')
+    for obj in todo:
+        out += details('<code>%s</code>: %d / %d in C' % ((obj,) + count(objs[obj])),
+                       [item(f) for f in objs[obj]])
+    out += ['', '### Completed', '',
+            'Objects built entirely from C, in link order.', '',
+            '| Object | Functions |', '|---|---|']
+    done_app = [o for o in done if not o.startswith('crypto/')]
+    done_cr = [o for o in done if o.startswith('crypto/')]
+    for obj in done_app:
+        out.append('| `%s` | %d |' % (obj, len(objs[obj])))
+    if done_cr:
+        out.append('| `crypto/*` (%d XeCrypt objects) | %d |' % (
+            len(done_cr), sum(len(objs[o]) for o in done_cr)))
+    out.append('')
+    for obj in done_app:
+        out += details('<code>%s</code>: %d functions' % (obj, len(objs[obj])),
+                       [item(f) for f in objs[obj]])
+    if done_cr:
+        body = []
+        for obj in done_cr:
+            body.append('- `%s`' % obj)
+            body += ['  ' + item(f) for f in objs[obj]]
+        out += details('<code>crypto/*</code>: %d objects, %d functions' % (
+            len(done_cr), sum(len(objs[o]) for o in done_cr)), body)
     out.append(END)
 
     text = open(readme, encoding='utf-8').read()

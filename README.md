@@ -30,36 +30,23 @@ Program functions built from C: **324 of 617** (55 of 66 objects fully C). The r
 | `app/` | 14 / 25 | 139 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
+### In progress
+
+Objects with functions still in assembly. Per-function status (✅ C, ⬜ assembly) in address order.
+
 | Object | State | Functions in C |
 |---|---|---|
 | `app/bootloaders` | asm | 0 / 19 |
 | `app/mode_update` | asm | 0 / 14 |
-| `app/stfs` | C | 7 / 7 |
 | `app/mode_client` | asm | 0 / 16 |
 | `app/filelist_ini` | mixed | 1 / 12 |
-| `app/timeutil` | C | 7 / 7 |
-| `app/smc` | C | 4 / 4 |
-| `app/sysupdate` | C | 12 / 12 |
-| `app/main` | C | 8 / 8 |
-| `app/mode_extract` | C | 2 / 2 |
-| `app/xboxrom` | C | 7 / 7 |
 | `app/image_write` | asm | 0 / 46 |
-| `app/keyvault` | C | 12 / 12 |
 | `app/image_read` | asm | 0 / 33 |
-| `app/mode_ini` | C | 6 / 6 |
-| `app/mode_build` | C | 5 / 5 |
 | `app/keys` | asm | 0 / 48 |
 | `app/net` | asm | 0 / 32 |
-| `app/fileutil` | C | 47 / 47 |
 | `app/options` | asm | 0 / 19 |
 | `app/build` | asm | 0 / 41 |
-| `app/consoleinfo` | C | 13 / 13 |
 | `app/console_hdd` | asm; C draft in `wip/app/console_hdd.c`: 12 of 14 functions match | 0 / 14 |
-| `app/log` | C | 7 / 7 |
-| `app/crc32` | C | 1 / 1 |
-| `crypto/*` (41 XeCrypt objects) | C | 185 / 185 |
-
-Per-function status (✅ C, ⬜ assembly), in address order:
 
 <details>
 <summary><code>app/bootloaders</code>: 0 / 19 in C</summary>
@@ -105,18 +92,6 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 
 </details>
 <details>
-<summary><code>app/stfs</code>: 7 / 7 in C</summary>
-
-- ✅ `stfsCheckHashes` (0x405610)
-- ✅ `stfsListFiles` (0x405980)
-- ✅ `stfsCheckHeader` (0x405ac0)
-- ✅ `stfsGetFile` (0x405d50)
-- ✅ `stfsInit` (0x405f20)
-- ✅ `stfsFree` (0x405f50)
-- ✅ `stfsLoad` (0x405fa0)
-
-</details>
-<details>
 <summary><code>app/mode_client</code>: 0 / 16 in C</summary>
 
 - ⬜ `FUN_406330` (0x406330)
@@ -152,76 +127,6 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 - ⬜ `FUN_40acf0` (0x40acf0)
 - ⬜ `FUN_40ade0` (0x40ade0)
 - ⬜ `FUN_40aef0` (0x40aef0)
-
-</details>
-<details>
-<summary><code>app/timeutil</code>: 7 / 7 in C</summary>
-
-- ✅ `RtlTimeFieldsToTime` (0x40b130)
-- ✅ `RtlTimeToTimeFields` (0x40b330)
-- ✅ `FileTimeToSystemTime` (0x40b500)
-- ✅ `SystemTimeToFileTime` (0x40b700)
-- ✅ `FileTimeToDosDateTime` (0x40b910)
-- ✅ `DosDateTimeToFileTime` (0x40ba30)
-- ✅ `GetSystemTime` (0x40bae0)
-
-</details>
-<details>
-<summary><code>app/smc</code>: 4 / 4 in C</summary>
-
-- ✅ `smcFindResetLimit` (0x40bd30)
-- ✅ `smcCheck` (0x40bd80)
-- ✅ `smcPatch` (0x40c020)
-- ✅ `smcConfigOk` (0x40c210)
-
-</details>
-<details>
-<summary><code>app/sysupdate</code>: 12 / 12 in C</summary>
-
-- ✅ `suGetPath` (0x40c240)
-- ✅ `suGetDir` (0x40c260)
-- ✅ `suFreeBl` (0x40c280)
-- ✅ `suExtractBl` (0x40c2e0)
-- ✅ `suGetCF` (0x40c650)
-- ✅ `suGetCG` (0x40c700)
-- ✅ `suGetFile` (0x40c7b0)
-- ✅ `suNextFile` (0x40c860)
-- ✅ `suFirstFile` (0x40c940)
-- ✅ `suLoadDir` (0x40ca30)
-- ✅ `suLoad` (0x40cc80)
-- ✅ `suFree` (0x40cfa0)
-
-</details>
-<details>
-<summary><code>app/main</code>: 8 / 8 in C</summary>
-
-- ✅ `sigHandler` (0x40d010)
-- ✅ `installSignals` (0x40d0a0)
-- ✅ `verifyFlashFile` (0x40d120)
-- ✅ `logButton` (0x40d370)
-- ✅ `showConsoleInfo` (0x40d500)
-- ✅ `initGlobals` (0x40de60)
-- ✅ `setBasePath` (0x40df90)
-- ✅ `main` (0x4492c0)
-
-</details>
-<details>
-<summary><code>app/mode_extract</code>: 2 / 2 in C</summary>
-
-- ✅ `extract_usage` (0x40e020)
-- ✅ `mode_extract` (0x40e200)
-
-</details>
-<details>
-<summary><code>app/xboxrom</code>: 7 / 7 in C</summary>
-
-- ✅ `kvVerifySig` (0x40e520)
-- ✅ `cbVerifySig` (0x40e5a0)
-- ✅ `blVerifySig` (0x40e620)
-- ✅ `blSign` (0x40e690)
-- ✅ `blCheckHash` (0x40e7b0)
-- ✅ `blUpdateHash` (0x40e810)
-- ✅ `blHashAndSign` (0x40e8a0)
 
 </details>
 <details>
@@ -276,23 +181,6 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 
 </details>
 <details>
-<summary><code>app/keyvault</code>: 12 / 12 in C</summary>
-
-- ✅ `kvGetType` (0x413090)
-- ✅ `kvIsLoaded` (0x4130b0)
-- ✅ `kvCheckHash` (0x4130c0)
-- ✅ `kvSet` (0x4131a0)
-- ✅ `kvGetGameRegion` (0x413370)
-- ✅ `kvGetDvdKey` (0x4133d0)
-- ✅ `kvGetConsoleId` (0x4133f0)
-- ✅ `kvGetSerial` (0x413410)
-- ✅ `kvGetConsoleCert` (0x4134f0)
-- ✅ `kvGetMfgDate` (0x413510)
-- ✅ `kvHashIsOk` (0x413590)
-- ✅ `kvSetDvdKey` (0x4135a0)
-
-</details>
-<details>
 <summary><code>app/image_read</code>: 0 / 33 in C</summary>
 
 - ⬜ `FUN_4136a0` (0x4136a0)
@@ -328,27 +216,6 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 - ⬜ `FUN_416cd0` (0x416cd0)
 - ⬜ `FUN_4172c0` (0x4172c0)
 - ⬜ `FUN_417680` (0x417680)
-
-</details>
-<details>
-<summary><code>app/mode_ini</code>: 6 / 6 in C</summary>
-
-- ✅ `ini_usage` (0x418240)
-- ✅ `iniSetFile` (0x418380)
-- ✅ `iniPrintf` (0x4183d0)
-- ✅ `iniWriteFlashfs` (0x418450)
-- ✅ `iniWriteBl` (0x418680)
-- ✅ `mode_ini` (0x418830)
-
-</details>
-<details>
-<summary><code>app/mode_build</code>: 5 / 5 in C</summary>
-
-- ✅ `build_usage` (0x418a10)
-- ✅ `loadKeyFile` (0x418ee0)
-- ✅ `loadPubKey` (0x418fd0)
-- ✅ `loadPubKeys` (0x419150)
-- ✅ `mode_build` (0x419230)
 
 </details>
 <details>
@@ -442,58 +309,6 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 
 </details>
 <details>
-<summary><code>app/fileutil</code>: 47 / 47 in C</summary>
-
-- ✅ `getConsoleTypeStr` (0x420a90)
-- ✅ `getBeU16` (0x420ab0)
-- ✅ `getBeU32` (0x420ad0)
-- ✅ `getBeU64` (0x420ae0)
-- ✅ `getLeU32` (0x420af0)
-- ✅ `setBeU16` (0x420b00)
-- ✅ `setBeU32` (0x420b20)
-- ✅ `setBeU64` (0x420b50)
-- ✅ `display_buffer_hex` (0x420bb0)
-- ✅ `dump_buffer_hex` (0x420c30)
-- ✅ `writeFile` (0x420d00)
-- ✅ `writeFileIn` (0x420d80)
-- ✅ `writeKeyFile` (0x420e40)
-- ✅ `writeFuseFile` (0x420f10)
-- ✅ `findInst` (0x421000)
-- ✅ `countInst` (0x4210b0)
-- ✅ `findInstExists` (0x421170)
-- ✅ `replaceInst` (0x421200)
-- ✅ `myatox` (0x4212d0)
-- ✅ `myatox8` (0x421300)
-- ✅ `myatox32` (0x421380)
-- ✅ `myatol` (0x421840)
-- ✅ `myatou32` (0x421860)
-- ✅ `myatoh32` (0x421de0)
-- ✅ `validateString` (0x422350)
-- ✅ `checkZeros` (0x4223b0)
-- ✅ `memcpyrev` (0x4223f0)
-- ✅ `getFileSize` (0x422420)
-- ✅ `getFileSizeName` (0x422470)
-- ✅ `getFileSize64` (0x4224d0)
-- ✅ `getFileSize64Name` (0x422530)
-- ✅ `FileExists` (0x4225a0)
-- ✅ `FileExistsIn` (0x4225d0)
-- ✅ `FileToBuffer` (0x422670)
-- ✅ `readFileTo` (0x422740)
-- ✅ `readFileInTo` (0x4227e0)
-- ✅ `readFileIn` (0x4228c0)
-- ✅ `calcConfigSum` (0x422aa0)
-- ✅ `sumBytes` (0x422ae0)
-- ✅ `showExpectedFuses` (0x422b10)
-- ✅ `showFuses` (0x4232e0)
-- ✅ `showKey` (0x423370)
-- ✅ `showMac` (0x4233b0)
-- ✅ `showHexPairs` (0x423420)
-- ✅ `writeSha1File` (0x423490)
-- ✅ `createDir` (0x423650)
-- ✅ `makeBranch` (0x4236c0)
-
-</details>
-<details>
 <summary><code>app/options</code>: 0 / 19 in C</summary>
 
 - ⬜ `FUN_4236f0` (0x4236f0)
@@ -564,24 +379,6 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 
 </details>
 <details>
-<summary><code>app/consoleinfo</code>: 13 / 13 in C</summary>
-
-- ✅ `optOpen` (0x430460)
-- ✅ `optClose` (0x430540)
-- ✅ `optWrite` (0x430570)
-- ✅ `optLdv` (0x4305b0)
-- ✅ `optHex` (0x4305e0)
-- ✅ `optButton` (0x430660)
-- ✅ `showImageType` (0x4308d0)
-- ✅ `getFreebootOpts` (0x430b60)
-- ✅ `getFlashHdrOpts` (0x430e00)
-- ✅ `showInfoKeys` (0x430fe0)
-- ✅ `showCurrentInfo` (0x4317c0)
-- ✅ `setInfoKeys` (0x4318e0)
-- ✅ `parseConsoleInfo` (0x431a60)
-
-</details>
-<details>
 <summary><code>app/console_hdd</code>: 0 / 14 in C</summary>
 
 - ⬜ `FUN_431c20` (0x431c20)
@@ -600,8 +397,221 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 - ⬜ `FUN_433440` (0x433440)
 
 </details>
+
+### Completed
+
+Objects built entirely from C, in link order.
+
+| Object | Functions |
+|---|---|
+| `app/stfs` | 7 |
+| `app/timeutil` | 7 |
+| `app/smc` | 4 |
+| `app/sysupdate` | 12 |
+| `app/main` | 8 |
+| `app/mode_extract` | 2 |
+| `app/xboxrom` | 7 |
+| `app/keyvault` | 12 |
+| `app/mode_ini` | 6 |
+| `app/mode_build` | 5 |
+| `app/fileutil` | 47 |
+| `app/consoleinfo` | 13 |
+| `app/log` | 7 |
+| `app/crc32` | 1 |
+| `crypto/*` (41 XeCrypt objects) | 185 |
+
 <details>
-<summary><code>app/log</code>: 7 / 7 in C</summary>
+<summary><code>app/stfs</code>: 7 functions</summary>
+
+- ✅ `stfsCheckHashes` (0x405610)
+- ✅ `stfsListFiles` (0x405980)
+- ✅ `stfsCheckHeader` (0x405ac0)
+- ✅ `stfsGetFile` (0x405d50)
+- ✅ `stfsInit` (0x405f20)
+- ✅ `stfsFree` (0x405f50)
+- ✅ `stfsLoad` (0x405fa0)
+
+</details>
+<details>
+<summary><code>app/timeutil</code>: 7 functions</summary>
+
+- ✅ `RtlTimeFieldsToTime` (0x40b130)
+- ✅ `RtlTimeToTimeFields` (0x40b330)
+- ✅ `FileTimeToSystemTime` (0x40b500)
+- ✅ `SystemTimeToFileTime` (0x40b700)
+- ✅ `FileTimeToDosDateTime` (0x40b910)
+- ✅ `DosDateTimeToFileTime` (0x40ba30)
+- ✅ `GetSystemTime` (0x40bae0)
+
+</details>
+<details>
+<summary><code>app/smc</code>: 4 functions</summary>
+
+- ✅ `smcFindResetLimit` (0x40bd30)
+- ✅ `smcCheck` (0x40bd80)
+- ✅ `smcPatch` (0x40c020)
+- ✅ `smcConfigOk` (0x40c210)
+
+</details>
+<details>
+<summary><code>app/sysupdate</code>: 12 functions</summary>
+
+- ✅ `suGetPath` (0x40c240)
+- ✅ `suGetDir` (0x40c260)
+- ✅ `suFreeBl` (0x40c280)
+- ✅ `suExtractBl` (0x40c2e0)
+- ✅ `suGetCF` (0x40c650)
+- ✅ `suGetCG` (0x40c700)
+- ✅ `suGetFile` (0x40c7b0)
+- ✅ `suNextFile` (0x40c860)
+- ✅ `suFirstFile` (0x40c940)
+- ✅ `suLoadDir` (0x40ca30)
+- ✅ `suLoad` (0x40cc80)
+- ✅ `suFree` (0x40cfa0)
+
+</details>
+<details>
+<summary><code>app/main</code>: 8 functions</summary>
+
+- ✅ `sigHandler` (0x40d010)
+- ✅ `installSignals` (0x40d0a0)
+- ✅ `verifyFlashFile` (0x40d120)
+- ✅ `logButton` (0x40d370)
+- ✅ `showConsoleInfo` (0x40d500)
+- ✅ `initGlobals` (0x40de60)
+- ✅ `setBasePath` (0x40df90)
+- ✅ `main` (0x4492c0)
+
+</details>
+<details>
+<summary><code>app/mode_extract</code>: 2 functions</summary>
+
+- ✅ `extract_usage` (0x40e020)
+- ✅ `mode_extract` (0x40e200)
+
+</details>
+<details>
+<summary><code>app/xboxrom</code>: 7 functions</summary>
+
+- ✅ `kvVerifySig` (0x40e520)
+- ✅ `cbVerifySig` (0x40e5a0)
+- ✅ `blVerifySig` (0x40e620)
+- ✅ `blSign` (0x40e690)
+- ✅ `blCheckHash` (0x40e7b0)
+- ✅ `blUpdateHash` (0x40e810)
+- ✅ `blHashAndSign` (0x40e8a0)
+
+</details>
+<details>
+<summary><code>app/keyvault</code>: 12 functions</summary>
+
+- ✅ `kvGetType` (0x413090)
+- ✅ `kvIsLoaded` (0x4130b0)
+- ✅ `kvCheckHash` (0x4130c0)
+- ✅ `kvSet` (0x4131a0)
+- ✅ `kvGetGameRegion` (0x413370)
+- ✅ `kvGetDvdKey` (0x4133d0)
+- ✅ `kvGetConsoleId` (0x4133f0)
+- ✅ `kvGetSerial` (0x413410)
+- ✅ `kvGetConsoleCert` (0x4134f0)
+- ✅ `kvGetMfgDate` (0x413510)
+- ✅ `kvHashIsOk` (0x413590)
+- ✅ `kvSetDvdKey` (0x4135a0)
+
+</details>
+<details>
+<summary><code>app/mode_ini</code>: 6 functions</summary>
+
+- ✅ `ini_usage` (0x418240)
+- ✅ `iniSetFile` (0x418380)
+- ✅ `iniPrintf` (0x4183d0)
+- ✅ `iniWriteFlashfs` (0x418450)
+- ✅ `iniWriteBl` (0x418680)
+- ✅ `mode_ini` (0x418830)
+
+</details>
+<details>
+<summary><code>app/mode_build</code>: 5 functions</summary>
+
+- ✅ `build_usage` (0x418a10)
+- ✅ `loadKeyFile` (0x418ee0)
+- ✅ `loadPubKey` (0x418fd0)
+- ✅ `loadPubKeys` (0x419150)
+- ✅ `mode_build` (0x419230)
+
+</details>
+<details>
+<summary><code>app/fileutil</code>: 47 functions</summary>
+
+- ✅ `getConsoleTypeStr` (0x420a90)
+- ✅ `getBeU16` (0x420ab0)
+- ✅ `getBeU32` (0x420ad0)
+- ✅ `getBeU64` (0x420ae0)
+- ✅ `getLeU32` (0x420af0)
+- ✅ `setBeU16` (0x420b00)
+- ✅ `setBeU32` (0x420b20)
+- ✅ `setBeU64` (0x420b50)
+- ✅ `display_buffer_hex` (0x420bb0)
+- ✅ `dump_buffer_hex` (0x420c30)
+- ✅ `writeFile` (0x420d00)
+- ✅ `writeFileIn` (0x420d80)
+- ✅ `writeKeyFile` (0x420e40)
+- ✅ `writeFuseFile` (0x420f10)
+- ✅ `findInst` (0x421000)
+- ✅ `countInst` (0x4210b0)
+- ✅ `findInstExists` (0x421170)
+- ✅ `replaceInst` (0x421200)
+- ✅ `myatox` (0x4212d0)
+- ✅ `myatox8` (0x421300)
+- ✅ `myatox32` (0x421380)
+- ✅ `myatol` (0x421840)
+- ✅ `myatou32` (0x421860)
+- ✅ `myatoh32` (0x421de0)
+- ✅ `validateString` (0x422350)
+- ✅ `checkZeros` (0x4223b0)
+- ✅ `memcpyrev` (0x4223f0)
+- ✅ `getFileSize` (0x422420)
+- ✅ `getFileSizeName` (0x422470)
+- ✅ `getFileSize64` (0x4224d0)
+- ✅ `getFileSize64Name` (0x422530)
+- ✅ `FileExists` (0x4225a0)
+- ✅ `FileExistsIn` (0x4225d0)
+- ✅ `FileToBuffer` (0x422670)
+- ✅ `readFileTo` (0x422740)
+- ✅ `readFileInTo` (0x4227e0)
+- ✅ `readFileIn` (0x4228c0)
+- ✅ `calcConfigSum` (0x422aa0)
+- ✅ `sumBytes` (0x422ae0)
+- ✅ `showExpectedFuses` (0x422b10)
+- ✅ `showFuses` (0x4232e0)
+- ✅ `showKey` (0x423370)
+- ✅ `showMac` (0x4233b0)
+- ✅ `showHexPairs` (0x423420)
+- ✅ `writeSha1File` (0x423490)
+- ✅ `createDir` (0x423650)
+- ✅ `makeBranch` (0x4236c0)
+
+</details>
+<details>
+<summary><code>app/consoleinfo</code>: 13 functions</summary>
+
+- ✅ `optOpen` (0x430460)
+- ✅ `optClose` (0x430540)
+- ✅ `optWrite` (0x430570)
+- ✅ `optLdv` (0x4305b0)
+- ✅ `optHex` (0x4305e0)
+- ✅ `optButton` (0x430660)
+- ✅ `showImageType` (0x4308d0)
+- ✅ `getFreebootOpts` (0x430b60)
+- ✅ `getFlashHdrOpts` (0x430e00)
+- ✅ `showInfoKeys` (0x430fe0)
+- ✅ `showCurrentInfo` (0x4317c0)
+- ✅ `setInfoKeys` (0x4318e0)
+- ✅ `parseConsoleInfo` (0x431a60)
+
+</details>
+<details>
+<summary><code>app/log</code>: 7 functions</summary>
 
 - ✅ `log_set_verbose` (0x433570)
 - ✅ `log_verbose_flag` (0x4335a0)
@@ -613,399 +623,240 @@ Per-function status (✅ C, ⬜ assembly), in address order:
 
 </details>
 <details>
-<summary><code>app/crc32</code>: 1 / 1 in C</summary>
+<summary><code>app/crc32</code>: 1 functions</summary>
 
 - ✅ `crc32` (0x433800)
 
 </details>
 <details>
-<summary><code>crypto/xecrypt</code>: 45 / 45 in C</summary>
-
-- ✅ `XeCryptRotSum.part.1` (0x433840)
-- ✅ `XeCryptBnDwLePkcs1Format.part.2` (0x4339d0)
-- ✅ `XeCryptBnQwNeModExpRoot.part.3` (0x433aa0)
-- ✅ `XeCryptBnDwLePkcs1Verify.part.4` (0x433c80)
-- ✅ `XeCryptBnQw_SwapDwQwLeBe` (0x433e10)
-- ✅ `XeCryptUidEccEncode` (0x433ff0)
-- ✅ `XeCryptHammingWeight` (0x434090)
-- ✅ `XeCryptHmacSha` (0x434110)
-- ✅ `XeCryptRc4` (0x4345b0)
-- ✅ `XeCryptRc4Key` (0x434610)
-- ✅ `XeCryptRc4Ecb` (0x434630)
-- ✅ `XeCryptRandomInit` (0x434660)
-- ✅ `XeCryptRandom` (0x4346c0)
-- ✅ `XeCryptAesKey` (0x434850)
-- ✅ `XeCryptAesEcb` (0x4348a0)
-- ✅ `XeCryptAesCbc` (0x4348f0)
-- ✅ `XeCryptShaInit` (0x434950)
-- ✅ `XeCryptShaUpdate` (0x434960)
-- ✅ `XeCryptShaFinal` (0x4349c0)
-- ✅ `XeCryptSha` (0x434a30)
-- ✅ `XeCryptRotSum` (0x434be0)
-- ✅ `XeCryptRotSumSha` (0x434c00)
-- ✅ `XeCryptBnDwLePkcs1Format` (0x434f50)
-- ✅ `XeCryptBnQwBeSigFormat` (0x435020)
-- ✅ `XeCryptBnQwBeSigCompute` (0x435210)
-- ✅ `XeCryptBnQwBeSigVerify` (0x435440)
-- ✅ `XeCryptBnQwBeSigCreate` (0x435530)
-- ✅ `XeCryptBnQwNeModExpRoot` (0x4357b0)
-- ✅ `XeCryptBnQwNeRsaPrvCrypt` (0x435820)
-- ✅ `XeCryptBnQwNeRsaPubCrypt` (0x435940)
-- ✅ `XeCryptBnDwLePkcs1Verify` (0x435a60)
-- ✅ `XeCryptShowBuffer` (0x435a90)
-- ✅ `XeKeysPkcs1Verify` (0x435b00)
-- ✅ `XeKeysPkcs1Create` (0x435cf0)
-- ✅ `XeCryptBnQwNeRsaKeyGen` (0x435ee0)
-- ✅ `XeCryptDesKey` (0x4364f0)
-- ✅ `XeCryptDesEcb` (0x436520)
-- ✅ `XeCryptDesCbc` (0x436550)
-- ✅ `XeCryptDes3Key` (0x4366c0)
-- ✅ `XeCryptDes3Ecb` (0x4366f0)
-- ✅ `XeCryptDes3Cbc` (0x436720)
-- ✅ `XeCryptMd5Init` (0x436890)
-- ✅ `XeCryptMd5Update` (0x4368a0)
-- ✅ `XeCryptMd5Final` (0x4368b0)
-- ✅ `XeCryptMd5` (0x436920)
-
-</details>
-<details>
-<summary><code>crypto/xecryptBn</code>: 24 / 24 in C</summary>
-
-- ✅ `xcgetBeU32` (0x436a50)
-- ✅ `xcgetBeU64` (0x436a60)
-- ✅ `xcsetBeU32` (0x436a70)
-- ✅ `xcsetBeU64` (0x436aa0)
-- ✅ `XeCryptLoadQuad` (0x436b00)
-- ✅ `XeCryptStoreQuad` (0x436c50)
-- ✅ `XeCryptBnQw_Copy` (0x436d80)
-- ✅ `XeCryptBnDw_Copy` (0x436dc0)
-- ✅ `XeCryptBnQw_Zero` (0x436df0)
-- ✅ `XeCryptMemcpyRev` (0x436e20)
-- ✅ `BnQwBeBufSwap` (0x436e50)
-- ✅ `display_digitt` (0x436f50)
-- ✅ `mpSetBeQwBigNum` (0x436fe0)
-- ✅ `mpGetBeQwBigNum` (0x437040)
-- ✅ `load32LeValBigNum` (0x4370d0)
-- ✅ `XeCryptBnQwNeModInv` (0x437120)
-- ✅ `XeCryptMulHdu` (0x437220)
-- ✅ `XeCryptBnQwNeModMul` (0x4372a0)
-- ✅ `XeCryptBnQwNeModExp` (0x4380f0)
-- ✅ `XeCryptBnQwNeMul` (0x4382c0)
-- ✅ `XeCryptBnQwNeMod` (0x438460)
-- ✅ `XeCryptBnQwNeCompare` (0x438620)
-- ✅ `XeCryptBnQwNeSub` (0x438860)
-- ✅ `XeCryptBnQwNeAdd` (0x4389b0)
-
-</details>
-<details>
-<summary><code>crypto/aes/aes_modes</code>: 10 / 10 in C</summary>
-
-- ✅ `aes_test_alignment_detection` (0x438b00)
-- ✅ `aes_mode_reset` (0x438bb0)
-- ✅ `aes_ecb_encrypt` (0x438bc0)
-- ✅ `aes_ecb_decrypt` (0x438c30)
-- ✅ `aes_cbc_encrypt` (0x438ca0)
-- ✅ `aes_cbc_decrypt` (0x438e20)
-- ✅ `aes_cfb_encrypt` (0x438fd0)
-- ✅ `aes_cfb_decrypt` (0x4392e0)
-- ✅ `aes_ofb_crypt` (0x439620)
-- ✅ `aes_ctr_crypt` (0x4398e0)
-
-</details>
-<details>
-<summary><code>crypto/aes/aestab</code>: 1 / 1 in C</summary>
-
-- ✅ `aes_init` (0x439eb0)
-
-</details>
-<details>
-<summary><code>crypto/aes/aescrypt</code>: 2 / 2 in C</summary>
-
-- ✅ `aes_encrypt` (0x439ec0)
-- ✅ `aes_decrypt` (0x43aca0)
-
-</details>
-<details>
-<summary><code>crypto/aes/aeskey</code>: 8 / 8 in C</summary>
-
-- ✅ `aes_encrypt_key128` (0x43bae0)
-- ✅ `aes_encrypt_key192` (0x43be40)
-- ✅ `aes_encrypt_key256` (0x43c1b0)
-- ✅ `aes_encrypt_key` (0x43c6f0)
-- ✅ `aes_decrypt_key128` (0x43cae0)
-- ✅ `aes_decrypt_key192` (0x43d150)
-- ✅ `aes_decrypt_key256` (0x43d9a0)
-- ✅ `aes_decrypt_key` (0x43e4e0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpSubtract</code>: 1 / 1 in C</summary>
-
-- ✅ `mpSubtract` (0x43e550)
-
-</details>
-<details>
-<summary><code>crypto/bign/pkcs1-rsa</code>: 19 / 19 in C</summary>
-
-- ✅ `GenRsaPrime` (0x43e5e0)
-- ✅ `MGF1` (0x43e6f0)
-- ✅ `PKCS1_RSA_FreeKey` (0x43e870)
-- ✅ `PKCS1_RSA_GenKey` (0x43e940)
-- ✅ `PKCS1_RSAEP` (0x43ee20)
-- ✅ `PKCS1_RSADP` (0x43ee60)
-- ✅ `PKCS1_RSASP1` (0x43eea0)
-- ✅ `PKCS1_RSAVP1` (0x43eee0)
-- ✅ `PKCS1_EME_OAEP_ENC` (0x43ef20)
-- ✅ `PKCS1_RSA_OAEP_ENCRYPT` (0x43f290)
-- ✅ `PKCS1_EME_OAEP_DEC` (0x43f6b0)
-- ✅ `PKCS1_RSA_OAEP_DECRYPT` (0x43fab0)
-- ✅ `PKCS1_RSASSA_PSS_SIGN` (0x43fba0)
-- ✅ `PKCS1_RSASSA_PSS_VERIFY` (0x43ffc0)
-- ✅ `PKCS1_EMSA_PSS_ENCODE` (0x4403e0)
-- ✅ `PKCS1_EMSA_PSS_VERIFY` (0x440730)
-- ✅ `errmsg` (0x440ac0)
-- ✅ `LoadPublicKey` (0x440bc0)
-- ✅ `LoadPrivateKey` (0x440cf0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpMultiply</code>: 1 / 1 in C</summary>
-
-- ✅ `mpMultiply` (0x440e20)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShortMod</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShortMod` (0x440f80)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpModExp</code>: 1 / 1 in C</summary>
-
-- ✅ `mpModExp` (0x440fc0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpSetZero</code>: 1 / 1 in C</summary>
-
-- ✅ `mpSetZero` (0x4410e0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShortDiv</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShortDiv` (0x441110)
-
-</details>
-<details>
-<summary><code>crypto/bign/base64</code>: 2 / 2 in C</summary>
-
-- ✅ `mpBase64Encode` (0x4411f0)
-- ✅ `mpBase64Decode` (0x441330)
-
-</details>
-<details>
-<summary><code>crypto/bign/hash</code>: 5 / 5 in C</summary>
-
-- ✅ `GenSeed` (0x441400)
-- ✅ `HashLenQuery` (0x441410)
-- ✅ `SHA1Hash` (0x441430)
-- ✅ `Hash` (0x441480)
-- ✅ `Hash2BigInt` (0x4414e0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpModInv</code>: 1 / 1 in C</summary>
-
-- ✅ `mpModInv` (0x441540)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpModulo</code>: 1 / 1 in C</summary>
-
-- ✅ `mpModulo` (0x441710)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShortSub</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShortSub` (0x441780)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpSizeof</code>: 1 / 1 in C</summary>
-
-- ✅ `mpSizeof` (0x4417d0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpCompare</code>: 1 / 1 in C</summary>
-
-- ✅ `mpCompare` (0x441800)
-
-</details>
-<details>
-<summary><code>crypto/bign/common</code>: 3 / 3 in C</summary>
-
-- ✅ `prng` (0x441850)
-- ✅ `mcrypto_msg` (0x441880)
-- ✅ `mcrypto_dump` (0x441890)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpSetDigit</code>: 1 / 1 in C</summary>
-
-- ✅ `mpSetDigit` (0x4418a0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpIsPrime</code>: 3 / 3 in C</summary>
-
-- ✅ `mpIsPrime` (0x4418e0)
-- ✅ `mpIsPrimeShort` (0x441be0)
-- ✅ `mpIsPrimeRabin` (0x441c80)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpIsZero</code>: 1 / 1 in C</summary>
-
-- ✅ `mpIsZero` (0x441f00)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShiftLeft</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShiftLeft` (0x441f40)
-
-</details>
-<details>
-<summary><code>crypto/bign/spMultiply</code>: 1 / 1 in C</summary>
-
-- ✅ `spMultiply` (0x442050)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpAdd</code>: 1 / 1 in C</summary>
-
-- ✅ `mpAdd` (0x4420b0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpModMult</code>: 1 / 1 in C</summary>
-
-- ✅ `mpModMult` (0x442130)
-
-</details>
-<details>
-<summary><code>crypto/bign/bigdUtils</code>: 14 / 14 in C</summary>
-
-- ✅ `mpMalloc` (0x4421a0)
-- ✅ `mpMallocB` (0x4421c0)
-- ✅ `mpFree` (0x4421f0)
-- ✅ `mpPrint` (0x442210)
-- ✅ `mpPrintNL` (0x442250)
-- ✅ `mpPrintTrim` (0x4422c0)
-- ✅ `mpPrintTrimNL` (0x442320)
-- ✅ `mpMakeRandom` (0x4423a0)
-- ✅ `mpASC2BIN` (0x4423e0)
-- ✅ `mpBIN2ASC` (0x442430)
-- ✅ `mpHex2Bin` (0x442470)
-- ✅ `mpBin2Hex` (0x442540)
-- ✅ `mpDec2Bin` (0x4425b0)
-- ✅ `mpOct2Hex` (0x4425c0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShortAdd</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShortAdd` (0x4425d0)
-
-</details>
-<details>
-<summary><code>crypto/rc4/rc4_enc</code>: 1 / 1 in C</summary>
-
-- ✅ `RC4` (0x442630)
-
-</details>
-<details>
-<summary><code>crypto/rc4/rc4_skey</code>: 2 / 2 in C</summary>
-
-- ✅ `RC4_options` (0x4429c0)
-- ✅ `RC4_set_key` (0x4429d0)
-
-</details>
-<details>
-<summary><code>crypto/sha/sha1dgst</code>: 4 / 4 in C</summary>
-
-- ✅ `SHA1_Init` (0x442b00)
-- ✅ `sha1_block` (0x442b40)
-- ✅ `SHA1_Update` (0x4448d0)
-- ✅ `SHA1_Final` (0x444da0)
-
-</details>
-<details>
-<summary><code>crypto/md5/md5</code>: 4 / 4 in C</summary>
-
-- ✅ `body` (0x444fb0)
-- ✅ `MD5_Init` (0x445690)
-- ✅ `MD5_Update` (0x4456c0)
-- ✅ `MD5_Final` (0x445830)
-
-</details>
-<details>
-<summary><code>crypto/des/des</code>: 14 / 14 in C</summary>
-
-- ✅ `desfunc` (0x445a50)
-- ✅ `deskey` (0x445c50)
-- ✅ `des_setup` (0x445e50)
-- ✅ `des3_setup` (0x445ea0)
-- ✅ `des_ecb_encrypt` (0x445f60)
-- ✅ `des_ecb_decrypt` (0x445fd0)
-- ✅ `des3_ecb_encrypt` (0x446050)
-- ✅ `des3_ecb_decrypt` (0x4460e0)
-- ✅ `des_test` (0x446180)
-- ✅ `des3_test` (0x446190)
-- ✅ `des_done` (0x4461a0)
-- ✅ `des3_done` (0x4461b0)
-- ✅ `des_keysize` (0x4461c0)
-- ✅ `des3_keysize` (0x4461e0)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpSetEqual</code>: 1 / 1 in C</summary>
-
-- ✅ `mpSetEqual` (0x446200)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShiftRight</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShiftRight` (0x446230)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpDivide</code>: 1 / 1 in C</summary>
-
-- ✅ `mpDivide` (0x446360)
-
-</details>
-<details>
-<summary><code>crypto/bign/spDivide</code>: 1 / 1 in C</summary>
-
-- ✅ `spDivide` (0x446830)
-
-</details>
-<details>
-<summary><code>crypto/bign/mpShortCmp</code>: 1 / 1 in C</summary>
-
-- ✅ `mpShortCmp` (0x446a40)
-
-</details>
-<details>
-<summary><code>crypto/bign/spPseudoRand</code>: 1 / 1 in C</summary>
-
-- ✅ `spPseudoRand` (0x446a90)
+<summary><code>crypto/*</code>: 41 objects, 185 functions</summary>
+
+- `crypto/xecrypt`
+  - ✅ `XeCryptRotSum.part.1` (0x433840)
+  - ✅ `XeCryptBnDwLePkcs1Format.part.2` (0x4339d0)
+  - ✅ `XeCryptBnQwNeModExpRoot.part.3` (0x433aa0)
+  - ✅ `XeCryptBnDwLePkcs1Verify.part.4` (0x433c80)
+  - ✅ `XeCryptBnQw_SwapDwQwLeBe` (0x433e10)
+  - ✅ `XeCryptUidEccEncode` (0x433ff0)
+  - ✅ `XeCryptHammingWeight` (0x434090)
+  - ✅ `XeCryptHmacSha` (0x434110)
+  - ✅ `XeCryptRc4` (0x4345b0)
+  - ✅ `XeCryptRc4Key` (0x434610)
+  - ✅ `XeCryptRc4Ecb` (0x434630)
+  - ✅ `XeCryptRandomInit` (0x434660)
+  - ✅ `XeCryptRandom` (0x4346c0)
+  - ✅ `XeCryptAesKey` (0x434850)
+  - ✅ `XeCryptAesEcb` (0x4348a0)
+  - ✅ `XeCryptAesCbc` (0x4348f0)
+  - ✅ `XeCryptShaInit` (0x434950)
+  - ✅ `XeCryptShaUpdate` (0x434960)
+  - ✅ `XeCryptShaFinal` (0x4349c0)
+  - ✅ `XeCryptSha` (0x434a30)
+  - ✅ `XeCryptRotSum` (0x434be0)
+  - ✅ `XeCryptRotSumSha` (0x434c00)
+  - ✅ `XeCryptBnDwLePkcs1Format` (0x434f50)
+  - ✅ `XeCryptBnQwBeSigFormat` (0x435020)
+  - ✅ `XeCryptBnQwBeSigCompute` (0x435210)
+  - ✅ `XeCryptBnQwBeSigVerify` (0x435440)
+  - ✅ `XeCryptBnQwBeSigCreate` (0x435530)
+  - ✅ `XeCryptBnQwNeModExpRoot` (0x4357b0)
+  - ✅ `XeCryptBnQwNeRsaPrvCrypt` (0x435820)
+  - ✅ `XeCryptBnQwNeRsaPubCrypt` (0x435940)
+  - ✅ `XeCryptBnDwLePkcs1Verify` (0x435a60)
+  - ✅ `XeCryptShowBuffer` (0x435a90)
+  - ✅ `XeKeysPkcs1Verify` (0x435b00)
+  - ✅ `XeKeysPkcs1Create` (0x435cf0)
+  - ✅ `XeCryptBnQwNeRsaKeyGen` (0x435ee0)
+  - ✅ `XeCryptDesKey` (0x4364f0)
+  - ✅ `XeCryptDesEcb` (0x436520)
+  - ✅ `XeCryptDesCbc` (0x436550)
+  - ✅ `XeCryptDes3Key` (0x4366c0)
+  - ✅ `XeCryptDes3Ecb` (0x4366f0)
+  - ✅ `XeCryptDes3Cbc` (0x436720)
+  - ✅ `XeCryptMd5Init` (0x436890)
+  - ✅ `XeCryptMd5Update` (0x4368a0)
+  - ✅ `XeCryptMd5Final` (0x4368b0)
+  - ✅ `XeCryptMd5` (0x436920)
+- `crypto/xecryptBn`
+  - ✅ `xcgetBeU32` (0x436a50)
+  - ✅ `xcgetBeU64` (0x436a60)
+  - ✅ `xcsetBeU32` (0x436a70)
+  - ✅ `xcsetBeU64` (0x436aa0)
+  - ✅ `XeCryptLoadQuad` (0x436b00)
+  - ✅ `XeCryptStoreQuad` (0x436c50)
+  - ✅ `XeCryptBnQw_Copy` (0x436d80)
+  - ✅ `XeCryptBnDw_Copy` (0x436dc0)
+  - ✅ `XeCryptBnQw_Zero` (0x436df0)
+  - ✅ `XeCryptMemcpyRev` (0x436e20)
+  - ✅ `BnQwBeBufSwap` (0x436e50)
+  - ✅ `display_digitt` (0x436f50)
+  - ✅ `mpSetBeQwBigNum` (0x436fe0)
+  - ✅ `mpGetBeQwBigNum` (0x437040)
+  - ✅ `load32LeValBigNum` (0x4370d0)
+  - ✅ `XeCryptBnQwNeModInv` (0x437120)
+  - ✅ `XeCryptMulHdu` (0x437220)
+  - ✅ `XeCryptBnQwNeModMul` (0x4372a0)
+  - ✅ `XeCryptBnQwNeModExp` (0x4380f0)
+  - ✅ `XeCryptBnQwNeMul` (0x4382c0)
+  - ✅ `XeCryptBnQwNeMod` (0x438460)
+  - ✅ `XeCryptBnQwNeCompare` (0x438620)
+  - ✅ `XeCryptBnQwNeSub` (0x438860)
+  - ✅ `XeCryptBnQwNeAdd` (0x4389b0)
+- `crypto/aes/aes_modes`
+  - ✅ `aes_test_alignment_detection` (0x438b00)
+  - ✅ `aes_mode_reset` (0x438bb0)
+  - ✅ `aes_ecb_encrypt` (0x438bc0)
+  - ✅ `aes_ecb_decrypt` (0x438c30)
+  - ✅ `aes_cbc_encrypt` (0x438ca0)
+  - ✅ `aes_cbc_decrypt` (0x438e20)
+  - ✅ `aes_cfb_encrypt` (0x438fd0)
+  - ✅ `aes_cfb_decrypt` (0x4392e0)
+  - ✅ `aes_ofb_crypt` (0x439620)
+  - ✅ `aes_ctr_crypt` (0x4398e0)
+- `crypto/aes/aestab`
+  - ✅ `aes_init` (0x439eb0)
+- `crypto/aes/aescrypt`
+  - ✅ `aes_encrypt` (0x439ec0)
+  - ✅ `aes_decrypt` (0x43aca0)
+- `crypto/aes/aeskey`
+  - ✅ `aes_encrypt_key128` (0x43bae0)
+  - ✅ `aes_encrypt_key192` (0x43be40)
+  - ✅ `aes_encrypt_key256` (0x43c1b0)
+  - ✅ `aes_encrypt_key` (0x43c6f0)
+  - ✅ `aes_decrypt_key128` (0x43cae0)
+  - ✅ `aes_decrypt_key192` (0x43d150)
+  - ✅ `aes_decrypt_key256` (0x43d9a0)
+  - ✅ `aes_decrypt_key` (0x43e4e0)
+- `crypto/bign/mpSubtract`
+  - ✅ `mpSubtract` (0x43e550)
+- `crypto/bign/pkcs1-rsa`
+  - ✅ `GenRsaPrime` (0x43e5e0)
+  - ✅ `MGF1` (0x43e6f0)
+  - ✅ `PKCS1_RSA_FreeKey` (0x43e870)
+  - ✅ `PKCS1_RSA_GenKey` (0x43e940)
+  - ✅ `PKCS1_RSAEP` (0x43ee20)
+  - ✅ `PKCS1_RSADP` (0x43ee60)
+  - ✅ `PKCS1_RSASP1` (0x43eea0)
+  - ✅ `PKCS1_RSAVP1` (0x43eee0)
+  - ✅ `PKCS1_EME_OAEP_ENC` (0x43ef20)
+  - ✅ `PKCS1_RSA_OAEP_ENCRYPT` (0x43f290)
+  - ✅ `PKCS1_EME_OAEP_DEC` (0x43f6b0)
+  - ✅ `PKCS1_RSA_OAEP_DECRYPT` (0x43fab0)
+  - ✅ `PKCS1_RSASSA_PSS_SIGN` (0x43fba0)
+  - ✅ `PKCS1_RSASSA_PSS_VERIFY` (0x43ffc0)
+  - ✅ `PKCS1_EMSA_PSS_ENCODE` (0x4403e0)
+  - ✅ `PKCS1_EMSA_PSS_VERIFY` (0x440730)
+  - ✅ `errmsg` (0x440ac0)
+  - ✅ `LoadPublicKey` (0x440bc0)
+  - ✅ `LoadPrivateKey` (0x440cf0)
+- `crypto/bign/mpMultiply`
+  - ✅ `mpMultiply` (0x440e20)
+- `crypto/bign/mpShortMod`
+  - ✅ `mpShortMod` (0x440f80)
+- `crypto/bign/mpModExp`
+  - ✅ `mpModExp` (0x440fc0)
+- `crypto/bign/mpSetZero`
+  - ✅ `mpSetZero` (0x4410e0)
+- `crypto/bign/mpShortDiv`
+  - ✅ `mpShortDiv` (0x441110)
+- `crypto/bign/base64`
+  - ✅ `mpBase64Encode` (0x4411f0)
+  - ✅ `mpBase64Decode` (0x441330)
+- `crypto/bign/hash`
+  - ✅ `GenSeed` (0x441400)
+  - ✅ `HashLenQuery` (0x441410)
+  - ✅ `SHA1Hash` (0x441430)
+  - ✅ `Hash` (0x441480)
+  - ✅ `Hash2BigInt` (0x4414e0)
+- `crypto/bign/mpModInv`
+  - ✅ `mpModInv` (0x441540)
+- `crypto/bign/mpModulo`
+  - ✅ `mpModulo` (0x441710)
+- `crypto/bign/mpShortSub`
+  - ✅ `mpShortSub` (0x441780)
+- `crypto/bign/mpSizeof`
+  - ✅ `mpSizeof` (0x4417d0)
+- `crypto/bign/mpCompare`
+  - ✅ `mpCompare` (0x441800)
+- `crypto/bign/common`
+  - ✅ `prng` (0x441850)
+  - ✅ `mcrypto_msg` (0x441880)
+  - ✅ `mcrypto_dump` (0x441890)
+- `crypto/bign/mpSetDigit`
+  - ✅ `mpSetDigit` (0x4418a0)
+- `crypto/bign/mpIsPrime`
+  - ✅ `mpIsPrime` (0x4418e0)
+  - ✅ `mpIsPrimeShort` (0x441be0)
+  - ✅ `mpIsPrimeRabin` (0x441c80)
+- `crypto/bign/mpIsZero`
+  - ✅ `mpIsZero` (0x441f00)
+- `crypto/bign/mpShiftLeft`
+  - ✅ `mpShiftLeft` (0x441f40)
+- `crypto/bign/spMultiply`
+  - ✅ `spMultiply` (0x442050)
+- `crypto/bign/mpAdd`
+  - ✅ `mpAdd` (0x4420b0)
+- `crypto/bign/mpModMult`
+  - ✅ `mpModMult` (0x442130)
+- `crypto/bign/bigdUtils`
+  - ✅ `mpMalloc` (0x4421a0)
+  - ✅ `mpMallocB` (0x4421c0)
+  - ✅ `mpFree` (0x4421f0)
+  - ✅ `mpPrint` (0x442210)
+  - ✅ `mpPrintNL` (0x442250)
+  - ✅ `mpPrintTrim` (0x4422c0)
+  - ✅ `mpPrintTrimNL` (0x442320)
+  - ✅ `mpMakeRandom` (0x4423a0)
+  - ✅ `mpASC2BIN` (0x4423e0)
+  - ✅ `mpBIN2ASC` (0x442430)
+  - ✅ `mpHex2Bin` (0x442470)
+  - ✅ `mpBin2Hex` (0x442540)
+  - ✅ `mpDec2Bin` (0x4425b0)
+  - ✅ `mpOct2Hex` (0x4425c0)
+- `crypto/bign/mpShortAdd`
+  - ✅ `mpShortAdd` (0x4425d0)
+- `crypto/rc4/rc4_enc`
+  - ✅ `RC4` (0x442630)
+- `crypto/rc4/rc4_skey`
+  - ✅ `RC4_options` (0x4429c0)
+  - ✅ `RC4_set_key` (0x4429d0)
+- `crypto/sha/sha1dgst`
+  - ✅ `SHA1_Init` (0x442b00)
+  - ✅ `sha1_block` (0x442b40)
+  - ✅ `SHA1_Update` (0x4448d0)
+  - ✅ `SHA1_Final` (0x444da0)
+- `crypto/md5/md5`
+  - ✅ `body` (0x444fb0)
+  - ✅ `MD5_Init` (0x445690)
+  - ✅ `MD5_Update` (0x4456c0)
+  - ✅ `MD5_Final` (0x445830)
+- `crypto/des/des`
+  - ✅ `desfunc` (0x445a50)
+  - ✅ `deskey` (0x445c50)
+  - ✅ `des_setup` (0x445e50)
+  - ✅ `des3_setup` (0x445ea0)
+  - ✅ `des_ecb_encrypt` (0x445f60)
+  - ✅ `des_ecb_decrypt` (0x445fd0)
+  - ✅ `des3_ecb_encrypt` (0x446050)
+  - ✅ `des3_ecb_decrypt` (0x4460e0)
+  - ✅ `des_test` (0x446180)
+  - ✅ `des3_test` (0x446190)
+  - ✅ `des_done` (0x4461a0)
+  - ✅ `des3_done` (0x4461b0)
+  - ✅ `des_keysize` (0x4461c0)
+  - ✅ `des3_keysize` (0x4461e0)
+- `crypto/bign/mpSetEqual`
+  - ✅ `mpSetEqual` (0x446200)
+- `crypto/bign/mpShiftRight`
+  - ✅ `mpShiftRight` (0x446230)
+- `crypto/bign/mpDivide`
+  - ✅ `mpDivide` (0x446360)
+- `crypto/bign/spDivide`
+  - ✅ `spDivide` (0x446830)
+- `crypto/bign/mpShortCmp`
+  - ✅ `mpShortCmp` (0x446a40)
+- `crypto/bign/spPseudoRand`
+  - ✅ `spPseudoRand` (0x446a90)
 
 </details>
 <!-- progress:end -->
