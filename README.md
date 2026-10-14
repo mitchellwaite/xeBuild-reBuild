@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **336 of 617** (324 built from `src/`, 12 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **347 of 617** (324 built from `src/`, 23 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 151 / 432 |
+| `app/` | 14 / 25 | 162 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -44,7 +44,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/image_read` | asm | 0 / 33 |
 | `app/keys` | asm | 0 / 48 |
 | `app/net` | asm | 0 / 32 |
-| `app/options` | asm | 0 / 19 |
+| `app/options` | asm; 11 of 17 drafted functions match in `wip/app/options.c` | 11 / 19 |
 | `app/build` | asm | 0 / 41 |
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
@@ -122,10 +122,10 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_409410` (0x409410)
 - ⬜ `parseIni` (0x409430)
 - ✅ `getIniValue` (0x40aa10)
-- ⬜ `FUN_40aad0` (0x40aad0)
-- ⬜ `FUN_40abf0` (0x40abf0)
-- ⬜ `FUN_40acf0` (0x40acf0)
-- ⬜ `FUN_40ade0` (0x40ade0)
+- ⬜ `getIniBool` (0x40aad0)
+- ⬜ `iniBoolInvalid` (0x40abf0)
+- ⬜ `getIniU32` (0x40acf0)
+- ⬜ `iniU32Invalid` (0x40ade0)
 - ⬜ `loadUserIni` (0x40aef0)
 
 </details>
@@ -309,26 +309,26 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/options</code>: 0 / 19 in C</summary>
+<summary><code>app/options</code>: 11 / 19 in C</summary>
 
 - ⬜ `FUN_4236f0` (0x4236f0)
-- ⬜ `FUN_423730` (0x423730)
-- ⬜ `FUN_423750` (0x423750)
-- ⬜ `iniConsoleType` (0x423830)
-- ⬜ `setConsoleType` (0x424170)
-- ⬜ `FUN_424930` (0x424930)
-- ⬜ `FUN_424a10` (0x424a10)
-- ⬜ `FUN_424a70` (0x424a70)
-- ⬜ `FUN_424b20` (0x424b20)
-- ⬜ `FUN_424b60` (0x424b60)
-- ⬜ `FUN_424bb0` (0x424bb0)
-- ⬜ `FUN_425110` (0x425110)
-- ⬜ `parseCmdOptions` (0x4258e0)
-- ⬜ `applyIniOptions` (0x4259a0)
-- ⬜ `FUN_427000` (0x427000)
-- ⬜ `parseRawPatches` (0x4271a0)
-- ⬜ `FUN_427260` (0x427260)
-- ⬜ `loadAddons` (0x427340)
+- ☑️ `baseFileExists` (0x423730)
+- ☑️ `perboxExists` (0x423750)
+- ☑️ `iniConsoleType` (0x423830)
+- ☑️ `setConsoleType` (0x424170)
+- ⬜ `optIniBool` (0x424930) (draft in `wip/`, no match yet)
+- ☑️ `optIniInt` (0x424a10)
+- ☑️ `parseButton` (0x424a70)
+- ☑️ `stripColons` (0x424b20)
+- ☑️ `macidSet` (0x424b60)
+- ⬜ `setBoolOption` (0x424bb0) (draft in `wip/`, no match yet)
+- ⬜ `parseOption` (0x425110) (draft in `wip/`, no match yet)
+- ⬜ `parseCmdOptions` (0x4258e0) (draft in `wip/`, no match yet)
+- ⬜ `applyIniOptions` (0x4259a0) (draft in `wip/`, no match yet)
+- ☑️ `parseRawPatch` (0x427000)
+- ☑️ `parseRawPatches` (0x4271a0)
+- ☑️ `addPatch` (0x427260)
+- ⬜ `loadAddons` (0x427340) (draft in `wip/`, no match yet)
 - ⬜ `FUN_449640` (0x449640)
 
 </details>
