@@ -23,16 +23,16 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions built from C: **324 of 617** (55 of 66 objects fully C). The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **336 of 617** (324 built from `src/`, 12 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 139 / 432 |
+| `app/` | 14 / 25 | 151 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
 
-Objects with functions still in assembly. Per-function status (✅ C, ⬜ assembly) in address order.
+Objects with functions still in assembly. Per-function status in address order: ✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. "Functions in C" counts both ✅ and ☑️.
 
 | Object | State | Functions in C |
 |---|---|---|
@@ -46,26 +46,26 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 | `app/net` | asm | 0 / 32 |
 | `app/options` | asm | 0 / 19 |
 | `app/build` | asm | 0 / 41 |
-| `app/console_hdd` | asm; C draft in `wip/app/console_hdd.c`: 12 of 14 functions match | 0 / 14 |
+| `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
 <details>
 <summary><code>app/bootloaders</code>: 0 / 19 in C</summary>
 
-- ⬜ `FUN_401630` (0x401630)
+- ⬜ `verifyExtended` (0x401630)
 - ⬜ `FUN_401730` (0x401730)
 - ⬜ `FUN_4017d0` (0x4017d0)
 - ⬜ `FUN_401910` (0x401910)
 - ⬜ `FUN_401a00` (0x401a00)
-- ⬜ `FUN_401ce0` (0x401ce0)
-- ⬜ `FUN_401dc0` (0x401dc0)
-- ⬜ `FUN_401e60` (0x401e60)
+- ⬜ `cfDecrypt` (0x401ce0)
+- ⬜ `cgDecrypt` (0x401dc0)
+- ⬜ `verifySecdata` (0x401e60)
 - ⬜ `FUN_401f80` (0x401f80)
-- ⬜ `FUN_402020` (0x402020)
+- ⬜ `verifyCrl` (0x402020)
 - ⬜ `FUN_402210` (0x402210)
 - ⬜ `FUN_4022f0` (0x4022f0)
-- ⬜ `FUN_402410` (0x402410)
+- ⬜ `verifyDae` (0x402410)
 - ⬜ `FUN_402610` (0x402610)
-- ⬜ `FUN_402720` (0x402720)
+- ⬜ `verifyFcrt` (0x402720)
 - ⬜ `FUN_402a00` (0x402a00)
 - ⬜ `FUN_402a70` (0x402a70)
 - ⬜ `FUN_402c70` (0x402c70)
@@ -88,7 +88,7 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_404340` (0x404340)
 - ⬜ `FUN_404430` (0x404430)
 - ⬜ `FUN_404600` (0x404600)
-- ⬜ `FUN_404770` (0x404770)
+- ⬜ `mode_update` (0x404770)
 
 </details>
 <details>
@@ -109,7 +109,7 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_407bf0` (0x407bf0)
 - ⬜ `FUN_408080` (0x408080)
 - ⬜ `FUN_408160` (0x408160)
-- ⬜ `FUN_408260` (0x408260)
+- ⬜ `mode_client` (0x408260)
 
 </details>
 <details>
@@ -120,13 +120,13 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_409310` (0x409310)
 - ⬜ `FUN_4093d0` (0x4093d0)
 - ⬜ `FUN_409410` (0x409410)
-- ⬜ `FUN_409430` (0x409430)
+- ⬜ `parseIni` (0x409430)
 - ✅ `getIniValue` (0x40aa10)
 - ⬜ `FUN_40aad0` (0x40aad0)
 - ⬜ `FUN_40abf0` (0x40abf0)
 - ⬜ `FUN_40acf0` (0x40acf0)
 - ⬜ `FUN_40ade0` (0x40ade0)
-- ⬜ `FUN_40aef0` (0x40aef0)
+- ⬜ `loadUserIni` (0x40aef0)
 
 </details>
 <details>
@@ -135,8 +135,8 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_40e950` (0x40e950)
 - ⬜ `FUN_40ecc0` (0x40ecc0)
 - ⬜ `FUN_40eef0` (0x40eef0)
-- ⬜ `FUN_40f330` (0x40f330)
-- ⬜ `FUN_40fb10` (0x40fb10)
+- ⬜ `buildImage` (0x40f330)
+- ⬜ `imageFree` (0x40fb10)
 - ⬜ `FUN_40fb60` (0x40fb60)
 - ⬜ `FUN_40fbb0` (0x40fbb0)
 - ⬜ `FUN_40fc30` (0x40fc30)
@@ -166,12 +166,12 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_4112f0` (0x4112f0)
 - ⬜ `FUN_411600` (0x411600)
 - ⬜ `FUN_411680` (0x411680)
-- ⬜ `FUN_411800` (0x411800)
+- ⬜ `checkBootImage` (0x411800)
 - ⬜ `FUN_411bd0` (0x411bd0)
 - ⬜ `FUN_412110` (0x412110)
 - ⬜ `FUN_4121b0` (0x4121b0)
 - ⬜ `FUN_412230` (0x412230)
-- ⬜ `FUN_412260` (0x412260)
+- ⬜ `writeImage` (0x412260)
 - ⬜ `FUN_4125a0` (0x4125a0)
 - ⬜ `FUN_412dd0` (0x412dd0)
 - ⬜ `FUN_412de0` (0x412de0)
@@ -184,7 +184,7 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 <summary><code>app/image_read</code>: 0 / 33 in C</summary>
 
 - ⬜ `FUN_4136a0` (0x4136a0)
-- ⬜ `FUN_4137f0` (0x4137f0)
+- ⬜ `buildCleanup` (0x4137f0)
 - ⬜ `FUN_4138c0` (0x4138c0)
 - ⬜ `FUN_413ad0` (0x413ad0)
 - ⬜ `FUN_413d30` (0x413d30)
@@ -192,7 +192,7 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_414300` (0x414300)
 - ⬜ `FUN_4144e0` (0x4144e0)
 - ⬜ `FUN_414610` (0x414610)
-- ⬜ `FUN_414650` (0x414650)
+- ⬜ `listFlashFiles` (0x414650)
 - ⬜ `FUN_414760` (0x414760)
 - ⬜ `FUN_414960` (0x414960)
 - ⬜ `FUN_414af0` (0x414af0)
@@ -215,35 +215,35 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_416aa0` (0x416aa0)
 - ⬜ `FUN_416cd0` (0x416cd0)
 - ⬜ `FUN_4172c0` (0x4172c0)
-- ⬜ `FUN_417680` (0x417680)
+- ⬜ `loadDump` (0x417680)
 
 </details>
 <details>
 <summary><code>app/keys</code>: 0 / 48 in C</summary>
 
 - ⬜ `FUN_41aa00` (0x41aa00)
-- ⬜ `FUN_41abb0` (0x41abb0)
-- ⬜ `FUN_41ac00` (0x41ac00)
-- ⬜ `FUN_41ac50` (0x41ac50)
-- ⬜ `FUN_41ac70` (0x41ac70)
-- ⬜ `FUN_41aca0` (0x41aca0)
-- ⬜ `FUN_41acd0` (0x41acd0)
-- ⬜ `FUN_41ad00` (0x41ad00)
-- ⬜ `FUN_41ad30` (0x41ad30)
-- ⬜ `FUN_41ad60` (0x41ad60)
+- ⬜ `setCrlKey` (0x41abb0)
+- ⬜ `setDaeKey` (0x41ac00)
+- ⬜ `setSecdataKey` (0x41ac50)
+- ⬜ `setInfoKey0` (0x41ac70)
+- ⬜ `setInfoKey1` (0x41aca0)
+- ⬜ `setInfoKey2` (0x41acd0)
+- ⬜ `setInfoKey3` (0x41ad00)
+- ⬜ `setInfoKey4` (0x41ad30)
+- ⬜ `setInfoKey5` (0x41ad60)
 - ⬜ `FUN_41ad90` (0x41ad90)
 - ⬜ `FUN_41adb0` (0x41adb0)
 - ⬜ `FUN_41add0` (0x41add0)
-- ⬜ `FUN_41ade0` (0x41ade0)
-- ⬜ `FUN_41ae40` (0x41ae40)
-- ⬜ `FUN_41afe0` (0x41afe0)
-- ⬜ `FUN_41b120` (0x41b120)
+- ⬜ `setPairing` (0x41ade0)
+- ⬜ `checkCpuKey` (0x41ae40)
+- ⬜ `setCpuKeyStr` (0x41afe0)
+- ⬜ `setCpuKey` (0x41b120)
 - ⬜ `FUN_41b1d0` (0x41b1d0)
 - ⬜ `FUN_41b320` (0x41b320)
 - ⬜ `FUN_41b420` (0x41b420)
 - ⬜ `FUN_41b520` (0x41b520)
-- ⬜ `FUN_41b600` (0x41b600)
-- ⬜ `FUN_41b740` (0x41b740)
+- ⬜ `set1blKey` (0x41b600)
+- ⬜ `checkKeys` (0x41b740)
 - ⬜ `FUN_41b8e0` (0x41b8e0)
 - ⬜ `FUN_41ba00` (0x41ba00)
 - ⬜ `FUN_41ba80` (0x41ba80)
@@ -275,10 +275,10 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 <summary><code>app/net</code>: 0 / 32 in C</summary>
 
 - ⬜ `FUN_41e800` (0x41e800)
-- ⬜ `FUN_41ea70` (0x41ea70)
+- ⬜ `netFree` (0x41ea70)
 - ⬜ `FUN_41ea90` (0x41ea90)
-- ⬜ `FUN_41ed50` (0x41ed50)
-- ⬜ `FUN_41ed70` (0x41ed70)
+- ⬜ `netTimerStart` (0x41ed50)
+- ⬜ `netTimerEnd` (0x41ed70)
 - ⬜ `FUN_41edb0` (0x41edb0)
 - ⬜ `FUN_41ede0` (0x41ede0)
 - ⬜ `FUN_41ee30` (0x41ee30)
@@ -289,10 +289,10 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_41f700` (0x41f700)
 - ⬜ `FUN_41fa00` (0x41fa00)
 - ⬜ `FUN_41fa40` (0x41fa40)
-- ⬜ `FUN_41faf0` (0x41faf0)
-- ⬜ `FUN_41fc30` (0x41fc30)
-- ⬜ `FUN_41fd60` (0x41fd60)
-- ⬜ `FUN_41fe10` (0x41fe10)
+- ⬜ `netMount` (0x41faf0)
+- ⬜ `netUnmount` (0x41fc30)
+- ⬜ `netGetFile` (0x41fd60)
+- ⬜ `netGetInfo` (0x41fe10)
 - ⬜ `FUN_41fe20` (0x41fe20)
 - ⬜ `FUN_41ff90` (0x41ff90)
 - ⬜ `FUN_41ffe0` (0x41ffe0)
@@ -300,10 +300,10 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_420200` (0x420200)
 - ⬜ `FUN_420320` (0x420320)
 - ⬜ `FUN_420420` (0x420420)
-- ⬜ `FUN_420470` (0x420470)
-- ⬜ `FUN_4205d0` (0x4205d0)
-- ⬜ `FUN_420670` (0x420670)
-- ⬜ `FUN_420710` (0x420710)
+- ⬜ `netSendFile` (0x420470)
+- ⬜ `netFormatSysex` (0x4205d0)
+- ⬜ `netFormatCompat` (0x420670)
+- ⬜ `netMkdir` (0x420710)
 - ⬜ `FUN_420840` (0x420840)
 - ⬜ `FUN_420910` (0x420910)
 
@@ -314,8 +314,8 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_4236f0` (0x4236f0)
 - ⬜ `FUN_423730` (0x423730)
 - ⬜ `FUN_423750` (0x423750)
-- ⬜ `FUN_423830` (0x423830)
-- ⬜ `FUN_424170` (0x424170)
+- ⬜ `iniConsoleType` (0x423830)
+- ⬜ `setConsoleType` (0x424170)
 - ⬜ `FUN_424930` (0x424930)
 - ⬜ `FUN_424a10` (0x424a10)
 - ⬜ `FUN_424a70` (0x424a70)
@@ -323,12 +323,12 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_424b60` (0x424b60)
 - ⬜ `FUN_424bb0` (0x424bb0)
 - ⬜ `FUN_425110` (0x425110)
-- ⬜ `FUN_4258e0` (0x4258e0)
-- ⬜ `FUN_4259a0` (0x4259a0)
+- ⬜ `parseCmdOptions` (0x4258e0)
+- ⬜ `applyIniOptions` (0x4259a0)
 - ⬜ `FUN_427000` (0x427000)
-- ⬜ `FUN_4271a0` (0x4271a0)
+- ⬜ `parseRawPatches` (0x4271a0)
 - ⬜ `FUN_427260` (0x427260)
-- ⬜ `FUN_427340` (0x427340)
+- ⬜ `loadAddons` (0x427340)
 - ⬜ `FUN_449640` (0x449640)
 
 </details>
@@ -338,7 +338,7 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 - ⬜ `FUN_427500` (0x427500)
 - ⬜ `FUN_427650` (0x427650)
 - ⬜ `FUN_4276a0` (0x4276a0)
-- ⬜ `FUN_4276f0` (0x4276f0)
+- ⬜ `findFile` (0x4276f0)
 - ⬜ `FUN_427730` (0x427730)
 - ⬜ `FUN_427950` (0x427950)
 - ⬜ `FUN_4279b0` (0x4279b0)
@@ -379,22 +379,22 @@ Objects with functions still in assembly. Per-function status (✅ C, ⬜ assemb
 
 </details>
 <details>
-<summary><code>app/console_hdd</code>: 0 / 14 in C</summary>
+<summary><code>app/console_hdd</code>: 12 / 14 in C</summary>
 
-- ⬜ `FUN_431c20` (0x431c20)
-- ⬜ `FUN_431d20` (0x431d20)
-- ⬜ `FUN_431d70` (0x431d70)
-- ⬜ `FUN_431f20` (0x431f20)
-- ⬜ `FUN_431f80` (0x431f80)
-- ⬜ `FUN_4320b0` (0x4320b0)
-- ⬜ `FUN_432190` (0x432190)
-- ⬜ `FUN_4327a0` (0x4327a0)
-- ⬜ `FUN_432aa0` (0x432aa0)
-- ⬜ `FUN_432b10` (0x432b10)
-- ⬜ `FUN_432de0` (0x432de0)
-- ⬜ `FUN_432e50` (0x432e50)
-- ⬜ `FUN_433130` (0x433130)
-- ⬜ `FUN_433440` (0x433440)
+- ☑️ `createSysexDirs` (0x431c20)
+- ☑️ `addTitleId` (0x431d20)
+- ☑️ `checkManifestHeader` (0x431d70)
+- ☑️ `readManifestString` (0x431f20)
+- ☑️ `loadFileChecked` (0x431f80)
+- ☑️ `loadStfsChecked` (0x4320b0)
+- ☑️ `parseManifestEntries` (0x432190)
+- ☑️ `parseManifest` (0x4327a0)
+- ☑️ `freeManifest` (0x432aa0)
+- ☑️ `loadManifest` (0x432b10)
+- ☑️ `prepSysex` (0x432de0)
+- ⬜ `sendAvatarData` (0x432e50) (draft in `wip/`, no match yet)
+- ⬜ `sendDir` (0x433130) (draft in `wip/`, no match yet)
+- ☑️ `sendCompatData` (0x433440)
 
 </details>
 

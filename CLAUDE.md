@@ -24,9 +24,11 @@ Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pi
   literals, switch tables); use `extern` names for the `.s`'s data.
 - Keep README's Progress section current: after converting an object or
   function (or parking one in `wip/`), run `sh build.sh` then
-  `python re/progress.py`, and commit the README with the change. The section
-  is generated; change `re/progress.py` (e.g. its `NOTES` for wip drafts),
-  not the README text between the `progress:begin/end` markers. Update the
+  `python re/progress.py`, and commit the README with the change. Functions
+  defined in `wip/<obj>.c` that `re/fncmp.py` matches count as C (put a
+  draft's non-default gcc flags in the script's `WIP_FLAGS`). The section
+  is generated; change `re/progress.py`, not the README text between the
+  `progress:begin/end` markers. Update the
   "Move functions to C" row in Status by hand when the totals move.
 - To match a function before a full build: `python re/fncmp.py src/<obj>.c
   <name> [flags]` (MATCH or a diff against the original). For a whole C
