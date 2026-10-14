@@ -10,21 +10,11 @@
 
 .intel_syntax noprefix
 .globl FUN_41aa00
-.globl FUN_41ac70
-.globl FUN_41aca0
-.globl FUN_41acd0
-.globl FUN_41ad00
-.globl FUN_41ad30
-.globl FUN_41ad60
 .globl FUN_41ad90
 .globl FUN_41adb0
 .globl FUN_41add0
-.globl FUN_41ade0
-.globl FUN_41ae40
 .globl FUN_41afe0
-.globl FUN_41b120
 .globl FUN_41b320
-.globl FUN_41b600
 .globl FUN_41ba80
 .globl FUN_41bf50
 .globl FUN_41c0c0
@@ -44,9 +34,19 @@
 .globl FUN_41e180
 .globl FUN_41e620
 .globl FUN_41e7b0
+.globl _checkCpuKey
 .globl _checkKeys
+.globl _set1blKey
+.globl _setCpuKey
 .globl _setCrlKey
 .globl _setDaeKey
+.globl _setInfoKey0
+.globl _setInfoKey1
+.globl _setInfoKey2
+.globl _setInfoKey3
+.globl _setInfoKey4
+.globl _setInfoKey5
+.globl _setPairing
 .globl _setSecdataKey
 
 .text
@@ -207,7 +207,7 @@ _setSecdataKey:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ac70:
+_setInfoKey0:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EBX,DWORD PTR [EAX]
@@ -227,7 +227,7 @@ FUN_41ac70:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41aca0:
+_setInfoKey1:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EBX,DWORD PTR [EAX]
@@ -247,7 +247,7 @@ FUN_41aca0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41acd0:
+_setInfoKey2:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EBX,DWORD PTR [EAX]
@@ -267,7 +267,7 @@ FUN_41acd0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ad00:
+_setInfoKey3:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EBX,DWORD PTR [EAX]
@@ -287,7 +287,7 @@ FUN_41ad00:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ad30:
+_setInfoKey4:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EBX,DWORD PTR [EAX]
@@ -307,7 +307,7 @@ FUN_41ad30:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ad60:
+_setInfoKey5:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EBX,DWORD PTR [EAX]
@@ -372,7 +372,7 @@ FUN_41add0:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_41ade0:
+_setPairing:
           sub ESP,44
           xor EAX,EAX
           mov EDX,DWORD PTR [ESP+48]
@@ -400,7 +400,7 @@ L_41ae3a:
           ret 
           .byte 0x66
           .byte 0x90
-FUN_41ae40:
+_checkCpuKey:
           push EDI
           push ESI
           push EBX
@@ -577,7 +577,7 @@ L_41b063:
           jne L_41b014
           mov DWORD PTR [ESP+4],OFFSET _cpuKey
           mov DWORD PTR [ESP],1
-          call FUN_41ae40
+          call _checkCpuKey
           test EAX,EAX
           je L_41b100
           mov DWORD PTR [ESP+4],OFFSET L_456703
@@ -612,7 +612,7 @@ L_41b100:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41b120:
+_setCpuKey:
           push EDI
           push ESI
           push EBX
@@ -651,7 +651,7 @@ L_41b184:
 L_41b1a0:
           mov DWORD PTR [ESP+4],OFFSET _cpuKey
           mov DWORD PTR [ESP],ESI
-          call FUN_41ae40
+          call _checkCpuKey
           test EAX,EAX
           jne L_41b184
           mov DWORD PTR [ESP+4],OFFSET L_456708
@@ -965,7 +965,7 @@ L_41b5f0:
 L_41b5f7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41b600:
+_set1blKey:
           push EBX
           sub ESP,24
           mov EAX,DWORD PTR [ESP+32]
@@ -4765,7 +4765,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41ac70 - .
+          .long _setInfoKey0 - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
@@ -4790,7 +4790,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41aca0 - .
+          .long _setInfoKey1 - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
@@ -4815,7 +4815,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41acd0 - .
+          .long _setInfoKey2 - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
@@ -4840,7 +4840,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41ad00 - .
+          .long _setInfoKey3 - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
@@ -4865,7 +4865,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41ad30 - .
+          .long _setInfoKey4 - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
@@ -4890,7 +4890,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41ad60 - .
+          .long _setInfoKey5 - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
@@ -4966,7 +4966,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41ade0 - .
+          .long _setPairing - .
           .byte 0x5e
           .byte 0x0
           .byte 0x0
@@ -4987,7 +4987,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41ae40 - .
+          .long _checkCpuKey - .
           .byte 0x99
           .byte 0x1
           .byte 0x0
@@ -5081,7 +5081,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41b120 - .
+          .long _setCpuKey - .
           .byte 0xa6
           .byte 0x0
           .byte 0x0
@@ -5350,7 +5350,7 @@ L_45745c:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_41b600 - .
+          .long _set1blKey - .
           .byte 0x33
           .byte 0x1
           .byte 0x0

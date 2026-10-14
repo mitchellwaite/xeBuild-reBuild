@@ -1196,10 +1196,10 @@ L_40fa4a:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_40fa60:
           mov DWORD PTR [ESP],9
-          call FUN_4276f0
+          call _findFile
           mov DWORD PTR [ESP],25
           mov EBX,EAX
-          call FUN_4276f0
+          call _findFile
           imul EAX,EAX,1068
           imul EBX,EBX,1068
           mov EAX,DWORD PTR [EAX+L_4bc150+8]

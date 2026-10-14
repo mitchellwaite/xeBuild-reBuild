@@ -12,7 +12,6 @@
 .globl FUN_449120
 .globl FUN_449130
 .globl FUN_449170
-.globl FUN_449180
 .globl FUN_4491b0
 .globl FUN_4491b8
 .globl FUN_4491c8
@@ -48,6 +47,7 @@
 .globl _exit
 .globl _fclose
 .globl _feof
+.globl _fflush
 .globl _fgetc
 .globl _fgets
 .globl _fopen
@@ -250,7 +250,7 @@ _fgetc:
           jmp DWORD PTR [fgetc]
           .byte 0x90
           .byte 0x90
-FUN_449180:
+_fflush:
           jmp DWORD PTR [fflush]
           .byte 0x90
           .byte 0x90

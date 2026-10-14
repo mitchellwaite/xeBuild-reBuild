@@ -24,6 +24,10 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # kvCheckHash's __builtin_expect needs a weak hint (51-60 match)
       app/keyvault) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=55" ;;
+      # showInfoKeys aligns a block at frequency 61 of 9412 (default 100
+      # would need 95); 155 and up match
+      app/consoleinfo) orig="$f.c"
+             cflags="-O3 --param align-threshold=200" ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;

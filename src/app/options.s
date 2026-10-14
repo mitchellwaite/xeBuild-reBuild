@@ -9,12 +9,12 @@
 
 .intel_syntax noprefix
 .globl FUN_423830
-.globl FUN_424170
 .globl FUN_424b60
 .globl FUN_4258e0
 .globl FUN_4259a0
 .globl FUN_4271a0
 .globl FUN_427340
+.globl _setConsoleType
 
 .text
 .p2align 4
@@ -712,7 +712,7 @@ L_424125:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_424170:
+_setConsoleType:
           push EDI
           push ESI
           push EBX
@@ -4806,7 +4806,7 @@ L_458c9c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_424170 - .
+          .long _setConsoleType - .
           .byte 0xbf
           .byte 0x7
           .byte 0x0

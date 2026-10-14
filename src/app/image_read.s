@@ -270,7 +270,7 @@ L_413946:
           mov DWORD PTR [ESP+8],EBX
           call _log_printf
           mov DWORD PTR [ESP],EBX
-          call FUN_41ade0
+          call _setPairing
           movzx EAX,BYTE PTR [L_479f15]
           test AL,AL
           jne L_413a3b
@@ -4532,7 +4532,7 @@ L_417326:
 L_417330:
           lea EAX,DWORD PTR [ESI+EBX*1+16]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ac70
+          call _setInfoKey0
           mov EAX,DWORD PTR [EDI+12]
           mov ECX,EAX
           mov EDX,EAX
@@ -4585,7 +4585,7 @@ L_4173c0:
 L_4173e0:
           lea EAX,DWORD PTR [EDX+EBX*1+16]
           mov DWORD PTR [ESP],EAX
-          call FUN_41aca0
+          call _setInfoKey1
           mov EAX,DWORD PTR [EDI+12]
           mov ECX,EAX
           mov EDX,EAX
@@ -4623,7 +4623,7 @@ L_417419:
 L_417460:
           lea EAX,DWORD PTR [EDX+EBX*1+16]
           mov DWORD PTR [ESP],EAX
-          call FUN_41acd0
+          call _setInfoKey2
           mov EDI,DWORD PTR [EDI+12]
           mov EDX,EDI
           mov EAX,EDI
@@ -4695,7 +4695,7 @@ L_417520:
 L_417540:
           lea EAX,DWORD PTR [EDX+EBX*1+16]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ad00
+          call _setInfoKey3
           mov EAX,DWORD PTR [ESI+100]
           mov EBX,EAX
           mov EDX,EAX
@@ -4726,7 +4726,7 @@ L_417540:
 L_4175b5:
           lea EAX,DWORD PTR [EDX+EBX*1+32]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ad30
+          call _setInfoKey4
           mov EDX,DWORD PTR [ESI+12]
           mov ECX,EDX
           mov EAX,EDX
@@ -4763,7 +4763,7 @@ L_41762c:
 L_417645:
           lea EAX,DWORD PTR [EDX+EBX*1+16]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ad60
+          call _setInfoKey5
           mov DWORD PTR [L_479ec0],0
           jmp L_417326
 L_417660:

@@ -9,8 +9,8 @@
 
 .intel_syntax noprefix
 .globl FUN_427650
-.globl FUN_4276f0
 .globl L_42e760
+.globl _findFile
 
 .text
 .p2align 4
@@ -184,7 +184,7 @@ L_4276db:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4276f0:
+_findFile:
           mov ECX,DWORD PTR [L_4c4f98]
           push EBX
           mov EBX,DWORD PTR [ESP+8]
@@ -15255,7 +15255,7 @@ L_45b480:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_4276f0 - .
+          .long _findFile - .
           .byte 0x39
           .byte 0x0
           .byte 0x0

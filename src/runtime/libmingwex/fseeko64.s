@@ -153,7 +153,7 @@ L_448b35:
 L_448b53:
           mov DWORD PTR [ESP],EBX
           lea EBP,DWORD PTR [ESP+24]
-          call FUN_449180
+          call _fflush
           mov DWORD PTR [ESP],EBX
           call FUN_449238
           mov DWORD PTR [ESP],EAX

@@ -41,6 +41,8 @@ def norm(lines):
                    r'\1[\2+\3]', l, flags=re.I)
         l = re.sub(r'((?:byte|word|dword|qword) ptr )([A-Za-z_][\w.]*(?:[+-]\d+)?)(?![\w.\[+-])',
                    r'\1[\2]', l, flags=re.I)
+        # gcc: `lea eax,_x+8[ebx]`; ddisasm: `lea eax,[ebx+_x+8]`
+        l = re.sub(r'^(lea \w+,)([A-Za-z_][\w.]*(?:[+-]\d+)?)\[([^\]]*)\]$', r'\1[\2+\3]', l, flags=re.I)
         # labels and unnamed (static) symbols compare as `L`; SYMBOLS names must agree.
         # gcc's local names: LC0 (literals), _x.2980 (function statics), _f.part.3
         l = re.sub(r'(?<![\w.$])_\w+(?:\.\w+)+', 'L', l)

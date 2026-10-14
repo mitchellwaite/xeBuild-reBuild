@@ -38,7 +38,7 @@ FUN_4030b0:
           call _log_printf
 L_4030fd:
           mov DWORD PTR [ESP],EBX
-          call FUN_41ea70
+          call _netFree
           mov EAX,1
 L_40310a:
           add ESP,44
@@ -446,7 +446,7 @@ FUN_403700:
           lea EAX,DWORD PTR [ESP+24]
           mov DWORD PTR [ESP],OFFSET L_44ce9c
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           je L_4037e0
           mov EBX,EAX
@@ -462,7 +462,7 @@ FUN_403700:
           jne L_403761
 L_40374f:
           mov DWORD PTR [ESP],EBX
-          call FUN_41ea70
+          call _netFree
           add ESP,1056
           pop EBX
           pop ESI
@@ -558,7 +558,7 @@ L_403880:
           call _log_printf
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],OFFSET L_46f040
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov DWORD PTR [ESI-4],EAX
           je L_403a55
@@ -630,7 +630,7 @@ L_4039ab:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a07c
           mov DWORD PTR [ESP],OFFSET L_44d009
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov DWORD PTR [L_47a078],EAX
           je L_4039f8
@@ -644,7 +644,7 @@ L_4039f8:
 L_403a0c:
           mov EAX,DWORD PTR [L_47a078]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ea70
+          call _netFree
           mov EAX,DWORD PTR [L_46f15c]
           mov DWORD PTR [L_47a07c],0
           mov DWORD PTR [L_47a078],0
@@ -696,7 +696,7 @@ L_403af9:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a100
           mov DWORD PTR [ESP],OFFSET L_44d12c
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov DWORD PTR [L_47a0fc],EAX
           je L_403b36
@@ -948,7 +948,7 @@ L_403e50:
           call _log_printf
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],OFFSET L_46f040
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov DWORD PTR [ESI-40],EAX
           je L_403ea1
@@ -999,7 +999,7 @@ L_403f22:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a0ec+4
           mov DWORD PTR [ESP],OFFSET L_44d257
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov DWORD PTR [L_47a0e8+4],EAX
           je L_403f6d
@@ -1106,7 +1106,7 @@ L_4040b8:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_47a0e4+4
           mov DWORD PTR [ESP],OFFSET L_44d354
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov DWORD PTR [L_47a0e0+4],EAX
           je L_404106
@@ -1515,7 +1515,7 @@ L_404681:
           mov DWORD PTR [ESP+4],EAX
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov EBX,EAX
           je L_404750
@@ -1833,14 +1833,14 @@ L_404b87:
           mov EAX,DWORD PTR [ESI]
           jmp L_404ae2
 L_404bae:
-          call FUN_41fe10
+          call _netGetInfo
           mov DWORD PTR [L_46f15c],EAX
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP+12],OFFSET L_46f154
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_431a60
+          call _parseConsoleInfo
           test EAX,EAX
           je L_404f3b
           mov EAX,DWORD PTR [_g479ea8]

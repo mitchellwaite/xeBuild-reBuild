@@ -672,7 +672,7 @@ L_4195c5:
           cmp BYTE PTR [EAX],45
           je L_41a411
           mov DWORD PTR [ESP],EAX
-          call FUN_424170
+          call _setConsoleType
           test EAX,EAX
           jne L_4192ce
           mov EAX,DWORD PTR [ESI]
@@ -999,7 +999,7 @@ L_419c3c:
           mov DWORD PTR [ESP],OFFSET L_45647b
           call _getIniValue
           mov DWORD PTR [ESP],EAX
-          call FUN_424170
+          call _setConsoleType
           test EAX,EAX
           jne L_4193fd
           mov DWORD PTR [ESP+4],OFFSET L_456480

@@ -9,15 +9,12 @@
 #   .text          0041e800-00420a90
 
 .intel_syntax noprefix
-.globl FUN_41ea70
 .globl FUN_41ed50
 .globl FUN_41ed70
 .globl FUN_41f700
 .globl FUN_41fa40
 .globl FUN_41faf0
 .globl FUN_41fc30
-.globl FUN_41fd60
-.globl FUN_41fe10
 .globl FUN_41fe20
 .globl FUN_41ff90
 .globl FUN_41ffe0
@@ -31,6 +28,9 @@
 .globl FUN_420710
 .globl FUN_420840
 .globl FUN_420910
+.globl _netFree
+.globl _netGetFile
+.globl _netGetInfo
 
 .text
 .p2align 4
@@ -221,7 +221,7 @@ L_41ea5a:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ea70:
+_netFree:
           mov EAX,DWORD PTR [ESP+4]
           cmp EAX,OFFSET L_479578
           je L_41ea84
@@ -1624,7 +1624,7 @@ L_41fd40:
           jmp L_41fd18
           .byte 0x66
           .byte 0x90
-FUN_41fd60:
+_netGetFile:
           push ESI
           push EBX
           sub ESP,292
@@ -1690,7 +1690,7 @@ L_41fdf0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41fe10:
+_netGetInfo:
           mov EAX,DWORD PTR [L_479574]
           ret 
           .byte 0x8d
@@ -3141,7 +3141,7 @@ L_457a77:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41ea70 - .
+          .long _netFree - .
           .byte 0x16
           .byte 0x0
           .byte 0x0
@@ -4177,7 +4177,7 @@ L_457a77:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41fd60 - .
+          .long _netGetFile - .
           .byte 0xa5
           .byte 0x0
           .byte 0x0
@@ -4242,7 +4242,7 @@ L_457a77:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41fe10 - .
+          .long _netGetInfo - .
           .byte 0x6
           .byte 0x0
           .byte 0x0

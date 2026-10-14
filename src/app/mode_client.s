@@ -211,7 +211,7 @@ FUN_406740:
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],0
-          call FUN_431a60
+          call _parseConsoleInfo
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
           call FUN_420420
@@ -277,7 +277,7 @@ L_406879:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],0
-          call FUN_431a60
+          call _parseConsoleInfo
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
           call FUN_420420
@@ -975,7 +975,7 @@ L_4071b3:
           lea EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],OFFSET L_44f00b
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov ESI,EAX
           je L_407300
@@ -1184,7 +1184,7 @@ L_4074e0:
           lea EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],OFFSET L_44f00b
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41fd60
+          call _netGetFile
           test EAX,EAX
           mov EBX,EAX
           je L_407690
@@ -2570,7 +2570,7 @@ L_408758:
           call FUN_41f700
           test EAX,EAX
           je L_408421
-          call FUN_41fe10
+          call _netGetInfo
           mov ECX,DWORD PTR [ESP+40]
           mov DWORD PTR [L_46f160],EAX
           cmp ECX,12
@@ -2614,7 +2614,7 @@ L_408803:
           pop EBP
           ret 
 L_408812:
-          call FUN_41fe10
+          call _netGetInfo
           mov DWORD PTR [L_46f160],EAX
 L_40881c:
           mov DWORD PTR [ESP],EDI

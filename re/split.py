@@ -268,6 +268,19 @@ SYMBOLS = {
     0x40cfa0: '_suFree', 0x40fb10: '_imageFree', 0x404770: '_mode_update',
     0x408260: '_mode_client', 0x418a10: '_build_usage', 0x419230: '_mode_build',
     0x446c90: '___main',
+    # app/consoleinfo (src/app/consoleinfo.c); names are ours
+    0x430460: '_optOpen', 0x430540: '_optClose', 0x430570: '_optWrite',
+    0x4305b0: '_optLdv', 0x4305e0: '_optHex', 0x430660: '_optButton',
+    0x4308d0: '_showImageType', 0x430b60: '_getFreebootOpts',
+    0x430e00: '_getFlashHdrOpts', 0x430fe0: '_showInfoKeys',
+    0x4317c0: '_showCurrentInfo', 0x4318e0: '_setInfoKeys',
+    0x431a60: '_parseConsoleInfo',
+    0x41fd60: '_netGetFile', 0x41fe10: '_netGetInfo', 0x41ea70: '_netFree',
+    0x424170: '_setConsoleType', 0x4276f0: '_findFile',
+    0x41ae40: '_checkCpuKey', 0x41b120: '_setCpuKey', 0x41b600: '_set1blKey',
+    0x41ade0: '_setPairing', 0x41ac70: '_setInfoKey0', 0x41aca0: '_setInfoKey1',
+    0x41acd0: '_setInfoKey2', 0x41ad00: '_setInfoKey3', 0x41ad30: '_setInfoKey4',
+    0x41ad60: '_setInfoKey5', 0x449180: '_fflush',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls
