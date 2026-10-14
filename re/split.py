@@ -287,6 +287,13 @@ SYMBOLS = {
     0x427340: '_loadAddons', 0x4258e0: '_parseCmdOptions', 0x4271a0: '_parseRawPatches',
     0x423830: '_iniConsoleType', 0x4137f0: '_buildCleanup', 0x40f330: '_buildImage',
     0x412260: '_writeImage', 0x41afe0: '_setCpuKeyStr',
+    # app/options (src/app/options.c) and what it calls; names are ours
+    0x423730: '_baseFileExists', 0x423750: '_perboxExists',
+    0x424930: '_optIniBool', 0x424a10: '_optIniInt', 0x424a70: '_parseButton',
+    0x424b20: '_stripColons', 0x424b60: '_macidSet', 0x424bb0: '_setBoolOption',
+    0x425110: '_parseOption', 0x427000: '_parseRawPatch', 0x427260: '_addPatch',
+    0x40aad0: '_getIniBool', 0x40abf0: '_iniBoolInvalid', 0x40acf0: '_getIniU32',
+    0x40ade0: '_iniU32Invalid',
     # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',

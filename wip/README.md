@@ -31,3 +31,35 @@ To resume: move it back to `src/app/`. The names it needs are already in
 `re/split.py` `SYMBOLS`. Iterate with `python re/fncmp.py
 src/app/console_hdd.c <name>` or `python wip/fnrep.py`, then regenerate and
 `sh build.sh`.
+
+## app/options.c
+
+Draft of the whole object (it can't be a mixed object: every function
+uses string literals).  As of this draft, matching with `re/fncmp.py`:
+parseButton, baseFileExists, perboxExists, iniConsoleType, setConsoleType,
+optIniInt, stripColons, macidSet, parseRawPatch, parseRawPatches, addPatch.
+setBoolOption's 4 lines are ddisasm writing 0x400000 as `__ImageBase`
+(really a match).  Still off:
+
+- `optIniBool` (22 lines; 6 with a `long` return): register choice in
+  `(bootFlags & ~clear) | set`.
+- `applyIniOptions` (924): the "already set" path must be the likely one.
+  Guarding each call in the caller with `if (!(xb.bootFlags & bit))` (the
+  call heuristic) and `switch (xb.type) { case 2: }` (no == heuristic)
+  fixed most of the layout.  Next: noecdremap (bit 31), the xellbutton
+  registers (ebx vs edx), and the later off-trace blocks.
+- `parseOption` (454): block layout (gputemp's body is placed after the
+  error blocks in the original).  The u32 return/validateString prototypes
+  stop the return value living in esi, but they cost parseCmdOptions 15
+  lines (it matched with an int return).
+- `loadAddons` (11): the original keeps j=0 in eax across the over-limit
+  warning (caller-save); ours rematerialises it.
+
+Findings:
+- 449640 is `parseButton.part.N` (ipa-split of a single parseButton with
+  an if/else chain).  gcc puts it in `.text.unlikely`; split.py calls that
+  piece `.text.startup`.  The real i386pe script merges `*(.text.*)` in
+  object order, so link.ld needs `*(.text.*)` instead of
+  `*(.text.startup)` when this object is built from C.
+- The temperature/fan/region fields must be u32 (an int would let the
+  -1 default reuse the loaded value).
