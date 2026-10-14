@@ -9,331 +9,28 @@
 #   .text          00405610-00406330
 
 .intel_syntax noprefix
+.globl _sContentOk
 .globl _sCorrupt
 .globl _sDone
 .globl _sFnamelen
 .globl _sFound
+.globl _sHashOk
 .globl _sManifestBad
 .globl _sManifestOk
 .globl _sName
 .globl _sNotFound
 .globl _sValid
 .globl _sValidVer
-.globl _stfsCheckHashes
 .globl _stfsGetFile
-.globl _stfsListFiles
 
 .text
 .p2align 4
-_stfsCheckHashes:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,108
-          mov EDI,DWORD PTR [ESP+128]
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+24],EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],0
-          mov EAX,DWORD PTR [EDI+12]
-          mov ESI,DWORD PTR [ESP+132]
-          sub EAX,836
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [EDI]
-          add EAX,836
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptSha
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [ESI+812]
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_405860
-          mov EBX,DWORD PTR [EDI+12]
-          mov EAX,DWORD PTR [EDI]
-          lea EBP,DWORD PTR [EBX+4096]
-          add EBX,EAX
-          add EAX,EBP
-          mov DWORD PTR [EDI+16],EAX
-          mov EAX,DWORD PTR [ESP+136]
-          test EAX,EAX
-          jne L_405942
-L_4056b7:
-          lea EAX,DWORD PTR [ESI+897]
-          mov DWORD PTR [ESP+52],24
-          mov DWORD PTR [ESP+56],0
-          mov DWORD PTR [ESP+44],0
-          mov DWORD PTR [ESP+60],EAX
-L_4056d9:
-          mov EAX,DWORD PTR [ESP+44]
-          lea ESI,DWORD PTR [EAX*4]
-          add EAX,170
-          mov DWORD PTR [ESP+48],EAX
-          .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
-L_4056f0:
-          mov DWORD PTR [ESP+4],24
-          mov DWORD PTR [ESP],EBX
-          call _checkZeros
-          test EAX,EAX
-          je L_4057d0
-          xor ESI,ESI
-L_40570a:
-          lea EAX,DWORD PTR [EBP+8192]
-          cmp EAX,DWORD PTR [EDI+8]
-          jae L_4057b0
-          mov EBX,DWORD PTR [EDI]
-          add EBX,EBP
-          mov EAX,DWORD PTR [EBX+20]
-          test EAX,EAX
-          je L_40586a
-          mov ECX,DWORD PTR [ESP+56]
-          test ECX,ECX
-          je L_405798
-L_405730:
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+24],EAX
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],4096
-          mov DWORD PTR [ESP],EBX
-          call _XeCryptSha
-          mov EAX,DWORD PTR [ESP+56]
-          add EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_405860
-L_405798:
-          add EBP,4096
-          add DWORD PTR [ESP+52],24
-          test ESI,ESI
-          jne L_4056d9
-          nop
-          .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
-L_4057b0:
-          mov EDX,DWORD PTR [ESP+136]
-          mov EAX,1
-          test EDX,EDX
-          jne L_40595b
-L_4057c4:
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _stfsCheckHashes
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_4057d0:
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+24],EAX
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],4096
-          mov EAX,DWORD PTR [EDI]
-          add EAX,EBP
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptSha
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_405860
-          mov EAX,DWORD PTR [EDI+4]
-          add DWORD PTR [ESP+44],1
-          add EBX,24
-          mov DWORD PTR [EAX+ESI*1],EBP
-          add EBP,4096
-          add ESI,4
-          mov EAX,DWORD PTR [ESP+44]
-          cmp EAX,DWORD PTR [ESP+48]
-          jne L_4056f0
-          mov ESI,1
-          jmp L_40570a
-          .byte 0x90
-L_405860:
-          add ESP,108
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40586a:
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+24],EAX
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],4096
-          mov DWORD PTR [ESP],EBX
-          call _XeCryptSha
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+60]
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_405860
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+24],EAX
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],4096
-          mov EAX,DWORD PTR [EDI+12]
-          add EAX,DWORD PTR [EDI]
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptSha
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_405860
-          mov DWORD PTR [ESP+56],EBX
-          mov EBX,DWORD PTR [EDI]
-          add EBP,4096
-          add EBX,EBP
-          jmp L_405730
-L_405942:
-          mov DWORD PTR [ESP+4],OFFSET L_44deb8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_4056b7
-L_40595b:
-          mov DWORD PTR [ESP+4],OFFSET L_44dee8
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+44],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+44]
-          jmp L_4057c4
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-_stfsListFiles:
-          push EBP
-          push EDI
-          xor EDI,EDI
-          push ESI
-          push EBX
-          sub ESP,44
-          mov EBP,DWORD PTR [ESP+64]
-          .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
-L_405990:
-          mov DWORD PTR [ESP+4],64
-          mov EAX,DWORD PTR [EBP+16]
-          lea ESI,DWORD PTR [EDI+64]
-          add EAX,EDI
-          mov DWORD PTR [ESP],EAX
-          call _checkZeros
-          test EAX,EAX
-          jne L_405ab0
-          mov EAX,DWORD PTR [EBP+16]
-          add EAX,EDI
-          movzx EDX,BYTE PTR [EAX+48]
-          movzx ECX,BYTE PTR [EAX+47]
-          mov EBX,DWORD PTR [EAX+52]
-          shl EDX,8
-          shl EBX,24
-          add ECX,EDX
-          movzx EDX,BYTE PTR [EAX+49]
-          shl EDX,16
-          add EDX,ECX
-          mov ECX,DWORD PTR [EAX+52]
-          shr ECX,24
-          add EBX,ECX
-          mov ECX,DWORD PTR [EAX+52]
-          shl ECX,8
-          and ECX,16711680
-          add ECX,EBX
-          mov EBX,DWORD PTR [EAX+52]
-          shr EBX,8
-          and EBX,65280
-          add ECX,EBX
-          mov DWORD PTR [ESP+28],ECX
-          mov ECX,DWORD PTR [EBP+4]
-          mov ECX,DWORD PTR [ECX+EDX*4]
-          mov DWORD PTR [ESP+20],EDX
-          mov DWORD PTR [ESP+24],ECX
-          movzx EDX,BYTE PTR [EAX+45]
-          movzx ECX,BYTE PTR [EAX+44]
-          shl EDX,8
-          add ECX,EDX
-          movzx EDX,BYTE PTR [EAX+46]
-          shl EDX,16
-          add EDX,ECX
-          mov DWORD PTR [ESP+16],EDX
-          movzx EDX,BYTE PTR [EAX+42]
-          movzx ECX,BYTE PTR [EAX+41]
-          shl EDX,8
-          add ECX,EDX
-          movzx EDX,BYTE PTR [EAX+43]
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET _sName
-          mov DWORD PTR [ESP],1
-          shl EDX,16
-          add EDX,ECX
-          mov DWORD PTR [ESP+12],EDX
-          call _log_printf
-          add EDI,DWORD PTR [EBP+16]
-          movzx EDX,WORD PTR [EDI+50]
-          mov EAX,EDX
-          movzx EDX,DH
-          shl EAX,8
-          and EAX,65280
-          add EAX,EDX
-          mov DWORD PTR [ESP+20],EAX
-          movzx EAX,BYTE PTR [EDI+40]
-          shr AL,7
-          movzx EAX,AL
-          mov DWORD PTR [ESP+16],EAX
-          movzx EAX,BYTE PTR [EDI+40]
-          shr AL,6
-          and EAX,1
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,BYTE PTR [EDI+40]
-          mov EDI,ESI
-          mov DWORD PTR [ESP+4],OFFSET _sFnamelen
-          mov DWORD PTR [ESP],1
-          and EAX,63
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          jmp L_405990
-          .byte 0x90
-L_405ab0:
-          add ESP,44
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _stfsListFiles
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -534,10 +231,10 @@ L_405f47:
 
 .section .rdata,"dr"
 .p2align 2
-L_44deb8:
+_sHashOk:
           .string "header hash is OK, checking content hashes...\n"
           .zero 1
-L_44dee8:
+_sContentOk:
           .string "content hashes seem OK, everything looks good!\n"
 _sName:
           .string "name: %s vb: 0x%x ab: 0x%x fb: 0x%x (off 0x%x) size 0x%x\n"

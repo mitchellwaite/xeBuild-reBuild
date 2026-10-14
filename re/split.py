@@ -252,6 +252,7 @@ SYMBOLS = {
     0x405610: '_stfsCheckHashes', 0x405980: '_stfsListFiles', 0x405ac0: '_stfsCheckHeader',
     0x405d50: '_stfsGetFile', 0x405f20: '_stfsInit', 0x405f50: '_stfsFree',
     0x405fa0: '_stfsLoad',
+    0x44deb8: '_sHashOk', 0x44dee8: '_sContentOk',
     0x44df18: '_sName', 0x44df54: '_sFnamelen', 0x44df80: '_sValidVer', 0x44dfa9: '_sValid',
     0x44dfc0: '_sManifestBad', 0x44dff0: '_sManifestOk', 0x44e06c: '_sFound', 0x44e084: '_sDone',
     0x44e0bc: '_sNotFound', 0x44e0e8: '_sCorrupt',
@@ -289,7 +290,7 @@ IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
-    0x405ac0, 0x405f20, 0x405f50, 0x405fa0,   # app/stfs
+    0x405610, 0x405980, 0x405ac0, 0x405f20, 0x405f50, 0x405fa0,   # app/stfs
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
