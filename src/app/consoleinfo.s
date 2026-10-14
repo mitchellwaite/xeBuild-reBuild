@@ -597,7 +597,7 @@ FUN_430b60:
           mov DWORD PTR [ESP+4],EAX
           call FUN_41fd60
           mov DWORD PTR [EBX+L_4bc150+12],EAX
-          add EBX,OFFSET L_479ea0
+          add EBX,OFFSET _xb
           test EAX,EAX
           je L_430d02
           mov ECX,DWORD PTR [EBX+271040]
@@ -650,7 +650,7 @@ L_430bd3:
           mov EAX,DWORD PTR [L_479f08]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40d370
+          call _logButton
           mov EAX,DWORD PTR [L_479f08]
           mov DWORD PTR [ESP],OFFSET L_45b9d8
           mov DWORD PTR [ESP+4],EAX
@@ -697,7 +697,7 @@ L_430d10:
           mov EAX,DWORD PTR [L_479f10]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40d370
+          call _logButton
           mov EAX,DWORD PTR [L_479f10]
           mov DWORD PTR [ESP],OFFSET L_45ba4c
           mov DWORD PTR [ESP+4],EAX
@@ -731,7 +731,7 @@ L_430d92:
           mov EAX,DWORD PTR [L_479f0c]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40d370
+          call _logButton
           mov EAX,DWORD PTR [L_479f0c]
           mov DWORD PTR [ESP],OFFSET L_45b9f6
           mov DWORD PTR [ESP+4],EAX
@@ -792,7 +792,7 @@ L_430e50:
           mov EAX,DWORD PTR [L_479f08]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40d370
+          call _logButton
           mov EAX,DWORD PTR [L_479f08]
           mov DWORD PTR [ESP],OFFSET L_45b9d8
           mov DWORD PTR [ESP+4],EAX
@@ -875,7 +875,7 @@ L_430f80:
           mov EAX,DWORD PTR [L_479f0c]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_40d370
+          call _logButton
           mov EAX,DWORD PTR [L_479f0c]
           mov DWORD PTR [ESP],OFFSET L_45b9f6
           mov DWORD PTR [ESP+4],EAX

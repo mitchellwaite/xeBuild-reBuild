@@ -1667,7 +1667,7 @@ L_40a2a2:
           jle L_40a2f2
           mov DWORD PTR [ESP+4],47
           mov DWORD PTR [ESP],EBP
-          call FUN_449058
+          call _strrchr
           test EAX,EAX
           je L_40a85e
 L_40a2de:
@@ -1883,7 +1883,7 @@ L_40a591:
           lea ECX,DWORD PTR [ESI+1]
           shl EAX,10
           mov BYTE PTR [EAX+L_47b94c],0
-          add EAX,OFFSET L_479ea0
+          add EAX,OFFSET _xb
           movzx EAX,BYTE PTR [EAX+6827]
           sub EAX,49
           cmp AL,1
@@ -2061,7 +2061,7 @@ L_40a84d:
 L_40a85e:
           mov DWORD PTR [ESP+4],92
           mov DWORD PTR [ESP],EBP
-          call FUN_449058
+          call _strrchr
           test EAX,EAX
           jne L_40a2de
           mov EAX,EBP

@@ -8,11 +8,11 @@
 #   .text          00446c10-00446cb0
 
 .intel_syntax noprefix
-.globl FUN_446c90
 .globl L_44b6b0
 .globl L_44b6b8
 .globl L_44b6bc
 .globl L_479acc
+.globl ___main
 
 .text
 .p2align 4
@@ -73,7 +73,7 @@ L_446c76:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_446c90:
+___main:
           mov EAX,DWORD PTR [L_479ac8]
           test EAX,EAX
           je L_446ca0
@@ -261,7 +261,7 @@ L_44b6bc:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_446c90 - .
+          .long ___main - .
           .byte 0x1c
           .byte 0x0
           .byte 0x0

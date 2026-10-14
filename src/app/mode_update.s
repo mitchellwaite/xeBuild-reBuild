@@ -10,8 +10,8 @@
 
 .intel_syntax noprefix
 .globl FUN_404600
-.globl FUN_404770
 .globl L_404000
+.globl _mode_update
 
 .text
 .p2align 4
@@ -1077,7 +1077,7 @@ L_404036:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_47a0e8+4]
           mov DWORD PTR [ESP],EAX
-          call FUN_401630
+          call _verifyExtended
           test EAX,EAX
           mov EBX,EAX
           je L_4041b0
@@ -1147,7 +1147,7 @@ L_404165:
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EDI
-          call FUN_40d120
+          call _verifyFlashFile
           test EBP,EBP
           je L_403eb5
           mov EAX,DWORD PTR [ESI]
@@ -1497,7 +1497,7 @@ FUN_404600:
           rep stosd DWORD PTR ES:[EDI]
           mov DWORD PTR [ESP+4],47
           mov DWORD PTR [ESP],EBX
-          call FUN_449058
+          call _strrchr
           test EAX,EAX
           je L_404721
 L_40466e:
@@ -1561,7 +1561,7 @@ L_4046f0:
 L_404721:
           mov DWORD PTR [ESP+4],92
           mov DWORD PTR [ESP],EBX
-          call FUN_449058
+          call _strrchr
           test EAX,EAX
           jne L_40466e
           lea EAX,DWORD PTR [ESP+33]
@@ -1582,7 +1582,7 @@ L_404750:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_404770:
+_mode_update:
           push EBP
           push EDI
           mov EAX,4140
@@ -3666,7 +3666,7 @@ L_44de80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_404770 - .
+          .long _mode_update - .
           .byte 0x97
           .byte 0xe
           .byte 0x0

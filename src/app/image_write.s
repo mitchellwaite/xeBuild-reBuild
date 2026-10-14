@@ -10,7 +10,6 @@
 
 .intel_syntax noprefix
 .globl FUN_40f330
-.globl FUN_40fb10
 .globl FUN_40fbb0
 .globl FUN_40fc30
 .globl FUN_40fcc0
@@ -45,6 +44,7 @@
 .globl L_470000
 .globl L_47006e
 .globl _checkBootImage
+.globl _imageFree
 
 .text
 .p2align 4
@@ -1248,7 +1248,7 @@ L_40faf0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40fb10:
+_imageFree:
           sub ESP,28
           mov EAX,DWORD PTR [L_479ed0]
           test EAX,EAX
@@ -4805,7 +4805,7 @@ L_4127b0:
           mov EBX,DWORD PTR [L_479f60]
           cmp DWORD PTR [L_479ef0],EBX
           je L_4128d7
-          cmp DWORD PTR [L_479ea0],2
+          cmp DWORD PTR [_xb],2
           je L_4128d7
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],OFFSET L_451ec0
@@ -6057,7 +6057,7 @@ L_451f80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40fb10 - .
+          .long _imageFree - .
           .byte 0x4b
           .byte 0x0
           .byte 0x0

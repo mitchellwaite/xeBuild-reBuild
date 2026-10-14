@@ -9,8 +9,8 @@
 
 .intel_syntax noprefix
 .globl FUN_40ca30
-.globl FUN_40cfa0
 .globl _suFirstFile
+.globl _suFree
 .globl _suGetCF
 .globl _suGetCG
 .globl _suGetDir
@@ -914,7 +914,7 @@ L_40cdb3:
 L_40ce94:
           mov DWORD PTR [ESP+4],47
           mov DWORD PTR [ESP],OFFSET L_46f1c0
-          call FUN_449058
+          call _strrchr
           test EAX,EAX
           je L_40cf74
 L_40ceb0:
@@ -965,7 +965,7 @@ L_40cf50:
 L_40cf74:
           mov DWORD PTR [ESP+4],92
           mov DWORD PTR [ESP],OFFSET L_46f1c0
-          call FUN_449058
+          call _strrchr
           test EAX,EAX
           je L_40ceb4
           jmp L_40ceb0
@@ -980,7 +980,7 @@ L_40cf74:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40cfa0:
+_suFree:
           sub ESP,28
           mov EAX,DWORD PTR [L_46f18c]
           mov DWORD PTR [L_46f184],0
@@ -1585,7 +1585,7 @@ L_450850:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_40cfa0 - .
+          .long _suFree - .
           .byte 0x67
           .byte 0x0
           .byte 0x0

@@ -7,22 +7,22 @@
 #   .text          00401630-004030b0
 
 .intel_syntax noprefix
-.globl FUN_401630
 .globl FUN_401730
 .globl FUN_4017d0
 .globl FUN_401a00
 .globl FUN_401ce0
 .globl FUN_401dc0
-.globl FUN_401e60
-.globl FUN_402020
 .globl FUN_402210
-.globl FUN_402410
-.globl FUN_402720
 .globl FUN_402a00
+.globl _verifyCrl
+.globl _verifyDae
+.globl _verifyExtended
+.globl _verifyFcrt
+.globl _verifySecdata
 
 .text
 .p2align 4
-FUN_401630:
+_verifyExtended:
           push EBP
           push EDI
           push ESI
@@ -634,7 +634,7 @@ FUN_401dc0:
 L_401e57:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_401e60:
+_verifySecdata:
           push EBP
           push EDI
           push ESI
@@ -753,7 +753,7 @@ L_402002:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_402020:
+_verifyCrl:
           push EBP
           push EDI
           push ESI
@@ -1012,7 +1012,7 @@ L_402400:
           ret 
           .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_402410:
+_verifyDae:
           push EBP
           push EDI
           push ESI
@@ -1233,7 +1233,7 @@ L_4026f0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_402720:
+_verifyFcrt:
           push EBP
           push EDI
           push ESI
@@ -2074,7 +2074,7 @@ L_44c6b0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_401630 - .
+          .long _verifyExtended - .
           .byte 0xf3
           .byte 0x0
           .byte 0x0
@@ -2505,7 +2505,7 @@ L_44c6b0:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_401e60 - .
+          .long _verifySecdata - .
           .byte 0x1b
           .byte 0x1
           .byte 0x0
@@ -2591,7 +2591,7 @@ L_44c6b0:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_402020 - .
+          .long _verifyCrl - .
           .byte 0xf0
           .byte 0x1
           .byte 0x0
@@ -2778,7 +2778,7 @@ L_44c6b0:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_402410 - .
+          .long _verifyDae - .
           .byte 0xfe
           .byte 0x1
           .byte 0x0
@@ -2924,7 +2924,7 @@ L_44c6b0:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_402720 - .
+          .long _verifyFcrt - .
           .byte 0xd1
           .byte 0x2
           .byte 0x0

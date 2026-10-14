@@ -6,11 +6,9 @@
 .intel_syntax noprefix
 .globl FUN_449040
 .globl FUN_449048
-.globl FUN_449058
 .globl FUN_449060
 .globl FUN_449068
 .globl FUN_449070
-.globl FUN_4490a0
 .globl FUN_4490c8
 .globl FUN_449120
 .globl FUN_449130
@@ -32,7 +30,6 @@
 .globl FUN_449240
 .globl FUN_449248
 .globl FUN_449250
-.globl FUN_449258
 .globl FUN_449260
 .globl FUN_449268
 .globl FUN_449278
@@ -41,6 +38,7 @@
 .globl FUN_449290
 .globl L_4491c0
 .globl L_449270
+.globl __chdir
 .globl __gmtime32
 .globl __lrotl
 .globl __mkdir
@@ -72,6 +70,7 @@
 .globl _remove
 .globl _rename
 .globl _rewind
+.globl _signal
 .globl _sprintf
 .globl _srand
 .globl _strcat
@@ -79,6 +78,7 @@
 .globl _stricmp
 .globl _strlen
 .globl _strnicmp
+.globl _strrchr
 
 .text
 .p2align 3
@@ -102,7 +102,7 @@ __time32:
           jmp DWORD PTR [time]
           .byte 0x90
           .byte 0x90
-FUN_449058:
+_strrchr:
           jmp DWORD PTR [strrchr]
           .byte 0x90
           .byte 0x90
@@ -138,7 +138,7 @@ _sprintf:
           jmp DWORD PTR [sprintf]
           .byte 0x90
           .byte 0x90
-FUN_4490a0:
+_signal:
           jmp DWORD PTR [signal]
           .byte 0x90
           .byte 0x90
@@ -358,7 +358,7 @@ FUN_449250:
           jmp DWORD PTR [_errno]
           nop
           nop
-FUN_449258:
+__chdir:
           jmp DWORD PTR [_chdir]
           .byte 0x90
           .byte 0x90

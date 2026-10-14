@@ -298,7 +298,7 @@ L_4013a2:
           mov ESI,DWORD PTR [EBP-108]
           mov DWORD PTR [ESI+EAX*1],0
           mov DWORD PTR [L_46f014],ESI
-          call FUN_446c90
+          call ___main
           mov EAX,DWORD PTR [__initenv]
           mov EDX,DWORD PTR [L_46f010]
           mov DWORD PTR [EAX],EDX
@@ -308,7 +308,7 @@ L_4013a2:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_46f018]
           mov DWORD PTR [ESP],EAX
-          call FUN_4492c0
+          call _main
           mov ECX,DWORD PTR [L_46f008]
           mov DWORD PTR [L_46f00c],EAX
           test ECX,ECX

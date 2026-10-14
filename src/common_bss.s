@@ -5,7 +5,6 @@
 
 .intel_syntax noprefix
 .globl L_479e84
-.globl L_479ea0
 .globl L_479ea4
 .globl L_479ea7
 .globl L_479eac
@@ -268,12 +267,13 @@
 .globl _iniBuf
 .globl _iniSize
 .globl _masterPub
+.globl _xb
 
 .bss
 .p2align 2
 L_479e84:
           .zero 28
-L_479ea0:
+_xb:
           .zero 4
 L_479ea4:
           .zero 3

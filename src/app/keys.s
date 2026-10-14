@@ -10,9 +10,6 @@
 
 .intel_syntax noprefix
 .globl FUN_41aa00
-.globl FUN_41abb0
-.globl FUN_41ac00
-.globl FUN_41ac50
 .globl FUN_41ac70
 .globl FUN_41aca0
 .globl FUN_41acd0
@@ -48,6 +45,9 @@
 .globl FUN_41e620
 .globl FUN_41e7b0
 .globl _checkKeys
+.globl _setCrlKey
+.globl _setDaeKey
+.globl _setSecdataKey
 
 .text
 .p2align 4
@@ -141,7 +141,7 @@ L_41ab7e:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41abb0:
+_setCrlKey:
           push EBX
           mov EAX,DWORD PTR [ESP+8]
           mov EDX,DWORD PTR [EAX+16]
@@ -165,7 +165,7 @@ FUN_41abb0:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_41ac00:
+_setDaeKey:
           mov EAX,DWORD PTR [ESP+4]
           mov EDX,DWORD PTR [EAX]
           mov DWORD PTR [L_44a600],EDX
@@ -189,7 +189,7 @@ FUN_41ac00:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_41ac50:
+_setSecdataKey:
           mov EAX,DWORD PTR [ESP+4]
           mov EDX,DWORD PTR [EAX+4]
           mov EAX,DWORD PTR [EAX]
@@ -3022,7 +3022,7 @@ L_41d540:
           mov EAX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP+4],16384
           mov DWORD PTR [ESP],EAX
-          call FUN_401630
+          call _verifyExtended
           test EAX,EAX
           mov ECX,DWORD PTR [ESP+60]
           jne L_41d665
@@ -3234,7 +3234,7 @@ L_41d910:
           call _memcpy
           mov DWORD PTR [ESP+4],16384
           mov DWORD PTR [ESP],ESI
-          call FUN_401630
+          call _verifyExtended
           test EAX,EAX
           jne L_41d990
           mov DWORD PTR [ESP+4],OFFSET L_4570c8
@@ -3584,7 +3584,7 @@ L_41def0:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EBP
-          call FUN_402020
+          call _verifyCrl
           test EAX,EAX
           jne L_41df71
           mov DWORD PTR [ESP+4],OFFSET L_4571e0
@@ -3597,7 +3597,7 @@ L_41def0:
           mov DWORD PTR [ESP+8],0
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EBP
-          call FUN_402020
+          call _verifyCrl
           test EAX,EAX
           jne L_41df71
           mov DWORD PTR [ESP+4],OFFSET L_457200
@@ -4047,7 +4047,7 @@ L_41e685:
           je L_41e740
           mov DWORD PTR [ESP+4],16384
           mov DWORD PTR [ESP],EBX
-          call FUN_402720
+          call _verifyFcrt
           cmp EAX,1
           je L_41e740
           mov DWORD PTR [ESP+4],OFFSET L_45745c
@@ -4706,7 +4706,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41abb0 - .
+          .long _setCrlKey - .
           .byte 0x4d
           .byte 0x0
           .byte 0x0
@@ -4731,7 +4731,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41ac00 - .
+          .long _setDaeKey - .
           .byte 0x4b
           .byte 0x0
           .byte 0x0
@@ -4748,7 +4748,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41ac50 - .
+          .long _setSecdataKey - .
           .byte 0x15
           .byte 0x0
           .byte 0x0

@@ -108,6 +108,8 @@ def main():
         if m:
             l = m.group(1)
         l = rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l)
+        l = re.sub(r'(?<![\w.$])\.?L_([0-9a-f]+)\+(\d+)(?![\w])', lambda m: SYMBOLS.get(
+            int(m.group(1), 16) + int(m.group(2)), m.group(0)), l)
         # ddisasm names IAT slots by the import (`[_errno]`); gcc says __imp___errno
         l = re.sub(r'PTR \[(_\w+)\]', lambda m: 'PTR [%s]' % (m.group(1) if m.group(1) in NAMED
                                                             else '__imp__' + m.group(1)), l)
@@ -119,7 +121,17 @@ def main():
                        + flags + [src, '-o', '-'], env=env, capture_output=True, text=True)
     if r.returncode:
         sys.exit(r.stderr)
-    g = r.stdout.split('\n')
+    # a named global plus an offset (a struct field, `_xb+8`, `_xb[8+ebx*4]`)
+    # is whatever ddisasm named that address: a SYMBOLS name or a label
+    addr_of = {s: a for a, s in SYMBOLS.items()}
+    at = lambda a: SYMBOLS.get(a, 'L_%x' % a)
+    g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)\+(\d+)\]', r'\1[\3+\2]', r.stdout)
+    g = re.sub(r'(?<![\w.$])(_\w+)(?:\+(\d+)(?![\w])|\[(\d+)\+)',
+               lambda m: m.group(0) if m.group(1) not in addr_of else
+               at(addr_of[m.group(1)] + int(m.group(2))) if m.group(2) else
+               '%s[' % at(addr_of[m.group(1)] + int(m.group(3))), g)
+    # `lea ebx, _x[eax]` -> `lea ebx, [_x+eax]`, as ddisasm spells it
+    g = re.sub(r'(\blea\s+\w+,\s*)(_\w+)\[([^\]]*)\]', r'\1[\2+\3]', g).split('\n')
     if sym + ':' not in g:
         sys.exit('%s not defined (inlined, or static and unused?)' % sym)
     # the function's .text lines up to the next function (jump tables go to .rdata)

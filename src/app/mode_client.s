@@ -8,7 +8,7 @@
 #   .text          00406330-00408ec0
 
 .intel_syntax noprefix
-.globl FUN_408260
+.globl _mode_client
 
 .text
 .p2align 4
@@ -2250,7 +2250,7 @@ L_40823e:
           call FUN_406330
           .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_408260:
+_mode_client:
           push EBP
           push EDI
           mov EAX,121
@@ -4604,7 +4604,7 @@ L_44fb1c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_408260 - .
+          .long _mode_client - .
           .byte 0x5f
           .byte 0xc
           .byte 0x0

@@ -190,7 +190,7 @@ L_41386e:
           add EBX,8
           cmp EBX,OFFSET L_47a0e0+4
           jne L_413860
-          mov EBX,OFFSET L_479ea0
+          mov EBX,OFFSET _xb
           mov ESI,OFFSET L_479ec0
 L_413883:
           mov EAX,DWORD PTR [EBX+580]
@@ -623,7 +623,7 @@ L_413da4:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_47a0e8+4]
           mov DWORD PTR [ESP],EAX
-          call FUN_401630
+          call _verifyExtended
           test EAX,EAX
           je L_413f90
           mov DWORD PTR [ESP+4],OFFSET L_45256c
@@ -657,7 +657,7 @@ L_413da4:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_47a0f4]
           mov DWORD PTR [ESP],EAX
-          call FUN_401630
+          call _verifyExtended
           test EAX,EAX
           je L_413fd0
           mov DWORD PTR [ESP+4],OFFSET L_4526ac
@@ -1099,7 +1099,7 @@ FUN_4144e0:
           mov DWORD PTR [ESP+20],EAX
           call _calloc
           cmp ESI,16384
-          mov DWORD PTR [EBP*4+L_479ea0],EAX
+          mov DWORD PTR [EBP*4+_xb],EAX
           mov EDX,DWORD PTR [ESP+16]
           jbe L_4145fe
           mov ECX,ESI
@@ -1112,7 +1112,7 @@ FUN_4144e0:
           mov DWORD PTR [ESP+16],ECX
           jmp L_414569
 L_414562:
-          mov EAX,DWORD PTR [EBP*4+L_479ea0]
+          mov EAX,DWORD PTR [EBP*4+_xb]
 L_414569:
           add EDX,DWORD PTR [_g479f4c]
           add EAX,ESI
@@ -1140,7 +1140,7 @@ L_414569:
           lea EAX,DWORD PTR [EDI+EAX*1-16384]
           mov DWORD PTR [ESP+20],EAX
 L_4145cb:
-          mov ECX,DWORD PTR [EBP*4+L_479ea0]
+          mov ECX,DWORD PTR [EBP*4+_xb]
           add EDX,DWORD PTR [_g479f4c]
           mov DWORD PTR [ESP+8],EAX
           add ECX,ESI
@@ -1155,7 +1155,7 @@ L_4145ea:
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_40d120
+          jmp _verifyFlashFile
 L_4145fe:
           mov EAX,DWORD PTR [ESP+20]
           test EAX,EAX
@@ -4824,7 +4824,7 @@ L_41771e:
           add ESI,8
           cmp ESI,OFFSET L_47a0e0+4
           jne L_417710
-          mov ESI,OFFSET L_479ea0
+          mov ESI,OFFSET _xb
           mov EDI,ESI
 L_417730:
           mov EAX,DWORD PTR [EDI+580]

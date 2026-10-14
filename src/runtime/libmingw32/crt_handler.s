@@ -26,7 +26,7 @@ L_447450:
           jne L_447560
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],11
-          call FUN_4490a0
+          call _signal
           cmp EAX,1
           je L_4475c0
           test EAX,EAX
@@ -60,7 +60,7 @@ L_4474c9:
 L_4474e0:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],8
-          call FUN_4490a0
+          call _signal
           cmp EAX,1
           je L_4475a1
 L_4474fd:
@@ -80,12 +80,12 @@ L_44750f:
 L_447520:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],8
-          call FUN_4490a0
+          call _signal
           cmp EAX,1
           jne L_4474fd
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],8
-          call FUN_4490a0
+          call _signal
           call FUN_446fb0
           mov EAX,4294967295
           jmp L_44750f
@@ -102,7 +102,7 @@ L_447560:
 L_44756b:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],4
-          call FUN_4490a0
+          call _signal
           cmp EAX,1
           je L_4475e0
           test EAX,EAX
@@ -116,14 +116,14 @@ L_44756b:
 L_4475a1:
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],8
-          call FUN_4490a0
+          call _signal
           mov EAX,4294967295
           jmp L_44750f
           .byte 0x90
 L_4475c0:
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],11
-          call FUN_4490a0
+          call _signal
           mov EAX,4294967295
           jmp L_44750f
           .byte 0x66
@@ -131,7 +131,7 @@ L_4475c0:
 L_4475e0:
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],4
-          call FUN_4490a0
+          call _signal
           mov EAX,4294967295
           jmp L_44750f
           .byte 0x90

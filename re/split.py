@@ -252,6 +252,18 @@ SYMBOLS = {
     0x405610: '_stfsCheckHashes', 0x405980: '_stfsListFiles', 0x405ac0: '_stfsCheckHeader',
     0x405d50: '_stfsGetFile', 0x405f20: '_stfsInit', 0x405f50: '_stfsFree',
     0x405fa0: '_stfsLoad',
+    # app/main (src/app/main.c); names are ours.  xb is the one big global
+    # (main's init memsets 0x479ea0-0x4c97b0); the names above inside it
+    # (g479ea8, cpuKey, masterPub, flashFiles, buildMode, iniBuf, ...) are fields
+    0x40d010: '_sigHandler', 0x40d0a0: '_installSignals', 0x40d120: '_verifyFlashFile',
+    0x40d370: '_logButton', 0x40d500: '_showConsoleInfo', 0x40de60: '_initGlobals',
+    0x40df90: '_setBasePath', 0x4492c0: '_main', 0x479ea0: '_xb',
+    0x401630: '_verifyExtended', 0x401e60: '_verifySecdata', 0x402020: '_verifyCrl',
+    0x402410: '_verifyDae', 0x402720: '_verifyFcrt',
+    0x41abb0: '_setCrlKey', 0x41ac00: '_setDaeKey', 0x41ac50: '_setSecdataKey',
+    0x40cfa0: '_suFree', 0x40fb10: '_imageFree', 0x404770: '_mode_update',
+    0x408260: '_mode_client', 0x418a10: '_build_usage', 0x419230: '_mode_build',
+    0x446c90: '___main',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls
@@ -272,6 +284,7 @@ SYMBOLS = {
     # libgcc (64-bit division) and the vsnprintf mingw's stdio.h calls
     0x447c30: '___divdi3', 0x447d70: '___moddi3', 0x447f20: '___udivdi3',
     0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',
+    0x449058: '_strrchr', 0x4490a0: '_signal', 0x449258: '__chdir',
     0x4491d0: '_strnicmp', 0x4491d8: '_stricmp', 0x449198: '_exit', 0x449178: '_fgetc',
     # IAT slots that dllimport declarations reference directly
     0x50f2f0: '__imp___errno',
