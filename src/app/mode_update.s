@@ -1353,7 +1353,7 @@ FUN_404430:
 L_404440:
           mov DWORD PTR [ESP+4],OFFSET L_44d4b9
           mov DWORD PTR [ESP],OFFSET L_44d4c5
-          call FUN_41faf0
+          call _netMount
           test EAX,EAX
           je L_404500
           mov DWORD PTR [ESP+4],OFFSET L_44d400
@@ -1911,7 +1911,7 @@ L_404cc3:
           mov EBX,EAX
           jne L_40501c
           mov DWORD PTR [ESP],OFFSET L_44d4c5
-          call FUN_41fc30
+          call _netUnmount
           test ESI,ESI
           je L_404d9c
           mov DWORD PTR [ESP+4],ESI
@@ -1965,7 +1965,7 @@ L_404d9c:
           mov DWORD PTR [ESP],0
           mov ESI,EAX
           call _log_printf
-          call FUN_41ed50
+          call _netTimerStart
           mov EAX,DWORD PTR [ESP+3104]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
@@ -2328,7 +2328,7 @@ L_40539e:
           mov EAX,DWORD PTR [L_479eac]
           mov DWORD PTR [ESP],OFFSET L_47b14c
           mov DWORD PTR [ESP+4],EAX
-          call FUN_432e50
+          call _sendAvatarData
           jmp L_404e53
 L_4053b8:
           mov DWORD PTR [ESP+8],EDX

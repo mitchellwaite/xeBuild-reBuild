@@ -58,6 +58,7 @@ def norm(lines):
         l = re.sub(r'^(f\w+p) st\(1\),st$', r'\1 st(1)', l)
         l = re.sub(r'^rep[z]? ret$', 'rep ret', l)
         l = re.sub(r'^repne ', 'repnz ', l)
+        l = re.sub(r'^repe ', 'repz ', l)
         l = re.sub(r'^((?:rep\w* )?(?:sto|lod|sca|mov|cmp)s[bwd]) .*\[es\].*$', r'\1', l)
         l = re.sub(r'\[([^\]]*)\]', lambda m: '[%s]' % addr_terms(m.group(1)), l)
         if l.startswith('lea '):

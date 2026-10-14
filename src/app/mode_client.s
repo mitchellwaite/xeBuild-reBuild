@@ -347,7 +347,7 @@ FUN_406980:
           push EBX
           sub ESP,36
           mov EBX,DWORD PTR [ESP+48]
-          call FUN_41ed50
+          call _netTimerStart
           mov DWORD PTR [ESP+4],OFFSET L_44ec5b
           mov DWORD PTR [ESP],0
           mov DWORD PTR [ESP+8],EBX
@@ -435,7 +435,7 @@ L_406aa0:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+48]
           mov DWORD PTR [ESP],EAX
-          call FUN_432b10
+          call _loadManifest
           test EAX,EAX
           je L_406b51
           mov EAX,DWORD PTR [L_4ce068]
@@ -470,7 +470,7 @@ L_406b1e:
           add ESP,36
           pop EBX
           pop ESI
-          jmp L_432aa0
+          jmp _freeManifest
 L_406b51:
           add ESP,36
           pop EBX
@@ -2665,13 +2665,13 @@ L_4088c9:
           mov EAX,DWORD PTR [EAX+4]
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+4],EAX
-          call FUN_432e50
+          call _sendAvatarData
           jmp L_4087ff
 L_4088e7:
           test BYTE PTR [EAX+16],32
           je L_4089fe
           mov DWORD PTR [ESP],EBP
-          call FUN_433440
+          call _sendCompatData
           jmp L_4087ff
 L_4088fe:
           mov DWORD PTR [ESP],EBP

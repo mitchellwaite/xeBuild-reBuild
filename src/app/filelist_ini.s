@@ -31,7 +31,7 @@ FUN_408ec0:
           mov DWORD PTR [ESP],EBP
           call _strcpy
           mov DWORD PTR [ESP],EBP
-          call FUN_4481c0
+          call _opendir
           test EAX,EAX
           je L_408f77
           lea ESI,DWORD PTR [ESP+1088]
@@ -40,7 +40,7 @@ FUN_408ec0:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_408f00:
           mov DWORD PTR [ESP],EDI
-          call FUN_448360
+          call _readdir
           test EAX,EAX
           mov EBX,EAX
           je L_408f6f
@@ -67,13 +67,13 @@ L_408f0e:
           mov DWORD PTR [ESP],OFFSET L_44a340
           call _strcpy
           mov DWORD PTR [ESP],EDI
-          call FUN_448360
+          call _readdir
           test EAX,EAX
           mov EBX,EAX
           jne L_408f0e
 L_408f6f:
           mov DWORD PTR [ESP],EDI
-          call FUN_448470
+          call _closedir
 L_408f77:
           add ESP,2124
           pop EBX

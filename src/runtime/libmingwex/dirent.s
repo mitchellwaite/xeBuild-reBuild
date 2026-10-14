@@ -6,13 +6,13 @@
 #   .text          004481c0-00448600
 
 .intel_syntax noprefix
-.globl FUN_4481c0
-.globl FUN_448360
-.globl FUN_448470
+.globl _closedir
+.globl _opendir
+.globl _readdir
 
 .text
 .p2align 4
-FUN_4481c0:
+_opendir:
           push EBP
           push EDI
           push ESI
@@ -144,7 +144,7 @@ L_44834c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_448360:
+_readdir:
           push ESI
           push EBX
           sub ESP,20
@@ -232,7 +232,7 @@ L_44845d:
           xor EAX,EAX
           jmp L_4483e3
           .byte 0x90
-FUN_448470:
+_closedir:
           push ESI
           push EBX
           sub ESP,20
@@ -352,7 +352,7 @@ L_448560:
           .byte 0x0
 L_448590:
           mov DWORD PTR [ESP],EBX
-          call FUN_448360
+          call _readdir
           test EAX,EAX
           je L_4485d7
 L_44859c:
@@ -481,7 +481,7 @@ L_4485ed:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_4481c0 - .
+          .long _opendir - .
           .byte 0x99
           .byte 0x1
           .byte 0x0
@@ -574,7 +574,7 @@ L_4485ed:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448360 - .
+          .long _readdir - .
           .byte 0xf
           .byte 0x1
           .byte 0x0
@@ -631,7 +631,7 @@ L_4485ed:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448470 - .
+          .long _closedir - .
           .byte 0x51
           .byte 0x0
           .byte 0x0

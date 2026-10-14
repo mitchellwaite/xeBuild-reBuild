@@ -8,14 +8,24 @@
 #   .text          00431c20-00433570
 
 .intel_syntax noprefix
-.globl FUN_432b10
-.globl FUN_432e50
-.globl FUN_433440
-.globl L_432aa0
+.globl _addTitleId
+.globl _checkManifestHeader
+.globl _createSysexDirs
+.globl _freeManifest
+.globl _loadFileChecked
+.globl _loadManifest
+.globl _loadStfsChecked
+.globl _parseManifest
+.globl _parseManifestEntries
+.globl _prepSysex
+.globl _readManifestString
+.globl _sendAvatarData
+.globl _sendCompatData
+.globl _sendDir
 
 .text
 .p2align 4
-FUN_431c20:
+_createSysexDirs:
           push EDI
           push ESI
           push EBX
@@ -45,7 +55,7 @@ L_431c63:
           mov DWORD PTR [ESP+12],EAX
           call _sprintf
           mov DWORD PTR [ESP],ESI
-          call FUN_420710
+          call _netMkdir
           test EAX,EAX
           jne L_431c40
 L_431c92:
@@ -73,7 +83,7 @@ L_431cca:
           mov DWORD PTR [ESP+4],EAX
           call _sprintf
           mov DWORD PTR [ESP],ESI
-          call FUN_420710
+          call _netMkdir
           test EAX,EAX
           je L_431c92
           mov DWORD PTR [ESP+8],ESI
@@ -95,7 +105,7 @@ L_431cca:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_431d20:
+_addTitleId:
           mov EDX,DWORD PTR [L_4795a0]
           mov ECX,DWORD PTR [ESP+4]
           test EDX,EDX
@@ -134,7 +144,7 @@ L_431d69:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_431d70:
+_checkManifestHeader:
           push ESI
           push EBX
           sub ESP,68
@@ -261,7 +271,7 @@ L_431f00:
           pop EBX
           pop ESI
           ret 
-L_431f20:
+_readManifestString:
           push ESI
           push EBX
           sub ESP,20
@@ -296,7 +306,7 @@ L_431f54:
           ret 
           .byte 0x66
           .byte 0x90
-FUN_431f80:
+_loadFileChecked:
           push ESI
           push EBX
           sub ESP,68
@@ -385,7 +395,7 @@ L_432096:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_4320b0:
+_loadStfsChecked:
           push ESI
           push EBX
           sub ESP,68
@@ -447,7 +457,7 @@ L_432170:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_432190:
+_parseManifestEntries:
           push EBP
           push EDI
           push ESI
@@ -686,7 +696,7 @@ L_432431:
           lea EAX,DWORD PTR [ESP+592]
           imul ESI,ESI,1032
           mov DWORD PTR [ESP],EAX
-          call FUN_431f80
+          call _loadFileChecked
           imul EDI,DWORD PTR [L_4ce068],1032
           mov DWORD PTR [ESI+L_4ce06c],EAX
           mov EDX,DWORD PTR [EDI+L_4ce06c]
@@ -885,7 +895,7 @@ L_432789:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4327a0:
+_parseManifest:
           push EBP
           push EDI
           push ESI
@@ -1073,7 +1083,7 @@ L_432a10:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EAX
-          call FUN_432190
+          call _parseManifestEntries
           mov EAX,DWORD PTR [L_479684]
           test EAX,EAX
           je L_432a52
@@ -1109,11 +1119,11 @@ L_432a80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_432aa0:
+_freeManifest:
           push ESI
           push EBX
           sub ESP,20
-          mov EAX,DWORD PTR [L_4cdc60]
+          mov EAX,DWORD PTR [_manifest]
           test EAX,EAX
           je L_432ab6
           mov DWORD PTR [ESP],EAX
@@ -1157,7 +1167,7 @@ L_432afe:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_432b10:
+_loadManifest:
           push EDI
           push ESI
           push EBX
@@ -1195,7 +1205,7 @@ L_432b45:
           mov DWORD PTR [EDX+12],7631717
           mov DWORD PTR [ESP+8],265228
           mov DWORD PTR [ESP+4],0
-          mov DWORD PTR [ESP],OFFSET L_4cdc60
+          mov DWORD PTR [ESP],OFFSET _manifest
           call _memset
           mov DWORD PTR [ESP],EBX
           call _FileExists
@@ -1210,7 +1220,7 @@ L_432bb8:
           mov DWORD PTR [ESP],EBX
           call _FileToBuffer
           test EAX,EAX
-          mov DWORD PTR [L_4cdc60],EAX
+          mov DWORD PTR [_manifest],EAX
           je L_432bf6
           mov EAX,DWORD PTR [L_4ce064]
           test EAX,EAX
@@ -1308,9 +1318,9 @@ L_432d10:
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [L_4ce064]
           mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [L_4cdc60]
+          mov EAX,DWORD PTR [_manifest]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4327a0
+          call _parseManifest
           mov DWORD PTR [ESP+8],OFFSET L_45bdb4
           mov EDI,EAX
           mov DWORD PTR [ESP+4],OFFSET L_45c1a0
@@ -1318,7 +1328,7 @@ L_432d10:
           call _sprintf
           test EDI,EDI
           jne L_432c0c
-          mov EAX,DWORD PTR [L_4cdc60]
+          mov EAX,DWORD PTR [_manifest]
           test EAX,EAX
           je L_432d84
           mov DWORD PTR [ESP],EAX
@@ -1356,18 +1366,18 @@ L_432db4:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_432de0:
+_prepSysex:
           sub ESP,28
-          call FUN_4205d0
+          call _netFormatSysex
           test EAX,EAX
           je L_432e10
           mov DWORD PTR [ESP+4],OFFSET L_45c1b4
           mov DWORD PTR [ESP],OFFSET L_45bdb4
-          call FUN_41faf0
+          call _netMount
           test EAX,EAX
           je L_432e30
           add ESP,28
-          jmp FUN_431c20
+          jmp _createSysexDirs
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -1398,13 +1408,13 @@ L_432e30:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_432e50:
+_sendAvatarData:
           push EBP
           push EDI
           push ESI
           push EBX
           sub ESP,44
-          call FUN_41ed50
+          call _netTimerStart
           mov DWORD PTR [ESP+4],OFFSET L_45c212
           mov DWORD PTR [ESP],0
           call _log_printf
@@ -1432,13 +1442,13 @@ L_432eb0:
           mov EAX,DWORD PTR [ESP+64]
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP],EAX
-          call FUN_432b10
+          call _loadManifest
           test EAX,EAX
           je L_432f70
           mov DWORD PTR [ESP+4],OFFSET L_45c22c
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_4205d0
+          call _netFormatSysex
           test EAX,EAX
           jne L_432f93
           mov DWORD PTR [ESP+4],OFFSET L_45c1e8
@@ -1447,8 +1457,8 @@ L_432eb0:
           call _log_printf
 L_432f02:
           mov DWORD PTR [ESP],OFFSET L_45bdb4
-          call FUN_41fc30
-          mov EAX,DWORD PTR [L_4cdc60]
+          call _netUnmount
+          mov EAX,DWORD PTR [_manifest]
           test EAX,EAX
           je L_432f1f
           mov DWORD PTR [ESP],EAX
@@ -1504,10 +1514,10 @@ L_432f89:
 L_432f93:
           mov DWORD PTR [ESP+4],OFFSET L_45c1b4
           mov DWORD PTR [ESP],OFFSET L_45bdb4
-          call FUN_41faf0
+          call _netMount
           test EAX,EAX
           je L_4330e1
-          call FUN_431c20
+          call _createSysexDirs
           test EAX,EAX
           je L_4330ba
           mov DWORD PTR [ESP+4],OFFSET L_45c254
@@ -1541,7 +1551,7 @@ L_433000:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [EBX+L_4ce06c]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_420470
+          call _netSendFile
           test EAX,EAX
           mov EDI,EAX
           je L_4330c4
@@ -1555,15 +1565,15 @@ L_433063:
           mov EAX,DWORD PTR [L_4ce064]
           mov DWORD PTR [ESP],OFFSET L_4cdc64
           mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [L_4cdc60]
+          mov EAX,DWORD PTR [_manifest]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_420470
+          call _netSendFile
           test EAX,EAX
           je L_4330ff
           mov DWORD PTR [ESP+4],OFFSET L_45c318
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_41ed70
+          call _netTimerEnd
 L_4330ba:
           mov EDI,1
           jmp L_432f02
@@ -1593,7 +1603,7 @@ L_433122:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_433130:
+_sendDir:
           push EBP
           push EDI
           push ESI
@@ -1626,7 +1636,7 @@ L_433156:
           mov WORD PTR [EDX],AX
           mov BYTE PTR [EDX+2],0
           mov DWORD PTR [ESP],EBX
-          call FUN_4481c0
+          call _opendir
           test EAX,EAX
           mov DWORD PTR [ESP+28],EAX
           je L_4333fc
@@ -1635,7 +1645,7 @@ L_433156:
 L_4331b1:
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_448360
+          call _readdir
           test EAX,EAX
           mov ESI,EAX
           je L_4333c0
@@ -1712,7 +1722,7 @@ L_43323a:
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EBX
-          call FUN_420710
+          call _netMkdir
           test EAX,EAX
           je L_4333dc
           mov DWORD PTR [ESP+4],OFFSET L_45c3b0
@@ -1720,7 +1730,7 @@ L_43323a:
           call _log_printf
           mov DWORD PTR [ESP+4],EBX
           mov DWORD PTR [ESP],EDI
-          call FUN_433130
+          call _sendDir
           jmp L_4331b1
           .byte 0x8d
           .byte 0xb4
@@ -1757,7 +1767,7 @@ L_433300:
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+8],EAX
-          call FUN_420470
+          call _netSendFile
           test EAX,EAX
           je L_433409
           mov EAX,DWORD PTR [ESP+36]
@@ -1780,7 +1790,7 @@ L_433300:
 L_4333c0:
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_448470
+          call _closedir
           add ESP,2396
           mov EAX,1
           pop EBX
@@ -1794,7 +1804,7 @@ L_4333dc:
           call _log_printf
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_448470
+          call _closedir
 L_4333fc:
           xor EAX,EAX
 L_4333fe:
@@ -1813,7 +1823,7 @@ L_433409:
           call _log_printf
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_448470
+          call _closedir
           xor EAX,EAX
           jmp L_4333fe
           .byte 0x8d
@@ -1823,7 +1833,7 @@ L_433409:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_433440:
+_sendCompatData:
           push EBX
           sub ESP,24
           mov EBX,DWORD PTR [ESP+32]
@@ -1835,7 +1845,7 @@ FUN_433440:
           mov DWORD PTR [ESP+4],OFFSET L_45c44c
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_420670
+          call _netFormatCompat
           test EAX,EAX
           je L_433512
           mov DWORD PTR [ESP+4],OFFSET L_45c3b0
@@ -1843,12 +1853,12 @@ FUN_433440:
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_45c474
           mov DWORD PTR [ESP],OFFSET L_45c496
-          call FUN_41faf0
+          call _netMount
           test EAX,EAX
           .byte 0x0f,0x84; .long L_433530-.-4   # je L_433530
           mov DWORD PTR [ESP+4],OFFSET L_45c49b
           mov DWORD PTR [ESP],EBX
-          call FUN_433130
+          call _sendDir
           test EAX,EAX
           je L_433550
           mov DWORD PTR [ESP+4],OFFSET L_45c4a1
@@ -1857,7 +1867,7 @@ FUN_433440:
           call _log_printf
 L_4334e2:
           mov DWORD PTR [ESP],OFFSET L_45c496
-          call FUN_41fc30
+          call _netUnmount
           add ESP,24
           mov EAX,EBX
           pop EBX
@@ -2161,7 +2171,7 @@ L_45c644:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_431c20 - .
+          .long _createSysexDirs - .
           .byte 0xfa
           .byte 0x0
           .byte 0x0
@@ -2230,7 +2240,7 @@ L_45c644:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_431d20 - .
+          .long _addTitleId - .
           .byte 0x4b
           .byte 0x0
           .byte 0x0
@@ -2247,7 +2257,7 @@ L_45c644:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_431d70 - .
+          .long _checkManifestHeader - .
           .byte 0xb0
           .byte 0x1
           .byte 0x0
@@ -2316,7 +2326,7 @@ L_45c644:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_431f20 - .
+          .long _readManifestString - .
           .byte 0x5e
           .byte 0x0
           .byte 0x0
@@ -2369,7 +2379,7 @@ L_45c644:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_431f80 - .
+          .long _loadFileChecked - .
           .byte 0x2c
           .byte 0x1
           .byte 0x0
@@ -2426,7 +2436,7 @@ L_45c644:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_4320b0 - .
+          .long _loadStfsChecked - .
           .byte 0xd6
           .byte 0x0
           .byte 0x0
@@ -2483,7 +2493,7 @@ L_45c644:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_432190 - .
+          .long _parseManifestEntries - .
           .byte 0x3
           .byte 0x6
           .byte 0x0
@@ -2548,7 +2558,7 @@ L_45c644:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_4327a0 - .
+          .long _parseManifest - .
           .byte 0xf9
           .byte 0x2
           .byte 0x0
@@ -2657,7 +2667,7 @@ L_45c644:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_432aa0 - .
+          .long _freeManifest - .
           .byte 0x64
           .byte 0x0
           .byte 0x0
@@ -2698,7 +2708,7 @@ L_45c644:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_432b10 - .
+          .long _loadManifest - .
           .byte 0xca
           .byte 0x2
           .byte 0x0
@@ -2787,7 +2797,7 @@ L_45c644:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_432de0 - .
+          .long _prepSysex - .
           .byte 0x6a
           .byte 0x0
           .byte 0x0
@@ -2820,7 +2830,7 @@ L_45c644:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_432e50 - .
+          .long _sendAvatarData - .
           .byte 0xdc
           .byte 0x2
           .byte 0x0
@@ -2905,7 +2915,7 @@ L_45c644:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_433130 - .
+          .long _sendDir - .
           .byte 0x9
           .byte 0x3
           .byte 0x0
@@ -2990,7 +3000,7 @@ L_45c644:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_433440 - .
+          .long _sendCompatData - .
           .byte 0x2b
           .byte 0x1
           .byte 0x0

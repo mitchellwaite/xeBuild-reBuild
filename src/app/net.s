@@ -9,12 +9,8 @@
 #   .text          0041e800-00420a90
 
 .intel_syntax noprefix
-.globl FUN_41ed50
-.globl FUN_41ed70
 .globl FUN_41f700
 .globl FUN_41fa40
-.globl FUN_41faf0
-.globl FUN_41fc30
 .globl FUN_41fe20
 .globl FUN_41ff90
 .globl FUN_41ffe0
@@ -22,15 +18,19 @@
 .globl FUN_420200
 .globl FUN_420320
 .globl FUN_420420
-.globl FUN_420470
-.globl FUN_4205d0
-.globl FUN_420670
-.globl FUN_420710
 .globl FUN_420840
 .globl FUN_420910
+.globl _netFormatCompat
+.globl _netFormatSysex
 .globl _netFree
 .globl _netGetFile
 .globl _netGetInfo
+.globl _netMkdir
+.globl _netMount
+.globl _netSendFile
+.globl _netTimerEnd
+.globl _netTimerStart
+.globl _netUnmount
 
 .text
 .p2align 4
@@ -401,7 +401,7 @@ L_41ed37:
           jmp L_41ec6b
           .byte 0x66
           .byte 0x90
-FUN_41ed50:
+_netTimerStart:
           sub ESP,28
           mov DWORD PTR [ESP],OFFSET L_4cd844
           call __time32
@@ -420,7 +420,7 @@ FUN_41ed50:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ed70:
+_netTimerEnd:
           sub ESP,44
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
@@ -1434,7 +1434,7 @@ L_41fad0:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41faf0:
+_netMount:
           push EDI
           push ESI
           push EBX
@@ -1531,7 +1531,7 @@ L_41fc10:
           jmp L_41fbe8
           .byte 0x66
           .byte 0x90
-FUN_41fc30:
+_netUnmount:
           push ESI
           push EBX
           sub ESP,292
@@ -2227,7 +2227,7 @@ L_420460:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_420470:
+_netSendFile:
           push EDI
           push EBX
           sub ESP,308
@@ -2343,7 +2343,7 @@ L_4205c1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4205d0:
+_netFormatSysex:
           push EBX
           sub ESP,56
           mov EAX,DWORD PTR [L_44a6c0]
@@ -2407,7 +2407,7 @@ L_420662:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_420670:
+_netFormatCompat:
           push EBX
           sub ESP,56
           mov EAX,DWORD PTR [L_44a6c0]
@@ -2471,7 +2471,7 @@ L_420702:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_420710:
+_netMkdir:
           push EDI
           push EBX
           xor EAX,EAX
@@ -3359,7 +3359,7 @@ L_457a77:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41ed50 - .
+          .long _netTimerStart - .
           .byte 0x13
           .byte 0x0
           .byte 0x0
@@ -3380,7 +3380,7 @@ L_457a77:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41ed70 - .
+          .long _netTimerEnd - .
           .byte 0x40
           .byte 0x0
           .byte 0x0
@@ -4027,7 +4027,7 @@ L_457a77:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41faf0 - .
+          .long _netMount - .
           .byte 0x3e
           .byte 0x1
           .byte 0x0
@@ -4108,7 +4108,7 @@ L_457a77:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41fc30 - .
+          .long _netUnmount - .
           .byte 0x2e
           .byte 0x1
           .byte 0x0
@@ -4658,7 +4658,7 @@ L_457a77:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_420470 - .
+          .long _netSendFile - .
           .byte 0x58
           .byte 0x1
           .byte 0x0
@@ -4711,7 +4711,7 @@ L_457a77:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_4205d0 - .
+          .long _netFormatSysex - .
           .byte 0x99
           .byte 0x0
           .byte 0x0
@@ -4760,7 +4760,7 @@ L_457a77:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_420670 - .
+          .long _netFormatCompat - .
           .byte 0x99
           .byte 0x0
           .byte 0x0
@@ -4809,7 +4809,7 @@ L_457a77:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_420710 - .
+          .long _netMkdir - .
           .byte 0x24
           .byte 0x1
           .byte 0x0

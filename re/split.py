@@ -287,6 +287,19 @@ SYMBOLS = {
     0x427340: '_loadAddons', 0x4258e0: '_parseCmdOptions', 0x4271a0: '_parseRawPatches',
     0x423830: '_iniConsoleType', 0x4137f0: '_buildCleanup', 0x40f330: '_buildImage',
     0x412260: '_writeImage', 0x41afe0: '_setCpuKeyStr',
+    # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
+    0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
+    0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
+    0x431f80: '_loadFileChecked', 0x4320b0: '_loadStfsChecked',
+    0x432190: '_parseManifestEntries', 0x4327a0: '_parseManifest',
+    0x432aa0: '_freeManifest', 0x432b10: '_loadManifest', 0x432de0: '_prepSysex',
+    0x432e50: '_sendAvatarData', 0x433130: '_sendDir', 0x433440: '_sendCompatData',
+    0x4cdc60: '_manifest',
+    0x41ed50: '_netTimerStart', 0x41ed70: '_netTimerEnd', 0x41faf0: '_netMount',
+    0x41fc30: '_netUnmount', 0x420470: '_netSendFile', 0x4205d0: '_netFormatSysex',
+    0x420670: '_netFormatCompat', 0x420710: '_netMkdir',
+    # (libmingwex's stat at 448820 stays unnamed: `_stat` is the msvcrt import in idata.s)
+    0x4481c0: '_opendir', 0x448360: '_readdir', 0x448470: '_closedir',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

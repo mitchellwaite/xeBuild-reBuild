@@ -242,7 +242,6 @@
 .globl L_4cd83c
 .globl L_4cd840
 .globl L_4cd844
-.globl L_4cdc60
 .globl L_4cdc64
 .globl L_4ce064
 .globl L_4ce068
@@ -266,6 +265,7 @@
 .globl _g47a080
 .globl _iniBuf
 .globl _iniSize
+.globl _manifest
 .globl _masterPub
 .globl _xb
 
@@ -767,7 +767,7 @@ L_4cd840:
           .zero 4
 L_4cd844:
           .zero 1052
-L_4cdc60:
+_manifest:
           .zero 4
 L_4cdc64:
           .zero 1024
