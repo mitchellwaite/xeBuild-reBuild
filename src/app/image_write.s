@@ -9,7 +9,6 @@
 #   .text          0040e950-00413090
 
 .intel_syntax noprefix
-.globl FUN_40f330
 .globl FUN_40fbb0
 .globl FUN_40fc30
 .globl FUN_40fcc0
@@ -35,7 +34,6 @@
 .globl FUN_411bd0
 .globl FUN_412110
 .globl FUN_412230
-.globl FUN_412260
 .globl FUN_4125a0
 .globl FUN_412dd0
 .globl FUN_412e90
@@ -43,8 +41,10 @@
 .globl FUN_413030
 .globl L_470000
 .globl L_47006e
+.globl _buildImage
 .globl _checkBootImage
 .globl _imageFree
+.globl _writeImage
 
 .text
 .p2align 4
@@ -808,7 +808,7 @@ L_40f305:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40f330:
+_buildImage:
           push EBP
           push EDI
           push ESI
@@ -4444,7 +4444,7 @@ L_412252:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_412260:
+_writeImage:
           push EDI
           push ESI
           push EBX
@@ -5948,7 +5948,7 @@ L_451f80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40f330 - .
+          .long _buildImage - .
           .byte 0xd9
           .byte 0x7
           .byte 0x0
@@ -7512,7 +7512,7 @@ L_451f80:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_412260 - .
+          .long _writeImage - .
           .byte 0x3d
           .byte 0x3
           .byte 0x0

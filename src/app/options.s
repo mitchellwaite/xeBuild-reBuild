@@ -8,12 +8,12 @@
 #   .text.startup  00449640-00449790
 
 .intel_syntax noprefix
-.globl FUN_423830
 .globl FUN_424b60
-.globl FUN_4258e0
-.globl FUN_4259a0
-.globl FUN_4271a0
-.globl FUN_427340
+.globl _applyIniOptions
+.globl _iniConsoleType
+.globl _loadAddons
+.globl _parseCmdOptions
+.globl _parseRawPatches
 .globl _setConsoleType
 
 .text
@@ -136,7 +136,7 @@ L_4237c5:
           ret 
           .byte 0x66
           .byte 0x90
-FUN_423830:
+_iniConsoleType:
           push EDI
           push ESI
           push EBX
@@ -2282,7 +2282,7 @@ L_4258b4:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4258e0:
+_parseCmdOptions:
           push EBP
           push EDI
           push ESI
@@ -2362,7 +2362,7 @@ L_425981:
           xor EDX,EDX
           jmp L_42596a
 L_425991:
-          jmp FUN_4259a0
+          jmp _applyIniOptions
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -2376,7 +2376,7 @@ L_425991:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-FUN_4259a0:
+_applyIniOptions:
           push ESI
           push EBX
           sub ESP,20
@@ -3756,7 +3756,7 @@ L_427172:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4271a0:
+_parseRawPatches:
           push EBP
           push EDI
           push ESI
@@ -3930,7 +3930,7 @@ L_427310:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_427340:
+_loadAddons:
           push EBP
           push EDI
           push ESI
@@ -4753,7 +4753,7 @@ L_458c9c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_423830 - .
+          .long _iniConsoleType - .
           .byte 0x3d
           .byte 0x9
           .byte 0x0
@@ -5294,7 +5294,7 @@ L_458c9c:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_4258e0 - .
+          .long _parseCmdOptions - .
           .byte 0xb1
           .byte 0x0
           .byte 0x0
@@ -5355,7 +5355,7 @@ L_458c9c:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_4259a0 - .
+          .long _applyIniOptions - .
           .byte 0x5f
           .byte 0x16
           .byte 0x0
@@ -5537,7 +5537,7 @@ L_458c9c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_4271a0 - .
+          .long _parseRawPatches - .
           .byte 0xb1
           .byte 0x0
           .byte 0x0
@@ -5703,7 +5703,7 @@ L_458c9c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_427340 - .
+          .long _loadAddons - .
           .byte 0xbc
           .byte 0x1
           .byte 0x0

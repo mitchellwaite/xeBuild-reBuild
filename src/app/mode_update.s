@@ -1882,7 +1882,7 @@ L_404c2e:
           mov DWORD PTR [EDX],1768843566
           mov BYTE PTR [EDX+4],0
           mov DWORD PTR [ESP],EBX
-          call FUN_409430
+          call _parseIni
           test EAX,EAX
           je L_40512d
           mov EAX,DWORD PTR [ESP+28]
@@ -1906,7 +1906,7 @@ L_404cc3:
           test EAX,EAX
           je L_404fd8
           mov DWORD PTR [L_46f158],1
-          call FUN_40f330
+          call _buildImage
           test EAX,EAX
           mov EBX,EAX
           jne L_40501c
@@ -2003,7 +2003,7 @@ L_404e71:
           test EAX,EAX
           je L_404ea1
           mov DWORD PTR [ESP],OFFSET L_47a94c
-          call FUN_412260
+          call _writeImage
           test EAX,EAX
           jne L_4053d5
 L_404e8d:

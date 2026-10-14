@@ -281,6 +281,12 @@ SYMBOLS = {
     0x41ade0: '_setPairing', 0x41ac70: '_setInfoKey0', 0x41aca0: '_setInfoKey1',
     0x41acd0: '_setInfoKey2', 0x41ad00: '_setInfoKey3', 0x41ad30: '_setInfoKey4',
     0x41ad60: '_setInfoKey5', 0x449180: '_fflush',
+    # app/mode_build (src/app/mode_build.c) and what it calls; names are ours
+    0x418fd0: '_loadPubKey', 0x419150: '_loadPubKeys',
+    0x40aef0: '_loadUserIni', 0x409430: '_parseIni', 0x4259a0: '_applyIniOptions',
+    0x427340: '_loadAddons', 0x4258e0: '_parseCmdOptions', 0x4271a0: '_parseRawPatches',
+    0x423830: '_iniConsoleType', 0x4137f0: '_buildCleanup', 0x40f330: '_buildImage',
+    0x412260: '_writeImage', 0x41afe0: '_setCpuKeyStr',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
     # runtime functions the C code calls

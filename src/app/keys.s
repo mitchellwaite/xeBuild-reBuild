@@ -13,7 +13,6 @@
 .globl FUN_41ad90
 .globl FUN_41adb0
 .globl FUN_41add0
-.globl FUN_41afe0
 .globl FUN_41b320
 .globl FUN_41ba80
 .globl FUN_41bf50
@@ -38,6 +37,7 @@
 .globl _checkKeys
 .globl _set1blKey
 .globl _setCpuKey
+.globl _setCpuKeyStr
 .globl _setCrlKey
 .globl _setDaeKey
 .globl _setInfoKey0
@@ -516,7 +516,7 @@ L_41af15:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41afe0:
+_setCpuKeyStr:
           push ESI
           push EBX
           sub ESP,20
@@ -5040,7 +5040,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41afe0 - .
+          .long _setCpuKeyStr - .
           .byte 0x39
           .byte 0x1
           .byte 0x0

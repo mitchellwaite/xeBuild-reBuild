@@ -10,13 +10,13 @@
 #   .text          00408ec0-0040b130
 
 .intel_syntax noprefix
-.globl FUN_409430
 .globl FUN_40aad0
 .globl FUN_40abf0
 .globl FUN_40acf0
 .globl FUN_40ade0
-.globl FUN_40aef0
 .globl L_450000
+.globl _loadUserIni
+.globl _parseIni
 
 .text
 .p2align 4
@@ -590,7 +590,7 @@ L_409420:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_409430:
+_parseIni:
           push EBP
           push EDI
           push ESI
@@ -2578,7 +2578,7 @@ L_40aee2:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40aef0:
+_loadUserIni:
           push EDI
           push ESI
           push EBX
@@ -4067,7 +4067,7 @@ L_450400:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_409430 - .
+          .long _parseIni - .
           .byte 0xd2
           .byte 0x15
           .byte 0x0
@@ -4541,7 +4541,7 @@ L_450400:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_40aef0 - .
+          .long _loadUserIni - .
           .byte 0x3b
           .byte 0x2
           .byte 0x0

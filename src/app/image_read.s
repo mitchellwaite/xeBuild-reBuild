@@ -9,10 +9,10 @@
 #   .text          004136a0-00418240
 
 .intel_syntax noprefix
-.globl FUN_4137f0
 .globl FUN_414760
 .globl FUN_415ef0
 .globl FUN_416840
+.globl _buildCleanup
 .globl _listFlashFiles
 .globl _loadDump
 
@@ -155,7 +155,7 @@ L_4137aa:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4137f0:
+_buildCleanup:
           push ESI
           push EBX
           sub ESP,20
@@ -6103,7 +6103,7 @@ L_4541b0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_4137f0 - .
+          .long _buildCleanup - .
           .byte 0xcd
           .byte 0x0
           .byte 0x0
