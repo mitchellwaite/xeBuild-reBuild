@@ -190,32 +190,45 @@ Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops 
 Draft of the whole object, with string literals. 39 of 48 functions are
 built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
 makes from this file; add a function's name there (and its address to
-`split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Still off
-(`re/fncmp.py wip/app/keys.c <name>` line counts):
+`split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
+below are `FNCMP_LITERALS=1 python re/fncmp.py wip/app/keys.c <name>` (the
+variable makes the draft's literals compare equal to the `.s`'s named
+strings). Still off:
 
-- `setFuseLdv` (11; 7 when nothing inlines it): the original keeps the
-  `ldv == 0` path's `xor edi,edi` (cf = 0) apart from the loop counter's
-  `i = 0`; ours shares one `xor` before `test al,al`. u8/int/u32 counters,
-  `cf = 0` placement and `else`/`if` orders don't change it.
-- `setFuseCpuKey` (114 here, 16 with setFuseLdv external): our gcc inlines
-  setFuseLdv, the original calls it. With it external the copies need typed
-  struct copies (`q8`/`q16`) to get the reloads after each store; still
-  missing the write-back of cpuKey (the original stores the 16 key bytes back
-  to cpuKey after the fuse copies, as if `memcpy(cpuKey, fuse + 32, 16)`
-  survived; ours drops it).
+- `setFuseLdv` (7): the `ldv == 0` path should `xor edi,edi` (cf = 0) on its
+  own instead of sharing the loop counter's `i = 0` before `test al,al`.
+  An explicit `else if (ldv)`/`else { cb = 0; cf = 0; }` does that, but
+  then the `ldv <= 16` blocks move after the setBeU64 calls (wip/bbmap.py:
+  the `cb = ~0` join block of the `> 16` side is too hot, so the setBeU64
+  block joins that trace instead of the `<= 16` loop's).
+- `setFuseCpuKey` (110): our gcc inlines setFuseLdv (inline dump: size 45,
+  growth 39, under the limit of 40); the original calls it, so its
+  setFuseLdv is a bit bigger (the explicit-zero version stops the
+  inlining: 16 lines). With setFuseLdv external the copies need typed struct
+  copies (`q8`/`q16`) to get the reloads after each store; still missing the
+  write-back of cpuKey (the original stores the 16 key bytes back to cpuKey
+  after the fuse copies, as if `memcpy(cpuKey, fuse + 32, 16)` survived;
+  ours drops it).
 - `smcChecksum` (29) and `smcPrepare` (24, which inlines it): the loop is
-  right; after it the original moves both sums into registers (sum2 in
-  esi:edi across the first setBeU64 call, and `xor`s them on the
-  `count == 0` path), ours keeps them in their stack slots.
+  right except `cmp ebp,[end]` operand order; after it the original moves
+  both sums into registers (sum2 in esi:edi across the first setBeU64 call,
+  `xor`s on the `count == 0` path), ours keeps sum2 in its stack slot. IRA
+  has a loop region in both; `-fira-region`/`-fira-algorithm` don't help.
 - `fcrtEncrypt` (13): the "invalid offset" log should be the last block with
   its own epilogue; ours puts it before the shared epilogue.
 - `kvPrepare` (437): ours tail-merges the inlined kvEncrypt and kvEncryptAlt
   copies (one HMAC/RC4 sequence with the salt selected); the original keeps
-  both, and its size error is the fallthrough of `cmp size,0x4000`.
-- `daeEncrypt` (449): ours peels the first DAEP header test and specialises
-  the first iteration (`n == 0`); the original has one loop and threads only
-  the `n == 0` logging.
-- `cfPatchSlots` (108) and `cfEncrypt` (234, inlines it): semantics are
-  right; the original's loop runs a block counter `i` from `block` and writes
-  `tbl[i - block + 1]` (strength-reduced `i << 8`), with the count from a
-  `while (over > 0x4000) over -= 0x4000` final value.
+  both (their registers differ), and its size error is the fallthrough of
+  `cmp size,0x4000`.
+- `daeEncrypt` (443): `if (size) do { ... } while (off < size)` with
+  `buf[off + k]` header tests stops gcc peeling the first iteration and gets
+  the original's 108-byte frame; still off: the processing block (call
+  daeEncryptOne, `n++`) comes before the loop head in ours, and the
+  original keeps buf/size/orig in edi/ebp/esi and `len` in memory.
+- `cfPatchSlots` (37) and `cfEncrypt` (94, inlines it): `SWAP16` is
+  `((x & 0xff) << 8) + ((x & 0xff00) >> 8)` (not a rotate in the loop or the
+  last slot, a rotate for `tbl[0]`), and one `tbl[0] = SWAP16(n)` after the
+  `if (end > max)` (the zero case shares it). Left: `cmp edx,edi` operand
+  order in the loop (the same flip as smcChecksum) and register choice in
+  the tail. cfEncrypt's inlined copy also tests `over == 0`, which the
+  standalone one doesn't; `buf[539] = (type == 2)` is an if/else there.

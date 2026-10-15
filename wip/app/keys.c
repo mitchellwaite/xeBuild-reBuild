@@ -578,25 +578,24 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
 	XeCryptRc4(key, 16, ce + 32, size - 32);
 }
 
-#define SWAP16(x) ((u16)((x) << 8) + ((u16)(x) >> 8))
+#define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
 u32 cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 {
 	u8 *buf = cf->buf;
 	u32 end = cf->size + extra;
-	u32 over, n;
+	u32 over, n = 0;
+	u16 *tbl = (u16 *)(buf + 48);
 
-	if (end <= max) {
-		*(u16 *)(buf + 48) = 0;
-		return 0;
+	if (end > max) {
+		over = end - max;
+		cf->f428 = max - cf->size;
+		cf->f424 = over;
+		for (n = 1; over > 0x4000; n++, over -= 0x4000)
+			tbl[n] = SWAP16(block + n - 1);
+		tbl[n] = SWAP16(block + n - 1);
 	}
-	over = end - max;
-	cf->f428 = max - cf->size;
-	cf->f424 = over;
-	for (n = 1; over > 0x4000; over -= 0x4000, n++)
-		*(u16 *)(buf + 48 + n * 2) = SWAP16(block + n - 1);
-	*(u16 *)(buf + 48 + n * 2) = SWAP16(block + n - 1);
-	*(u16 *)(buf + 48) = SWAP16(n);
+	tbl[0] = SWAP16(n);
 	return n;
 }
 
@@ -611,7 +610,10 @@ u32 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
 	if (!keep) {
 		buf = cf->buf;
 		memset(buf + 32, 0, 528);
-		cf->buf[539] = xb.type == 2;
+		if (xb.type == 2)
+			cf->buf[539] = 1;
+		else
+			cf->buf[539] = 0;
 		memcpy(cf->buf + 540, pairing, 3);
 		cf->buf[543] = xb.cfLdv;
 	}
@@ -889,40 +891,55 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 	int n = 0;
 
 	memcpy(orig, buf, size);
-	for (off = 0; off < size; off += len) {
+	off = 0;
+	if (size) do {
 		dae = buf + off;
-		if (dae[0] != 'D' || dae[1] != 'A' || dae[2] != 'E' || dae[3] != 'P') {
+		if (buf[off] != 'D' || buf[off + 1] != 'A' || buf[off + 2] != 'E' || buf[off + 3] != 'P') {
 			log_printf(0, "\n******* ERROR: dae segment does not have the expected header!\n");
 			break;
 		}
-		len = (u16)((dae[4] << 8) + dae[5]);
+		len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
 		if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
-			if (!n)
-				log_printf(1, "dae appears encrypted, attempting to decrypt with CPU key...");
-			memcpy(dae, orig + off, len);
-			daeDecrypt(dae, len, 1);
-			if (shaCheck(dae, len, 12, 20, 336, NULL))
-				log_printf(1, "success!\n");
-			else {
-				if (!n)
-					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
+			if (n) {
 				memcpy(dae, orig + off, len);
-				daeDecrypt(dae, len, 0);
-				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
-					if (!n)
+				daeDecrypt(dae, len, 1);
+				if (shaCheck(dae, len, 12, 20, 336, NULL))
+					log_printf(1, "success!\n");
+				else {
+					memcpy(dae, orig + off, len);
+					daeDecrypt(dae, len, 0);
+					if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
+						n = 0;
+						off = size + 1;
+						goto next;
+					}
+				}
+			} else {
+				log_printf(1, "dae appears encrypted, attempting to decrypt with CPU key...");
+				memcpy(dae, orig + off, len);
+				daeDecrypt(dae, len, 1);
+				if (shaCheck(dae, len, 12, 20, 336, NULL))
+					log_printf(1, "success!\n");
+				else {
+					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
+					memcpy(dae, orig + off, len);
+					daeDecrypt(dae, len, 0);
+					if (shaCheck(dae, len, 12, 20, 336, NULL))
 						log_printf(1, "success!\n");
-				} else {
-					if (!n)
+					else {
 						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
-					n = 0;
-					off = size + 1;
-					continue;
+						n = 0;
+						off = size + 1;
+						goto next;
+					}
 				}
 			}
 		}
 		daeEncryptOne(dae, len, date);
 		n++;
-	}
+	next:
+		off += len;
+	} while (off < size);
 	if (n != 2)
 		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
 	free(orig);

@@ -20,6 +20,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = os.path.join(ROOT, 'tools', 'toolchain-4745', 'mingw32', 'bin')
 LOCAL = re.compile(r'(?<![\w.$])(?:\.?L_[0-9a-f]+|FUN_[0-9a-f]+|L\d+|_\w+)(?![\w$])')
 NAMED = set(SYMBOLS.values())
+# FNCMP_LITERALS=1: a draft with string literals (wip/) compares against the
+# .s's named strings (`_msg_*`, `_str_*`) as plain labels
+if os.environ.get('FNCMP_LITERALS'):
+    NAMED = {n for n in NAMED if not re.match(r'_(msg|str)_', n)}
 # condition-code spellings: gcc's (e.g. jnb) -> ddisasm's (jae)
 CC = {'nb': 'ae', 'nae': 'b', 'z': 'e', 'nz': 'ne', 'nbe': 'a', 'na': 'be',
       'nl': 'ge', 'nge': 'l', 'nle': 'g', 'ng': 'le', 'c': 'b', 'nc': 'ae'}
