@@ -288,12 +288,40 @@ SYMBOLS = {
     0x423830: '_iniConsoleType', 0x4137f0: '_buildCleanup', 0x40f330: '_buildImage',
     0x412260: '_writeImage', 0x41afe0: '_setCpuKeyStr',
     # app/options (src/app/options.c) and what it calls; names are ours
+    0x4236f0: '_baseFileExists.part.0',   # gcc's ipa-split tail of baseFileExists
     0x423730: '_baseFileExists', 0x423750: '_perboxExists',
     0x424930: '_optIniBool', 0x424a10: '_optIniInt', 0x424a70: '_parseButton',
     0x424b20: '_stripColons', 0x424b60: '_macidSet', 0x424bb0: '_setBoolOption',
     0x425110: '_parseOption', 0x427000: '_parseRawPatch', 0x427260: '_addPatch',
     0x40aad0: '_getIniBool', 0x40abf0: '_iniBoolInvalid', 0x40acf0: '_getIniU32',
     0x40ade0: '_iniU32Invalid',
+    # options.s strings the mixed options.c refers to (extern names)
+    0x457e3a: '_str_xenon', 0x457e40: '_msg_ctype_xenon', 0x457e61: '_str_zephyr',
+    0x457e68: '_msg_ctype_zephyr', 0x457e8a: '_str_falcon', 0x457e94: '_msg_ctype_falcon',
+    0x457eb6: '_str_jasper', 0x457ebd: '_str_jasperbc', 0x457ec8: '_msg_ctype_jasper',
+    0x457eea: '_str_jaspersb', 0x457ef4: '_msg_ctype_jaspersb', 0x457f21: '_str_jasperbb',
+    0x457f2c: '_msg_ctype_jasperbb', 0x457f58: '_str_jasper256', 0x457f62: '_str_jasper512',
+    0x457f6c: '_str_trinity', 0x457f74: '_msg_ctype_trinity', 0x457f97: '_str_trinitybb',
+    0x457fa4: '_msg_ctype_trinitybb', 0x457fd1: '_str_trinitybigffs', 0x457fe0: '_msg_ctype_trinitybigffs',
+    0x45801d: '_str_corona', 0x458024: '_msg_ctype_corona', 0x458046: '_str_coronabb',
+    0x458050: '_msg_ctype_coronabb', 0x45807c: '_str_coronabigffs', 0x45808c: '_msg_ctype_coronabigffs',
+    0x4580c8: '_str_corona4g', 0x4580d4: '_msg_ctype_corona4g', 0x4580fa: '_str_winchester',
+    0x458108: '_msg_ctype_winchester', 0x45812e: '_str_winchester4g', 0x45813c: '_msg_ctype_winchester4g',
+    0x458166: '_str_winchesterbb', 0x458174: '_msg_ctype_winchesterbb', 0x4581a4: '_str_winchesterbigffs',
+    0x4581b8: '_msg_ctype_winchesterbigffs', 0x4581f8: '_str_jasperbigffs', 0x458244: '_msg_iniInvalid',
+    0x4582ad: '_str_false', 0x4582b3: '_str_true', 0x4582b8: '_msg_opt_nodvd',
+    0x4582ec: '_msg_opt_olddvd', 0x45831f: '_msg_opt_cygnos', 0x458333: '_msg_opt_demon',
+    0x458346: '_str_nomobile', 0x45834f: '_msg_opt_nomobile', 0x458365: '_str_smcnocheck',
+    0x458370: '_msg_opt_smcnocheck', 0x458388: '_str_noremap', 0x458390: '_msg_opt_noremap',
+    0x4583a5: '_str_noecdremap', 0x4583b0: '_msg_opt_noecdremap', 0x4583c8: '_str_nandmu',
+    0x4583cf: '_msg_opt_nandmu', 0x4583e3: '_str_nosecurity', 0x4583ee: '_msg_opt_nosecurity',
+    0x458406: '_str_nosusecurity', 0x458413: '_str_patchsmc', 0x45841c: '_msg_opt_patchsmc',
+    0x458432: '_str_smcnoeject', 0x45843d: '_msg_opt_smcnoeject', 0x458455: '_str_smcnoblink',
+    0x458460: '_msg_opt_smcnoblink', 0x458478: '_str_nodvd', 0x45847e: '_str_olddvd',
+    0x458485: '_str_cygnos', 0x45848c: '_str_demon', 0x458494: '_msg_optNoValue',
+    0x458ae8: '_msg_rawPatchParsed', 0x458b28: '_msg_rawPatchBadOffset', 0x458b80: '_msg_rawPatchSlotsFull',
+    0x458bbc: '_msg_patchParseFailed', 0x458bf5: '_str_binFmt', 0x458bfc: '_msg_patchDuplicate',
+    0x458c54: '_msg_patchTooMany',
     # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
@@ -342,6 +370,12 @@ IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
+    # app/options (parseButton stays asm: its ipa-split part at 449640 is
+    # called from asm, and gcc would put it in .text.unlikely)
+    0x4236f0,                                # baseFileExists.part.0
+    0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
+    0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
+    0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

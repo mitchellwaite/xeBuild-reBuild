@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, two more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **347 of 617** (324 built from `src/`, 23 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **349 of 617** (336 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 162 / 432 |
+| `app/` | 14 / 25 | 164 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -44,7 +44,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/image_read` | asm | 0 / 33 |
 | `app/keys` | asm | 0 / 48 |
 | `app/net` | asm | 0 / 32 |
-| `app/options` | asm; 11 of 17 drafted functions match in `wip/app/options.c` | 11 / 19 |
+| `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | asm | 0 / 41 |
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
@@ -309,25 +309,25 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/options</code>: 11 / 19 in C</summary>
+<summary><code>app/options</code>: 13 / 19 in C</summary>
 
-- ⬜ `FUN_4236f0` (0x4236f0)
-- ☑️ `baseFileExists` (0x423730)
-- ☑️ `perboxExists` (0x423750)
-- ☑️ `iniConsoleType` (0x423830)
-- ☑️ `setConsoleType` (0x424170)
+- ✅ `baseFileExists.part.0` (0x4236f0)
+- ✅ `baseFileExists` (0x423730)
+- ✅ `perboxExists` (0x423750)
+- ✅ `iniConsoleType` (0x423830)
+- ✅ `setConsoleType` (0x424170)
 - ⬜ `optIniBool` (0x424930) (draft in `wip/`, no match yet)
-- ☑️ `optIniInt` (0x424a10)
+- ✅ `optIniInt` (0x424a10)
 - ☑️ `parseButton` (0x424a70)
-- ☑️ `stripColons` (0x424b20)
-- ☑️ `macidSet` (0x424b60)
-- ⬜ `setBoolOption` (0x424bb0) (draft in `wip/`, no match yet)
+- ✅ `stripColons` (0x424b20)
+- ✅ `macidSet` (0x424b60)
+- ✅ `setBoolOption` (0x424bb0)
 - ⬜ `parseOption` (0x425110) (draft in `wip/`, no match yet)
 - ⬜ `parseCmdOptions` (0x4258e0) (draft in `wip/`, no match yet)
 - ⬜ `applyIniOptions` (0x4259a0) (draft in `wip/`, no match yet)
-- ☑️ `parseRawPatch` (0x427000)
-- ☑️ `parseRawPatches` (0x4271a0)
-- ☑️ `addPatch` (0x427260)
+- ✅ `parseRawPatch` (0x427000)
+- ✅ `parseRawPatches` (0x4271a0)
+- ✅ `addPatch` (0x427260)
 - ⬜ `loadAddons` (0x427340) (draft in `wip/`, no match yet)
 - ⬜ `FUN_449640` (0x449640)
 
@@ -1000,7 +1000,19 @@ function already in C. Its default flags are `-O3`; give fileutil's
 Mixed so far: `app/filelist_ini` (`getIniValue`, with a `findInst`-style
 `findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
-`findInst`.
+`findInst`. And `app/options` (12 functions; the rest are drafted in
+`wip/app/options.c`):
+
+- Its strings are `extern const char str_*/msg_*[]`, named in `SYMBOLS`.
+- `baseFileExists` is ipa-split; its `.part.0` (4236f0) is in `C_FUNCS`
+  under gcc's name.
+- `parseButton` stays asm: its split part (449640) sits in `.text.unlikely`
+  and asm calls it.
+- `strcat(xb.outName, "name")` is expanded inline. Short names become
+  immediate stores, so the literal stays and no data is emitted. Longer ones
+  copy from the string itself; those are written as `OUTCAT(name)`
+  (`memcpy(dst + strlen(dst), str_name, sizeof "name")`). Which names are
+  long differs between iniConsoleType and setConsoleType, so follow gcc.
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 

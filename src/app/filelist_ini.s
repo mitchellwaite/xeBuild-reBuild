@@ -10,11 +10,11 @@
 #   .text          00408ec0-0040b130
 
 .intel_syntax noprefix
-.globl FUN_40aad0
-.globl FUN_40abf0
-.globl FUN_40acf0
-.globl FUN_40ade0
 .globl L_450000
+.globl _getIniBool
+.globl _getIniU32
+.globl _iniBoolInvalid
+.globl _iniU32Invalid
 .globl _loadUserIni
 .globl _parseIni
 
@@ -2170,7 +2170,7 @@ L_40a9fb:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_40aad0:
+_getIniBool:
           push EBP
           push EDI
           push ESI
@@ -2270,7 +2270,7 @@ L_40ab79:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_40abf0:
+_iniBoolInvalid:
           push EBP
           push EDI
           push ESI
@@ -2363,7 +2363,7 @@ L_40ace2:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40acf0:
+_getIniU32:
           push EBP
           push EDI
           push ESI
@@ -2468,7 +2468,7 @@ L_40ad9d:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40ade0:
+_iniU32Invalid:
           push EBP
           push EDI
           push ESI
@@ -4261,7 +4261,7 @@ L_450400:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40aad0 - .
+          .long _getIniBool - .
           .byte 0x16
           .byte 0x1
           .byte 0x0
@@ -4322,7 +4322,7 @@ L_450400:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_40abf0 - .
+          .long _iniBoolInvalid - .
           .byte 0xfa
           .byte 0x0
           .byte 0x0
@@ -4379,7 +4379,7 @@ L_450400:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_40acf0 - .
+          .long _getIniU32 - .
           .byte 0xe2
           .byte 0x0
           .byte 0x0
@@ -4460,7 +4460,7 @@ L_450400:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_40ade0 - .
+          .long _iniU32Invalid - .
           .byte 0xa
           .byte 0x1
           .byte 0x0

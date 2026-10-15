@@ -2236,7 +2236,7 @@ L_429379:
 L_4293a7:
           test EAX,EAX
           je L_4293f0
-          call FUN_424b60
+          call _macidSet
           test EAX,EAX
           .byte 0x0f,0x85; .long L_429434-.-4   # jne L_429434
           test EBX,EBX
@@ -2262,7 +2262,7 @@ L_4293f0:
           mov DWORD PTR [ESP],0
           call _log_printf
           mov DWORD PTR [ESI+564],16777216
-          call FUN_424b60
+          call _macidSet
           test EAX,EAX
           je L_4294c5
           mov EBX,1

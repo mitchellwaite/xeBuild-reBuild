@@ -34,12 +34,16 @@ src/app/console_hdd.c <name>` or `python wip/fnrep.py`, then regenerate and
 
 ## app/options.c
 
-Draft of the whole object (it can't be a mixed object: every function
-uses string literals).  As of this draft, matching with `re/fncmp.py`:
-parseButton, baseFileExists, perboxExists, iniConsoleType, setConsoleType,
-optIniInt, stripColons, macidSet, parseRawPatch, parseRawPatches, addPatch.
-setBoolOption's 4 lines are ddisasm writing 0x400000 as `__ImageBase`
-(really a match).  Still off:
+Draft of the whole object, with string literals.  The matching
+functions are built from `src/app/options.c` now, a mixed object that uses
+`extern` names for the strings: baseFileExists (+ its `.part.0`),
+perboxExists, iniConsoleType, setConsoleType, optIniInt, stripColons,
+macidSet, setBoolOption, parseRawPatch, parseRawPatches, addPatch.
+setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
+`__ImageBase` (the bytes match).  parseButton matches here but stays asm in
+the build (its split part at 449640 is called from asm).  When the rest
+matches, move this file over `src/app/options.c` (literals back, data
+from the `.s`) and drop the object from `C_FUNCS`.  Still off:
 
 - `optIniBool` (6 lines): register choice in `(bootFlags & ~clear) | set`
   (ours `or ebx,eax`, so sched2 hoists `mov eax,1` above the store).
