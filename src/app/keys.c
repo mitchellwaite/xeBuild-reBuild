@@ -109,6 +109,7 @@ extern const char msg_cpuKeyWarn[];	/* "\n***** WARNING: CPU key check faile..."
 extern const char msg_cpuKeyChars[];	/* "\n******* ERROR: invalid or unexpect..." */
 extern const char msg_cpuKeyLen[];	/* "\n***** ERROR: unable to set CPU key..." */
 extern const char msg_cpuKeySet2[];	/* "CPU Key set to  : " */
+extern const char msg_fuseLdv[];	/* "Fuse CF LDV set to : 0x" */
 extern const char msg_1blKeySet[];	/* "1BL Key set to  : 0x" */
 extern const char msg_1blSum[];	/* " sum: 0x%x (expects: 0x983)\n" */
 extern const char msg_xexKeySet[];	/* "xex Key set to  : 0x" */
@@ -307,6 +308,34 @@ int setCpuKey(int level, u8 *key)
 		log_printf(level, msg_cpuKeyWarn);
 	log_printf(level, str_newline);
 	return 1;
+}
+
+void setFuseLdv(u8 *fuse, u8 ldv)
+{
+	u32 i;
+	u64 cb, cf;
+
+	if (ldv > 16) {
+		if (ldv > 31)
+			cf = ~0ULL;
+		else
+			for (cf = 0, i = 0; i < ldv - 16; i++)
+				cf = (cf >> 4) | 0xf000000000000000ULL;
+		cb = ~0ULL;
+	} else {
+		cf = 0;
+		if (ldv == 16)
+			cb = ~0ULL;
+		else
+			for (cb = 0, i = 0; i < ldv; i++)
+				cb = (cb >> 4) | 0xf000000000000000ULL;
+	}
+	setBeU64(cb, fuse + 56);
+	setBeU64(cf, fuse + 64);
+	log_printf(1, msg_fuseLdv);
+	for (i = 0; i < 16; i++)
+		log_printf(1, str_hexByte, fuse[56 + i]);
+	log_printf(1, str_newline);
 }
 
 u32 calcXexKey(void)

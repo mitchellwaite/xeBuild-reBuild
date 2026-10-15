@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **400 of 617** (387 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **401 of 617** (388 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 215 / 432 |
+| `app/` | 14 / 25 | 216 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -42,7 +42,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
 | `app/image_read` | asm | 0 / 33 |
-| `app/keys` | mixed; 0 of 9 drafted functions match in `wip/app/keys.c` | 39 / 48 |
+| `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | asm | 0 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | asm | 0 / 41 |
@@ -219,7 +219,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/keys</code>: 39 / 48 in C</summary>
+<summary><code>app/keys</code>: 40 / 48 in C</summary>
 
 - ✅ `keysInit` (0x41aa00)
 - ✅ `setCrlKey` (0x41abb0)
@@ -238,7 +238,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `checkCpuKey` (0x41ae40)
 - ✅ `setCpuKeyStr` (0x41afe0)
 - ✅ `setCpuKey` (0x41b120)
-- ⬜ `setFuseLdv` (0x41b1d0) (draft in `wip/`, no match yet)
+- ✅ `setFuseLdv` (0x41b1d0)
 - ⬜ `setFuseCpuKey` (0x41b320) (draft in `wip/`, no match yet)
 - ✅ `calcXexKey` (0x41b420)
 - ✅ `check1blKey` (0x41b520)

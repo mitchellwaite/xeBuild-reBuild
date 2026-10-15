@@ -187,35 +187,44 @@ Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops 
 
 ## app/keys.c
 
-Draft of the whole object, with string literals. 39 of 48 functions are
+Draft of the whole object, with string literals. 40 of 48 functions are
 built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
 makes from this file; add a function's name there (and its address to
 `split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
 below are `FNCMP_LITERALS=1 python re/fncmp.py wip/app/keys.c <name>` (the
 variable makes the draft's literals compare equal to the `.s`'s named
-strings). Still off:
+strings). setFuseLdv matched by declaring `u32 i;` before `u64 cb, cf;`
+(that stops the `xor edi,edi` for `i = 0` moving above `test al,al`); its
+print loop is `for (i = 0; i < 16; i++) ... fuse[56 + i]`, which compiles
+the same but costs more in the inliner (now over max-inline-insns-auto),
+so setFuseCpuKey calls it as the original does. Still off:
 
-- `setFuseLdv` (7): the `ldv == 0` path should `xor edi,edi` (cf = 0) on its
-  own instead of sharing the loop counter's `i = 0` before `test al,al`.
-  An explicit `else if (ldv)`/`else { cb = 0; cf = 0; }` does that, but
-  then the `ldv <= 16` blocks move after the setBeU64 calls (wip/bbmap.py:
-  the `cb = ~0` join block of the `> 16` side is too hot, so the setBeU64
-  block joins that trace instead of the `<= 16` loop's).
-- `setFuseCpuKey` (110): our gcc inlines setFuseLdv (inline dump: size 45,
-  growth 39, under the limit of 40); the original calls it, so its
-  setFuseLdv is a bit bigger (the explicit-zero version stops the
-  inlining: 16 lines). With setFuseLdv external the copies need typed struct
-  copies (`q8`/`q16`) to get the reloads after each store; still missing the
-  write-back of cpuKey (the original stores the 16 key bytes back to cpuKey
-  after the fuse copies, as if `memcpy(cpuKey, fuse + 32, 16)` survived;
-  ours drops it).
+- `setFuseCpuKey` (16): only the cpuKey write-back is missing (the original
+  stores the 16 key bytes it loaded back to cpuKey after the fuse copies;
+  `*(q16 *)cpuKey = *(q16 *)(fuse + 32)` is in the draft). The copies are
+  fuse lines 3..6 (24/32/40/48 = key lo, lo, hi, hi). Ours: postreload's
+  cselib deletes the store as storing what is already there, and sched2
+  hoists the key loads above the fuse+24 store; both mean gcc thinks the
+  `fuse` stores can't alias cpuKey (q8 vs q16 TBAA, MEM_REF offsets). The
+  original has them aliasing (loads after the fuse+24 store, store kept) but
+  still loads all 16 bytes before the fuse+32/40 stores. Tried: memcpy/u64/
+  u32/struct forms for each copy (build/keys/sk3.t), `extern u8 cpuKey[]`
+  (aliases, but then the 16-byte copy goes word by word), larger cpuKey.
 - `smcChecksum` (29) and `smcPrepare` (24, which inlines it): the loop is
   right except `cmp ebp,[end]` operand order; after it the original moves
   both sums into registers (sum2 in esi:edi across the first setBeU64 call,
   `xor`s on the `count == 0` path), ours keeps sum2 in its stack slot. IRA
   has a loop region in both; `-fira-region`/`-fira-algorithm` don't help.
 - `fcrtEncrypt` (13): the "invalid offset" log should be the last block with
-  its own epilogue; ours puts it before the shared epilogue.
+  its own epilogue; ours puts it before the shared epilogue. All four exits
+  having their own epilogue means bb-reorder copied the epilogue into each,
+  which needs each exit edge at >= 10% of the entry frequency
+  (DUPLICATION_THRESHOLD); ours: `size != 0x4000` is predicted 72% taken
+  (opcode heuristic; the call heuristic is on both sides and cancels), so
+  the main path has 28% and the three exits can't all reach 10%. Declaring
+  getBeU32 pure brings it to 51% but isn't the original. Nested if/else,
+  inverted conditions, a static hash-check helper (changes the frame) and
+  `__builtin_expect` on either test don't give it.
 - `kvPrepare` (437): ours tail-merges the inlined kvEncrypt and kvEncryptAlt
   copies (one HMAC/RC4 sequence with the salt selected); the original keeps
   both (their registers differ), and its size error is the fallthrough of

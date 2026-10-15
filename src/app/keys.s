@@ -50,6 +50,7 @@
 .globl _msg_extEncrypted
 .globl _msg_extMissing
 .globl _msg_extSize
+.globl _msg_fuseLdv
 .globl _msg_initRandom
 .globl _msg_initStatic
 .globl _msg_pairingSet
@@ -61,7 +62,6 @@
 .globl _pairing
 .globl _secdataKey
 .globl _setFuseCpuKey
-.globl _setFuseLdv
 .globl _smcChecksum
 .globl _smcKey
 .globl _smcPrepare
@@ -213,115 +213,7 @@
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_setFuseLdv:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,28
-          mov EAX,DWORD PTR [ESP+52]
-          mov ESI,DWORD PTR [ESP+48]
-          cmp AL,16
-          jbe L_41b201
-          cmp AL,31
-          jbe L_41b2c0
-          mov EDI,4294967295
-          mov EBP,4294967295
-L_41b1f5:
-          mov EAX,4294967295
-          mov EDX,4294967295
-          jmp L_41b242
-L_41b201:
-          je L_41b2f2
-          test AL,AL
-          movzx EBP,AL
-          je L_41b305
-          xor EAX,EAX
-          xor EDX,EDX
-          xor EDI,EDI
-          nop
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_41b220:
-          mov ECX,EAX
-          mov EBX,EDX
-          add EDI,1
-          shrd ECX,EDX,4
-          shr EBX,4
-          mov EAX,ECX
-          mov ECX,EBX
-          or ECX,4026531840
-          cmp EDI,EBP
-          mov EDX,ECX
-          jne L_41b220
-          xor EDI,EDI
-          xor EBP,EBP
-L_41b242:
-          lea EBX,DWORD PTR [ESI+56]
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+8],EBX
-          call _setBeU64
-          lea EAX,DWORD PTR [ESI+64]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EBP
-          add ESI,72
-          mov DWORD PTR [ESP+8],EAX
-          call _setBeU64
-          mov DWORD PTR [ESP+4],OFFSET L_4567fe
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          nop
-L_41b280:
-          movzx EAX,BYTE PTR [EBX]
-          mov DWORD PTR [ESP+4],OFFSET _str_hexByte
-          add EBX,1
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          cmp EBX,ESI
-          jne L_41b280
-          mov DWORD PTR [ESP+52],OFFSET _str_newline
-          mov DWORD PTR [ESP+48],1
-          add ESP,28
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _log_printf
-          .byte 0x66
-          .byte 0x90
-L_41b2c0:
-          movzx EAX,AL
-          xor EDI,EDI
-          xor EBP,EBP
-          lea EBX,DWORD PTR [EAX-16]
-          xor ECX,ECX
-          .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
-L_41b2d0:
-          mov EAX,EDI
-          mov EDX,EBP
-          add ECX,1
-          shrd EAX,EBP,4
-          shr EDX,4
-          mov EDI,EAX
-          mov EAX,EDX
-          or EAX,4026531840
-          cmp ECX,EBX
-          mov EBP,EAX
-          jb L_41b2d0
-          jmp L_41b1f5
-L_41b2f2:
-          xor EDI,EDI
-          xor EBP,EBP
-          mov EAX,4294967295
-          mov EDX,4294967295
-          jmp L_41b242
-L_41b305:
-          xor EDI,EDI
-          xor EBP,EBP
-          xor EAX,EAX
-          xor EDX,EDX
-          jmp L_41b242
+#@C _setFuseLdv
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -2379,7 +2271,7 @@ _msg_cpuKeyLen:
           .string "\n***** ERROR: unable to set CPU key to '%s', %d is not the correct length, 32 chars required!\n"
 _msg_cpuKeySet2:
           .string "CPU Key set to  : "
-L_4567fe:
+_msg_fuseLdv:
           .string "Fuse CF LDV set to : 0x"
 L_456816:
           .string "Fuse CPU Key set to: 0x"

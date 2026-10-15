@@ -267,8 +267,8 @@ int setCpuKey(int level, u8 *key)
 
 void setFuseLdv(u8 *fuse, u8 ldv)
 {
-	u64 cb, cf;
 	u32 i;
+	u64 cb, cf;
 
 	if (ldv > 16) {
 		if (ldv > 31)
@@ -288,8 +288,8 @@ void setFuseLdv(u8 *fuse, u8 ldv)
 	setBeU64(cb, fuse + 56);
 	setBeU64(cf, fuse + 64);
 	log_printf(1, "Fuse CF LDV set to : 0x");
-	for (i = 56; i < 72; i++)
-		log_printf(1, "%02X", fuse[i]);
+	for (i = 0; i < 16; i++)
+		log_printf(1, "%02X", fuse[56 + i]);
 	log_printf(1, "\n");
 }
 
