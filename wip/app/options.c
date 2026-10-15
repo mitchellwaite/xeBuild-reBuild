@@ -275,7 +275,7 @@ int setConsoleType(const char *name)
 
 /* a boolean option from a perbox file or options.ini, unless the command
    line already set it either way */
-int optIniBool(const char *name, u32 set, u32 clear, int def)
+_Bool optIniBool(const char *name, u32 set, u32 clear, int def)
 {
 	char *bad;
 
@@ -802,7 +802,7 @@ void applyIniOptions(void)
 		switch (xb.type) {
 		case 2:
 			if (!(xb.bootFlags & 2))
-				optIniBool("nodvd", 2, 6, 0);
+				optIniBool("nodvd", 2, 4, 0);
 			optIniBool("olddvd", 0, 4, 0);
 			if (!xb.dualButton) {
 				xb.dualButton = parseButton(getIniValue("dualboot"));

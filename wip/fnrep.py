@@ -7,14 +7,16 @@ variants.c holds whole definitions of <name> separated by lines of
 backslash escapes).  Each variant replaces <name>'s definition in base.c,
 is written to build/fnrep/repN.c and compared with re/fncmp.py.  Prints the
 number of differing lines per variant (MATCH for none); -v also prints
-the diffs.  Compile errors are reported as ERROR, never as a match.
+the diffs.  -c=<other> compares <other> instead of <name> (to see how a
+change to an inlined function shows up in its caller).  Compile errors are reported as ERROR, never as a match.
 """
 import os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 base, vfile, fn = sys.argv[1:4]
 verbose = '-v' in sys.argv
-flags = [a for a in sys.argv[4:] if a != '-v']
+cmp = next((a[3:] for a in sys.argv[4:] if a.startswith('-c=')), fn)
+flags = [a for a in sys.argv[4:] if a != '-v' and not a.startswith('-c=')]
 s = open(base).read()
 m = re.search(r'^[^\n]*\b%s\([^)]*\)\n\{.*?^\}\n' % fn, s, re.S | re.M)
 if not m:
@@ -24,7 +26,7 @@ os.makedirs(outdir, exist_ok=True)
 for k, v in enumerate(open(vfile).read().split('=====\n')):
     out = os.path.join(outdir, 'rep%d.c' % k)
     open(out, 'w', newline='\n').write(s[:m.start()] + v.strip('\n') + '\n' + s[m.end():])
-    r = subprocess.run([sys.executable, os.path.join(ROOT, 're', 'fncmp.py'), out, fn] + flags,
+    r = subprocess.run([sys.executable, os.path.join(ROOT, 're', 'fncmp.py'), out, cmp] + flags,
                        capture_output=True, text=True, cwd=ROOT)
     o = (r.stdout + r.stderr).strip()
     if o != 'MATCH' and not o.startswith('---'):

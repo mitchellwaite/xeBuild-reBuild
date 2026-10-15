@@ -41,19 +41,44 @@ optIniInt, stripColons, macidSet, parseRawPatch, parseRawPatches, addPatch.
 setBoolOption's 4 lines are ddisasm writing 0x400000 as `__ImageBase`
 (really a match).  Still off:
 
-- `optIniBool` (22 lines; 6 with a `long` return): register choice in
-  `(bootFlags & ~clear) | set`.
+- `optIniBool` (6 lines): register choice in `(bootFlags & ~clear) | set`
+  (ours `or ebx,eax`, so sched2 hoists `mov eax,1` above the store).
+  Nothing calls it (applyIniOptions inlines every use), so its return type
+  is free: `_Bool` (or char/short/long) stops uncprop reusing
+  perboxExists' result for `return 0`; `int`/`u32` give 22 lines.
+  `u32 perboxExists` also works but breaks perboxExists itself.
 - `applyIniOptions` (924): the "already set" path must be the likely one.
   Guarding each call in the caller with `if (!(xb.bootFlags & bit))` (the
   call heuristic) and `switch (xb.type) { case 2: }` (no == heuristic)
-  fixed most of the layout.  Next: noecdremap (bit 31), the xellbutton
-  registers (ebx vs edx), and the later off-trace blocks.
+  fixed most of the layout.  nodvd clears 4, not 6 (`and ~4; or 2`).
+  What is left is bb-reorder (see `-fdump-rtl-bbro-details`):
+  - After setting nomobile and nosecurity the original duplicates the next
+    option's test (`or; test eax,next; mov [flags],eax; jne`) and falls
+    into that option's out-of-line block.  connect_traces only copies a
+    7-byte block when the edge into it carries >= 10% of the entry
+    frequency (1815 here, so >= 181).  Ours has 68 on that edge: guard 29%
+    x bootFlagsOff clear 39% x set 54%.  The type-2..5 options (cygnos...)
+    are not duplicated, which fits a set path between 10% and 20%.
+  - The inlined `if (perboxExists(name))` is 50/50 in ours (both arms
+    call).  In the original's hot noecdremap copy perbox-false falls
+    through; in the guarded ones the perbox-true trace is connected after
+    it.  Writing `if (!perboxExists(name)) {ini} else {perbox}` gets
+    noecdremap right and the guarded ones wrong.
+  - No guards, early inlining (`--param early-inlining-insns=1000`),
+    `&&`/`|` guards on both flag words, and several optIniBool shapes were
+    all worse; the line count is a poor score for these (use a block-order
+    listing instead).
+  - Also off: the xellbutton registers (ebx vs edx) and the dualboot /
+    type reload (`mov edx,[type]` kept for `cmp edx,2`).
 - `parseOption` (454): block layout (gputemp's body is placed after the
   error blocks in the original).  The u32 return/validateString prototypes
   stop the return value living in esi, but they cost parseCmdOptions 15
   lines (it matched with an int return).
 - `loadAddons` (11): the original keeps j=0 in eax across the over-limit
-  warning (caller-save); ours rematerialises it.
+  warning (caller-save); ours rematerialises it.  That spill also blocks
+  the head merge of `lea eax,name; mov [esp+8],eax` above the `jg`, which
+  is the other half of the diff.  Moving `j = 0`, a pointer instead of an
+  index, unsigned j and a do-while made no difference or worse.
 
 Findings:
 - 449640 is `parseButton.part.N` (ipa-split of a single parseButton with
