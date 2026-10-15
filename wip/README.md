@@ -170,3 +170,17 @@ different register choice; `memset(hash, 0, 16)` matched. unscramble's
 state index is `j = (j + 1) & 3` with `t = buf[i] * 251` computed first.
 The signature-log ifs are `if (ok) good else FAIL` in crlVerifySig and
 fcrtVerifySig.
+
+## app/filelist_ini (draft: wip/app/filelist_ini.c, SYMBOLS/IAT diff: filelist_ini_split.diff)
+
+Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops the
+`PHI <'A', validChars[j+1]>` the original has in iniPreParse's validChars loop).
+- MATCH: iniFindKey (409310, 4-arg, `label` flag; getIniValue inlines it), findChar, checkFileNames.
+- iniPreParse: 15 lines. Left: `;` position kept in ebx (ours reloads [28]) and the
+  setne order (0xff vs '\n') in the comment count loop.
+- getters use their own 2-arg helper `findKey(buf, key)` with global iniSize and `p = &buf[i]`;
+  getIniBool must return `long` (int def). 10/30/8/8 lines: LRA reload ebx/ecx tie.
+- matchFileNames 23 (dir ptr in ebp), loadUserIni 30 (keep `iniSize + 1` in a local).
+- stat at 448820 needs SYMBOLS `_stat` + IAT_NAMES `'_stat': '__imp___stat'`.
+- validChars is read with [0] folded to 'A', so the object needs C data (bootloaders-style one .c).
+- parseIni (409430-40aa10) not started.
