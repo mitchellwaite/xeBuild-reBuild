@@ -525,17 +525,16 @@ u32 parseOption(char *opt)
 			i = len + 1;
 		}
 	}
-	if (len == strlen(opt)) {
-		if (setBoolOption(opt, val) == 1)
-			goto done;
-		if (!val)
-			goto incomplete;
+	if (len == strlen(opt))
 		vlen = 0;
-	} else {
+	else
 		vlen = strlen(val);
-		if (setBoolOption(opt, val) == 1)
-			goto done;
+	switch (setBoolOption(opt, val)) {
+	case 1:
+		{ log_printf(1, "\n"); return 1; }
 	}
+	if (!vlen && !val)
+		{ log_printf(1, "\n\n***** ERROR: unknown or incomplete option '%s' provided on the command line!\n", opt); return 0; }
 	if (!stricmp(opt, "cputemp")) {
 		xb.cpuTemp = myatou32(val, -1);
 		if (xb.cpuTemp == -1)
@@ -658,13 +657,12 @@ u32 parseOption(char *opt)
 		xb.macid[0] = myatox8(val);
 		val += 2;
 		log_printf(1, "%02x", xb.macid[0]);
-		for (i = 1; i < 6; i++) {
+		for (i = 0; i < 5; i++) {
 			log_printf(1, ":");
-			xb.macid[i] = myatox8(val);
-			val += 2;
-			log_printf(1, "%02x", xb.macid[i]);
+			xb.macid[i + 1] = myatox8(val + i * 2);
+			log_printf(1, "%02x", xb.macid[i + 1]);
 		}
-		goto done;
+		{ log_printf(1, "\n"); return 1; }
 	}
 	if (!stricmp(opt, "dvdkey")) {
 		if (!kvSetDvdKey(val))
@@ -676,15 +674,11 @@ u32 parseOption(char *opt)
 		log_printf(1, "\n\n***** ERROR: unknown option '%s' with value '%s' provided on the command line!\n", opt, val);
 		return 0;
 	}
-incomplete:
 	log_printf(1, "\n\n***** ERROR: unknown or incomplete option '%s' provided on the command line!\n", opt);
 	return 0;
 bad:
 	log_printf(1, "\n\n***** ERROR: parsing option '%s', value '%s' is incorrect!\n", opt, val);
 	return 0;
-done:
-	log_printf(1, "\n");
-	return 1;
 }
 
 /* ;-separated options from the command line */

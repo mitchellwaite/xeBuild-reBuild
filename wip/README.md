@@ -74,10 +74,33 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
     listing instead).
   - Also off: the xellbutton registers (ebx vs edx) and the dualboot /
     type reload (`mov edx,[type]` kept for `cmp edx,2`).
-- `parseOption` (454): block layout (gputemp's body is placed after the
-  error blocks in the original).  The u32 return/validateString prototypes
-  stop the return value living in esi, but they cost parseCmdOptions 15
-  lines (it matched with an int return).
+- `parseOption` (69, was 454): what fixed most of it:
+  - macid loop `for (i = 0; i < 5; i++) ... xb.macid[i + 1] = myatox8(val
+    + i * 2)`: the IV starts at 0 (uncprop reuses stricmp's 0, which is
+    what needs ebp for vlen) and the exit test stays on i.
+  - One `setBoolOption` call after `vlen = len == strlen(opt) ? 0 :
+    strlen(val)`, then `if (!vlen && !val)` incomplete; gcc threads it
+    into the original's three copies (len<=0, '=', no '=').
+  - `switch (setBoolOption(...)) { case 1: ... }` (no `==` heuristic), so
+    the len<=0 copy's done edge (20.7%) beats the macid loop exit (16.7%)
+    when connect_traces picks done's predecessor.
+  - `goto bad`, done/incomplete written inline.
+  What is left is the first options' layout.  Ours behaves like the
+  original shifted by one option (our cputemp is laid out like its gputemp)
+  and the vlen=0 `jmp` block sits one slot early.  `__builtin_expect(len ==
+  strlen(opt), 0)` at `--param builtin-expect-probability=85` fixes the
+  shift (62 lines) but then cputemp's -1 test goes to bad.  The original
+  needs success at cputemp's -1 test and bad at edramtemp's, which uniform
+  probabilities can't give under my reading of bb-reorder (rounds: exec
+  thresholds 285/114/28 of entry freq 570).  The "early return" predictor
+  (61%) comes from tree_estimate_probability_bb: an edge into a block that
+  jumps to the return block, unless that block is the return block's
+  `next_bb`; ours fires on every success block, not on `bad` (it precedes
+  the return block).  Tools: wip/blk.py (block order diff vs options.s), wip/bbmap.py
+  (bb-reorder traces with source lines and edge probabilities).
+  The u32 return/validateString prototypes stop the return value living in
+  esi, but they cost parseCmdOptions 15 lines (it matched with an int
+  return).
 - `loadAddons` (11): the original keeps j=0 in eax across the over-limit
   warning (caller-save); ours rematerialises it.  That spill also blocks
   the head merge of `lea eax,name; mov [esp+8],eax` above the `jg`, which
