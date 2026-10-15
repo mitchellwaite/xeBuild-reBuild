@@ -230,6 +230,13 @@ __asm__(
 	"	.byte 0x0\n"
 	"	.byte 0x0\n"
 	"	.byte 0x0\n"
+	".text\n"
+	".att_syntax\n");
+
+/* decrypt a CF in place with the 1BL key; 1 if it checks out */
+int cfDecrypt(u8 *cf, u32 size);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_cfDecrypt:\n"
 	"	push EDI\n"
 	"	push ESI\n"
@@ -416,6 +423,13 @@ __asm__(
 	"	.byte 0x76\n"
 	"	.byte 0x0\n"
 	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
+	".text\n"
+	".att_syntax\n");
+
+/* check one DAE segment's signature (1 if no key or too short) */
+int daeVerifySig(u8 *seg, u32 size, int n);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_daeVerifySig:\n"
 	"	mov EAX,DWORD PTR [_pub2a4]\n"
 	"	test EAX,EAX\n"
@@ -482,6 +496,13 @@ __asm__(
 	"	ret\n"
 	"	.byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]\n"
 	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
+	".text\n"
+	".att_syntax\n");
+
+/* check and decrypt the two DAEP segments of a DAE file */
+int verifyDae(u8 *buf, u32 size);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_verifyDae:\n"
 	"	push EBP\n"
 	"	push EDI\n"
@@ -653,6 +674,13 @@ __asm__(
 	"	.byte 0x0\n"
 	"	.byte 0x0\n"
 	"	.byte 0x0\n"
+	".text\n"
+	".att_syntax\n");
+
+/* check an FCRT's signature, then decrypt it with the CPU key */
+int verifyFcrt(u8 *fcrt, u32 size);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_verifyFcrt:\n"
 	"	push EBP\n"
 	"	push EDI\n"
@@ -857,6 +885,13 @@ __asm__(
 	".intel_syntax noprefix\n"
 	"	.byte 0x66\n"
 	"	.byte 0x90\n"
+	".text\n"
+	".att_syntax\n");
+
+/* decrypted copy of a CB/SB (free it), checked against the 1BL RSA key */
+u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_cbDecrypt:\n"
 	"	push EBP\n"
 	"	push EDI\n"
@@ -1001,6 +1036,14 @@ __asm__(
 	"	.byte 0x0\n"
 	"	.byte 0x0\n"
 	"	.byte 0x0\n"
+	".text\n"
+	".att_syntax\n");
+
+/* decrypted copy of an SC/SD/CD with hmacKey, signature checked if pubKey and salt */
+u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey,
+	u32 *outLen, u8 *outKey);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_cdDecrypt:\n"
 	"	push EBP\n"
 	"	push EDI\n"
@@ -1169,6 +1212,13 @@ __asm__(
 	"	jmp L_402e09\n"
 	"	.byte 0x66\n"
 	"	.byte 0x90\n"
+	".text\n"
+	".att_syntax\n");
+
+/* decrypted copy of an SE/CE with hmacKey, hash checked if given */
+u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash);
+__asm__(
+	".intel_syntax noprefix\n"
 	"_ceDecrypt:\n"
 	"	push EBP\n"
 	"	push EDI\n"
@@ -1312,6 +1362,12 @@ __asm__(
 	"	.byte 0x90\n"
 	"	.byte 0x90\n"
 	"\n"
+	".text\n"
+	".att_syntax\n");
+
+/* the object's strings and unwind info (FDEs for every function) */
+__asm__(
+	".intel_syntax noprefix\n"
 	".section .rdata,\"dr\"\n"
 	"	.p2align 2\n"
 	"_msg_cbPairOk:\n"
