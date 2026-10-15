@@ -285,13 +285,14 @@ _Bool optIniBool(const char *name, u32 set, u32 clear, int def)
 		log_printf(1, "Using %s option (perbox file)\n", name);
 	} else {
 		bad = iniBoolInvalid(name);
-		if (bad) {
+		if (!bad) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
 			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
 			return 0;
 		}
-		if (!getIniBool(name, def))
-			return 0;
-		log_printf(1, "Using %s option (ini file)\n", name);
 	}
 	xb.bootFlags = (xb.bootFlags & ~clear) | set;
 	return 1;

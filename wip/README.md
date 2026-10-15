@@ -72,6 +72,17 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
     `&&`/`|` guards on both flag words, and several optIniBool shapes were
     all worse; the line count is a poor score for these (use a block-order
     listing instead).
+  - optIniBool tests `if (!bad) { getIniBool... } else { warning }`, so
+    the getIniBool-false block comes before the warning in block order.
+    Then jump2 crossjumps the two `mov eax,[bootFlags]` reloads into one
+    block (the original's shared `mov eax,[flags]; jmp next`), and each
+    getIniBool test and its ini log end up in one cold block, as in the
+    original.  crossjump(A,B) is only tried with A the lower-numbered
+    block, and only A can be redirected when it matches completely (1
+    insn < min-crossjump-insns), so the warning-first order never merges
+    them.  `wip/blk.py` diff 88 -> 76 lines.  What is left is the perbox
+    direction (perbox-true falls through in the original, except
+    noecdremap's).
   - Also off: the xellbutton registers (ebx vs edx) and the dualboot /
     type reload (`mov edx,[type]` kept for `cmp edx,2`).
 - `parseOption` (69, was 454): what fixed most of it:
@@ -108,6 +119,12 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
   index, unsigned j and a do-while made no difference or worse.
 
 Findings:
+- DashLaunch (same authors) has the ini reader in C:
+  https://github.com/cOzInABox/dashLaunch/blob/main/dll/iniparse.c.
+  `getIniBool` is its `iniGetBool` (`"true"`,4 / `"false"`,5 / default),
+  `parseIni` starts with `iniStart`'s `buf[0] == 0xff || buf[1] == 0xff`
+  check, and the `j = len + 1` loop exits are the same habit as its
+  `i = 16`.  Use it as a style reference for filelist_ini.
 - 449640 is `parseButton.part.N` (ipa-split of a single parseButton with
   an if/else chain).  gcc puts it in `.text.unlikely`; split.py calls that
   piece `.text.startup`.  The real i386pe script merges `*(.text.*)` in
