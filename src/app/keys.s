@@ -1,5 +1,7 @@
 # app/keys.s -- CPU/1BL key setup, SMC/keyvault/CRL input decryption, pairing init
 #
+# mixed: `#@C name` lines are functions from keys.c (re/splice.py)
+#
 # original placement:
 #   .bss           00479560-00479574
 #   .data          0044a5e0-0044a6c0
@@ -9,125 +11,72 @@
 #   .text          0041aa00-0041e800
 
 .intel_syntax noprefix
-.globl FUN_41aa00
-.globl FUN_41ad90
-.globl FUN_41adb0
-.globl FUN_41add0
-.globl FUN_41b320
-.globl FUN_41ba80
-.globl FUN_41bf50
-.globl FUN_41c0c0
-.globl FUN_41c1b0
-.globl FUN_41c370
-.globl FUN_41c5e0
-.globl FUN_41c6b0
-.globl FUN_41c760
-.globl FUN_41c860
-.globl FUN_41ca20
-.globl FUN_41ce50
-.globl FUN_41d0e0
-.globl FUN_41d6a0
-.globl FUN_41d9b0
-.globl FUN_41dc30
-.globl FUN_41e180
-.globl FUN_41e620
-.globl FUN_41e7b0
-.globl _checkCpuKey
-.globl _checkKeys
-.globl _set1blKey
-.globl _setCpuKey
-.globl _setCpuKeyStr
-.globl _setCrlKey
-.globl _setDaeKey
-.globl _setInfoKey0
-.globl _setInfoKey1
-.globl _setInfoKey2
-.globl _setInfoKey3
-.globl _setInfoKey4
-.globl _setInfoKey5
-.globl _setPairing
-.globl _setSecdataKey
-.globl _shaCheck
+.globl _cfEncrypt
+.globl _cfPatchSlots
+.globl _crlKey
+.globl _daeEncrypt
+.globl _daeKey
+.globl _fcrtEncrypt
+.globl _infoKey0
+.globl _infoKey1
+.globl _infoKey2
+.globl _infoKey3
+.globl _infoKey4
+.globl _infoKey5
+.globl _kvAltSalt
+.globl _kvPrepare
+.globl _kvSalt
+.globl _msg_1blBad
+.globl _msg_1blBad2
+.globl _msg_1blBadStr
+.globl _msg_1blBadStr2
+.globl _msg_1blChars
+.globl _msg_1blKeySet
+.globl _msg_1blLen
+.globl _msg_1blSum
+.globl _msg_cbb15572
+.globl _msg_cbbMfg
+.globl _msg_cbencPairing
+.globl _msg_cpuKeyChars
+.globl _msg_cpuKeyLen
+.globl _msg_cpuKeySet
+.globl _msg_cpuKeySet2
+.globl _msg_cpuKeyWarn
+.globl _msg_crlBad
+.globl _msg_crlCrypted
+.globl _msg_crlRetry
+.globl _msg_dualCb
+.globl _msg_extDecryptFail
+.globl _msg_extEncrypted
+.globl _msg_extMissing
+.globl _msg_extSize
+.globl _msg_initRandom
+.globl _msg_initStatic
+.globl _msg_pairingSet
+.globl _msg_sdMissing
+.globl _msg_sdSize
+.globl _msg_weight
+.globl _msg_xexKeySet
+.globl _msg_xexSum
+.globl _pairing
+.globl _secdataKey
+.globl _setFuseCpuKey
+.globl _setFuseLdv
+.globl _smcChecksum
+.globl _smcKey
+.globl _smcPrepare
+.globl _str_Success
+.globl _str_error
+.globl _str_failedNl
+.globl _str_hexByte
+.globl _str_newline
+.globl _str_successNl
+.globl _str_valid
+.globl _zeroKey
 
 .text
 .p2align 4
-FUN_41aa00:
-          sub ESP,28
-          call _aes_init
-          mov EAX,DWORD PTR [ESP+32]
-          test EAX,EAX
-          jne L_41aa60
-          cmp BYTE PTR [L_479570],0
-          jne L_41aa58
-          cmp BYTE PTR [L_479571],0
-          jne L_41aa58
-          cmp BYTE PTR [L_479572],0
-          jne L_41ab7e
-          mov DWORD PTR [ESP+4],OFFSET L_456680
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov BYTE PTR [L_479570],35
-          mov BYTE PTR [L_479571],69
-          mov BYTE PTR [L_479572],241
-L_41aa58:
-          add ESP,28
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41aa60:
-          mov DWORD PTR [ESP+4],OFFSET L_456664
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_44a6a4
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_44a694
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_44a684
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_44a674
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_44a664
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET L_44a654
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],8
-          mov DWORD PTR [ESP],OFFSET L_44a64c
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],8
-          mov DWORD PTR [ESP],OFFSET L_44a644
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],4
-          mov DWORD PTR [ESP],OFFSET L_44a640
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],32
-          mov DWORD PTR [ESP],OFFSET L_44a620
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],32
-          mov DWORD PTR [ESP],OFFSET L_44a600
-          call _XeCryptRandom
-          mov DWORD PTR [ESP+4],8
-          mov DWORD PTR [ESP],OFFSET L_44a5e0
-          call _XeCryptRandom
-          cmp BYTE PTR [L_479570],0
-          jne L_41aa58
-          cmp BYTE PTR [L_479571],0
-          jne L_41aa58
-L_41ab7e:
-          cmp BYTE PTR [L_479572],0
-          jne L_41aa58
-          mov DWORD PTR [ESP+4],3
-          mov DWORD PTR [ESP],OFFSET L_479570
-          call _XeCryptRandom
-          add ESP,28
-          ret 
+#@C _keysInit
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -141,61 +90,17 @@ L_41ab7e:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setCrlKey:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EDX,DWORD PTR [EAX+16]
-          mov DWORD PTR [L_44a620],EDX
-          mov EDX,DWORD PTR [EAX+20]
-          mov DWORD PTR [L_44a624],EDX
-          mov EDX,DWORD PTR [EAX+24]
-          mov DWORD PTR [L_44a628],EDX
-          mov EDX,DWORD PTR [EAX+28]
-          mov DWORD PTR [L_44a62c],EDX
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a630],EBX
-          mov DWORD PTR [L_44a634],ECX
-          mov DWORD PTR [L_44a638],EDX
-          mov DWORD PTR [L_44a63c],EAX
-          pop EBX
-          ret 
+#@C _setCrlKey
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-_setDaeKey:
-          mov EAX,DWORD PTR [ESP+4]
-          mov EDX,DWORD PTR [EAX]
-          mov DWORD PTR [L_44a600],EDX
-          mov EDX,DWORD PTR [EAX+4]
-          mov DWORD PTR [L_44a604],EDX
-          mov EDX,DWORD PTR [EAX+8]
-          mov DWORD PTR [L_44a608],EDX
-          mov EDX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a60c],EDX
-          mov EDX,DWORD PTR [EAX+16]
-          mov DWORD PTR [L_44a610],EDX
-          mov EDX,DWORD PTR [EAX+20]
-          mov DWORD PTR [L_44a614],EDX
-          mov EDX,DWORD PTR [EAX+24]
-          mov DWORD PTR [L_44a618],EDX
-          mov EAX,DWORD PTR [EAX+28]
-          mov DWORD PTR [L_44a61c],EAX
-          ret 
+#@C _setDaeKey
           .byte 0x90
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_setSecdataKey:
-          mov EAX,DWORD PTR [ESP+4]
-          mov EDX,DWORD PTR [EAX+4]
-          mov EAX,DWORD PTR [EAX]
-          mov DWORD PTR [L_44a5e4],EDX
-          mov DWORD PTR [L_44a5e0],EAX
-          ret 
+#@C _setSecdataKey
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -207,19 +112,7 @@ _setSecdataKey:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setInfoKey0:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a6a4],EBX
-          mov DWORD PTR [L_44a6a8],ECX
-          mov DWORD PTR [L_44a6ac],EDX
-          mov DWORD PTR [L_44a6b0],EAX
-          pop EBX
-          ret 
+#@C _setInfoKey0
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -227,19 +120,7 @@ _setInfoKey0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setInfoKey1:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a694],EBX
-          mov DWORD PTR [L_44a698],ECX
-          mov DWORD PTR [L_44a69c],EDX
-          mov DWORD PTR [L_44a6a0],EAX
-          pop EBX
-          ret 
+#@C _setInfoKey1
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -247,19 +128,7 @@ _setInfoKey1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setInfoKey2:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a684],EBX
-          mov DWORD PTR [L_44a688],ECX
-          mov DWORD PTR [L_44a68c],EDX
-          mov DWORD PTR [L_44a690],EAX
-          pop EBX
-          ret 
+#@C _setInfoKey2
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -267,19 +136,7 @@ _setInfoKey2:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setInfoKey3:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a674],EBX
-          mov DWORD PTR [L_44a678],ECX
-          mov DWORD PTR [L_44a67c],EDX
-          mov DWORD PTR [L_44a680],EAX
-          pop EBX
-          ret 
+#@C _setInfoKey3
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -287,19 +144,7 @@ _setInfoKey3:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setInfoKey4:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a664],EBX
-          mov DWORD PTR [L_44a668],ECX
-          mov DWORD PTR [L_44a66c],EDX
-          mov DWORD PTR [L_44a670],EAX
-          pop EBX
-          ret 
+#@C _setInfoKey4
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -307,19 +152,7 @@ _setInfoKey4:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setInfoKey5:
-          push EBX
-          mov EAX,DWORD PTR [ESP+8]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [L_44a654],EBX
-          mov DWORD PTR [L_44a658],ECX
-          mov DWORD PTR [L_44a65c],EDX
-          mov DWORD PTR [L_44a660],EAX
-          pop EBX
-          ret 
+#@C _setInfoKey5
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -327,13 +160,7 @@ _setInfoKey5:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ad90:
-          mov EAX,DWORD PTR [ESP+4]
-          mov EDX,DWORD PTR [EAX+4]
-          mov EAX,DWORD PTR [EAX]
-          mov DWORD PTR [L_44a650],EDX
-          mov DWORD PTR [L_44a64c],EAX
-          ret 
+#@C _setKvSalt
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -345,13 +172,7 @@ FUN_41ad90:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41adb0:
-          mov EAX,DWORD PTR [ESP+4]
-          mov EDX,DWORD PTR [EAX+4]
-          mov EAX,DWORD PTR [EAX]
-          mov DWORD PTR [L_44a648],EDX
-          mov DWORD PTR [L_44a644],EAX
-          ret 
+#@C _setKvAltSalt
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -363,152 +184,15 @@ FUN_41adb0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41add0:
-          mov EAX,DWORD PTR [ESP+4]
-          mov EAX,DWORD PTR [EAX]
-          mov DWORD PTR [L_44a640],EAX
-          ret 
+#@C _setSmcKey
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_setPairing:
-          sub ESP,44
-          xor EAX,EAX
-          mov EDX,DWORD PTR [ESP+48]
-          test EDX,16777215
-          je L_41ae3a
-          mov EAX,EDX
-          mov ECX,EDX
-          mov BYTE PTR [L_479572],DL
-          shr EAX,16
-          shr ECX,8
-          movzx EDX,DL
-          mov BYTE PTR [L_479570],AL
-          mov BYTE PTR [L_479571],CL
-          movzx EAX,AL
-          movzx ECX,CL
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+16],EDX
-          mov DWORD PTR [ESP+12],ECX
-          mov DWORD PTR [ESP+4],OFFSET L_4566a4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,1
-L_41ae3a:
-          add ESP,44
-          ret 
+#@C _setPairing
           .byte 0x66
           .byte 0x90
-_checkCpuKey:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,64
-          mov EBX,DWORD PTR [ESP+84]
-          mov DWORD PTR [ESP+32],4294967295
-          mov DWORD PTR [ESP+36],4294967295
-          mov DWORD PTR [ESP+40],4294967295
-          mov DWORD PTR [ESP+44],1023
-          test BL,3
-          jne L_41af15
-          mov EAX,DWORD PTR [EBX]
-          mov DWORD PTR [ESP+48],EAX
-          mov EAX,DWORD PTR [EBX+4]
-          mov DWORD PTR [ESP+52],EAX
-          mov EAX,DWORD PTR [EBX+8]
-          mov DWORD PTR [ESP+56],EAX
-          mov EAX,DWORD PTR [EBX+12]
-          and EAX,1023
-          mov DWORD PTR [ESP+60],EAX
-L_41ae93:
-          lea ESI,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],ESI
-          call _XeCryptHammingWeight
-          mov DWORD PTR [ESP],ESI
-          mov EDI,EAX
-          call _XeCryptUidEccEncode
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+8],16
-          call _memcmp
-          test EAX,EAX
-          mov EDX,OFFSET L_4566c4
-          mov DWORD PTR [ESP+8],EDI
-          sete BL
-          cmp EDI,53
-          mov DWORD PTR [ESP+4],OFFSET L_4566d0
-          sete CL
-          test EAX,EAX
-          mov EAX,EDX
-          mov ESI,ECX
-          mov ECX,OFFSET L_4566ca
-          cmovne EAX,ECX
-          cmp EDI,53
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,DWORD PTR [ESP+80]
-          cmovne EDX,ECX
-          mov DWORD PTR [ESP+12],EDX
-          and EBX,ESI
-          mov DWORD PTR [ESP],EAX
-          call _log_printf
-          add ESP,64
-          movzx EAX,BL
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_41af15:
-          movzx EAX,BYTE PTR [EBX]
-          and AL,BYTE PTR [ESP+32]
-          mov BYTE PTR [ESP+48],AL
-          movzx EAX,BYTE PTR [EBX+1]
-          and AL,BYTE PTR [ESP+33]
-          mov BYTE PTR [ESP+49],AL
-          movzx EAX,BYTE PTR [EBX+2]
-          and AL,BYTE PTR [ESP+34]
-          mov BYTE PTR [ESP+50],AL
-          movzx EAX,BYTE PTR [EBX+3]
-          and AL,BYTE PTR [ESP+35]
-          mov BYTE PTR [ESP+51],AL
-          movzx EAX,BYTE PTR [EBX+4]
-          and AL,BYTE PTR [ESP+36]
-          mov BYTE PTR [ESP+52],AL
-          movzx EAX,BYTE PTR [EBX+5]
-          and AL,BYTE PTR [ESP+37]
-          mov BYTE PTR [ESP+53],AL
-          movzx EAX,BYTE PTR [EBX+6]
-          and AL,BYTE PTR [ESP+38]
-          mov BYTE PTR [ESP+54],AL
-          movzx EAX,BYTE PTR [EBX+7]
-          and AL,BYTE PTR [ESP+39]
-          mov BYTE PTR [ESP+55],AL
-          movzx EAX,BYTE PTR [EBX+8]
-          and AL,BYTE PTR [ESP+40]
-          mov BYTE PTR [ESP+56],AL
-          movzx EAX,BYTE PTR [EBX+9]
-          and AL,BYTE PTR [ESP+41]
-          mov BYTE PTR [ESP+57],AL
-          movzx EAX,BYTE PTR [EBX+10]
-          and AL,BYTE PTR [ESP+42]
-          mov BYTE PTR [ESP+58],AL
-          movzx EAX,BYTE PTR [EBX+11]
-          and AL,BYTE PTR [ESP+43]
-          mov BYTE PTR [ESP+59],AL
-          movzx EAX,BYTE PTR [EBX+12]
-          and AL,BYTE PTR [ESP+44]
-          mov BYTE PTR [ESP+60],AL
-          movzx EAX,BYTE PTR [EBX+13]
-          and AL,BYTE PTR [ESP+45]
-          mov BYTE PTR [ESP+61],AL
-          movzx EAX,BYTE PTR [EBX+14]
-          and AL,BYTE PTR [ESP+46]
-          mov BYTE PTR [ESP+62],AL
-          movzx EAX,BYTE PTR [ESP+47]
-          and AL,BYTE PTR [EBX+15]
-          mov BYTE PTR [ESP+63],AL
-          jmp L_41ae93
+#@C _checkCpuKey
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -516,83 +200,7 @@ L_41af15:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setCpuKeyStr:
-          push ESI
-          push EBX
-          sub ESP,20
-          mov ESI,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP],ESI
-          call _strlen
-          cmp EAX,32
-          je L_41b020
-          mov DWORD PTR [ESP+12],EAX
-          mov DWORD PTR [ESP+8],ESI
-          xor EBX,EBX
-          mov DWORD PTR [ESP+4],OFFSET L_45678c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_41b014:
-          add ESP,20
-          mov EAX,EBX
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41b020:
-          mov DWORD PTR [ESP],ESI
-          call _validateString
-          test EAX,EAX
-          mov EBX,EAX
-          je L_41b0e0
-          xor EBX,EBX
-L_41b034:
-          mov DWORD PTR [ESP],ESI
-          add EBX,1
-          add ESI,2
-          call _myatox8
-          mov BYTE PTR [EBX+L_47a11b],AL
-          cmp EBX,16
-          jne L_41b034
-          mov DWORD PTR [ESP+4],OFFSET L_4566eb
-          mov DWORD PTR [ESP],1
-          xor EBX,EBX
-          call _log_printf
-L_41b063:
-          movzx EAX,BYTE PTR [EBX+_cpuKey]
-          mov DWORD PTR [ESP+4],OFFSET L_4566fe
-          add EBX,1
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          cmp EBX,16
-          jne L_41b063
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov EBX,1
-          call _checkZeros
-          test EAX,EAX
-          jne L_41b014
-          mov DWORD PTR [ESP+4],OFFSET _cpuKey
-          mov DWORD PTR [ESP],1
-          call _checkCpuKey
-          test EAX,EAX
-          je L_41b100
-          mov DWORD PTR [ESP+4],OFFSET L_456703
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41b014
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41b0e0:
-          mov DWORD PTR [ESP+4],OFFSET L_45674c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41b014
+#@C _setCpuKeyStr
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -600,69 +208,12 @@ L_41b0e0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_41b100:
-          mov DWORD PTR [ESP+4],OFFSET L_456708
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41b014
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-_setCpuKey:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,16
-          mov EBX,DWORD PTR [ESP+36]
-          mov ESI,DWORD PTR [ESP+32]
-          mov ECX,DWORD PTR [EBX+4]
-          mov EDX,DWORD PTR [EBX+8]
-          mov EAX,DWORD PTR [EBX+12]
-          mov EDI,DWORD PTR [EBX]
-          mov DWORD PTR [ESP+4],OFFSET L_4567eb
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [L_47a120],ECX
-          mov DWORD PTR [L_47a124],EDX
-          mov DWORD PTR [L_47a128],EAX
-          mov DWORD PTR [_cpuKey],EDI
-          call _log_printf
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],ESI
-          call _showKey
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _checkZeros
-          test EAX,EAX
-          je L_41b1a0
-L_41b184:
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+4],OFFSET L_456703
-          call _log_printf
-          add ESP,16
-          mov EAX,1
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_41b1a0:
-          mov DWORD PTR [ESP+4],OFFSET _cpuKey
-          mov DWORD PTR [ESP],ESI
-          call _checkCpuKey
-          test EAX,EAX
-          jne L_41b184
-          mov DWORD PTR [ESP+4],OFFSET L_456708
-          mov DWORD PTR [ESP],ESI
-          call _log_printf
-          jmp L_41b184
+#@C _setCpuKey
           .byte 0x8d
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41b1d0:
+_setFuseLdv:
           push EBP
           push EDI
           push ESI
@@ -722,14 +273,14 @@ L_41b242:
           nop
 L_41b280:
           movzx EAX,BYTE PTR [EBX]
-          mov DWORD PTR [ESP+4],OFFSET L_4566fe
+          mov DWORD PTR [ESP+4],OFFSET _str_hexByte
           add EBX,1
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+8],EAX
           call _log_printf
           cmp EBX,ESI
           jne L_41b280
-          mov DWORD PTR [ESP+52],OFFSET L_456703
+          mov DWORD PTR [ESP+52],OFFSET _str_newline
           mov DWORD PTR [ESP+48],1
           add ESP,28
           pop EBX
@@ -785,7 +336,7 @@ L_41b305:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41b320:
+_setFuseCpuKey:
           push EBP
           push EDI
           push ESI
@@ -819,7 +370,7 @@ FUN_41b320:
           mov DWORD PTR [L_47a120],EDI
           add ESI,48
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41b1d0
+          call _setFuseLdv
           mov DWORD PTR [ESP+4],OFFSET L_456816
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -827,14 +378,14 @@ FUN_41b320:
           nop
 L_41b3c0:
           movzx EAX,BYTE PTR [EBX]
-          mov DWORD PTR [ESP+4],OFFSET L_4566fe
+          mov DWORD PTR [ESP+4],OFFSET _str_hexByte
           add EBX,1
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+8],EAX
           call _log_printf
           cmp EBX,ESI
           jne L_41b3c0
-          mov DWORD PTR [ESP+4],OFFSET L_456703
+          mov DWORD PTR [ESP+4],OFFSET _str_newline
           mov DWORD PTR [ESP],1
           call _log_printf
           add ESP,28
@@ -859,49 +410,7 @@ L_41b400:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_41b420:
-          push EBX
-          sub ESP,104
-          lea EBX,DWORD PTR [ESP+80]
-          lea EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+32],EBX
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],OFFSET _key1bl
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+48],3211929493
-          mov DWORD PTR [ESP+52],2566307911
-          mov DWORD PTR [ESP+56],1358069084
-          mov DWORD PTR [ESP+60],3444919653
-          mov DWORD PTR [ESP+64],1936287860
-          mov DWORD PTR [ESP+68],1969910633
-          mov DWORD PTR [ESP+72],1784771699
-          mov DWORD PTR [ESP+76],2037083765
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],OFFSET _key28c
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [_key28c],EAX
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [L_47a130],EAX
-          mov EAX,DWORD PTR [ESP+56]
-          mov DWORD PTR [L_47a134],EAX
-          mov EAX,DWORD PTR [ESP+60]
-          mov DWORD PTR [L_47a138],EAX
-          call _XeCryptRc4
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key28c
-          call _sumBytes
-          add ESP,104
-          pop EBX
-          ret 
+#@C _calcXexKey
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -913,119 +422,11 @@ FUN_41b420:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_41b520:
-          push EBX
-          sub ESP,24
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          call _sumBytes
-          mov EBX,EAX
-          call FUN_41b420
-          cmp EBX,2435
-          jne L_41b5f0
-          cmp EAX,2048
-          jne L_41b5f0
-          mov DWORD PTR [ESP+4],OFFSET L_45685e
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key1bl
-          mov DWORD PTR [ESP],1
-          call _showKey
-          mov DWORD PTR [ESP+8],2435
-          mov DWORD PTR [ESP+4],OFFSET L_456873
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_456890
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key28c
-          mov DWORD PTR [ESP],1
-          call _showKey
-          mov DWORD PTR [ESP+8],2048
-          mov DWORD PTR [ESP+4],OFFSET L_4568a5
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,24
-          mov EAX,1
-          pop EBX
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41b5f0:
-          add ESP,24
-          xor EAX,EAX
-          pop EBX
-          ret 
+#@C _check1blKey
 L_41b5f7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_set1blKey:
-          push EBX
-          sub ESP,24
-          mov EAX,DWORD PTR [ESP+32]
-          mov EBX,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [EAX+8]
-          mov EAX,DWORD PTR [EAX+12]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          mov DWORD PTR [_key1bl],EBX
-          mov DWORD PTR [L_47a110],ECX
-          mov DWORD PTR [L_47a114],EDX
-          mov DWORD PTR [L_47a118],EAX
-          call _sumBytes
-          mov EBX,EAX
-          call FUN_41b420
-          cmp EBX,2435
-          jne L_41b6f0
-          cmp EAX,2048
-          jne L_41b6f0
-          mov DWORD PTR [ESP+4],OFFSET L_45685e
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key1bl
-          mov DWORD PTR [ESP],1
-          call _showKey
-          mov DWORD PTR [ESP+8],2435
-          mov DWORD PTR [ESP+4],OFFSET L_456873
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_456890
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key28c
-          mov DWORD PTR [ESP],1
-          call _showKey
-          mov DWORD PTR [ESP+8],2048
-          mov DWORD PTR [ESP+4],OFFSET L_4568a5
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,24
-          mov EAX,1
-          pop EBX
-          ret 
-          .byte 0x66
-          .byte 0x90
-L_41b6f0:
-          mov DWORD PTR [ESP+4],OFFSET L_4568c2
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key1bl
-          mov DWORD PTR [ESP],0
-          call _showKey
-          mov DWORD PTR [ESP+4],OFFSET L_4568e0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,24
-          xor EAX,EAX
-          pop EBX
-          ret 
+#@C _set1blKey
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -1039,105 +440,9 @@ L_41b6f0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_checkKeys:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,32
-          mov EDI,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP],EDI
-          call _strlen
-          cmp EAX,32
-          je L_41b780
-          mov DWORD PTR [ESP+12],EAX
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_456944
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-L_41b775:
-          add ESP,32
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41b780:
-          mov DWORD PTR [ESP],EDI
-          call _validateString
-          test EAX,EAX
-          je L_41b8b0
-          mov ESI,EDI
-          xor EBX,EBX
-L_41b794:
-          mov DWORD PTR [ESP],ESI
-          add EBX,1
-          add ESI,2
-          call _myatox8
-          mov BYTE PTR [EBX+L_47a10b],AL
-          cmp EBX,16
-          jne L_41b794
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          call _sumBytes
-          mov EBX,EAX
-          call FUN_41b420
-          cmp EBX,2435
-          jne L_41b871
-          cmp EAX,2048
-          jne L_41b871
-          mov DWORD PTR [ESP+4],OFFSET L_45685e
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key1bl
-          mov DWORD PTR [ESP],1
-          call _showKey
-          mov DWORD PTR [ESP+8],2435
-          mov DWORD PTR [ESP+4],OFFSET L_456873
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_456890
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _key28c
-          mov DWORD PTR [ESP],1
-          call _showKey
-          mov DWORD PTR [ESP+8],2048
-          mov DWORD PTR [ESP+4],OFFSET L_4568a5
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,1
-          jmp L_41b775
-L_41b871:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_4569a3
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_4569c4
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,32
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41b8b0:
-          mov DWORD PTR [ESP+4],OFFSET L_456904
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+28],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+28]
-          jmp L_41b775
+#@C _checkKeys
 L_41b8d1:
-          jmp L_41b8e0
+          jmp _smcChecksum
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -1151,7 +456,7 @@ L_41b8d1:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-L_41b8e0:
+_smcChecksum:
           push EBP
           push EDI
           push ESI
@@ -1245,52 +550,7 @@ L_41b9f6:
           xor EAX,EAX
           xor EDX,EDX
           jmp L_41b9c7
-L_41ba00:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,16
-          mov ESI,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+12],2035184962
-          test ESI,ESI
-          je L_41ba6a
-          mov EDX,DWORD PTR [ESP+36]
-          mov ECX,117
-          mov EAX,66
-          mov EBX,1
-          add ESI,EDX
-          jmp L_41ba35
-          .byte 0x66   # nop
-          nop
-L_41ba30:
-          movzx EAX,BYTE PTR [ESP+EDI*1+12]
-L_41ba35:
-          xor AL,BYTE PTR [EDX]
-          and EBX,3
-          add EDX,1
-          mov EDI,EBX
-          mov BYTE PTR [EDX-1],AL
-          movzx EAX,AL
-          imul EAX,EAX,251
-          add ECX,EAX
-          sar EAX,8
-          mov BYTE PTR [ESP+EBX*1+12],CL
-          lea EBX,DWORD PTR [EBX+1]
-          mov ECX,EAX
-          mov EBP,EBX
-          and EBP,3
-          add CL,BYTE PTR [ESP+EBP*1+12]
-          cmp EDX,ESI
-          mov BYTE PTR [ESP+EBP*1+12],CL
-          jne L_41ba30
-L_41ba6a:
-          add ESP,16
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _smcEncrypt
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -1305,7 +565,7 @@ L_41ba6a:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41ba80:
+_smcPrepare:
           push EBP
           push EDI
           push ESI
@@ -1469,7 +729,7 @@ L_41bcbc:
           and EAX,146800640
           jne L_41be11
 L_41bcc7:
-          mov EAX,DWORD PTR [L_44a640]
+          mov EAX,DWORD PTR [_smcKey]
           mov EDI,DWORD PTR [ESP+96]
           test EBX,EBX
           mov DWORD PTR [ESP+60],2035184962
@@ -1630,7 +890,7 @@ L_41bf19:
           mov DWORD PTR [L_479f00],EAX
           jmp L_41bcbc
 L_41bf41:
-          jmp FUN_41bf50
+          jmp _cbaEncrypt
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -1644,356 +904,30 @@ L_41bf41:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-FUN_41bf50:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,76
-          mov EDX,DWORD PTR [L_44a6a4]
-          mov EBX,DWORD PTR [ESP+100]
-          mov EAX,DWORD PTR [ESP+96]
-          mov EDI,DWORD PTR [ESP+104]
-          mov EBP,DWORD PTR [ESP+112]
-          mov ESI,DWORD PTR [ESP+108]
-          mov DWORD PTR [EBX+16],EDX
-          mov EDX,DWORD PTR [L_44a6a8]
-          mov DWORD PTR [ESP+60],EAX
-          mov DWORD PTR [EBX+20],EDX
-          mov EDX,DWORD PTR [L_44a6ac]
-          mov DWORD PTR [EBX+24],EDX
-          mov EDX,DWORD PTR [L_44a6b0]
-          mov DWORD PTR [EBX+28],EDX
-          lea EDX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          call _XeCryptHmacSha
-          test EBP,EBP
-          lea EAX,DWORD PTR [EBX+32]
-          jne L_41c097
-          movzx EAX,BYTE PTR [L_479572]
-          mov DWORD PTR [ESP+4],OFFSET L_456cfc
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+16],EAX
-          movzx EAX,BYTE PTR [L_479571]
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,BYTE PTR [L_479570]
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          movzx EAX,WORD PTR [L_479570]
-          mov ECX,DWORD PTR [ESP+60]
-          mov WORD PTR [EBX+32],AX
-          movzx EAX,BYTE PTR [L_479572]
-          mov BYTE PTR [EBX+34],AL
-          movzx EAX,BYTE PTR [L_479f14]
-          mov BYTE PTR [EBX+35],AL
-          lea EAX,DWORD PTR [EBX+32]
-          add EBX,48
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EBX
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+28],16
-          mov DWORD PTR [ESP+24],ECX
-          mov DWORD PTR [ESP+20],16
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+60],EAX
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+60]
-L_41c097:
-          sub ESI,32
-          mov DWORD PTR [ESP+96],EDI
-          mov DWORD PTR [ESP+104],EAX
-          mov DWORD PTR [ESP+108],ESI
-          mov DWORD PTR [ESP+100],16
-          add ESP,76
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _XeCryptRc4
+#@C _cbaEncrypt
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41c0c0:
-          push ESI
-          push EBX
-          xor EDX,EDX
-          xor ECX,ECX
-          sub ESP,52
-          mov WORD PTR [L_479570],DX
-          mov EDX,DWORD PTR [L_44a6a4]
-          mov EAX,DWORD PTR [ESP+64]
-          mov BYTE PTR [L_479572],0
-          mov DWORD PTR [EAX+16],EDX
-          mov EDX,DWORD PTR [L_44a6a8]
-          lea EBX,DWORD PTR [EAX+32]
-          lea ESI,DWORD PTR [EAX+36]
-          mov DWORD PTR [EAX+20],EDX
-          mov EDX,DWORD PTR [L_44a6ac]
-          and ESI,4294967292
-          mov DWORD PTR [EAX+24],EDX
-          mov EDX,DWORD PTR [L_44a6b0]
-          mov DWORD PTR [EAX+32],0
-          mov DWORD PTR [EAX+28],EDX
-          mov EDX,EBX
-          mov DWORD PTR [EBX+28],0
-          sub EDX,ESI
-          add EDX,32
-          and EDX,4294967292
-L_41c120:
-          mov DWORD PTR [ESI+ECX*1],0
-          add ECX,4
-          cmp ECX,EDX
-          jb L_41c120
-          mov ECX,DWORD PTR [ESP+68]
-          add EAX,16
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+32],ECX
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+72]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],16
-          sub EAX,32
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [ESP+68]
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptRc4
-          add ESP,52
-          pop EBX
-          pop ESI
-          ret 
+#@C _cbaEncryptZero
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41c1b0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,76
-          mov EAX,DWORD PTR [L_44a6a4]
-          mov EBX,DWORD PTR [ESP+100]
-          mov EBP,DWORD PTR [ESP+96]
-          mov EDI,DWORD PTR [ESP+104]
-          mov ESI,DWORD PTR [ESP+108]
-          mov DWORD PTR [EBX+16],EAX
-          mov EAX,DWORD PTR [L_44a6a8]
-          mov DWORD PTR [EBX+20],EAX
-          mov EAX,DWORD PTR [L_44a6ac]
-          mov DWORD PTR [EBX+24],EAX
-          mov EAX,DWORD PTR [L_44a6b0]
-          mov DWORD PTR [EBX+28],EAX
-          mov EAX,DWORD PTR [ESP+112]
-          test EAX,EAX
-          jne L_41c2e0
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          call _XeCryptHmacSha
-          movzx EAX,WORD PTR [L_479570]
-          mov WORD PTR [EBX+32],AX
-          movzx EAX,BYTE PTR [L_479572]
-          mov BYTE PTR [EBX+34],AL
-          movzx EAX,BYTE PTR [L_479f14]
-          mov BYTE PTR [EBX+35],AL
-          lea EAX,DWORD PTR [EBX+32]
-          add EBX,48
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EBX
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+28],16
-          mov DWORD PTR [ESP+24],EBP
-          mov DWORD PTR [ESP+20],16
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+60],EAX
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+60]
-L_41c2b3:
-          sub ESI,32
-          mov DWORD PTR [ESP+96],EDI
-          mov DWORD PTR [ESP+104],EAX
-          mov DWORD PTR [ESP+108],ESI
-          mov DWORD PTR [ESP+100],16
-          add ESP,76
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _XeCryptRc4
+#@C _cbaEncrypt2
+          .byte 0x8d
+          .byte 0x76
+          .byte 0x0
+#@C _cbbEncrypt
           .byte 0x8d
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41c2e0:
-          lea EAX,DWORD PTR [EBX+32]
-          lea ECX,DWORD PTR [EBX+36]
-          mov DWORD PTR [EBX+32],0
-          xor EBP,EBP
-          and ECX,4294967292
-          mov EDX,EAX
-          mov DWORD PTR [EAX+28],0
-          sub EDX,ECX
-          add EDX,32
-          and EDX,4294967292
-L_41c303:
-          mov DWORD PTR [ECX+EBP*1],0
-          add EBP,4
-          cmp EBP,EDX
-          jb L_41c303
-          add EBX,16
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _key1bl
-          mov DWORD PTR [ESP+60],EAX
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+60]
-          jmp L_41c2b3
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-FUN_41c370:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,92
-          mov EBP,DWORD PTR [ESP+124]
-          mov EBX,DWORD PTR [ESP+116]
-          lea EAX,DWORD PTR [EBP+6]
-          mov DWORD PTR [ESP],EAX
-          call _getBeU16
-          mov EDX,DWORD PTR [L_44a694]
-          mov EDI,EAX
-          mov ECX,OFFSET L_479560
-          and DI,1
-          mov DWORD PTR [EBX+16],EDX
-          mov EDX,DWORD PTR [L_44a698]
-          mov DWORD PTR [EBX+20],EDX
-          mov EDX,DWORD PTR [L_44a69c]
-          mov DWORD PTR [EBX+24],EDX
-          mov EDX,DWORD PTR [L_44a6a0]
-          mov DWORD PTR [EBX+28],EDX
-          mov EDX,OFFSET _cpuKey
-          mov ESI,EDX
-          cmovne ESI,ECX
-          test AH,8
-          jne L_41c570
-L_41c3cc:
-          test AH,16
-          je L_41c4e0
-          mov DWORD PTR [ESP+4],OFFSET L_456d40
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [EBP]
-          mov DWORD PTR [ESP+64],EAX
-          mov EAX,DWORD PTR [EBP+4]
-          mov DWORD PTR [ESP+68],EAX
-          mov EAX,DWORD PTR [EBP+8]
-          mov BYTE PTR [ESP+70],0
-          mov BYTE PTR [ESP+71],0
-          mov DWORD PTR [ESP+72],EAX
-          mov EAX,DWORD PTR [EBP+12]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],16
-          mov DWORD PTR [ESP+76],EAX
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [ESP+32],EAX
-          lea EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+24],EAX
-L_41c432:
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+20],16
-          mov DWORD PTR [ESP+16],ESI
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+120]
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptHmacSha
-          mov EDX,DWORD PTR [ESP+136]
-          test EDX,EDX
-          jne L_41c591
-          movzx EAX,WORD PTR [L_479570]
-          test DI,DI
-          mov WORD PTR [EBX+32],AX
-          movzx EAX,BYTE PTR [L_479572]
-          mov BYTE PTR [EBX+34],AL
-          movzx EAX,BYTE PTR [L_479f14]
-          mov BYTE PTR [EBX+35],AL
-          je L_41c510
-          lea EDI,DWORD PTR [EBX+32]
-          mov DWORD PTR [ESP+4],OFFSET L_456d6c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_41c4ab:
-          mov EAX,DWORD PTR [ESP+132]
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],16
-          sub EAX,32
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptRc4
-          add ESP,92
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41c4e0:
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+32],EAX
-          jmp L_41c432
+#@C _cdEncryptZero
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -2002,249 +936,16 @@ L_41c4e0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_41c510:
-          mov EAX,DWORD PTR [ESP+112]
-          lea EDI,DWORD PTR [EBX+32]
-          add EBX,48
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EBX
-          mov DWORD PTR [ESP+28],16
-          mov DWORD PTR [ESP+20],16
-          mov DWORD PTR [ESP+24],EAX
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [ESP+16],EDI
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptHmacSha
-          jmp L_41c4ab
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41c570:
-          mov DWORD PTR [ESP+4],OFFSET L_456d22
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+60],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+60]
-          jmp L_41c3cc
-L_41c591:
-          lea EDI,DWORD PTR [EBX+32]
-          xor EAX,EAX
-          mov BYTE PTR [L_479572],0
-          mov WORD PTR [L_479570],AX
-          add EBX,36
-          mov DWORD PTR [EBX-4],0
-          mov EAX,EDI
-          and EBX,4294967292
-          mov DWORD PTR [EDI+28],0
-          sub EAX,EBX
-          xor EDX,EDX
-          add EAX,32
-          and EAX,4294967292
-L_41c5c3:
-          mov DWORD PTR [EBX+EDX*1],0
-          add EDX,4
-          cmp EDX,EAX
-          jb L_41c5c3
-          jmp L_41c4ab
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41c5e0:
-          push ESI
-          push EBX
-          sub ESP,68
-          mov EDX,DWORD PTR [L_44a694]
-          mov EBX,DWORD PTR [ESP+80]
-          mov ESI,DWORD PTR [ESP+84]
-          lea EAX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+48],0
-          mov DWORD PTR [ESP+52],0
-          mov DWORD PTR [ESP+56],0
-          mov DWORD PTR [ESP+60],0
-          mov DWORD PTR [EBX+16],EDX
-          mov EDX,DWORD PTR [L_44a698]
-          mov DWORD PTR [EBX+20],EDX
-          mov EDX,DWORD PTR [L_44a69c]
-          mov DWORD PTR [EBX+24],EDX
-          mov EDX,DWORD PTR [L_44a6a0]
-          mov DWORD PTR [EBX+28],EDX
-          lea EDX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          add EBX,32
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+88]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+4],16
-          sub EAX,32
-          mov DWORD PTR [ESP+12],EAX
-          call _XeCryptRc4
-          add ESP,68
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-FUN_41c6b0:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,48
-          mov EAX,DWORD PTR [L_44a684]
-          mov EBX,DWORD PTR [ESP+64]
-          mov ESI,DWORD PTR [ESP+76]
-          mov EDI,DWORD PTR [ESP+72]
-          mov DWORD PTR [EBX+16],EAX
-          mov EAX,DWORD PTR [L_44a688]
-          sub ESI,32
-          mov DWORD PTR [EBX+20],EAX
-          mov EAX,DWORD PTR [L_44a68c]
-          mov DWORD PTR [EBX+24],EAX
-          mov EAX,DWORD PTR [L_44a690]
-          mov DWORD PTR [EBX+28],EAX
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          add EBX,32
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+68]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+24],0
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+76],ESI
-          mov DWORD PTR [ESP+72],EBX
-          mov DWORD PTR [ESP+64],EDI
-          mov DWORD PTR [ESP+68],16
-          add ESP,48
-          pop EBX
-          pop ESI
-          pop EDI
-          jmp _XeCryptRc4
+#@C _cdEncrypt
           .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41c760:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,48
-          mov EAX,DWORD PTR [L_44a684]
-          mov EBX,DWORD PTR [ESP+64]
-          mov ESI,DWORD PTR [ESP+72]
-          mov EDI,DWORD PTR [ESP+76]
-          mov DWORD PTR [EBX+16],EAX
-          mov EAX,DWORD PTR [L_44a688]
-          sub EDI,32
-          mov DWORD PTR [EBX+20],EAX
-          mov EAX,DWORD PTR [L_44a68c]
-          mov DWORD PTR [EBX+24],EAX
-          mov EAX,DWORD PTR [L_44a690]
-          mov DWORD PTR [EBX+28],EAX
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          add EBX,32
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+68]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+24],0
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+76],EDI
-          mov DWORD PTR [ESP+72],EBX
-          mov DWORD PTR [ESP+64],ESI
-          mov DWORD PTR [ESP+68],16
-          add ESP,48
-          pop EBX
-          pop ESI
-          pop EDI
-          jmp _XeCryptRc4
+#@C _cdEncryptCpu
           .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41c860:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,48
-          mov EAX,DWORD PTR [L_44a674]
-          mov EBX,DWORD PTR [ESP+64]
-          mov ESI,DWORD PTR [ESP+76]
-          mov EDI,DWORD PTR [ESP+72]
-          mov DWORD PTR [EBX+16],EAX
-          mov EAX,DWORD PTR [L_44a678]
-          sub ESI,32
-          mov DWORD PTR [EBX+20],EAX
-          mov EAX,DWORD PTR [L_44a67c]
-          mov DWORD PTR [EBX+24],EAX
-          mov EAX,DWORD PTR [L_44a680]
-          mov DWORD PTR [EBX+28],EAX
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          add EBX,32
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+68]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+24],0
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+76],ESI
-          mov DWORD PTR [ESP+72],EBX
-          mov DWORD PTR [ESP+64],EDI
-          mov DWORD PTR [ESP+68],16
-          add ESP,48
-          pop EBX
-          pop ESI
-          pop EDI
-          jmp _XeCryptRc4
+#@C _ceEncrypt
           .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41c910:
+_cfPatchSlots:
           push EBP
           push EDI
           push ESI
@@ -2338,7 +1039,7 @@ L_41c9f2:
           jmp L_41c9c0
           .byte 0x66
           .byte 0x90
-FUN_41ca20:
+_cfEncrypt:
           push EBP
           push EDI
           push ESI
@@ -2349,7 +1050,7 @@ FUN_41ca20:
           mov EBX,DWORD PTR [ESP+128]
           mov EDX,DWORD PTR [ESP+144]
           mov DWORD PTR [ESP+52],EAX
-          mov EAX,DWORD PTR [L_44a664]
+          mov EAX,DWORD PTR [_infoKey4]
           test ESI,ESI
           mov DWORD PTR [ESP+80],EAX
           mov EAX,DWORD PTR [L_44a668]
@@ -2436,7 +1137,7 @@ L_41cb82:
           je L_41cdb0
           mov BYTE PTR [EAX+539],0
 L_41cbd0:
-          movzx ECX,WORD PTR [L_479570]
+          movzx ECX,WORD PTR [_pairing]
           mov EAX,DWORD PTR [EBX+1036]
           mov WORD PTR [EAX+540],CX
           movzx ECX,BYTE PTR [L_479572]
@@ -2589,99 +1290,10 @@ L_41cde2:
 L_41ce47:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41ce50:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,48
-          mov EAX,DWORD PTR [L_44a654]
-          mov EBX,DWORD PTR [ESP+64]
-          mov ESI,DWORD PTR [ESP+76]
-          mov EDI,DWORD PTR [ESP+72]
-          mov DWORD PTR [EBX+16],EAX
-          mov EAX,DWORD PTR [L_44a658]
-          sub ESI,32
-          mov DWORD PTR [EBX+20],EAX
-          mov EAX,DWORD PTR [L_44a65c]
-          mov DWORD PTR [EBX+24],EAX
-          mov EAX,DWORD PTR [L_44a660]
-          mov DWORD PTR [EBX+28],EAX
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          add EBX,32
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+68]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+24],0
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+76],ESI
-          mov DWORD PTR [ESP+72],EBX
-          mov DWORD PTR [ESP+64],EDI
-          mov DWORD PTR [ESP+68],16
-          add ESP,48
-          pop EBX
-          pop ESI
-          pop EDI
-          jmp _XeCryptRc4
+#@C _cgEncrypt
           .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41cf00:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,92
-          mov EAX,DWORD PTR [L_44a64c]
-          mov EDX,DWORD PTR [L_44a650]
-          mov ESI,DWORD PTR [ESP+112]
-          lea EDI,DWORD PTR [ESP+64]
-          mov BYTE PTR [ESP+62],7
-          mov BYTE PTR [ESP+63],18
-          mov DWORD PTR [ESI+16],EAX
-          mov EAX,DWORD PTR [ESP+116]
-          lea EBP,DWORD PTR [ESI+16]
-          mov DWORD PTR [ESI+20],EDX
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+8],EBP
-          mov DWORD PTR [ESP+28],0
-          lea EBX,DWORD PTR [EAX-16]
-          lea EAX,DWORD PTR [ESP+62]
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+36],16
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP+8],EBP
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],16
-          call _XeCryptRc4
-          add ESP,92
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _kvEncrypt
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -2690,57 +1302,7 @@ L_41cf00:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_41cff0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,92
-          mov EAX,DWORD PTR [L_44a644]
-          mov EDX,DWORD PTR [L_44a648]
-          mov ESI,DWORD PTR [ESP+112]
-          lea EDI,DWORD PTR [ESP+64]
-          mov BYTE PTR [ESP+62],7
-          mov BYTE PTR [ESP+63],18
-          mov DWORD PTR [ESI+16],EAX
-          mov EAX,DWORD PTR [ESP+116]
-          lea EBP,DWORD PTR [ESI+16]
-          mov DWORD PTR [ESI+20],EDX
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+8],EBP
-          mov DWORD PTR [ESP+28],0
-          lea EBX,DWORD PTR [EAX-16]
-          lea EAX,DWORD PTR [ESP+62]
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+36],16
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP+8],EBP
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],16
-          call _XeCryptRc4
-          add ESP,92
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _kvEncryptAlt
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -2749,7 +1311,7 @@ L_41cff0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41d0e0:
+_kvPrepare:
           push EBP
           push EDI
           mov EAX,OFFSET L_456d9f
@@ -2831,7 +1393,7 @@ L_41d1dd:
           mov EBX,DWORD PTR [EDI+1036]
           mov EDX,DWORD PTR [L_44a648]
           mov ECX,DWORD PTR [EDI+1040]
-          mov EAX,DWORD PTR [L_44a644]
+          mov EAX,DWORD PTR [_kvAltSalt]
           mov BYTE PTR [ESP+78],7
           mov BYTE PTR [ESP+79],18
           mov DWORD PTR [EBX+20],EDX
@@ -2922,7 +1484,7 @@ L_41d3a3:
           mov DWORD PTR [ESP],EAX
           call _kvSet
           mov EBX,DWORD PTR [EDI+1036]
-          mov EAX,DWORD PTR [L_44a64c]
+          mov EAX,DWORD PTR [_kvSalt]
           mov ECX,DWORD PTR [EDI+1040]
           mov BYTE PTR [ESP+78],7
           mov BYTE PTR [ESP+79],18
@@ -3058,7 +1620,7 @@ L_41d620:
           mov ECX,DWORD PTR [ESP+60]
           jmp L_41d1dd
 L_41d665:
-          mov DWORD PTR [ESP+4],OFFSET L_456f74
+          mov DWORD PTR [ESP+4],OFFSET _str_Success
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+60],ECX
           call _log_printf
@@ -3080,110 +1642,7 @@ L_41d665:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41d6a0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,108
-          mov EBX,DWORD PTR [ESP+128]
-          mov EAX,DWORD PTR [EBX+1040]
-          cmp EAX,16384
-          je L_41d905
-          test EAX,EAX
-          je L_41d860
-          mov DWORD PTR [ESP+4],OFFSET L_457028
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_41d6db:
-          mov EAX,DWORD PTR [EBX+1036]
-          test EAX,EAX
-          je L_41d6ed
-          mov DWORD PTR [ESP],EAX
-          call _free
-L_41d6ed:
-          mov DWORD PTR [EBX+1040],16384
-          mov DWORD PTR [ESP+4],1
-          mov DWORD PTR [ESP],16384
-          call _calloc
-          mov DWORD PTR [EBX+1036],EAX
-          mov EDI,EAX
-L_41d713:
-          mov DWORD PTR [ESP],16384
-          call _malloc
-          mov DWORD PTR [ESP+8],16384
-          mov ESI,EAX
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],ESI
-          call _checkZeros
-          test EAX,EAX
-          je L_41d880
-          mov EDX,DWORD PTR [EBX+1040]
-          lea EDI,DWORD PTR [ESP+80]
-          lea EBP,DWORD PTR [ESP+78]
-L_41d75b:
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          mov DWORD PTR [ESP],ESI
-          call _free
-          mov ESI,DWORD PTR [EBX+1036]
-          mov ECX,DWORD PTR [EBX+1040]
-          mov EAX,DWORD PTR [L_44a64c]
-          mov EDX,DWORD PTR [L_44a650]
-          mov BYTE PTR [ESP+78],7
-          mov BYTE PTR [ESP+79],18
-          lea EBX,DWORD PTR [ECX-16]
-          mov DWORD PTR [ESI+16],EAX
-          lea EAX,DWORD PTR [ESI+16]
-          mov DWORD PTR [ESI+20],EDX
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+16],EBP
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+60],EAX
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+60]
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptRc4
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x66
-          .byte 0x90
-L_41d860:
-          mov DWORD PTR [ESP+4],OFFSET L_456fc0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_41d6db
+#@C _extendedPrepare
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -3191,532 +1650,28 @@ L_41d860:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_41d880:
-          lea EDI,DWORD PTR [ESP+80]
-          lea EBP,DWORD PTR [ESP+78]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+32],EDI
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+16],EBP
-          mov EAX,DWORD PTR [EBX+1040]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov BYTE PTR [ESP+78],7
-          mov BYTE PTR [ESP+79],18
-          sub EAX,16
-          mov DWORD PTR [ESP+12],EAX
-          lea EAX,DWORD PTR [ESI+16]
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+8],16
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],ESI
-          call _memcmp
-          test EAX,EAX
-          jne L_41d910
-L_41d8fa:
-          mov EDX,DWORD PTR [EBX+1040]
-          jmp L_41d75b
-L_41d905:
-          mov EDI,DWORD PTR [EBX+1036]
-          jmp L_41d713
-L_41d910:
-          mov DWORD PTR [ESP+4],OFFSET L_457088
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EDX,DWORD PTR [EBX+1040]
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+4],EAX
-          call _memcpy
-          mov DWORD PTR [ESP+4],16384
-          mov DWORD PTR [ESP],ESI
-          call _verifyExtended
-          test EAX,EAX
-          jne L_41d990
-          mov DWORD PTR [ESP+4],OFFSET L_4570c8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EDX,DWORD PTR [EBX+1040]
-          mov DWORD PTR [ESP+4],0
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+60],EDX
-          call _memset
-          mov EDX,DWORD PTR [ESP+60]
-          jmp L_41d75b
-          .byte 0x90
-L_41d990:
-          mov DWORD PTR [ESP+4],OFFSET L_456f74
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_41d8fa
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-FUN_41d9b0:
-          push ESI
-          push EBX
-          sub ESP,68
-          mov EBX,DWORD PTR [ESP+80]
-          mov EAX,DWORD PTR [EBX+1040]
-          cmp EAX,1024
-          je L_41db60
-          test EAX,EAX
-          je L_41db45
-          mov DWORD PTR [ESP+4],OFFSET L_457178
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_41d9e6:
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP],EAX
-          call _free
-          mov DWORD PTR [EBX+1040],1024
-          mov DWORD PTR [ESP+4],1
-          mov DWORD PTR [ESP],1024
-          call _calloc
-          mov DWORD PTR [EBX+1036],EAX
-L_41da18:
-          mov EDX,DWORD PTR [L_44a5e0]
-          mov ECX,DWORD PTR [L_44a5e4]
-          lea ESI,DWORD PTR [ESP+48]
-          mov DWORD PTR [EAX+16],EDX
-          mov DWORD PTR [EAX+20],ECX
-          mov EAX,DWORD PTR [ESP+84]
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [EBX+1036]
-          add EAX,32
-          mov DWORD PTR [ESP],EAX
-          call _memcpyrev
-          mov EAX,DWORD PTR [EBX+1036]
-          mov BYTE PTR [EAX+24],1
-          movzx EDX,BYTE PTR [L_479f15]
-          mov EAX,DWORD PTR [EBX+1036]
-          mov BYTE PTR [EAX+25],DL
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+32],EAX
-          mov DWORD PTR [ESP+16],0
-          add EAX,16
-          mov ECX,DWORD PTR [EBX+1040]
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          lea EDX,DWORD PTR [ECX-16]
-          mov DWORD PTR [ESP+12],EDX
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+32],ESI
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [EBX+1040]
-          sub EAX,16
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+4],16
-          add EAX,16
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptRc4
-          add ESP,68
-          pop EBX
-          pop ESI
-          ret 
-L_41db45:
-          mov DWORD PTR [ESP+4],OFFSET L_457110
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_41d9e6
-          .byte 0x66
-          .byte 0x90
-L_41db60:
-          mov EAX,DWORD PTR [EBX+1036]
-          jmp L_41da18
+#@C _secdataPrepare
           .byte 0x90
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_shaCheck:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,64
-          mov EBX,DWORD PTR [ESP+80]
-          mov EAX,DWORD PTR [ESP+96]
-          lea EDI,DWORD PTR [ESP+44]
-          mov EDX,DWORD PTR [ESP+84]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+24],EDI
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          sub EDX,EAX
-          add EAX,EBX
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          mov ESI,DWORD PTR [ESP+100]
-          call _XeCryptSha
-          add EBX,DWORD PTR [ESP+88]
-          mov EAX,DWORD PTR [ESP+92]
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],EBX
-          call _memcmp
-          xor EDX,EDX
-          test EAX,EAX
-          jne L_41dc0f
-          test ESI,ESI
-          je L_41dc20
-          mov EAX,DWORD PTR [ESP+44]
-          mov EDX,1
-          mov DWORD PTR [ESI],EAX
-          mov EAX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESI+4],EAX
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESI+8],EAX
-          mov EAX,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESI+12],EAX
-          mov EAX,DWORD PTR [ESP+60]
-          mov DWORD PTR [ESI+16],EAX
-L_41dc0f:
-          add ESP,64
-          mov EAX,EDX
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41dc20:
-          mov EDX,1
-          jmp L_41dc0f
+#@C _shaCheck
 L_41dc27:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41dc30:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,588
-          mov EDI,DWORD PTR [ESP+612]
-          mov EBX,DWORD PTR [ESP+608]
-          lea ESI,DWORD PTR [ESP+88]
-          mov EAX,DWORD PTR [ESP+616]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+44],EAX
-          call _malloc
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],EBX
-          mov EBP,EAX
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          lea EAX,DWORD PTR [EDI-336]
-          lea ECX,DWORD PTR [EBX+336]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+24],ESI
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+4],EAX
-          mov DWORD PTR [ESP],ECX
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+32],EAX
-          mov DWORD PTR [ESP+36],ECX
-          call _XeCryptSha
-          lea EAX,DWORD PTR [EBX+12]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+40],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_41def0
-L_41dce0:
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+24],ESI
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptSha
-          mov EAX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          jne L_41ded0
-          mov EDX,DWORD PTR [ESP+44]
-          lea EAX,DWORD PTR [EBX+320]
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+40],EAX
-          mov DWORD PTR [ESP+4],EDX
-          call _memcpyrev
-          mov EAX,DWORD PTR [L_44a620]
-          mov EDX,DWORD PTR [L_44a630]
-          mov ECX,DWORD PTR [L_44a634]
-          mov DWORD PTR [ESP+56],EAX
-          mov EAX,DWORD PTR [L_44a624]
-          mov DWORD PTR [ESP+72],EDX
-          mov EDX,DWORD PTR [L_44a638]
-          mov DWORD PTR [EBX+292],ECX
-          mov DWORD PTR [ESP+76],ECX
-          mov DWORD PTR [ESP+60],EAX
-          mov EAX,DWORD PTR [L_44a628]
-          mov ECX,DWORD PTR [L_44a638]
-          mov DWORD PTR [ESP+80],EDX
-          mov EDX,DWORD PTR [L_44a630]
-          mov DWORD PTR [ESP+64],EAX
-          mov EAX,DWORD PTR [L_44a62c]
-          mov DWORD PTR [EBX+296],ECX
-          mov DWORD PTR [EBX+288],EDX
-          mov DWORD PTR [ESP+68],EAX
-          mov EAX,DWORD PTR [L_44a63c]
-          mov DWORD PTR [EBX+300],EAX
-          mov DWORD PTR [ESP+84],EAX
-          movzx EAX,BYTE PTR [L_479f15]
-          mov BYTE PTR [EBX+335],AL
-          mov DWORD PTR [ESP+8],EDI
-          lea EDI,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EBP
-          add EBX,304
-          call _memcpy
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],ESI
-          call _XeCryptAesKey
-          lea EAX,DWORD PTR [ESP+72]
-          lea EDX,DWORD PTR [EBP+320]
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP+8],16
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+44],EAX
-          mov EAX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP+12],EAX
-          call _XeCryptAesCbc
-          mov EDX,DWORD PTR [EBX+16]
-          mov EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+72],EDX
-          mov EDX,DWORD PTR [EBX+20]
-          mov DWORD PTR [ESP+76],EDX
-          mov EDX,DWORD PTR [EBX+24]
-          mov DWORD PTR [ESP+80],EDX
-          mov EDX,DWORD PTR [EBX+28]
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+84],EDX
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+8],EAX
-          lea EAX,DWORD PTR [EBP+336]
-          mov DWORD PTR [ESP+4],EAX
-          call _XeCryptAesCbc
-          mov DWORD PTR [ESP+4],OFFSET _cpuKey
-          mov DWORD PTR [ESP],ESI
-          call _XeCryptAesKey
-          mov DWORD PTR [ESP+12],1
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],ESI
-          call _XeCryptAesEcb
-L_41deb0:
-          mov DWORD PTR [ESP+608],EBP
-          add ESP,588
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _free
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41ded0:
-          mov DWORD PTR [ESP+4],OFFSET L_457248
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41deb0
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41def0:
-          mov DWORD PTR [ESP+4],OFFSET L_45720c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+8],1
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EBP
-          call _verifyCrl
-          test EAX,EAX
-          jne L_41df71
-          mov DWORD PTR [ESP+4],OFFSET L_4571e0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EBP
-          call _memcpy
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EBP
-          call _verifyCrl
-          test EAX,EAX
-          jne L_41df71
-          mov DWORD PTR [ESP+4],OFFSET L_457200
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_41dce0
-L_41df71:
-          mov DWORD PTR [ESP+4],OFFSET L_4571d5
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],EBP
-          mov DWORD PTR [ESP],EBX
-          call _memcpy
-          jmp L_41dce0
+#@C _crlEncrypt
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41dfa0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,604
-          mov ESI,DWORD PTR [ESP+628]
-          mov EDX,DWORD PTR [ESP+632]
-          mov EBX,DWORD PTR [ESP+624]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+60],EDX
-          call _malloc
-          mov EDI,EAX
-          mov EAX,DWORD PTR [L_44a600]
-          mov EDX,DWORD PTR [ESP+60]
-          lea EBP,DWORD PTR [EBX+304]
-          mov DWORD PTR [EBX+288],EAX
-          mov EAX,DWORD PTR [L_44a604]
-          or BYTE PTR [EBX+289],1
-          mov DWORD PTR [EBX+292],EAX
-          mov EAX,DWORD PTR [L_44a608]
-          mov DWORD PTR [EBX+296],EAX
-          mov EAX,DWORD PTR [L_44a60c]
-          mov DWORD PTR [EBX+300],EAX
-          mov EAX,DWORD PTR [L_44a610]
-          mov DWORD PTR [EBX+304],EAX
-          mov EAX,DWORD PTR [L_44a614]
-          mov DWORD PTR [EBX+308],EAX
-          mov EAX,DWORD PTR [L_44a618]
-          mov DWORD PTR [EBX+312],EAX
-          mov EAX,DWORD PTR [L_44a61c]
-          mov DWORD PTR [EBX+316],EAX
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EBP
-          mov DWORD PTR [ESP+8],8
-          call _memcpyrev
-          movzx EAX,BYTE PTR [L_479f15]
-          mov BYTE PTR [EBX+319],AL
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EDI
-          call _memcpy
-          lea EAX,DWORD PTR [ESP+72]
-          lea EDX,DWORD PTR [ESP+88]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+32],EAX
-          lea EAX,DWORD PTR [EDI+288]
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],32
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+60],EDX
-          mov DWORD PTR [ESP+88],0
-          mov DWORD PTR [ESP+92],0
-          mov DWORD PTR [ESP+96],0
-          mov DWORD PTR [ESP+100],0
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+72]
-          mov DWORD PTR [EBX+320],EAX
-          mov EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [EBX+324],EAX
-          mov EAX,DWORD PTR [ESP+80]
-          mov DWORD PTR [EBX+328],EAX
-          mov EAX,DWORD PTR [ESP+84]
-          mov DWORD PTR [EBX+332],EAX
-          mov DWORD PTR [ESP+4],EBX
-          lea EBX,DWORD PTR [ESP+104]
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP],EDI
-          sub ESI,304
-          call _memcpy
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+4],OFFSET _cpuKey
-          call _XeCryptAesKey
-          mov EDX,DWORD PTR [ESP+60]
-          lea EAX,DWORD PTR [EDI+304]
-          mov DWORD PTR [ESP+12],EBP
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP+4],EAX
-          mov DWORD PTR [ESP+16],EDX
-          call _XeCryptAesCbc
-          mov DWORD PTR [ESP+624],EDI
-          add ESP,604
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _free
+#@C _daeEncryptOne
 L_41e177:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41e180:
+_daeEncrypt:
           push EBP
           push EDI
           push ESI
@@ -3815,7 +1770,7 @@ L_41e2d2:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [ESP+40]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41dfa0
+          call _daeEncryptOne
           add DWORD PTR [ESP+32],1
           mov EDX,DWORD PTR [ESP+44]
 L_41e2f3:
@@ -3863,7 +1818,7 @@ L_41e304:
           mov EDX,DWORD PTR [ESP+60]
           jne L_41e3d0
 L_41e3b3:
-          mov DWORD PTR [ESP+4],OFFSET L_4571d5
+          mov DWORD PTR [ESP+4],OFFSET _str_successNl
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+44],EDX
           call _log_printf
@@ -3980,7 +1935,7 @@ L_41e47c:
           call _memcmp
           test EAX,EAX
           jne L_41e604
-          mov DWORD PTR [ESP+4],OFFSET L_4571d5
+          mov DWORD PTR [ESP+4],OFFSET _str_successNl
           mov DWORD PTR [ESP],1
           call _log_printf
           mov EDX,DWORD PTR [ESP+60]
@@ -3993,7 +1948,7 @@ L_41e604:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_41e620:
+_fcrtEncrypt:
           push EBP
           push EDI
           push ESI
@@ -4110,21 +2065,7 @@ L_41e783:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41e7b0:
-          sub ESP,44
-          mov EAX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+24],EAX
-          add EAX,20
-          mov DWORD PTR [ESP+4],492
-          mov DWORD PTR [ESP],EAX
-          call _XeCryptSha
-          add ESP,44
-          ret 
+#@C _shaHeader
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -4134,7 +2075,7 @@ FUN_41e7b0:
 
 .data
 .p2align 5
-L_44a5e0:
+_secdataKey:
           .byte 0x5a
           .byte 0xa4
           .byte 0xd1
@@ -4168,7 +2109,7 @@ L_44a5e4:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_44a600:
+_daeKey:
           .byte 0xa1
           .byte 0xb2
           .byte 0x69
@@ -4208,7 +2149,7 @@ L_44a61c:
           .byte 0x62
           .byte 0x83
           .byte 0x14
-L_44a620:
+_crlKey:
           .byte 0xc7
           .byte 0x3
           .byte 0xb9
@@ -4248,12 +2189,12 @@ L_44a63c:
           .byte 0x3d
           .byte 0xa4
           .byte 0xaa
-L_44a640:
+_smcKey:
           .byte 0x8e
           .byte 0x3
           .byte 0x75
           .byte 0xcc
-L_44a644:
+_kvAltSalt:
           .byte 0x36
           .byte 0xca
           .byte 0xb0
@@ -4263,7 +2204,7 @@ L_44a648:
           .byte 0x83
           .byte 0xb7
           .byte 0xf6
-L_44a64c:
+_kvSalt:
           .byte 0x36
           .byte 0xca
           .byte 0xb0
@@ -4273,7 +2214,7 @@ L_44a650:
           .byte 0x83
           .byte 0xb7
           .byte 0xf6
-L_44a654:
+_infoKey5:
           .byte 0xb9
           .byte 0xa2
           .byte 0x1e
@@ -4293,7 +2234,7 @@ L_44a660:
           .byte 0xaa
           .byte 0xa8
           .byte 0xce
-L_44a664:
+_infoKey4:
           .byte 0xce
           .byte 0xe5
           .byte 0x4
@@ -4313,7 +2254,7 @@ L_44a670:
           .byte 0x64
           .byte 0x68
           .byte 0x2a
-L_44a674:
+_infoKey3:
           .byte 0x56
           .byte 0xa9
           .byte 0x81
@@ -4333,7 +2274,7 @@ L_44a680:
           .byte 0xe5
           .byte 0x79
           .byte 0x98
-L_44a684:
+_infoKey2:
           .byte 0xb3
           .byte 0x38
           .byte 0x64
@@ -4353,7 +2294,7 @@ L_44a690:
           .byte 0xa1
           .byte 0x9f
           .byte 0x84
-L_44a694:
+_infoKey1:
           .byte 0xfb
           .byte 0xe2
           .byte 0x70
@@ -4373,7 +2314,7 @@ L_44a6a0:
           .byte 0x3f
           .byte 0xe
           .byte 0x37
-L_44a6a4:
+_infoKey0:
           .byte 0x37
           .byte 0x10
           .byte 0xa2
@@ -4408,35 +2349,35 @@ L_44a6b0:
 
 .section .rdata,"dr"
 .p2align 2
-L_456664:
+_msg_initRandom:
           .string "initializing random nonces\n"
-L_456680:
+_msg_initStatic:
           .string "initializing static pairing value\n"
           .zero 1
-L_4566a4:
+_msg_pairingSet:
           .string "pairing set to: %02x %02x %02x\n"
-L_4566c4:
+_str_valid:
           .string "valid"
-L_4566ca:
+_str_error:
           .string "error"
-L_4566d0:
+_msg_weight:
           .string " (weight:0x%x %s; ecd: %s)"
-L_4566eb:
+_msg_cpuKeySet:
           .string "CPU Key set to: 0x"
-L_4566fe:
+_str_hexByte:
           .string "%02X"
-L_456703:
+_str_newline:
           .string "\n"
           .zero 3
-L_456708:
+_msg_cpuKeyWarn:
           .string "\n***** WARNING: CPU key check failed, CPU key may not be valid!\n\n"
           .zero 2
-L_45674c:
+_msg_cpuKeyChars:
           .string "\n******* ERROR: invalid or unexpected characters in CPU key!\n"
           .zero 2
-L_45678c:
+_msg_cpuKeyLen:
           .string "\n***** ERROR: unable to set CPU key to '%s', %d is not the correct length, 32 chars required!\n"
-L_4567eb:
+_msg_cpuKeySet2:
           .string "CPU Key set to  : "
 L_4567fe:
           .string "Fuse CF LDV set to : 0x"
@@ -4445,29 +2386,29 @@ L_456816:
           .zero 2
 L_456830:
           .string "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n"
-L_45685e:
+_msg_1blKeySet:
           .string "1BL Key set to  : 0x"
-L_456873:
+_msg_1blSum:
           .string " sum: 0x%x (expects: 0x983)\n"
-L_456890:
+_msg_xexKeySet:
           .string "xex Key set to  : 0x"
-L_4568a5:
+_msg_xexSum:
           .string " sum: 0x%x (expects: 0x800)\n"
-L_4568c2:
+_msg_1blBad:
           .string "\n******* ERROR: 1BL key 0x"
           .zero 3
-L_4568e0:
+_msg_1blBad2:
           .string " does not appear to be correct!\n"
           .zero 3
-L_456904:
+_msg_1blChars:
           .string "\n******* ERROR: invalid or unexpected characters in 1BL key!\n"
           .zero 2
-L_456944:
+_msg_1blLen:
           .string "\n***** ERROR: unable to set 1BL key to '%s', %d is not the correct length, 32 chars required!\n"
-L_4569a3:
+_msg_1blBadStr:
           .string "\n******* ERROR: 1BL key 0x%s "
           .zero 3
-L_4569c4:
+_msg_1blBadStr2:
           .string "does not appear to be correct!\n"
 L_4569e4:
           .string "SMC binary appears to be encrypted, attempting to decrypt..."
@@ -4503,15 +2444,15 @@ L_456c3c:
 L_456c9c:
           .string "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for JTAG images.\n\n"
           .zero 2
-L_456cfc:
+_msg_cbencPairing:
           .string "CBENC pairing set to: %02x %02x %02x\n"
-L_456d22:
+_msg_dualCb:
           .string "\t**dual CB flag detected!**\n"
           .zero 1
-L_456d40:
+_msg_cbb15572:
           .string "\t**15572+ CBB crypto method detected!**\n"
           .zero 3
-L_456d6c:
+_msg_cbbMfg:
           .string "\t** CBB crypto method set to work with mfg CBA!**\n"
 L_456d9f:
           .string "kv"
@@ -4538,40 +2479,40 @@ L_456f00:
           .string "Failed!\n%s could not be decrypted!\n"
 L_456f24:
           .string "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n"
-L_456f74:
+_str_Success:
           .string "Success!\n"
           .zero 2
 L_456f80:
           .string "\n******* ERROR: please be sure your provided a DEcrypted %s!\n"
           .zero 2
-L_456fc0:
+_msg_extMissing:
           .string "******* WARNING: extended.bin was not provided or was invalid! Making up an clean/empty extended.bin!\n"
           .zero 1
-L_457028:
+_msg_extSize:
           .string "******* WARNING: extended.bin is not the correct size! Making up an clean/empty extended.bin!\n"
           .zero 1
-L_457088:
+_msg_extEncrypted:
           .string "extended.bin appears to be encrypted, attempting to decrypt..."
           .zero 1
-L_4570c8:
+_msg_extDecryptFail:
           .string "Failed!\nextended.bin could not be decrypted, filling clean/empty data.\n"
-L_457110:
+_msg_sdMissing:
           .string "******* WARNING: secdata.bin was not provided or was invalid! Making up an clean/empty secdata.bin!\n"
           .zero 3
-L_457178:
+_msg_sdSize:
           .string "******* WARNING: secdata.bin is not the correct size! Making up an clean/empty secdata.bin!\n"
-L_4571d5:
+_str_successNl:
           .string "success!\n"
           .zero 1
-L_4571e0:
+_msg_crlRetry:
           .string "failed! Trying alternate key..."
-L_457200:
+_str_failedNl:
           .string "failed!\n"
           .zero 3
-L_45720c:
+_msg_crlCrypted:
           .string "crl appears crypted, attempting to decrypt with CPU key..."
           .zero 1
-L_457248:
+_msg_crlBad:
           .string "\n******* ERROR: crl data appears to be crypted with the wrong key or damaged!\n"
           .zero 1
 L_457298:
@@ -4677,7 +2618,7 @@ L_45745c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_41aa00 - .
+          .long _keysInit - .
           .byte 0xa3
           .byte 0x1
           .byte 0x0
@@ -4915,7 +2856,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41ad90 - .
+          .long _setKvSalt - .
           .byte 0x15
           .byte 0x0
           .byte 0x0
@@ -4932,7 +2873,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41adb0 - .
+          .long _setKvAltSalt - .
           .byte 0x15
           .byte 0x0
           .byte 0x0
@@ -4949,7 +2890,7 @@ L_45745c:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_41add0 - .
+          .long _setSmcKey - .
           .byte 0xc
           .byte 0x0
           .byte 0x0
@@ -5134,7 +3075,7 @@ L_45745c:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_41b1d0 - .
+          .long _setFuseLdv - .
           .byte 0x42
           .byte 0x1
           .byte 0x0
@@ -5195,7 +3136,7 @@ L_45745c:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_41b320 - .
+          .long _setFuseCpuKey - .
           .byte 0xfc
           .byte 0x0
           .byte 0x0
@@ -5276,7 +3217,7 @@ L_45745c:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_41b420 - .
+          .long _calcXexKey - .
           .byte 0xf5
           .byte 0x0
           .byte 0x0
@@ -5309,7 +3250,7 @@ L_45745c:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_41b520 - .
+          .long _check1blKey - .
           .byte 0xd7
           .byte 0x0
           .byte 0x0
@@ -5464,7 +3405,7 @@ L_45745c:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long L_41b8e0 - .
+          .long _smcChecksum - .
           .byte 0x20
           .byte 0x1
           .byte 0x0
@@ -5525,7 +3466,7 @@ L_45745c:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long L_41ba00 - .
+          .long _smcEncrypt - .
           .byte 0x72
           .byte 0x0
           .byte 0x0
@@ -5582,7 +3523,7 @@ L_45745c:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_41ba80 - .
+          .long _smcPrepare - .
           .byte 0xc1
           .byte 0x4
           .byte 0x0
@@ -5667,7 +3608,7 @@ L_45745c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41bf50 - .
+          .long _cbaEncrypt - .
           .byte 0x6a
           .byte 0x1
           .byte 0x0
@@ -5728,7 +3669,7 @@ L_45745c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41c0c0 - .
+          .long _cbaEncryptZero - .
           .byte 0xea
           .byte 0x0
           .byte 0x0
@@ -5769,7 +3710,7 @@ L_45745c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41c1b0 - .
+          .long _cbaEncrypt2 - .
           .byte 0xbd
           .byte 0x1
           .byte 0x0
@@ -5830,7 +3771,7 @@ L_45745c:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41c370 - .
+          .long _cbbEncrypt - .
           .byte 0x66
           .byte 0x2
           .byte 0x0
@@ -5891,7 +3832,7 @@ L_45745c:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41c5e0 - .
+          .long _cdEncryptZero - .
           .byte 0xc8
           .byte 0x0
           .byte 0x0
@@ -5932,7 +3873,7 @@ L_45745c:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41c6b0 - .
+          .long _cdEncrypt - .
           .byte 0xa6
           .byte 0x0
           .byte 0x0
@@ -5981,7 +3922,7 @@ L_45745c:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41c760 - .
+          .long _cdEncryptCpu - .
           .byte 0xf2
           .byte 0x0
           .byte 0x0
@@ -6030,7 +3971,7 @@ L_45745c:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41c860 - .
+          .long _ceEncrypt - .
           .byte 0xa6
           .byte 0x0
           .byte 0x0
@@ -6079,7 +4020,7 @@ L_45745c:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long L_41c910 - .
+          .long _cfPatchSlots - .
           .byte 0xe
           .byte 0x1
           .byte 0x0
@@ -6164,7 +4105,7 @@ L_45745c:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_41ca20 - .
+          .long _cfEncrypt - .
           .byte 0x27
           .byte 0x4
           .byte 0x0
@@ -6229,7 +4170,7 @@ L_45745c:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_41ce50 - .
+          .long _cgEncrypt - .
           .byte 0xa6
           .byte 0x0
           .byte 0x0
@@ -6278,7 +4219,7 @@ L_45745c:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long L_41cf00 - .
+          .long _kvEncrypt - .
           .byte 0xe8
           .byte 0x0
           .byte 0x0
@@ -6335,7 +4276,7 @@ L_45745c:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long L_41cff0 - .
+          .long _kvEncryptAlt - .
           .byte 0xe8
           .byte 0x0
           .byte 0x0
@@ -6392,7 +4333,7 @@ L_45745c:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_41d0e0 - .
+          .long _kvPrepare - .
           .byte 0xb2
           .byte 0x5
           .byte 0x0
@@ -6477,7 +4418,7 @@ L_45745c:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_41d6a0 - .
+          .long _extendedPrepare - .
           .byte 0x9
           .byte 0x3
           .byte 0x0
@@ -6542,7 +4483,7 @@ L_45745c:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_41d9b0 - .
+          .long _secdataPrepare - .
           .byte 0xbb
           .byte 0x1
           .byte 0x0
@@ -6640,7 +4581,7 @@ L_45745c:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_41dc30 - .
+          .long _crlEncrypt - .
           .byte 0x6a
           .byte 0x3
           .byte 0x0
@@ -6705,7 +4646,7 @@ L_45745c:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_41dfa0 - .
+          .long _daeEncryptOne - .
           .byte 0xd7
           .byte 0x1
           .byte 0x0
@@ -6766,7 +4707,7 @@ L_45745c:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_41e180 - .
+          .long _daeEncrypt - .
           .byte 0x9d
           .byte 0x4
           .byte 0x0
@@ -6827,7 +4768,7 @@ L_45745c:
           .byte 0x9
           .byte 0x0
           .byte 0x0
-          .long FUN_41e620 - .
+          .long _fcrtEncrypt - .
           .byte 0x82
           .byte 0x1
           .byte 0x0
@@ -6952,7 +4893,7 @@ L_45745c:
           .byte 0x9
           .byte 0x0
           .byte 0x0
-          .long FUN_41e7b0 - .
+          .long _shaHeader - .
           .byte 0x4a
           .byte 0x0
           .byte 0x0
@@ -6968,9 +4909,9 @@ L_45745c:
 
 .bss
 .p2align 2
-L_479560:
+_zeroKey:
           .zero 16
-L_479570:
+_pairing:
           .zero 1
 L_479571:
           .zero 1

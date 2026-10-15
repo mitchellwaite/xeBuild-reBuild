@@ -129,6 +129,9 @@ def main():
     addr_of = {s: a for a, s in SYMBOLS.items()}
     at = lambda a: SYMBOLS.get(a, 'L_%x' % a)
     g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)\+(\d+)\]', r'\1[\3+\2]', r.stdout)
+    # `_cpuKey[ebx-1]`: a named global indexed with a negative offset
+    g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)-(\d+)\]', lambda m: m.group(0) if m.group(1) not in addr_of
+               else '%s[%s]' % (at(addr_of[m.group(1)] - int(m.group(3))), m.group(2)), g)
     g = re.sub(r'(?<![\w.$])(_\w+)(?:\+(\d+)(?![\w])|\[(\d+)\+)',
                lambda m: m.group(0) if m.group(1) not in addr_of else
                at(addr_of[m.group(1)] + int(m.group(2))) if m.group(2) else

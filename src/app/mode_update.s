@@ -1087,7 +1087,7 @@ L_404036:
           mov EAX,DWORD PTR [L_47a0e8+4]
           add EAX,16
           mov DWORD PTR [ESP],EAX
-          call FUN_41ad90
+          call _setKvSalt
           test EBP,EBP
           je L_4040b8
           mov EAX,DWORD PTR [L_47a0ec+4]
@@ -1235,7 +1235,7 @@ L_404276:
           call _log_printf
           mov EAX,DWORD PTR [L_47a0e0+4]
           mov DWORD PTR [ESP],EAX
-          call FUN_41add0
+          call _setSmcKey
           test EBP,EBP
           je L_403f83
           mov EAX,DWORD PTR [L_47a0e4+4]

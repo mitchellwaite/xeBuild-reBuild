@@ -343,6 +343,36 @@ SYMBOLS = {
     0x4022f0: '_daeVerifySig', 0x402610: '_fcrtVerifySig', 0x402a00: '_shaSelfCheck',
     0x402a70: '_cbDecrypt', 0x402c70: '_cdDecrypt', 0x402ec0: '_ceDecrypt',
     0x41db70: '_shaCheck',
+    # app/keys (src/app/keys.c); names are ours
+    0x41aa00: '_keysInit', 0x41ad90: '_setKvSalt', 0x41adb0: '_setKvAltSalt',
+    0x41add0: '_setSmcKey', 0x41b1d0: '_setFuseLdv', 0x41b320: '_setFuseCpuKey',
+    0x41b420: '_calcXexKey', 0x41b520: '_check1blKey', 0x41b8e0: '_smcChecksum',
+    0x41ba00: '_smcEncrypt', 0x41ba80: '_smcPrepare', 0x41bf50: '_cbaEncrypt',
+    0x41c0c0: '_cbaEncryptZero', 0x41c1b0: '_cbaEncrypt2', 0x41c370: '_cbbEncrypt',
+    0x41c5e0: '_cdEncryptZero', 0x41c6b0: '_cdEncrypt', 0x41c760: '_cdEncryptCpu',
+    0x41c860: '_ceEncrypt', 0x41c910: '_cfPatchSlots', 0x41ca20: '_cfEncrypt',
+    0x41ce50: '_cgEncrypt', 0x41cf00: '_kvEncrypt', 0x41cff0: '_kvEncryptAlt',
+    0x41d0e0: '_kvPrepare', 0x41d6a0: '_extendedPrepare', 0x41d9b0: '_secdataPrepare',
+    0x41dc30: '_crlEncrypt', 0x41dfa0: '_daeEncryptOne', 0x41e180: '_daeEncrypt',
+    0x41e620: '_fcrtEncrypt', 0x41e7b0: '_shaHeader',
+    0x44a5e0: '_secdataKey', 0x44a600: '_daeKey', 0x44a620: '_crlKey', 0x44a640: '_smcKey',
+    0x44a644: '_kvAltSalt', 0x44a64c: '_kvSalt', 0x44a654: '_infoKey5', 0x44a664: '_infoKey4',
+    0x44a674: '_infoKey3', 0x44a684: '_infoKey2', 0x44a694: '_infoKey1', 0x44a6a4: '_infoKey0',
+    0x479560: '_zeroKey', 0x479570: '_pairing',
+    # keys.s strings the mixed keys.c refers to (extern names)
+    0x456664: '_msg_initRandom', 0x456680: '_msg_initStatic', 0x4566a4: '_msg_pairingSet',
+    0x4566c4: '_str_valid', 0x4566ca: '_str_error', 0x4566d0: '_msg_weight',
+    0x4566eb: '_msg_cpuKeySet', 0x4566fe: '_str_hexByte', 0x456703: '_str_newline',
+    0x456708: '_msg_cpuKeyWarn', 0x45674c: '_msg_cpuKeyChars', 0x45678c: '_msg_cpuKeyLen',
+    0x4567eb: '_msg_cpuKeySet2', 0x45685e: '_msg_1blKeySet', 0x456873: '_msg_1blSum',
+    0x456890: '_msg_xexKeySet', 0x4568a5: '_msg_xexSum', 0x4568c2: '_msg_1blBad',
+    0x4568e0: '_msg_1blBad2', 0x456904: '_msg_1blChars', 0x456944: '_msg_1blLen',
+    0x4569a3: '_msg_1blBadStr', 0x4569c4: '_msg_1blBadStr2', 0x456cfc: '_msg_cbencPairing',
+    0x456d22: '_msg_dualCb', 0x456d40: '_msg_cbb15572', 0x456d6c: '_msg_cbbMfg',
+    0x456f74: '_str_Success', 0x456fc0: '_msg_extMissing', 0x457028: '_msg_extSize',
+    0x457088: '_msg_extEncrypted', 0x4570c8: '_msg_extDecryptFail', 0x457110: '_msg_sdMissing',
+    0x457178: '_msg_sdSize', 0x4571d5: '_str_successNl', 0x4571e0: '_msg_crlRetry',
+    0x457200: '_str_failedNl', 0x45720c: '_msg_crlCrypted', 0x457248: '_msg_crlBad',
     0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
     # bootloaders.s strings the mixed bootloaders.c refers to (extern names)
     0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
@@ -387,6 +417,17 @@ C_FUNCS = {
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
+    # app/keys (the rest are drafted in wip/app/keys.c)
+    0x41aa00, 0x41abb0, 0x41ac00, 0x41ac50,  # keysInit setCrlKey setDaeKey setSecdataKey
+    0x41ac70, 0x41aca0, 0x41acd0, 0x41ad00,  # setInfoKey0..3
+    0x41ad30, 0x41ad60, 0x41ad90, 0x41adb0,  # setInfoKey4 setInfoKey5 setKvSalt setKvAltSalt
+    0x41add0, 0x41ade0, 0x41ae40, 0x41afe0,  # setSmcKey setPairing checkCpuKey setCpuKeyStr
+    0x41b120, 0x41b420, 0x41b520, 0x41b600,  # setCpuKey calcXexKey check1blKey set1blKey
+    0x41b740, 0x41ba00, 0x41bf50, 0x41c0c0,  # checkKeys smcEncrypt cbaEncrypt cbaEncryptZero
+    0x41c1b0, 0x41c370, 0x41c5e0, 0x41c6b0,  # cbaEncrypt2 cbbEncrypt cdEncryptZero cdEncrypt
+    0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt
+    0x41cff0, 0x41d6a0, 0x41d9b0, 0x41db70,  # kvEncryptAlt extendedPrepare secdataPrepare shaCheck
+    0x41dc30, 0x41dfa0, 0x41e7b0,            # crlEncrypt daeEncryptOne shaHeader
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

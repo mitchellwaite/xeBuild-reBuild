@@ -184,3 +184,38 @@ Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops 
 - stat at 448820 needs SYMBOLS `_stat` + IAT_NAMES `'_stat': '__imp___stat'`.
 - validChars is read with [0] folded to 'A', so the object needs C data (bootloaders-style one .c).
 - parseIni (409430-40aa10) not started.
+
+## app/keys.c
+
+Draft of the whole object, with string literals. 39 of 48 functions are
+built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
+makes from this file; add a function's name there (and its address to
+`split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Still off
+(`re/fncmp.py wip/app/keys.c <name>` line counts):
+
+- `setFuseLdv` (11; 7 when nothing inlines it): the original keeps the
+  `ldv == 0` path's `xor edi,edi` (cf = 0) apart from the loop counter's
+  `i = 0`; ours shares one `xor` before `test al,al`. u8/int/u32 counters,
+  `cf = 0` placement and `else`/`if` orders don't change it.
+- `setFuseCpuKey` (114 here, 16 with setFuseLdv external): our gcc inlines
+  setFuseLdv, the original calls it. With it external the copies need typed
+  struct copies (`q8`/`q16`) to get the reloads after each store; still
+  missing the write-back of cpuKey (the original stores the 16 key bytes back
+  to cpuKey after the fuse copies, as if `memcpy(cpuKey, fuse + 32, 16)`
+  survived; ours drops it).
+- `smcChecksum` (29) and `smcPrepare` (24, which inlines it): the loop is
+  right; after it the original moves both sums into registers (sum2 in
+  esi:edi across the first setBeU64 call, and `xor`s them on the
+  `count == 0` path), ours keeps them in their stack slots.
+- `fcrtEncrypt` (13): the "invalid offset" log should be the last block with
+  its own epilogue; ours puts it before the shared epilogue.
+- `kvPrepare` (437): ours tail-merges the inlined kvEncrypt and kvEncryptAlt
+  copies (one HMAC/RC4 sequence with the salt selected); the original keeps
+  both, and its size error is the fallthrough of `cmp size,0x4000`.
+- `daeEncrypt` (449): ours peels the first DAEP header test and specialises
+  the first iteration (`n == 0`); the original has one loop and threads only
+  the `n == 0` logging.
+- `cfPatchSlots` (108) and `cfEncrypt` (234, inlines it): semantics are
+  right; the original's loop runs a block counter `i` from `block` and writes
+  `tbl[i - block + 1]` (strength-reduced `i << 8`), with the count from a
+  `while (over > 0x4000) over -= 0x4000` final value.

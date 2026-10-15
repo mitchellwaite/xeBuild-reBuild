@@ -513,7 +513,7 @@ L_413c20:
           call _log_printf
           mov EAX,DWORD PTR [L_47a0e0+4]
           mov DWORD PTR [ESP],EAX
-          call FUN_41add0
+          call _setSmcKey
           jmp L_413bc4
           .byte 0x8d
           .byte 0x76
@@ -632,7 +632,7 @@ L_413da4:
           mov EAX,DWORD PTR [L_47a0e8+4]
           add EAX,16
           mov DWORD PTR [ESP],EAX
-          call FUN_41ad90
+          call _setKvSalt
           cmp ESI,32768
           jne L_413f38
           mov DWORD PTR [ESP],16384
@@ -666,7 +666,7 @@ L_413da4:
           mov EAX,DWORD PTR [L_47a0f4]
           add EAX,16
           mov DWORD PTR [ESP],EAX
-          call FUN_41adb0
+          call _setKvAltSalt
           add ESP,16
           pop EBX
           pop ESI

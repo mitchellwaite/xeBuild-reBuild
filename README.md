@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, three more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, four more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **361 of 617** (348 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **400 of 617** (387 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 176 / 432 |
+| `app/` | 14 / 25 | 215 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -39,10 +39,10 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/bootloaders` | mixed; 0 of 7 drafted functions match in `wip/app/bootloaders.c` | 12 / 19 |
 | `app/mode_update` | asm | 0 / 14 |
 | `app/mode_client` | asm | 0 / 16 |
-| `app/filelist_ini` | mixed | 1 / 12 |
+| `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
 | `app/image_read` | asm | 0 / 33 |
-| `app/keys` | asm | 0 / 48 |
+| `app/keys` | mixed; 0 of 9 drafted functions match in `wip/app/keys.c` | 39 / 48 |
 | `app/net` | asm | 0 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | asm | 0 / 41 |
@@ -122,11 +122,11 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_409410` (0x409410)
 - ⬜ `parseIni` (0x409430)
 - ✅ `getIniValue` (0x40aa10)
-- ⬜ `getIniBool` (0x40aad0)
-- ⬜ `iniBoolInvalid` (0x40abf0)
-- ⬜ `getIniU32` (0x40acf0)
-- ⬜ `iniU32Invalid` (0x40ade0)
-- ⬜ `loadUserIni` (0x40aef0)
+- ⬜ `getIniBool` (0x40aad0) (draft in `wip/`, no match yet)
+- ⬜ `iniBoolInvalid` (0x40abf0) (draft in `wip/`, no match yet)
+- ⬜ `getIniU32` (0x40acf0) (draft in `wip/`, no match yet)
+- ⬜ `iniU32Invalid` (0x40ade0) (draft in `wip/`, no match yet)
+- ⬜ `loadUserIni` (0x40aef0) (draft in `wip/`, no match yet)
 
 </details>
 <details>
@@ -219,56 +219,56 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/keys</code>: 0 / 48 in C</summary>
+<summary><code>app/keys</code>: 39 / 48 in C</summary>
 
-- ⬜ `FUN_41aa00` (0x41aa00)
-- ⬜ `setCrlKey` (0x41abb0)
-- ⬜ `setDaeKey` (0x41ac00)
-- ⬜ `setSecdataKey` (0x41ac50)
-- ⬜ `setInfoKey0` (0x41ac70)
-- ⬜ `setInfoKey1` (0x41aca0)
-- ⬜ `setInfoKey2` (0x41acd0)
-- ⬜ `setInfoKey3` (0x41ad00)
-- ⬜ `setInfoKey4` (0x41ad30)
-- ⬜ `setInfoKey5` (0x41ad60)
-- ⬜ `FUN_41ad90` (0x41ad90)
-- ⬜ `FUN_41adb0` (0x41adb0)
-- ⬜ `FUN_41add0` (0x41add0)
-- ⬜ `setPairing` (0x41ade0)
-- ⬜ `checkCpuKey` (0x41ae40)
-- ⬜ `setCpuKeyStr` (0x41afe0)
-- ⬜ `setCpuKey` (0x41b120)
-- ⬜ `FUN_41b1d0` (0x41b1d0)
-- ⬜ `FUN_41b320` (0x41b320)
-- ⬜ `FUN_41b420` (0x41b420)
-- ⬜ `FUN_41b520` (0x41b520)
-- ⬜ `set1blKey` (0x41b600)
-- ⬜ `checkKeys` (0x41b740)
-- ⬜ `FUN_41b8e0` (0x41b8e0)
-- ⬜ `FUN_41ba00` (0x41ba00)
-- ⬜ `FUN_41ba80` (0x41ba80)
-- ⬜ `FUN_41bf50` (0x41bf50)
-- ⬜ `FUN_41c0c0` (0x41c0c0)
-- ⬜ `FUN_41c1b0` (0x41c1b0)
-- ⬜ `FUN_41c370` (0x41c370)
-- ⬜ `FUN_41c5e0` (0x41c5e0)
-- ⬜ `FUN_41c6b0` (0x41c6b0)
-- ⬜ `FUN_41c760` (0x41c760)
-- ⬜ `FUN_41c860` (0x41c860)
-- ⬜ `FUN_41c910` (0x41c910)
-- ⬜ `FUN_41ca20` (0x41ca20)
-- ⬜ `FUN_41ce50` (0x41ce50)
-- ⬜ `FUN_41cf00` (0x41cf00)
-- ⬜ `FUN_41cff0` (0x41cff0)
-- ⬜ `FUN_41d0e0` (0x41d0e0)
-- ⬜ `FUN_41d6a0` (0x41d6a0)
-- ⬜ `FUN_41d9b0` (0x41d9b0)
-- ⬜ `shaCheck` (0x41db70)
-- ⬜ `FUN_41dc30` (0x41dc30)
-- ⬜ `FUN_41dfa0` (0x41dfa0)
-- ⬜ `FUN_41e180` (0x41e180)
-- ⬜ `FUN_41e620` (0x41e620)
-- ⬜ `FUN_41e7b0` (0x41e7b0)
+- ✅ `keysInit` (0x41aa00)
+- ✅ `setCrlKey` (0x41abb0)
+- ✅ `setDaeKey` (0x41ac00)
+- ✅ `setSecdataKey` (0x41ac50)
+- ✅ `setInfoKey0` (0x41ac70)
+- ✅ `setInfoKey1` (0x41aca0)
+- ✅ `setInfoKey2` (0x41acd0)
+- ✅ `setInfoKey3` (0x41ad00)
+- ✅ `setInfoKey4` (0x41ad30)
+- ✅ `setInfoKey5` (0x41ad60)
+- ✅ `setKvSalt` (0x41ad90)
+- ✅ `setKvAltSalt` (0x41adb0)
+- ✅ `setSmcKey` (0x41add0)
+- ✅ `setPairing` (0x41ade0)
+- ✅ `checkCpuKey` (0x41ae40)
+- ✅ `setCpuKeyStr` (0x41afe0)
+- ✅ `setCpuKey` (0x41b120)
+- ⬜ `setFuseLdv` (0x41b1d0) (draft in `wip/`, no match yet)
+- ⬜ `setFuseCpuKey` (0x41b320) (draft in `wip/`, no match yet)
+- ✅ `calcXexKey` (0x41b420)
+- ✅ `check1blKey` (0x41b520)
+- ✅ `set1blKey` (0x41b600)
+- ✅ `checkKeys` (0x41b740)
+- ⬜ `smcChecksum` (0x41b8e0) (draft in `wip/`, no match yet)
+- ✅ `smcEncrypt` (0x41ba00)
+- ⬜ `smcPrepare` (0x41ba80) (draft in `wip/`, no match yet)
+- ✅ `cbaEncrypt` (0x41bf50)
+- ✅ `cbaEncryptZero` (0x41c0c0)
+- ✅ `cbaEncrypt2` (0x41c1b0)
+- ✅ `cbbEncrypt` (0x41c370)
+- ✅ `cdEncryptZero` (0x41c5e0)
+- ✅ `cdEncrypt` (0x41c6b0)
+- ✅ `cdEncryptCpu` (0x41c760)
+- ✅ `ceEncrypt` (0x41c860)
+- ⬜ `cfPatchSlots` (0x41c910) (draft in `wip/`, no match yet)
+- ⬜ `cfEncrypt` (0x41ca20) (draft in `wip/`, no match yet)
+- ✅ `cgEncrypt` (0x41ce50)
+- ✅ `kvEncrypt` (0x41cf00)
+- ✅ `kvEncryptAlt` (0x41cff0)
+- ⬜ `kvPrepare` (0x41d0e0) (draft in `wip/`, no match yet)
+- ✅ `extendedPrepare` (0x41d6a0)
+- ✅ `secdataPrepare` (0x41d9b0)
+- ✅ `shaCheck` (0x41db70)
+- ✅ `crlEncrypt` (0x41dc30)
+- ✅ `daeEncryptOne` (0x41dfa0)
+- ⬜ `daeEncrypt` (0x41e180) (draft in `wip/`, no match yet)
+- ⬜ `fcrtEncrypt` (0x41e620) (draft in `wip/`, no match yet)
+- ✅ `shaHeader` (0x41e7b0)
 
 </details>
 <details>
@@ -1018,6 +1018,21 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
   copy from the string itself; those are written as `OUTCAT(name)`
   (`memcpy(dst + strlen(dst), str_name, sizeof "name")`). Which names are
   long differs between iniConsoleType and setConsoleType, so follow gcc.
+
+And `app/keys` (39 of 48 functions; the whole object is drafted in
+`wip/app/keys.c`; `python wip/keysmixed.py <matching functions>` makes
+`src/app/keys.c` from it: literals become `msg_*`/`str_*` names, the key
+buffers `extern`). The names (`keysInit`, `cbaEncrypt`,
+`kvPrepare`, the `infoKey0..5` HMAC salts, ...) are ours.
+
+- The hash check before decrypting extended.bin/kv.bin is a static helper
+  (`kvHashOk`) inlined next to `kvEncrypt`: its `ver`/hash locals share stack
+  slots with kvEncrypt's, which a function-scope local doesn't.
+- The SMC checksum's 64-bit rotates are written as
+  `(s << 29) | (u32)((u32)(s >> 32) >> 3)`: the original isn't a rotate
+  (shift and or, no double `shld`).
+- `crlEncrypt` writes the success branch twice (CPU key, then the alternate
+  key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 

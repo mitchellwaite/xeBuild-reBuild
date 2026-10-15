@@ -6472,7 +6472,7 @@ L_42cfe9:
 L_42d040:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EDI
-          call FUN_41d0e0
+          call _kvPrepare
 L_42d050:
           add ESI,1
           add EBX,1068
@@ -6539,7 +6539,7 @@ L_42d0f3:
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [EBP+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c860
+          call _ceEncrypt
 L_42d153:
           xor EAX,EAX
 L_42d155:
@@ -6559,7 +6559,7 @@ L_42d160:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ba80
+          call _smcPrepare
           test EAX,EAX
           je L_42d050
           mov EAX,1
@@ -6603,7 +6603,7 @@ L_42d1d5:
           mov DWORD PTR [ESP+12],EDX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41ce50
+          call _cgEncrypt
           jmp L_42d050
           .byte 0x8d
           .byte 0xb4
@@ -6645,7 +6645,7 @@ L_42d237:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [EBP+L_4bc150+16]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41ca20
+          call _cfEncrypt
           jmp L_42d050
           .byte 0x66
           .byte 0x90
@@ -6680,7 +6680,7 @@ L_42d2af:
           mov DWORD PTR [ESP+12],EDX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c860
+          call _ceEncrypt
           jmp L_42d050
 L_42d2d3:
           mov ECX,DWORD PTR [L_4c4f98]
@@ -6711,7 +6711,7 @@ L_42d31a:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c6b0
+          call _cdEncrypt
           jmp L_42d050
 L_42d333:
           mov EAX,DWORD PTR [EBX-4]
@@ -6719,7 +6719,7 @@ L_42d333:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c5e0
+          call _cdEncryptZero
           jmp L_42d050
           .byte 0x66
           .byte 0x90
@@ -6785,7 +6785,7 @@ L_42d413:
 L_42d420:
           mov DWORD PTR [ESP+4],1
           mov DWORD PTR [ESP],EDI
-          call FUN_41d0e0
+          call _kvPrepare
           jmp L_42d050
 L_42d435:
           mov EAX,DWORD PTR [_g479ea8]
@@ -6965,7 +6965,7 @@ L_42d6af:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c760
+          call _cdEncryptCpu
           jmp L_42d050
 L_42d6e0:
           mov ECX,DWORD PTR [L_479eb8]
@@ -7053,7 +7053,7 @@ L_42d7e2:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+96]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c370
+          call _cbbEncrypt
           jmp L_42d050
 L_42d823:
           mov EDI,DWORD PTR [L_479eb8]
@@ -7068,7 +7068,7 @@ L_42d839:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+96]
           mov DWORD PTR [ESP],EAX
-          call FUN_41bf50
+          call _cbaEncrypt
           jmp L_42d050
           .byte 0x8d
           .byte 0x74
@@ -7146,7 +7146,7 @@ L_42d94c:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [EBX-8]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c0c0
+          call _cbaEncryptZero
           jmp L_42d050
 L_42d967:
           mov ECX,DWORD PTR [L_4c4f98]
@@ -7237,7 +7237,7 @@ L_42da7b:
           call _log_printf
           mov EAX,DWORD PTR [EDI+L_4bc150+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_41b320
+          call _setFuseCpuKey
           jmp L_42d94c
 L_42daa8:
           mov EDI,DWORD PTR [EBX-8]
@@ -7370,7 +7370,7 @@ L_42dc87:
           mov DWORD PTR [ESP+8],EAX
           mov EAX,DWORD PTR [EBP+L_4bc150+16]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41ca20
+          call _cfEncrypt
           movzx EAX,AX
           add DWORD PTR [ESP+100],EAX
           jmp L_42d050
@@ -7442,7 +7442,7 @@ L_42dd51:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+96]
           mov DWORD PTR [ESP],EAX
-          call FUN_41c1b0
+          call _cbaEncrypt2
           jmp L_42d050
 L_42ddbb:
           mov ECX,DWORD PTR [L_4c4f98]
@@ -7638,7 +7638,7 @@ L_42e072:
           lea EDX,DWORD PTR [EDI+1044]
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+8],EDX
-          call FUN_41ce50
+          call _cgEncrypt
 L_42e09d:
           add EBX,1
           add EDI,1068
@@ -7692,7 +7692,7 @@ L_42e117:
           mov DWORD PTR [ESP+8],ESI
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41ca20
+          call _cfEncrypt
           jmp L_42e09d
           .byte 0x8d
           .byte 0xb4
@@ -8292,7 +8292,7 @@ L_42e8b0:
           call _log_printf
           mov EAX,DWORD PTR [L_479ec0]
           mov DWORD PTR [ESP],EAX
-          call FUN_41aa00
+          call _keysInit
           test EBX,EBX
           je L_42e940
           mov ECX,DWORD PTR [L_4c4f98]
@@ -8318,7 +8318,7 @@ L_42e909:
           lea EBP,DWORD PTR [EAX+_xb]
           mov EAX,DWORD PTR [EAX+L_4bc150+12]
           mov DWORD PTR [ESP],EAX
-          call FUN_41b320
+          call _setFuseCpuKey
           cmp DWORD PTR [_g479ea8],2
           je L_42e940
           call FUN_410460
@@ -8921,7 +8921,7 @@ L_42f200:
           imul EAX,DWORD PTR [L_4c4f9c],1068
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP],EAX
-          call FUN_41d9b0
+          call _secdataPrepare
 L_42f21f:
           imul EAX,DWORD PTR [L_4c4f9c],1068
           mov EDI,DWORD PTR [ESP+32]
@@ -9440,7 +9440,7 @@ L_42fa60:
           imul EAX,DWORD PTR [L_4c4f9c],1068
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP],EAX
-          call FUN_41d6a0
+          call _extendedPrepare
           jmp L_42f21f
 L_42fa7c:
           mov DWORD PTR [ESP+12],EBX
@@ -9467,7 +9467,7 @@ L_42fab0:
           mov DWORD PTR [ESP+4],EDX
           mov EAX,DWORD PTR [EAX+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_41e180
+          call _daeEncrypt
           jmp L_42f21f
 L_42fae4:
           mov DWORD PTR [ESP+4],OFFSET L_45abe0
@@ -9694,17 +9694,17 @@ L_42fe00:
           mov DWORD PTR [ESP+4],EDX
           mov EAX,DWORD PTR [EAX+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_41dc30
+          call _crlEncrypt
           jmp L_42f21f
 L_42fe34:
           mov DWORD PTR [ESP],OFFSET L_4c9164
           mov BYTE PTR [L_4c917f],1
-          call FUN_41e7b0
+          call _shaHeader
           mov DWORD PTR [ESP],1
           call FUN_412110
           mov DWORD PTR [ESP],OFFSET L_4c9164
           mov BYTE PTR [L_4c917f],2
-          call FUN_41e7b0
+          call _shaHeader
           mov DWORD PTR [ESP],2
           call FUN_412110
           jmp L_42f6cc
@@ -9730,7 +9730,7 @@ L_42fea0:
           mov DWORD PTR [ESP+4],EDX
           mov EAX,DWORD PTR [EAX+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_41e620
+          call _fcrtEncrypt
           jmp L_42f21f
 L_42fecc:
           mov DWORD PTR [ESP+4],OFFSET L_45abe0
