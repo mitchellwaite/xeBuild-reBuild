@@ -5,7 +5,8 @@ python re/progress.py [README.md]
 Run after `sh build.sh` (it reads build/obj/*.o and build/xeBuild.map for the
 function names).  Functions come from the reference exe's .eh_frame (one FDE
 each, units.py); an object is C if src/<obj>.c exists, and in a mixed object
-(src/<obj>.s too) only the C_FUNCS addresses are C.  A function still in
+(src/<obj>.s too) only the C_FUNCS addresses are C.  Functions a .c defines
+in top-level __asm__ (still assembly, see app/bootloaders) aren't C.  A function still in
 assembly whose SYMBOLS name is defined in a draft wip/<obj>.c counts as C
 too if re/fncmp.py says it matches.  The section is replaced between the
 progress:begin/end markers.
@@ -55,6 +56,15 @@ def func_names(obj, bases):
     return names
 
 
+def asm_funcs(obj, fdes):
+    """Functions a src/<obj>.c defines in top-level __asm__ (a label line `"_name:`)."""
+    src = os.path.join(ROOT, 'src', obj + '.c')
+    if not os.path.exists(src):
+        return set()
+    text = open(src, encoding='utf-8').read()
+    return {a for a, _ in fdes if SYMBOLS.get(a) and '"%s:' % SYMBOLS[a] in text}
+
+
 def wip_state(obj, addrs):
     """{va: 'wip' or 'draft'} for the functions wip/<obj>.c defines (matching or not)."""
     src = os.path.join('wip', obj + '.c')
@@ -84,7 +94,8 @@ def main():
         names = func_names(obj, bases)
         has_c = os.path.exists(os.path.join(ROOT, 'src', obj + '.c'))
         mixed = has_c and os.path.exists(os.path.join(ROOT, 'src', obj + '.s'))
-        built = {a for a, _ in fdes if has_c and (not mixed or a in C_FUNCS)}
+        built = {a for a, _ in fdes if has_c and (not mixed or a in C_FUNCS)
+                 and a not in asm_funcs(obj, fdes)}
         wip = wip_state(obj, sorted(a for a, _ in fdes if a not in built))
         objs[obj] = [(a, names.get(a) or SYMBOLS.get(a, 'FUN_%x' % a).lstrip('_'), 'C' if a in built else wip.get(a, 'asm'))
                      for a, _ in sorted(fdes)]

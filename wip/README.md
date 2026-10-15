@@ -136,8 +136,11 @@ Findings:
 ## app/bootloaders.c
 
 Draft of the whole object, with string literals. 12 of 19 functions match.
-They are built from `src/app/bootloaders.c`, a mixed object that uses
-`extern` names for the strings (`msg_*` in SYMBOLS). The 7 that don't:
+They are built from `src/app/bootloaders.c`, which has the other 7 as
+top-level `__asm__` blocks (plus the strings and `.eh_frame`), so its C
+uses `extern` names for the strings (`msg_*` in SYMBOLS). To move one of
+the 7, replace its `__asm__` block with the C from here. The 7 that don't
+match yet:
 
 - `cbDecrypt`, `cdDecrypt`, `ceDecrypt` (1 line each): the calloc failure
   path. The original does `xor ebx,ebx` (ebx holds the return value). Ours

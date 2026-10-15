@@ -977,7 +977,12 @@ does nothing.
   top-level asm before every function. `-fno-toplevel-reorder` keeps the
   order, but it also changes the order functions are compiled in, which
   changed `readFileIn`. `-fno-asynchronous-unwind-tables` changes no code in
-  the app's C files.
+  the app's C files.  Where the flag changes nothing, that layout works:
+  `app/bootloaders.c` has its unmatched functions, strings and `.eh_frame`
+  as top-level `__asm__` between the C functions (build.sh gives it
+  `-fno-toplevel-reorder -fno-asynchronous-unwind-tables`, and there is no
+  `.s`). `progress.py` counts a function whose label is in a `.c`'s asm as
+  assembly.
 - The C functions can't emit data (string literals, jump tables,
   statics); `splice.py` refuses. Declare the `.s`'s data `extern` under
   `SYMBOLS` names instead (`iniBuf`, `iniSize`). Literals and switches move

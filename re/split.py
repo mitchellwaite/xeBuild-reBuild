@@ -387,10 +387,6 @@ C_FUNCS = {
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
-    # app/bootloaders (the rest is drafted in wip/app/bootloaders.c)
-    0x401630, 0x401730, 0x4017d0, 0x401910,  # verifyExtended unscramble cbGetPairing cfGetPairing
-    0x401a00, 0x401dc0, 0x401e60, 0x401f80,  # cfBestPairing cgDecrypt verifySecdata crlVerifySig
-    0x402020, 0x402210, 0x402610, 0x402a00,  # verifyCrl daeDecrypt fcrtVerifySig shaSelfCheck
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
