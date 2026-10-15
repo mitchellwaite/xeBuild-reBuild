@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, two more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, three more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **349 of 617** (336 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **361 of 617** (348 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 164 / 432 |
+| `app/` | 14 / 25 | 176 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,7 +36,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/bootloaders` | asm | 0 / 19 |
+| `app/bootloaders` | mixed; 0 of 7 drafted functions match in `wip/app/bootloaders.c` | 12 / 19 |
 | `app/mode_update` | asm | 0 / 14 |
 | `app/mode_client` | asm | 0 / 16 |
 | `app/filelist_ini` | mixed | 1 / 12 |
@@ -49,27 +49,27 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
 <details>
-<summary><code>app/bootloaders</code>: 0 / 19 in C</summary>
+<summary><code>app/bootloaders</code>: 12 / 19 in C</summary>
 
-- ⬜ `verifyExtended` (0x401630)
-- ⬜ `FUN_401730` (0x401730)
-- ⬜ `FUN_4017d0` (0x4017d0)
-- ⬜ `FUN_401910` (0x401910)
-- ⬜ `FUN_401a00` (0x401a00)
-- ⬜ `cfDecrypt` (0x401ce0)
-- ⬜ `cgDecrypt` (0x401dc0)
-- ⬜ `verifySecdata` (0x401e60)
-- ⬜ `FUN_401f80` (0x401f80)
-- ⬜ `verifyCrl` (0x402020)
-- ⬜ `FUN_402210` (0x402210)
-- ⬜ `FUN_4022f0` (0x4022f0)
-- ⬜ `verifyDae` (0x402410)
-- ⬜ `FUN_402610` (0x402610)
-- ⬜ `verifyFcrt` (0x402720)
-- ⬜ `FUN_402a00` (0x402a00)
-- ⬜ `FUN_402a70` (0x402a70)
-- ⬜ `FUN_402c70` (0x402c70)
-- ⬜ `FUN_402ec0` (0x402ec0)
+- ✅ `verifyExtended` (0x401630)
+- ✅ `unscramble` (0x401730)
+- ✅ `cbGetPairing` (0x4017d0)
+- ✅ `cfGetPairing` (0x401910)
+- ✅ `cfBestPairing` (0x401a00)
+- ⬜ `cfDecrypt` (0x401ce0) (draft in `wip/`, no match yet)
+- ✅ `cgDecrypt` (0x401dc0)
+- ✅ `verifySecdata` (0x401e60)
+- ✅ `crlVerifySig` (0x401f80)
+- ✅ `verifyCrl` (0x402020)
+- ✅ `daeDecrypt` (0x402210)
+- ⬜ `daeVerifySig` (0x4022f0) (draft in `wip/`, no match yet)
+- ⬜ `verifyDae` (0x402410) (draft in `wip/`, no match yet)
+- ✅ `fcrtVerifySig` (0x402610)
+- ⬜ `verifyFcrt` (0x402720) (draft in `wip/`, no match yet)
+- ✅ `shaSelfCheck` (0x402a00)
+- ⬜ `cbDecrypt` (0x402a70) (draft in `wip/`, no match yet)
+- ⬜ `cdDecrypt` (0x402c70) (draft in `wip/`, no match yet)
+- ⬜ `ceDecrypt` (0x402ec0) (draft in `wip/`, no match yet)
 
 </details>
 <details>
@@ -263,7 +263,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_41d0e0` (0x41d0e0)
 - ⬜ `FUN_41d6a0` (0x41d6a0)
 - ⬜ `FUN_41d9b0` (0x41d9b0)
-- ⬜ `FUN_41db70` (0x41db70)
+- ⬜ `shaCheck` (0x41db70)
 - ⬜ `FUN_41dc30` (0x41dc30)
 - ⬜ `FUN_41dfa0` (0x41dfa0)
 - ⬜ `FUN_41e180` (0x41e180)

@@ -132,3 +132,38 @@ Findings:
   `*(.text.startup)` when this object is built from C.
 - The temperature/fan/region fields must be u32 (an int would let the
   -1 default reuse the loaded value).
+
+## app/bootloaders.c
+
+Draft of the whole object, with string literals. 12 of 19 functions match.
+They are built from `src/app/bootloaders.c`, a mixed object that uses
+`extern` names for the strings (`msg_*` in SYMBOLS). The 7 that don't:
+
+- `cbDecrypt`, `cdDecrypt`, `ceDecrypt` (1 line each): the calloc failure
+  path. The original does `xor ebx,ebx` (ebx holds the return value). Ours
+  relies on ebx already being 0 after `test eax,eax; mov ebx,eax; je`.
+  `-fdisable-tree-uncprop1` doesn't change it, so RTL drops the set, not
+  tree uncprop. A `void *` return or temp breaks the shared ebx return
+  (12 lines), and so does a single `return buf` at the end (57 lines).
+  Undeclared (int) calloc doesn't help either. The success branch has to
+  set `*outLen` itself (`buf = 0` on the free path) to get down to 1 line.
+- `cfDecrypt` (4): the original returns `checkZeros(...) != 0` as
+  `mov edx,1; test eax,eax; cmovne eax,edx`. Ours is `setne; movzx`.
+  Tried `!!`, `?1:0`, `if (ok) ok = 1`, a `ret` variable, u32: all setne.
+- `daeVerifySig` (4): block order only. The `!pub2a4` return (`mov eax,1;
+  ret` before the prologue) should come last, after the FAIL log. A
+  `memset` for the zero HMAC key and `if (!ok) FAIL else good` were needed
+  to get this far. `__builtin_expect` on the pub test doesn't move it.
+- `verifyFcrt` (10): block order. The inlined fcrtVerifySig's "sig good"
+  block should sit right after the size-error return, and the "already
+  decrypted"/"no pub key" blocks at the end.
+- `verifyDae` (189): ours clones daeDecrypt (`daeDecrypt.constprop`, perBox
+  = 1) and peels the first DAEP header test. The original calls
+  daeDecrypt normally and keeps `buf` in ecx, spilled around calls. A
+  `perBox ? cpuKey : key28c` select still gets cloned.
+
+What did match: `= {0}` on the second HMAC buffer in verifySecdata gave a
+different register choice; `memset(hash, 0, 16)` matched. unscramble's
+state index is `j = (j + 1) & 3` with `t = buf[i] * 251` computed first.
+The signature-log ifs are `if (ok) good else FAIL` in crlVerifySig and
+fcrtVerifySig.

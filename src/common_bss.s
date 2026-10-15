@@ -90,7 +90,6 @@
 .globl L_47a104
 .globl L_47a108
 .globl L_47a10b
-.globl L_47a10c
 .globl L_47a110
 .globl L_47a114
 .globl L_47a118
@@ -98,12 +97,9 @@
 .globl L_47a120
 .globl L_47a124
 .globl L_47a128
-.globl L_47a12c
 .globl L_47a130
 .globl L_47a134
 .globl L_47a138
-.globl L_47a13c
-.globl L_47a144
 .globl L_47a148
 .globl L_47a14c
 .globl L_47a14d
@@ -258,8 +254,12 @@
 .globl _g47a080
 .globl _iniBuf
 .globl _iniSize
+.globl _key1bl
+.globl _key28c
 .globl _manifest
 .globl _masterPub
+.globl _pub1bl
+.globl _pub2a4
 .globl _xb
 
 .bss
@@ -444,7 +444,7 @@ L_47a108:
           .zero 3
 L_47a10b:
           .zero 1
-L_47a10c:
+_key1bl:
           .zero 4
 L_47a110:
           .zero 4
@@ -462,7 +462,7 @@ L_47a124:
           .zero 4
 L_47a128:
           .zero 4
-L_47a12c:
+_key28c:
           .zero 4
 L_47a130:
           .zero 4
@@ -470,11 +470,11 @@ L_47a134:
           .zero 4
 L_47a138:
           .zero 4
-L_47a13c:
+_pub1bl:
           .zero 4
 _masterPub:
           .zero 4
-L_47a144:
+_pub2a4:
           .zero 4
 L_47a148:
           .zero 4

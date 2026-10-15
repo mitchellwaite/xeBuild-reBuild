@@ -3049,7 +3049,7 @@ L_429f31:
           .byte 0x76
           .byte 0x0
 L_429f40:
-          mov EAX,DWORD PTR [L_47a13c]
+          mov EAX,DWORD PTR [_pub1bl]
           test EAX,EAX
           je L_42a260
           mov DWORD PTR [ESP+4],EAX
@@ -3769,7 +3769,7 @@ L_42aa00:
           cmp ESI,17
           jne L_42ad0d
 L_42aa3d:
-          mov EAX,DWORD PTR [L_47a13c]
+          mov EAX,DWORD PTR [_pub1bl]
           test EAX,EAX
           je L_42ada0
 L_42aa4a:
@@ -3943,7 +3943,7 @@ L_42acb5:
 L_42ad0d:
           cmp ESI,11
           jne L_42aa78
-          mov EAX,DWORD PTR [L_47a13c]
+          mov EAX,DWORD PTR [_pub1bl]
           test EAX,EAX
           jne L_42aa4a
           mov DWORD PTR [ESP+8],EBP

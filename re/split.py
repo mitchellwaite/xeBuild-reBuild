@@ -337,8 +337,19 @@ SYMBOLS = {
     0x4481c0: '_opendir', 0x448360: '_readdir', 0x448470: '_closedir',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
+    # app/bootloaders (src/app/bootloaders.c) and what it uses; names are ours
+    0x401730: '_unscramble', 0x4017d0: '_cbGetPairing', 0x401910: '_cfGetPairing',
+    0x401a00: '_cfBestPairing', 0x401f80: '_crlVerifySig', 0x402210: '_daeDecrypt',
+    0x4022f0: '_daeVerifySig', 0x402610: '_fcrtVerifySig', 0x402a00: '_shaSelfCheck',
+    0x402a70: '_cbDecrypt', 0x402c70: '_cdDecrypt', 0x402ec0: '_ceDecrypt',
+    0x41db70: '_shaCheck',
+    0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
+    # bootloaders.s strings the mixed bootloaders.c refers to (extern names)
+    0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
+    0x44c110: '_msg_cfSlot1', 0x44c143: '_msg_sigGood', 0x44c14e: '_msg_sigCheckFail',
+    0x44c200: '_msg_sigFail', 0x44c214: '_msg_noPub',
     # runtime functions the C code calls
-    0x448760: '__assert',       # libmingwex wassert.o
+    0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
     0x449050: '__time32',       # import stub, msvcrt `time`
     # import stubs
@@ -376,6 +387,10 @@ C_FUNCS = {
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
+    # app/bootloaders (the rest is drafted in wip/app/bootloaders.c)
+    0x401630, 0x401730, 0x4017d0, 0x401910,  # verifyExtended unscramble cbGetPairing cfGetPairing
+    0x401a00, 0x401dc0, 0x401e60, 0x401f80,  # cfBestPairing cgDecrypt verifySecdata crlVerifySig
+    0x402020, 0x402210, 0x402610, 0x402a00,  # verifyCrl daeDecrypt fcrtVerifySig shaSelfCheck
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

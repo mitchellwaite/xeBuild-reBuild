@@ -255,7 +255,7 @@ FUN_4138c0:
           add EAX,EDX
           add EAX,EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_401a00
+          call _cfBestPairing
           test EAX,EAX
           mov ESI,EAX
           je L_413993
@@ -314,7 +314,7 @@ L_413993:
           add EAX,EDX
           add EAX,DWORD PTR [_g479f4c]
           mov DWORD PTR [ESP],EAX
-          call FUN_4017d0
+          call _cbGetPairing
           test EAX,EAX
           mov ESI,EAX
           jne L_413939
@@ -505,7 +505,7 @@ L_413c20:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_47a0e0+4]
           mov DWORD PTR [ESP],EAX
-          call FUN_401730
+          call _unscramble
           test EAX,EAX
           je L_413cd0
           mov DWORD PTR [ESP+4],OFFSET L_4523ec
@@ -1494,7 +1494,7 @@ FUN_414960:
           mov EAX,DWORD PTR [_g479f4c]
           add EAX,50233344
           mov DWORD PTR [ESP],EAX
-          call FUN_402a00
+          call _shaSelfCheck
           test EAX,EAX
           mov EDI,EAX
           je L_414a50
@@ -1505,7 +1505,7 @@ FUN_414960:
           mov EAX,DWORD PTR [_g479f4c]
           add EAX,50249728
           mov DWORD PTR [ESP],EAX
-          call FUN_402a00
+          call _shaSelfCheck
           test EAX,EAX
           je L_414a7a
           mov DWORD PTR [ESP+8],EBX
@@ -1543,7 +1543,7 @@ L_414a50:
           mov EAX,DWORD PTR [_g479f4c]
           add EAX,50249728
           mov DWORD PTR [ESP],EAX
-          call FUN_402a00
+          call _shaSelfCheck
           test EAX,EAX
           jne L_414ad0
 L_414a7a:

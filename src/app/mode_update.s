@@ -1226,7 +1226,7 @@ L_404276:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_47a0e0+4]
           mov DWORD PTR [ESP],EAX
-          call FUN_401730
+          call _unscramble
           test EAX,EAX
           je L_4042fd
           mov DWORD PTR [ESP+4],OFFSET L_44d377
@@ -1693,8 +1693,8 @@ L_40493f:
           mov EBX,5
           call _log_printf
 L_40496c:
-          mov DWORD PTR [L_47a13c],0
-          mov DWORD PTR [L_47a144],0
+          mov DWORD PTR [_pub1bl],0
+          mov DWORD PTR [_pub2a4],0
           mov EAX,EBX
           mov DWORD PTR [_masterPub],0
           add ESP,4140
