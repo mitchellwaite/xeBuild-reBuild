@@ -23,7 +23,7 @@ NAMED = set(SYMBOLS.values()) | {v.split('@')[0] for v in IAT_NAMES.values()}
 # FNCMP_LITERALS=1: a draft with string literals (wip/) compares against the
 # .s's named strings (`_msg_*`, `_str_*`, `_mu_*`, `_mc_*`) as plain labels
 if os.environ.get('FNCMP_LITERALS'):
-    NAMED = {n for n in NAMED if not re.match(r'_(msg|str|mu|ir|mc|net)_', n)}
+    NAMED = {n for n in NAMED if not re.match(r'_(msg|str|mu|ir|mc|net|bd)_', n)}
 # condition-code spellings: gcc's (e.g. jnb) -> ddisasm's (jae)
 CC = {'nb': 'ae', 'nae': 'b', 'z': 'e', 'nz': 'ne', 'nbe': 'a', 'na': 'be',
       'nl': 'ge', 'nge': 'l', 'nle': 'g', 'ng': 'le', 'c': 'b', 'nc': 'ae'}

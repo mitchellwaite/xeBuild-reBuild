@@ -543,3 +543,35 @@ Open (diff lines from `re/fncmp.py`):
   ebx, got edi, buf esi. `-fno-tree-dominator-opts` gets netRecv to 23.
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
+
+## app/build.c
+
+Draft of the object, started with the file loaders (14 of 41 functions so
+far). 9 match and are built from `src/app/build.c` (mixed): findFileOffset,
+findFileSize, findFile, readMetaFile, makeTimestamp, loadCommonFile,
+loadBinFile, loadLocalFile, setFileData. `python wip/mixed.py app/build
+<fns>` makes the src file from the draft (a generic netmixed.py: strings
+become `bd_<address>` statics, set up per object in its `OBJS`). Test the
+draft with `FNCMP_LITERALS=1`; `sh wip/all.sh wip/app/build.c <fns>` runs
+fncmp over a list.
+
+- loadFileCrc is an inlined helper: loadBaseFile, loadBaseFileMeta,
+  loadCommonFile, loadInputFile, loadBinFile and loadLocalFile (twice) are
+  wrappers around it, and loadCommonFile/loadBinFile/loadLocalFile match
+  with it inlined. Its own out-of-line copy is 14 lines off (the
+  verbose "reading %s (0x%x bytes)" block is placed after the returns), so
+  the mixed C keeps its body only for inlining (`inline` in mixed.py's
+  OBJS); splice.py drops gcc's copy of a function the .s still defines.
+- The Win32 time calls are timeutil.c's cdecl ports, not imports: no
+  windows.h, declare them as in timeutil.c.
+- timestampToFileTime (16 lines, uncalled): the original computes and
+  stores each argument in turn in eax; ours loads both halves first.
+  Not the prototype, not TER or sched2.
+- loadBaseFileMeta (21): the original falls through to `return 0` when
+  meta is NULL; ours (pointer heuristic) falls into the meta block.
+- loadInputFile (~360): the SUPD / nanddump / USVR / common-dir fallback
+  chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
+  `common & failed` with `and`, and its loadCommonFile tail call is a
+  separate return. Two shapes tried (early returns, `r = 0`).
+- loadBaseFile is static with gcc's local convention (eax, edx); it
+  is only testable once its callers are drafted.

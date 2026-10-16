@@ -14,7 +14,8 @@ A `static` variable the .s defines (same name) can stay static in the C, so
 gcc's alias analysis sees what the original's did; its `.lcomm` is dropped
 and the code refers to the .s's label.  Likewise a `static const char x[] =
 "..."` naming one of the .s's strings (so gcc can fold strlen of it): its
-.rdata copy is dropped.
+.rdata copy is dropped.  So is gcc's copy of a function the .s still has in
+asm, which the C keeps only so that its functions can inline it.
 """
 import re, sys
 
@@ -98,7 +99,9 @@ def main():
             sys.exit('splice.py: %s is not defined in %s' % (name, gen))
         used.add(name)
         out += ['.att_syntax prefix'] + fns[name] + ['.intel_syntax noprefix']
-    extra = set(fns) - used
+    # a function the .s still has in asm may be in the C too, so that the C
+    # functions can inline it (it doesn't match on its own yet): drop gcc's copy
+    extra = set(fns) - used - defined
     if extra:
         sys.exit('splice.py: %s defines %s, which the .s has no marker for (C_FUNCS)'
                  % (gen, ', '.join(sorted(extra))))

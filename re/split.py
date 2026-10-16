@@ -544,6 +544,10 @@ SYMBOLS = {
     0x42c620: '_addUpdateBls', 0x42c900: '_logPowerButton', 0x42cbb0: '_patchFreeboot',
     0x42cee0: '_patchPayloadSize', 0x42cfa0: '_encodeBls', 0x42dfb0: '_encodeUpdateBls',
     0x42e160: '_calcBlAreaSize', 0x42e760: '_buildFlash',   # buildImage tail-calls it
+    # app/build's strings that its C functions use (wip/mixed.py)
+    0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
+    0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
+    0x458d3c: '_bd_458d3c', 0x458d74: '_bd_458d74', 0x458d98: '_bd_458d98',
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -621,6 +625,10 @@ C_FUNCS = {
     0x41ede0, 0x41f1a0, 0x41f330, 0x41f390,  # netSendStr netSendData netCheckOk netOpenSocket
     0x41fa00, 0x41fa40, 0x41fe10, 0x41fe20,  # netClose netDisconnect netGetInfo netDumpNand
     0x41ff90, 0x420420, 0x420840,            # netGetBldrs netGetBadBlocks netReboot
+    # app/build (wip/app/build.c is the whole draft; wip/mixed.py)
+    0x427650, 0x4276a0, 0x4276f0, 0x427950,  # findFileOffset findFileSize findFile readMetaFile
+    0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile
+    0x428ac0,                                # setFileData
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

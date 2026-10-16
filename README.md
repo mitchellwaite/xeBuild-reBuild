@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, eight more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, nine more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **456 of 617** (443 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **465 of 617** (452 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 271 / 432 |
+| `app/` | 14 / 25 | 280 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -45,7 +45,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
-| `app/build` | asm | 0 / 41 |
+| `app/build` | mixed; 0 of 5 drafted functions match in `wip/app/build.c` | 9 / 41 |
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
 <details>
@@ -333,22 +333,22 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/build</code>: 0 / 41 in C</summary>
+<summary><code>app/build</code>: 9 / 41 in C</summary>
 
-- ⬜ `loadBaseFile` (0x427500)
-- ⬜ `findFileOffset` (0x427650)
-- ⬜ `findFileSize` (0x4276a0)
-- ⬜ `findFile` (0x4276f0)
-- ⬜ `loadFileCrc` (0x427730)
-- ⬜ `readMetaFile` (0x427950)
-- ⬜ `makeTimestamp` (0x4279b0)
-- ⬜ `timestampToFileTime` (0x427a70)
-- ⬜ `loadBaseFileMeta` (0x427ab0)
-- ⬜ `loadCommonFile` (0x427cc0)
-- ⬜ `loadInputFile` (0x428040)
-- ⬜ `loadBinFile` (0x428780)
-- ⬜ `loadLocalFile` (0x4288c0)
-- ⬜ `setFileData` (0x428ac0)
+- ⬜ `loadBaseFile` (0x427500) (draft in `wip/`, no match yet)
+- ✅ `findFileOffset` (0x427650)
+- ✅ `findFileSize` (0x4276a0)
+- ✅ `findFile` (0x4276f0)
+- ⬜ `loadFileCrc` (0x427730) (draft in `wip/`, no match yet)
+- ✅ `readMetaFile` (0x427950)
+- ✅ `makeTimestamp` (0x4279b0)
+- ⬜ `timestampToFileTime` (0x427a70) (draft in `wip/`, no match yet)
+- ⬜ `loadBaseFileMeta` (0x427ab0) (draft in `wip/`, no match yet)
+- ✅ `loadCommonFile` (0x427cc0)
+- ⬜ `loadInputFile` (0x428040) (draft in `wip/`, no match yet)
+- ✅ `loadBinFile` (0x428780)
+- ✅ `loadLocalFile` (0x4288c0)
+- ✅ `setFileData` (0x428ac0)
 - ⬜ `appendAddonPatches` (0x428b10)
 - ⬜ `showSmcConfig` (0x428d20)
 - ⬜ `iniRangeOk` (0x429180)
