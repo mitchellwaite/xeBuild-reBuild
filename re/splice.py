@@ -12,7 +12,9 @@ function, switched to AT&T syntax around it.  Its alignment is a no-op: the
 not land where the original's is: give it extern names for the .s's data.
 A `static` variable the .s defines (same name) can stay static in the C, so
 gcc's alias analysis sees what the original's did; its `.lcomm` is dropped
-and the code refers to the .s's label.
+and the code refers to the .s's label.  Likewise a `static const char x[] =
+"..."` naming one of the .s's strings (so gcc can fold strlen of it): its
+.rdata copy is dropped.
 """
 import re, sys
 
@@ -48,11 +50,37 @@ def functions(lines):
     return out
 
 
+def drop_rdata(lines, defined):
+    """Drop gcc's .rdata blocks whose labels the .s defines (a `static const
+    char x[] = "..."` standing for the .s's string x, so that gcc can fold
+    strlen of it); the code refers to the .s's label."""
+    out, k = [], 0
+    while k < len(lines):
+        if not re.match(r'^\s*\.section\s+\.rdata\b', lines[k]):
+            out.append(lines[k])
+            k += 1
+            continue
+        e = k + 1
+        while e < len(lines) and not SECTION.match(lines[e]):
+            e += 1
+        labels = [m.group(1) for m in map(LABEL.match, lines[k + 1:e]) if m]
+        # `.lcomm`s don't switch sections: keep them for the check below
+        out += [l for l in lines[k + 1:e] if LCOMM.match(l)]
+        other = [l for l in lines[k + 1:e] if not LABEL.match(l) and not LCOMM.match(l)
+                 and not re.match(r'^\s*$|^\s*\.(p2)?align\b|^\s*\.(ascii|string)\s', l)]
+        undef = [n for n in labels if n not in defined]
+        if not labels or other or undef:
+            sys.exit('splice.py: gcc put data in .rdata that the .s does not define (%s)'
+                     % (', '.join(undef) or (other + [''])[0].strip()))
+        k = e
+    return out
+
+
 def main():
     src, gen, dst = sys.argv[1:4]
-    fns = functions(open(gen).read().split('\n'))
     lines = open(src).read().split('\n')
     defined = {m.group(1) for m in map(LABEL.match, lines) if m}
+    fns = functions(drop_rdata(open(gen).read().split('\n'), defined))
     for name, body in fns.items():
         for l in body:
             m = LCOMM.match(l)

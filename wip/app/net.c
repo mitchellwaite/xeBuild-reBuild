@@ -15,7 +15,6 @@ typedef unsigned long long u64;
 
 #define BEACON_MAGIC	0x4e537672	/* "NSvr" */
 #define OK_REPLY	0x4f4b	/* "OK" */
-
 /* what GTIN returns; the first 8 words come big-endian */
 struct consoleinfo {
 	u32 version;			/* 000 updsvr version; low byte: peek version */
@@ -346,7 +345,7 @@ int netReadInfo(void)
 	int i;
 	struct consoleinfo *info;
 
-	if (netSendStr("GTIN\n")) {
+	if (send(netSock, "GTIN\n", 5, 0) == 5) {
 		len = 0;
 		info = (struct consoleinfo *)netRecv((int *)&len);
 		if (info && len >= sizeof *info) {
@@ -369,7 +368,7 @@ int netReadInfo(void)
 	return 0;
 }
 
-int netConnect(const char *ip)
+u32 netConnect(const char *ip)
 {
 	WSADATA wsa;
 	struct sockaddr_in sa;
@@ -429,7 +428,7 @@ void netDisconnect(void)
 	netClose();
 }
 
-int netMount(const char *drive, const char *device)
+u32 netMount(const char *drive, const char *device)
 {
 	char cmd[260];
 
@@ -443,7 +442,7 @@ int netMount(const char *drive, const char *device)
 	return 0;
 }
 
-int netUnmount(const char *drive)
+u32 netUnmount(const char *drive)
 {
 	char cmd[260];
 
@@ -457,14 +456,14 @@ int netUnmount(const char *drive)
 	return 0;
 }
 
-u8 *netGetFile(const char *name, int *len)
+u32 netGetFile(const char *name, int *len)
 {
 	char cmd[260];
 
 	sprintf(cmd, "GETF%s\n", name);
 	if (netSendStr(cmd))
-		return netRecv(len);
-	return NULL;
+		return (u32)netRecv(len);
+	return 0;
 }
 
 struct consoleinfo *netGetInfo(void)
@@ -479,7 +478,7 @@ int netDumpNand(const char *path)
 
 	netTimerStart();
 	log_printf(0, "reading flash image from console...");
-	if (netSendStr("GTFL\n")) {
+	if (send(netSock, "GTFL\n", 5, 0) == 5) {
 		buf = netRecvVerbose(&len, log_get_verbose() != 0);
 		if (buf) {
 			log_printf(1, "received 0x%x bytes data OK, writing to file %s...", len, path);
@@ -496,14 +495,14 @@ int netDumpNand(const char *path)
 	return 0;
 }
 
-u8 *netGetBldrs(int *len)
+u32 netGetBldrs(int *len)
 {
 	if (netSendStr("GTBL\n"))
-		return netRecv(len);
-	return NULL;
+		return (u32)netRecv(len);
+	return 0;
 }
 
-int netSendFlash(const u8 *buf, u32 len)
+u32 netSendFlash(const u8 *buf, u32 len)
 {
 	if (!buf || !netSendStr("WRFL\n"))
 		return 0;
@@ -520,14 +519,14 @@ int netSendFlash(const u8 *buf, u32 len)
 	return 1;
 }
 
-u8 *netReadBlocks(int *len, u16 start, u16 count)
+u32 netReadBlocks(int *len, u16 start, u16 count)
 {
 	char cmd[32];
 
 	sprintf(cmd, "RBLK%04x%04x\n", start, count);
 	if (netSendStr(cmd))
-		return netRecvVerbose(len, log_get_verbose() != 0);
-	return NULL;
+		return (u32)netRecvVerbose(len, log_get_verbose() != 0);
+	return 0;
 }
 
 int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
@@ -552,11 +551,11 @@ int netEraseBlock(u16 block, u16 count)
 	return netCheckOk();
 }
 
-u8 *netGetBadBlocks(int *len)
+u32 netGetBadBlocks(int *len)
 {
 	if (netSendStr("GTBB\n"))
-		return netRecv(len);
-	return NULL;
+		return (u32)netRecv(len);
+	return 0;
 }
 
 int netSendFile(const char *name, const u8 *buf, u32 len)
@@ -576,16 +575,40 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 
 int netFormatSysex(void)
 {
+	int len, ret;
+	u8 *r;
+
 	if (!netSendStr("FMEX\n"))
 		return 0;
-	return netCheckOk();
+	r = netRecv(&len);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (len == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
 }
 
 int netFormatCompat(void)
 {
+	int len, ret;
+	u8 *r;
+
 	if (!netSendStr("FMCM\n"))
 		return 0;
-	return netCheckOk();
+	r = netRecv(&len);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (len == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
 }
 
 int netMkdir(const char *name)
@@ -603,20 +626,19 @@ int netMkdir(const char *name)
 
 int netReboot(int how)
 {
-	int ok;
-
 	if (how == 1) {
 		log_printf(0, "sending shutdown command...");
-		ok = netSendStr("SHDN\n");
+		if (netSendStr("SHDN\n"))
+			log_printf(0, "OK\n");
+		else
+			log_printf(0, "failed\n");
 	} else if (how == 2) {
 		log_printf(0, "sending reboot command...");
-		ok = netSendStr("REEB\n");
-	} else
-		return 1;
-	if (ok)
-		log_printf(0, "OK\n");
-	else
-		log_printf(0, "failed\n");
+		if (netSendStr("REEB\n"))
+			log_printf(0, "OK\n");
+		else
+			log_printf(0, "failed\n");
+	}
 	return 1;
 }
 

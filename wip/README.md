@@ -478,35 +478,68 @@ Still off:
 
 ## app/net.c
 
-Draft of the whole object (all 32 functions, data as statics). 13 match with
-`re/fncmp.py`: netFree, netTimerStart/End/Elapsed, netSendStr,
-netSendData, netCheckOk, netOpenSocket, netClose, netDisconnect,
-netGetInfo (plus netGetBldrs if forced with `__builtin_expect`). The names
-for the unexported functions and data (`netRecv`, `netFindBeacon`,
-`netSock`, `netEmpty`, `netStartTime`, ...) are in `split.py` SYMBOLS, and
-the ws2_32 IAT slots are renamed to winsock2.h's `__imp__send@16` spelling
-(`IAT_NAMES`; `.string` lines are skipped so "bind"/"connect" in messages
-survive).
+Draft of the whole object (all 32 functions, data as statics). 15 match
+and are built from `src/app/net.c` (mixed): netFree, netTimerStart/End/
+Elapsed, netSendStr, netSendData, netCheckOk, netOpenSocket, netClose,
+netDisconnect, netGetInfo, netDumpNand, netGetBldrs, netGetBadBlocks,
+netReboot. `python wip/netmixed.py <fns>` makes the src file from the
+draft; test the draft with `FNCMP_LITERALS=1` (net.s's strings are named
+`net_<address>`). The src file gives the strings as `static const char
+net_X[] = "..."`, not externs, so gcc still folds `strlen` of a command
+in an inlined netSendStr; splice.py drops gcc's .rdata copies. netRecv
+stays asm and is declared `regparm(1)` (gcc's local convention for it).
+The names for the unexported functions and data (`netRecv`,
+`netFindBeacon`, `netSock`, `netEmpty`, `netStartTime`, ...) are in
+`split.py` SYMBOLS, and the ws2_32 IAT slots are renamed to winsock2.h's
+`__imp__send@16` spelling (`IAT_NAMES`; `.string` lines are skipped so
+"bind"/"connect" in messages survive).
 
-Open findings:
+What got the last four:
 
-- netGetBldrs/netGetBadBlocks/netGetFile/netReadBlocks: the original lays
-  out send-failure as the likely path. Ours is the other way round
-  because of the null-return predictor (90%) plus the call predictor (29%).
-  At profile_estimate time netSendStr is still a call: einline refuses it,
-  "growth 8 exceeds early-inlining-insns divided by number of calls".
-- The OK-reply check in netFormatSysex/Compat, netEraseBlock,
-  netWriteBlocks, netSendFile, netMkdir, netWritePatches and netSendFlash is
-  not netCheckOk (that one inlines as `sete`, as it does in netMount).
-  Writing the check inline in the function (`int len, ret = 0; ... if (len
-  == 2 && getBeU16(r) == OK_REPLY) ret = 1; netFree(r);`) gets the 56-byte
-  frame right. phiopt1 then turns it into `sete`, which the original
-  doesn't have. With `-fno-ssa-phiopt` only 6 lines are left.
-- netConnect: likewise the original ends `mov eax,1; test; jne` with every
-  failure sharing one `xor eax,eax` block. Ours gets `setne` (phiopt1, then
-  RTL ifcvt) and keeps ret in ebx. So the original seems to avoid
-  conditional_replacement everywhere in this file. Find a source shape
-  (non-empty middle block, an extra phi) before suspecting per-file flags.
-- netRecv/netRecvVerbose: the original has a separate copy of the
+- netGetBldrs/netGetBadBlocks: an integer (u32) return type. With a
+  pointer type the null-return predictor (90%) makes the netRecv path
+  likely; the original lays out send failure first.
+- netReboot: each branch has its own `if (netSendStr(...)) OK else failed`
+  (crossjumping merges the tails); an `ok` variable gives `sete`.
+- netDumpNand: the send written out, `send(netSock, "GTFL\n", 5, 0) == 5`.
+  Through netSendStr the send check is a 50/50 call-predictor tie (both
+  arms call); inlined at profile time the opcode predictor (`==` unlikely)
+  makes failure the likely path, as the original lays it out. einline
+  refuses netSendStr ("growth 8 exceeds early-inlining-insns divided by
+  number of calls"); `--param early-inlining-insns=30` matches netDumpNand
+  too but breaks netDisconnect and netReboot, so some functions in the
+  original called it and some wrote the send out.
+- uncprop: netMount/netUnmount/netConnect/netSendFlash returning `int` let
+  uncprop reuse netCheckOk's or netOpenSocket's 0 for `return 0`
+  (`mov eax,ebx`). `u32` returns stop it (netMount/Unmount 24 -> 4 lines).
+
+Open (diff lines from `re/fncmp.py`):
+
+- netGetFile 5, netReadBlocks 5: `xor eax,eax` (the 0 return) is hoisted
+  above `cmp; je` by ifcvt's IF-CASE-2 (ce1). It needs the 0 path under
+  ~20.8% (or a predictable branch, 2%/98%) to be refused, but the original
+  lays the 0 path out as the likely one, and `-fno-if-conversion` matches.
+  In find_if_case_1 (0 block as THEN) the cost scales by the *other* edge,
+  so a fallthrough 0 block at 79-90% would be refused and keep this
+  layout; expand always puts the netRecv block first, though.
+- netMount 4, netUnmount 4: `cmp ebx,netEmpty`/`mov [esp],ebx` where ours
+  says eax (cprop_hardreg propagates the netRecv result into the blocks
+  after `cmp len,2`; in the original that block can't have inherited it).
+- netReadInfo 4: the first of the 8 swapped words uses ebx/ecx the other
+  way round (reassoc operand ranks; the other seven agree). Eight explicit
+  field swaps fix it but change the epilogue duplication.
+- OK-reply check (netFormatSysex/Compat 6, netEraseBlock, netWriteBlocks,
+  netSendFile, netMkdir, netWritePatches, netSendFlash): not netCheckOk
+  (that one inlines as `sete`). netFormatSysex/Compat write it out as `ret
+  = 0; if (len == 2 && getBeU16(r) == OK_REPLY) ret = 1; netFree(r); if
+  (ret) return 1; return 0;`: the `if (ret)` defeats phiopt's sete. Left:
+  jump2's head merge of `mov eax,1` above `je` (`-fdisable-rtl-jump2`
+  stops it) and the cprop_hardreg ebx/eax as in netMount. The others still
+  call netCheckOk in the draft.
+- netConnect 39: as above, the original ends `mov eax,1; test; jne` with
+  every failure sharing one `xor eax,eax` block.
+- netRecv 56/netRecvVerbose 57: the original has a separate copy of the
   `buf != netEmpty` check on each failure path. Registers differ: size
-  ebx, got edi, buf esi.
+  ebx, got edi, buf esi. `-fno-tree-dominator-opts` gets netRecv to 23.
+- `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
+  `-O2`: none is better for the whole file.

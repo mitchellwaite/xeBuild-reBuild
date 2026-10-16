@@ -443,6 +443,14 @@ SYMBOLS = {
     0x41f330: '_netCheckOk', 0x41f390: '_netOpenSocket', 0x41f470: '_netReadInfo',
     0x41fa00: '_netClose', 0x44a6c0: '_netSock', 0x479574: '_netInfo',
     0x479578: '_netEmpty', 0x4cd844: '_netStartTime', 0x448190: '__difftime32',
+    # net.s strings the mixed net.c refers to
+    0x45763e: '_net_45763e', 0x457688: '_net_457688', 0x4576ac: '_net_4576ac',
+    0x4576cf: '_net_4576cf', 0x4576e8: '_net_4576e8', 0x457712: '_net_457712',
+    0x45773c: '_net_45773c', 0x4577bb: '_net_4577bb', 0x4578f5: '_net_4578f5',
+    0x457913: '_net_457913', 0x457919: '_net_457919', 0x45791d: '_net_45791d',
+    0x45796c: '_net_45796c', 0x457990: '_net_457990', 0x457998: '_net_457998',
+    0x4579cb: '_net_4579cb', 0x457a23: '_net_457a23', 0x457a35: '_net_457a35',
+    0x457a51: '_net_457a51', 0x457a57: '_net_457a57', 0x457a71: '_net_457a71',
     # mode_update.s strings and variables the mixed mode_update.c refers to
     0x46f040: '_path', 0x46f144: '_noReboot', 0x46f148: '_noAvatar', 0x46f14c: '_noWrite',
     0x46f150: '_clean', 0x46f154: '_hasHdd', 0x46f158: '_updating', 0x46f15c: '_info',
@@ -590,6 +598,11 @@ C_FUNCS = {
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches
     0x4076b0, 0x407850, 0x407a00, 0x408080,  # clientReadBlocks clientWriteBlocks patchNand clientEraseBlock
     0x408160, 0x406e50,                      # getArgs checkPatches
+    # app/net (the rest are drafted in wip/app/net.c)
+    0x41ea70, 0x41ed50, 0x41ed70, 0x41edb0,  # netFree netTimerStart netTimerEnd netTimerElapsed
+    0x41ede0, 0x41f1a0, 0x41f330, 0x41f390,  # netSendStr netSendData netCheckOk netOpenSocket
+    0x41fa00, 0x41fa40, 0x41fe10, 0x41fe20,  # netClose netDisconnect netGetInfo netDumpNand
+    0x41ff90, 0x420420, 0x420840,            # netGetBldrs netGetBadBlocks netReboot
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
