@@ -546,7 +546,10 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the object (30 of 41 functions so far). 16 match and are built
+Draft of the object (27 of 41 functions so far; not yet: showSmcConfig,
+patchSmcConfig, verifyBlSigs, loadBlFiles, loadConsoleBlFiles,
+patchBlsResign, patchBlsBlmod, addBlsToImage, addUpdateBls, patchFreeboot,
+encodeBls, encodeUpdateBls, calcBlAreaSize, buildFlash). 16 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
