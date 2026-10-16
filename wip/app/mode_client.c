@@ -270,24 +270,27 @@ int checkPatches(u8 *buf, size_t *len, u32 type)
 
 	if (type > 1) {
 		log_printf(0, "checking patch sections for glitch console\n");
-		if (countInst(buf, *len, &marker, 4) != 3) {
+		if (countInst(buf, *len, &marker, 4) == 3) {
+			p = findInst(buf, *len, &marker, 4);
+			if (p) {
+				p = findInst(p + 4, *len - (p - buf), &marker, 4);
+				if (p) {
+					p += 4;
+					n = *len - (p - buf);
+					off = 0;
+					if (type == 2)
+						off = 16;
+					for (i = 0; i < n; i++)
+						buf[off + i] = p[i];
+					if (off)
+						memset(buf, 0xff, off);
+					*len = n + off;
+					return 1;
+				}
+			}
+		} else
 			log_printf(0, "\n\n***** ERROR: patches do not contain all segments, aborting!\n");
-			return 0;
-		}
-		p = findInst(buf, *len, &marker, 4);
-		if (!p)
-			return 0;
-		p = findInst(p + 4, *len - (p - buf), &marker, 4);
-		if (!p)
-			return 0;
-		p += 4;
-		n = *len - (p - buf);
-		off = type == 2 ? 16 : 0;
-		for (i = 0; i < n; i++)
-			buf[off + i] = p[i];
-		memset(buf, 0xff, off);
-		*len = n + off;
-		return 1;
+		return 0;
 	}
 	n = countInst(buf, *len, &marker, 4);
 	log_printf(0, "checking patch sections for JTAG console\n");
@@ -467,7 +470,8 @@ void clientBinPatch(const char *file, const char *soff)
 	u32 off, rem, start, count;
 	size_t len;
 	int rlen;
-	u8 *data, *nand;
+	const u8 *data;
+	u8 *nand;
 
 	off = myatoh32(soff, -1);
 	if (cinfo->nandSize != 0x3000000) {
@@ -488,10 +492,13 @@ void clientBinPatch(const char *file, const char *soff)
 				nand = netReadBlocks(&rlen, start, count);
 				if (nand && rlen) {
 					log_printf(0, "Success!\nPatching in binary data...");
-					if (cinfo->nandSize == 0x3000000)
-						memcpy(nand + rem, data, len);
-					else
+					switch (cinfo->nandSize) {
+					default:
 						patchNand(nand, rem, data, len);
+						break;
+					case 0x3000000:
+						memcpy(nand + rem, data, len);
+					}
 					log_printf(0, "Done!\n");
 					log_printf(0, "Writing 0x%x blocks from console starting at block 0x%x...\n", count, start);
 					if (netWriteBlocks(nand, rlen, start, count))
@@ -562,9 +569,9 @@ int mode_client(int argc, char **argv)
 	char *start = NULL, *count = NULL;
 	int i = 0;
 	int reboot = 0;
-	int mode = 0;
 	char *ip = NULL;
 	char *arg = NULL;
+	int mode = 0;
 	char *a, *b;
 
 	log_set_name("client");
@@ -634,7 +641,8 @@ int mode_client(int argc, char **argv)
 			ip = argv[++i];
 			log_printf(0, "setting forced IP to %s\n", ip);
 		} else if (!strnicmp(argv[i], "-r", 2)) {
-			if (i + 1 == argc || !argv[i + 1] || *argv[i + 1] == '-')
+			a = argv[i + 1];
+			if (i + 1 == argc || !a || *a == '-')
 				client_usage(3, argv[i]);
 			if (mode)
 				client_usage(5, argv[i]);
@@ -642,7 +650,8 @@ int mode_client(int argc, char **argv)
 			log_printf(0, "setting read filename to %s\n", arg);
 			mode = 1;
 		} else if (!strnicmp(argv[i], "-w", 2)) {
-			if (i + 1 == argc || !argv[i + 1] || *argv[i + 1] == '-')
+			a = argv[i + 1];
+			if (i + 1 == argc || !a || *a == '-')
 				client_usage(3, argv[i]);
 			if (mode)
 				client_usage(5, argv[i]);

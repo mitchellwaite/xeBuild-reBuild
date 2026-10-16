@@ -10,7 +10,6 @@
 #   .text          00406330-00408ec0
 
 .intel_syntax noprefix
-.globl _checkPatches
 .globl _cinfo
 .globl _clientBinPatch
 .globl _clientKeys
@@ -88,6 +87,10 @@
 .globl _mc_44ee73
 .globl _mc_44ee80
 .globl _mc_44ee94
+.globl _mc_44eee4
+.globl _mc_44ef10
+.globl _mc_44ef50
+.globl _mc_44ef7c
 .globl _mc_44efc8
 .globl _mc_44efe8
 .globl _mc_44f00b
@@ -444,248 +447,7 @@ L_406e30:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_checkPatches:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          cmp DWORD PTR [ESP+88],1
-          mov EBX,DWORD PTR [ESP+84]
-          mov DWORD PTR [ESP+44],4294967295
-          jbe L_407034
-          lea ESI,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+4],OFFSET L_44eee4
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+12],4
-          mov DWORD PTR [ESP+8],ESI
-          mov EAX,DWORD PTR [EBX]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP],EAX
-          call _countInst
-          cmp EAX,3
-          je L_406ed0
-          mov DWORD PTR [ESP+4],OFFSET L_44ef10
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_406ebd:
-          xor EAX,EAX
-L_406ebf:
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_406ec7:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_406ed0:
-          mov DWORD PTR [ESP+12],4
-          mov DWORD PTR [ESP+8],ESI
-          mov EAX,DWORD PTR [EBX]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP],EAX
-          call _findInst
-          test EAX,EAX
-          je L_406ebd
-          mov EDX,DWORD PTR [ESP+80]
-          sub EDX,EAX
-          add EDX,DWORD PTR [EBX]
-          add EAX,4
-          mov DWORD PTR [ESP+12],4
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+4],EDX
-          call _findInst
-          test EAX,EAX
-          mov DWORD PTR [ESP+20],EAX
-          je L_406ebd
-          mov EDX,DWORD PTR [ESP+80]
-          lea ESI,DWORD PTR [EAX+4]
-          sub EDX,ESI
-          add EDX,DWORD PTR [EBX]
-          cmp DWORD PTR [ESP+88],2
-          je L_4070f1
-          test EDX,EDX
-          mov DWORD PTR [ESP+16],0
-          je L_407150
-L_406f43:
-          mov EAX,DWORD PTR [ESP+16]
-          mov ECX,DWORD PTR [ESP+80]
-          mov EDI,DWORD PTR [ESP+80]
-          add ECX,EAX
-          lea EDI,DWORD PTR [EDI+EAX*1+4]
-          mov EAX,DWORD PTR [ESP+20]
-          mov DWORD PTR [ESP+24],ECX
-          cmp ESI,EDI
-          setae CL
-          lea EDI,DWORD PTR [EAX+8]
-          cmp DWORD PTR [ESP+24],EDI
-          mov EBP,ECX
-          setae CL
-          mov EDI,ECX
-          or EDI,EBP
-          cmp EDX,9
-          seta CL
-          mov EBP,ECX
-          mov ECX,EDI
-          mov EAX,EBP
-          test CL,AL
-          je L_407120
-          mov ECX,DWORD PTR [ESP+24]
-          or ESI,ECX
-          and ESI,3
-          jne L_407120
-          test EDX,EDX
-          mov ESI,1
-          mov EAX,DWORD PTR [ESP+20]
-          cmovne ESI,EDX
-          mov DWORD PTR [ESP+24],EDX
-          xor EDI,EDI
-          lea EBP,DWORD PTR [ESI-4]
-          mov DWORD PTR [ESP+28],ESI
-          shr EBP,2
-          add EBP,1
-          lea ESI,DWORD PTR [EBP*4]
-L_406fbd:
-          mov EDX,DWORD PTR [EAX+EDI*4+4]
-          mov DWORD PTR [ECX+EDI*4],EDX
-          add EDI,1
-          cmp EBP,EDI
-          ja L_406fbd
-          cmp DWORD PTR [ESP+28],ESI
-          mov EDX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESP+20],EAX
-          mov DWORD PTR [ESP+24],ECX
-          je L_407019
-          mov EDI,ECX
-          mov ECX,EAX
-          movzx EAX,BYTE PTR [EAX+ESI*1+4]
-          mov BYTE PTR [EDI+ESI*1],AL
-          lea EDI,DWORD PTR [ESI+1]
-          cmp EDX,EDI
-          jbe L_407019
-          movzx EBP,BYTE PTR [ECX+ESI*1+5]
-          add EDI,DWORD PTR [ESP+80]
-          add ESI,2
-          mov ECX,DWORD PTR [ESP+16]
-          cmp EDX,ESI
-          mov EAX,EBP
-          mov BYTE PTR [EDI+ECX*1],AL
-          jbe L_407019
-          mov EAX,DWORD PTR [ESP+20]
-          mov EDI,DWORD PTR [ESP+24]
-          movzx EAX,BYTE PTR [EAX+ESI*1+4]
-          mov BYTE PTR [EDI+ESI*1],AL
-L_407019:
-          mov EAX,DWORD PTR [ESP+16]
-          test EAX,EAX
-          jne L_4070a0
-L_407021:
-          add EDX,DWORD PTR [ESP+16]
-          mov EAX,1
-          mov DWORD PTR [EBX],EDX
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_407034:
-          lea EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+12],4
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [EBX]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP],EAX
-          call _countInst
-          mov DWORD PTR [ESP+4],OFFSET L_44ef50
-          mov EBX,EAX
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          cmp EBX,4
-          mov EAX,1
-          je L_406ebf
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_44ef7c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,60
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_4070a0:
-          cmp EAX,4
-          jb L_407103
-L_4070a5:
-          mov EAX,DWORD PTR [ESP+80]
-          mov DWORD PTR [EAX],4294967295
-          mov ECX,DWORD PTR [ESP+80]
-          mov EDI,DWORD PTR [ESP+16]
-          mov DWORD PTR [ECX+EDI*1-4],4294967295
-          mov EAX,DWORD PTR [ESP+80]
-          lea ECX,DWORD PTR [EAX+4]
-          and ECX,4294967292
-          sub EAX,ECX
-          add EAX,EDI
-          and EAX,4294967292
-          cmp EAX,4
-          jb L_407021
-          and EAX,4294967292
-          xor ESI,ESI
-L_4070de:
-          mov DWORD PTR [ECX+ESI*1],4294967295
-          add ESI,4
-          cmp ESI,EAX
-          jb L_4070de
-          jmp L_407021
-L_4070f1:
-          test EDX,EDX
-          mov DWORD PTR [ESP+16],16
-          jne L_406f43
-          jmp L_4070a5
-L_407103:
-          test EAX,EAX
-          je L_407021
-          mov EAX,DWORD PTR [ESP+80]
-          mov BYTE PTR [EAX],255
-          jmp L_407021
-L_407117:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_407120:
-          mov EAX,DWORD PTR [ESP+20]
-          mov ECX,DWORD PTR [ESP+24]
-          xor ESI,ESI
-          mov EDI,EBX
-          .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
-L_407130:
-          movzx EBX,BYTE PTR [EAX+ESI*1+4]
-          mov BYTE PTR [ECX+ESI*1],BL
-          add ESI,1
-          cmp EDX,ESI
-          ja L_407130
-          mov EBX,EDI
-          jmp L_407019
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_407150:
-          mov DWORD PTR [ESP+16],EDX
-          jmp L_407021
+#@C _checkPatches
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -2064,15 +1826,15 @@ _mc_44ee80:
 _mc_44ee94:
           .string "\n\n****** ERROR: console patches need to be updated to support this operation!\n"
           .zero 1
-L_44eee4:
+_mc_44eee4:
           .string "checking patch sections for glitch console\n"
-L_44ef10:
+_mc_44ef10:
           .string "\n\n***** ERROR: patches do not contain all segments, aborting!\n"
           .zero 1
-L_44ef50:
+_mc_44ef50:
           .string "checking patch sections for JTAG console\n"
           .zero 2
-L_44ef7c:
+_mc_44ef7c:
           .string "\n\n***** ERROR: patches do not contain all segments, counted %d - aborting!\n"
 _mc_44efc8:
           .string "loaded %s size 0x%x (%d) bytes\n"

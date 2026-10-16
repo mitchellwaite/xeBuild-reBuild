@@ -348,9 +348,9 @@ getNonces' magic tests are 16-bit rotates (`ROT16`).
 
 ## app/mode_client.c
 
-Draft of the whole object, with string literals.  13 of 16 functions
+Draft of the whole object, with string literals.  14 of 16 functions
 match (`FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_client.c <fn>`).
-11 are built from `src/app/mode_client.c`, made by `python wip/mcmixed.py
+12 are built from `src/app/mode_client.c`, made by `python wip/mcmixed.py
 <names>` (strings -> `mc_<addr>` externs, `cinfo` extern; SYMBOLS has all
 of the object's string names).  Two matching functions stay asm in the
 mixed build:
@@ -376,20 +376,35 @@ clientInfo keeps `out` (NULL unless createDir worked) apart from `dir`
 and copies `dir`.  `client_usage` needs `noreturn` on its prototype so
 the mixed file (where it is extern) compiles getArgs the same.
 
+`checkPatches` matched (built): `off = 0; if (type == 2) off = 16;` (gcc
+then threads the copy loop and the memset on `off`; the `?:` gave a
+sete/shl and no threading), `if (off) memset(buf, 0xff, off)`, and nested
+positive ifs with a single `return 0` after the countInst error's `else`.
+Early `return 0`s for the two findInst results matched fncmp but jumped
+to the JTAG path's tail-merged `return 0`: fncmp compares every label as
+`l`, so it can't see a jump going to the wrong block.  Only the full
+build showed it (`.text` 0x10 longer); compare jump targets before
+building (a script that diffs `objdump` offsets and internal jump targets
+of a `gcc -c` object against the exe does it).
+
 Still off:
 
-- `checkPatches` (about 225 lines): the shape is right with `size_t`
-  counters, a byte copy loop (vectorized, with alias checks) and
-  `memset(buf, 0xff, off)` (the original's inline memset expansion, not
-  a loop: a loop gives a `max(off, 1)` cmov).  The original keeps `len`
-  in ebx and `buf` in memory; ours the other way round, and every block
-  differs by registers.
-- `clientBinPatch` (about 135): nested ifs give the original's block
-  shape and the inlined patchNand; register allocation differs (the
-  original keeps `file` in edi and `data` in a stack slot, ours `soff` in
-  edi and `data` in edi after FileToBuffer).  Types and declaration order
-  of the locals made no difference.
-- `mode_client` (about 400): only `-rb` calls getArgs; the other options
+- `clientBinPatch` (9 lines): `const u8 *data` (the caller's `u8 *` vs
+  inlined patchNand's `const u8 *` kept them apart in out-of-SSA, so data
+  was copied into a second stack slot) and the memcpy/patchNand choice as
+  `switch (cinfo->nandSize) { default: patchNand; break; case 0x3000000:
+  memcpy; }` (the original's layout needs a 50% branch; `==` predicts
+  28%, `__builtin_expect` with `builtin-expect-probability=50` is the only
+  `if` that matches) fix registers, slots and layout.  Left: after
+  patchNand's 512-byte loop LRA reloads `len - 512` into edi where the
+  original uses esi.  It's a tie between esi and edi broken by
+  frequency-weighted register usage (`register_usage_leveling`), so some
+  block frequency still differs.  Declaration order, local types,
+  patchNand spellings that still match, error-first branch flips and pins
+  on `file`/`off`/`count`/`start` didn't move it.  An unguarded
+  `__asm__("" :: "D"(file), "S"(off))` was needed before `const data` and
+  isn't now.
+- `mode_client` (about 410): only `-rb` calls getArgs; the other options
   check their arguments inline with different `||` orders and loads
   hoisted above the argc test in some (see the asm).  The `-bp`/`-wb`
   stores follow getArgs' order (`start = b` before the mode check, then
@@ -412,3 +427,21 @@ Still off:
   - fncmp's line count mostly measures block layout here; a chunk
     multiset compare (split after each jump) separated content from
     layout diffs.
+  - Locals declared `reboot, ip, arg, mode` give the original's loop
+    entry stores and PHI copy order (mode before `arg = dummy` in
+    `-keys`/`-i`/`-p`); `a = argv[i + 1]` before the test in `-r`/`-w`
+    gives the hoisted load.  Both are in the draft.
+  - `-bp`/`-wb`: the original keeps the first argument in ebp (arg's
+    register), ours in eax; no spelling or check order of those two
+    blocks changes it.  A uniform spelling at every site doesn't give the
+    original's mixed `||` orders, so the per-site orders are in the
+    source.  getArgs at `-wb` alone stays a call (size 52 > the
+    max-inline-insns-auto limit; einline growth 43); `inline` on getArgs
+    breaks everything.
+  - Tail: the `goto fail` shape above changes no chunk content and only
+    layout; the switch's case order in the source doesn't matter.  After
+    the loop all frequencies are 0-1 so layout is tie-broken;
+    `__builtin_expect(mode && arg, 1)` gets closer (465 -> 366 lines), so
+    the original's post-loop frequencies differ from ours, probably from
+    something in the loop.  Register choices in `-bp`/`-wb` may have the
+    same cause.

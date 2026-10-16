@@ -301,7 +301,9 @@ SYMBOLS = {
     0x44ee23: '_mc_44ee23', 0x44ee26: '_mc_44ee26', 0x44ee31: '_mc_44ee31',
     0x44ee39: '_mc_44ee39', 0x44ee45: '_mc_44ee45', 0x44ee55: '_mc_44ee55',
     0x44ee62: '_mc_44ee62', 0x44ee73: '_mc_44ee73', 0x44ee80: '_mc_44ee80',
-    0x44ee94: '_mc_44ee94', 0x44efc8: '_mc_44efc8', 0x44efe8: '_mc_44efe8',
+    0x44ee94: '_mc_44ee94', 0x44eee4: '_mc_44eee4', 0x44ef10: '_mc_44ef10',
+    0x44ef50: '_mc_44ef50', 0x44ef7c: '_mc_44ef7c',
+    0x44efc8: '_mc_44efc8', 0x44efe8: '_mc_44efe8',
     0x44f00b: '_mc_44f00b', 0x44f014: '_mc_44f014', 0x44f037: '_mc_44f037',
     0x44f04c: '_mc_44f04c', 0x44f074: '_mc_44f074', 0x44f0b8: '_mc_44f0b8',
     0x44f0ec: '_mc_44f0ec', 0x44f118: '_mc_44f118', 0x44f140: '_mc_44f140',
@@ -571,11 +573,11 @@ C_FUNCS = {
     0x415230, 0x415970, 0x415d90, 0x415e90,  # findFsRoot findSmcConfig addRemap findFreeRemap
     0x416040, 0x416070, 0x416840,            # notZeropair spareLbaOk copyMuData
     0x4154d0, 0x4172c0,                      # imgGetSecurityFiles getNonces
-    # app/mode_client (client_usage: switch table; clientKeys, checkPatches, clientBinPatch, mode_client stay asm)
+    # app/mode_client (client_usage: switch table; clientKeys, clientBinPatch, mode_client stay asm)
     0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches
     0x4076b0, 0x407850, 0x407a00, 0x408080,  # clientReadBlocks clientWriteBlocks patchNand clientEraseBlock
-    0x408160,                                # getArgs
+    0x408160, 0x406e50,                      # getArgs checkPatches
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

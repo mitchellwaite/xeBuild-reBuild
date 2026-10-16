@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **440 of 617** (427 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **441 of 617** (428 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 255 / 432 |
+| `app/` | 14 / 25 | 256 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -38,7 +38,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 |---|---|---|
 | `app/bootloaders` | mixed; 0 of 7 drafted functions match in `wip/app/bootloaders.c` | 12 / 19 |
 | `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
-| `app/mode_client` | mixed; 0 of 5 drafted functions match in `wip/app/mode_client.c` | 11 / 16 |
+| `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
 | `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
@@ -92,7 +92,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/mode_client</code>: 11 / 16 in C</summary>
+<summary><code>app/mode_client</code>: 12 / 16 in C</summary>
 
 - ⬜ `client_usage` (0x406330) (draft in `wip/`, no match yet)
 - ✅ `clientInfo` (0x406740)
@@ -100,7 +100,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `clientManifest` (0x406aa0)
 - ✅ `dumpKey` (0x406b60)
 - ⬜ `clientKeys` (0x406c60) (draft in `wip/`, no match yet)
-- ⬜ `checkPatches` (0x406e50) (draft in `wip/`, no match yet)
+- ✅ `checkPatches` (0x406e50)
 - ✅ `updatePatches` (0x407160)
 - ✅ `clientPatches` (0x407320)
 - ✅ `clientReadBlocks` (0x4076b0)

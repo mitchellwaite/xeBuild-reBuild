@@ -113,6 +113,10 @@ extern const char mc_44ed8d[];	/* "checking %s (file ./%s)\n" */
 extern const char mc_44eda8[];	/* "\n\n****** ERROR: unable to dump %s ..." */
 extern const char mc_44ee04[];	/* "dumping valid %s to file ./%s\n" */
 extern const char mc_44ee23[];	/* "./" */
+extern const char mc_44eee4[];	/* "checking patch sections for glitch c..." */
+extern const char mc_44ef10[];	/* "\n\n***** ERROR: patches do not cont..." */
+extern const char mc_44ef50[];	/* "checking patch sections for JTAG con..." */
+extern const char mc_44ef7c[];	/* "\n\n***** ERROR: patches do not cont..." */
 extern const char mc_44efc8[];	/* "loaded %s size 0x%x (%d) bytes\n" */
 extern const char mc_44efe8[];	/* "retrieving patches from console..." */
 extern const char mc_44f00b[];	/* "patches" */
@@ -240,6 +244,44 @@ int dumpKey(const char *name, const char *file, const u8 *key, size_t len, u32 s
 	if (!ret)
 		log_printf(0, mc_44eda8, name, file);
 	return ret;
+}
+
+int checkPatches(u8 *buf, size_t *len, u32 type)
+{
+	u32 marker = 0xffffffff;
+	u8 *p;
+	size_t n, i, off;
+
+	if (type > 1) {
+		log_printf(0, mc_44eee4);
+		if (countInst(buf, *len, &marker, 4) == 3) {
+			p = findInst(buf, *len, &marker, 4);
+			if (p) {
+				p = findInst(p + 4, *len - (p - buf), &marker, 4);
+				if (p) {
+					p += 4;
+					n = *len - (p - buf);
+					off = 0;
+					if (type == 2)
+						off = 16;
+					for (i = 0; i < n; i++)
+						buf[off + i] = p[i];
+					if (off)
+						memset(buf, 0xff, off);
+					*len = n + off;
+					return 1;
+				}
+			}
+		} else
+			log_printf(0, mc_44ef10);
+		return 0;
+	}
+	n = countInst(buf, *len, &marker, 4);
+	log_printf(0, mc_44ef50);
+	if (n == 4)
+		return 1;
+	log_printf(0, mc_44ef7c, n);
+	return 0;
 }
 
 void updatePatches(const char *file, u32 type)
