@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **473 of 617** (459 built from `src/`, 14 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **477 of 617** (463 built from `src/`, 14 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 288 / 432 |
+| `app/` | 14 / 25 | 292 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -45,7 +45,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
-| `app/build` | mixed; 1 of 13 drafted functions match in `wip/app/build.c` | 17 / 41 |
+| `app/build` | mixed; 1 of 19 drafted functions match in `wip/app/build.c` | 21 / 41 |
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
 <details>
@@ -148,16 +148,16 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `isErased` (0x410070)
 - ⬜ `FUN_4100b0` (0x4100b0)
 - ⬜ `FUN_410220` (0x410220)
-- ⬜ `FUN_410240` (0x410240)
-- ⬜ `FUN_410290` (0x410290)
+- ⬜ `setFlashBuild` (0x410240)
+- ⬜ `smcSetLoad` (0x410290)
 - ⬜ `FUN_410350` (0x410350)
-- ⬜ `FUN_410360` (0x410360)
-- ⬜ `FUN_410460` (0x410460)
-- ⬜ `FUN_410490` (0x410490)
-- ⬜ `FUN_4104d0` (0x4104d0)
+- ⬜ `setPatchSlot` (0x410360)
+- ⬜ `imgCfOffset` (0x410460)
+- ⬜ `imgCfSize` (0x410490)
+- ⬜ `imgSize` (0x4104d0)
 - ⬜ `FUN_4104e0` (0x4104e0)
-- ⬜ `FUN_4104f0` (0x4104f0)
-- ⬜ `FUN_410500` (0x410500)
+- ⬜ `imgBigBlock` (0x4104f0)
+- ⬜ `imgAdd` (0x410500)
 - ⬜ `FUN_410b90` (0x410b90)
 - ⬜ `FUN_410bb0` (0x410bb0)
 - ⬜ `FUN_411030` (0x411030)
@@ -333,7 +333,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/build</code>: 17 / 41 in C</summary>
+<summary><code>app/build</code>: 21 / 41 in C</summary>
 
 - ⬜ `loadBaseFile` (0x427500) (draft in `wip/`, no match yet)
 - ✅ `findFileOffset` (0x427650)
@@ -350,31 +350,31 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `loadLocalFile` (0x4288c0)
 - ✅ `setFileData` (0x428ac0)
 - ⬜ `appendAddonPatches` (0x428b10) (draft in `wip/`, no match yet)
-- ⬜ `showSmcConfig` (0x428d20) (draft in `wip/`, no match yet)
+- ✅ `showSmcConfig` (0x428d20)
 - ✅ `iniRangeOk` (0x429180)
 - ⬜ `patchSmcConfig` (0x4291f0) (draft in `wip/`, no match yet)
 - ⬜ `extractSmcConfig` (0x4297d0) (draft in `wip/`, no match yet)
 - ✅ `raiseKernel` (0x429b10)
 - ⬜ `checkBl` (0x429b30) (draft in `wip/`, no match yet)
-- ⬜ `verifyBlSigs` (0x429e70)
-- ⬜ `loadBlFiles` (0x42a370)
-- ⬜ `loadConsoleBlFiles` (0x42adc0)
+- ⬜ `verifyBlSigs` (0x429e70) (draft in `wip/`, no match yet)
+- ⬜ `loadBlFiles` (0x42a370) (draft in `wip/`, no match yet)
+- ⬜ `loadConsoleBlFiles` (0x42adc0) (draft in `wip/`, no match yet)
 - ✅ `patchHeaderOpts` (0x42b2b0)
-- ⬜ `blmodMissing` (0x42b3d0) (draft in `wip/`, no match yet)
+- ✅ `blmodMissing` (0x42b3d0)
 - ✅ `rotSumSha` (0x42b3f0)
 - ✅ `countBits` (0x42b610)
-- ⬜ `patchBlsResign` (0x42b660)
-- ⬜ `patchBlsBlmod` (0x42bb10)
+- ⬜ `patchBlsResign` (0x42b660) (draft in `wip/`, no match yet)
+- ⬜ `patchBlsBlmod` (0x42bb10) (draft in `wip/`, no match yet)
 - ⬜ `fixupPatchSet` (0x42bf70) (draft in `wip/`, no match yet)
-- ⬜ `addBlsToImage` (0x42c090)
+- ⬜ `addBlsToImage` (0x42c090) (draft in `wip/`, no match yet)
 - ✅ `isUpdateBl` (0x42c600)
-- ⬜ `addUpdateBls` (0x42c620)
+- ⬜ `addUpdateBls` (0x42c620) (draft in `wip/`, no match yet)
 - ☑️ `logPowerButton` (0x42c900)
-- ⬜ `patchFreeboot` (0x42cbb0)
+- ✅ `patchFreeboot` (0x42cbb0)
 - ✅ `patchPayloadSize` (0x42cee0)
 - ⬜ `encodeBls` (0x42cfa0)
-- ⬜ `encodeUpdateBls` (0x42dfb0)
-- ⬜ `calcBlAreaSize` (0x42e160)
+- ✅ `encodeUpdateBls` (0x42dfb0)
+- ⬜ `calcBlAreaSize` (0x42e160) (draft in `wip/`, no match yet)
 - ⬜ `buildFlash` (0x42e760)
 
 </details>

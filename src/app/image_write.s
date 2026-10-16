@@ -10,15 +10,7 @@
 
 .intel_syntax noprefix
 .globl FUN_410220
-.globl FUN_410240
-.globl FUN_410290
-.globl FUN_410360
-.globl FUN_410460
-.globl FUN_410490
-.globl FUN_4104d0
 .globl FUN_4104e0
-.globl FUN_4104f0
-.globl FUN_410500
 .globl FUN_410bb0
 .globl FUN_411030
 .globl FUN_4110b0
@@ -40,9 +32,17 @@
 .globl _checkBootImage
 .globl _imageFree
 .globl _imageGetBuffer
+.globl _imgAdd
+.globl _imgBigBlock
+.globl _imgCfOffset
+.globl _imgCfSize
+.globl _imgSize
 .globl _isErased
 .globl _manufacturingOffset
 .globl _pageEccOk
+.globl _setFlashBuild
+.globl _setPatchSlot
+.globl _smcSetLoad
 .globl _statisticsOffset
 .globl _writeImage
 
@@ -1943,7 +1943,7 @@ FUN_410220:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_410240:
+_setFlashBuild:
           sub ESP,28
           mov EDX,DWORD PTR [L_479ed8]
           movzx EAX,WORD PTR [ESP+32]
@@ -1974,7 +1974,7 @@ FUN_410240:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_410290:
+_smcSetLoad:
           push EDI
           push ESI
           push EBX
@@ -2057,7 +2057,7 @@ L_410350:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_410360:
+_setPatchSlot:
           push EDI
           push ESI
           push EBX
@@ -2144,7 +2144,7 @@ L_410410:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_410460:
+_imgCfOffset:
           mov EAX,DWORD PTR [L_479ed8]
           mov EDX,DWORD PTR [EAX+100]
           mov EAX,EDX
@@ -2164,7 +2164,7 @@ FUN_410460:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_410490:
+_imgCfSize:
           mov EAX,DWORD PTR [L_479ed8]
           push EBX
           mov EBX,DWORD PTR [EAX+112]
@@ -2192,7 +2192,7 @@ FUN_410490:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4104d0:
+_imgSize:
           mov EAX,DWORD PTR [L_4cd840]
           ret 
           .byte 0x8d
@@ -2209,14 +2209,14 @@ FUN_4104e0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4104f0:
+_imgBigBlock:
           mov EAX,DWORD PTR [L_479ef0]
           ret 
           .byte 0x8d
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_410500:
+_imgAdd:
           push EBP
           push EDI
           push ESI
@@ -3133,7 +3133,7 @@ L_411112:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_46f9c0]
           mov DWORD PTR [ESP],EAX
-          call FUN_410500
+          call _imgAdd
           mov EAX,DWORD PTR [L_46f9c0]
           add EBX,EAX
           mov EDI,EAX
@@ -3199,7 +3199,7 @@ L_411213:
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+4],EBX
           shr EDI,14
-          call FUN_410500
+          call _imgAdd
           add ESP,32
           mov EAX,EDI
           pop EBX
@@ -6477,7 +6477,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_410240 - .
+          .long _setFlashBuild - .
           .byte 0x42
           .byte 0x0
           .byte 0x0
@@ -6498,7 +6498,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_410290 - .
+          .long _smcSetLoad - .
           .byte 0xb3
           .byte 0x0
           .byte 0x0
@@ -6584,7 +6584,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_410360 - .
+          .long _setPatchSlot - .
           .byte 0xf6
           .byte 0x0
           .byte 0x0
@@ -6637,7 +6637,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_410460 - .
+          .long _imgCfOffset - .
           .byte 0x2c
           .byte 0x0
           .byte 0x0
@@ -6654,7 +6654,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_410490 - .
+          .long _imgCfSize - .
           .byte 0x39
           .byte 0x0
           .byte 0x0
@@ -6679,7 +6679,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_4104d0 - .
+          .long _imgSize - .
           .byte 0x6
           .byte 0x0
           .byte 0x0
@@ -6713,7 +6713,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_4104f0 - .
+          .long _imgBigBlock - .
           .byte 0x6
           .byte 0x0
           .byte 0x0
@@ -6730,7 +6730,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_410500 - .
+          .long _imgAdd - .
           .byte 0x86
           .byte 0x6
           .byte 0x0

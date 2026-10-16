@@ -719,7 +719,7 @@ L_4095c2:
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP],OFFSET L_4c9364
-          call FUN_449060
+          call _strncpy
           mov DWORD PTR [ESP+8],OFFSET L_4c9364
           mov DWORD PTR [ESP+4],OFFSET L_44fc52
           mov DWORD PTR [ESP],1
@@ -1102,7 +1102,7 @@ L_409ac2:
           imul EAX,DWORD PTR [EDI],1068
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP],EAX
-          call FUN_449060
+          call _strncpy
           imul EAX,DWORD PTR [EDI],1068
           mov EDX,DWORD PTR [ESP+52]
           test EDX,EDX
@@ -1221,7 +1221,7 @@ L_409c80:
           mov DWORD PTR [ESP+4],ECX
           mov DWORD PTR [ESP+8],8
           mov DWORD PTR [ESP],EAX
-          call FUN_449060
+          call _strncpy
           mov BYTE PTR [ESP+152],0
           mov EDI,DWORD PTR [EDI]
           mov EAX,DWORD PTR [ESP+64]
@@ -1462,7 +1462,7 @@ L_409fa2:
           mov DWORD PTR [ESP+4],ECX
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP],ESI
-          call FUN_449060
+          call _strncpy
           imul EAX,EDI,1028
           mov EDX,DWORD PTR [ESP+48]
           mov ECX,DWORD PTR [ESP+44]
@@ -1495,7 +1495,7 @@ L_40a00c:
           mov EAX,DWORD PTR [ESP+64]
           mov DWORD PTR [ESP+4],ECX
           mov DWORD PTR [ESP],EAX
-          call FUN_449060
+          call _strncpy
           mov EAX,DWORD PTR [ESP+64]
           mov BYTE PTR [ESP+EBP*1+144],0
           lea EBP,DWORD PTR [EBX+EBP*1+1]
@@ -1659,7 +1659,7 @@ L_40a2a2:
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP+4],ECX
           mov DWORD PTR [ESP],EBP
-          call FUN_449060
+          call _strncpy
           mov EAX,DWORD PTR [ESP+52]
           shl EAX,10
           cmp EBX,21
@@ -1842,7 +1842,7 @@ L_40a4d8:
           lea EBP,DWORD PTR [EBP+ESI*1+1]
           mov DWORD PTR [ESP+8],EDX
           mov DWORD PTR [ESP],EAX
-          call FUN_449060
+          call _strncpy
           imul EAX,EDI,22
           mov BYTE PTR [ESI+EAX*1+_flashFiles],0
           mov DWORD PTR [EDI*4+L_4c9138],0
@@ -1918,7 +1918,7 @@ L_40a60d:
           mov EDI,DWORD PTR [ESP+64]
           mov DWORD PTR [ESP+8],8
           mov DWORD PTR [ESP],EDI
-          call FUN_449060
+          call _strncpy
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],0
           mov BYTE PTR [ESP+152],0
@@ -1992,7 +1992,7 @@ L_40a773:
           mov EAX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP+8],EBX
           mov DWORD PTR [ESP],EAX
-          call FUN_449060
+          call _strncpy
           imul EAX,EDI,22
           mov EDX,DWORD PTR [ESP+48]
           mov ECX,DWORD PTR [ESP+44]
@@ -2044,7 +2044,7 @@ L_40a808:
           mov EBP,DWORD PTR [ESP+64]
           mov DWORD PTR [ESP+8],8
           mov DWORD PTR [ESP],EBP
-          call FUN_449060
+          call _strncpy
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EBP
           mov BYTE PTR [ESP+152],0

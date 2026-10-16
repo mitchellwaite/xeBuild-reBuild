@@ -6,7 +6,6 @@
 .intel_syntax noprefix
 .globl FUN_449040
 .globl FUN_449048
-.globl FUN_449060
 .globl FUN_449068
 .globl FUN_4490c8
 .globl FUN_449120
@@ -77,6 +76,7 @@
 .globl _stricmp
 .globl _strlen
 .globl _strncat
+.globl _strncpy
 .globl _strnicmp
 .globl _strrchr
 
@@ -106,7 +106,7 @@ _strrchr:
           jmp DWORD PTR [strrchr]
           .byte 0x90
           .byte 0x90
-FUN_449060:
+_strncpy:
           jmp DWORD PTR [strncpy]
           .byte 0x90
           .byte 0x90

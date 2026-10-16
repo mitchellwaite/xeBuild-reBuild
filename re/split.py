@@ -544,14 +544,33 @@ SYMBOLS = {
     0x42c620: '_addUpdateBls', 0x42c900: '_logPowerButton', 0x42cbb0: '_patchFreeboot',
     0x42cee0: '_patchPayloadSize', 0x42cfa0: '_encodeBls', 0x42dfb0: '_encodeUpdateBls',
     0x42e160: '_calcBlAreaSize', 0x42e760: '_buildFlash',   # buildImage tail-calls it
+    # app/image_write functions app/build calls (names are ours, from what
+    # build does with them)
+    0x410240: '_setFlashBuild', 0x410290: '_smcSetLoad', 0x410360: '_setPatchSlot',
+    0x410460: '_imgCfOffset', 0x410490: '_imgCfSize', 0x4104d0: '_imgSize',
+    0x4104f0: '_imgBigBlock', 0x410500: '_imgAdd',
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
     0x458d3c: '_bd_458d3c', 0x458d74: '_bd_458d74', 0x458d98: '_bd_458d98',
-    0x459164: '_bd_459164', 0x459e3c: '_bd_459e3c', 0x459e74: '_bd_459e74',
-    0x459e9c: '_bd_459e9c', 0x459ed2: '_bd_459ed2', 0x459ed8: '_bd_459ed8',
-    0x459ede: '_bd_459ede', 0x459ee4: '_bd_459ee4', 0x45a7c4: '_bd_45a7c4',
-    0x45a7f8: '_bd_45a7f8', 0x45a80e: '_bd_45a80e',
+    0x458f80: '_bd_458f80', 0x458fb4: '_bd_458fb4', 0x458fe6: '_bd_458fe6',
+    0x458ff5: '_bd_458ff5', 0x45900a: '_bd_45900a', 0x459012: '_bd_459012',
+    0x459021: '_bd_459021', 0x459030: '_bd_459030', 0x459050: '_bd_459050',
+    0x459070: '_bd_459070', 0x459090: '_bd_459090', 0x4590b0: '_bd_4590b0',
+    0x4590d1: '_bd_4590d1', 0x4590e7: '_bd_4590e7', 0x4590f2: '_bd_4590f2',
+    0x4590fe: '_bd_4590fe', 0x45910a: '_bd_45910a', 0x459115: '_bd_459115',
+    0x45911f: '_bd_45911f', 0x45912a: '_bd_45912a', 0x459134: '_bd_459134',
+    0x45913f: '_bd_45913f', 0x459151: '_bd_459151', 0x459160: '_bd_459160',
+    0x459164: '_bd_459164', 0x459955: '_bd_459955', 0x459e3c: '_bd_459e3c',
+    0x459e74: '_bd_459e74', 0x459e9c: '_bd_459e9c', 0x459ec8: '_bd_459ec8',
+    0x459ed2: '_bd_459ed2', 0x459ed8: '_bd_459ed8', 0x459ede: '_bd_459ede',
+    0x459ee4: '_bd_459ee4', 0x45a590: '_bd_45a590', 0x45a5cc: '_bd_45a5cc',
+    0x45a5e0: '_bd_45a5e0', 0x45a618: '_bd_45a618', 0x45a664: '_bd_45a664',
+    0x45a6a4: '_bd_45a6a4', 0x45a6b0: '_bd_45a6b0', 0x45a6df: '_bd_45a6df',
+    0x45a6f8: '_bd_45a6f8', 0x45a71e: '_bd_45a71e', 0x45a728: '_bd_45a728',
+    0x45a738: '_bd_45a738', 0x45a748: '_bd_45a748', 0x45a785: '_bd_45a785',
+    0x45a78c: '_bd_45a78c', 0x45a7c4: '_bd_45a7c4', 0x45a7f8: '_bd_45a7f8',
+    0x45a80e: '_bd_45a80e', 0x45a8af: '_bd_45a8af',
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -570,7 +589,7 @@ SYMBOLS = {
     # libgcc (64-bit division) and the vsnprintf mingw's stdio.h calls
     0x447c30: '___divdi3', 0x447d70: '___moddi3', 0x447f20: '___udivdi3',
     0x448040: '___umoddi3', 0x449030: '___ms_vsnprintf',
-    0x449058: '_strrchr', 0x4490a0: '_signal', 0x449258: '__chdir',
+    0x449058: '_strrchr', 0x4490a0: '_signal', 0x449258: '__chdir', 0x449060: '_strncpy',
     0x4491d0: '_strnicmp', 0x4491d8: '_stricmp', 0x449198: '_exit', 0x449178: '_fgetc',
     # IAT slots that dllimport declarations reference directly
     0x50f2f0: '__imp___errno',
@@ -634,6 +653,7 @@ C_FUNCS = {
     0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile
     0x428ac0, 0x429180, 0x429b10, 0x42b2b0,  # setFileData iniRangeOk raiseKernel patchHeaderOpts
     0x42b3f0, 0x42b610, 0x42c600, 0x42cee0,  # rotSumSha countBits isUpdateBl patchPayloadSize
+    0x428d20, 0x42b3d0, 0x42cbb0, 0x42dfb0,  # showSmcConfig blmodMissing patchFreeboot encodeUpdateBls
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

@@ -38,7 +38,9 @@ struct fileent {
 	u32 offset;			/* 408 */
 	u8 *data;			/* 40c */
 	u32 size;			/* 410 */
-	u8 pad414[0x42c - 0x414];
+	u8 key[16];			/* 414 its RC4 key once encoded */
+	u32 fsSize;			/* 424 the part that goes in the filesystem */
+	u8 pad428[0x42c - 0x428];
 };
 
 /* the parts of main.c's struct xebuild used here */
@@ -47,7 +49,11 @@ struct xebuild {
 	u32 flags;			/* 004 */
 	u32 type;			/* 008 */
 	u32 kernel;			/* 00c */
-	u8 pad010[0x024 - 0x010];
+	int glitch2;			/* 010 */
+	int glitch2mfg;			/* 014 */
+	int cbb;			/* 018 build with a CB_B */
+	int f01c;			/* 01c set when an SE replaces the CF */
+	u8 pad020[0x024 - 0x020];
 	int sysTime;			/* 024 use the system time for timestamps */
 	u8 pad028[0x038 - 0x028];
 	u8 *hdr;			/* 038 the image's header */
@@ -57,7 +63,33 @@ struct xebuild {
 	int xellButton;			/* 068 */
 	int xellAltButton;		/* 06c */
 	int dualButton;			/* 070 */
-	u8 pad074[0x6ac - 0x074];
+	u8 pad074;
+	u8 cfLdv;			/* 075 */
+	u8 pad076[0x078 - 0x076];
+	u32 cpuTemp;			/* 078 smc_config overrides from the ini */
+	u32 gpuTemp;			/* 07c */
+	u32 edramTemp;			/* 080 */
+	u32 overCpuTemp;		/* 084 */
+	u32 overGpuTemp;		/* 088 */
+	u32 overEdramTemp;		/* 08c */
+	u32 cpuFan;			/* 090 */
+	u32 gpuFan;			/* 094 */
+	u32 avRegion;			/* 098 */
+	u32 gameRegion;			/* 09c */
+	u32 dvdRegion;			/* 0a0 */
+	u8 macid[6];			/* 0a4 */
+	u8 pad0aa[0x244 - 0x0aa];
+	u8 *dumpSmc;			/* 244 files from the nand dump */
+	u32 dumpSmcSize;		/* 248 */
+	u8 *dumpKv;			/* 24c */
+	u32 dumpKvSize;			/* 250 */
+	u8 *dumpKvAlt;			/* 254 */
+	u32 dumpKvAltSize;		/* 258 */
+	u8 *dumpConfig;			/* 25c */
+	u32 dumpConfigSize;		/* 260 */
+	u8 pad264[0x2a8 - 0x264];
+	u8 *prvKey;			/* 2a8 the ini's 2BL private key */
+	u8 pad2ac[0x6ac - 0x2ac];
 	char binDir[0x800];		/* 6ac */
 	char baseDir[0x400];		/* eac */
 	char dataDir[0x400];		/* 12ac */
@@ -68,6 +100,8 @@ struct xebuild {
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
 	int nFlashFiles;		/* 4b0fc */
+	u8 pad4b100[0x4f4c4 - 0x4b100];
+	char kernelStr[0x40];		/* 4f4c4 the ini's kernel version string */
 };
 
 void log_printf(int level, const char *fmt, ...);
@@ -79,6 +113,30 @@ u8 *setBeU32(u32 v, u8 *p);
 int checkZeros(const u8 *p, u32 len);
 int smcConfigOk(const u8 *smc);
 void showSmcConfig(const u8 *smc);
+void showMac(u32 level, const u8 *mac);
+int macidSet(void);
+int suGetCF(u8 **data, u32 *len);
+int suGetCG(u8 **data, u32 *len);
+u32 smcSetLoad(u32 size);
+void setFlashBuild(u16 build);
+/* image_write's */
+int imgBigBlock(void);
+u32 imgCfOffset(void);
+u32 imgCfSize(void);
+u32 imgSize(void);
+void setPatchSlot(u32 off);
+/* keys.c's */
+u32 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
+void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
+int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
+extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .data */
+int cbVerifySig(u8 *bl, const void *pubKey);
+int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
+int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
+int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
+int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen, u8 *hashOut,
+	const void *pubKey, const void *prvKey);
+u32 calcConfigSum(const u8 *buf);
 int patchSmcConfig(u8 *smc);
 u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
 void display_buffer_hex(const u8 *buf, u32 len, u32 level);
@@ -88,7 +146,14 @@ void XeCryptShaUpdate(XECRYPT_SHA_STATE *sha, const void *buf, u32 len);
 void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
 void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 
+#define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+/* an SMC config fan byte */
+struct fan {
+	u8 speed:7, override:1;
+};
+
 extern struct xebuild xb;
+extern u8 *pub1bl;		/* xb+29c */
 #define addons (&xb.files[19])
 
 int suGetFile(const char *name, u8 **data, u32 *len);
@@ -105,17 +170,59 @@ static const char bd_458d1b[] = " (crc32: 0x%08x ini: 0x%08x)\n";
 static const char bd_458d3c[] = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
 static const char bd_458d74[] = "**** using default time!!! ****\n";
 static const char bd_458d98[] = "**** %s metadata found, not using system time *****\n\n";
+static const char bd_458f80[] = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
+static const char bd_458fb4[] = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
+static const char bd_458fe6[] = "Cpu Fan     : ";
+static const char bd_458ff5[] = "%d%%%% (overridden)\n";
+static const char bd_45900a[] = "(auto)\n";
+static const char bd_459012[] = "Gpu Fan     : ";
+static const char bd_459021[] = "MAC Address : ";
+static const char bd_459030[] = "\nAVRegion    : 0x%08x (NTSC-M)\n";
+static const char bd_459050[] = "\nAVRegion    : 0x%08x (NTSC-J)\n";
+static const char bd_459070[] = "\nAVRegion    : 0x%08x (PAL50)\n";
+static const char bd_459090[] = "\nAVRegion    : 0x%08x (PAL60)\n";
+static const char bd_4590b0[] = "\nAVRegion    : 0x%08x (Unknown)\n";
+static const char bd_4590d1[] = "GameRegion  : 0x%04x ";
+static const char bd_4590e7[] = "(NTSC/US)\n";
+static const char bd_4590f2[] = "(NTSC/JAP)\n";
+static const char bd_4590fe[] = "(NTSC/KOR)\n";
+static const char bd_45910a[] = "(NTSC/HK)\n";
+static const char bd_459115[] = "(PAL/EU)\n";
+static const char bd_45911f[] = "(PAL/AUS)\n";
+static const char bd_45912a[] = "(DEVKIT)\n";
+static const char bd_459134[] = "(Unknown)\n";
+static const char bd_45913f[] = "DVDRegion   : %d\n";
+static const char bd_459151[] = "resetKey    : ";
+static const char bd_459160[] = "%c";
 static const char bd_459164[] = "Ini value %d for %s is out of range (%d-%d), not using\n";
+static const char bd_459955[] = "none";
 static const char bd_459e3c[] = "\tPatching header for slower demon/cygnos UART speed\n";
 static const char bd_459e74[] = "\tPatching header for xell power reason\n";
 static const char bd_459e9c[] = "\tPatching header for xell alt power reason\n";
+static const char bd_459ec8[] = "blmod.bin";
 static const char bd_459ed2[] = "sum1:";
 static const char bd_459ed8[] = "sum2:";
 static const char bd_459ede[] = "sum3:";
 static const char bd_459ee4[] = "fin :";
+static const char bd_45a590[] = "patching freeboot.bin with with kernel version string '%s'\n";
+static const char bd_45a5cc[] = "Boot options set:\n";
+static const char bd_45a5e0[] = "    - Set debug UART speed to cygnos/demon compatible\n";
+static const char bd_45a618[] = "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n";
+static const char bd_45a664[] = "    - When powered on, if tray is not fully closed Xell starts\n";
+static const char bd_45a6a4[] = "start xell";
+static const char bd_45a6b0[] = "    - UKNOWN POWER REASON, using eject button\n";
+static const char bd_45a6df[] = "alternately start xell";
+static const char bd_45a6f8[] = "    - alternate xell button disabled\n";
+static const char bd_45a71e[] = "dual boot";
+static const char bd_45a728[] = "org version %s\n";
+static const char bd_45a738[] = "fin version %s\n";
+static const char bd_45a748[] = "**** ERROR PATCHING FREEBOOT.BIN for kernel version string!\n";
+static const char bd_45a785[] = "9199";
+static const char bd_45a78c[] = "9199 ini string detected, patching to old hold address\n";
 static const char bd_45a7c4[] = "patching payload.bin to load size 0x%x (0x%x reps)\n";
 static const char bd_45a7f8[] = "org li %r4, %02x%02x\n";
 static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
+static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 
 /* still in build.s */
 int timestampToFileTime(const u16 *ts, FILETIME *ft);
@@ -125,10 +232,18 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 		  int su, int fs, int common);
 int checkBl(u8 *bl, u32 size, int type, u32 crc);
 int extractSmcConfig(struct fileent *e, u8 *buf, u32 size);
-int blmodMissing(struct fileent *e);
 void appendAddonPatches(struct fileent *e);
 int logPowerButton(int reason, const char *use);
 void fixupPatchSet(void);
+int patchSmcConfig(u8 *smc);
+int verifyBlSigs(void);
+int loadBlFiles(void);
+int loadConsoleBlFiles(void);
+int patchBlsResign(void);
+void patchBlsBlmod(const void *blmod, u32 size);
+void addBlsToImage(void);
+void addUpdateBls(void);
+u32 calcBlAreaSize(void);
 
 u32 findFileOffset(int type)
 {
@@ -312,6 +427,11 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 		xb.kernel = k;
 }
 
+int blmodMissing(struct fileent *e)
+{
+	return loadBaseFile(bd_459ec8, e) != 0;
+}
+
 /* XeCryptRotSumSha, showing the sums */
 void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen)
 {
@@ -406,4 +526,160 @@ void patchHeaderOpts(void)
 	if (xb.xellAltButton)
 		log_printf(1, bd_459e9c);
 	xb.hdr[0x4e] = xb.xellAltButton;
+}
+
+void showSmcConfig(const u8 *smc)
+{
+	u32 av;
+	u16 game;
+	int i;
+
+	log_printf(1, bd_458f80, smc[0x29], smc[0x2a], smc[0x2b]);
+	log_printf(1, bd_458fb4, smc[0x2c], smc[0x2d], smc[0x2e]);
+	log_printf(1, bd_458fe6);
+	if (((struct fan *)(smc + 0x11))->override)
+		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x11))->speed);
+	else
+		log_printf(1, bd_45900a);
+	log_printf(1, bd_459012, smc[0x12] & 0x7f);
+	if (((struct fan *)(smc + 0x12))->override)
+		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x12))->speed);
+	else
+		log_printf(1, bd_45900a);
+	log_printf(1, bd_459021);
+	showMac(1, smc + 0x220);
+	av = *(u32 *)(smc + 0x228);
+	av = SWAP32(av);
+	switch (av) {
+	case 0x100:
+		log_printf(1, bd_459030, av);
+		break;
+	case 0x200:
+		log_printf(1, bd_459050, av);
+		break;
+	case 0x300:
+		log_printf(1, bd_459070, av);
+		break;
+	case 0x400:
+		log_printf(1, bd_459090, av);
+		break;
+	default:
+		log_printf(1, bd_4590b0, av);
+		break;
+	}
+	game = __builtin_bswap16(*(u16 *)(smc + 0x22c));
+	log_printf(1, bd_4590d1, game);
+	switch (game) {
+	case 0xff:
+		log_printf(1, bd_4590e7);
+		break;
+	case 0x1fe:
+		log_printf(1, bd_4590f2);
+		break;
+	case 0x1ff:
+		log_printf(1, bd_4590f2);
+		break;
+	case 0x1fc:
+		log_printf(1, bd_4590fe);
+		break;
+	case 0x101:
+		log_printf(1, bd_45910a);
+		break;
+	case 0x2fe:
+		log_printf(1, bd_459115);
+		break;
+	case 0x201:
+		log_printf(1, bd_45911f);
+		break;
+	case 0x7fff:
+		log_printf(1, bd_45912a);
+		break;
+	default:
+		log_printf(1, bd_459134);
+		break;
+	}
+	log_printf(1, bd_45913f, SWAP32(*(u32 *)(smc + 0x234)));
+	log_printf(1, bd_459151);
+	for (i = 0; i < 4; i++)
+		log_printf(1, bd_459160, smc[0x238 + i]);
+	log_printf(1, bd_458cf9);
+}
+
+/* freeboot.bin: the kernel version string, boot options and buttons */
+void patchFreeboot(u8 *buf, int len)
+{
+	u32 opts = xb.bootFlags & 0xf;
+	char pat[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+	u32 hold[4];		/* the hold address instructions; [2..3]: 9199's */
+	u32 *q;
+	char *p;
+
+	hold[0] = 0x80;
+	hold[1] = 0x78300001;
+	log_printf(1, bd_45a590, xb.kernelStr);
+	log_printf(1, bd_45a5cc);
+	if (opts & 9) {
+		log_printf(1, bd_45a5e0);
+		opts = (opts & 6) | 1;
+	}
+	if (opts & 4) {
+		if (logPowerButton(xb.xellButton, bd_45a6a4)) {
+			log_printf(1, bd_45a6b0);
+			xb.xellButton = 0x12;
+		}
+		if (xb.xellAltButton == xb.xellButton)
+			xb.xellAltButton = 0;
+		if (logPowerButton(xb.xellAltButton, bd_45a6df)) {
+			log_printf(1, bd_45a6f8);
+			xb.xellAltButton = 0;
+		}
+	} else if (opts & 2)
+		log_printf(1, bd_45a618);
+	else
+		log_printf(1, bd_45a664);
+	if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton ||
+	    logPowerButton(xb.dualButton, bd_45a71e))
+		xb.dualButton = 0;
+	p = (char *)findInst(buf, len, (u8 *)pat, 32);
+	if (p) {
+		log_printf(2, bd_45a728, p);
+		strncpy(p, xb.kernelStr, 32);
+		log_printf(2, bd_45a738, p);
+	} else
+		log_printf(0, bd_45a748);
+	if (!strncmp(xb.kernelStr, bd_45a785, 4)) {
+		hold[2] = 0x80;
+		hold[3] = 0xf8ff1f00;
+		log_printf(1, bd_45a78c);
+		q = (u32 *)findInst(buf, len, (u8 *)hold, 8);
+		if (q)
+			memcpy(q, hold + 2, 8);
+	}
+}
+
+/* encodeBls for an update image: only the CF and CG */
+int encodeUpdateBls(int unused, u16 ldv)
+{
+	struct fileent *e;
+	u32 i;
+	int j;
+
+	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+		e = &xb.files[i];
+		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+			continue;
+		switch (e->type) {
+		case 9:
+			log_printf(1, bd_45a8af, e->name, e->size);
+			j = findFile(10);
+			cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
+			break;
+		case 10:
+			log_printf(1, bd_45a8af, e->name, e->size);
+			j = findFile(9);
+			cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
+			break;
+		}
+	}
+	return 0;
 }
