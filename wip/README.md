@@ -645,7 +645,10 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
+The 34 matching functions build from `src/app/image_write.c`, a mixed
+object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
+turns the draft's `copyright` and `mobileOffset` definitions into
+externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
 `build/decomp_unit.py ... 13`). `sh wip/iwst.sh` prints every function's
 fncmp status. The data it uses are xb fields (0x28-0x5c: spare/hdr/raw
 buffers, sizes, FS start/end blocks) and COMMON globals from

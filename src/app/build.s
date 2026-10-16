@@ -8232,12 +8232,12 @@ L_42fe00:
           call _crlEncrypt
           jmp L_42f21f
 L_42fe34:
-          mov DWORD PTR [ESP],OFFSET L_4c9164
+          mov DWORD PTR [ESP],OFFSET _mmcAnchor
           mov BYTE PTR [L_4c917f],1
           call _shaHeader
           mov DWORD PTR [ESP],1
           call _copyAnchorBlock
-          mov DWORD PTR [ESP],OFFSET L_4c9164
+          mov DWORD PTR [ESP],OFFSET _mmcAnchor
           mov BYTE PTR [L_4c917f],2
           call _shaHeader
           mov DWORD PTR [ESP],2

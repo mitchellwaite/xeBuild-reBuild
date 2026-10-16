@@ -582,6 +582,19 @@ SYMBOLS = {
     0x410b90: '_imgFits',           # (offset, len) within the FS end block
     0x4121b0: '_spareUsed',         # 16 spare bytes not all 0xff
     0x412de0: '_reservedAreaOffset',  # like statisticsOffset, per NAND type
+    # app/image_write's data (COMMON globals in common_bss.s, and its own)
+    0x4c9164: '_mmcAnchor', 0x4c97c0: '_fsFiles', 0x4cb7c0: '_fsTable',
+    0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
+    0x46f9e0: '_smcPage',
+    # app/image_write's strings that its C functions use (wip/mixed.py)
+    0x4517f8: '_iw_4517f8', 0x45187c: '_iw_45187c', 0x4518e8: '_iw_4518e8',
+    0x4519c4: '_iw_4519c4', 0x451a20: '_iw_451a20', 0x451a44: '_iw_451a44',
+    0x451a6c: '_iw_451a6c', 0x451a94: '_iw_451a94', 0x451ab8: '_iw_451ab8',
+    0x451adc: '_iw_451adc', 0x451b2c: '_iw_451b2c', 0x451b54: '_iw_451b54',
+    0x451b7a: '_iw_451b7a', 0x451b7d: '_iw_451b7d', 0x451b9a: '_iw_451b9a',
+    0x451ba4: '_iw_451ba4', 0x451be4: '_iw_451be4', 0x451c18: '_iw_451c18',
+    0x451c38: '_iw_451c38', 0x451c94: '_iw_451c94', 0x451cdd: '_iw_451cdd',
+    0x451f80: '_iw_451f80',
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
@@ -687,6 +700,16 @@ C_FUNCS = {
     0x428ac0, 0x429180, 0x429b10, 0x42b2b0,  # setFileData iniRangeOk raiseKernel patchHeaderOpts
     0x42b3f0, 0x42b610, 0x42c600, 0x42cee0,  # rotSumSha countBits isUpdateBl patchPayloadSize
     0x428d20, 0x42b3d0, 0x42cbb0, 0x42dfb0,  # showSmcConfig blmodMissing patchFreeboot encodeUpdateBls
+    # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
+    0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
+    0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF
+    0x410070, 0x4100b0, 0x410220, 0x410240,  # isErased setBlockSpare imgSizeAligned setFlashBuild
+    0x410350, 0x410360, 0x410460, 0x410490,  # imgSmcOffset setPatchSlot imgCfOffset imgCfSize
+    0x4104d0, 0x4104e0, 0x4104f0, 0x410b90,  # imgSize imgSetSize imgBigBlock imgFits
+    0x411030, 0x4112b0, 0x4112f0, 0x411600,  # imgAddFileAs fixupFsTable fixupEmptyFsBlocks addSmcConfig
+    0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
+    0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
+    0x412f60, 0x413030,                      # manufacturingOffset imgAddRaw
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

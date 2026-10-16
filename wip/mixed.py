@@ -22,6 +22,14 @@ OBJS = {
                       # (splice.py only takes the C_FUNCS bodies)
                       inline={'loadFileCrc'},
                       note=' and payloads, encoding the flash */'),
+    'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
+                            regparm={'imgWriteStart': 3, 'imgWriteAt': 3, 'imgWritePage': 3},
+                            inline=set(),
+                            note='bytes, writing the image to disk */',
+                            # the .s keeps the object's data
+                            subs=[('\nchar copyright[0x40] = "\\xa9 2004-2009 Microsoft Corporation. '
+                                   'All rights reserved.";\n', '\nextern char copyright[0x40];\n'),
+                                  ('\nu32 mobileOffset;\n', '\nextern u32 mobileOffset;\n')]),
 }
 
 
@@ -97,6 +105,10 @@ def main():
                 asm.append('%s __attribute__((regparm(%d)));' % (s[len('static '):], cfg['regparm'][n]))
         else:
             asm.append('%s;' % s)
+    for old, new in cfg.get('subs', []):
+        if old not in head:
+            sys.exit('mixed.py: %r is not in the draft' % old)
+        head = head.replace(old, new, 1)
     head = head.replace(
         cfg['note'],
         cfg['note'][:-3] + '.\n   Mixed object: the functions here are spliced into %s.s\n'

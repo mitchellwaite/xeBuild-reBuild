@@ -96,6 +96,16 @@ struct flashhdr {
 	u32 smcOffset;			/* 7c */
 };
 
+/* a bootloader's header */
+struct blhdr {
+	u16 magic;
+	u16 build;
+	u16 qfe;
+	u16 flags;
+	u32 entry;
+	u32 size;
+};
+
 /* an entry of the file table */
 struct fsent {
 	char name[22];
@@ -905,16 +915,6 @@ void writeInitialHeader(void)
 			imgWriteAt(0x80, xb.netKd, xb.netKdSize, 0x1ffb);
 	}
 }
-
-/* a bootloader's header */
-struct blhdr {
-	u16 magic;
-	u16 build;
-	u16 qfe;
-	u16 flags;
-	u32 entry;
-	u32 size;
-};
 
 long checkBootImage(int write)
 {

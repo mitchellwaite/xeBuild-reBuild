@@ -166,28 +166,23 @@
 .globl L_4c9130
 .globl L_4c9134
 .globl L_4c9138
-.globl L_4c9164
 .globl L_4c917f
 .globl L_4c9180
 .globl L_4c9182
 .globl L_4c9184
 .globl L_4c9186
-.globl L_4c9360
 .globl L_4c9364
 .globl L_4c93a8
 .globl L_4c97a8
-.globl L_4c97c0
 .globl L_4c97d6
 .globl L_4c97d8
 .globl L_4cb7be
-.globl L_4cb7c0
 .globl L_4cb7c2
 .globl L_4cb7c4
 .globl L_4cb7c6
 .globl L_4cb7c8
 .globl L_4cb7ca
 .globl L_4cd7bc
-.globl L_4cd7c0
 .globl L_4cd7c4
 .globl L_4cd7c8
 .globl L_4cd7cc
@@ -214,7 +209,6 @@
 .globl L_4cd830
 .globl L_4cd838
 .globl L_4cd83c
-.globl L_4cd840
 .globl L_4cdc64
 .globl L_4ce064
 .globl L_4ce068
@@ -233,15 +227,20 @@
 .globl _buildMode
 .globl _cpuKey
 .globl _flashFiles
+.globl _fsFiles
+.globl _fsTable
 .globl _g479ea8
 .globl _g479f4c
 .globl _g47a080
+.globl _hdrTemplate
+.globl _imgEnd
 .globl _iniBuf
 .globl _iniSize
 .globl _key1bl
 .globl _key28c
 .globl _manifest
 .globl _masterPub
+.globl _mmcAnchor
 .globl _netStartTime
 .globl _pub1bl
 .globl _pub2a4
@@ -641,7 +640,7 @@ L_4c9138:
           .zero 40
 _buildMode:
           .zero 4
-L_4c9164:
+_mmcAnchor:
           .zero 27
 L_4c917f:
           .zero 1
@@ -665,7 +664,7 @@ L_4c97a8:
           .zero 4
 _iniSize:
           .zero 20
-L_4c97c0:
+_fsFiles:
           .zero 22
 L_4c97d6:
           .zero 2
@@ -673,7 +672,7 @@ L_4c97d8:
           .zero 8166
 L_4cb7be:
           .zero 2
-L_4cb7c0:
+_fsTable:
           .zero 2
 L_4cb7c2:
           .zero 2
@@ -687,7 +686,7 @@ L_4cb7ca:
           .zero 8178
 L_4cd7bc:
           .zero 4
-L_4cd7c0:
+_hdrTemplate:
           .zero 4
 L_4cd7c4:
           .zero 4
@@ -741,7 +740,7 @@ L_4cd838:
           .zero 4
 L_4cd83c:
           .zero 4
-L_4cd840:
+_imgEnd:
           .zero 4
 _netStartTime:
           .zero 1052
