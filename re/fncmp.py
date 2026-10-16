@@ -23,7 +23,7 @@ NAMED = set(SYMBOLS.values())
 # FNCMP_LITERALS=1: a draft with string literals (wip/) compares against the
 # .s's named strings (`_msg_*`, `_str_*`, `_mu_*`) as plain labels
 if os.environ.get('FNCMP_LITERALS'):
-    NAMED = {n for n in NAMED if not re.match(r'_(msg|str|mu)_', n)}
+    NAMED = {n for n in NAMED if not re.match(r'_(msg|str|mu|ir)_', n)}
 # condition-code spellings: gcc's (e.g. jnb) -> ddisasm's (jae)
 CC = {'nb': 'ae', 'nae': 'b', 'z': 'e', 'nz': 'ne', 'nbe': 'a', 'na': 'be',
       'nl': 'ge', 'nge': 'l', 'nle': 'g', 'ng': 'le', 'c': 'b', 'nc': 'ae'}
@@ -114,9 +114,10 @@ def main():
         m = re.match(r'\s*\.byte [^#]*#\s*(.+)$', l)
         if m:
             l = m.group(1)
-        l = rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l)
+        # `L_x+N` is whatever is at x+N (gcc spells it `_name+N`, resolved alike)
         l = re.sub(r'(?<![\w.$])\.?L_([0-9a-f]+)\+(\d+)(?![\w])', lambda m: SYMBOLS.get(
-            int(m.group(1), 16) + int(m.group(2)), m.group(0)), l)
+            int(m.group(1), 16) + int(m.group(2)), 'L_%x' % (int(m.group(1), 16) + int(m.group(2)))), l)
+        l = rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l)
         # ddisasm names IAT slots by the import (`[_errno]`); gcc says __imp___errno
         l = re.sub(r'PTR \[(_\w+)\]', lambda m: 'PTR [%s]' % (m.group(1) if m.group(1) in NAMED
                                                             else '__imp__' + m.group(1)), l)

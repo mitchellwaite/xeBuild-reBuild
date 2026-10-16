@@ -994,7 +994,7 @@ L_428160:
           mov DWORD PTR [ESP+12],EAX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP+44],EDX
-          call FUN_414760
+          call _fsGetFile
           test EAX,EAX
           mov EDX,DWORD PTR [ESP+44]
           jne L_428400
@@ -8985,7 +8985,7 @@ L_42f2d0:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_479ef0]
           mov DWORD PTR [ESP],EAX
-          call FUN_412f60
+          call _manufacturingOffset
           mov DWORD PTR [ESP+32],EAX
 L_42f341:
           imul EDX,DWORD PTR [L_4c4f9c],1068
@@ -9028,7 +9028,7 @@ L_42f391:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [L_479ef0]
           mov DWORD PTR [ESP],EAX
-          call FUN_412e90
+          call _statisticsOffset
           mov DWORD PTR [ESP+32],EAX
           jmp L_42f341
 L_42f401:

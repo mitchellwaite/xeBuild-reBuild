@@ -10,6 +10,9 @@ function, switched to AT&T syntax around it.  Its alignment is a no-op: the
 .s pads up to it as the original did.  A function that puts anything outside
 .text (string literals, jump tables) can't be spliced, since its data would
 not land where the original's is: give it extern names for the .s's data.
+A `static` variable the .s defines (same name) can stay static in the C, so
+gcc's alias analysis sees what the original's did; its `.lcomm` is dropped
+and the code refers to the .s's label.
 """
 import re, sys
 
@@ -17,6 +20,7 @@ DEF = re.compile(r'^\s*\.def\s+([^;]+);')
 LABEL = re.compile(r'^([\w$.@]+):\s*$')
 SECTION = re.compile(r'^\s*(\.section\b|\.text\b|\.data\b|\.bss\b|\.ident\b)')
 HEAD = re.compile(r'^\s*(\.p2align|\.globl|\.def)\b')
+LCOMM = re.compile(r'^\s*\.l?comm\s+([\w$.@]+),')
 
 
 def functions(lines):
@@ -47,8 +51,16 @@ def functions(lines):
 def main():
     src, gen, dst = sys.argv[1:4]
     fns = functions(open(gen).read().split('\n'))
+    lines = open(src).read().split('\n')
+    defined = {m.group(1) for m in map(LABEL.match, lines) if m}
+    for name, body in fns.items():
+        for l in body:
+            m = LCOMM.match(l)
+            if m and m.group(1) not in defined:
+                sys.exit('splice.py: %s defines %s, which the .s does not' % (gen, m.group(1)))
+        fns[name] = [l for l in body if not LCOMM.match(l)]
     out, used = [], set()
-    for l in open(src).read().split('\n'):
+    for l in lines:
         m = re.match(r'^#@C (\S+)$', l)
         if not m:
             out.append(l)

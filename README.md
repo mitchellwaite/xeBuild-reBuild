@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, five more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, six more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **412 of 617** (399 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **427 of 617** (414 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 227 / 432 |
+| `app/` | 14 / 25 | 242 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -41,7 +41,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_client` | asm | 0 / 16 |
 | `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
-| `app/image_read` | asm | 0 / 33 |
+| `app/image_read` | mixed; 0 of 18 drafted functions match in `wip/app/image_read.c` | 15 / 33 |
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | asm | 0 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
@@ -139,13 +139,13 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `imageFree` (0x40fb10)
 - ⬜ `FUN_40fb60` (0x40fb60)
 - ⬜ `FUN_40fbb0` (0x40fbb0)
-- ⬜ `FUN_40fc30` (0x40fc30)
-- ⬜ `FUN_40fcc0` (0x40fcc0)
+- ⬜ `pageEccOk` (0x40fc30)
+- ⬜ `blockEccOk` (0x40fcc0)
 - ⬜ `FUN_40feb0` (0x40feb0)
-- ⬜ `FUN_40ff40` (0x40ff40)
+- ⬜ `blockErased` (0x40ff40)
 - ⬜ `FUN_40ff80` (0x40ff80)
 - ⬜ `FUN_410040` (0x410040)
-- ⬜ `FUN_410070` (0x410070)
+- ⬜ `isErased` (0x410070)
 - ⬜ `FUN_4100b0` (0x4100b0)
 - ⬜ `FUN_410220` (0x410220)
 - ⬜ `FUN_410240` (0x410240)
@@ -175,47 +175,47 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_4125a0` (0x4125a0)
 - ⬜ `FUN_412dd0` (0x412dd0)
 - ⬜ `FUN_412de0` (0x412de0)
-- ⬜ `FUN_412e90` (0x412e90)
-- ⬜ `FUN_412f60` (0x412f60)
+- ⬜ `statisticsOffset` (0x412e90)
+- ⬜ `manufacturingOffset` (0x412f60)
 - ⬜ `FUN_413030` (0x413030)
 
 </details>
 <details>
-<summary><code>app/image_read</code>: 0 / 33 in C</summary>
+<summary><code>app/image_read</code>: 15 / 33 in C</summary>
 
-- ⬜ `FUN_4136a0` (0x4136a0)
-- ⬜ `buildCleanup` (0x4137f0)
-- ⬜ `FUN_4138c0` (0x4138c0)
-- ⬜ `FUN_413ad0` (0x413ad0)
-- ⬜ `FUN_413d30` (0x413d30)
-- ⬜ `FUN_414050` (0x414050)
-- ⬜ `FUN_414300` (0x414300)
-- ⬜ `FUN_4144e0` (0x4144e0)
-- ⬜ `FUN_414610` (0x414610)
-- ⬜ `listFlashFiles` (0x414650)
-- ⬜ `FUN_414760` (0x414760)
-- ⬜ `FUN_414960` (0x414960)
-- ⬜ `FUN_414af0` (0x414af0)
-- ⬜ `FUN_414b90` (0x414b90)
-- ⬜ `FUN_414be0` (0x414be0)
-- ⬜ `FUN_414e90` (0x414e90)
-- ⬜ `FUN_4151c0` (0x4151c0)
-- ⬜ `FUN_415230` (0x415230)
-- ⬜ `FUN_4154d0` (0x4154d0)
-- ⬜ `FUN_415970` (0x415970)
-- ⬜ `FUN_415b00` (0x415b00)
-- ⬜ `FUN_415d90` (0x415d90)
-- ⬜ `FUN_415e90` (0x415e90)
-- ⬜ `remapBadBlocks` (0x415ef0)
-- ⬜ `FUN_416040` (0x416040)
-- ⬜ `FUN_416070` (0x416070)
-- ⬜ `FUN_4160d0` (0x4160d0)
-- ⬜ `FUN_416150` (0x416150)
-- ⬜ `FUN_416840` (0x416840)
-- ⬜ `FUN_416aa0` (0x416aa0)
-- ⬜ `FUN_416cd0` (0x416cd0)
-- ⬜ `FUN_4172c0` (0x4172c0)
-- ⬜ `loadDump` (0x417680)
+- ✅ `fsFind` (0x4136a0)
+- ⬜ `buildCleanup` (0x4137f0) (draft in `wip/`, no match yet)
+- ⬜ `getImageLdv` (0x4138c0) (draft in `wip/`, no match yet)
+- ⬜ `getImageSmc` (0x413ad0) (draft in `wip/`, no match yet)
+- ⬜ `getImageKv` (0x413d30) (draft in `wip/`, no match yet)
+- ✅ `getImageMobiles` (0x414050)
+- ✅ `getNetKd` (0x414300)
+- ✅ `loadFlashFile` (0x4144e0)
+- ✅ `fsFindFile` (0x414610)
+- ⬜ `listFlashFiles` (0x414650) (draft in `wip/`, no match yet)
+- ⬜ `fsGetFile` (0x414760) (draft in `wip/`, no match yet)
+- ⬜ `findAnchor` (0x414960) (draft in `wip/`, no match yet)
+- ✅ `mmcFindMobiles` (0x414af0)
+- ✅ `spareVersion` (0x414b90)
+- ⬜ `showMobilePages` (0x414be0) (draft in `wip/`, no match yet)
+- ⬜ `scanMobiles` (0x414e90) (draft in `wip/`, no match yet)
+- ✅ `setFsOffset` (0x4151c0)
+- ✅ `findFsRoot` (0x415230)
+- ⬜ `imgGetSecurityFiles` (0x4154d0) (draft in `wip/`, no match yet)
+- ✅ `findSmcConfig` (0x415970)
+- ⬜ `checkBlock` (0x415b00) (draft in `wip/`, no match yet)
+- ✅ `addRemap` (0x415d90)
+- ✅ `findFreeRemap` (0x415e90)
+- ⬜ `remapBadBlocks` (0x415ef0) (draft in `wip/`, no match yet)
+- ✅ `notZeropair` (0x416040)
+- ✅ `spareLbaOk` (0x416070)
+- ⬜ `copyMmcImage` (0x4160d0) (draft in `wip/`, no match yet)
+- ⬜ `parseDump` (0x416150) (draft in `wip/`, no match yet)
+- ✅ `copyMuData` (0x416840)
+- ⬜ `detectController` (0x416aa0) (draft in `wip/`, no match yet)
+- ⬜ `checkHeader` (0x416cd0) (draft in `wip/`, no match yet)
+- ⬜ `getNonces` (0x4172c0) (draft in `wip/`, no match yet)
+- ⬜ `loadDump` (0x417680) (draft in `wip/`, no match yet)
 
 </details>
 <details>

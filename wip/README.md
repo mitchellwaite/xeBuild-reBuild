@@ -282,3 +282,58 @@ Still off:
   buildImage, flash, avatar and reboot as one trace. The type suffix is an
   if/else chain (a switch gives a jump table). Moving the post-build code
   into a static helper doesn't change it.
+
+## app/image_read.c
+
+Draft of the whole object, with string literals. 15 of 33 functions are
+built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
+<names>` makes from this file; a new match needs its name there and its
+address in `split.py` `C_FUNCS` (all of image_read's strings are in
+`SYMBOLS` as `ir_<address>`). Compare with the strings as those names, not
+with `FNCMP_LITERALS=1`: two cold blocks that differ only in their string
+look the same to the literal mode (getImageMobiles "matched" that way with
+its two allocation-failure blocks swapped). `wip/irlit.py`'s `externize()`
+turns the draft into that form.
+
+The statics that a C function writes (fsBuf, fsValid, fsOffset, anchor,
+mobiles) stay `static` in the mixed file and `re/splice.py` drops their
+`.lcomm`, so the alias analysis is the original's (as externs, memcpy
+clobbers fsOffset and loadFlashFile reloads it). dumpSize is only written
+by the .s's code, so it stays extern (as a static gcc would think it is
+always 0).
+
+Matching notes: findFsRoot's list loop is not unrolled only as `if
+(found) { if (i) mobile else fsroot }` (with `if (i == 0)` first cunroll
+sees a constant conditional and unrolls it; `--param
+max-completely-peeled-insns=150` also works). LBAs are `b[513] + (b[514] &
+0xf) * 256` (`<< 8` folds into `(x << 8) & 0xf00`). addRemap needs `u32 b =
+block;` (unused) so block's SSA name comes before the loads and the compare
+is `cmp esi,[mem]`, and `numBad >= 32`. copyMuData returns `u32` (an `int`
+return reuses fseek's 0). `x != x / k * k` instead of `x % k`.
+
+Still off (fncmp lines):
+
+- `buildCleanup` (3): the first loop's end is an immediate in the
+  original, a register in ours.
+- `getImageLdv` (2): the copy of the pairing's LDV byte is scheduled before
+  the `cfLdv` test.
+- `checkHeader` (4): `size < addr || hdr.size > addr` is evaluated in the
+  other order.
+- `remapBadBlocks` (6): the inlined findFreeRemap keeps its `numBad != 0`
+  guard.
+- `findAnchor` (11, with `u32 shaSelfCheck`): the "invalid" log for the
+  second block is jump-threaded into two copies; the original keeps one and
+  tests ok0 after it.
+- `copyMmcImage` (11): uncprop reuses memcmp's 0 for `return 0`; every
+  non-int return type merges the returns instead.
+- `getImageKv` (22, nested form): the alt-KV success and the failures
+  should get their own epilogues (bb-reorder needs >= 10% of the entry
+  frequency on those edges).
+- `listFlashFiles` (23), `fsGetFile` (70), `detectController` (61): register
+  allocation (fsGetFile has fsValid and name in esi/edi swapped).
+- `getImageSmc` (~100): the original has two variables for the SMC address
+  (one for the checks and memcpy, one for the logs) and threads the size
+  check into both address branches.
+- `checkBlock` (200), `showMobilePages`, `scanMobiles`, `parseDump`,
+  `imgGetSecurityFiles`, `getNonces`, `loadDump`: block layout not worked on
+  yet.

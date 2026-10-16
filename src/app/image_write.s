@@ -10,10 +10,6 @@
 
 .intel_syntax noprefix
 .globl FUN_40fbb0
-.globl FUN_40fc30
-.globl FUN_40fcc0
-.globl FUN_40ff40
-.globl FUN_410070
 .globl FUN_410220
 .globl FUN_410240
 .globl FUN_410290
@@ -35,15 +31,19 @@
 .globl FUN_412110
 .globl FUN_4125a0
 .globl FUN_412dd0
-.globl FUN_412e90
-.globl FUN_412f60
 .globl FUN_413030
 .globl L_470000
 .globl L_47006e
+.globl _blockEccOk
+.globl _blockErased
 .globl _buildImage
 .globl _checkBootImage
 .globl _imageFree
 .globl _imageGetBuffer
+.globl _isErased
+.globl _manufacturingOffset
+.globl _pageEccOk
+.globl _statisticsOffset
 .globl _writeImage
 
 .text
@@ -1370,7 +1370,7 @@ L_40fbd6:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_40fc30:
+_pageEccOk:
           push EDI
           push ESI
           xor ECX,ECX
@@ -1435,7 +1435,7 @@ L_40fc99:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40fcc0:
+_blockEccOk:
           push EBP
           push EDI
           push ESI
@@ -1646,7 +1646,7 @@ L_40fed0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40ff40:
+_blockErased:
           cmp DWORD PTR [ESP+8],1
           mov EAX,DWORD PTR [ESP+4]
           sbb EDX,EDX
@@ -1778,7 +1778,7 @@ L_410060:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_410070:
+_isErased:
           mov ECX,DWORD PTR [ESP+8]
           mov EDX,DWORD PTR [ESP+4]
           test ECX,ECX
@@ -4594,7 +4594,7 @@ L_412480:
           call _log_printf
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],EBX
-          call FUN_416840
+          call _copyMuData
           mov DWORD PTR [L_479f6c],EAX
           mov EAX,DWORD PTR [L_4c97a8]
 L_412509:
@@ -4626,7 +4626,7 @@ L_412560:
           call _log_printf
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EBX
-          call FUN_416840
+          call _copyMuData
           mov DWORD PTR [L_479f6c],EAX
           mov EAX,DWORD PTR [L_4c97a8]
           jmp L_412509
@@ -5281,7 +5281,7 @@ L_412e70:
           test ECX,ECX
           jne L_412e05
           jmp L_412e0c
-          jmp FUN_412e90
+          jmp _statisticsOffset
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -5295,7 +5295,7 @@ L_412e70:
           nop
           nop
           nop
-FUN_412e90:
+_statisticsOffset:
           mov ECX,DWORD PTR [ESP+12]
           mov EDX,DWORD PTR [ESP+16]
           mov EAX,DWORD PTR [ESP+20]
@@ -5380,7 +5380,7 @@ L_412f50:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_412f60:
+_manufacturingOffset:
           mov ECX,DWORD PTR [ESP+12]
           mov EDX,DWORD PTR [ESP+16]
           mov EAX,DWORD PTR [ESP+20]
@@ -6168,7 +6168,7 @@ L_451f80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40fc30 - .
+          .long _pageEccOk - .
           .byte 0x8a
           .byte 0x0
           .byte 0x0
@@ -6213,7 +6213,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_40fcc0 - .
+          .long _blockEccOk - .
           .byte 0xec
           .byte 0x1
           .byte 0x0
@@ -6315,7 +6315,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_40ff40 - .
+          .long _blockErased - .
           .byte 0x35
           .byte 0x0
           .byte 0x0
@@ -6382,7 +6382,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_410070 - .
+          .long _isErased - .
           .byte 0x36
           .byte 0x0
           .byte 0x0
@@ -7760,7 +7760,7 @@ L_451f80:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_412e90 - .
+          .long _statisticsOffset - .
           .byte 0xc6
           .byte 0x0
           .byte 0x0
@@ -7777,7 +7777,7 @@ L_451f80:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_412f60 - .
+          .long _manufacturingOffset - .
           .byte 0xc6
           .byte 0x0
           .byte 0x0
