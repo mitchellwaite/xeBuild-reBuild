@@ -14,7 +14,10 @@
 .globl _addSmcConfig
 .globl _blockEccOk
 .globl _blockErased
+.globl _blockIsFF
+.globl _blockPagesErased
 .globl _buildImage
+.globl _calcEcd
 .globl _calcPageEcc
 .globl _checkBootImage
 .globl _copyAnchorBlock
@@ -32,18 +35,24 @@
 .globl _imgBigBlock
 .globl _imgCfOffset
 .globl _imgCfSize
+.globl _imgFits
 .globl _imgSetSize
 .globl _imgSize
 .globl _imgSizeAligned
+.globl _imgSmcOffset
 .globl _imgWriteAt
+.globl _imgWritePage
 .globl _imgWriteStart
 .globl _isErased
 .globl _manufacturingOffset
 .globl _pageEccOk
+.globl _pageErased
+.globl _reservedAreaOffset
 .globl _setBlockSpare
 .globl _setFlashBuild
 .globl _setPatchSlot
 .globl _smcSetLoad
+.globl _spareUsed
 .globl _statisticsOffset
 .globl _writeFsTable
 .globl _writeImage
@@ -316,7 +325,7 @@ L_40ecb2:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_40ecc0:
+_imgWritePage:
           push EBP
           push EDI
           push ESI
@@ -1284,7 +1293,7 @@ L_40fb57:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_40fb60:
+_calcEcd:
           push EDI
           push ESI
           xor ECX,ECX
@@ -1585,7 +1594,7 @@ L_40fea3:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_40feb0:
+_pageErased:
           mov EAX,DWORD PTR [ESP+4]
           mov ECX,DWORD PTR [ESP+8]
           lea EDX,DWORD PTR [EAX+512]
@@ -1679,7 +1688,7 @@ L_40ff72:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_40ff80:
+_blockPagesErased:
           push EBX
           cmp DWORD PTR [ESP+16],1
           mov ECX,DWORD PTR [ESP+12]
@@ -1756,7 +1765,7 @@ L_40ffc0:
 L_410037:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_410040:
+_blockIsFF:
           mov EAX,DWORD PTR [ESP+4]
           lea EDX,DWORD PTR [EAX+16384]
           jmp L_410057
@@ -2049,7 +2058,7 @@ L_410320:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_410350:
+_imgSmcOffset:
           mov EAX,DWORD PTR [L_479ed8]
           mov EAX,DWORD PTR [EAX+124]
           ret 
@@ -2696,7 +2705,7 @@ L_410b77:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_410b90:
+_imgFits:
           mov EAX,DWORD PTR [L_479ef8]
           mov EDX,DWORD PTR [ESP+8]
           add EDX,DWORD PTR [ESP+4]
@@ -3532,7 +3541,7 @@ L_41165d:
           mov EDX,OFFSET L_46f9e0
           pop ESI
           pop EDI
-          jmp L_40ecc0
+          jmp _imgWritePage
 L_411671:
           jmp _writeInitialHeader
           .byte 0x90
@@ -4384,7 +4393,7 @@ _copyAnchorBlock:
           pop ESI
           pop EDI
           ret 
-L_4121b0:
+_spareUsed:
           mov EAX,DWORD PTR [ESP+4]
           cmp BYTE PTR [EAX],255
           jne L_412220
@@ -5205,7 +5214,7 @@ _fsStartBlock:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_412de0:
+_reservedAreaOffset:
           push ESI
           push EBX
           mov EBX,DWORD PTR [ESP+20]
@@ -5497,7 +5506,7 @@ L_41307f:
           mov EAX,EBX
           pop EBX
           pop ESI
-          jmp L_40ecc0
+          jmp _imgWritePage
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -5829,7 +5838,7 @@ L_451f80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_40ecc0 - .
+          .long _imgWritePage - .
           .byte 0x22
           .byte 0x2
           .byte 0x0
@@ -6081,7 +6090,7 @@ L_451f80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_40fb60 - .
+          .long _calcEcd - .
           .byte 0x4f
           .byte 0x0
           .byte 0x0
@@ -6301,7 +6310,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_40feb0 - .
+          .long _pageErased - .
           .byte 0x83
           .byte 0x0
           .byte 0x0
@@ -6335,7 +6344,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_40ff80 - .
+          .long _blockPagesErased - .
           .byte 0xb7
           .byte 0x0
           .byte 0x0
@@ -6368,7 +6377,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_410040 - .
+          .long _blockIsFF - .
           .byte 0x26
           .byte 0x0
           .byte 0x0
@@ -6570,7 +6579,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long L_410350 - .
+          .long _imgSmcOffset - .
           .byte 0x9
           .byte 0x0
           .byte 0x0
@@ -6798,7 +6807,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long L_410b90 - .
+          .long _imgFits - .
           .byte 0x1e
           .byte 0x0
           .byte 0x0
@@ -7481,7 +7490,7 @@ L_451f80:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long L_4121b0 - .
+          .long _spareUsed - .
           .byte 0x76
           .byte 0x0
           .byte 0x0
@@ -7714,7 +7723,7 @@ L_451f80:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long L_412de0 - .
+          .long _reservedAreaOffset - .
           .byte 0xa1
           .byte 0x0
           .byte 0x0

@@ -566,6 +566,16 @@ SYMBOLS = {
     0x411bd0: '_writeFsTable', 0x412110: '_copyAnchorBlock',
     0x4125a0: '_finalizeImage',     # "------ finalizing image ------"
     0x412dd0: '_fsStartBlock', 0x413030: '_imgAddRaw',  # "adding %s at raw offset"
+    # never called (only .eh_frame refers to them) except imgWritePage
+    0x40ecc0: '_imgWritePage',      # regparm (offset, src, fs type), 0x1000 bytes
+    0x40fb60: '_calcEcd',           # page ECD over separate data/spare pointers
+    0x40feb0: '_pageErased',        # 512 data + 16 spare bytes all 0xff
+    0x40ff80: '_blockPagesErased',  # same for each page of a block
+    0x410040: '_blockIsFF',         # 0x4000 bytes all 0xff
+    0x410350: '_imgSmcOffset',      # flash header +0x7c
+    0x410b90: '_imgFits',           # (offset, len) within the FS end block
+    0x4121b0: '_spareUsed',         # 16 spare bytes not all 0xff
+    0x412de0: '_reservedAreaOffset',  # like statisticsOffset, per NAND type
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
