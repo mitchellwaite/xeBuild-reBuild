@@ -345,3 +345,53 @@ Still off (fncmp lines):
 imgGetSecurityFiles matches only with loadFlashFile `noinline`: gcc inlines
 it here (growth 39, under max-inline-insns-auto 40), the original didn't.
 getNonces' magic tests are 16-bit rotates (`ROT16`).
+
+## app/mode_client.c
+
+Draft of the whole object, with string literals.  13 of 16 functions
+match (`FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_client.c <fn>`).
+11 are built from `src/app/mode_client.c`, made by `python wip/mcmixed.py
+<names>` (strings -> `mc_<addr>` externs, `cinfo` extern; SYMBOLS has all
+of the object's string names).  Two matching functions stay asm in the
+mixed build:
+
+- `client_usage`: its switch table is data, which a mixed object's C
+  can't emit.  It matches with the real string names too.
+- `clientKeys`: ipa-inline inlines one of the four `dumpKey` calls, and
+  all four have the same badness.  Which one wins is a fibheap tie that
+  depends on every edge in the TU: the full draft inlines the first (as
+  the original), the mixed file the second.  It comes back when the whole
+  object is C.
+
+Style that matched: nested positive `if`s with the error in the `else`
+(clientEraseBlock, clientReadBlocks, updatePatches), early returns only
+for the first two checks in clientWriteBlocks; `same = 0; if (len == cur
+&& !memcmp) same = 1; if (!same) send` in updatePatches; a `type = 0`
+chain then `if (type) ... else error` in clientPatches; increments last
+in patchNand's loops (`off -= 512` after the pointers).  Operand order of
+a compare follows SSA versions: `start + count <= info / bs` written
+without a temporary, and dumpKey's `u32 want = sum;` at entry (the
+parameter's default def must be older than the sumBytes result).
+clientInfo keeps `out` (NULL unless createDir worked) apart from `dir`
+and copies `dir`.  `client_usage` needs `noreturn` on its prototype so
+the mixed file (where it is extern) compiles getArgs the same.
+
+Still off:
+
+- `checkPatches` (about 225 lines): the shape is right with `size_t`
+  counters, a byte copy loop (vectorized, with alias checks) and
+  `memset(buf, 0xff, off)` (the original's inline memset expansion, not
+  a loop: a loop gives a `max(off, 1)` cmov).  The original keeps `len`
+  in ebx and `buf` in memory; ours the other way round, and every block
+  differs by registers.
+- `clientBinPatch` (about 135): nested ifs give the original's block
+  shape and the inlined patchNand; register allocation differs (the
+  original keeps `file` in edi and `data` in a stack slot, ours `soff` in
+  edi and `data` in edi after FileToBuffer).  Types and declaration order
+  of the locals made no difference.
+- `mode_client` (about 400): only `-rb` calls getArgs; the other options
+  check their arguments inline with different `||` orders and loads
+  hoisted above the argc test in some (see the asm).  The `-bp`/`-wb`
+  stores follow getArgs' order (`start = b` before the mode check, then
+  `i += 2` and a reload of `argv[i - 1]`).  "unable to connect" is the
+  last string, so its log is at the end of the source.

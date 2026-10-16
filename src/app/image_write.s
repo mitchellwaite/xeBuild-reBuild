@@ -9,7 +9,6 @@
 #   .text          0040e950-00413090
 
 .intel_syntax noprefix
-.globl FUN_40fbb0
 .globl FUN_410220
 .globl FUN_410240
 .globl FUN_410290
@@ -37,6 +36,7 @@
 .globl _blockEccOk
 .globl _blockErased
 .globl _buildImage
+.globl _calcPageEcc
 .globl _checkBootImage
 .globl _imageFree
 .globl _imageGetBuffer
@@ -1317,7 +1317,7 @@ L_40fb86:
           pop EDI
           ret 
           .byte 0x90
-FUN_40fbb0:
+_calcPageEcc:
           push EDI
           push ESI
           xor ECX,ECX
@@ -6123,7 +6123,7 @@ L_451f80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_40fbb0 - .
+          .long _calcPageEcc - .
           .byte 0x76
           .byte 0x0
           .byte 0x0

@@ -267,6 +267,52 @@ SYMBOLS = {
     0x41abb0: '_setCrlKey', 0x41ac00: '_setDaeKey', 0x41ac50: '_setSecdataKey',
     0x40cfa0: '_suFree', 0x40fb10: '_imageFree', 0x404770: '_mode_update',
     0x408260: '_mode_client', 0x418a10: '_build_usage', 0x419230: '_mode_build',
+    # app/mode_client (wip/app/mode_client.c); names are ours
+    0x406330: '_client_usage', 0x406740: '_clientInfo', 0x406980: '_clientWrite',
+    0x406aa0: '_clientManifest', 0x406b60: '_dumpKey', 0x406c60: '_clientKeys',
+    0x406e50: '_checkPatches', 0x407160: '_updatePatches', 0x407320: '_clientPatches',
+    0x4076b0: '_clientReadBlocks', 0x407850: '_clientWriteBlocks', 0x407a00: '_patchNand',
+    0x407bf0: '_clientBinPatch', 0x408080: '_clientEraseBlock', 0x408160: '_getArgs',
+    0x40fbb0: '_calcPageEcc', 0x41fa40: '_netDisconnect', 0x420140: '_netReadBlocks',
+    0x420200: '_netWriteBlocks', 0x420320: '_netEraseBlock', 0x420910: '_netWritePatches',
+    0x46f160: '_cinfo',
+    # mode_client.s strings the mixed mode_client.c refers to
+    0x44e10c: '_mc_44e10c', 0x44e158: '_mc_44e158', 0x44e1a8: '_mc_44e1a8',
+    0x44e1f4: '_mc_44e1f4', 0x44e234: '_mc_44e234', 0x44e273: '_mc_44e273',
+    0x44e27c: '_mc_44e27c', 0x44e2a9: '_mc_44e2a9', 0x44e2b4: '_mc_44e2b4',
+    0x44e2d4: '_mc_44e2d4', 0x44e305: '_mc_44e305', 0x44e314: '_mc_44e314',
+    0x44e35c: '_mc_44e35c', 0x44e3c0: '_mc_44e3c0', 0x44e3f8: '_mc_44e3f8',
+    0x44e434: '_mc_44e434', 0x44e4a4: '_mc_44e4a4', 0x44e4fc: '_mc_44e4fc',
+    0x44e560: '_mc_44e560', 0x44e590: '_mc_44e590', 0x44e5d4: '_mc_44e5d4',
+    0x44e630: '_mc_44e630', 0x44e684: '_mc_44e684', 0x44e6d8: '_mc_44e6d8',
+    0x44e720: '_mc_44e720', 0x44e748: '_mc_44e748', 0x44e798: '_mc_44e798',
+    0x44e7dc: '_mc_44e7dc', 0x44e814: '_mc_44e814', 0x44e850: '_mc_44e850',
+    0x44e876: '_mc_44e876', 0x44e880: '_mc_44e880', 0x44e8d4: '_mc_44e8d4',
+    0x44e928: '_mc_44e928', 0x44e95c: '_mc_44e95c', 0x44e9b0: '_mc_44e9b0',
+    0x44e9d8: '_mc_44e9d8', 0x44ea04: '_mc_44ea04', 0x44ea50: '_mc_44ea50',
+    0x44ea58: '_mc_44ea58', 0x44eaa8: '_mc_44eaa8', 0x44eaf8: '_mc_44eaf8',
+    0x44eb40: '_mc_44eb40', 0x44eb8b: '_mc_44eb8b', 0x44ebc0: '_mc_44ebc0',
+    0x44ebe8: '_mc_44ebe8', 0x44ec11: '_mc_44ec11', 0x44ec16: '_mc_44ec16',
+    0x44ec18: '_mc_44ec18', 0x44ec35: '_mc_44ec35', 0x44ec3f: '_mc_44ec3f',
+    0x44ec48: '_mc_44ec48', 0x44ec5b: '_mc_44ec5b', 0x44ec6e: '_mc_44ec6e',
+    0x44ec88: '_mc_44ec88', 0x44eca4: '_mc_44eca4', 0x44ecec: '_mc_44ecec',
+    0x44ed30: '_mc_44ed30', 0x44ed5c: '_mc_44ed5c', 0x44ed74: '_mc_44ed74',
+    0x44ed8d: '_mc_44ed8d', 0x44eda8: '_mc_44eda8', 0x44ee04: '_mc_44ee04',
+    0x44ee23: '_mc_44ee23', 0x44ee26: '_mc_44ee26', 0x44ee31: '_mc_44ee31',
+    0x44ee39: '_mc_44ee39', 0x44ee45: '_mc_44ee45', 0x44ee55: '_mc_44ee55',
+    0x44ee62: '_mc_44ee62', 0x44ee73: '_mc_44ee73', 0x44ee80: '_mc_44ee80',
+    0x44ee94: '_mc_44ee94', 0x44efc8: '_mc_44efc8', 0x44efe8: '_mc_44efe8',
+    0x44f00b: '_mc_44f00b', 0x44f014: '_mc_44f014', 0x44f037: '_mc_44f037',
+    0x44f04c: '_mc_44f04c', 0x44f074: '_mc_44f074', 0x44f0b8: '_mc_44f0b8',
+    0x44f0ec: '_mc_44f0ec', 0x44f118: '_mc_44f118', 0x44f140: '_mc_44f140',
+    0x44f164: '_mc_44f164', 0x44f184: '_mc_44f184', 0x44f19a: '_mc_44f19a',
+    0x44f1b2: '_mc_44f1b2', 0x44f1cb: '_mc_44f1cb', 0x44f1e4: '_mc_44f1e4',
+    0x44f208: '_mc_44f208', 0x44f240: '_mc_44f240', 0x44f288: '_mc_44f288',
+    0x44f2b0: '_mc_44f2b0', 0x44f2b8: '_mc_44f2b8', 0x44f2f0: '_mc_44f2f0',
+    0x44f330: '_mc_44f330', 0x44f384: '_mc_44f384', 0x44f3f0: '_mc_44f3f0',
+    0x44f434: '_mc_44f434', 0x44f464: '_mc_44f464', 0x44f494: '_mc_44f494',
+    0x44f4e8: '_mc_44f4e8', 0x44f684: '_mc_44f684', 0x44f6d5: '_mc_44f6d5',
+    0x44f6eb: '_mc_44f6eb', 0x44f6f8: '_mc_44f6f8', 0x44f724: '_mc_44f724',
     0x446c90: '___main',
     # app/consoleinfo (src/app/consoleinfo.c); names are ours
     0x430460: '_optOpen', 0x430540: '_optClose', 0x430570: '_optWrite',
@@ -525,6 +571,11 @@ C_FUNCS = {
     0x415230, 0x415970, 0x415d90, 0x415e90,  # findFsRoot findSmcConfig addRemap findFreeRemap
     0x416040, 0x416070, 0x416840,            # notZeropair spareLbaOk copyMuData
     0x4154d0, 0x4172c0,                      # imgGetSecurityFiles getNonces
+    # app/mode_client (client_usage: switch table; clientKeys, checkPatches, clientBinPatch, mode_client stay asm)
+    0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
+    0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches
+    0x4076b0, 0x407850, 0x407a00, 0x408080,  # clientReadBlocks clientWriteBlocks patchNand clientEraseBlock
+    0x408160,                                # getArgs
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

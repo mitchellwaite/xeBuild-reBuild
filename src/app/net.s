@@ -9,13 +9,10 @@
 #   .text          0041e800-00420a90
 
 .intel_syntax noprefix
-.globl FUN_41fa40
-.globl FUN_420140
-.globl FUN_420200
-.globl FUN_420320
-.globl FUN_420910
 .globl _netConnect
+.globl _netDisconnect
 .globl _netDumpNand
+.globl _netEraseBlock
 .globl _netFormatCompat
 .globl _netFormatSysex
 .globl _netFree
@@ -25,12 +22,15 @@
 .globl _netGetInfo
 .globl _netMkdir
 .globl _netMount
+.globl _netReadBlocks
 .globl _netReboot
 .globl _netSendFile
 .globl _netSendFlash
 .globl _netTimerEnd
 .globl _netTimerStart
 .globl _netUnmount
+.globl _netWriteBlocks
+.globl _netWritePatches
 
 .text
 .p2align 4
@@ -1385,7 +1385,7 @@ L_41fa31:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41fa40:
+_netDisconnect:
           sub ESP,28
           mov DWORD PTR [ESP+4],OFFSET L_4578f5
           mov DWORD PTR [ESP],0
@@ -1924,7 +1924,7 @@ L_420122:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_420140:
+_netReadBlocks:
           push ESI
           push EBX
           sub ESP,52
@@ -1999,7 +1999,7 @@ L_4201d0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_420200:
+_netWriteBlocks:
           push ESI
           push EBX
           sub ESP,84
@@ -2099,7 +2099,7 @@ L_420310:
 L_420317:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_420320:
+_netEraseBlock:
           push ESI
           push EBX
           sub ESP,84
@@ -2642,7 +2642,7 @@ L_4208f0:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_420910:
+_netWritePatches:
           push EBP
           push EDI
           push ESI
@@ -3990,7 +3990,7 @@ L_457a77:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_41fa40 - .
+          .long _netDisconnect - .
           .byte 0xa6
           .byte 0x0
           .byte 0x0
@@ -4422,7 +4422,7 @@ L_457a77:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_420140 - .
+          .long _netReadBlocks - .
           .byte 0xb3
           .byte 0x0
           .byte 0x0
@@ -4483,7 +4483,7 @@ L_457a77:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_420200 - .
+          .long _netWriteBlocks - .
           .byte 0x17
           .byte 0x1
           .byte 0x0
@@ -4548,7 +4548,7 @@ L_457a77:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_420320 - .
+          .long _netEraseBlock - .
           .byte 0xf4
           .byte 0x0
           .byte 0x0
@@ -4915,7 +4915,7 @@ L_457a77:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_420910 - .
+          .long _netWritePatches - .
           .byte 0x7a
           .byte 0x1
           .byte 0x0
