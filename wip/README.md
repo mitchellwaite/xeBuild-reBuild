@@ -395,3 +395,20 @@ Still off:
   stores follow getArgs' order (`start = b` before the mode check, then
   `i += 2` and a reload of `argv[i - 1]`).  "unable to connect" is the
   last string, so its log is at the end of the source.
+  - The tail has two netConnect calls but one netReboot and one
+    netDisconnect: `if (mode && arg) { if (netConnect) { info; switch }
+    else goto fail; } else if (reboot) { if (netConnect) info; else goto
+    fail; } else usage(2); if (reboot) netReboot; netDisconnect; return
+    0; fail: log` gives the original's blocks (only their layout
+    differs).  One connect with `if (mode && arg)` retested after it
+    computes the condition with setne/and instead.
+  - Hypothesis: every option calls getArgs and all but `-rb` were
+    inlined.  With all options as getArgs calls, ipa-cp clones
+    getArgs.constprop for the `(mode, 1, NULL, NULL)` calls and inlines
+    only 4 of 6 (unit growth), so the clone stays; `static inline`
+    inlines `-rb` too.  Hand-written checks (as in the draft) are closer
+    so far.  `-keys` stores mode before `arg = dummy` in the original,
+    and `-i`/`-p` store the mode before `arg = dummy`.
+  - fncmp's line count mostly measures block layout here; a chunk
+    multiset compare (split after each jump) separated content from
+    layout diffs.
