@@ -5,21 +5,22 @@ the generated asm (and still reproduces the SHA256).
 
 ## app/console_hdd.c
 
-12 of 14 functions match with `re/fncmp.py`. The two that don't:
+13 of 14 functions match with `re/fncmp.py`. `sendDir` matches: both
+failure paths `goto fail`, and `fail:` sits after `return 1` with a
+`__builtin_prefetch(0)` (no code on i686) that keeps it a GIMPLE block, so
+jump2 cross-jumps the xor and bbro copies it for the send failure.
 
-- `sendDir`: 11 differing lines, all in the epilogue layout. The original
-  shares the `xor eax,eax` return-0 block between the opendir failure (`je`)
-  and the mkdir failure (fallthrough), and copies the epilogue onto the
-  success path. Ours copies it onto the failure paths instead, because
-  bb-reorder copies onto edges of at least 10% of the entry frequency and the
-  opendir failure is at 41 vs 40.5. `__builtin_expect(!netMkdir(...), 0)`
-  with `--param builtin-expect-probability=85..95` gets it to 9 lines.
-- `sendAvatarData`: about 47–60 lines.
-  - The original's send loop is rotated (a `count > 0` guard) and indexes
-    with `imul ebx,ebp,1032`. Ours gets a pointer IV from ivopts.
-  - The loop's failure path reuses `netSendFile`'s result (`mov edi,eax`,
-    uncprop), but the manifest failure uses `xor edi,edi`.
-    `int netSendFile` makes both reuse it; `u32` makes neither.
+- `sendAvatarData` (47 lines with `int netSendFile`, see
+  build notes below; the draft still has `u32`, 60 lines):
+  - `int netSendFile` gives the loop failure's `mov edi,eax`, but the
+    manifest failure then reuses too (original: `xor edi,edi`, maybe
+    postreload move2add on a fall-through copy).
+  - The loop must keep `i` and `imul ebx,ebp,1032` (no strength
+    reduction) and be rotated with a `count > 0` guard. `-fno-ivopts`
+    gives the body but breaks the other inlined loops; an empty
+    `asm("" : "+r"(i))` at the body top stops ivopts but adds reg copies.
+    `for (...; ret && i < count; ...)` makes ch rotate (header is just
+    `if (ret)`). Combining these is not solved yet.
 
 `sendDir` calls libmingwex's `stat` (448820). That address has no `SYMBOLS`
 name, because `_stat` is already the msvcrt import in `src/runtime/idata.s`.

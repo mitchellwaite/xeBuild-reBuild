@@ -427,7 +427,7 @@ int sendDir(const char *src, const char *dst)
 	strcat(pattern, "//");
 	d = opendir(pattern);
 	if (!d)
-		return 0;
+		goto fail;
 	while ((de = readdir(d))) {
 		strcpy(dstPath, dst);
 		strcat(dstPath, "\\");
@@ -444,7 +444,7 @@ int sendDir(const char *src, const char *dst)
 			if (!netMkdir(dstPath)) {
 				log_printf(1, "FAILED!\n");
 				closedir(d);
-				return 0;
+				goto fail;
 			}
 			log_printf(1, "success!\n");
 			sendDir(srcPath, dstPath);
@@ -459,7 +459,7 @@ int sendDir(const char *src, const char *dst)
 				free(buf);
 				log_printf(1, "FAILED sending file %s!\n", dstPath);
 				closedir(d);
-				return 0;
+				goto fail;
 			}
 			log_printf(1, "    sent 0x%x bytes to file %s OK!\n", len, dstPath);
 			free(buf);
@@ -467,6 +467,11 @@ int sendDir(const char *src, const char *dst)
 	}
 	closedir(d);
 	return 1;
+fail:
+	/* no code on i686; keeps this a block of its own until RTL, where
+	   cross-jumping shares its xor with the failure paths as in the original */
+	__builtin_prefetch(0);
+	return 0;
 }
 
 u32 sendCompatData(const char *dir)
