@@ -285,7 +285,7 @@ Still off:
 
 ## app/image_read.c
 
-Draft of the whole object, with string literals. 15 of 33 functions are
+Draft of the whole object, with string literals. 17 of 33 functions are
 built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
 <names>` makes from this file; a new match needs its name there and its
 address in `split.py` `C_FUNCS` (all of image_read's strings are in
@@ -334,6 +334,14 @@ Still off (fncmp lines):
 - `getImageSmc` (~100): the original has two variables for the SMC address
   (one for the checks and memcpy, one for the logs) and threads the size
   check into both address branches.
-- `checkBlock` (200), `showMobilePages`, `scanMobiles`, `parseDump`,
-  `imgGetSecurityFiles`, `getNonces`, `loadDump`: block layout not worked on
-  yet.
+- `scanMobiles` (31): spareVersion must be called (inlined) so the version
+  load compares as `cmp [mem],reg`; left: `off` placement and the older-path
+  advance block being duplicated instead of the deleted path falling through.
+- `showMobilePages` (115): register allocation of the page IVs and letter.
+- `loadDump` (~780): in progress; numPages is stored once from a `pages`
+  variable; the name buffer and spill slots differ.
+- `checkBlock` (200), `parseDump` (366): block layout not worked on yet.
+
+imgGetSecurityFiles matches only with loadFlashFile `noinline`: gcc inlines
+it here (growth 39, under max-inline-insns-auto 40), the original didn't.
+getNonces' magic tests are 16-bit rotates (`ROT16`).

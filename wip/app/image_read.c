@@ -8,6 +8,7 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
+#define ROT16(x) ((u16)(((x) << 8) | ((x) >> 8)))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 struct netfile {
@@ -138,6 +139,9 @@ extern char separator[];
 
 void buildCleanup(void);
 int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet);
+/* not inlined into imgGetSecurityFiles in the original (growth 39 is under
+   max-inline-insns-auto here; something made it 40+ there) */
+int loadFlashFile(int i, u32 block) __attribute__((noinline));
 void listFlashFiles(void);
 int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
 int findAnchor(void);
@@ -568,39 +572,42 @@ void showMobilePages(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
 	u32 end, page;
+	u32 off;
 	u8 fsType;
 
-	if (xb.bigBlock) {
-		end = xb.numPages - 9216;
-		fsType = 44;
-	} else {
+	if (!xb.bigBlock) {
 		end = xb.numPages - 1152;
 		fsType = 48;
+	} else {
+		end = xb.numPages - 9216;
+		fsType = 44;
 	}
 	log_printf(2, separator);
 	log_printf(2, "Showing all pages with mobile info:\n");
 	log_printf(2, separator);
 	page = SWAP32(h->sysUpdateAddr) >> 9;
-	if (page & 0x1f)
-		page = (page & ~0x1f) + 32;
+	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
+	off = page << 9;
 	log_printf(2, "starting mobile scan at page 0x%x (offset 0x%x) of 0x%x pages (0x%x total)\n",
-		   page, page << 9, end, xb.numPages);
-	for (; page < end; page++) {
+		   page, off, end, xb.numPages);
+	for (; page < end; page++, off += 512) {
 		u8 *s = xb.spare + page * 16;
 		u8 t = s[12] & 0x3f;
 		int letter, i;
+		u32 ver;
 		short len;
 
 		if (t == fsType) {
 			letter = 'A';
-			len = 0x4000;
+		len = 0x4000;
 		} else if (t >= 0x31 && t <= 0x39) {
 			letter = t + 17;
-			len = s[7] + (s[8] << 8);
+		len = s[7] + (s[8] << 8);
 		} else
 			continue;
+		ver = spareVersion(s);
 		log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
-			   letter, spareVersion(s), page << 9, page * 528, s[9], (u16)len, page);
+			   letter, ver, off, page * 528, s[9], (u16)len, page);
 		for (i = 0; i < 16; i++)
 			log_printf(2, "%02x ", xb.spare[page * 16 + i]);
 		if (len < 0)
@@ -614,29 +621,28 @@ void showMobilePages(void)
 int scanMobiles(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
-	u32 end, page;
+	u32 end, page, off;
 	u8 fsType;
 
-	if (xb.bigBlock) {
-		fsType = 44;
-		end = xb.numPages - 9216;
-	} else {
-		fsType = 48;
+	if (!xb.bigBlock) {
 		end = xb.numPages - 1152;
+		fsType = 48;
+	} else {
+		end = xb.numPages - 9216;
+		fsType = 44;
 	}
 	if (log_get_verbose() == 2) {
 		log_printf(2, "\n");
 		showMobilePages();
 	}
 	page = SWAP32(h->sysUpdateAddr) >> 9;
-	if (page & 0x1f)
-		page = (page & ~0x1f) + 32;
+	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
 	while (page < end) {
 		u8 *s = xb.spare + page * 16;
 		u8 t = s[12] & 0x3f;
 		int n, i;
-		short len;
-		u32 ver;
+		u16 len;
+		u32 ver, lo;
 
 		if (t == fsType) {
 			n = 0;
@@ -644,53 +650,52 @@ int scanMobiles(void)
 		} else if (t >= 0x31 && t <= 0x39) {
 			n = t - 48;
 			len = s[7] + (s[8] << 8);
-		} else {
-			page++;
-			if (page & 0x1f)
-				page = (page & ~0x1f) + 32;
-			continue;
-		}
+		} else
+			goto next;
 		ver = spareVersion(s);
+		off = page << 9;
 		if (log_get_verbose() == 2) {
 			log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
-				   n + 'A', ver, page << 9, page * 528, s[9], (u16)len, page);
+				   n + 'A', ver, off, page * 528, s[9], len, page);
 			for (i = 0; i < 16; i++)
 				log_printf(2, "%02x ", xb.spare[page * 16 + i]);
-			if (len < 0)
+			if (len & 0x8000)
 				log_printf(2, "(DELETE)\n");
 			else
 				log_printf(2, "\n");
 		}
 		if (ver >= mobiles[n].version || !mobiles[n].found) {
-			if (!len) {
-				page++;
-				if (page & 0x1f)
-					page = (page & ~0x1f) + 32;
-				continue;
-			}
-			if (len < 0) {
-				page++;
+			if (!len)
+				goto next;
+			if (len & 0x8000) {
 				mobiles[n].found = 0;
-			} else {
-				mobiles[n].found = 1;
-				mobiles[n].version = ver;
-				mobiles[n].spare = page * 16;
-				mobiles[n].page = page;
-				mobiles[n].len = (u16)len;
-				mobiles[n].offset = page << 9;
-				page += ((u16)len >> 9) + ((len & 0x1ff) != 0);
+				page++;
+				goto align;
 			}
-		} else if (len < 0)
+			mobiles[n].found = 1;
+			mobiles[n].version = ver;
+			mobiles[n].spare = page * 16;
+			mobiles[n].page = page;
+			mobiles[n].len = len;
+			mobiles[n].offset = off;
+		} else {
+			if (len & 0x8000) {
+				page++;
+				goto align;
+			}
+			if (!len)
+				goto next;
+		}
+		page += len >> 9;
+		if (len & 0x1ff)
 			page++;
-		else if (!len) {
-			page++;
-			if (page & 0x1f)
-				page = (page & ~0x1f) + 32;
-			continue;
-		} else
-			page += ((u16)len >> 9) + ((len & 0x1ff) != 0);
+align:
 		if (xb.bigBlock)
 			page = (page + 3) & ~3;
+		continue;
+next:
+		page++;
+		page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
 	}
 	return mobiles[0].found;
 }
@@ -1221,7 +1226,7 @@ void getNonces(void)
 		return;
 	}
 	p = xb.image + off;
-	if ((SWAP16(*(u16 *)p) & 0x43ff) != 0x4342) {
+	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
 		log_printf(1, "**** Warning: error getting CB/CBA Nonce, aborting!\n");
 		return;
 	}
@@ -1233,7 +1238,7 @@ void getNonces(void)
 			return;
 		}
 		p = xb.image + off;
-		if ((SWAP16(*(u16 *)p) & 0x43ff) != 0x4342) {
+		if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
 			log_printf(1, "**** Warning: error getting CBB Nonce, offset 0x%x aborting!\n", off);
 			return;
 		}
@@ -1245,7 +1250,7 @@ void getNonces(void)
 		return;
 	}
 	p = xb.image + off;
-	if ((SWAP16(*(u16 *)p) & 0x43ff) != 0x4344) {
+	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4344) {
 		log_printf(1, "**** Warning: error getting CD Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
@@ -1255,7 +1260,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CE Nonce offset, aborting!\n");
 		return;
 	}
-	if ((SWAP16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4345) {
+	if ((ROT16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4345) {
 		log_printf(1, "**** Warning: error getting CE Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
@@ -1266,7 +1271,7 @@ void getNonces(void)
 		return;
 	}
 	p = xb.image + off;
-	if ((SWAP16(*(u16 *)p) & 0x43ff) != 0x4346) {
+	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4346) {
 		log_printf(1, "**** Warning: error getting CF Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
@@ -1276,7 +1281,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CG Nonce offset, aborting!\n");
 		return;
 	}
-	if ((SWAP16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4347) {
+	if ((ROT16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4347) {
 		log_printf(1, "**** Warning: error getting CG Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
@@ -1289,7 +1294,7 @@ int loadDump(const char *path)
 	char name[0x400];
 	FILE *fp;
 	int size, ret;
-	u32 rawSize;
+	u32 rawSize, pages;
 	u8 *raw;
 
 	if (path)
@@ -1318,17 +1323,21 @@ int loadDump(const char *path)
 		log_printf(1, "NAND dump '%s' is not a correct dump size (0x%x bytes), ignoring\n", name, size);
 		fclose(fp);
 		return 0;
-	} else if (size >= 0x4200000) {
-		rawSize = 0x4200000;
-		size = 0x4200000;
-		xb.numPages = 0x20000;
-	} else if (size == 0x1080000) {
-		rawSize = 0x1080000;
-		xb.numPages = 0x8000;
 	} else {
-		log_printf(1, "NAND dump '%s' is not a correct raw (with ecc) dump size (0x%x bytes), ignoring\n", name, size);
-		fclose(fp);
-		return 0;
+		if (size >= 0x4200000) {
+			rawSize = 0x4200000;
+			pages = 0x20000;
+			size = 0x4200000;
+		} else {
+			rawSize = 0x1080000;
+			pages = 0x8000;
+			if (size != 0x1080000) {
+				log_printf(1, "NAND dump '%s' is not a correct raw (with ecc) dump size (0x%x bytes), ignoring\n", name, size);
+				fclose(fp);
+				return 0;
+			}
+		}
+		xb.numPages = pages;
 	}
 	raw = malloc(rawSize);
 	if (!raw) {

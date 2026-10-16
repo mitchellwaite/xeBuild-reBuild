@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **427 of 617** (414 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **429 of 617** (416 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 242 / 432 |
+| `app/` | 14 / 25 | 244 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -41,7 +41,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_client` | asm | 0 / 16 |
 | `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
-| `app/image_read` | mixed; 0 of 18 drafted functions match in `wip/app/image_read.c` | 15 / 33 |
+| `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | asm | 0 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
@@ -181,7 +181,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/image_read</code>: 15 / 33 in C</summary>
+<summary><code>app/image_read</code>: 17 / 33 in C</summary>
 
 - ✅ `fsFind` (0x4136a0)
 - ⬜ `buildCleanup` (0x4137f0) (draft in `wip/`, no match yet)
@@ -201,7 +201,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `scanMobiles` (0x414e90) (draft in `wip/`, no match yet)
 - ✅ `setFsOffset` (0x4151c0)
 - ✅ `findFsRoot` (0x415230)
-- ⬜ `imgGetSecurityFiles` (0x4154d0) (draft in `wip/`, no match yet)
+- ✅ `imgGetSecurityFiles` (0x4154d0)
 - ✅ `findSmcConfig` (0x415970)
 - ⬜ `checkBlock` (0x415b00) (draft in `wip/`, no match yet)
 - ✅ `addRemap` (0x415d90)
@@ -214,7 +214,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `copyMuData` (0x416840)
 - ⬜ `detectController` (0x416aa0) (draft in `wip/`, no match yet)
 - ⬜ `checkHeader` (0x416cd0) (draft in `wip/`, no match yet)
-- ⬜ `getNonces` (0x4172c0) (draft in `wip/`, no match yet)
+- ✅ `getNonces` (0x4172c0)
 - ⬜ `loadDump` (0x417680) (draft in `wip/`, no match yet)
 
 </details>

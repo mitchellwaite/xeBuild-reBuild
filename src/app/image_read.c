@@ -12,6 +12,7 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
+#define ROT16(x) ((u16)(((x) << 8) | ((x) >> 8)))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 struct netfile {
@@ -142,6 +143,9 @@ extern char separator[];
 
 void buildCleanup(void);
 int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet);
+/* not inlined into imgGetSecurityFiles in the original (growth 39 is under
+   max-inline-insns-auto here; something made it 40+ there) */
+int loadFlashFile(int i, u32 block) __attribute__((noinline));
 void listFlashFiles(void);
 int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
 int findAnchor(void);
@@ -201,6 +205,8 @@ extern const char ir_452c5e[];	/* "Mobiles found:\n" */
 extern const char ir_452c70[];	/* "    fsroot      version %02d found a..." */
 extern const char ir_452cbc[];	/* "    mobile%c.dat version %02d found ..." */
 extern const char ir_452d0c[];	/* "\n\n***** ERROR! Could not find fsro..." */
+extern const char ir_452d33[];	/* "seeking security files...\n" */
+extern const char ir_452d4e[];	/* "done!\n" */
 extern const char ir_452d55[];	/* "seeking smc config in dump..." */
 extern const char ir_452d74[];	/* "found at offset 0x%x! Using if no sm..." */
 extern const char ir_452db0[];	/* "found at offset 0x%x! Unable to allo..." */
@@ -216,6 +222,18 @@ extern const char ir_4535e4[];	/* "could not seek to 0x%x, not copying ..." */
 extern const char ir_453610[];	/* "could not allocate 0x%x byte buffer,..." */
 extern const char ir_453649[];	/* "reading nanddump.bin...\n" */
 extern const char ir_453664[];	/* "writing nanddump.bin MU area to outp..." */
+extern const char ir_453d3c[];	/* "**** Warning: error getting CB/CBA N..." */
+extern const char ir_453d78[];	/* "**** Warning: error getting CB/CBA N..." */
+extern const char ir_453db0[];	/* "**** Warning: error getting CBB Nonc..." */
+extern const char ir_453dec[];	/* "**** Warning: error getting CBB Nonc..." */
+extern const char ir_453e2c[];	/* "**** Warning: error getting CD Nonce..." */
+extern const char ir_453e64[];	/* "**** Warning: error getting CD Nonce..." */
+extern const char ir_453ea4[];	/* "**** Warning: error getting CE Nonce..." */
+extern const char ir_453edc[];	/* "**** Warning: error getting CE Nonce..." */
+extern const char ir_453f1c[];	/* "**** Warning: error getting CF Nonce..." */
+extern const char ir_453f54[];	/* "**** Warning: error getting CF Nonce..." */
+extern const char ir_453f94[];	/* "**** Warning: error getting CG Nonce..." */
+extern const char ir_453fcc[];	/* "**** Warning: error getting CG Nonce..." */
 
 static __attribute__((noinline)) int fsFind(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 {
@@ -419,6 +437,17 @@ int findFsRoot(void)
 	return found;
 }
 
+inline void imgGetSecurityFiles(void)
+{
+	u32 i, block;
+
+	log_printf(1, ir_452d33);
+	for (i = 0; i < xb.numFlashFiles; i++)
+		if (xb.flashFiles[i][0] && fsFindFile(xb.flashFiles[i], &block, &xb.flashSize[i], &xb.flashTime[i], 0))
+			loadFlashFile(i, block);
+	log_printf(1, ir_452d4e);
+}
+
 void findSmcConfig(void)
 {
 	u32 off, end;
@@ -560,4 +589,78 @@ u32 copyMuData(FILE *out, void *sha)
 	fwrite(buf, dumpSize - 0x4200000, 1, out);
 	free(buf);
 	return 1;
+}
+
+void getNonces(void)
+{
+	struct flashhdr *h = (struct flashhdr *)xb.image;
+	u32 off = SWAP32(h->entry);
+	u8 *p;
+
+	if (off >= xb.imageSize) {
+		log_printf(1, ir_453d3c);
+		return;
+	}
+	p = xb.image + off;
+	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
+		log_printf(1, ir_453d78);
+		return;
+	}
+	setInfoKey0(xb.image + off + 16);
+	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	if (p[6] & 8) {
+		if (off >= xb.imageSize) {
+			log_printf(1, ir_453db0);
+			return;
+		}
+		p = xb.image + off;
+		if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
+			log_printf(1, ir_453dec, off);
+			return;
+		}
+		setInfoKey1(xb.image + off + 16);
+		off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	}
+	if (off >= xb.imageSize) {
+		log_printf(1, ir_453e2c);
+		return;
+	}
+	p = xb.image + off;
+	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4344) {
+		log_printf(1, ir_453e64, off);
+		return;
+	}
+	setInfoKey2(xb.image + off + 16);
+	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	if (off >= xb.imageSize) {
+		log_printf(1, ir_453ea4);
+		return;
+	}
+	if ((ROT16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4345) {
+		log_printf(1, ir_453edc, off);
+		return;
+	}
+	setInfoKey3(xb.image + off + 16);
+	off = SWAP32(h->sysUpdateAddr);
+	if (off >= xb.imageSize) {
+		log_printf(1, ir_453f1c);
+		return;
+	}
+	p = xb.image + off;
+	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4346) {
+		log_printf(1, ir_453f54, off);
+		return;
+	}
+	setInfoKey4(xb.image + off + 32);
+	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	if (off >= xb.imageSize) {
+		log_printf(1, ir_453f94);
+		return;
+	}
+	if ((ROT16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4347) {
+		log_printf(1, ir_453fcc, off);
+		return;
+	}
+	setInfoKey5(xb.image + off + 16);
+	xb.f020 = 0;
 }

@@ -524,6 +524,7 @@ C_FUNCS = {
     0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset
     0x415230, 0x415970, 0x415d90, 0x415e90,  # findFsRoot findSmcConfig addRemap findFreeRemap
     0x416040, 0x416070, 0x416840,            # notZeropair spareLbaOk copyMuData
+    0x4154d0, 0x4172c0,                      # imgGetSecurityFiles getNonces
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
