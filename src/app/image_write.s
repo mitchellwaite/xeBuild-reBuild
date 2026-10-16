@@ -9,46 +9,49 @@
 #   .text          0040e950-00413090
 
 .intel_syntax noprefix
-.globl FUN_410220
-.globl FUN_4104e0
-.globl FUN_410bb0
-.globl FUN_411030
-.globl FUN_4110b0
-.globl FUN_4112b0
-.globl FUN_4112f0
-.globl FUN_411600
-.globl FUN_411680
-.globl FUN_411bd0
-.globl FUN_412110
-.globl FUN_4125a0
-.globl FUN_412dd0
-.globl FUN_413030
 .globl L_470000
 .globl L_47006e
+.globl _addSmcConfig
 .globl _blockEccOk
 .globl _blockErased
 .globl _buildImage
 .globl _calcPageEcc
 .globl _checkBootImage
+.globl _copyAnchorBlock
+.globl _finalizeImage
+.globl _fixupEmptyFsBlocks
+.globl _fixupFsTable
+.globl _fsStartBlock
 .globl _imageFree
 .globl _imageGetBuffer
 .globl _imgAdd
+.globl _imgAddFile
+.globl _imgAddFileAs
+.globl _imgAddMobile
+.globl _imgAddRaw
 .globl _imgBigBlock
 .globl _imgCfOffset
 .globl _imgCfSize
+.globl _imgSetSize
 .globl _imgSize
+.globl _imgSizeAligned
+.globl _imgWriteAt
+.globl _imgWriteStart
 .globl _isErased
 .globl _manufacturingOffset
 .globl _pageEccOk
+.globl _setBlockSpare
 .globl _setFlashBuild
 .globl _setPatchSlot
 .globl _smcSetLoad
 .globl _statisticsOffset
+.globl _writeFsTable
 .globl _writeImage
+.globl _writeInitialHeader
 
 .text
 .p2align 4
-FUN_40e950:
+_imgWriteStart:
           cmp DWORD PTR [L_479ee8],EDX
           jb L_40ec84
           push EBP
@@ -495,7 +498,7 @@ L_40eed8:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_40eef0:
+_imgWriteAt:
           push EBP
           push EDI
           push ESI
@@ -1813,7 +1816,7 @@ L_4100a3:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_4100b0:
+_setBlockSpare:
           push EBP
           push EDI
           push ESI
@@ -1929,7 +1932,7 @@ L_410200:
           jmp L_41013c
           .byte 0x66
           .byte 0x90
-FUN_410220:
+_imgSizeAligned:
           mov EAX,DWORD PTR [L_4cd840]
           mov ECX,EAX
           lea EDX,DWORD PTR [EAX+16384]
@@ -2199,7 +2202,7 @@ _imgSize:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_4104e0:
+_imgSetSize:
           mov EAX,DWORD PTR [ESP+4]
           mov DWORD PTR [L_4cd840],EAX
           ret 
@@ -2705,7 +2708,7 @@ L_410b90:
           ret 
           .byte 0x66
           .byte 0x90
-FUN_410bb0:
+_imgAddFile:
           push EBP
           push EDI
           push ESI
@@ -2926,7 +2929,7 @@ L_410eb0:
           mov EDX,DWORD PTR [ESP+32]
           mov EAX,EBX
           mov DWORD PTR [ESP],65535
-          call FUN_40eef0
+          call _imgWriteAt
           mov EBP,DWORD PTR [L_46f9c4]
 L_410ecc:
           add EBP,1
@@ -3035,7 +3038,7 @@ L_411005:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_411030:
+_imgAddFileAs:
           push EBP
           push EDI
           push ESI
@@ -3069,7 +3072,7 @@ FUN_411030:
           pop ESI
           pop EDI
           pop EBP
-          jmp FUN_410bb0
+          jmp _imgAddFile
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -3082,7 +3085,7 @@ FUN_411030:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4110b0:
+_imgAddMobile:
           push EDI
           push ESI
           push EBX
@@ -3226,7 +3229,7 @@ L_411280:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4112b0:
+_fixupFsTable:
           push EBX
           mov EDX,DWORD PTR [ESP+8]
           shr EDX,14
@@ -3253,7 +3256,7 @@ L_4112eb:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_4112f0:
+_fixupEmptyFsBlocks:
           push EBP
           push EDI
           push ESI
@@ -3498,7 +3501,7 @@ L_4115e9:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_411600:
+_addSmcConfig:
           push EDI
           mov EDX,OFFSET L_46f9e0
           push ESI
@@ -3531,7 +3534,7 @@ L_41165d:
           pop EDI
           jmp L_40ecc0
 L_411671:
-          jmp FUN_411680
+          jmp _writeInitialHeader
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -3545,7 +3548,7 @@ L_411671:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-FUN_411680:
+_writeInitialHeader:
           push EDI
           push ESI
           sub ESP,20
@@ -3626,7 +3629,7 @@ L_411780:
           mov ECX,8187
           mov EDX,128
           mov EAX,OFFSET L_4cd7c0
-          call FUN_40e950
+          call _imgWriteStart
           jmp L_41173c
 L_411796:
           mov DWORD PTR [ESP+4],OFFSET L_4519f4
@@ -3639,7 +3642,7 @@ L_411796:
           mov EDX,DWORD PTR [L_47a104]
           mov EAX,128
           mov DWORD PTR [ESP],8187
-          call FUN_40eef0
+          call _imgWriteAt
           add ESP,20
           pop ESI
           pop EDI
@@ -3649,7 +3652,7 @@ L_4117d6:
           mov EDX,DWORD PTR [L_47a104]
           mov EAX,128
           mov DWORD PTR [ESP],61937
-          call FUN_40eef0
+          call _imgWriteAt
           add ESP,20
           pop ESI
           pop EDI
@@ -3841,7 +3844,7 @@ L_4118ff:
           mov EDX,DWORD PTR [L_47a084]
           mov EAX,DWORD PTR [_g47a080]
           mov ECX,8187
-          call FUN_40e950
+          call _imgWriteStart
 L_411a7f:
           add ESP,44
           mov EAX,EBX
@@ -3948,7 +3951,7 @@ L_411bb1:
           mov EDX,DWORD PTR [L_47a084]
           mov EAX,DWORD PTR [_g47a080]
           mov ECX,61937
-          call FUN_40e950
+          call _imgWriteStart
           add ESP,44
           mov EAX,EBX
           pop EBX
@@ -3956,7 +3959,7 @@ L_411bb1:
           pop EDI
           pop EBP
           ret 
-FUN_411bd0:
+_writeFsTable:
           push EBP
           push EDI
           push ESI
@@ -4335,7 +4338,7 @@ L_4120e0:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_412110:
+_copyAnchorBlock:
           push EDI
           push ESI
           mov ECX,50249728
@@ -4636,7 +4639,7 @@ L_412593:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_4125a0:
+_finalizeImage:
           push EBP
           push EDI
           xor EAX,EAX
@@ -4987,7 +4990,7 @@ L_412a7c:
           mov EAX,DWORD PTR [EDI*4+L_479f78]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_4100b0
+          call _setBlockSpare
           jmp L_4129c6
 L_412ac7:
           mov EBX,135168
@@ -5195,7 +5198,7 @@ L_412dc5:
           mov ECX,4294967295
           jmp L_412cfa
           .byte 0x90
-FUN_412dd0:
+_fsStartBlock:
           mov EAX,DWORD PTR [L_479efc]
           ret 
           .byte 0x8d
@@ -5467,7 +5470,7 @@ L_413020:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_413030:
+_imgAddRaw:
           push ESI
           push EBX
           sub ESP,36
@@ -5745,7 +5748,7 @@ L_451f80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40e950 - .
+          .long _imgWriteStart - .
           .byte 0x6c
           .byte 0x3
           .byte 0x0
@@ -5887,7 +5890,7 @@ L_451f80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_40eef0 - .
+          .long _imgWriteAt - .
           .byte 0x35
           .byte 0x4
           .byte 0x0
@@ -6399,7 +6402,7 @@ L_451f80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_4100b0 - .
+          .long _setBlockSpare - .
           .byte 0x6e
           .byte 0x1
           .byte 0x0
@@ -6460,7 +6463,7 @@ L_451f80:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_410220 - .
+          .long _imgSizeAligned - .
           .byte 0x1b
           .byte 0x0
           .byte 0x0
@@ -6696,7 +6699,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_4104e0 - .
+          .long _imgSetSize - .
           .byte 0xa
           .byte 0x0
           .byte 0x0
@@ -6812,7 +6815,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_410bb0 - .
+          .long _imgAddFile - .
           .byte 0x78
           .byte 0x4
           .byte 0x0
@@ -6897,7 +6900,7 @@ L_451f80:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_411030 - .
+          .long _imgAddFileAs - .
           .byte 0x74
           .byte 0x0
           .byte 0x0
@@ -6954,7 +6957,7 @@ L_451f80:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_4110b0 - .
+          .long _imgAddMobile - .
           .byte 0xfa
           .byte 0x1
           .byte 0x0
@@ -7043,7 +7046,7 @@ L_451f80:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_4112b0 - .
+          .long _fixupFsTable - .
           .byte 0x3d
           .byte 0x0
           .byte 0x0
@@ -7068,7 +7071,7 @@ L_451f80:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_4112f0 - .
+          .long _fixupEmptyFsBlocks - .
           .byte 0x3
           .byte 0x3
           .byte 0x0
@@ -7153,7 +7156,7 @@ L_451f80:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_411600 - .
+          .long _addSmcConfig - .
           .byte 0x71
           .byte 0x0
           .byte 0x0
@@ -7194,7 +7197,7 @@ L_451f80:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_411680 - .
+          .long _writeInitialHeader - .
           .byte 0x79
           .byte 0x1
           .byte 0x0
@@ -7368,7 +7371,7 @@ L_451f80:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_411bd0 - .
+          .long _writeFsTable - .
           .byte 0x3b
           .byte 0x5
           .byte 0x0
@@ -7429,7 +7432,7 @@ L_451f80:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_412110 - .
+          .long _copyAnchorBlock - .
           .byte 0xa0
           .byte 0x0
           .byte 0x0
@@ -7585,7 +7588,7 @@ L_451f80:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_4125a0 - .
+          .long _finalizeImage - .
           .byte 0x2f
           .byte 0x8
           .byte 0x0
@@ -7694,7 +7697,7 @@ L_451f80:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_412dd0 - .
+          .long _fsStartBlock - .
           .byte 0x6
           .byte 0x0
           .byte 0x0
@@ -7794,7 +7797,7 @@ L_451f80:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_413030 - .
+          .long _imgAddRaw - .
           .byte 0x5d
           .byte 0x0
           .byte 0x0

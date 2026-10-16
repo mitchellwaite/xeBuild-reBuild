@@ -6766,7 +6766,7 @@ L_42e7b4:
           mov DWORD PTR [ESP+4],OFFSET L_45aa94
           mov DWORD PTR [ESP],1
           call _log_printf
-          call FUN_411680
+          call _writeInitialHeader
 L_42e7da:
           mov DWORD PTR [ESP],OFFSET L_47b14c
           call _suLoadDir
@@ -6792,7 +6792,7 @@ L_42e832:
           mov DWORD PTR [ESP+4],OFFSET L_45abd8
           mov DWORD PTR [ESP],1
           call _log_printf
-          call FUN_412dd0
+          call _fsStartBlock
           mov ESI,EAX
           call _calcBlAreaSize
           test ESI,ESI
@@ -6911,11 +6911,11 @@ L_42e9cc:
           test ESI,ESI
           jne L_42f9f0
           call _addBlsToImage
-          call FUN_412dd0
+          call _fsStartBlock
           test EAX,EAX
           je L_42fa02
 L_42ea00:
-          call FUN_412dd0
+          call _fsStartBlock
           test EAX,EAX
           jne L_42fa4b
 L_42ea0d:
@@ -7055,7 +7055,7 @@ L_42ebc7:
           mov DWORD PTR [ESP+12],EDX
           mov EAX,DWORD PTR [EAX+L_4bc150+12]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_410bb0
+          call _imgAddFile
           jmp L_42eac9
           .byte 0x90
           .byte 0x8d
@@ -7467,7 +7467,7 @@ L_42f21f:
           mov EAX,DWORD PTR [EAX+271036]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_411030
+          call _imgAddFileAs
 L_42f252:
           mov EDI,DWORD PTR [L_4c4f9c]
           imul EAX,EDI,1068
@@ -7612,10 +7612,10 @@ L_42f450:
 L_42f4bd:
           mov DWORD PTR [ESP+4],EDX
           mov DWORD PTR [ESP],EDI
-          call FUN_413030
+          call _imgAddRaw
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EAX
-          call FUN_4104e0
+          call _imgSetSize
           jmp L_42f37a
           .byte 0x8d
           .byte 0xb6
@@ -7663,7 +7663,7 @@ L_42f560:
           mov DWORD PTR [ESP+4],EDX
           mov EAX,DWORD PTR [EAX+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_4110b0
+          call _imgAddMobile
           test AX,AX
           je L_42f37a
           cmp EBX,8
@@ -7685,10 +7685,10 @@ L_42f560:
           .byte 0x66
           .byte 0x90
 L_42f5e0:
-          call FUN_410220
+          call _imgSizeAligned
           mov ESI,EAX
           mov EBP,EDI
-          call FUN_410220
+          call _imgSizeAligned
           mov DWORD PTR [ESP+4],OFFSET L_45b2e4
           mov DWORD PTR [ESP],1
           mov EBX,EAX
@@ -7716,7 +7716,7 @@ L_42f63a:
           mov DWORD PTR [ESP+4],EDX
           mov EAX,DWORD PTR [EAX+271036]
           mov DWORD PTR [ESP],EAX
-          call FUN_411600
+          call _addSmcConfig
           mov DWORD PTR [ESP+4],OFFSET L_45b30c
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -7724,12 +7724,12 @@ L_42f63a:
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],ESI
-          call FUN_4112f0
+          call _fixupEmptyFsBlocks
           mov DWORD PTR [ESP+4],OFFSET L_45b354
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EBX
-          call FUN_411bd0
+          call _writeFsTable
           mov DWORD PTR [ESP+4],OFFSET L_45abd8
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -7848,7 +7848,7 @@ L_42f885:
           mov DWORD PTR [ESP+4],OFFSET L_45b480
           mov DWORD PTR [ESP],1
           call _log_printf
-          call FUN_4125a0
+          call _finalizeImage
           mov DWORD PTR [ESP+40],EAX
 L_42f8a2:
           add ESP,1180
@@ -7866,7 +7866,7 @@ L_42f8b0:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX*8+L_47a08c]
           mov DWORD PTR [ESP],EAX
-          call FUN_4110b0
+          call _imgAddMobile
           test AX,AX
           je L_42f37a
           cmp EBX,8
@@ -7947,7 +7947,7 @@ L_42f9dd:
           .byte 0x90
 L_42f9f0:
           call _addUpdateBls
-          call FUN_412dd0
+          call _fsStartBlock
           test EAX,EAX
           jne L_42ea00
 L_42fa02:
@@ -7956,20 +7956,20 @@ L_42fa02:
           call _log_printf
           mov EDI,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP],EDI
-          call FUN_4112b0
+          call _fixupFsTable
           mov DWORD PTR [ESP],EDI
-          call FUN_4104e0
+          call _imgSetSize
           mov DWORD PTR [ESP+4],OFFSET L_45abd8
           mov DWORD PTR [ESP],1
           call _log_printf
-          call FUN_412dd0
+          call _fsStartBlock
           test EAX,EAX
           je L_42ea0d
 L_42fa4b:
-          call FUN_412dd0
+          call _fsStartBlock
           shl EAX,14
           mov DWORD PTR [ESP],EAX
-          call FUN_4104e0
+          call _imgSetSize
           jmp L_42ea0d
 L_42fa60:
           imul EAX,DWORD PTR [L_4c4f9c],1068
@@ -8214,7 +8214,7 @@ L_42fd55:
           add EAX,DWORD PTR [ESI+L_4bc150+12]
           mov DWORD PTR [ESP],OFFSET L_45ad6c
           mov DWORD PTR [ESP+4],EAX
-          call FUN_410bb0
+          call _imgAddFile
           mov DWORD PTR [ESP+4],OFFSET L_45abd8
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -8236,12 +8236,12 @@ L_42fe34:
           mov BYTE PTR [L_4c917f],1
           call _shaHeader
           mov DWORD PTR [ESP],1
-          call FUN_412110
+          call _copyAnchorBlock
           mov DWORD PTR [ESP],OFFSET L_4c9164
           mov BYTE PTR [L_4c917f],2
           call _shaHeader
           mov DWORD PTR [ESP],2
-          call FUN_412110
+          call _copyAnchorBlock
           jmp L_42f6cc
 L_42fe77:
           mov ESI,ESI
@@ -8441,7 +8441,7 @@ L_4300a4:
           mov DWORD PTR [ESP],OFFSET L_45adf3
           add EAX,DWORD PTR [EDX+L_4bc150+12]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_410bb0
+          call _imgAddFile
           mov DWORD PTR [ESP+4],OFFSET L_45abd8
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -8568,7 +8568,7 @@ L_430298:
           mov DWORD PTR [ESP],OFFSET L_45ad6c
           add EAX,DWORD PTR [EDX+L_4bc150+12]
           mov DWORD PTR [ESP+4],EAX
-          call FUN_410bb0
+          call _imgAddFile
           mov DWORD PTR [ESP+4],OFFSET L_45abd8
           mov DWORD PTR [ESP],1
           call _log_printf

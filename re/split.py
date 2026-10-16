@@ -549,6 +549,23 @@ SYMBOLS = {
     0x410240: '_setFlashBuild', 0x410290: '_smcSetLoad', 0x410360: '_setPatchSlot',
     0x410460: '_imgCfOffset', 0x410490: '_imgCfSize', 0x4104d0: '_imgSize',
     0x4104f0: '_imgBigBlock', 0x410500: '_imgAdd',
+    # the rest of app/image_write (names are ours).  0x4cb7c0 is a u16 per
+    # block from fsStart (479efc) to fsEnd (479ef8): the FS table build.s's
+    # "Fixing up FS table..." / "Writing FS table to image" logs refer to.
+    0x40e950: '_imgWriteStart',     # regparm (src, len, fs type): copy to offset 0
+    0x40eef0: '_imgWriteAt',        # regparm (offset, src, len) + stack fs type
+    0x4100b0: '_setBlockSpare',     # per-page LBA + ECD for one block
+    0x410220: '_imgSizeAligned',    # image size rounded up to 0x4000
+    0x4104e0: '_imgSetSize',
+    0x410bb0: '_imgAddFile',        # "adding %s will exceed available flash space"
+    0x411030: '_imgAddFileAs',      # "adding as %s ...", tail-calls imgAddFile
+    0x4110b0: '_imgAddMobile',      # Mobile%c.dat
+    0x4112b0: '_fixupFsTable',      # build logs "Fixing up FS table..." first
+    0x4112f0: '_fixupEmptyFsBlocks',  # "Fixing up empty FS block entries..."
+    0x411600: '_addSmcConfig', 0x411680: '_writeInitialHeader',
+    0x411bd0: '_writeFsTable', 0x412110: '_copyAnchorBlock',
+    0x4125a0: '_finalizeImage',     # "------ finalizing image ------"
+    0x412dd0: '_fsStartBlock', 0x413030: '_imgAddRaw',  # "adding %s at raw offset"
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
