@@ -266,7 +266,7 @@ int checkPatches(u8 *buf, size_t *len, u32 type)
 {
 	u32 marker = 0xffffffff;
 	u8 *p;
-	int n, i, off;
+	size_t n, i, off;
 
 	if (type > 1) {
 		log_printf(0, "checking patch sections for glitch console\n");
@@ -280,12 +280,12 @@ int checkPatches(u8 *buf, size_t *len, u32 type)
 		p = findInst(p + 4, *len - (p - buf), &marker, 4);
 		if (!p)
 			return 0;
-		n = *len - (p + 4 - buf);
+		p += 4;
+		n = *len - (p - buf);
 		off = type == 2 ? 16 : 0;
 		for (i = 0; i < n; i++)
-			buf[off + i] = p[4 + i];
-		for (i = 0; i < off; i++)
-			buf[i] = 0xff;
+			buf[off + i] = p[i];
+		memset(buf, 0xff, off);
 		*len = n + off;
 		return 1;
 	}
@@ -561,10 +561,11 @@ int mode_client(int argc, char **argv)
 	char dummy[] = "dummy";
 	char *start = NULL, *count = NULL;
 	int i = 0;
-	char *arg = NULL;
-	char *ip = NULL;
-	int mode = 0;
 	int reboot = 0;
+	int mode = 0;
+	char *ip = NULL;
+	char *arg = NULL;
+	char *a, *b;
 
 	log_set_name("client");
 	for (i = 0; i < argc; i++) {
@@ -579,7 +580,16 @@ int mode_client(int argc, char **argv)
 			log_printf(0, "setting reboot on completion\n");
 			reboot = 2;
 		} else if (!strnicmp(argv[i], "-bp", 3)) {
-			arg = getArgs(argc, argv, &i, mode, 1, &start, NULL);
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			b = argv[i + 2];
+			if (i + 2 == argc || !b || *b == '-')
+				client_usage(4, argv[i]);
+			start = b;
+			if (mode)
+				client_usage(5, argv[i]);
+			i += 2;
+			arg = argv[i - 1];
 			log_printf(0, "setting binary patch file to %s, offset %s\n", arg, start);
 			mode = 11;
 		} else if (!strnicmp(argv[i], "-rb", 3)) {
@@ -587,11 +597,25 @@ int mode_client(int argc, char **argv)
 			log_printf(0, "reading %s blocks to %s, starting block %s\n", count, arg, start);
 			mode = 8;
 		} else if (!strnicmp(argv[i], "-wb", 3)) {
-			arg = getArgs(argc, argv, &i, mode, 1, &start, NULL);
+			a = argv[i + 1];
+			if (i + 1 == argc || !a || *a == '-')
+				client_usage(3, argv[i]);
+			b = argv[i + 2];
+			if (!b || i + 2 == argc || *b == '-')
+				client_usage(4, argv[i]);
+			start = b;
+			if (mode)
+				client_usage(5, argv[i]);
+			i += 2;
+			arg = argv[i - 1];
 			log_printf(0, "writing blocks from %s, starting at block %s\n", arg, start);
 			mode = 9;
 		} else if (!strnicmp(argv[i], "-eb", 3)) {
-			arg = getArgs(argc, argv, &i, mode, 1, NULL, NULL);
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			if (mode)
+				client_usage(5, argv[i]);
+			arg = argv[++i];
 			log_printf(0, "erase block set to %s\n", arg);
 			mode = 10;
 		} else if (!strnicmp(argv[i], "-s", 2)) {
@@ -605,106 +629,132 @@ int mode_client(int argc, char **argv)
 			mode = 3;
 			arg = dummy;
 		} else if (!strnicmp(argv[i], "-ip", 3)) {
-			ip = getArgs(argc, argv, &i, 0, 0, NULL, NULL);
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			ip = argv[++i];
 			log_printf(0, "setting forced IP to %s\n", ip);
 		} else if (!strnicmp(argv[i], "-r", 2)) {
-			arg = getArgs(argc, argv, &i, mode, 1, NULL, NULL);
+			if (i + 1 == argc || !argv[i + 1] || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			if (mode)
+				client_usage(5, argv[i]);
+			arg = argv[++i];
 			log_printf(0, "setting read filename to %s\n", arg);
 			mode = 1;
 		} else if (!strnicmp(argv[i], "-w", 2)) {
-			arg = getArgs(argc, argv, &i, mode, 1, NULL, NULL);
+			if (i + 1 == argc || !argv[i + 1] || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			if (mode)
+				client_usage(5, argv[i]);
+			arg = argv[++i];
 			log_printf(0, "setting write filename to %s\n", arg);
 			mode = 2;
 		} else if (!strnicmp(argv[i], "-e", 2)) {
-			arg = getArgs(argc, argv, &i, mode, 1, NULL, NULL);
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			if (mode)
+				client_usage(5, argv[i]);
+			arg = argv[++i];
 			log_printf(0, "setting avatar/kinect files base path to %s\n", arg);
 			mode = 4;
 		} else if (!strnicmp(argv[i], "-c", 2)) {
-			arg = getArgs(argc, argv, &i, mode, 1, NULL, NULL);
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				client_usage(3, argv[i]);
+			if (mode)
+				client_usage(5, argv[i]);
+			arg = argv[++i];
 			log_printf(0, "setting xbox compatibility files base path to %s\n", arg);
 			mode = 5;
 		} else if (!strnicmp(argv[i], "-i", 2)) {
-			mode = 12;
-			if (argv[i + 1] && i + 1 != argc && *argv[i + 1] != '-') {
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				arg = dummy;
+			else {
 				arg = argv[++i];
 				log_printf(0, "info dump path set to %s\n", arg);
-			} else
-				arg = dummy;
+			}
+			mode = 12;
 		} else if (!strnicmp(argv[i], "-p", 2)) {
-			mode = 7;
-			if (argv[i + 1] && i + 1 != argc && *argv[i + 1] != '-') {
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+				arg = dummy;
+			else {
 				arg = argv[++i];
 				log_printf(0, "patch file set to %s\n", arg);
-			} else
-				arg = dummy;
+			}
+			mode = 7;
 		} else if (!strnicmp(argv[i], "-v", 2))
 			log_verbose_flag(argv[i][2]);
 		else
 			client_usage(1, argv[i]);
 	}
-	if ((mode && arg) || reboot) {
+	if (mode && arg) {
 		if (netConnect(ip)) {
 			cinfo = netGetInfo();
-			if (mode && arg) {
-				switch (mode) {
-				case 1:
-					netDumpNand(arg);
-					break;
-				case 2:
-					clientWrite(arg);
-					break;
-				case 3:
-					clientKeys();
-					break;
-				case 4:
-					if (cinfo->hwFlags & 0x20)
-						sendAvatarData(arg, cinfo->kernel);
-					else
-						log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n");
-					break;
-				case 5:
-					if (cinfo->hwFlags & 0x20)
-						sendCompatData(arg);
-					else
-						log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n");
-					break;
-				case 6:
-					break;
-				case 7:
-					if (arg == dummy)
-						clientPatches(NULL);
-					else
-						clientPatches(arg);
-					break;
-				case 8:
-					clientReadBlocks(arg, start, count);
-					break;
-				case 9:
-					clientWriteBlocks(arg, start);
-					break;
-				case 10:
-					clientEraseBlock(arg);
-					break;
-				case 11:
-					clientBinPatch(arg, start);
-					break;
-				case 12:
-					if (arg == dummy)
-						clientInfo(NULL);
-					else
-						clientInfo(arg);
-					break;
-				default:
-					log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
-					break;
-				}
+			switch (mode) {
+			case 1:
+				netDumpNand(arg);
+				break;
+			case 2:
+				clientWrite(arg);
+				break;
+			case 3:
+				clientKeys();
+				break;
+			case 4:
+				if (cinfo->hwFlags & 0x20)
+					sendAvatarData(arg, cinfo->kernel);
+				else
+					log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n");
+				break;
+			case 5:
+				if (cinfo->hwFlags & 0x20)
+					sendCompatData(arg);
+				else
+					log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n");
+				break;
+			case 6:
+				break;
+			case 7:
+				if (arg == dummy)
+					clientPatches(NULL);
+				else
+					clientPatches(arg);
+				break;
+			case 8:
+				clientReadBlocks(arg, start, count);
+				break;
+			case 9:
+				clientWriteBlocks(arg, start);
+				break;
+			case 10:
+				clientEraseBlock(arg);
+				break;
+			case 11:
+				clientBinPatch(arg, start);
+				break;
+			case 12:
+				if (arg == dummy)
+					clientInfo(NULL);
+				else
+					clientInfo(arg);
+				break;
+			default:
+				log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
+				break;
 			}
 			if (reboot)
 				netReboot(reboot);
 			netDisconnect();
-		} else
-			log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
+			return 0;
+		}
+	} else if (reboot) {
+		if (netConnect(ip)) {
+			cinfo = netGetInfo();
+			netReboot(reboot);
+			netDisconnect();
+			return 0;
+		}
 	} else
 		client_usage(2, NULL);
+	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }
