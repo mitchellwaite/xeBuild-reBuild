@@ -39,7 +39,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/bootloaders` | mixed; 0 of 7 drafted functions match in `wip/app/bootloaders.c` | 12 / 19 |
 | `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
-| `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
+| `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
 | `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
@@ -115,11 +115,11 @@ Objects with functions still in assembly. Per-function status in address order: 
 <details>
 <summary><code>app/filelist_ini</code>: 1 / 12 in C</summary>
 
-- ⬜ `FUN_408ec0` (0x408ec0)
-- ⬜ `FUN_408fe0` (0x408fe0)
-- ⬜ `FUN_409310` (0x409310)
-- ⬜ `FUN_4093d0` (0x4093d0)
-- ⬜ `FUN_409410` (0x409410)
+- ⬜ `fixFileCase` (0x408ec0)
+- ⬜ `iniPreParse` (0x408fe0) (draft in `wip/`, no match yet)
+- ⬜ `memFindStr` (0x409310)
+- ⬜ `memFindChar` (0x4093d0)
+- ⬜ `checkFileCase` (0x409410)
 - ⬜ `parseIni` (0x409430)
 - ✅ `getIniValue` (0x40aa10)
 - ⬜ `getIniBool` (0x40aad0) (draft in `wip/`, no match yet)
@@ -329,7 +329,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `parseRawPatches` (0x4271a0)
 - ✅ `addPatch` (0x427260)
 - ⬜ `loadAddons` (0x427340) (draft in `wip/`, no match yet)
-- ⬜ `FUN_449640` (0x449640)
+- ⬜ `parseButton.part.0` (0x449640)
 
 </details>
 <details>

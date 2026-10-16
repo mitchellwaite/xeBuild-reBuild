@@ -11,16 +11,21 @@
 
 .intel_syntax noprefix
 .globl L_450000
+.globl _checkFileCase
+.globl _fixFileCase
 .globl _getIniBool
 .globl _getIniU32
 .globl _iniBoolInvalid
+.globl _iniPreParse
 .globl _iniU32Invalid
 .globl _loadUserIni
+.globl _memFindChar
+.globl _memFindStr
 .globl _parseIni
 
 .text
 .p2align 4
-FUN_408ec0:
+_fixFileCase:
           push EBP
           push EDI
           push ESI
@@ -109,7 +114,7 @@ L_408fb0:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_408fe0:
+_iniPreParse:
           push EBP
           push EDI
           push ESI
@@ -433,7 +438,7 @@ L_4092e6:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_409310:
+_memFindStr:
           push EBP
           push EDI
           push ESI
@@ -534,7 +539,7 @@ L_4093bf:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_4093d0:
+_memFindChar:
           push ESI
           push EBX
           mov EBX,DWORD PTR [ESP+20]
@@ -568,7 +573,7 @@ L_409407:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_409410:
+_checkFileCase:
           cmp BYTE PTR [L_47ad4c],0
           jne L_409420
           repz ret 
@@ -578,7 +583,7 @@ L_409410:
           .byte 0x26
           .byte 0x0
 L_409420:
-          jmp FUN_408ec0
+          jmp _fixFileCase
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -632,7 +637,7 @@ _parseIni:
           mov BYTE PTR [ESI+EDI*1],255
           mov DWORD PTR [ESP+4],EDI
           mov DWORD PTR [ESP],ESI
-          call FUN_408fe0
+          call _iniPreParse
           mov DWORD PTR [ESP+48],EAX
           mov BYTE PTR [ESI+EAX*1],0
           sub EAX,9
@@ -1290,7 +1295,7 @@ L_409d9a:
           mov BYTE PTR [EAX+2],0
           jmp L_4099a7
 L_409db2:
-          call FUN_408ec0
+          call _fixFileCase
           jmp L_4096bb
 L_409dbc:
           mov DWORD PTR [ESP+8],ESI
@@ -2662,7 +2667,7 @@ L_40af0f:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [_iniBuf]
           mov DWORD PTR [ESP],EAX
-          call FUN_408fe0
+          call _iniPreParse
           mov DWORD PTR [ESP+4],OFFSET L_4502dd
           mov DWORD PTR [ESP],1
           mov DWORD PTR [_iniSize],EAX
@@ -3810,7 +3815,7 @@ L_450400:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_408ec0 - .
+          .long _fixFileCase - .
           .byte 0x1d
           .byte 0x1
           .byte 0x0
@@ -3871,7 +3876,7 @@ L_450400:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_408fe0 - .
+          .long _iniPreParse - .
           .byte 0x23
           .byte 0x3
           .byte 0x0
@@ -3932,7 +3937,7 @@ L_450400:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_409310 - .
+          .long _memFindStr - .
           .byte 0xb8
           .byte 0x0
           .byte 0x0
@@ -4017,7 +4022,7 @@ L_450400:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_4093d0 - .
+          .long _memFindChar - .
           .byte 0x3a
           .byte 0x0
           .byte 0x0
@@ -4050,7 +4055,7 @@ L_450400:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_409410 - .
+          .long _checkFileCase - .
           .byte 0x15
           .byte 0x0
           .byte 0x0

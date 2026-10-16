@@ -200,6 +200,11 @@ SYMBOLS = {
     0x4337a0: '_log_finish',
     # app/filelist_ini (src/app/filelist_ini.c, mixed); names are ours
     0x40aa10: '_getIniValue', 0x4c93a4: '_iniBuf', 0x4c97ac: '_iniSize',
+    0x408ec0: '_fixFileCase',       # copies the dir's casing of smc.bin/kv.bin/patches_
+    0x408fe0: '_iniPreParse',       # (buf, len) -> new len; DashLaunch iniPreParse
+    0x409310: '_memFindStr',        # (buf, len, str, skipNul) -> offset after str or -1
+    0x4093d0: '_memFindChar',       # (buf, c, len) -> index or -1
+    0x409410: '_checkFileCase',     # fixFileCase if the base dir is set
     # app/fileutil (src/app/fileutil.c); the author's names where his tools'
     # util.c has the function (cOzInABox/XeBuild tools/*/util.c), else ours
     0x420a90: '_getConsoleTypeStr', 0x420ab0: '_getBeU16', 0x420ad0: '_getBeU32',
@@ -339,6 +344,7 @@ SYMBOLS = {
     0x4236f0: '_baseFileExists.part.0',   # gcc's ipa-split tail of baseFileExists
     0x423730: '_baseFileExists', 0x423750: '_perboxExists',
     0x424930: '_optIniBool', 0x424a10: '_optIniInt', 0x424a70: '_parseButton',
+    0x449640: '_parseButton.part.0',  # gcc's ipa-split tail of parseButton
     0x424b20: '_stripColons', 0x424b60: '_macidSet', 0x424bb0: '_setBoolOption',
     0x425110: '_parseOption', 0x427000: '_parseRawPatch', 0x427260: '_addPatch',
     0x40aad0: '_getIniBool', 0x40abf0: '_iniBoolInvalid', 0x40acf0: '_getIniU32',

@@ -52,6 +52,7 @@
 .globl _msg_rawPatchSlotsFull
 .globl _optIniBool
 .globl _parseButton
+.globl _parseButton.part.0
 .globl _parseCmdOptions
 .globl _parseOption
 .globl _str_binFmt
@@ -262,7 +263,7 @@ L_424ab0:
           add ESP,24
           mov EAX,EBX
           pop EBX
-          jmp FUN_449640
+          jmp _parseButton.part.0
           .byte 0x66
           .byte 0x90
 #@C _stripColons
@@ -1089,7 +1090,7 @@ L_425c60:
           mov EDX,36
           je L_426340
           mov EAX,EBX
-          call FUN_449640
+          call _parseButton.part.0
           test EAX,EAX
           mov DWORD PTR [L_479f08],EAX
           jne L_425d38
@@ -1640,7 +1641,7 @@ L_4266af:
           mov EDX,36
           je L_425d8f
           mov EAX,EBX
-          call FUN_449640
+          call _parseButton.part.0
           mov EDX,EAX
           jmp L_425d8f
           .byte 0x8d
@@ -1904,7 +1905,7 @@ L_426b2c:
           mov EDX,36
           je L_426769
           mov EAX,EBX
-          call FUN_449640
+          call _parseButton.part.0
           mov EDX,EAX
           jmp L_426769
           .byte 0x8d
@@ -2308,7 +2309,7 @@ L_4274d0:
 
 .section .text.startup,"xr"
 .p2align 4
-FUN_449640:
+_parseButton.part.0:
           push EBX
           mov EBX,EAX
           sub ESP,24
@@ -2850,7 +2851,7 @@ L_458c9c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_449640 - .
+          .long _parseButton.part.0 - .
           .byte 0x42
           .byte 0x1
           .byte 0x0
