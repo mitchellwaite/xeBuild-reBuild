@@ -475,3 +475,38 @@ Still off:
   - Inline limits: getArgs at `-wb` has growth 43 (> max-inline-insns-auto
     40), `-rb` 62.  Any per-file `max-inline-insns-auto` other than 40
     breaks clientKeys (dumpKey inlining), so a limit param is out.
+
+## app/net.c
+
+Draft of the whole object (all 32 functions, data as statics). 13 match with
+`re/fncmp.py`: netFree, netTimerStart/End/Elapsed, netSendStr,
+netSendData, netCheckOk, netOpenSocket, netClose, netDisconnect,
+netGetInfo (plus netGetBldrs if forced with `__builtin_expect`). The names
+for the unexported functions and data (`netRecv`, `netFindBeacon`,
+`netSock`, `netEmpty`, `netStartTime`, ...) are in `split.py` SYMBOLS, and
+the ws2_32 IAT slots are renamed to winsock2.h's `__imp__send@16` spelling
+(`IAT_NAMES`; `.string` lines are skipped so "bind"/"connect" in messages
+survive).
+
+Open findings:
+
+- netGetBldrs/netGetBadBlocks/netGetFile/netReadBlocks: the original lays
+  out send-failure as the likely path. Ours is the other way round
+  because of the null-return predictor (90%) plus the call predictor (29%).
+  At profile_estimate time netSendStr is still a call: einline refuses it,
+  "growth 8 exceeds early-inlining-insns divided by number of calls".
+- The OK-reply check in netFormatSysex/Compat, netEraseBlock,
+  netWriteBlocks, netSendFile, netMkdir, netWritePatches and netSendFlash is
+  not netCheckOk (that one inlines as `sete`, as it does in netMount).
+  Writing the check inline in the function (`int len, ret = 0; ... if (len
+  == 2 && getBeU16(r) == OK_REPLY) ret = 1; netFree(r);`) gets the 56-byte
+  frame right. phiopt1 then turns it into `sete`, which the original
+  doesn't have. With `-fno-ssa-phiopt` only 6 lines are left.
+- netConnect: likewise the original ends `mov eax,1; test; jne` with every
+  failure sharing one `xor eax,eax` block. Ours gets `setne` (phiopt1, then
+  RTL ifcvt) and keeps ret in ebx. So the original seems to avoid
+  conditional_replacement everywhere in this file. Find a source shape
+  (non-empty middle block, an extra phi) before suspecting per-file flags.
+- netRecv/netRecvVerbose: the original has a separate copy of the
+  `buf != netEmpty` check on each failure path. Registers differ: size
+  ebx, got edi, buf esi.

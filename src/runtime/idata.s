@@ -30,17 +30,27 @@
 .globl UnhandledExceptionFilter
 .globl VirtualProtect
 .globl VirtualQuery
-.globl WSAGetLastError
-.globl WSAStartup
-.globl WSAStringToAddressA
 .globl __dllonexit
 .globl __doserrno
 .globl __getmainargs
+.globl __imp__WSAGetLastError@0
+.globl __imp__WSAStartup@8
+.globl __imp__WSAStringToAddressA@20
 .globl __imp___errno
 .globl __imp___exit
 .globl __imp___iob
 .globl __imp___stricmp
 .globl __imp___strnicmp
+.globl __imp__bind@12
+.globl __imp__closesocket@4
+.globl __imp__connect@12
+.globl __imp__htons@4
+.globl __imp__recv@16
+.globl __imp__recvfrom@24
+.globl __imp__select@20
+.globl __imp__send@16
+.globl __imp__setsockopt@20
+.globl __imp__socket@12
 .globl __initenv
 .globl __lconv_init
 .globl __pioinfo
@@ -72,10 +82,7 @@
 .globl _write
 .globl abort
 .globl atoi
-.globl bind
 .globl calloc
-.globl closesocket
-.globl connect
 .globl exit
 .globl fclose
 .globl feof
@@ -94,7 +101,6 @@
 .globl fwprintf
 .globl fwrite
 .globl gmtime
-.globl htons
 .globl malloc
 .globl memcmp
 .globl memcpy
@@ -105,16 +111,10 @@
 .globl puts
 .globl raise
 .globl rand
-.globl recv
-.globl recvfrom
 .globl remove
 .globl rename
 .globl rewind
-.globl select
-.globl send
-.globl setsockopt
 .globl signal
-.globl socket
 .globl sprintf
 .globl srand
 .globl strcat
@@ -782,56 +782,56 @@ MessageBoxW:
           .byte 0x0
           .byte 0x0
 L_50f414:
-.globl WSAGetLastError
-WSAGetLastError:
+.globl __imp__WSAGetLastError@0
+__imp__WSAGetLastError@0:
           .rva L_50f9ba
 L_50f418:
-.globl WSAStartup
-WSAStartup:
+.globl __imp__WSAStartup@8
+__imp__WSAStartup@8:
           .rva L_50f9cc
 L_50f41c:
-.globl WSAStringToAddressA
-WSAStringToAddressA:
+.globl __imp__WSAStringToAddressA@20
+__imp__WSAStringToAddressA@20:
           .rva L_50f9da
 L_50f420:
-.globl bind
-bind:
+.globl __imp__bind@12
+__imp__bind@12:
           .rva L_50f9f0
 L_50f424:
-.globl closesocket
-closesocket:
+.globl __imp__closesocket@4
+__imp__closesocket@4:
           .rva L_50f9f8
 L_50f428:
-.globl connect
-connect:
+.globl __imp__connect@12
+__imp__connect@12:
           .rva L_50fa06
 L_50f42c:
-.globl htons
-htons:
+.globl __imp__htons@4
+__imp__htons@4:
           .rva L_50fa10
 L_50f430:
-.globl recv
-recv:
+.globl __imp__recv@16
+__imp__recv@16:
           .rva L_50fa18
 L_50f434:
-.globl recvfrom
-recvfrom:
+.globl __imp__recvfrom@24
+__imp__recvfrom@24:
           .rva L_50fa20
 L_50f438:
-.globl select
-select:
+.globl __imp__select@20
+__imp__select@20:
           .rva L_50fa2c
 L_50f43c:
-.globl send
-send:
+.globl __imp__send@16
+__imp__send@16:
           .rva L_50fa36
 L_50f440:
-.globl setsockopt
-setsockopt:
+.globl __imp__setsockopt@20
+__imp__setsockopt@20:
           .rva L_50fa3e
 L_50f444:
-.globl socket
-socket:
+.globl __imp__socket@12
+__imp__socket@12:
           .rva L_50fa4c
           .byte 0x0
           .byte 0x0

@@ -218,7 +218,6 @@
 .globl L_4cd838
 .globl L_4cd83c
 .globl L_4cd840
-.globl L_4cd844
 .globl L_4cdc64
 .globl L_4ce064
 .globl L_4ce068
@@ -246,6 +245,7 @@
 .globl _key28c
 .globl _manifest
 .globl _masterPub
+.globl _netStartTime
 .globl _pub1bl
 .globl _pub2a4
 .globl _xb
@@ -746,7 +746,7 @@ L_4cd83c:
           .zero 4
 L_4cd840:
           .zero 4
-L_4cd844:
+_netStartTime:
           .zero 1052
 _manifest:
           .zero 4

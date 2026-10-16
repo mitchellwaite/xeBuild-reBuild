@@ -6,11 +6,11 @@
 #   .text          00448190-004481c0
 
 .intel_syntax noprefix
-.globl FUN_448190
+.globl __difftime32
 
 .text
 .p2align 4
-FUN_448190:
+__difftime32:
           sub ESP,12
           mov EDX,DWORD PTR [ESP+16]
           mov ECX,DWORD PTR [ESP+20]
@@ -112,7 +112,7 @@ L_4481b0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448190 - .
+          .long __difftime32 - .
           .byte 0x30
           .byte 0x0
           .byte 0x0

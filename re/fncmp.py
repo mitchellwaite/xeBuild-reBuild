@@ -13,13 +13,13 @@ import difflib, json, os, re, subprocess, sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from ddfix import Image
-from split import SYMBOLS
+from split import SYMBOLS, IAT_NAMES
 from units import units
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = os.path.join(ROOT, 'tools', 'toolchain-4745', 'mingw32', 'bin')
 LOCAL = re.compile(r'(?<![\w.$])(?:\.?L_[0-9a-f]+|FUN_[0-9a-f]+|L\d+|_\w+)(?![\w$])')
-NAMED = set(SYMBOLS.values())
+NAMED = set(SYMBOLS.values()) | {v.split('@')[0] for v in IAT_NAMES.values()}
 # FNCMP_LITERALS=1: a draft with string literals (wip/) compares against the
 # .s's named strings (`_msg_*`, `_str_*`, `_mu_*`, `_mc_*`) as plain labels
 if os.environ.get('FNCMP_LITERALS'):
@@ -37,6 +37,7 @@ def norm(lines):
         if not l or l.endswith(':') or l.startswith('.'):
             continue
         l = re.sub(r'\s+', ' ', l).replace(', ', ',')
+        l = re.sub(r'(__imp__\w+)@\d+', r'\1', l)   # stdcall imports
         l = re.sub(r'offset flat:', 'offset ', l, flags=re.I)
         # gcc: `call [dword ptr _x]`, `dword ptr _x`, `dword ptr _x[ecx*4]`;
         # ddisasm: `call dword ptr [_x]`, `dword ptr [_x]`, `dword ptr [ecx*4+_x]`
@@ -121,6 +122,8 @@ def main():
         # ddisasm names IAT slots by the import (`[_errno]`); gcc says __imp___errno
         l = re.sub(r'PTR \[(_\w+)\]', lambda m: 'PTR [%s]' % (m.group(1) if m.group(1) in NAMED
                                                             else '__imp__' + m.group(1)), l)
+        # IAT slots split.py renames (ws2_32's: `[send]` -> `[__imp__send@16]`)
+        l = re.sub(r'PTR \[(\w+)\]', lambda m: 'PTR [%s]' % IAT_NAMES.get(m.group(1), m.group(1)), l)
         ref.append(l)
 
     env = dict(os.environ, PATH=BIN + os.pathsep + os.environ.get('PATH', ''))

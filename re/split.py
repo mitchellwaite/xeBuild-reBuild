@@ -437,6 +437,12 @@ SYMBOLS = {
     0x412230: '_imageGetBuffer', 0x415ef0: '_remapBadBlocks',
     0x41f700: '_netConnect', 0x41fe20: '_netDumpNand', 0x41ff90: '_netGetBldrs',
     0x41ffe0: '_netSendFlash', 0x420420: '_netGetBadBlocks', 0x420840: '_netReboot',
+    # app/net's other functions and data (names are ours; nothing outside calls them)
+    0x41e800: '_netRecv', 0x41ea90: '_netFindBeacon', 0x41edb0: '_netTimerElapsed',
+    0x41ede0: '_netSendStr', 0x41ee30: '_netRecvVerbose', 0x41f1a0: '_netSendData',
+    0x41f330: '_netCheckOk', 0x41f390: '_netOpenSocket', 0x41f470: '_netReadInfo',
+    0x41fa00: '_netClose', 0x44a6c0: '_netSock', 0x479574: '_netInfo',
+    0x479578: '_netEmpty', 0x4cd844: '_netStartTime', 0x448190: '__difftime32',
     # mode_update.s strings and variables the mixed mode_update.c refers to
     0x46f040: '_path', 0x46f144: '_noReboot', 0x46f148: '_noAvatar', 0x46f14c: '_noWrite',
     0x46f150: '_clean', 0x46f154: '_hasHdd', 0x46f158: '_updating', 0x46f15c: '_info',
@@ -539,6 +545,12 @@ SYMBOLS = {
 # SYMBOLS name: msvcrt's `_strnicmp`/`_exit` slots vs the stubs for strnicmp/exit.
 IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
              '_stricmp': '__imp___stricmp'}
+# ws2_32 imports, named as winsock2.h's dllimport __stdcall declarations
+# reference them (app/net.c)
+IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
+    ('WSAGetLastError', 0), ('WSAStartup', 8), ('WSAStringToAddressA', 20),
+    ('bind', 12), ('closesocket', 4), ('connect', 12), ('htons', 4), ('recv', 16),
+    ('recvfrom', 24), ('select', 20), ('send', 16), ('setsockopt', 20), ('socket', 12))})
 # Functions already in C inside objects that are otherwise still assembly
 # (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
@@ -877,7 +889,8 @@ def main():
     irename = re.compile(r'(?<![\w.$])(%s)(?![\w$])' % '|'.join(map(re.escape, IAT_NAMES)))
     rename = re.compile(r'(?<![\w.$])(?:FUN|L)_(%s)(?![\w$])' % '|'.join('%x' % a for a in SYMBOLS))
     for pc, ls in piece_lines.items():
-        ls = [irename.sub(lambda m: IAT_NAMES[m.group(1)], l) for l in ls]
+        ls = [l if l.lstrip().startswith(('.string', '.ascii')) else
+              irename.sub(lambda m: IAT_NAMES[m.group(1)], l) for l in ls]
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
 
     # gcc's labels inside a C function are its own; nothing else may use ours
