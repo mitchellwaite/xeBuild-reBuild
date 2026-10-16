@@ -548,6 +548,10 @@ SYMBOLS = {
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
     0x458d3c: '_bd_458d3c', 0x458d74: '_bd_458d74', 0x458d98: '_bd_458d98',
+    0x459164: '_bd_459164', 0x459e3c: '_bd_459e3c', 0x459e74: '_bd_459e74',
+    0x459e9c: '_bd_459e9c', 0x459ed2: '_bd_459ed2', 0x459ed8: '_bd_459ed8',
+    0x459ede: '_bd_459ede', 0x459ee4: '_bd_459ee4', 0x45a7c4: '_bd_45a7c4',
+    0x45a7f8: '_bd_45a7f8', 0x45a80e: '_bd_45a80e',
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -628,7 +632,8 @@ C_FUNCS = {
     # app/build (wip/app/build.c is the whole draft; wip/mixed.py)
     0x427650, 0x4276a0, 0x4276f0, 0x427950,  # findFileOffset findFileSize findFile readMetaFile
     0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile
-    0x428ac0,                                # setFileData
+    0x428ac0, 0x429180, 0x429b10, 0x42b2b0,  # setFileData iniRangeOk raiseKernel patchHeaderOpts
+    0x42b3f0, 0x42b610, 0x42c600, 0x42cee0,  # rotSumSha countBits isUpdateBl patchPayloadSize
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

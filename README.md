@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **465 of 617** (452 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **472 of 617** (459 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 280 / 432 |
+| `app/` | 14 / 25 | 287 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -45,7 +45,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
-| `app/build` | mixed; 0 of 5 drafted functions match in `wip/app/build.c` | 9 / 41 |
+| `app/build` | mixed; 0 of 11 drafted functions match in `wip/app/build.c` | 16 / 41 |
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
 <details>
@@ -333,7 +333,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/build</code>: 9 / 41 in C</summary>
+<summary><code>app/build</code>: 16 / 41 in C</summary>
 
 - ⬜ `loadBaseFile` (0x427500) (draft in `wip/`, no match yet)
 - ✅ `findFileOffset` (0x427650)
@@ -349,29 +349,29 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `loadBinFile` (0x428780)
 - ✅ `loadLocalFile` (0x4288c0)
 - ✅ `setFileData` (0x428ac0)
-- ⬜ `appendAddonPatches` (0x428b10)
-- ⬜ `showSmcConfig` (0x428d20)
-- ⬜ `iniRangeOk` (0x429180)
-- ⬜ `patchSmcConfig` (0x4291f0)
-- ⬜ `extractSmcConfig` (0x4297d0)
-- ⬜ `raiseKernel` (0x429b10)
-- ⬜ `checkBl` (0x429b30)
+- ⬜ `appendAddonPatches` (0x428b10) (draft in `wip/`, no match yet)
+- ⬜ `showSmcConfig` (0x428d20) (draft in `wip/`, no match yet)
+- ✅ `iniRangeOk` (0x429180)
+- ⬜ `patchSmcConfig` (0x4291f0) (draft in `wip/`, no match yet)
+- ⬜ `extractSmcConfig` (0x4297d0) (draft in `wip/`, no match yet)
+- ✅ `raiseKernel` (0x429b10)
+- ⬜ `checkBl` (0x429b30) (draft in `wip/`, no match yet)
 - ⬜ `verifyBlSigs` (0x429e70)
 - ⬜ `loadBlFiles` (0x42a370)
 - ⬜ `loadConsoleBlFiles` (0x42adc0)
-- ⬜ `patchHeaderOpts` (0x42b2b0)
-- ⬜ `blmodMissing` (0x42b3d0)
-- ⬜ `rotSumSha` (0x42b3f0)
-- ⬜ `countBits` (0x42b610)
+- ✅ `patchHeaderOpts` (0x42b2b0)
+- ⬜ `blmodMissing` (0x42b3d0) (draft in `wip/`, no match yet)
+- ✅ `rotSumSha` (0x42b3f0)
+- ✅ `countBits` (0x42b610)
 - ⬜ `patchBlsResign` (0x42b660)
 - ⬜ `patchBlsBlmod` (0x42bb10)
 - ⬜ `fixupPatchSet` (0x42bf70)
 - ⬜ `addBlsToImage` (0x42c090)
-- ⬜ `isUpdateBl` (0x42c600)
+- ✅ `isUpdateBl` (0x42c600)
 - ⬜ `addUpdateBls` (0x42c620)
 - ⬜ `logPowerButton` (0x42c900)
 - ⬜ `patchFreeboot` (0x42cbb0)
-- ⬜ `patchPayloadSize` (0x42cee0)
+- ✅ `patchPayloadSize` (0x42cee0)
 - ⬜ `encodeBls` (0x42cfa0)
 - ⬜ `encodeUpdateBls` (0x42dfb0)
 - ⬜ `calcBlAreaSize` (0x42e160)

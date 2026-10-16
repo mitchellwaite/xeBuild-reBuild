@@ -49,7 +49,15 @@ struct xebuild {
 	u32 kernel;			/* 00c */
 	u8 pad010[0x024 - 0x010];
 	int sysTime;			/* 024 use the system time for timestamps */
-	u8 pad028[0x6ac - 0x028];
+	u8 pad028[0x038 - 0x028];
+	u8 *hdr;			/* 038 the image's header */
+	u8 pad03c[0x060 - 0x03c];
+	u32 bootFlags;			/* 060 */
+	u8 pad064[0x068 - 0x064];
+	int xellButton;			/* 068 */
+	int xellAltButton;		/* 06c */
+	int dualButton;			/* 070 */
+	u8 pad074[0x6ac - 0x074];
 	char binDir[0x800];		/* 6ac */
 	char baseDir[0x400];		/* eac */
 	char dataDir[0x400];		/* 12ac */
@@ -65,6 +73,20 @@ struct xebuild {
 void log_printf(int level, const char *fmt, ...);
 long getFileSize(FILE *f);
 unsigned int crc32(const unsigned char *buf, unsigned int len);
+u16 getBeU16(const u8 *p);
+u32 getBeU32(const u8 *p);
+u8 *setBeU32(u32 v, u8 *p);
+int checkZeros(const u8 *p, u32 len);
+int smcConfigOk(const u8 *smc);
+void showSmcConfig(const u8 *smc);
+int patchSmcConfig(u8 *smc);
+u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
+void display_buffer_hex(const u8 *buf, u32 len, u32 level);
+typedef struct { u32 state[24]; } XECRYPT_SHA_STATE;	/* SHA_CTX */
+void XeCryptShaInit(XECRYPT_SHA_STATE *sha);
+void XeCryptShaUpdate(XECRYPT_SHA_STATE *sha, const void *buf, u32 len);
+void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
+void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 
 extern struct xebuild xb;
 #define addons (&xb.files[19])
@@ -83,6 +105,17 @@ static const char bd_458d1b[] = " (crc32: 0x%08x ini: 0x%08x)\n";
 static const char bd_458d3c[] = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
 static const char bd_458d74[] = "**** using default time!!! ****\n";
 static const char bd_458d98[] = "**** %s metadata found, not using system time *****\n\n";
+static const char bd_459164[] = "Ini value %d for %s is out of range (%d-%d), not using\n";
+static const char bd_459e3c[] = "\tPatching header for slower demon/cygnos UART speed\n";
+static const char bd_459e74[] = "\tPatching header for xell power reason\n";
+static const char bd_459e9c[] = "\tPatching header for xell alt power reason\n";
+static const char bd_459ed2[] = "sum1:";
+static const char bd_459ed8[] = "sum2:";
+static const char bd_459ede[] = "sum3:";
+static const char bd_459ee4[] = "fin :";
+static const char bd_45a7c4[] = "patching payload.bin to load size 0x%x (0x%x reps)\n";
+static const char bd_45a7f8[] = "org li %r4, %02x%02x\n";
+static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
 
 /* still in build.s */
 int timestampToFileTime(const u16 *ts, FILETIME *ft);
@@ -90,6 +123,10 @@ int loadBaseFile(const char *name, struct fileent *e) __attribute__((regparm(2))
 int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta);
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common);
+int checkBl(u8 *bl, u32 size, int type, u32 crc);
+int extractSmcConfig(struct fileent *e, u8 *buf, u32 size);
+int blmodMissing(struct fileent *e);
+void appendAddonPatches(struct fileent *e);
 
 u32 findFileOffset(int type)
 {
@@ -249,4 +286,122 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 	e->size = size;
 	memcpy(e->data, data, size);
 	return 0;
+}
+
+/* an ini value is used if it is in range; 0 and -1 mean unset */
+int iniRangeOk(const char *name, u32 v, u32 lo, u32 hi)
+{
+	int ok = 1;
+
+	if (v < lo || v > hi) {
+		ok = 0;
+		if (v != 0 && v != 0xffffffff)
+			log_printf(0, bd_459164, v, name, lo, hi);
+	}
+	return ok;
+}
+
+/* the build's kernel version is the highest of its bootloaders' */
+void raiseKernel(u16 magic, u16 build, u16 qfe)
+{
+	u32 k = 0x20000000 | build << 8;
+
+	if (k > xb.kernel)
+		xb.kernel = k;
+}
+
+/* XeCryptRotSumSha, showing the sums */
+void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen)
+{
+	u8 sum[32];
+	XECRYPT_SHA_STATE sha;
+	u32 i;
+
+	for (i = 0; i < 32; i++)
+		sum[i] = 0;
+	XeCryptRotSum(sum, a, alen >> 3);
+	log_printf(1, bd_459ed2);
+	display_buffer_hex(sum, 32, 1);
+	XeCryptRotSum(sum, b, blen >> 3);
+	log_printf(1, bd_459ed8);
+	display_buffer_hex(sum, 32, 1);
+	XeCryptShaInit(&sha);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaUpdate(&sha, a, alen);
+	XeCryptShaUpdate(&sha, b, blen);
+	for (i = 0; i < 32; i++)
+		sum[i] = ~sum[i];
+	log_printf(1, bd_459ede);
+	display_buffer_hex(sum, 32, 1);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaFinal(&sha, out, outlen);
+	log_printf(1, bd_459ee4);
+	display_buffer_hex(out, outlen, 1);
+}
+
+int countBits(u8 v)
+{
+	int i, n = 0;
+
+	for (i = 0; i < 8; i++) {
+		if (v & 1)
+			n++;
+		v >>= 1;
+	}
+	return n;
+}
+
+/* the bootloader types an update (xeBuild's -u) replaces */
+int isUpdateBl(u32 type)
+{
+	return type == 9 || type == 10 || type == 15 || type == 16 ||
+	       type == 23 || type == 24 || type == 25;
+}
+
+/* payload.bin's `li r4, reps` (copy loop count in words) */
+void patchPayloadSize(u8 *buf, int len, int size)
+{
+	int pat = 0xffff8038;	/* li r4, (any) */
+	u8 *p;
+	u32 reps = (size + 3) >> 2;
+
+	log_printf(1, bd_45a7c4, size, reps);
+	p = findInst(buf, len, (u8 *)&pat, 4);
+	if (!p)
+		return;
+	log_printf(2, bd_45a7f8, p[2], p[3]);
+	p[3] = reps;
+	p[2] = reps >> 8;
+	log_printf(2, bd_45a80e, p[2], p[3]);
+}
+
+/* the header bytes freeboot/xell read: UART speed, power-on reasons */
+void patchHeaderOpts(void)
+{
+	u8 opts = 0;
+
+	xb.hdr[0x4b] = 1;
+	if (xb.bootFlags & 9) {
+		log_printf(1, bd_459e3c);
+		opts = 1;
+	}
+	if (xb.type == 2) {
+		opts |= xb.bootFlags & 7;
+		if (xb.bootFlags & 8)
+			opts |= 1;
+		if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton)
+			xb.dualButton = 0;
+	} else
+		xb.dualButton = 0;
+	xb.hdr[0x4c] = xb.dualButton;
+	xb.hdr[0x4d] = opts;
+	log_printf(1, bd_459e74);
+	if (xb.xellButton == xb.xellAltButton)
+		xb.xellAltButton = 0;
+	xb.hdr[0x4f] = xb.xellButton;
+	if (xb.xellAltButton)
+		log_printf(1, bd_459e9c);
+	xb.hdr[0x4e] = xb.xellAltButton;
 }

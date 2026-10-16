@@ -546,14 +546,18 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the object, started with the file loaders (14 of 41 functions so
-far). 9 match and are built from `src/app/build.c` (mixed): findFileOffset,
-findFileSize, findFile, readMetaFile, makeTimestamp, loadCommonFile,
-loadBinFile, loadLocalFile, setFileData. `python wip/mixed.py app/build
-<fns>` makes the src file from the draft (a generic netmixed.py: strings
-become `bd_<address>` statics, set up per object in its `OBJS`). Test the
-draft with `FNCMP_LITERALS=1`; `sh wip/all.sh wip/app/build.c <fns>` runs
-fncmp over a list.
+Draft of the object (28 of 41 functions so far). 16 match and are built
+from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
+readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
+setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
+countBits, isUpdateBl, patchPayloadSize. `python wip/mixed.py app/build
+<fns> > syms.txt` makes the src file from the draft (a generic
+netmixed.py: strings become `bd_<address>` statics, set up per object in
+its `OBJS`); `python wip/mixedsyms.py bd syms.txt` puts the string names
+in split.py's SYMBOLS. Test the draft with `FNCMP_LITERALS=1`; `sh
+wip/all.sh wip/app/build.c <fns>` runs fncmp over a list. fncmp doesn't
+check offsets from named symbols: a wrong `struct xebuild` field offset
+only shows in `sh build.sh`.
 
 - loadFileCrc is an inlined helper: loadBaseFile, loadBaseFileMeta,
   loadCommonFile, loadInputFile, loadBinFile and loadLocalFile (twice) are
@@ -564,6 +568,11 @@ fncmp over a list.
   OBJS); splice.py drops gcc's copy of a function the .s still defines.
 - The Win32 time calls are timeutil.c's cdecl ports, not imports: no
   windows.h, declare them as in timeutil.c.
+- rotSumSha is XeCryptRotSumSha with logging: byte loops over a `u8
+  sum[32]` (the zeroing loop stays a dword loop, the inversion becomes 8
+  `not dword`).
+- patchPayloadSize's messages say `%r4` (sic), so the source did too.
+- raiseKernel takes (magic, build, qfe) words; only build is used.
 - timestampToFileTime (16 lines, uncalled): the original computes and
   stores each argument in turn in eax; ours loads both halves first.
   Not the prototype, not TER or sched2.
@@ -573,5 +582,14 @@ fncmp over a list.
   chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
   `common & failed` with `and`, and its loadCommonFile tail call is a
   separate return. Two shapes tried (early returns, `r = 0`).
-- loadBaseFile is static with gcc's local convention (eax, edx); it
-  is only testable once its callers are drafted.
+- checkBl (64): structure right (the SE case's dead extra crc32 call is in
+  the source). The original has bl[0] in eax and bl[1] in edx (ours the
+  other way), and its crc-failure block shares the success epilogue.
+- extractSmcConfig (~140): the original's two search loops aren't header-
+  copied (`xor eax,eax; jmp cond`); `found == 1` (cmp eax,1) is right.
+- appendAddonPatches (18): positive-condition nesting fixed most of it;
+  the "not enough room" log and `size -= 4` blocks go after the return in
+  the original.
+- blmodMissing: only testable with loadBaseFile's other callers drafted
+  (alone, gcc clones loadBaseFile for the constant name).
+- loadBaseFile is static with gcc's local convention (eax, edx).
