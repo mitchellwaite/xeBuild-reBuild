@@ -384,8 +384,8 @@ Early `return 0`s for the two findInst results matched fncmp but jumped
 to the JTAG path's tail-merged `return 0`: fncmp compares every label as
 `l`, so it can't see a jump going to the wrong block.  Only the full
 build showed it (`.text` 0x10 longer); compare jump targets before
-building (a script that diffs `objdump` offsets and internal jump targets
-of a `gcc -c` object against the exe does it).
+building: `python wip/jcmp.py wip/app/mode_client.c <fn>` diffs `objdump`
+offsets and internal jump targets of a `gcc -c` object against the exe.
 
 Still off:
 
@@ -403,7 +403,9 @@ Still off:
   patchNand spellings that still match, error-first branch flips and pins
   on `file`/`off`/`count`/`start` didn't move it.  An unguarded
   `__asm__("" :: "D"(file), "S"(off))` was needed before `const data` and
-  isn't now.
+  isn't now.  Forcing 50% (expect + param) on each other branch, or
+  sweeping their probability, never removes it; manual inlining of the
+  patch loops (instead of the patchNand call) is much worse.
 - `mode_client` (about 410): only `-rb` calls getArgs; the other options
   check their arguments inline with different `||` orders and loads
   hoisted above the argc test in some (see the asm).  The `-bp`/`-wb`
@@ -443,5 +445,33 @@ Still off:
     the loop all frequencies are 0-1 so layout is tie-broken;
     `__builtin_expect(mode && arg, 1)` gets closer (465 -> 366 lines), so
     the original's post-loop frequencies differ from ours, probably from
-    something in the loop.  Register choices in `-bp`/`-wb` may have the
-    same cause.
+    something in the loop.
+  - Found the loop's frequency difference: gcc's call heuristic only
+    looks at the first block of each edge's destination.  With the checks
+    written inline, an option's taken edge has no call (the next
+    strnicmp test has one), so every option is predicted 71% taken and
+    the chain decays fast.  In the original the arg-taking options' taken
+    edges also had a call at profile_estimate time (50/50).  Diagnostics
+    that reproduce it: a guarded `hint()` call (fileutil's rf_hint) at the
+    start of `-bp`/`-wb`/... bodies, or `__builtin_expect(!strnicmp(...),
+    1)` with `--param builtin-expect-probability=50` on `-bp, -wb, -eb,
+    -ip, -e, -c` (greedy search's best set): 412 -> 182 lines, chunk diffs
+    17/20 -> 11/11.  The hint call adds call edges that flip clientKeys'
+    dumpKey tie (the hint with `optimize` on the hint itself leaves a
+    `rep ret` function); the expect version keeps clientKeys.  Neither is
+    in the draft yet because what's left doesn't match either:
+    - `-bp`/`-wb`: IRA pops `a` (cost 848) before the `(i + 1) * 4`
+      temp (564), so `a` gets edx/eax; the original has `a` in ebp (arg's
+      register).  An inlined getArgs (a `static inline` copy of getArgs
+      called at `-wb`) gives `a` in ebp but rotates i / i + 1 / the
+      scaled index through ecx/eax/edx differently.  getArgs-shaped
+      spellings by hand (shared `a`, `first`/`j`) change nothing.
+    - The `||` orders differ per site in the original ((!a, ==) at -bp,
+      -eb, -ip, -e, -c; (==, !a) at -wb, -r, -w), while one inlined helper
+      gives the same order everywhere, so if getArgs was inlined it was
+      only at some sites.
+    - The tail still lays out the reboot-only path's getinfo/reboot/
+      disconnect as one fall-through trace.
+  - Inline limits: getArgs at `-wb` has growth 43 (> max-inline-insns-auto
+    40), `-rb` 62.  Any per-file `max-inline-insns-auto` other than 40
+    breaks clientKeys (dumpKey inlining), so a limit param is out.
