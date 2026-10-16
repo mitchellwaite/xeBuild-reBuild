@@ -34,7 +34,7 @@ struct fileent {
 	u32 size;			/* 410 */
 	u8 key[16];			/* 414 its RC4 key once encoded */
 	u32 fsSize;			/* 424 the part that goes in the filesystem */
-	u8 pad428[0x42c - 0x428];
+	u32 fsOffset;			/* 428 where that part starts */
 };
 
 /* the parts of main.c's struct xebuild used here */
@@ -47,11 +47,14 @@ struct xebuild {
 	int glitch2mfg;			/* 014 */
 	int cbb;			/* 018 build with a CB_B */
 	int f01c;			/* 01c set when an SE replaces the CF */
-	u8 pad020[0x024 - 0x020];
+	int randomKeys;			/* 020 keysInit's argument */
 	int sysTime;			/* 024 use the system time for timestamps */
 	u8 pad028[0x038 - 0x028];
-	u8 *hdr;			/* 038 the image's header */
-	u8 pad03c[0x060 - 0x03c];
+	u8 *hdr;			/* 038 the flash image */
+	u32 userSize;			/* 03c its user (non-spare) size */
+	u8 pad040[0x050 - 0x040];
+	int bigBlock;			/* 050 */
+	u8 pad054[0x060 - 0x054];
 	u32 bootFlags;			/* 060 */
 	u8 pad064[0x068 - 0x064];
 	int xellButton;			/* 068 */
@@ -72,7 +75,15 @@ struct xebuild {
 	u32 gameRegion;			/* 09c */
 	u32 dvdRegion;			/* 0a0 */
 	u8 macid[6];			/* 0a4 */
-	u8 pad0aa[0x244 - 0x0aa];
+	u8 pad0aa[0x1d8 - 0x0aa];
+	u8 *consoleBlmod;		/* 1d8 blmod.bin from the console */
+	u32 consoleBlmodSize;		/* 1dc */
+	u8 pad1e0[0x1e8 - 0x1e0];
+	int fromConsole;		/* 1e8 bootloaders read from the console */
+	struct {
+		u8 *data;
+		u32 size;
+	} mobile[11];			/* 1ec Mobile*.dat etc. from a dump */
 	u8 *dumpSmc;			/* 244 files from the nand dump */
 	u32 dumpSmcSize;		/* 248 */
 	u8 *dumpKv;			/* 24c */
@@ -88,13 +99,33 @@ struct xebuild {
 	char baseDir[0x400];		/* eac */
 	char dataDir[0x400];		/* 12ac */
 	char commonDir[0x400];		/* 16ac */
-	u8 pad1aac[0x41eb0 - 0x1aac];
+	char firmware[256][0x400];	/* 1aac the ini's firmware files */
+	u32 firmwareCrc[256];		/* 41aac */
+	u32 nFirmware;			/* 41eac */
 	struct fileent files[35];	/* 41eb0 [19..34]: addon patches */
 	u8 pad4b0b4[0x4b0f4 - 0x4b0b4];
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
 	int nFlashFiles;		/* 4b0fc */
-	u8 pad4b100[0x4f4c4 - 0x4b100];
+	struct {
+		char name[0x400];
+		u32 offset;
+	} rawPatch[16];			/* 4b100 */
+	u32 nRawPatches;		/* 4f140 */
+	char flashFiles[10][22];	/* 4f144 security files */
+	u8 *flashBuf[10];		/* 4f220 their data from a dump */
+	u32 flashSize[10];		/* 4f248 */
+	u32 oddTime[10];		/* 4f270 */
+	u8 pad4f298[0x4f2c0 - 0x4f298];
+	u32 nFlashFiles2;		/* 4f2c0 the security file count */
+	u8 *anchor;			/* 4f2c4 MMC anchor block */
+	u8 pad4f2c8[0x4f2df - 0x4f2c8];
+	u8 anchorNum;			/* 4f2df */
+	u8 pad4f2e0[0x4f2e4 - 0x4f2e0];
+	struct {
+		u16 type, size;
+	} mobileTab[9];			/* 4f2e4 */
+	u8 pad4f308[0x4f4c4 - 0x4f308];
 	char kernelStr[0x40];		/* 4f4c4 the ini's kernel version string */
 };
 
@@ -119,9 +150,50 @@ u32 imgCfOffset(void);
 u32 imgCfSize(void);
 u32 imgSize(void);
 void setPatchSlot(u32 off);
+void imgWriteHeader(void);
+int imgFsBlock(void);
+void imgFixFsTable(u32 size);
+void imgSetSize(u32 size);
+u32 imgFsAligned(void);
+void imgAddFsFile(const char *name, const u8 *data, const u8 *ts, u32 len);
+void imgAddSecFile(const char *name, const u8 *data, const u8 *ts, u32 len);
+int imgAddMobile(const u8 *data, u32 len, int n);
+void imgAddRaw(const char *name, const u8 *data, u32 len, u32 off);
+void imgAddSmcConfig(const u8 *cfg);
+void imgFixEmptyFs(u32 x);
+void imgWriteFsTable(u32 x);
+void imgCopyAnchor(int n);
+int imgFinalize(void);
 /* keys.c's */
 u32 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
 void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
+void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
+void cbaEncryptZero(u8 *cb, u8 *key, u32 size);
+void cbaEncrypt2(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
+void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int zero);
+void cdEncryptZero(u8 *cd, u8 *key, u32 size);
+void cdEncrypt(u8 *cd, u8 *prevKey, u8 *key, u32 size);
+void cdEncryptCpu(u8 *cd, u8 *prevKey, u8 *key, u32 size);
+void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size);
+int smcPrepare(u8 *smc, u8 *hash, u32 size);
+void kvPrepare(struct fileent *kv, int alt);
+void setFuseCpuKey(u8 *fuse);
+void showExpectedFuses(u32 flags, u16 cb, u8 *fuses, int clear);
+void showFuses(int level, const char *title, const u8 *fuses);
+int checkBootImage(int arg);
+int suLoadDir(const char *dir);
+void keysInit(int random);
+int kvGetGameRegion(void);
+void extendedPrepare(struct fileent *ext);
+void secdataPrepare(struct fileent *sd, u8 *date);
+void daeEncrypt(u8 *buf, u32 size, u8 *date);
+void crlEncrypt(u8 *crl, u32 size, u8 *date);
+void fcrtEncrypt(u8 *fcrt, u32 size);
+void shaHeader(u8 *buf);
+u8 *setBeU16(u16 v, u8 *p);
+u32 statisticsOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
+u32 manufacturingOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
+extern u8 cpuKey[16];		/* xb+27c */
 int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
 extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .data */
 int cbVerifySig(u8 *bl, const void *pubKey);
@@ -1872,4 +1944,570 @@ u32 calcBlAreaSize(void)
 	if (size & 0x3fff)
 		size = (size + 0x3fff) & ~0x3fff;
 	return size;
+}
+
+/* encrypt (and for retail/glitch builds zeropair) each bootloader with
+   its predecessor's key, prepare the SMC and keyvaults; 1 if the SMC
+   could not be prepared */
+int encodeBls(u8 *salt, u16 ldv)
+{
+	struct fileent *e;
+	u32 i;
+	int type, zero, j;
+
+	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+		e = &xb.files[i];
+		if (!strnicmp(e->name, "none", 4) && !e->crc)
+			continue;
+		type = e->type;
+		if (xb.type == 2) {
+			log_printf(1, "encoding %s size 0x%x (JTAG)\n", e->name, e->size);
+			switch (type) {
+			case 1:
+				if (!memcmp(e->data, defPayload, 0x200))
+					patchPayloadSize(e->data, e->size, xb.files[findFile(22)].size);
+				break;
+			case 2:
+				if (smcPrepare(e->data, salt, e->size))
+					return 1;
+				break;
+			case 3:
+				kvPrepare(e, 0);
+				break;
+			case 5:
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2),
+						  xb.files[findFile(24)].data, xb.f01c);
+				cbaEncrypt(salt, e->data, e->key, e->size, 0);
+				break;
+			case 7:
+				cdEncrypt(e->data, xb.files[findFile(5)].key, e->key, e->size);
+				break;
+			case 9:
+				cfEncrypt(e, xb.files[findFile(10)].size, ldv, 0, imgCfSize());
+				break;
+			case 10:
+				cgEncrypt(e->data, xb.files[findFile(9)].key, e->key, e->size);
+				break;
+			case 17:
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				cbaEncrypt2(salt, e->data, e->key, e->size, 1);
+				break;
+			case 18:
+				cdEncrypt(e->data, xb.files[findFile(17)].key, e->key, e->size);
+				break;
+			case 19:
+				ceEncrypt(e->data, xb.files[findFile(18)].key, e->key, e->size);
+				break;
+			case 20:
+				ldv += cfEncrypt(e, xb.files[findFile(21)].size, ldv, 1, imgCfSize());
+				break;
+			case 21:
+				cgEncrypt(e->data, xb.files[findFile(20)].key, e->key, e->size);
+				break;
+			case 22:
+				if (!memcmp(e->data, defCore, 0xd40))
+					patchFreeboot(e->data, e->size);
+				else if (xb.bootFlags)
+					log_printf(0, "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n");
+				break;
+			}
+		} else if (xb.type <= 3) {
+			if (type == 24) {
+				if (xb.glitch2mfg)
+					log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
+				continue;
+			}
+			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
+			switch (type) {
+			case 2:
+				if (smcPrepare(e->data, salt, e->size))
+					return 1;
+				break;
+			case 3:
+				kvPrepare(e, 0);
+				break;
+			case 5:
+				if (xb.cbb) {
+					cbaEncrypt(salt, e->data, e->key, e->size, 1);
+					break;
+				}
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				if (xb.type != 1)
+					cbaEncryptZero(e->data, e->key, e->size);
+				else
+					cbaEncrypt(salt, e->data, e->key, e->size, 0);
+				break;
+			case 6:
+				if (!xb.cbb)
+					break;
+				zero = checkZeros(cpuKey, 16);
+				j = findFile(24);
+				if (xb.glitch2mfg)
+					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.f01c);
+				else
+					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				if (zero) {
+					log_printf(1, "CPU key is all zeros, zeropairing CB_B\n");
+					xb.cfLdv = 0;
+				}
+				j = findFile(5);
+				cbbEncrypt(salt, e->data, xb.files[j].key, xb.files[j].data, e->key, e->size, zero);
+				break;
+			case 7:
+				if (xb.cbb)
+					cdEncrypt(e->data, xb.files[findFile(6)].key, e->key, e->size);
+				else {
+					j = findFile(5);
+					if (xb.type != 1)
+						cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
+					else
+						cdEncryptCpu(e->data, xb.files[j].key, e->key, e->size);
+				}
+				break;
+			case 8:
+				ceEncrypt(e->data, xb.files[findFile(7)].key, e->key, e->size);
+				break;
+			case 9:
+				cfEncrypt(e, xb.files[findFile(10)].size, ldv, 0, imgCfSize());
+				break;
+			case 10:
+				cgEncrypt(e->data, xb.files[findFile(9)].key, e->key, e->size);
+				break;
+			}
+		} else if (type != 24) {
+			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
+			switch (type) {
+			case 2:
+				if (smcPrepare(e->data, salt, e->size))
+					return 1;
+				break;
+			case 3:
+				kvPrepare(e, 0);
+				break;
+			case 4:
+				kvPrepare(e, 1);
+				break;
+			case 7:
+				cdEncrypt(e->data, xb.files[findFile(12)].key, e->key, e->size);
+				break;
+			case 8:
+				ceEncrypt(e->data, xb.files[findFile(7)].key, e->key, e->size);
+				break;
+			case 9:
+				cfEncrypt(e, xb.files[findFile(10)].size, ldv, 0, imgCfSize());
+				break;
+			case 10:
+				cgEncrypt(e->data, xb.files[findFile(9)].key, e->key, e->size);
+				break;
+			case 11:
+				if (xb.type == 4 || xb.type == 5) {
+					j = findFile(24);
+					if ((xb.flags & 7) <= 4)
+						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.f01c);
+					else
+						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.f01c);
+					log_printf(1, "zeropairing SB\n");
+					setFuseCpuKey(xb.files[j].data);
+					cbaEncryptZero(e->data, e->key, e->size);
+					break;
+				}
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				if (checkZeros(cpuKey, 16)) {
+					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
+					xb.cfLdv = 0;
+					cbaEncryptZero(e->data, e->key, e->size);
+				} else
+					cbaEncrypt(salt, e->data, e->key, e->size, 0);
+				break;
+			case 12:
+				cdEncryptZero(e->data, e->key, e->size);
+				break;
+			case 13:
+				cdEncrypt(e->data, xb.files[findFile(12)].key, e->key, e->size);
+				break;
+			case 14:
+				ceEncrypt(e->data, xb.files[findFile(13)].key, e->key, e->size);
+				break;
+			case 15:
+				cfEncrypt(e, xb.files[findFile(16)].size, ldv, 0, imgCfSize());
+				break;
+			case 16:
+				cgEncrypt(e->data, xb.files[findFile(15)].key, e->key, e->size);
+				break;
+			case 23:
+			case 25:
+				break;
+			default:
+				log_printf(1, "****** Unhandled BL typ %d ******\n", type);
+				break;
+			}
+		}
+	}
+	if (xb.f01c) {
+		/* the SE that replaced the CF follows the CD */
+		i = findFile(14);
+		j = findFile(7);
+		log_printf(1, "re-encoding %s size 0x%x\n", xb.files[i].name, xb.files[i].size);
+		ceEncrypt(xb.files[i].data, xb.files[j].key, xb.files[i].key, xb.files[i].size);
+	}
+	return 0;
+}
+
+/* build the flash image: header, bootloaders (loaded, checked, patched,
+   encrypted, laid out), the CG overflow, firmware and security files,
+   Mobile*.dat, smc_config, the filesystem, [rawpatch] data */
+int buildFlash(void)
+{
+	struct fileent f;
+	struct fileent *tmp;
+	u8 salt[16];
+	u8 ts[4];
+	FILETIME ft;
+	const char *name, *base;
+	u32 area, off, a, b, raw, save, i, k;
+	int fuse, blocks, r, cf, cg, region, t;
+	char last;
+
+	memset(salt, 0, sizeof(salt));
+	fuse = 1;
+	if (xb.type != 2)
+		fuse = xb.glitch2mfg || xb.type == 4 || xb.type == 5;
+	if (xb.fromConsole) {
+		log_printf(1, "\n------ Copying bootloader image to flash image ------ \n");
+		r = checkBootImage(1);
+		if (r) {
+			log_printf(0, "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n");
+			return r;
+		}
+	} else {
+		log_printf(1, "Writing initial header to flash image\n");
+		imgWriteHeader();
+	}
+	suLoadDir(xb.dataDir);
+	log_printf(1, "\n------ Loading bootloaders and required security files ------\n");
+	if (xb.fromConsole)
+		r = loadConsoleBlFiles();
+	else
+		r = loadBlFiles();
+	if (r) {
+		log_printf(0, "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n");
+		return r;
+	}
+	if (!xb.fromConsole && !verifyBlSigs())
+		return 1;
+	log_printf(1, "done!\n");
+	blocks = imgFsBlock();
+	area = calcBlAreaSize();
+	if (blocks)
+		area = blocks << 14;
+	else
+		blocks = area >> 14;
+	if (xb.type == 3) {
+		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
+		if (xb.fromConsole)
+			fixupPatchSet();
+		else {
+			memset(&f, 0, sizeof(f));
+			if (!loadBaseFile("blmod.bin", &f)) {
+				patchBlsBlmod(f.data, f.size);
+				free(f.data);
+			} else if (xb.consoleBlmod && xb.consoleBlmodSize) {
+				patchBlsBlmod(xb.consoleBlmod, xb.consoleBlmodSize);
+				free(xb.consoleBlmod);
+			} else
+				patchBlsBlmod(NULL, 0);
+		}
+	} else if (xb.type == 4 || xb.type == 5) {
+		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
+		if (!patchBlsResign())
+			return 1;
+	}
+	if (!xb.fromConsole && xb.type != 1 && xb.type <= 5) {
+		log_printf(1, "\n------ Patching boot reasons and options into flash header ------\n");
+		patchHeaderOpts();
+	}
+	log_printf(1, "\n------ Encrypting and finalizing bootloaders ------\n");
+	keysInit(xb.randomKeys);
+	if (fuse) {
+		tmp = &xb.files[findFile(24)];
+		setFuseCpuKey(tmp->data);
+		if (xb.type != 2)
+			tmp->offset = imgCfOffset() + imgCfSize();
+	}
+	if (!xb.fromConsole) {
+		if (encodeBls(salt, blocks))
+			return -4;
+	} else if (encodeUpdateBls((int)salt, blocks))
+		return -4;
+	if (fuse)
+		showFuses(1, "\nVirtual Fuses set to:", xb.files[findFile(24)].data);
+	log_printf(1, "done!\n\n------ Adding bootloaders to flash image ------\n");
+	if (!xb.fromConsole)
+		addBlsToImage();
+	else
+		addUpdateBls();
+	if (!imgFsBlock()) {
+		log_printf(1, "Fixing up FS table...");
+		imgFixFsTable(area);
+		imgSetSize(area);
+		log_printf(1, "done!\n");
+	}
+	if (imgFsBlock())
+		imgSetSize(imgFsBlock() << 14);
+
+	/* the CG's patch slot overflow goes in the filesystem */
+	if (xb.type != 2) {
+		if (xb.files[findFile(9)].fsSize) {
+			off = imgSize();
+			cf = findFile(9);
+			cg = findFile(10);
+			log_printf(1, "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n");
+			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			makeTimestamp(ts, NULL);
+			imgAddFsFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, ts, xb.files[cf].fsSize);
+			log_printf(1, "done!\n");
+		}
+	} else {
+		off = imgSize();
+		if (xb.files[findFile(20)].fsSize) {
+			cf = findFile(20);
+			cg = findFile(21);
+			log_printf(1, "Writing CG patch slot overflow data to sysupdate.xexp1\n");
+			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			makeTimestamp(ts, NULL);
+			imgAddFsFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, ts, xb.files[cf].fsSize);
+			log_printf(1, "done!\n");
+		}
+		if (xb.files[findFile(9)].fsSize) {
+			cf = findFile(9);
+			cg = findFile(10);
+			log_printf(1, "Writing target CG patch slot overflow data to sysupdate.xexp2\n");
+			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			makeTimestamp(ts, NULL);
+			imgAddFsFile("sysupdate.xexp2", xb.files[cg].data + xb.files[cf].fsOffset, ts, xb.files[cf].fsSize);
+			log_printf(1, "done!\n");
+		}
+	}
+
+	tmp = &xb.files[xb.nFlashFiles];
+	log_printf(1, "\n------ adding %d firmware files ------\n", xb.nFirmware);
+	for (i = 0; i < xb.nFirmware; i++) {
+		name = xb.firmware[i];
+		strcpy(f.name, name);
+		last = f.name[strlen(f.name) - 1];
+		if (!strnicmp("sysupdate.xexp", f.name, 14)) {
+			log_printf(1, "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n", f.name);
+			continue;
+		}
+		if (!xb.firmwareCrc[i])
+			r = loadInputFile(f.name, tmp, 0, 0, ts, 0, 1, 0);
+		else if (last == 'p') {
+			/* a patch (.xexp): the target's comes as .xexp1, a JTAG's as .xexp2 */
+			strcat(xb.firmware[i], xb.type == 2 ? "2" : "1");
+			r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 1, 1, 1);
+			if (r) {
+				strcat(f.name, "1");
+				r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 0, 1, 1);
+				if (r) {
+					f.name[strlen(f.name) - 1] = '2';
+					r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 0, 1, 1);
+				}
+			}
+		} else
+			r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 1, 1, 1);
+		if (r) {
+			if (xb.firmwareCrc[i]) {
+				log_printf(0, "***** could not read file '%s' *****\n", name);
+				log_printf(0, "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n");
+				return r;
+			}
+			log_printf(1, "***** could not read file '%s', skipping *****\n", name);
+			continue;
+		}
+		base = strrchr(name, '/');
+		if (!base)
+			base = strrchr(name, '\\');
+		if (base)
+			base++;
+		else
+			base = name;
+		off = imgSize();
+		log_printf(1, "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n", base, off, tmp->size, off + tmp->size);
+		imgAddFsFile(base, tmp->data, ts, tmp->size);
+	}
+
+	log_printf(1, "\n------ adding %d security files ------\n", xb.nFlashFiles2);
+	if (xb.nFlashFiles2) {
+		memset(tmp, 0, sizeof(*tmp));
+		setBeU32(0, ts);
+		for (k = 0;;) {
+			name = xb.flashFiles[k];
+			log_printf(1, "<- Processing %s ->\n", name);
+			if (!loadBaseFileMeta(name, tmp, ts))
+				goto got;
+			if (!(xb.bootFlags & 0x1000000)) {
+				if (tmp->data)
+					free(tmp->data);
+				if (suGetFile(name, &tmp->data, &tmp->size)) {
+					log_printf(1, "\tcould not read %s, using data from SUPD...\n", name);
+					goto got;
+				}
+			}
+			if (xb.flashBuf[k]) {
+				if (tmp->data)
+					free(tmp->data);
+				tmp->data = xb.flashBuf[k];
+				tmp->size = xb.flashSize[k];
+				log_printf(1, "\tcould not read %s, using data from previous parse...\n", name);
+				goto got;
+			}
+			if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin")) {
+				tmp->size = 0;
+				goto got;
+			}
+			if (!strcmp(name, "fcrt.bin")) {
+				region = kvGetGameRegion();
+				if (region) {
+					log_printf(0, "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n", name);
+					if (xb.type != 1 && xb.type <= 5) {
+						if (region == 1)
+							log_printf(0, "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n");
+						else {
+							log_printf(0, "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n");
+							log_printf(0, "             but should allow the machine to boot normally\n");
+						}
+					}
+				} else
+					log_printf(1, "\t%s not found and not required by keyvault, skipped\n", name);
+			} else
+				log_printf(0, "***** WARNING: %s not found, skipping *****\n", name);
+			goto next;
+got:
+			if (getBeU32(ts))
+				timestampToFileTime((u16 *)ts, &ft);
+			else
+				makeTimestamp(ts, &ft);
+			if (!strcmp(name, "secdata.bin"))
+				secdataPrepare(tmp, (u8 *)&ft);
+			else if (!strcmp(name, "extended.bin"))
+				extendedPrepare(tmp);
+			else if (!strcmp(name, "dae.bin"))
+				daeEncrypt(tmp->data, tmp->size, (u8 *)&ft);
+			else if (!strcmp(name, "crl.bin"))
+				crlEncrypt(tmp->data, tmp->size, (u8 *)&ft);
+			else if (!strcmp(name, "fcrt.bin"))
+				fcrtEncrypt(tmp->data, tmp->size);
+			else if (!strcmp(name, "odd.bin")) {
+				if (xb.oddTime[k])
+					setBeU32(xb.oddTime[k], ts);
+			} else
+				log_printf(0, "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n", xb.baseDir, name);
+			imgAddSecFile(name, tmp->data, ts, tmp->size);
+next:
+			if (tmp->data) {
+				free(tmp->data);
+				tmp->data = NULL;
+			}
+			if (++k >= xb.nFlashFiles2)
+				break;
+			memset(tmp, 0, sizeof(*tmp));
+			setBeU32(0, ts);
+			log_printf(1, "\n");
+		}
+	}
+
+	log_printf(1, "\n------ checking for Mobile*.dat ------\n");
+	for (k = 0; k < 11; k++) {
+		if (k == 9) {
+			strcpy(f.name, "Statistics.settings");
+			raw = statisticsOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
+		} else if (k == 10) {
+			strcpy(f.name, "Manufacturing.data");
+			raw = manufacturingOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
+		} else {
+			strcpy(f.name, "MobileA.dat");
+			f.name[6] = 'B' + k;
+			raw = 0;
+		}
+		if (!loadBaseFile(f.name, tmp)) {
+			log_printf(1, "%s found, adding from file\n", f.name);
+			if (raw) {
+				save = imgSize();
+				imgAddRaw(f.name, tmp->data, tmp->size, raw);
+				imgSetSize(save);
+			} else {
+				t = imgAddMobile(tmp->data, tmp->size, '1' + k);
+				if (t && k <= 8) {
+					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
+					setBeU16(tmp->size >= 0x4000 ? 0 : tmp->size, (u8 *)&xb.mobileTab[k].size);
+				}
+			}
+		} else if (xb.mobile[k].data && xb.mobile[k].size) {
+			log_printf(1, "%s found, adding from previous parse\n", f.name);
+			if (raw) {
+				save = imgSize();
+				imgAddRaw(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
+				imgSetSize(save);
+			} else {
+				t = imgAddMobile(xb.mobile[k].data, xb.mobile[k].size, '1' + k);
+				if (t && k <= 8) {
+					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
+					setBeU16(xb.mobile[k].size > 0x3fff ? 0 : xb.mobile[k].size, (u8 *)&xb.mobileTab[k].size);
+				}
+			}
+		}
+	}
+	a = imgFsAligned();
+	b = imgFsAligned();
+	log_printf(1, "\n------ adding smc_config.bin ------\n");
+	imgAddSmcConfig(xb.files[findFile(27)].data);
+	log_printf(1, "\n------ cleaning up image ------\n");
+	log_printf(1, "Fixing up empty FS block entries...");
+	imgFixEmptyFs(a);
+	log_printf(1, "done!\nWriting FS table to image ");
+	imgWriteFsTable(b);
+	log_printf(1, "done!\n");
+	if (xb.flags & 0x10000000) {
+		/* MMC: two anchor blocks */
+		xb.anchorNum = 1;
+		shaHeader(xb.anchor);
+		imgCopyAnchor(1);
+		xb.anchorNum = 2;
+		shaHeader(xb.anchor);
+		imgCopyAnchor(2);
+	}
+	for (k = 0; k < 19; k++) {
+		if (!xb.files[k].data || !xb.files[k].size)
+			xb.files[k].size = 0;
+		else {
+			free(xb.files[k].data);
+			xb.files[k].data = NULL;
+		}
+	}
+	if (xb.nRawPatches) {
+		log_printf(1, "\n------ adding [rawpatch] data ------\n");
+		f.data = NULL;
+		for (k = 0; k < xb.nRawPatches; k++) {
+			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, ts, 0, 0, 0);
+			if (r) {
+				log_printf(0, "***** ERROR: could not load [rawpatch] file '%s'!!\n", xb.rawPatch[k].name);
+				return r;
+			}
+			off = xb.rawPatch[k].offset;
+			if (off + f.size > xb.userSize) {
+				log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n",
+					   k + 1, xb.rawPatch[k].name, off, f.size, xb.userSize);
+				free(f.data);
+				return -1;
+			}
+			memcpy(xb.hdr + off, f.data, f.size);
+			log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n",
+				   k + 1, xb.rawPatch[k].name, off, f.size, off + f.size);
+			free(f.data);
+			f.data = NULL;
+		}
+		log_printf(1, "done!\n");
+	}
+	log_printf(1, "\n------ finalizing image ------\n");
+	return imgFinalize();
 }

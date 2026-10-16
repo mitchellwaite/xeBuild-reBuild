@@ -45,7 +45,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 8 drafted functions match in `wip/app/keys.c` | 40 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
-| `app/build` | mixed; 1 of 19 drafted functions match in `wip/app/build.c` | 21 / 41 |
+| `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 | `app/console_hdd` | asm; 12 of 14 drafted functions match in `wip/app/console_hdd.c` | 12 / 14 |
 
 <details>
@@ -372,10 +372,10 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ☑️ `logPowerButton` (0x42c900)
 - ✅ `patchFreeboot` (0x42cbb0)
 - ✅ `patchPayloadSize` (0x42cee0)
-- ⬜ `encodeBls` (0x42cfa0)
+- ⬜ `encodeBls` (0x42cfa0) (draft in `wip/`, no match yet)
 - ✅ `encodeUpdateBls` (0x42dfb0)
 - ⬜ `calcBlAreaSize` (0x42e160) (draft in `wip/`, no match yet)
-- ⬜ `buildFlash` (0x42e760)
+- ⬜ `buildFlash` (0x42e760) (draft in `wip/`, no match yet)
 
 </details>
 <details>

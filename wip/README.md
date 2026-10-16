@@ -546,14 +546,15 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the object (27 of 41 functions so far; not yet: showSmcConfig,
-patchSmcConfig, verifyBlSigs, loadBlFiles, loadConsoleBlFiles,
-patchBlsResign, patchBlsBlmod, addBlsToImage, addUpdateBls, patchFreeboot,
-encodeBls, encodeUpdateBls, calcBlAreaSize, buildFlash). 16 match and are built
+Draft of the whole object (all 41 functions). 20 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
-countBits, isUpdateBl, patchPayloadSize. `python wip/mixed.py app/build
+countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
+patchFreeboot, encodeUpdateBls; logPowerButton matches but can't be built
+(below). Five have switch tables in build.s's .rdata, so they can only
+ever count as wip matches until the whole object is C: logPowerButton,
+checkBl, loadBlFiles, loadConsoleBlFiles, encodeBls. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
 netmixed.py: strings become `bd_<address>` statics, set up per object in
 its `OBJS`); `python wip/mixedsyms.py bd syms.txt` puts the string names
@@ -599,6 +600,33 @@ only shows in `sh build.sh`.
 - fixupPatchSet (~95): like extractSmcConfig, the original's loop is not
   header-copied and keeps `off` on the stack; `__attribute__((cold))` is
   not it.
-- blmodMissing: only testable with loadBaseFile's other callers drafted
-  (alone, gcc clones loadBaseFile for the constant name).
-- loadBaseFile is static with gcc's local convention (eax, edx).
+- blmodMissing matches now that loadBaseFile has its other callers.
+- loadBaseFile (4) is static with gcc's local convention (eax, edx); its
+  two `return -1` blocks come out in the other order.
+- With the whole object drafted, ipa-cp clones loadFileCrc (verbose=1) and
+  loadInputFile (loadBlFiles' constant arguments); the original has neither
+  clone and calls loadFileCrc out of line only from loadInputFile. The
+  clone moves loadLocalFile's registers (76 lines in the full draft; it
+  matches in the mixed file, which leaves the big callers out). Find what
+  stops the cloning before moving the rest over.
+- showSmcConfig: the fan bytes are bitfields (`u8 speed:7, override:1`;
+  `cmp byte,0; js` plus a separate reload for the speed), the regions
+  `__builtin_bswap16`/a SWAP32 macro with `(x << 24) + (x >> 24)` first.
+- patchFreeboot: `opts = bootFlags & 0xf` before the `& 9` test (gcc sinks
+  the `and` into the else path; masking in an else gets if-converted);
+  the hold-address pattern and its 9199 replacement are one `u32[4]`;
+  `strncmp(kernelStr, "9199", 4)` (inline `repz cmpsb`).
+- encodeUpdateBls: a `switch`, not an if-chain (block order).
+- verifyBlSigs (169): a switch with SC/SD before SE (gcc orders bit-test
+  clusters by case count, then label number; 12..13 counts as one range).
+- patchSmcConfig (10): two cold blocks (gpu/cpu fan warnings) in the
+  other order; the gpu warning passes no argument (the cpu one does).
+- patchBlsResign/patchBlsBlmod (~330), fixupPatchSet: the patch-set walk
+  loop isn't header-copied in the original; `-fno-tree-ch` reproduces
+  that shape, so something in the source stops pass_ch.
+- calcBlAreaSize (212): the original looks up the offset before the size.
+- addBlsToImage (361), addUpdateBls (204), loadBlFiles, loadConsoleBlFiles,
+  encodeBls, buildFlash: first drafts from heavily jump-threaded
+  pseudocode; behaviour checked against it, layout not worked on.
+- buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
+  in the draft so far; give them SYMBOLS names when building it.
