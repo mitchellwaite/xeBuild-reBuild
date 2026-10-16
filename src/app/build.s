@@ -8,13 +8,51 @@
 #   .text          00427500-00430460
 
 .intel_syntax noprefix
-.globl FUN_427650
-.globl L_42e760
+.globl _addBlsToImage
+.globl _addUpdateBls
+.globl _appendAddonPatches
+.globl _blmodMissing
+.globl _buildFlash
+.globl _calcBlAreaSize
+.globl _checkBl
+.globl _countBits
+.globl _encodeBls
+.globl _encodeUpdateBls
+.globl _extractSmcConfig
 .globl _findFile
+.globl _findFileOffset
+.globl _findFileSize
+.globl _fixupPatchSet
+.globl _iniRangeOk
+.globl _isUpdateBl
+.globl _loadBaseFile
+.globl _loadBaseFileMeta
+.globl _loadBinFile
+.globl _loadBlFiles
+.globl _loadCommonFile
+.globl _loadConsoleBlFiles
+.globl _loadFileCrc
+.globl _loadInputFile
+.globl _loadLocalFile
+.globl _logPowerButton
+.globl _makeTimestamp
+.globl _patchBlsBlmod
+.globl _patchBlsResign
+.globl _patchFreeboot
+.globl _patchHeaderOpts
+.globl _patchPayloadSize
+.globl _patchSmcConfig
+.globl _raiseKernel
+.globl _readMetaFile
+.globl _rotSumSha
+.globl _setFileData
+.globl _showSmcConfig
+.globl _timestampToFileTime
+.globl _verifyBlSigs
 
 .text
 .p2align 4
-FUN_427500:
+_loadBaseFile:
           cmp BYTE PTR [L_47ad4c],0
           je L_427635
           push EBP
@@ -110,7 +148,7 @@ L_427647:
           jmp L_4275fa
           .byte 0x66
           .byte 0x90
-FUN_427650:
+_findFileOffset:
           mov ECX,DWORD PTR [L_4c4f9c]
           push EBX
           mov EBX,DWORD PTR [ESP+8]
@@ -147,7 +185,7 @@ L_42768b:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_4276a0:
+_findFileSize:
           mov ECX,DWORD PTR [L_4c4f9c]
           push EBX
           mov EBX,DWORD PTR [ESP+8]
@@ -215,7 +253,7 @@ L_427727:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_427730:
+_loadFileCrc:
           push EBP
           push EDI
           push ESI
@@ -382,7 +420,7 @@ L_42793a:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_427950:
+_readMetaFile:
           push EBX
           sub ESP,24
           mov EAX,DWORD PTR [ESP+32]
@@ -414,7 +452,7 @@ L_4279a0:
 L_4279a7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_4279b0:
+_makeTimestamp:
           push EBP
           push EDI
           push ESI
@@ -472,7 +510,7 @@ L_427a43:
           mov DWORD PTR [ESP+28],30268127
           mov DWORD PTR [ESP+24],1903825408
           jmp L_4279e4
-L_427a70:
+_timestampToFileTime:
           sub ESP,28
           mov EDX,DWORD PTR [ESP+32]
           mov EAX,DWORD PTR [ESP+36]
@@ -500,7 +538,7 @@ L_427a70:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_427ab0:
+_loadBaseFileMeta:
           push EBP
           push EDI
           push ESI
@@ -650,7 +688,7 @@ L_427cb0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_427cc0:
+_loadCommonFile:
           push EBP
           push EDI
           push ESI
@@ -890,7 +928,7 @@ L_42802a:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_428040:
+_loadInputFile:
           push EBP
           push EDI
           push ESI
@@ -923,7 +961,7 @@ L_42809b:
           mov DWORD PTR [ESP+16],EAX
           mov EAX,DWORD PTR [ESP+1144]
           mov DWORD PTR [ESP+12],EAX
-          call FUN_427730
+          call _loadFileCrc
           mov ESI,EAX
           mov EAX,DWORD PTR [ESP+1152]
           test EAX,EAX
@@ -970,7 +1008,7 @@ L_428120:
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [ESP+1144]
           mov DWORD PTR [ESP+8],EAX
-          call FUN_427cc0
+          call _loadCommonFile
           add ESP,1116
           pop EBX
           pop ESI
@@ -1281,7 +1319,7 @@ L_428580:
           mov EAX,DWORD PTR [ESP+1152]
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],EAX
-          call FUN_4279b0
+          call _makeTimestamp
 L_428631:
           xor ESI,ESI
           jmp L_428113
@@ -1372,7 +1410,7 @@ L_42875f:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_428780:
+_loadBinFile:
           push EBP
           push EDI
           push ESI
@@ -1460,7 +1498,7 @@ L_4288b7:
           jmp L_42886c
           .byte 0x66
           .byte 0x90
-FUN_4288c0:
+_loadLocalFile:
           push EBP
           push EDI
           push ESI
@@ -1602,7 +1640,7 @@ L_428aaa:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_428ac0:
+_setFileData:
           push ESI
           push EBX
           sub ESP,20
@@ -1628,7 +1666,7 @@ L_428b0a:
           pop EBX
           pop ESI
           ret 
-FUN_428b10:
+_appendAddonPatches:
           push EBP
           push EDI
           push ESI
@@ -1690,7 +1728,7 @@ L_428be5:
           jle L_428c60
 L_428bf6:
           mov DWORD PTR [ESP],EBP
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           jne L_428c32
           mov EAX,DWORD PTR [EBP+1040]
@@ -1779,7 +1817,7 @@ L_428d05:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_428d20:
+_showSmcConfig:
           push ESI
           push EBX
           sub ESP,36
@@ -2065,7 +2103,7 @@ L_429160:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_429180:
+_iniRangeOk:
           sub ESP,60
           mov EDX,DWORD PTR [ESP+68]
           cmp EDX,DWORD PTR [ESP+72]
@@ -2103,7 +2141,7 @@ L_4291a0:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_4291f0:
+_patchSmcConfig:
           push ESI
           push EBX
           sub ESP,36
@@ -2497,7 +2535,7 @@ L_429770:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4297d0:
+_extractSmcConfig:
           push EBP
           push EDI
           push ESI
@@ -2595,14 +2633,14 @@ L_42991e:
           mov EAX,DWORD PTR [ESP+64]
           mov EAX,DWORD PTR [EAX+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_428d20
+          call _showSmcConfig
           mov DWORD PTR [ESP+4],OFFSET L_459371
           mov DWORD PTR [ESP],1
           call _log_printf
           mov EAX,DWORD PTR [ESP+64]
           mov EAX,DWORD PTR [EAX+1036]
           mov DWORD PTR [ESP],EAX
-          call FUN_4291f0
+          call _patchSmcConfig
           mov EDX,EAX
           xor EAX,EAX
           test EDX,EDX
@@ -2685,7 +2723,7 @@ L_429a63:
           mov EAX,DWORD PTR [ESP+64]
           mov EDX,DWORD PTR [EAX+1036]
           mov DWORD PTR [ESP],EDX
-          call FUN_428d20
+          call _showSmcConfig
           mov DWORD PTR [ESP+4],OFFSET L_459371
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -2719,7 +2757,7 @@ L_429ae5:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_429b10:
+_raiseKernel:
           movzx EAX,WORD PTR [ESP+8]
           shl EAX,8
           or EAX,536870912
@@ -2732,7 +2770,7 @@ L_429b2a:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_429b30:
+_checkBl:
           push EDI
           push ESI
           push EBX
@@ -2983,7 +3021,7 @@ L_429e66:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_429e70:
+_verifyBlSigs:
           push EBP
           push EDI
           push ESI
@@ -3310,7 +3348,7 @@ L_42a34d:
           mov EAX,DWORD PTR [L_4c4f98]
           jmp L_429f20
           .byte 0x90
-FUN_42a370:
+_loadBlFiles:
           push EBP
           push EDI
           push ESI
@@ -3343,7 +3381,7 @@ L_42a3d0:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,EBP
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           mov EDX,DWORD PTR [L_4c4f9c]
           jne L_42ab70
@@ -3357,7 +3395,7 @@ L_42a3f5:
           mov DWORD PTR [ESP+4],EAX
           mov DWORD PTR [ESP],EBP
           mov DWORD PTR [ESP+8],EDX
-          call FUN_4297d0
+          call _extractSmcConfig
           mov EDI,EAX
 L_42a423:
           test EDI,EDI
@@ -3386,21 +3424,21 @@ L_42a455:
           ja L_42a430
           mov EDX,EBP
           mov EAX,EBP
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42a430
           mov DWORD PTR [ESP+4],OFFSET L_459a68
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EBP
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           je L_42a430
           mov DWORD PTR [ESP+4],OFFSET L_459ab0
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],EBP
-          call FUN_4288c0
+          call _loadLocalFile
           mov EDI,EAX
           jmp L_42a423
 L_42a4b4:
@@ -3413,7 +3451,7 @@ L_42a4b4:
 L_42a4cc:
           mov EDX,EBP
           mov EAX,EBP
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           jne L_42a4df
           cmp DWORD PTR [EBX+4],96
@@ -3437,7 +3475,7 @@ L_42a50a:
 L_42a51b:
           mov EDX,EBP
           mov EAX,EBP
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           jne L_42a532
           cmp DWORD PTR [EBX+4],96
@@ -3458,7 +3496,7 @@ L_42a562:
           cmp DWORD PTR [_g479ea8],1
           je L_42a430
           mov DWORD PTR [ESP],EBP
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           mov EDI,EAX
           jne L_42a8d9
@@ -3479,7 +3517,7 @@ L_42a562:
           .byte 0x0
 L_42a5b0:
           mov DWORD PTR [ESP],EBP
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           je L_42a430
           mov DWORD PTR [ESP+16],3392
@@ -3519,7 +3557,7 @@ L_42a620:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBP
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           mov EDI,EAX
           jne L_42a8d9
@@ -3530,7 +3568,7 @@ L_42a620:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX]
           mov DWORD PTR [ESP],EAX
-          call FUN_429b30
+          call _checkBl
           mov EDI,EAX
           jmp L_42a423
           .byte 0x8d
@@ -3548,7 +3586,7 @@ L_42a6a0:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBP
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           mov EDI,EAX
           je L_42aa00
@@ -3577,7 +3615,7 @@ L_42a730:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,EBP
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           jne L_42aac1
 L_42a74f:
@@ -3599,19 +3637,19 @@ L_42a791:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,EBP
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42a74f
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,OFFSET L_459aec
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42a74f
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,OFFSET L_459af9
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           mov EDI,EAX
           je L_42a74f
@@ -3645,7 +3683,7 @@ L_42a860:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,EBP
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           mov EDI,EAX
           jne L_42a991
@@ -3686,7 +3724,7 @@ L_42a8d9:
           ret 
 L_42a902:
           mov DWORD PTR [ESP],EBP
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           je L_42a430
           mov DWORD PTR [ESP+16],512
@@ -3760,7 +3798,7 @@ L_42aa00:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX]
           mov DWORD PTR [ESP],EAX
-          call FUN_429b30
+          call _checkBl
           test EAX,EAX
           mov EDI,EAX
           jne L_42a8d9
@@ -3811,13 +3849,13 @@ L_42aac1:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,OFFSET L_459b32
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42a74f
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,OFFSET L_459b43
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           mov EDI,EAX
           je L_42a74f
@@ -3848,7 +3886,7 @@ L_42ab70:
           imul EDX,EDX,1068
           mov EAX,OFFSET L_459b8c
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           jne L_42ac04
 L_42ab8a:
@@ -3881,18 +3919,18 @@ L_42abd2:
           mov DWORD PTR [ESP+4],EDX
 L_42abe8:
           mov DWORD PTR [ESP],EAX
-          call FUN_429b30
+          call _checkBl
           mov EDI,EAX
           jmp L_42a423
 L_42abf7:
           mov DWORD PTR [ESP],EBP
-          call FUN_428b10
+          call _appendAddonPatches
           jmp L_42a430
 L_42ac04:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,OFFSET L_459b97
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           mov EDI,EAX
           je L_42ab8a
@@ -3963,7 +4001,7 @@ L_42ad40:
           mov DWORD PTR [ESP+12],EDX
           mov EDX,DWORD PTR [EBX+4]
           mov DWORD PTR [ESP+4],EDX
-          call FUN_429b30
+          call _checkBl
           test EAX,EAX
           mov EDI,EAX
           jne L_42a8d9
@@ -3983,7 +4021,7 @@ L_42ada0:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_42adc0:
+_loadConsoleBlFiles:
           cmp DWORD PTR [L_4c4f98],1
           jbe L_42b2ac
           push EBP
@@ -4037,7 +4075,7 @@ L_42ae64:
           mov DWORD PTR [ESP+8],ECX
           mov DWORD PTR [EAX+L_4bc150+12],EDX
           mov DWORD PTR [EAX+L_4bc150+16],ECX
-          call FUN_4297d0
+          call _extractSmcConfig
           mov EDX,EAX
 L_42aea8:
           test EDX,EDX
@@ -4070,21 +4108,21 @@ L_42aee0:
           ja L_42af50
           mov EDX,ESI
           mov EAX,ESI
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42af50
           mov DWORD PTR [ESP+4],OFFSET L_459a68
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],ESI
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           je L_42af50
           mov DWORD PTR [ESP+4],OFFSET L_459ab0
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],ESI
-          call FUN_4288c0
+          call _loadLocalFile
           mov EDX,EAX
           jmp L_42aea8
           .byte 0x90
@@ -4108,7 +4146,7 @@ L_42af50:
           .byte 0x90
 L_42af70:
           mov DWORD PTR [ESP],ESI
-          call FUN_428780
+          call _loadBinFile
           test EAX,EAX
           mov EDX,EAX
           jne L_42aeb0
@@ -4131,7 +4169,7 @@ L_42afb0:
           mov DWORD PTR [ESP+8],1
           mov DWORD PTR [ESP+4],ESI
           mov DWORD PTR [ESP],ESI
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           mov EDX,EAX
           je L_42b020
@@ -4155,7 +4193,7 @@ L_42b020:
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [EBX]
           mov DWORD PTR [ESP],EAX
-          call FUN_429b30
+          call _checkBl
           mov EDX,EAX
           jmp L_42aea8
 L_42b043:
@@ -4273,7 +4311,7 @@ L_42b1c1:
 L_42b1e0:
           mov EDX,ESI
           mov EAX,ESI
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           jne L_42b1f7
           cmp DWORD PTR [EBX+4],96
@@ -4294,7 +4332,7 @@ L_42b1f7:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_42b230:
           mov DWORD PTR [ESP],ESI
-          call FUN_428b10
+          call _appendAddonPatches
           jmp L_42af50
           .byte 0x8d
           .byte 0x76
@@ -4331,7 +4369,7 @@ L_42b2ac:
           xor EAX,EAX
           ret 
           .byte 0x90
-FUN_42b2b0:
+_patchHeaderOpts:
           push EBX
           xor EDX,EDX
           sub ESP,24
@@ -4406,11 +4444,11 @@ L_42b3c0:
           mov DWORD PTR [L_479f0c],0
           jmp L_42b311
           .byte 0x90
-L_42b3d0:
+_blmodMissing:
           sub ESP,12
           mov EAX,OFFSET L_459ec8
           mov EDX,DWORD PTR [ESP+16]
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           setne AL
           add ESP,12
@@ -4419,7 +4457,7 @@ L_42b3d0:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-L_42b3f0:
+_rotSumSha:
           push EBX
           xor EAX,EAX
           sub ESP,152
@@ -4531,7 +4569,7 @@ L_42b3f9:
           ret 
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_42b610:
+_countBits:
           mov EDX,DWORD PTR [ESP+4]
           mov EAX,EDX
           mov ECX,EDX
@@ -4566,7 +4604,7 @@ L_42b610:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_42b660:
+_patchBlsResign:
           push EBP
           push EDI
           push ESI
@@ -4906,7 +4944,7 @@ L_42bae6:
           jmp L_42b9e1
           .byte 0x66
           .byte 0x90
-FUN_42bb10:
+_patchBlsBlmod:
           push EBP
           push EDI
           push ESI
@@ -5240,7 +5278,7 @@ L_42bf5b:
           jmp L_42bb9d
           .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_42bf70:
+_fixupPatchSet:
           push EBP
           push EDI
           push ESI
@@ -5338,7 +5376,7 @@ L_42c080:
           jmp L_42bfe0
           .byte 0x66
           .byte 0x90
-FUN_42c090:
+_addBlsToImage:
           push EBP
           push EDI
           push ESI
@@ -5734,7 +5772,7 @@ L_42c5f1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_42c600:
+_isUpdateBl:
           mov ECX,DWORD PTR [ESP+4]
           mov EAX,58820096
           mov EDX,0
@@ -5747,7 +5785,7 @@ L_42c600:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_42c620:
+_addUpdateBls:
           push EBP
           push EDI
           push ESI
@@ -5964,7 +6002,7 @@ L_42c8d1:
 L_42c8f7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_42c900:
+_logPowerButton:
           sub ESP,28
           mov EAX,DWORD PTR [ESP+32]
           sub EAX,17
@@ -6158,7 +6196,7 @@ L_42cb90:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_42cbb0:
+_patchFreeboot:
           push EBP
           push EDI
           push ESI
@@ -6205,7 +6243,7 @@ L_42cc93:
           je L_42cd75
           mov DWORD PTR [ESP+4],OFFSET L_45a71e
           mov DWORD PTR [ESP],EAX
-          call FUN_42c900
+          call _logPowerButton
           test EAX,EAX
           jne L_42cd75
           mov ESI,ESI
@@ -6290,7 +6328,7 @@ L_42cde1:
           mov EAX,DWORD PTR [L_479f08]
           mov DWORD PTR [ESP+4],OFFSET L_45a6a4
           mov DWORD PTR [ESP],EAX
-          call FUN_42c900
+          call _logPowerButton
           test EAX,EAX
           mov EDX,DWORD PTR [L_479f08]
           jne L_42ce90
@@ -6301,7 +6339,7 @@ L_42ce04:
 L_42ce11:
           mov DWORD PTR [ESP+4],OFFSET L_45a6df
           mov DWORD PTR [ESP],EAX
-          call FUN_42c900
+          call _logPowerButton
           test EAX,EAX
           je L_42cc82
           mov DWORD PTR [ESP+4],OFFSET L_45a6f8
@@ -6353,7 +6391,7 @@ L_42cec0:
           xor EAX,EAX
           jmp L_42ce11
 L_42ced1:
-          jmp L_42cee0
+          jmp _patchPayloadSize
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -6367,7 +6405,7 @@ L_42ced1:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-L_42cee0:
+_patchPayloadSize:
           push ESI
           push EBX
           sub ESP,36
@@ -6426,7 +6464,7 @@ L_42cf8e:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_42cfa0:
+_encodeBls:
           push EBP
           push EDI
           push ESI
@@ -7557,7 +7595,7 @@ L_42df69:
           mov EAX,DWORD PTR [EBX-4]
           mov DWORD PTR [ESP],EDI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_42cbb0
+          call _patchFreeboot
           jmp L_42d050
 L_42df7d:
           mov EAX,EDX
@@ -7578,7 +7616,7 @@ L_42df95:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_42dfb0:
+_encodeUpdateBls:
           push EBP
           push EDI
           push ESI
@@ -7705,7 +7743,7 @@ L_42e150:
           imul EAX,EAX,1068
           add EAX,271044
           jmp L_42e072
-FUN_42e160:
+_calcBlAreaSize:
           push EDI
           push ESI
           push EBX
@@ -8202,7 +8240,7 @@ L_42e73a:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_42e760:
+_buildFlash:
           push EBP
           push EDI
           push ESI
@@ -8241,7 +8279,7 @@ L_42e7da:
           mov EAX,DWORD PTR [L_47a088]
           test EAX,EAX
           jne L_42ec90
-          call FUN_42a370
+          call _loadBlFiles
           mov DWORD PTR [ESP+40],EAX
           mov EAX,DWORD PTR [ESP+40]
           test EAX,EAX
@@ -8250,7 +8288,7 @@ L_42e81c:
           mov EAX,DWORD PTR [L_47a088]
           test EAX,EAX
           jne L_42e832
-          call FUN_429e70
+          call _verifyBlSigs
           test EAX,EAX
           je L_42fb05
 L_42e832:
@@ -8259,7 +8297,7 @@ L_42e832:
           call _log_printf
           call FUN_412dd0
           mov ESI,EAX
-          call FUN_42e160
+          call _calcBlAreaSize
           test ESI,ESI
           mov DWORD PTR [ESP+32],EAX
           jne L_42f9c0
@@ -8284,7 +8322,7 @@ L_42e87d:
           mov DWORD PTR [ESP+4],OFFSET L_45ac14
           mov DWORD PTR [ESP],1
           call _log_printf
-          call FUN_42b2b0
+          call _patchHeaderOpts
           nop
 L_42e8b0:
           mov DWORD PTR [ESP+4],OFFSET L_45ac58
@@ -8333,7 +8371,7 @@ L_42e940:
           mov DWORD PTR [ESP],EAX
           test EDI,EDI
           jne L_42f9d0
-          call FUN_42cfa0
+          call _encodeBls
           test EAX,EAX
           jne L_42f9dd
 L_42e966:
@@ -8375,7 +8413,7 @@ L_42e9cc:
           mov ESI,DWORD PTR [L_47a088]
           test ESI,ESI
           jne L_42f9f0
-          call FUN_42c090
+          call _addBlsToImage
           call FUN_412dd0
           test EAX,EAX
           je L_42fa02
@@ -8488,7 +8526,7 @@ L_42eb81:
           mov DWORD PTR [ESP],EBP
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP+4],EAX
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           jne L_42eaa2
 L_42ebac:
@@ -8551,7 +8589,7 @@ L_42ec40:
           ret 
           .byte 0x90
 L_42ec90:
-          call FUN_42adc0
+          call _loadConsoleBlFiles
           mov DWORD PTR [ESP+40],EAX
           mov EAX,DWORD PTR [ESP+40]
           test EAX,EAX
@@ -8631,7 +8669,7 @@ L_42ed67:
           imul EAX,DWORD PTR [L_4c4f9c],1068
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP+4],EAX
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           je L_42ebac
           mov EDX,EBP
@@ -8666,7 +8704,7 @@ L_42edbf:
           imul EAX,DWORD PTR [L_4c4f9c],1068
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP+4],EAX
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           je L_42ebac
           mov EDX,EBP
@@ -8762,7 +8800,7 @@ L_42ef80:
           imul EAX,DWORD PTR [L_4c4f9c],1068
           add EAX,OFFSET L_4bbd50
           mov DWORD PTR [ESP+4],EAX
-          call FUN_427ab0
+          call _loadBaseFileMeta
           test EAX,EAX
           je L_42f080
           test BYTE PTR [L_479f03],1
@@ -8991,7 +9029,7 @@ L_42f341:
           imul EDX,DWORD PTR [L_4c4f9c],1068
           mov EAX,EDI
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42f450
 L_42f360:
@@ -9040,7 +9078,7 @@ L_42f401:
           mov BYTE PTR [ESP+106],AL
           mov EAX,EDI
           add EDX,OFFSET L_4bbd50
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           je L_42f530
           mov DWORD PTR [ESP+32],0
@@ -9295,7 +9333,7 @@ L_42f807:
           mov EAX,DWORD PTR [ESP+36]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_428040
+          call _loadInputFile
           test EAX,EAX
           je L_42f770
           mov DWORD PTR [ESP+8],EBX
@@ -9401,7 +9439,7 @@ L_42f9c0:
           .byte 0x66
           .byte 0x90
 L_42f9d0:
-          call FUN_42dfb0
+          call _encodeUpdateBls
           test EAX,EAX
           je L_42e966
 L_42f9dd:
@@ -9411,7 +9449,7 @@ L_42f9dd:
           .byte 0x66
           .byte 0x90
 L_42f9f0:
-          call FUN_42c620
+          call _addUpdateBls
           call FUN_412dd0
           test EAX,EAX
           jne L_42ea00
@@ -9473,7 +9511,7 @@ L_42fae4:
           mov DWORD PTR [ESP+4],OFFSET L_45abe0
           mov DWORD PTR [ESP],1
           call _log_printf
-          call FUN_42b660
+          call _patchBlsResign
           test EAX,EAX
           jne L_42e87d
 L_42fb05:
@@ -9746,14 +9784,14 @@ L_42fecc:
           mov EDX,EBP
           rep stosd DWORD PTR ES:[EDI]
           mov EAX,OFFSET L_459ec8
-          call FUN_427500
+          call _loadBaseFile
           test EAX,EAX
           jne L_430347
           mov EAX,DWORD PTR [ESP+1140]
           mov DWORD PTR [ESP+4],EAX
           mov EAX,DWORD PTR [ESP+1136]
           mov DWORD PTR [ESP],EAX
-          call FUN_42bb10
+          call _patchBlsBlmod
           mov EAX,DWORD PTR [ESP+1136]
           mov DWORD PTR [ESP],EAX
           call _free
@@ -9937,7 +9975,7 @@ L_43017f:
           mov EAX,DWORD PTR [ESP+40]
           jmp L_42f8a2
 L_4301ca:
-          call FUN_42bf70
+          call _fixupPatchSet
           jmp L_42e87d
 L_4301d4:
           mov ECX,OFFSET L_4bc580
@@ -10052,7 +10090,7 @@ L_430347:
 L_43035a:
           mov DWORD PTR [ESP+4],0
           mov DWORD PTR [ESP],0
-          call FUN_42bb10
+          call _patchBlsBlmod
           jmp L_42e87d
 L_430373:
           mov DWORD PTR [ESP+4],OFFSET L_458d74
@@ -10074,7 +10112,7 @@ L_4303a0:
 L_4303d1:
           mov DWORD PTR [ESP],EAX
           mov DWORD PTR [ESP+4],EDX
-          call FUN_42bb10
+          call _patchBlsBlmod
           mov EAX,DWORD PTR [L_47a078]
           mov DWORD PTR [ESP],EAX
           call _free
@@ -15096,7 +15134,7 @@ L_45b480:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_427500 - .
+          .long _loadBaseFile - .
           .byte 0x4e
           .byte 0x1
           .byte 0x0
@@ -15189,7 +15227,7 @@ L_45b480:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_427650 - .
+          .long _findFileOffset - .
           .byte 0x49
           .byte 0x0
           .byte 0x0
@@ -15222,7 +15260,7 @@ L_45b480:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_4276a0 - .
+          .long _findFileSize - .
           .byte 0x49
           .byte 0x0
           .byte 0x0
@@ -15280,7 +15318,7 @@ L_45b480:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_427730 - .
+          .long _loadFileCrc - .
           .byte 0x14
           .byte 0x2
           .byte 0x0
@@ -15389,7 +15427,7 @@ L_45b480:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_427950 - .
+          .long _readMetaFile - .
           .byte 0x57
           .byte 0x0
           .byte 0x0
@@ -15422,7 +15460,7 @@ L_45b480:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_4279b0 - .
+          .long _makeTimestamp - .
           .byte 0xc0
           .byte 0x0
           .byte 0x0
@@ -15483,7 +15521,7 @@ L_45b480:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_427a70 - .
+          .long _timestampToFileTime - .
           .byte 0x34
           .byte 0x0
           .byte 0x0
@@ -15504,7 +15542,7 @@ L_45b480:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_427ab0 - .
+          .long _loadBaseFileMeta - .
           .byte 0xa
           .byte 0x2
           .byte 0x0
@@ -15589,7 +15627,7 @@ L_45b480:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_427cc0 - .
+          .long _loadCommonFile - .
           .byte 0x74
           .byte 0x3
           .byte 0x0
@@ -15722,7 +15760,7 @@ L_45b480:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_428040 - .
+          .long _loadInputFile - .
           .byte 0x3a
           .byte 0x7
           .byte 0x0
@@ -15807,7 +15845,7 @@ L_45b480:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_428780 - .
+          .long _loadBinFile - .
           .byte 0x3e
           .byte 0x1
           .byte 0x0
@@ -15892,7 +15930,7 @@ L_45b480:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_4288c0 - .
+          .long _loadLocalFile - .
           .byte 0xf4
           .byte 0x1
           .byte 0x0
@@ -15953,7 +15991,7 @@ L_45b480:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long L_428ac0 - .
+          .long _setFileData - .
           .byte 0x50
           .byte 0x0
           .byte 0x0
@@ -15994,7 +16032,7 @@ L_45b480:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_428b10 - .
+          .long _appendAddonPatches - .
           .byte 0x3
           .byte 0x2
           .byte 0x0
@@ -16055,7 +16093,7 @@ L_45b480:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_428d20 - .
+          .long _showSmcConfig - .
           .byte 0x59
           .byte 0x4
           .byte 0x0
@@ -16100,7 +16138,7 @@ L_45b480:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long L_429180 - .
+          .long _iniRangeOk - .
           .byte 0x66
           .byte 0x0
           .byte 0x0
@@ -16129,7 +16167,7 @@ L_45b480:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_4291f0 - .
+          .long _patchSmcConfig - .
           .byte 0xda
           .byte 0x5
           .byte 0x0
@@ -16174,7 +16212,7 @@ L_45b480:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_4297d0 - .
+          .long _extractSmcConfig - .
           .byte 0x33
           .byte 0x3
           .byte 0x0
@@ -16259,7 +16297,7 @@ L_45b480:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long L_429b10 - .
+          .long _raiseKernel - .
           .byte 0x1c
           .byte 0x0
           .byte 0x0
@@ -16276,7 +16314,7 @@ L_45b480:
           .byte 0x4
           .byte 0x0
           .byte 0x0
-          .long FUN_429b30 - .
+          .long _checkBl - .
           .byte 0x3d
           .byte 0x3
           .byte 0x0
@@ -16365,7 +16403,7 @@ L_45b480:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_429e70 - .
+          .long _verifyBlSigs - .
           .byte 0xff
           .byte 0x4
           .byte 0x0
@@ -16426,7 +16464,7 @@ L_45b480:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_42a370 - .
+          .long _loadBlFiles - .
           .byte 0x4d
           .byte 0xa
           .byte 0x0
@@ -16511,7 +16549,7 @@ L_45b480:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_42adc0 - .
+          .long _loadConsoleBlFiles - .
           .byte 0xef
           .byte 0x4
           .byte 0x0
@@ -16604,7 +16642,7 @@ L_45b480:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_42b2b0 - .
+          .long _patchHeaderOpts - .
           .byte 0x1f
           .byte 0x1
           .byte 0x0
@@ -16637,7 +16675,7 @@ L_45b480:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long L_42b3d0 - .
+          .long _blmodMissing - .
           .byte 0x1d
           .byte 0x0
           .byte 0x0
@@ -16658,7 +16696,7 @@ L_45b480:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long L_42b3f0 - .
+          .long _rotSumSha - .
           .byte 0x17
           .byte 0x2
           .byte 0x0
@@ -16691,7 +16729,7 @@ L_45b480:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long L_42b610 - .
+          .long _countBits - .
           .byte 0x4d
           .byte 0x0
           .byte 0x0
@@ -16708,7 +16746,7 @@ L_45b480:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_42b660 - .
+          .long _patchBlsResign - .
           .byte 0xae
           .byte 0x4
           .byte 0x0
@@ -16817,7 +16855,7 @@ L_45b480:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_42bb10 - .
+          .long _patchBlsBlmod - .
           .byte 0x52
           .byte 0x4
           .byte 0x0
@@ -16878,7 +16916,7 @@ L_45b480:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_42bf70 - .
+          .long _fixupPatchSet - .
           .byte 0x1e
           .byte 0x1
           .byte 0x0
@@ -16939,7 +16977,7 @@ L_45b480:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_42c090 - .
+          .long _addBlsToImage - .
           .byte 0x68
           .byte 0x5
           .byte 0x0
@@ -17000,7 +17038,7 @@ L_45b480:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long L_42c600 - .
+          .long _isUpdateBl - .
           .byte 0x1d
           .byte 0x0
           .byte 0x0
@@ -17017,7 +17055,7 @@ L_45b480:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_42c620 - .
+          .long _addUpdateBls - .
           .byte 0xd7
           .byte 0x2
           .byte 0x0
@@ -17078,7 +17116,7 @@ L_45b480:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_42c900 - .
+          .long _logPowerButton - .
           .byte 0xab
           .byte 0x2
           .byte 0x0
@@ -17103,7 +17141,7 @@ L_45b480:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_42cbb0 - .
+          .long _patchFreeboot - .
           .byte 0x21
           .byte 0x3
           .byte 0x0
@@ -17188,7 +17226,7 @@ L_45b480:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long L_42cee0 - .
+          .long _patchPayloadSize - .
           .byte 0xb4
           .byte 0x0
           .byte 0x0
@@ -17229,7 +17267,7 @@ L_45b480:
           .byte 0x8
           .byte 0x0
           .byte 0x0
-          .long FUN_42cfa0 - .
+          .long _encodeBls - .
           .byte 0xb
           .byte 0x10
           .byte 0x0
@@ -17290,7 +17328,7 @@ L_45b480:
           .byte 0x9
           .byte 0x0
           .byte 0x0
-          .long FUN_42dfb0 - .
+          .long _encodeUpdateBls - .
           .byte 0xb0
           .byte 0x1
           .byte 0x0
@@ -17351,7 +17389,7 @@ L_45b480:
           .byte 0x9
           .byte 0x0
           .byte 0x0
-          .long FUN_42e160 - .
+          .long _calcBlAreaSize - .
           .byte 0xf3
           .byte 0x5
           .byte 0x0
@@ -17404,7 +17442,7 @@ L_45b480:
           .byte 0x9
           .byte 0x0
           .byte 0x0
-          .long L_42e760 - .
+          .long _buildFlash - .
           .byte 0xfa
           .byte 0x1c
           .byte 0x0

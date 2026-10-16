@@ -526,6 +526,24 @@ SYMBOLS = {
     0x453f54: '_ir_453f54', 0x453f94: '_ir_453f94', 0x453fcc: '_ir_453fcc', 0x454009: '_ir_454009',
     0x454025: '_ir_454025', 0x454044: '_ir_454044', 0x454098: '_ir_454098', 0x4540dc: '_ir_4540dc',
     0x454114: '_ir_454114', 0x454138: '_ir_454138', 0x45417c: '_ir_45417c', 0x4541b0: '_ir_4541b0',
+    # app/build; names are ours.  Its file table entry is {name[0x400], crc,
+    # type, offset, data, size, ...}, 0x42c bytes.  findFile is named above.
+    0x427500: '_loadBaseFile',          # baseDir+name; regparm (eax, edx)
+    0x427650: '_findFileOffset', 0x4276a0: '_findFileSize',
+    0x427730: '_loadFileCrc', 0x427950: '_readMetaFile',
+    0x4279b0: '_makeTimestamp', 0x427a70: '_timestampToFileTime',
+    0x427ab0: '_loadBaseFileMeta', 0x427cc0: '_loadCommonFile',
+    0x428040: '_loadInputFile', 0x428780: '_loadBinFile', 0x4288c0: '_loadLocalFile',
+    0x428ac0: '_setFileData', 0x428b10: '_appendAddonPatches',
+    0x428d20: '_showSmcConfig', 0x429180: '_iniRangeOk', 0x4291f0: '_patchSmcConfig',
+    0x4297d0: '_extractSmcConfig', 0x429b10: '_raiseKernel', 0x429b30: '_checkBl',
+    0x429e70: '_verifyBlSigs', 0x42a370: '_loadBlFiles', 0x42adc0: '_loadConsoleBlFiles',
+    0x42b2b0: '_patchHeaderOpts', 0x42b3d0: '_blmodMissing', 0x42b3f0: '_rotSumSha',
+    0x42b610: '_countBits', 0x42b660: '_patchBlsResign', 0x42bb10: '_patchBlsBlmod',
+    0x42bf70: '_fixupPatchSet', 0x42c090: '_addBlsToImage', 0x42c600: '_isUpdateBl',
+    0x42c620: '_addUpdateBls', 0x42c900: '_logPowerButton', 0x42cbb0: '_patchFreeboot',
+    0x42cee0: '_patchPayloadSize', 0x42cfa0: '_encodeBls', 0x42dfb0: '_encodeUpdateBls',
+    0x42e160: '_calcBlAreaSize', 0x42e760: '_buildFlash',   # buildImage tail-calls it
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o

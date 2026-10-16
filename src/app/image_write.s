@@ -906,18 +906,18 @@ L_40f420:
           and EAX,OFFSET __ImageBase
           add EAX,8388608
           mov DWORD PTR [L_4cd7c8],EAX
-          call FUN_427650
+          call _findFileOffset
           mov DWORD PTR [ESP],9
           mov EBX,EAX
-          call FUN_427650
+          call _findFileOffset
           mov DWORD PTR [ESP],9
           mov ESI,EAX
           shl EBX,24
-          call FUN_427650
+          call _findFileOffset
           mov DWORD PTR [ESP],9
           mov EDI,EAX
           shl ESI,8
-          call FUN_427650
+          call _findFileOffset
           shr EAX,24
           mov ECX,DWORD PTR [_g479ea8]
           and ESI,16711680
@@ -1039,7 +1039,7 @@ L_40f76b:
           pop ESI
           pop EDI
           pop EBP
-          jmp L_42e760
+          jmp _buildFlash
 L_40f784:
           mov EDX,DWORD PTR [L_479ea4]
           mov DWORD PTR [L_4cd7c8],8388608
@@ -1107,7 +1107,7 @@ L_40f826:
           pop ESI
           pop EDI
           pop EBP
-          jmp L_42e760
+          jmp _buildFlash
           .byte 0x90
           .byte 0x8d
           .byte 0x74
