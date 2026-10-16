@@ -127,6 +127,8 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc);
 int extractSmcConfig(struct fileent *e, u8 *buf, u32 size);
 int blmodMissing(struct fileent *e);
 void appendAddonPatches(struct fileent *e);
+int logPowerButton(int reason, const char *use);
+void fixupPatchSet(void);
 
 u32 findFileOffset(int type)
 {

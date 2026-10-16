@@ -710,3 +710,92 @@ void appendAddonPatches(struct fileent *e)
 		log_printf(1, "added 0x%x bytes to patches via %d external patch files\n"
 			   "    patches now 0x%x bytes total with addon byte count appended\n", added, xb.nAddons, size);
 }
+
+/* what a power-on reason code is; 1 for an unknown one.  Console types
+   above 4 (slims) have different USB ports */
+int logPowerButton(int reason, const char *use)
+{
+	switch (reason) {
+	case 0x11:
+		log_printf(1, "    - console power button is being used to %s \n", use);
+		break;
+	case 0x12:
+		log_printf(1, "    - console DVD eject button is being used to %s \n", use);
+		break;
+	case 0x20:
+		log_printf(1, "    - IR remote power button is being used to %s \n", use);
+		break;
+	case 0x22:
+		log_printf(1, "    - IR remote guide/X button is being used to %s \n", use);
+		break;
+	case 0x24:
+		log_printf(1, "    - IR remote windows button is being used to %s \n", use);
+		break;
+	case 0x41:
+		log_printf(1, "    - KIOSK debug pin is being used to %s \n", use);
+		break;
+	case 0x55:
+		log_printf(1, "    - wireless controller powering on console is being used to %s \n", use);
+		break;
+	case 0x56:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
+		break;
+	case 0x57:
+		if ((xb.flags & 7) <= 4)
+			log_printf(1, "wired controller (front bottom usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
+		break;
+	case 0x58:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, "wired controller (rear middle usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
+		break;
+	case 0x59:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
+		break;
+	case 0x5a:
+		if ((xb.flags & 7) <= 4)
+			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (rear bottom usb port) is being used to %s \n", use);
+		break;
+	default:
+		return 1;
+	}
+	return 0;
+}
+
+/* drop the first two patch sets (each a list of {addr, count, words}
+   ended by 0xffffffff) from the patches file */
+void fixupPatchSet(void)
+{
+	struct fileent *e = &xb.files[findFile(23)];
+	u8 *p = e->data;
+	u32 off, i;
+	int n = 0;
+
+	log_printf(1, "Fixing up patch set...");
+	off = 0;
+	while (off < e->size) {
+		if (n == 2) {
+			for (i = 0; i < e->size - off; i++)
+				e->data[i] = e->data[off + i];
+			e->size -= off;
+			break;
+		}
+		if (getBeU32(p + off) == 0xffffffff) {
+			n++;
+			off += 4;
+		} else
+			off += getBeU32(p + off + 4) * 4 + 8;
+	}
+	log_printf(1, "Done!\n");
+}

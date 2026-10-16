@@ -546,7 +546,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the object (28 of 41 functions so far). 16 match and are built
+Draft of the object (30 of 41 functions so far). 16 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -590,6 +590,12 @@ only shows in `sh build.sh`.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original.
+- logPowerButton matches here but can't be built from the mixed C: its
+  switch table is in build.s's .rdata. Which arm of each fat/slim
+  `if` comes first matters (wip-matching orientation found by trying all 32).
+- fixupPatchSet (~95): like extractSmcConfig, the original's loop is not
+  header-copied and keeps `off` on the stack; `__attribute__((cold))` is
+  not it.
 - blmodMissing: only testable with loadBaseFile's other callers drafted
   (alone, gcc clones loadBaseFile for the constant name).
 - loadBaseFile is static with gcc's local convention (eax, edx).
