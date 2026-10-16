@@ -10,11 +10,11 @@
 
 .intel_syntax noprefix
 .globl FUN_414760
-.globl FUN_415ef0
 .globl FUN_416840
 .globl _buildCleanup
 .globl _listFlashFiles
 .globl _loadDump
+.globl _remapBadBlocks
 
 .text
 .p2align 4
@@ -3075,7 +3075,7 @@ L_415ee4:
           ret 
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_415ef0:
+_remapBadBlocks:
           push EBP
           push EDI
           push ESI
@@ -3653,7 +3653,7 @@ L_4166c5:
           je L_4165d0
           mov EAX,DWORD PTR [ESP+52]
           mov DWORD PTR [ESP],EAX
-          call FUN_415ef0
+          call _remapBadBlocks
           mov DWORD PTR [ESP+4],OFFSET L_4534e9
           mov DWORD PTR [ESP],1
           call _log_printf
@@ -7433,7 +7433,7 @@ L_4541b0:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_415ef0 - .
+          .long _remapBadBlocks - .
           .byte 0x47
           .byte 0x1
           .byte 0x0

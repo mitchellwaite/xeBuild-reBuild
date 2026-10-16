@@ -214,7 +214,7 @@ FUN_406740:
           call _parseConsoleInfo
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_420420
+          call _netGetBadBlocks
           test EAX,EAX
           mov EDI,EAX
           je L_4067bb
@@ -254,7 +254,7 @@ L_4067cd:
           mov DWORD PTR [ESP],0
           call _log_printf
           mov DWORD PTR [ESP],EBX
-          call FUN_41fe20
+          call _netDumpNand
           test EAX,EAX
           je L_406933
           mov DWORD PTR [ESP+4],OFFSET L_44ec35
@@ -280,7 +280,7 @@ L_406879:
           call _parseConsoleInfo
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
-          call FUN_420420
+          call _netGetBadBlocks
           test EAX,EAX
           mov EDI,EAX
           je L_406856
@@ -417,7 +417,7 @@ L_406a70:
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EBX
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41ffe0
+          call _netSendFlash
           mov ESI,EAX
           jmp L_406a0f
           .byte 0x90
@@ -2350,7 +2350,7 @@ L_408405:
           je L_408a30
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EAX
-          call FUN_41f700
+          call _netConnect
           test EAX,EAX
           jne L_408812
 L_408421:
@@ -2567,7 +2567,7 @@ L_408703:
 L_408758:
           mov EAX,DWORD PTR [ESP+44]
           mov DWORD PTR [ESP],EAX
-          call FUN_41f700
+          call _netConnect
           test EAX,EAX
           je L_408421
           call _netGetInfo
@@ -2618,7 +2618,7 @@ L_408812:
           mov DWORD PTR [L_46f160],EAX
 L_40881c:
           mov DWORD PTR [ESP],EDI
-          call FUN_420840
+          call _netReboot
           jmp L_408803
 L_408826:
           mov EAX,DWORD PTR [ESP+68]
@@ -2654,7 +2654,7 @@ L_408899:
           jmp L_4087ff
 L_4088b2:
           mov DWORD PTR [ESP],EBP
-          call FUN_41fe20
+          call _netDumpNand
           jmp L_4087ff
 L_4088bf:
           call FUN_406c60

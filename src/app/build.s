@@ -1249,7 +1249,7 @@ L_428580:
           mov DWORD PTR [ESP+8],EDX
           mov DWORD PTR [ESP+4],EBP
           mov DWORD PTR [ESP],EBX
-          call FUN_404600
+          call _updateGetFile
           test EAX,EAX
           je L_4281a1
           mov EAX,DWORD PTR [EDI+1040]

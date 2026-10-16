@@ -28,6 +28,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # would need 95); 155 and up match
       app/consoleinfo) orig="$f.c"
              cflags="-O3 --param align-threshold=200" ;;
+      # getBadBlocks aligns its error block, which the default (100) doesn't
+      app/mode_update) orig="$f.c"
+             cflags="-O3 --param align-threshold=200" ;;
       # the functions not yet matched are top-level asm between the C ones;
       # -fno-toplevel-reorder keeps that order (gcc 6 otherwise puts all
       # top-level asm first), and the asm carries the object's .eh_frame

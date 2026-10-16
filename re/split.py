@@ -379,6 +379,37 @@ SYMBOLS = {
     0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
     0x44c110: '_msg_cfSlot1', 0x44c143: '_msg_sigGood', 0x44c14e: '_msg_sigCheckFail',
     0x44c200: '_msg_sigFail', 0x44c214: '_msg_noPub',
+    # app/mode_update (src/app/mode_update.c) and what it calls; names are ours
+    0x4030b0: '_getBadBlocks', 0x4031d0: '_update_usage', 0x403460: '_wantFile',
+    0x4034f0: '_parseAddonIdx', 0x403700: '_getAddons', 0x403820: '_getMobileFiles',
+    0x403cf0: '_bldrGetKv', 0x403d80: '_bldrGetSmc', 0x403e10: '_getSecurityFiles',
+    0x404320: '_checkBadBlocks', 0x404340: '_getBootloaders',
+    0x404430: '_getConsoleFiles', 0x404600: '_updateGetFile',
+    0x44a008: '_useConsoleAddons',
+    0x412230: '_imageGetBuffer', 0x415ef0: '_remapBadBlocks',
+    0x41f700: '_netConnect', 0x41fe20: '_netDumpNand', 0x41ff90: '_netGetBldrs',
+    0x41ffe0: '_netSendFlash', 0x420420: '_netGetBadBlocks', 0x420840: '_netReboot',
+    # mode_update.s strings and variables the mixed mode_update.c refers to
+    0x46f040: '_path', 0x46f144: '_noReboot', 0x46f148: '_noAvatar', 0x46f14c: '_noWrite',
+    0x46f150: '_clean', 0x46f154: '_hasHdd', 0x46f158: '_updating', 0x46f15c: '_info',
+    0x44c6e8: '_mu_44c6e8', 0x44c70c: '_mu_44c70c', 0x44c730: '_mu_44c730', 0x44c74c: '_mu_44c74c',
+    0x44c76c: '_mu_44c76c', 0x44c7ab: '_mu_44c7ab', 0x44c7b4: '_mu_44c7b4', 0x44c7e1: '_mu_44c7e1',
+    0x44c7ec: '_mu_44c7ec', 0x44c810: '_mu_44c810', 0x44c844: '_mu_44c844', 0x44c850: '_mu_44c850',
+    0x44c888: '_mu_44c888', 0x44c8ca: '_mu_44c8ca', 0x44c8e8: '_mu_44c8e8', 0x44c918: '_mu_44c918',
+    0x44c95c: '_mu_44c95c', 0x44c9a8: '_mu_44c9a8', 0x44c9e8: '_mu_44c9e8', 0x44ca2c: '_mu_44ca2c',
+    0x44ca74: '_mu_44ca74', 0x44cac8: '_mu_44cac8', 0x44cb18: '_mu_44cb18', 0x44cb58: '_mu_44cb58',
+    0x44cb90: '_mu_44cb90', 0x44cbb0: '_mu_44cbb0', 0x44cbbc: '_mu_44cbbc', 0x44cc04: '_mu_44cc04',
+    0x44cc58: '_mu_44cc58', 0x44ccc8: '_mu_44ccc8', 0x44cd14: '_mu_44cd14', 0x44cd6c: '_mu_44cd6c',
+    0x44cdc0: '_mu_44cdc0', 0x44cddb: '_mu_44cddb', 0x44cde8: '_mu_44cde8', 0x44cdf4: '_mu_44cdf4',
+    0x44ce08: '_mu_44ce08', 0x44ce21: '_mu_44ce21', 0x44ce40: '_mu_44ce40', 0x44ce9c: '_mu_44ce9c',
+    0x44cea3: '_mu_44cea3', 0x44cebc: '_mu_44cebc', 0x44ced0: '_mu_44ced0', 0x44cf18: '_mu_44cf18',
+    0x44cf6c: '_mu_44cf6c', 0x44cfac: '_mu_44cfac', 0x44cfd4: '_mu_44cfd4', 0x44cfe1: '_mu_44cfe1',
+    0x44cff0: '_mu_44cff0', 0x44d009: '_mu_44d009', 0x44d010: '_mu_44d010', 0x44d054: '_mu_44d054',
+    0x44d074: '_mu_44d074', 0x44d090: '_mu_44d090', 0x44d0d4: '_mu_44d0d4', 0x44d0f8: '_mu_44d0f8',
+    0x44d12c: '_mu_44d12c', 0x44d144: '_mu_44d144', 0x44d171: '_mu_44d171', 0x44d186: '_mu_44d186',
+    0x44d198: '_mu_44d198', 0x44d1d3: '_mu_44d1d3', 0x44d1db: '_mu_44d1db', 0x44d400: '_mu_44d400',
+    0x44d424: '_mu_44d424', 0x44d440: '_mu_44d440', 0x44d46e: '_mu_44d46e', 0x44d479: '_mu_44d479',
+    0x44d484: '_mu_44d484', 0x44d5ba: '_mu_44d5ba', 0x44d5d4: '_mu_44d5d4',
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -412,6 +443,10 @@ IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
+    # app/mode_update (getSecurityFiles, getConsoleFiles, mode_update stay asm)
+    0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
+    0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
+    0x404320, 0x404340, 0x404600,            # checkBadBlocks getBootloaders updateGetFile
     # app/options (parseButton stays asm: its ipa-split part at 449640 is
     # called from asm, and gcc would put it in .text.unlikely)
     0x4236f0,                                # baseFileExists.part.0

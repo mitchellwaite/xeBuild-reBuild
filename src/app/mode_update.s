@@ -1,5 +1,7 @@
 # app/mode_update.s -- "Usage: %s update", bad block handling
 #
+# mixed: `#@C name` lines are functions from mode_update.c (re/splice.py)
+#
 # original placement:
 #   .bss           0046f040-0046f160
 #   .data          0044a008-0044a020
@@ -9,204 +11,100 @@
 #   .text          004030b0-00405610
 
 .intel_syntax noprefix
-.globl FUN_404600
 .globl L_404000
+.globl _clean
+.globl _getConsoleFiles
+.globl _getSecurityFiles
+.globl _hasHdd
+.globl _info
 .globl _mode_update
+.globl _mu_44c6e8
+.globl _mu_44c70c
+.globl _mu_44c730
+.globl _mu_44c74c
+.globl _mu_44c76c
+.globl _mu_44c7ab
+.globl _mu_44c7b4
+.globl _mu_44c7e1
+.globl _mu_44c7ec
+.globl _mu_44c810
+.globl _mu_44c844
+.globl _mu_44c850
+.globl _mu_44c888
+.globl _mu_44c8ca
+.globl _mu_44c8e8
+.globl _mu_44c918
+.globl _mu_44c95c
+.globl _mu_44c9a8
+.globl _mu_44c9e8
+.globl _mu_44ca2c
+.globl _mu_44ca74
+.globl _mu_44cac8
+.globl _mu_44cb18
+.globl _mu_44cb58
+.globl _mu_44cb90
+.globl _mu_44cbb0
+.globl _mu_44cbbc
+.globl _mu_44cc04
+.globl _mu_44cc58
+.globl _mu_44ccc8
+.globl _mu_44cd14
+.globl _mu_44cd6c
+.globl _mu_44cdc0
+.globl _mu_44cddb
+.globl _mu_44cde8
+.globl _mu_44cdf4
+.globl _mu_44ce08
+.globl _mu_44ce21
+.globl _mu_44ce40
+.globl _mu_44ce9c
+.globl _mu_44cea3
+.globl _mu_44cebc
+.globl _mu_44ced0
+.globl _mu_44cf18
+.globl _mu_44cf6c
+.globl _mu_44cfac
+.globl _mu_44cfd4
+.globl _mu_44cfe1
+.globl _mu_44cff0
+.globl _mu_44d009
+.globl _mu_44d010
+.globl _mu_44d054
+.globl _mu_44d074
+.globl _mu_44d090
+.globl _mu_44d0d4
+.globl _mu_44d0f8
+.globl _mu_44d12c
+.globl _mu_44d144
+.globl _mu_44d171
+.globl _mu_44d186
+.globl _mu_44d198
+.globl _mu_44d1d3
+.globl _mu_44d1db
+.globl _mu_44d400
+.globl _mu_44d424
+.globl _mu_44d440
+.globl _mu_44d46e
+.globl _mu_44d479
+.globl _mu_44d484
+.globl _mu_44d5ba
+.globl _mu_44d5d4
+.globl _noAvatar
+.globl _noReboot
+.globl _noWrite
+.globl _path
+.globl _updating
+.globl _useConsoleAddons
 
 .text
 .p2align 4
-FUN_4030b0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,44
-          mov DWORD PTR [ESP+4],OFFSET L_44c6e8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          lea EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP],EAX
-          call FUN_420420
-          test EAX,EAX
-          je L_4031b0
-          mov ECX,DWORD PTR [ESP+28]
-          mov EBX,EAX
-          test ECX,ECX
-          jne L_403112
-          mov DWORD PTR [ESP+4],OFFSET L_44c74c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_4030fd:
-          mov DWORD PTR [ESP],EBX
-          call _netFree
-          mov EAX,1
-L_40310a:
-          add ESP,44
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_403112:
-          mov ESI,DWORD PTR [L_46f15c]
-          xor EDX,EDX
-          mov EAX,DWORD PTR [ESI+20]
-          div DWORD PTR [ESI+24]
-          mov DWORD PTR [ESP+4],OFFSET L_44c70c
-          mov DWORD PTR [ESP],1
-          mov ESI,EAX
-          mov EAX,ECX
-          shr EAX,31
-          add EAX,ECX
-          sar EAX,1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EBP,DWORD PTR [ESP+28]
-          sub EBP,2
-          js L_40319c
-          .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
-L_403150:
-          lea EAX,DWORD PTR [EBX+EBP*1]
-          mov DWORD PTR [ESP],EAX
-          call _getBeU16
-          movzx EDI,AX
-          mov DWORD PTR [ESP+4],OFFSET L_44c730
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EDI
-          call _log_printf
-          mov ECX,DWORD PTR [L_479f74]
-          mov DWORD PTR [ECX*4+L_479ff8],4294967295
-          mov DWORD PTR [ECX*4+L_479f78],EDI
-          add ECX,1
-          sub EBP,2
-          mov DWORD PTR [L_479f74],ECX
-          jns L_403150
-L_40319c:
-          mov DWORD PTR [ESP],ESI
-          call FUN_415ef0
-          jmp L_4030fd
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4031b0:
-          mov DWORD PTR [ESP+4],OFFSET L_44c76c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-          jmp L_40310a
+#@C _getBadBlocks
           .byte 0x90
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_4031d0:
-          sub ESP,28
-          mov DWORD PTR [ESP+4],OFFSET _separator
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+8],OFFSET L_44c7ab
-          mov DWORD PTR [ESP+4],OFFSET L_44c7b4
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c7e1
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+8],OFFSET L_44c7ab
-          mov DWORD PTR [ESP+4],OFFSET L_44c7ec
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+8],OFFSET L_44c7ab
-          mov DWORD PTR [ESP+4],OFFSET L_44c810
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c844
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c850
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c888
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c8ca
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c8e8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c918
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c95c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c9a8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44c9e8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44ca2c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44ca74
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cac8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cb18
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cb58
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cb90
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cbb0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cbbc
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cc04
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cc58
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44ccc8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cd14
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44cd6c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET _separator
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          call _log_finish
-          mov EAX,DWORD PTR [_promptEnter]
-          test EAX,EAX
-          jne L_403435
-L_403429:
-          mov DWORD PTR [ESP],1
-          call _exit
-L_403435:
-          mov DWORD PTR [ESP+4],OFFSET L_44cdc0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [_iob]
-          mov DWORD PTR [ESP],EAX
-          call _fgetc
-          jmp L_403429
+#@C _update_usage
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -215,49 +113,7 @@ L_403435:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_403460:
-          mov EAX,DWORD PTR [L_46f150]
-          test EAX,EAX
-          jne L_403470
-          mov EAX,1
-          ret 
-          .byte 0x90
-L_403470:
-          sub ESP,28
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET L_44cddb
-          mov DWORD PTR [ESP],EAX
-          call _stricmp
-          test EAX,EAX
-          jne L_4034b0
-L_40348b:
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET L_44ce08
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          add ESP,28
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_4034b0:
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET L_44cde8
-          mov DWORD PTR [ESP],EAX
-          call _stricmp
-          test EAX,EAX
-          je L_40348b
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET L_44cdf4
-          mov DWORD PTR [ESP],EAX
-          call _stricmp
-          test EAX,EAX
-          je L_40348b
-          mov EAX,1
-          add ESP,28
-          ret 
+#@C _wantFile
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -265,165 +121,7 @@ L_4034b0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_4034f0:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          mov ESI,4
-          sub ESP,1068
-          mov EDI,DWORD PTR [ESP+1096]
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP],EDI
-          call _getBeU32
-          cmp DWORD PTR [ESP+28],EAX
-          jae L_4035a5
-L_403520:
-          lea EAX,DWORD PTR [EDI+ESI*1]
-          add ESI,4
-          mov DWORD PTR [ESP],EAX
-          call _getBeU32
-          test EAX,EAX
-          mov EBX,EAX
-          je L_4035b0
-          mov DWORD PTR [ESP+24],1
-          xor EBP,EBP
-          .byte 0x66   # nop
-          nop
-L_403540:
-          lea EAX,DWORD PTR [ESI+EBP*8]
-          mov DWORD PTR [ESP+12],8
-          add EAX,EDI
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+1092]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+1088]
-          mov DWORD PTR [ESP],EAX
-          call _findInstExists
-          test EAX,EAX
-          jne L_403579
-          mov EBP,EBX
-          mov DWORD PTR [ESP+24],0
-L_403579:
-          add EBP,1
-          cmp EBX,EBP
-          ja L_403540
-          mov ECX,DWORD PTR [ESP+24]
-          lea ESI,DWORD PTR [ESI+EBX*8]
-          test ECX,ECX
-          jne L_4035b0
-L_40358b:
-          mov DWORD PTR [ESP],EDI
-          add DWORD PTR [ESP+28],1
-          add ESI,16
-          call _getBeU32
-          cmp DWORD PTR [ESP+28],EAX
-          jb L_403520
-L_4035a5:
-          add ESP,1068
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_4035b0:
-          mov EBX,DWORD PTR [L_4c4f94]
-          cmp EBX,15
-          jg L_4036c6
-          lea EAX,DWORD PTR [ESP+32]
-          lea EBP,DWORD PTR [EDI+ESI*1]
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+4],EBP
-          call _strcpy
-          lea EDX,DWORD PTR [ESP+32]
-L_4035d6:
-          mov ECX,DWORD PTR [EDX]
-          add EDX,4
-          lea EAX,DWORD PTR [ECX-16843009]
-          not ECX
-          and EAX,ECX
-          and EAX,2155905152
-          je L_4035d6
-          mov ECX,EAX
-          shr ECX,16
-          test EAX,32896
-          cmove EAX,ECX
-          lea ECX,DWORD PTR [EDX+2]
-          cmove EDX,ECX
-          mov ECX,EAX
-          add CL,AL
-          sbb EDX,3
-          test EBX,EBX
-          mov DWORD PTR [EDX],1852400174
-          mov BYTE PTR [EDX+4],0
-          je L_4036c2
-          mov DWORD PTR [ESP+24],1
-          xor EBX,EBX
-L_403622:
-          imul EAX,EBX,1068
-          add EAX,OFFSET L_4c0c94
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP],EAX
-          call _stricmp
-          test EAX,EAX
-          je L_4036a0
-          mov EAX,DWORD PTR [L_4c4f94]
-          add EBX,1
-          cmp EBX,EAX
-          jb L_403622
-          mov EDX,DWORD PTR [ESP+24]
-          test EDX,EDX
-          je L_40358b
-L_403659:
-          imul EAX,EAX,1068
-          lea EDX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],EDX
-          add EAX,OFFSET L_4c0c94
-          mov DWORD PTR [ESP],EAX
-          call _strcpy
-          mov DWORD PTR [ESP+8],EBP
-          mov DWORD PTR [ESP+4],OFFSET L_44ce21
-          mov DWORD PTR [ESP],0
-          add DWORD PTR [L_4c4f94],1
-          call _log_printf
-          jmp L_40358b
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4036a0:
-          mov EBX,DWORD PTR [L_4c4f94]
-          xor EAX,EAX
-          add EBX,1
-          jb L_4036eb
-L_4036ad:
-          test EAX,EAX
-          je L_40358b
-          mov DWORD PTR [ESP+24],0
-          jmp L_403622
-L_4036c2:
-          xor EAX,EAX
-          jmp L_403659
-L_4036c6:
-          add ESI,EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44ce40
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+8],ESI
-          call _log_printf
-          add ESP,1068
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_4036eb:
-          mov EAX,1
-          jmp L_4036ad
+#@C _parseAddonIdx
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -438,364 +136,11 @@ L_4036eb:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_403700:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,1056
-          lea EAX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESP],OFFSET L_44ce9c
-          mov DWORD PTR [ESP+4],EAX
-          call _netGetFile
-          test EAX,EAX
-          je L_4037e0
-          mov EBX,EAX
-          mov EAX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESP+4],OFFSET L_44cea3
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+24]
-          test AL,3
-          jne L_4037c0
-          test EAX,EAX
-          jne L_403761
-L_40374f:
-          mov DWORD PTR [ESP],EBX
-          call _netFree
-          add ESP,1056
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_403761:
-          mov EAX,DWORD PTR [L_46f15c]
-          lea EDI,DWORD PTR [ESP+32]
-          movzx EAX,WORD PTR [EAX+5]
-          mov DWORD PTR [ESP+4],OFFSET L_44cebc
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+8],EAX
-          call _sprintf
-          lea EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EAX
-          call _FileToBuffer
-          test EAX,EAX
-          mov ESI,EAX
-          je L_403800
-          mov EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESP+4],EAX
-          call FUN_4034f0
-          mov DWORD PTR [ESP],ESI
-          call _free
-          jmp L_40374f
-          .byte 0x66
-          .byte 0x90
-L_4037c0:
-          mov DWORD PTR [ESP+4],OFFSET L_44cf18
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_40374f
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4037e0:
-          mov DWORD PTR [ESP+4],OFFSET L_44cf6c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,1056
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x66
-          .byte 0x90
-L_403800:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44ced0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_40374f
+#@C _getAddons
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-FUN_403820:
-          push EBP
-          push EDI
-          mov EBP,1
-          push ESI
-          push EBX
-          mov ESI,OFFSET L_47a08c+4
-          xor EBX,EBX
-          sub ESP,108
-          mov DWORD PTR [ESP+4],OFFSET L_44cfac
-          mov DWORD PTR [ESP],1
-          lea EDI,DWORD PTR [ESP+32]
-          call _log_printf
-          mov DWORD PTR [L_46f040],980841333
-          mov DWORD PTR [L_46f044],1651461468
-          mov DWORD PTR [L_46f048],1113943145
-          mov DWORD PTR [L_46f04c],1952539694
-          mov BYTE PTR [L_46f050],0
-          jmp L_40393b
-          .byte 0x90
-L_403880:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44d1d3
-          mov DWORD PTR [ESP],OFFSET L_46f040
-          call _sprintf
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44d1db
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],OFFSET L_46f040
-          call _netGetFile
-          test EAX,EAX
-          mov DWORD PTR [ESI-4],EAX
-          je L_403a55
-          mov EAX,DWORD PTR [ESI]
-          test EAX,EAX
-          je L_403a55
-          cmp EBX,9
-          je L_403c73
-          cmp BYTE PTR [ESP+31],10
-          je L_403cab
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44cea3
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EDX,DWORD PTR [ESP+128]
-          test EDX,EDX
-          je L_40392c
-L_40390c:
-          mov EAX,DWORD PTR [ESI]
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [ESI-4]
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [ESP],EAX
-          call _writeFileIn
-L_40392c:
-          mov EAX,EBP
-          cmp AL,11
-          je L_4039ab
-L_403932:
-          add EBX,1
-          add EBP,1
-          add ESI,8
-L_40393b:
-          cmp EBX,9
-          mov BYTE PTR [ESP+31],BL
-          je L_403c4c
-          cmp BL,10
-          je L_403c1f
-          lea EAX,DWORD PTR [EBX+66]
-          mov DWORD PTR [ESP+4],OFFSET L_44cfd4
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+8],EAX
-          call _sprintf
-L_403968:
-          mov EAX,DWORD PTR [L_46f150]
-          test EAX,EAX
-          je L_403880
-          mov DWORD PTR [ESP+4],OFFSET L_44cddb
-          mov DWORD PTR [ESP],EDI
-          call _stricmp
-          test EAX,EAX
-          jne L_403a80
-L_40398d:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44ce08
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,EBP
-          cmp AL,11
-          jne L_403932
-L_4039ab:
-          mov EAX,DWORD PTR [L_46f15c]
-          test BYTE PTR [EAX+8],2
-          je L_403ab5
-          mov DWORD PTR [ESP+4],OFFSET L_44cff0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_47a07c
-          mov DWORD PTR [ESP],OFFSET L_44d009
-          call _netGetFile
-          test EAX,EAX
-          mov DWORD PTR [L_47a078],EAX
-          je L_4039f8
-          mov EAX,DWORD PTR [L_47a07c]
-          test EAX,EAX
-          jne L_403c02
-L_4039f8:
-          mov DWORD PTR [ESP+4],OFFSET L_44d010
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_403a0c:
-          mov EAX,DWORD PTR [L_47a078]
-          mov DWORD PTR [ESP],EAX
-          call _netFree
-          mov EAX,DWORD PTR [L_46f15c]
-          mov DWORD PTR [L_47a07c],0
-          mov DWORD PTR [L_47a078],0
-          test BYTE PTR [EAX+8],4
-          jne L_403ad8
-L_403a3c:
-          mov DWORD PTR [ESP+4],OFFSET L_44d0d4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_403af9
-L_403a55:
-          mov DWORD PTR [ESP+8],OFFSET L_46f040
-          mov DWORD PTR [ESP+4],OFFSET L_44cfe1
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_40392c
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_403a80:
-          mov DWORD PTR [ESP+4],OFFSET L_44cde8
-          mov DWORD PTR [ESP],EDI
-          call _stricmp
-          test EAX,EAX
-          je L_40398d
-          mov DWORD PTR [ESP+4],OFFSET L_44cdf4
-          mov DWORD PTR [ESP],EDI
-          call _stricmp
-          test EAX,EAX
-          je L_40398d
-          jmp L_403880
-L_403ab5:
-          mov DWORD PTR [ESP+4],OFFSET L_44d054
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_46f15c]
-          test BYTE PTR [EAX+8],4
-          je L_403a3c
-L_403ad8:
-          cmp DWORD PTR [L_44a008],1
-          je L_403be4
-          mov DWORD PTR [ESP+4],OFFSET L_44d090
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_403af9:
-          mov DWORD PTR [ESP+4],OFFSET L_44d0f8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_47a100
-          mov DWORD PTR [ESP],OFFSET L_44d12c
-          call _netGetFile
-          test EAX,EAX
-          mov DWORD PTR [L_47a0fc],EAX
-          je L_403b36
-          mov EAX,DWORD PTR [L_47a100]
-          cmp EAX,1023
-          jg L_403b60
-L_403b36:
-          mov DWORD PTR [ESP+4],OFFSET L_44d198
-          mov DWORD PTR [ESP],0
-          xor EBX,EBX
-          call _log_printf
-L_403b4c:
-          add ESP,108
-          mov EAX,EBX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_403b60:
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44d144
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_47a0fc]
-          mov DWORD PTR [ESP],EAX
-          call _smcConfigOk
-          test EAX,EAX
-          je L_403b36
-          mov DWORD PTR [ESP+4],OFFSET L_44d171
-          mov DWORD PTR [ESP],1
-          mov EBX,1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [L_47a100],1024
-          test EAX,EAX
-          je L_403b4c
-          mov EAX,DWORD PTR [L_47a0fc]
-          mov DWORD PTR [ESP+12],1024
-          mov DWORD PTR [ESP+4],OFFSET L_44d186
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+128]
-          mov DWORD PTR [ESP],EAX
-          call _writeFileIn
-          jmp L_403b4c
-L_403be4:
-          mov DWORD PTR [ESP+4],OFFSET L_44d074
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          call FUN_403700
-          jmp L_403af9
-L_403c02:
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44cea3
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_403a0c
-L_403c1f:
-          mov EAX,24948
-          mov DWORD PTR [EDI],1970168141
-          mov DWORD PTR [EDI+4],1952670054
-          mov DWORD PTR [EDI+8],1852404341
-          mov DWORD PTR [EDI+12],1633955431
-          mov WORD PTR [EDI+16],AX
-          mov BYTE PTR [EDI+18],0
-          jmp L_403968
-L_403c4c:
-          mov DWORD PTR [EDI],1952543827
-          mov DWORD PTR [EDI+4],1769239401
-          mov DWORD PTR [EDI+8],1932424035
-          mov DWORD PTR [EDI+12],1769239653
-          mov DWORD PTR [EDI+16],7563118
-          jmp L_403968
-L_403c73:
-          mov DWORD PTR [L_47a0d4+4],1024
-          mov EAX,DWORD PTR [ESI]
-          mov DWORD PTR [ESP+4],OFFSET L_44cea3
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+128]
-          test EAX,EAX
-          jne L_40390c
-          jmp L_403932
-L_403cab:
-          mov DWORD PTR [L_47a0dc+4],128
-          mov EAX,DWORD PTR [ESI]
-          mov DWORD PTR [ESP+4],OFFSET L_44cea3
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov ECX,DWORD PTR [ESP+128]
-          test ECX,ECX
-          jne L_40390c
-          jmp L_4039ab
+#@C _getMobileFiles
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -809,115 +154,19 @@ L_403cab:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_403cf0:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,16
-          mov ESI,DWORD PTR [_g47a080]
-          mov EAX,DWORD PTR [ESI+96]
-          mov DWORD PTR [ESP+4],1
-          mov EBX,EAX
-          mov EDX,EAX
-          shl EBX,24
-          shr EDX,24
-          add EDX,EBX
-          mov EBX,EAX
-          shr EAX,8
-          shl EBX,8
-          and EAX,65280
-          and EBX,16711680
-          add EBX,EDX
-          add EBX,EAX
-          mov DWORD PTR [ESP],EBX
-          call _calloc
-          mov EDI,EAX
-          mov EAX,DWORD PTR [ESI+108]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EDI
-          mov EDX,EAX
-          mov ECX,EAX
-          shl EDX,24
-          shr ECX,24
-          add ECX,EDX
-          mov EDX,EAX
-          shr EAX,8
-          shl EDX,8
-          and EAX,65280
-          and EDX,16711680
-          add EDX,ECX
-          add EAX,EDX
-          add EAX,ESI
-          mov DWORD PTR [ESP+4],EAX
-          call _memcpy
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [EAX],EBX
-          add ESP,16
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
+#@C _bldrGetKv
           .byte 0x90
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-L_403d80:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,16
-          mov ESI,DWORD PTR [_g47a080]
-          mov EAX,DWORD PTR [ESI+120]
-          mov DWORD PTR [ESP+4],1
-          mov EBX,EAX
-          mov EDX,EAX
-          shl EBX,24
-          shr EDX,24
-          add EDX,EBX
-          mov EBX,EAX
-          shr EAX,8
-          shl EBX,8
-          and EAX,65280
-          and EBX,16711680
-          add EBX,EDX
-          add EBX,EAX
-          mov DWORD PTR [ESP],EBX
-          call _calloc
-          mov EDI,EAX
-          mov EAX,DWORD PTR [ESI+124]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EDI
-          mov EDX,EAX
-          mov ECX,EAX
-          shl EDX,24
-          shr ECX,24
-          add ECX,EDX
-          mov EDX,EAX
-          shr EAX,8
-          shl EDX,8
-          and EAX,65280
-          and EDX,16711680
-          add EDX,ECX
-          add EAX,EDX
-          add EAX,ESI
-          mov DWORD PTR [ESP+4],EAX
-          call _memcpy
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [EAX],EBX
-          add ESP,16
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
+#@C _bldrGetSmc
           .byte 0x90
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_403e10:
+_getSecurityFiles:
           push EBP
           push EDI
           xor EDI,EDI
@@ -939,15 +188,15 @@ FUN_403e10:
           .byte 0x0
 L_403e50:
           mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_44d1d3
-          mov DWORD PTR [ESP],OFFSET L_46f040
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d1d3
+          mov DWORD PTR [ESP],OFFSET _path
           call _sprintf
           mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_44d1db
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d1db
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],OFFSET L_46f040
+          mov DWORD PTR [ESP],OFFSET _path
           call _netGetFile
           test EAX,EAX
           mov DWORD PTR [ESI-40],EAX
@@ -956,7 +205,7 @@ L_403e50:
           test EAX,EAX
           jne L_404165
 L_403ea1:
-          mov DWORD PTR [ESP+4],OFFSET L_44cfe1
+          mov DWORD PTR [ESP+4],OFFSET _mu_44cfe1
           mov DWORD PTR [ESP],1
           call _log_printf
 L_403eb5:
@@ -971,17 +220,17 @@ L_403ec0:
 L_403ecd:
           cmp BYTE PTR [EBX],0
           je L_403ec0
-          mov EDX,DWORD PTR [L_46f150]
+          mov EDX,DWORD PTR [_clean]
           test EDX,EDX
           je L_403e50
-          mov DWORD PTR [ESP+4],OFFSET L_44cddb
+          mov DWORD PTR [ESP+4],OFFSET _mu_44cddb
           mov DWORD PTR [ESP],EBX
           call _stricmp
           test EAX,EAX
           jne L_404130
 L_403ef8:
           mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_44ce08
+          mov DWORD PTR [ESP+4],OFFSET _mu_44ce08
           add EDI,1
           mov DWORD PTR [ESP],1
           add EBX,22
@@ -1130,12 +379,12 @@ L_404106:
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_404130:
-          mov DWORD PTR [ESP+4],OFFSET L_44cde8
+          mov DWORD PTR [ESP+4],OFFSET _mu_44cde8
           mov DWORD PTR [ESP],EBX
           call _stricmp
           test EAX,EAX
           je L_403ef8
-          mov DWORD PTR [ESP+4],OFFSET L_44cdf4
+          mov DWORD PTR [ESP+4],OFFSET _mu_44cdf4
           mov DWORD PTR [ESP],EBX
           call _stricmp
           test EAX,EAX
@@ -1260,14 +509,7 @@ L_4042fd:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_404320:
-          test BYTE PTR [L_479ea7],16
-          je L_404330
-          mov EAX,1
-          ret 
-          .byte 0x90
-L_404330:
-          jmp FUN_4030b0
+#@C _checkBadBlocks
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -1279,66 +521,7 @@ L_404330:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_404340:
-          sub ESP,28
-          mov DWORD PTR [ESP+4],OFFSET L_44d400
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          cmp DWORD PTR [_g479ea8],3
-          je L_404380
-          mov DWORD PTR [ESP+4],OFFSET L_44d484
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,1
-          add ESP,28
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_404380:
-          mov DWORD PTR [ESP+4],OFFSET L_44d424
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP],OFFSET L_47a084
-          call FUN_41ff90
-          test EAX,EAX
-          mov DWORD PTR [_g47a080],EAX
-          je L_4043b2
-          mov EAX,DWORD PTR [L_47a084]
-          test EAX,EAX
-          jne L_4043d0
-L_4043b2:
-          mov DWORD PTR [ESP+4],OFFSET L_44d479
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          add ESP,28
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_4043d0:
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44d440
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+32]
-          test EAX,EAX
-          je L_404416
-          mov EAX,DWORD PTR [L_47a084]
-          mov DWORD PTR [ESP+4],OFFSET L_44d46e
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [_g47a080]
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP],EAX
-          call _writeFileIn
-L_404416:
-          mov DWORD PTR [L_47a088],1
-          mov EAX,1
-          add ESP,28
-          ret 
+#@C _getBootloaders
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -1346,7 +529,7 @@ L_404416:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_404430:
+_getConsoleFiles:
           sub ESP,28
           test BYTE PTR [L_479ea7],16
           je L_4044d0
@@ -1356,23 +539,23 @@ L_404440:
           call _netMount
           test EAX,EAX
           je L_404500
-          mov DWORD PTR [ESP+4],OFFSET L_44d400
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d400
           mov DWORD PTR [ESP],1
           call _log_printf
           cmp DWORD PTR [_g479ea8],3
           je L_404540
-          mov DWORD PTR [ESP+4],OFFSET L_44d484
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d484
           mov DWORD PTR [ESP],1
           call _log_printf
 L_404491:
           mov EAX,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP],EAX
-          call FUN_403e10
+          call _getSecurityFiles
           test EAX,EAX
           je L_404520
           mov EAX,DWORD PTR [ESP+32]
           mov DWORD PTR [ESP],EAX
-          call FUN_403820
+          call _getMobileFiles
           mov EDX,EAX
           mov EAX,1
           test EDX,EDX
@@ -1383,7 +566,7 @@ L_404491:
           xor EAX,EAX
           jmp L_4044f3
 L_4044d0:
-          call FUN_4030b0
+          call _getBadBlocks
           test EAX,EAX
           jne L_404440
           mov DWORD PTR [ESP+4],OFFSET L_44d590
@@ -1424,11 +607,11 @@ L_404520:
           .byte 0x0
           .byte 0x0
 L_404540:
-          mov DWORD PTR [ESP+4],OFFSET L_44d424
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d424
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],OFFSET L_47a084
-          call FUN_41ff90
+          call _netGetBldrs
           test EAX,EAX
           mov DWORD PTR [_g47a080],EAX
           je L_404572
@@ -1436,7 +619,7 @@ L_404540:
           test EAX,EAX
           jne L_4045a0
 L_404572:
-          mov DWORD PTR [ESP+4],OFFSET L_44d479
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d479
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP+4],OFFSET L_44d4cc
@@ -1447,14 +630,14 @@ L_404572:
           ret 
 L_4045a0:
           mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44d440
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d440
           mov DWORD PTR [ESP],1
           call _log_printf
           mov EAX,DWORD PTR [ESP+32]
           test EAX,EAX
           je L_4045e6
           mov EAX,DWORD PTR [L_47a084]
-          mov DWORD PTR [ESP+4],OFFSET L_44d46e
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d46e
           mov DWORD PTR [ESP+12],EAX
           mov EAX,DWORD PTR [_g47a080]
           mov DWORD PTR [ESP+8],EAX
@@ -1475,108 +658,7 @@ L_4045e6:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_404600:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,300
-          mov EAX,DWORD PTR [L_46f158]
-          mov ESI,DWORD PTR [ESP+324]
-          mov EBP,DWORD PTR [ESP+328]
-          mov EBX,DWORD PTR [ESP+320]
-          test EAX,EAX
-          mov DWORD PTR [EBP],0
-          mov DWORD PTR [ESI],0
-          je L_4046dd
-          lea EDI,DWORD PTR [ESP+36]
-          xor EAX,EAX
-          mov ECX,63
-          mov DWORD PTR [ESP+28],980841333
-          mov DWORD PTR [ESP+32],92
-          rep stosd DWORD PTR ES:[EDI]
-          mov DWORD PTR [ESP+4],47
-          mov DWORD PTR [ESP],EBX
-          call _strrchr
-          test EAX,EAX
-          je L_404721
-L_40466e:
-          add EAX,1
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [ESP+33]
-          mov DWORD PTR [ESP],EAX
-          call _strcpy
-L_404681:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_44d1db
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          lea EAX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESP+4],EAX
-          lea EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP],EAX
-          call _netGetFile
-          test EAX,EAX
-          mov EBX,EAX
-          je L_404750
-          mov EAX,DWORD PTR [ESP+24]
-          test EAX,EAX
-          jne L_4046f0
-          mov DWORD PTR [ESP+4],OFFSET L_44d5ba
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP],EBX
-          call _free
-          xor EAX,EAX
-L_4046dd:
-          add ESP,300
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4046f0:
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_44cea3
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESI],EBX
-          mov DWORD PTR [EBP],EAX
-          add ESP,300
-          mov EAX,1
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_404721:
-          mov DWORD PTR [ESP+4],92
-          mov DWORD PTR [ESP],EBX
-          call _strrchr
-          test EAX,EAX
-          jne L_40466e
-          lea EAX,DWORD PTR [ESP+33]
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EAX
-          call _strcpy
-          jmp L_404681
-          .byte 0x66
-          .byte 0x90
-L_404750:
-          mov DWORD PTR [ESP+4],OFFSET L_44d5d4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_4046dd
+#@C _updateGetFile
           .byte 0x90
           .byte 0x8d
           .byte 0x74
@@ -1685,7 +767,7 @@ L_404927:
 L_40493f:
           mov EAX,DWORD PTR [ESP+24]
           mov DWORD PTR [ESP],EAX
-          call FUN_41f700
+          call _netConnect
           test EAX,EAX
           jne L_404bae
           mov DWORD PTR [ESP+4],OFFSET L_44de80
@@ -1723,7 +805,7 @@ L_4049a0:
           cmp BYTE PTR [EDX],45
           je L_4053b8
           mov EAX,DWORD PTR [L_4c4f94]
-          mov DWORD PTR [L_44a008],0
+          mov DWORD PTR [_useConsoleAddons],0
           cmp EAX,15
           jg L_404a70
           imul EAX,EAX,1068
@@ -1834,9 +916,9 @@ L_404b87:
           jmp L_404ae2
 L_404bae:
           call _netGetInfo
-          mov DWORD PTR [L_46f15c],EAX
+          mov DWORD PTR [_info],EAX
           mov EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+12],OFFSET L_46f154
+          mov DWORD PTR [ESP+12],OFFSET _hasHdd
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],EAX
@@ -1902,10 +984,10 @@ L_404c2e:
 L_404cc3:
           mov ESI,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],ESI
-          call FUN_404430
+          call _getConsoleFiles
           test EAX,EAX
           je L_404fd8
-          mov DWORD PTR [L_46f158],1
+          mov DWORD PTR [_updating],1
           call _buildImage
           test EAX,EAX
           mov EBX,EAX
@@ -1944,10 +1026,10 @@ L_404d19:
           mov DWORD PTR [ESP],1
           call _log_printf
           mov DWORD PTR [ESP],ESI
-          call FUN_41fe20
+          call _netDumpNand
           test EAX,EAX
           jne L_404d9c
-          mov DWORD PTR [ESP+4],OFFSET L_44d479
+          mov DWORD PTR [ESP+4],OFFSET _mu_44d479
           mov DWORD PTR [ESP],0
           mov EBX,5
           call _log_printf
@@ -1955,12 +1037,12 @@ L_404d9c:
           mov DWORD PTR [ESP+4],OFFSET L_44db58
           mov DWORD PTR [ESP],1
           call _log_printf
-          mov EBP,DWORD PTR [L_46f14c]
+          mov EBP,DWORD PTR [_noWrite]
           test EBP,EBP
           jne L_405222
           lea EAX,DWORD PTR [ESP+3104]
           mov DWORD PTR [ESP],EAX
-          call FUN_412230
+          call _imageGetBuffer
           mov DWORD PTR [ESP+4],OFFSET L_44db7c
           mov DWORD PTR [ESP],0
           mov ESI,EAX
@@ -1969,7 +1051,7 @@ L_404d9c:
           mov EAX,DWORD PTR [ESP+3104]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_41ffe0
+          call _netSendFlash
           test EAX,EAX
           mov EAX,5
           cmove EBX,EAX
@@ -1977,13 +1059,13 @@ L_404e05:
           mov DWORD PTR [ESP+4],OFFSET L_44dbcc
           mov DWORD PTR [ESP],1
           call _log_printf
-          mov EDI,DWORD PTR [L_46f154]
+          mov EDI,DWORD PTR [_hasHdd]
           test EDI,EDI
           je L_40530c
-          mov ESI,DWORD PTR [L_46f148]
+          mov ESI,DWORD PTR [_noAvatar]
           test ESI,ESI
           jne L_404e3f
-          mov ECX,DWORD PTR [L_46f14c]
+          mov ECX,DWORD PTR [_noWrite]
           test ECX,ECX
           je L_40539e
 L_404e3f:
@@ -1991,13 +1073,13 @@ L_404e3f:
           mov DWORD PTR [ESP],1
           call _log_printf
 L_404e53:
-          mov EDX,DWORD PTR [L_46f144]
+          mov EDX,DWORD PTR [_noReboot]
           test EDX,EDX
           jne L_404e71
           test EBX,EBX
           jne L_4052cb
           mov DWORD PTR [ESP],2
-          call FUN_420840
+          call _netReboot
 L_404e71:
           mov EAX,DWORD PTR [ESP+28]
           test EAX,EAX
@@ -2033,9 +1115,9 @@ L_404ee3:
           mov DWORD PTR [ESP+4],OFFSET L_44d88c
           mov DWORD PTR [ESP],1
           add EBX,1
-          mov DWORD PTR [L_46f14c],1
-          mov DWORD PTR [L_46f144],1
-          mov DWORD PTR [L_46f148],1
+          mov DWORD PTR [_noWrite],1
+          mov DWORD PTR [_noReboot],1
+          mov DWORD PTR [_noAvatar],1
           call _log_printf
           jmp L_404811
 L_404f3b:
@@ -2062,7 +1144,7 @@ L_404f59:
           mov DWORD PTR [ESP+4],OFFSET L_44d918
           mov DWORD PTR [ESP],1
           add EBX,1
-          mov DWORD PTR [L_46f144],1
+          mov DWORD PTR [_noReboot],1
           call _log_printf
           jmp L_404811
 L_404fbf:
@@ -2070,7 +1152,7 @@ L_404fbf:
           mov DWORD PTR [ESP],0
           call _log_printf
 L_404fd3:
-          call FUN_4031d0
+          call _update_usage
 L_404fd8:
           mov DWORD PTR [ESP+4],OFFSET L_44ddc0
           mov DWORD PTR [ESP],0
@@ -2081,7 +1163,7 @@ L_404ff6:
           mov DWORD PTR [ESP+4],OFFSET L_44d8d0
           mov DWORD PTR [ESP],1
           add EBX,1
-          mov DWORD PTR [L_46f148],1
+          mov DWORD PTR [_noAvatar],1
           call _log_printf
           jmp L_404811
 L_40501c:
@@ -2246,7 +1328,7 @@ L_40523b:
           mov DWORD PTR [ESP+4],OFFSET L_44d958
           mov DWORD PTR [ESP],1
           add EBX,1
-          mov DWORD PTR [L_46f150],1
+          mov DWORD PTR [_clean],1
           call _log_printf
           jmp L_404811
 L_405283:
@@ -2335,7 +1417,7 @@ L_4053b8:
           mov DWORD PTR [ESP+4],OFFSET L_44d6a8
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_4031d0
+          call _update_usage
 L_4053d5:
           mov DWORD PTR [ESP+12],OFFSET L_47a94c
           mov DWORD PTR [ESP+8],EAX
@@ -2395,19 +1477,19 @@ L_4054c2:
           mov DWORD PTR [ESP+4],OFFSET L_44d740
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_4031d0
+          call _update_usage
 L_4054db:
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],OFFSET L_44d7ec
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_4031d0
+          call _update_usage
 L_4054f8:
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],OFFSET L_44d9d0
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_4031d0
+          call _update_usage
 L_405515:
           mov DWORD PTR [ESP+8],2
           mov DWORD PTR [ESP+4],OFFSET L_44da3d
@@ -2452,13 +1534,13 @@ L_4055cb:
           mov DWORD PTR [ESP],0
           mov DWORD PTR [ESP+8],EAX
           call _log_printf
-          call FUN_4031d0
+          call _update_usage
 L_4055ea:
           mov DWORD PTR [ESP+8],EAX
           mov DWORD PTR [ESP+4],OFFSET L_44da40
           mov DWORD PTR [ESP],0
           call _log_printf
-          call FUN_4031d0
+          call _update_usage
           nop
           nop
           nop
@@ -2471,7 +1553,7 @@ L_4055ea:
 
 .data
 .p2align 3
-L_44a008:
+_useConsoleAddons:
           .byte 0x1
           .byte 0x0
           .byte 0x0
@@ -2499,161 +1581,161 @@ L_44a008:
 
 .section .rdata,"dr"
 .p2align 3
-L_44c6e8:
+_mu_44c6e8:
           .string "\n------ getting bad blocks ------\n"
           .zero 1
-L_44c70c:
+_mu_44c70c:
           .string "processing %d bad blocks on device\n"
-L_44c730:
+_mu_44c730:
           .string "marking bad block at 0x%x\n"
           .zero 1
-L_44c74c:
+_mu_44c74c:
           .string "no bad blocks found on device\n"
           .zero 1
-L_44c76c:
+_mu_44c76c:
           .string "\n\n***** ERROR: unable to retrieve bad block list from device!\n"
-L_44c7ab:
+_mu_44c7ab:
           .string "xeBuild"
           .zero 1
-L_44c7b4:
+_mu_44c7b4:
           .string "Usage   :\n   %s update <switch> [<option>]\n\n"
-L_44c7e1:
+_mu_44c7e1:
           .string "Examples:\n"
-L_44c7ec:
+_mu_44c7ec:
           .string "   %s update -f 16197 -a nofcrt\n"
           .zero 3
-L_44c810:
+_mu_44c810:
           .string "   %s update -f 16203 -d myflash -ip 192.168.2.100\n"
-L_44c844:
+_mu_44c844:
           .string "\nSwitches:\n"
-L_44c850:
+_mu_44c850:
           .string "   -f <dir> : use different data dir and file lists\n"
           .zero 3
-L_44c888:
+_mu_44c888:
           .string "   -d <dir> : dumps NAND and other data to <dir> before flashing\n"
-L_44c8ca:
+_mu_44c8ca:
           .string "   -a <name>: append patches\n"
-L_44c8e8:
+_mu_44c8e8:
           .string "   -ip <add>: force attempt to connect to addr\n"
-L_44c918:
+_mu_44c918:
           .string "   -i <ext> : adds _<ext> into firmware ini and patches file names\n"
-L_44c95c:
+_mu_44c95c:
           .string "   -r <ext> : adds _<ext> into ini bl section name and patches file names\n"
           .zero 1
-L_44c9a8:
+_mu_44c9a8:
           .string "   -nowrite : will not write anything to console flash or HDD\n"
           .zero 1
-L_44c9e8:
+_mu_44c9e8:
           .string "              without -d results of update are not kept anywhere\n"
           .zero 2
-L_44ca2c:
+_mu_44ca2c:
           .string "   -noava   : will not send avatar data if available and HDD present\n"
           .zero 2
-L_44ca74:
+_mu_44ca74:
           .string "   -clean   : secdata, extended and statistics will not be retrieved from console\n"
           .zero 1
-L_44cac8:
+_mu_44cac8:
           .string "   -noreeb  : do not automatically reboot console after writes are completed\n"
           .zero 2
-L_44cb18:
+_mu_44cb18:
           .string "   -noenter : suppresses prompt for enter key when finished\n"
           .zero 3
-L_44cb58:
+_mu_44cb58:
           .string "   -v       : shows more info during update process\n"
           .zero 3
-L_44cb90:
+_mu_44cb90:
           .string "   -?       : shows this help\n\n"
-L_44cbb0:
+_mu_44cbb0:
           .string "legend:\n"
           .zero 3
-L_44cbbc:
+_mu_44cbbc:
           .string "<name>      = name.bin contents will be appended to hv/kernel patches\n\n"
-L_44cc04:
+_mu_44cc04:
           .string "<dir>       = path, absolute or relative, to a directory - do not terminate with \\\n"
-L_44cc58:
+_mu_44cc58:
           .string "<ext>       = using this option would cause the builder to look for _glitch_<ext>.ini instead of _glitch.ini\n"
           .zero 2
-L_44ccc8:
+_mu_44ccc8:
           .string "              and patches_jasper_<ext>.bin instead of patches_jasper.bin\n"
           .zero 2
-L_44cd14:
+_mu_44cd14:
           .string "<add>       = without this option network will be scanned for server broadcast beacon\n"
           .zero 1
-L_44cd6c:
+_mu_44cd6c:
           .string "              If provided the correct format is an IPv4 address like 192.168.0.100\n"
-L_44cdc0:
+_mu_44cdc0:
           .string "\npress <enter> to quit...\n"
-L_44cddb:
+_mu_44cddb:
           .string "extended.bin"
-L_44cde8:
+_mu_44cde8:
           .string "secdata.bin"
-L_44cdf4:
+_mu_44cdf4:
           .string "Statistics.settings"
-L_44ce08:
+_mu_44ce08:
           .string "skipping %s, -clean flag"
-L_44ce21:
+_mu_44ce21:
           .string "addon patch from console: %s\n"
           .zero 1
-L_44ce40:
+_mu_44ce40:
           .string "***** WARNING: exceeded total number of optional patches while processing %s from console!\n"
-L_44ce9c:
+_mu_44ce9c:
           .string "addons"
-L_44cea3:
+_mu_44cea3:
           .string "OK, received 0x%x bytes\n"
-L_44cebc:
+_mu_44cebc:
           .string ".\\%d\\bin\\addon.idx"
           .zero 1
-L_44ced0:
+_mu_44ced0:
           .string "\n\n***** WARNING: unable to open %s to parse addons.bin from console!\n"
           .zero 2
-L_44cf18:
+_mu_44cf18:
           .string "\n\n***** WARNING: addons.bin from console is not a multiple of 4 bytes! Skipping!\n"
           .zero 2
-L_44cf6c:
+_mu_44cf6c:
           .string "\n\n***** WARNING: Unable to retrieve addons.bin from console!\n"
           .zero 2
-L_44cfac:
+_mu_44cfac:
           .string "\n------ getting mobile settings ------\n"
-L_44cfd4:
+_mu_44cfd4:
           .string "Mobile%c.dat"
-L_44cfe1:
+_mu_44cfe1:
           .string "not available\n"
-L_44cff0:
+_mu_44cff0:
           .string "retrieving USVR\\blmod..."
-L_44d009:
+_mu_44d009:
           .string "blmod"
           .zero 1
-L_44d010:
+_mu_44d010:
           .string "\n\n***** WARNING: Unable to retrieve blmod.bin data from console!\n"
           .zero 2
-L_44d054:
+_mu_44d054:
           .string "console has no available blmod\n"
-L_44d074:
+_mu_44d074:
           .string "retrieving USVR\\addons..."
           .zero 2
-L_44d090:
+_mu_44d090:
           .string "skipping USVR\\addons, addons have been specified on command line\n"
           .zero 2
-L_44d0d4:
+_mu_44d0d4:
           .string "console has no available addons\n"
           .zero 3
-L_44d0f8:
+_mu_44d0f8:
           .string "retrieving USVR\\Static.settings (smc_config.bin)..."
-L_44d12c:
+_mu_44d12c:
           .string "usv:\\Static.settings"
           .zero 3
-L_44d144:
+_mu_44d144:
           .string "OK, received 0x%x bytes\n        verifying..."
-L_44d171:
+_mu_44d171:
           .string "smc_config is good!\n"
-L_44d186:
+_mu_44d186:
           .string "smc_config.bin"
           .zero 3
-L_44d198:
+_mu_44d198:
           .string "\n***** ERROR: could not retrieve smc_config from console!\n"
-L_44d1d3:
+_mu_44d1d3:
           .string "usv:\\%s"
-L_44d1db:
+_mu_44d1db:
           .string "retrieving USVR\\%s..."
           .zero 3
 L_44d1f4:
@@ -2693,19 +1775,19 @@ L_44d390:
           .zero 1
 L_44d3c8:
           .string "\n***** ERROR: could not retrieve smc.bin from console!\n"
-L_44d400:
+_mu_44d400:
           .string "\n------ getting bootloaders ------\n"
-L_44d424:
+_mu_44d424:
           .string "reading bootloader data..."
           .zero 1
-L_44d440:
+_mu_44d440:
           .string "success! Bootloader size with xell is 0x%08x\n"
-L_44d46e:
+_mu_44d46e:
           .string "fbldrs.bin"
-L_44d479:
+_mu_44d479:
           .string "failed!\n"
           .zero 2
-L_44d484:
+_mu_44d484:
           .string "Skipping getting bootloaders on non-glitch machine!\n"
 L_44d4b9:
           .string "\\SystemRoot"
@@ -2724,9 +1806,9 @@ L_44d55c:
           .zero 2
 L_44d590:
           .string "\n***** ERROR: getting bad blocks failed!\n"
-L_44d5ba:
+_mu_44d5ba:
           .string "failed! received 0 bytes\n"
-L_44d5d4:
+_mu_44d5d4:
           .string "failed! file not found on console\n"
 L_44d5f7:
           .string "update"
@@ -2953,7 +2035,7 @@ L_44de80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_4030b0 - .
+          .long _getBadBlocks - .
           .byte 0x1b
           .byte 0x1
           .byte 0x0
@@ -3014,7 +2096,7 @@ L_44de80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_4031d0 - .
+          .long _update_usage - .
           .byte 0x88
           .byte 0x2
           .byte 0x0
@@ -3031,7 +2113,7 @@ L_44de80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_403460 - .
+          .long _wantFile - .
           .byte 0x89
           .byte 0x0
           .byte 0x0
@@ -3060,7 +2142,7 @@ L_44de80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_4034f0 - .
+          .long _parseAddonIdx - .
           .byte 0x2
           .byte 0x2
           .byte 0x0
@@ -3145,7 +2227,7 @@ L_44de80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_403700 - .
+          .long _getAddons - .
           .byte 0x1d
           .byte 0x1
           .byte 0x0
@@ -3218,7 +2300,7 @@ L_44de80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_403820 - .
+          .long _getMobileFiles - .
           .byte 0xc3
           .byte 0x4
           .byte 0x0
@@ -3283,7 +2365,7 @@ L_44de80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_403cf0 - .
+          .long _bldrGetKv - .
           .byte 0x8b
           .byte 0x0
           .byte 0x0
@@ -3332,7 +2414,7 @@ L_44de80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long L_403d80 - .
+          .long _bldrGetSmc - .
           .byte 0x8b
           .byte 0x0
           .byte 0x0
@@ -3381,7 +2463,7 @@ L_44de80:
           .byte 0x1
           .byte 0x0
           .byte 0x0
-          .long FUN_403e10 - .
+          .long _getSecurityFiles - .
           .byte 0x8
           .byte 0x5
           .byte 0x0
@@ -3490,7 +2572,7 @@ L_44de80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_404320 - .
+          .long _checkBadBlocks - .
           .byte 0x15
           .byte 0x0
           .byte 0x0
@@ -3507,7 +2589,7 @@ L_44de80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long L_404340 - .
+          .long _getBootloaders - .
           .byte 0xe9
           .byte 0x0
           .byte 0x0
@@ -3544,7 +2626,7 @@ L_44de80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_404430 - .
+          .long _getConsoleFiles - .
           .byte 0xc5
           .byte 0x1
           .byte 0x0
@@ -3581,7 +2663,7 @@ L_44de80:
           .byte 0x2
           .byte 0x0
           .byte 0x0
-          .long FUN_404600 - .
+          .long _updateGetFile - .
           .byte 0x6b
           .byte 0x1
           .byte 0x0
@@ -3726,7 +2808,7 @@ L_44de80:
 
 .bss
 .p2align 5
-L_46f040:
+_path:
           .zero 4
 L_46f044:
           .zero 4
@@ -3736,17 +2818,17 @@ L_46f04c:
           .zero 4
 L_46f050:
           .zero 244
-L_46f144:
+_noReboot:
           .zero 4
-L_46f148:
+_noAvatar:
           .zero 4
-L_46f14c:
+_noWrite:
           .zero 4
-L_46f150:
+_clean:
           .zero 4
-L_46f154:
+_hasHdd:
           .zero 4
-L_46f158:
+_updating:
           .zero 4
-L_46f15c:
+_info:
           .zero 4

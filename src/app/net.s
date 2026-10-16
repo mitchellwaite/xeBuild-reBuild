@@ -9,25 +9,25 @@
 #   .text          0041e800-00420a90
 
 .intel_syntax noprefix
-.globl FUN_41f700
 .globl FUN_41fa40
-.globl FUN_41fe20
-.globl FUN_41ff90
-.globl FUN_41ffe0
 .globl FUN_420140
 .globl FUN_420200
 .globl FUN_420320
-.globl FUN_420420
-.globl FUN_420840
 .globl FUN_420910
+.globl _netConnect
+.globl _netDumpNand
 .globl _netFormatCompat
 .globl _netFormatSysex
 .globl _netFree
+.globl _netGetBadBlocks
+.globl _netGetBldrs
 .globl _netGetFile
 .globl _netGetInfo
 .globl _netMkdir
 .globl _netMount
+.globl _netReboot
 .globl _netSendFile
+.globl _netSendFlash
 .globl _netTimerEnd
 .globl _netTimerStart
 .globl _netUnmount
@@ -1177,7 +1177,7 @@ L_41f4c0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_41f700:
+_netConnect:
           push EBX
           sub ESP,488
           lea EAX,DWORD PTR [ESP+80]
@@ -1697,7 +1697,7 @@ _netGetInfo:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41fe20:
+_netDumpNand:
           push EBX
           sub ESP,56
           mov DWORD PTR [ESP],OFFSET L_4cd844
@@ -1792,7 +1792,7 @@ L_41ff70:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_41ff90:
+_netGetBldrs:
           push EBX
           sub ESP,24
           mov EAX,DWORD PTR [L_44a6c0]
@@ -1822,7 +1822,7 @@ L_41ffd0:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-FUN_41ffe0:
+_netSendFlash:
           push ESI
           push EBX
           sub ESP,36
@@ -2197,7 +2197,7 @@ L_42040d:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_420420:
+_netGetBadBlocks:
           push EBX
           sub ESP,24
           mov EAX,DWORD PTR [L_44a6c0]
@@ -2585,7 +2585,7 @@ L_42082d:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-FUN_420840:
+_netReboot:
           sub ESP,28
           mov EAX,DWORD PTR [ESP+32]
           cmp EAX,1
@@ -3860,7 +3860,7 @@ L_457a77:
           .byte 0x3
           .byte 0x0
           .byte 0x0
-          .long FUN_41f700 - .
+          .long _netConnect - .
           .byte 0xfc
           .byte 0x2
           .byte 0x0
@@ -4259,7 +4259,7 @@ L_457a77:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41fe20 - .
+          .long _netDumpNand - .
           .byte 0x66
           .byte 0x1
           .byte 0x0
@@ -4312,7 +4312,7 @@ L_457a77:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41ff90 - .
+          .long _netGetBldrs - .
           .byte 0x4b
           .byte 0x0
           .byte 0x0
@@ -4357,7 +4357,7 @@ L_457a77:
           .byte 0x5
           .byte 0x0
           .byte 0x0
-          .long FUN_41ffe0 - .
+          .long _netSendFlash - .
           .byte 0x5b
           .byte 0x1
           .byte 0x0
@@ -4613,7 +4613,7 @@ L_457a77:
           .byte 0x6
           .byte 0x0
           .byte 0x0
-          .long FUN_420420 - .
+          .long _netGetBadBlocks - .
           .byte 0x4b
           .byte 0x0
           .byte 0x0
@@ -4874,7 +4874,7 @@ L_457a77:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_420840 - .
+          .long _netReboot - .
           .byte 0xcd
           .byte 0x0
           .byte 0x0

@@ -241,3 +241,44 @@ so setFuseCpuKey calls it as the original does. Still off:
   order in the loop (the same flip as smcChecksum) and register choice in
   the tail. cfEncrypt's inlined copy also tests `over == 0`, which the
   standalone one doesn't; `buf[539] = (type == 2)` is an if/else there.
+
+## app/mode_update.c
+
+Draft of the whole object, with string literals. 11 of 14 functions are
+built from `src/app/mode_update.c` (mixed), which `python wip/mumixed.py
+<names>` makes from this file (strings become `mu_<address>` externs, the
+statics become externs for the `.s`'s `.bss`); a new match needs its name
+there, its address in `split.py` `C_FUNCS` and the printed strings in
+`SYMBOLS`. The object builds with `--param align-threshold=200`
+(getBadBlocks' error block). Line counts are `FNCMP_LITERALS=1 python
+re/fncmp.py wip/app/mode_update.c <name>`.
+
+Matching notes: uncprop return reuse is steered by prototype types
+(getSecurityFiles and verifyExtended `u32`, unscramble `int`; netMount and
+the inlined helpers `u32` so getConsoleFiles' `int` returns `xor eax,eax`).
+wantFile is a `ret` flag with the log after the tests (that puts the
+second and third stricmp out of line). parseAddonIdx needs `u32 ok` and a
+plain match loop (no `if (n)`). updateGetFile reads `updating` into a local
+first: with the extern `updating` of the mixed build that keeps the load
+before the stores; with a `static updating` the local gives 8 lines and the
+plain read matches (so the original may have had it non-static).
+
+Still off:
+
+- `getConsoleFiles` (6): the bad-blocks failure (`call getBadBlocks` out
+  of line) should fall into the shared `xor eax,eax; ret`, and the mount
+  failure get its own epilogue; ours has it the other way round. Every
+  early-return/nested combination of the five checks and the
+  int/u32 return-type combinations give 6 or worse.
+- `getSecurityFiles` (12): the smc BLDR path should end with a copy of the
+  `size > 0x2fff` test (bb-reorder duplication into the success trace, as
+  the kv path already does). That needs the test-to-success edge at >= 10%
+  of the entry frequency; ours is about 7% (kv size test 39%, verify 50%,
+  smc size 39%). Early-return vs nested forms of the four checks don't
+  get there.
+- `mode_update` (722): everything after the argument loop is cold in ours
+  (the loop is predicted ~45 iterations), so bb-reorder scatters the main
+  path over round-4 traces; the original keeps connect, getConsoleFiles,
+  buildImage, flash, avatar and reboot as one trace. The type suffix is an
+  if/else chain (a switch gives a jump table). Moving the post-build code
+  into a static helper doesn't change it.

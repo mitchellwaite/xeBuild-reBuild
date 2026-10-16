@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, four more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 14 of 25 app files build from C, five more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **401 of 617** (388 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **412 of 617** (399 built from `src/`, 13 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 216 / 432 |
+| `app/` | 14 / 25 | 227 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -37,7 +37,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | Object | State | Functions in C |
 |---|---|---|
 | `app/bootloaders` | mixed; 0 of 7 drafted functions match in `wip/app/bootloaders.c` | 12 / 19 |
-| `app/mode_update` | asm | 0 / 14 |
+| `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
 | `app/mode_client` | asm | 0 / 16 |
 | `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | asm | 0 / 46 |
@@ -73,22 +73,22 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/mode_update</code>: 0 / 14 in C</summary>
+<summary><code>app/mode_update</code>: 11 / 14 in C</summary>
 
-- ⬜ `FUN_4030b0` (0x4030b0)
-- ⬜ `FUN_4031d0` (0x4031d0)
-- ⬜ `FUN_403460` (0x403460)
-- ⬜ `FUN_4034f0` (0x4034f0)
-- ⬜ `FUN_403700` (0x403700)
-- ⬜ `FUN_403820` (0x403820)
-- ⬜ `FUN_403cf0` (0x403cf0)
-- ⬜ `FUN_403d80` (0x403d80)
-- ⬜ `FUN_403e10` (0x403e10)
-- ⬜ `FUN_404320` (0x404320)
-- ⬜ `FUN_404340` (0x404340)
-- ⬜ `FUN_404430` (0x404430)
-- ⬜ `FUN_404600` (0x404600)
-- ⬜ `mode_update` (0x404770)
+- ✅ `getBadBlocks` (0x4030b0)
+- ✅ `update_usage` (0x4031d0)
+- ✅ `wantFile` (0x403460)
+- ✅ `parseAddonIdx` (0x4034f0)
+- ✅ `getAddons` (0x403700)
+- ✅ `getMobileFiles` (0x403820)
+- ✅ `bldrGetKv` (0x403cf0)
+- ✅ `bldrGetSmc` (0x403d80)
+- ⬜ `getSecurityFiles` (0x403e10) (draft in `wip/`, no match yet)
+- ✅ `checkBadBlocks` (0x404320)
+- ✅ `getBootloaders` (0x404340)
+- ⬜ `getConsoleFiles` (0x404430) (draft in `wip/`, no match yet)
+- ✅ `updateGetFile` (0x404600)
+- ⬜ `mode_update` (0x404770) (draft in `wip/`, no match yet)
 
 </details>
 <details>
@@ -170,7 +170,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_411bd0` (0x411bd0)
 - ⬜ `FUN_412110` (0x412110)
 - ⬜ `FUN_4121b0` (0x4121b0)
-- ⬜ `FUN_412230` (0x412230)
+- ⬜ `imageGetBuffer` (0x412230)
 - ⬜ `writeImage` (0x412260)
 - ⬜ `FUN_4125a0` (0x4125a0)
 - ⬜ `FUN_412dd0` (0x412dd0)
@@ -206,7 +206,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_415b00` (0x415b00)
 - ⬜ `FUN_415d90` (0x415d90)
 - ⬜ `FUN_415e90` (0x415e90)
-- ⬜ `FUN_415ef0` (0x415ef0)
+- ⬜ `remapBadBlocks` (0x415ef0)
 - ⬜ `FUN_416040` (0x416040)
 - ⬜ `FUN_416070` (0x416070)
 - ⬜ `FUN_4160d0` (0x4160d0)
@@ -286,25 +286,25 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `FUN_41f330` (0x41f330)
 - ⬜ `FUN_41f390` (0x41f390)
 - ⬜ `FUN_41f470` (0x41f470)
-- ⬜ `FUN_41f700` (0x41f700)
+- ⬜ `netConnect` (0x41f700)
 - ⬜ `FUN_41fa00` (0x41fa00)
 - ⬜ `FUN_41fa40` (0x41fa40)
 - ⬜ `netMount` (0x41faf0)
 - ⬜ `netUnmount` (0x41fc30)
 - ⬜ `netGetFile` (0x41fd60)
 - ⬜ `netGetInfo` (0x41fe10)
-- ⬜ `FUN_41fe20` (0x41fe20)
-- ⬜ `FUN_41ff90` (0x41ff90)
-- ⬜ `FUN_41ffe0` (0x41ffe0)
+- ⬜ `netDumpNand` (0x41fe20)
+- ⬜ `netGetBldrs` (0x41ff90)
+- ⬜ `netSendFlash` (0x41ffe0)
 - ⬜ `FUN_420140` (0x420140)
 - ⬜ `FUN_420200` (0x420200)
 - ⬜ `FUN_420320` (0x420320)
-- ⬜ `FUN_420420` (0x420420)
+- ⬜ `netGetBadBlocks` (0x420420)
 - ⬜ `netSendFile` (0x420470)
 - ⬜ `netFormatSysex` (0x4205d0)
 - ⬜ `netFormatCompat` (0x420670)
 - ⬜ `netMkdir` (0x420710)
-- ⬜ `FUN_420840` (0x420840)
+- ⬜ `netReboot` (0x420840)
 - ⬜ `FUN_420910` (0x420910)
 
 </details>

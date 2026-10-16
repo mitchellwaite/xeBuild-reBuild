@@ -33,7 +33,6 @@
 .globl FUN_411680
 .globl FUN_411bd0
 .globl FUN_412110
-.globl FUN_412230
 .globl FUN_4125a0
 .globl FUN_412dd0
 .globl FUN_412e90
@@ -44,6 +43,7 @@
 .globl _buildImage
 .globl _checkBootImage
 .globl _imageFree
+.globl _imageGetBuffer
 .globl _writeImage
 
 .text
@@ -4426,7 +4426,7 @@ L_412220:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-FUN_412230:
+_imageGetBuffer:
           test BYTE PTR [L_479ea7],16
           mov EAX,DWORD PTR [L_479ed8]
           mov ECX,50331648
@@ -7495,7 +7495,7 @@ L_451f80:
           .byte 0x7
           .byte 0x0
           .byte 0x0
-          .long FUN_412230 - .
+          .long _imageGetBuffer - .
           .byte 0x29
           .byte 0x0
           .byte 0x0
