@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **511 of 617** (464 built from `src/`, 47 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **512 of 617** (464 built from `src/`, 48 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 326 / 432 |
+| `app/` | 14 / 25 | 327 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
-| `app/image_write` | asm; 33 of 46 drafted functions match in `wip/app/image_write.c` | 33 / 46 |
+| `app/image_write` | asm; 34 of 46 drafted functions match in `wip/app/image_write.c` | 34 / 46 |
 | `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
 | `app/keys` | mixed; 0 of 7 drafted functions match in `wip/app/keys.c` | 41 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
@@ -130,7 +130,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 33 / 46 in C</summary>
+<summary><code>app/image_write</code>: 34 / 46 in C</summary>
 
 - ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
 - ⬜ `imgWritePage` (0x40ecc0) (draft in `wip/`, no match yet)
@@ -166,7 +166,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ☑️ `fixupEmptyFsBlocks` (0x4112f0)
 - ☑️ `addSmcConfig` (0x411600)
 - ⬜ `writeInitialHeader` (0x411680) (draft in `wip/`, no match yet)
-- ⬜ `checkBootImage` (0x411800) (draft in `wip/`, no match yet)
+- ☑️ `checkBootImage` (0x411800)
 - ⬜ `writeFsTable` (0x411bd0) (draft in `wip/`, no match yet)
 - ☑️ `copyAnchorBlock` (0x412110)
 - ☑️ `spareUsed` (0x4121b0)

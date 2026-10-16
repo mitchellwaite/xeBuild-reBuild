@@ -126,7 +126,7 @@ void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
 	const u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
 
 extern struct xebuild xb;
-extern u8 mmcAnchor[0x200];
+extern u32 mmcAnchor[0x80];
 extern struct fsent fsFiles[256];
 extern u16 fsTable[0x1000];
 extern struct flashhdr hdrTemplate;
@@ -134,44 +134,50 @@ extern u32 imgEnd;
 
 char copyright[0x40] = "\xa9 2004-2009 Microsoft Corporation. All rights reserved.";
 
-static u32 mobileOffset;
+u32 mobileOffset;
 static int nFsFiles;
 static u8 smcPage[0x1000];
 
 #define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
 
 /* the LBA in the spare bytes of a block's pages */
-static inline void setSpareLba(u8 *s, u32 block)
-{
-	memset(s, 0, 16);
-	if (xb.bigBlock) {
-		s[0] = 0xff;
-		s[2] = (s[2] & 0xf0) | ((block >> 8) & 0xf);
-		s[1] = block;
-	} else {
-		s[5] = 0xff;
-		s[1] = (s[1] & 0xf0) | ((block >> 8) & 0xf);
-		s[0] = block;
-	}
-}
+#define setSpareLba(sp_, block) do { 	struct sp *s_ = (sp_); 	memset(s_, 0, 16); 	if (!xb.bigBlock) { 		s_->b1lo = (block) >> 8; 		s_->b5 = 0xff; 		s_->b0 = (block); 	} else { 		s_->b2lo = (block) >> 8; 		s_->b0 = 0xff; 		*((u8 *)s_ + 1) = (block); 	} } while (0)
 
 /* the FS table entries of blocks start .. start + n: `next` for each
    (0xf1f1: leave them), or a chain (0: open, 0xffff: closed) */
-static inline void setFsTable(u32 start, u32 n, u16 next)
-{
-	u32 i;
+#define setFsTable(start, n, next) do { 	u32 i_; 	if ((next) != 0xf1f1) { 		if ((next) != 0 && (next) != 0xffff) { 			for (i_ = 0; i_ < (n); i_++) 				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); 		} else { 			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) 				fsTable[i_] = SWAP16((u16)(i_ + 1)); 			if ((next) == 0xffff) 				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); 		} 	} } while (0)
 
-	if (next == 0xf1f1)
-		return;
-	if (next == 0 || next == 0xffff) {
-		for (i = start - xb.fsStart; i < start - xb.fsStart + n; i++)
-			fsTable[i] = SWAP16((u16)(i + 1));
-		if (next == 0xffff)
-			fsTable[start + n - 1 - xb.fsStart] = SWAP16(0x1fff);
+static int imgWriteStart(const void *src, u32 len, u16 next)
+{
+	u32 off = 0, first, rem, tail, blocks, start, b, p;
+
+	if (off > xb.rawSize || off + len > xb.rawSize)
+		return -1;
+	start = off >> 14;
+	first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
+	if (len <= first) {
+		blocks = 1;
+		tail = len;
 	} else {
-		for (i = 0; i < n; i++)
-			fsTable[start - xb.fsStart + i] = SWAP16(next);
+		rem = len - first;
+		blocks = 0;
+		if (rem >= 0x4000)
+			blocks = rem / 0x4000;
+		tail = rem % 0x4000;
+		if (tail)
+			blocks++;
+		if (first)
+			blocks++;
 	}
+	memcpy(xb.hdr + off, src, len);
+	if (tail)
+		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
+	for (b = 0; b < blocks; b++)
+		for (p = 0; p < 32; p++)
+			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
+	setFsTable(start, blocks, next);
+	imgEnd = off + len;
+	return 0;
 }
 
 static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
@@ -187,8 +193,10 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 		tail = len;
 	} else {
 		rem = len - first;
+		blocks = 0;
+		if (rem >= 0x4000)
+			blocks = rem / 0x4000;
 		tail = rem % 0x4000;
-		blocks = rem / 0x4000;
 		if (tail)
 			blocks++;
 		if (first)
@@ -199,35 +207,9 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 	for (b = 0; b < blocks; b++)
 		for (p = 0; p < 32; p++)
-			setSpareLba(xb.spare + ((start + b) * 32 + p) * 16, start + b);
+			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
 	setFsTable(start, blocks, next);
 	imgEnd = off + len;
-	return 0;
-}
-
-static int imgWriteStart(const void *src, u32 len, u16 next)
-{
-	u32 tail, blocks, b, p;
-
-	if (len > xb.rawSize)
-		return -1;
-	if (!len) {
-		blocks = 1;
-		tail = 0;
-	} else {
-		tail = len % 0x4000;
-		blocks = len / 0x4000;
-		if (tail)
-			blocks++;
-	}
-	memcpy(xb.hdr, src, len);
-	if (tail)
-		memset(xb.hdr + len, 0, ((len + 0x3fff) & ~0x3fff) - len);
-	for (b = 0; b < blocks; b++)
-		for (p = 0; p < 32; p++)
-			setSpareLba(xb.spare + (b * 32 + p) * 16, b);
-	setFsTable(0, blocks, next);
-	imgEnd = len;
 	return 0;
 }
 
@@ -245,7 +227,7 @@ static int imgWritePage(u32 off, const void *src, u16 next)
 	memcpy(xb.hdr + off, src, 0x1000);
 	for (b = start; b != start + blocks; b++)
 		for (p = 0; p < 8; p++)
-			setSpareLba(xb.spare + (b * 32 + p) * 16, b);
+			setSpareLba((struct sp *)(xb.spare + (b * 32 + p) * 16), b);
 	if (next != 0xf1f1) {
 		if (next == 0 || next == 0xffff) {
 			fsTable[start - xb.fsStart] = SWAP16((u16)(start - xb.fsStart + 1));
@@ -265,7 +247,7 @@ static int imgWritePage(u32 off, const void *src, u16 next)
 
 int buildImage(void)
 {
-	u32 userSize, spareSize, rawSize;
+	u32 rawSize, spareSize, userSize, cf;
 	int bigBlock;
 	u8 *spare, *hdr;
 
@@ -293,17 +275,7 @@ int buildImage(void)
 		spareSize = 0x200000;
 		bigBlock = 1;
 		rawSize = 0x4200000;
-	} else if (xb.type == 6 || xb.type == 8) {
-		xb.blocks = 0x1000;
-		xb.smcConfigOffset = 0x3dfc000;
-		userSize = 0x4000000;
-		xb.bigBlock = 0;
-		xb.fsStart = 0;
-		spareSize = 0x200000;
-		xb.fsEnd = 0xf7c;
-		bigBlock = 0;
-		rawSize = 0x4200000;
-	} else {
+	} else if (xb.type != 6 && xb.type != 8) {
 		if (xb.flags & 0x10000000) {
 			xb.blocks = 0xc00;
 			xb.smcConfigOffset = 0x2ffc000;
@@ -323,6 +295,16 @@ int buildImage(void)
 		}
 		xb.bigBlock = 0;
 		bigBlock = 0;
+	} else {
+		xb.blocks = 0x1000;
+		xb.smcConfigOffset = 0x3dfc000;
+		userSize = 0x4000000;
+		xb.bigBlock = 0;
+		xb.fsStart = 0;
+		spareSize = 0x200000;
+		xb.fsEnd = 0xf7c;
+		bigBlock = 0;
+		rawSize = 0x4200000;
 	}
 	xb.rawSize = rawSize;
 	xb.spareSize = spareSize;
@@ -336,7 +318,7 @@ int buildImage(void)
 	memset(fsFiles, 0, sizeof(fsFiles));
 	memset(fsTable, 0, sizeof(fsTable));
 	memset(&hdrTemplate, 0, sizeof(hdrTemplate));
-	hdrTemplate.magic = 0xff4f;
+	hdrTemplate.magic = 0x4fff;
 	hdrTemplate.build = 0x6007;
 	memset(mmcAnchor, 0, sizeof(mmcAnchor));
 	if (xb.type == 2) {
@@ -344,13 +326,12 @@ int buildImage(void)
 		hdrTemplate.cfOffset = 0x700;
 		hdrTemplate.kvLength = 0x400000;
 		hdrTemplate.cfOffset2 = 0x700;
-		hdrTemplate.patchSlots = 0x12070000;
+		hdrTemplate.patchSlots = 0x12070200;
 		hdrTemplate.kvOffset = 0x400000;
 		hdrTemplate.smcLength = 0x300000;
 		hdrTemplate.smcOffset = 0x100000;
 		imgEnd = 0x8000;
-		switch (xb.flags & 7) {
-		case 4:
+		if ((xb.flags & 7) == 4) {
 			if (xb.flags & 0x80000000) {
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
@@ -358,29 +339,23 @@ int buildImage(void)
 			if (bigBlock)
 				hdrTemplate.patchSlotSize = 0x100;
 			copyright[10] = '8';
-			break;
-		case 1:
-		case 2:
+		} else if ((xb.flags & 7) == 1 || (xb.flags & 7) == 2) {
 			copyright[10] = '5';
 			hdrTemplate.kvLength = 0;
-			break;
-		default:
+		} else
 			copyright[10] = '7';
-			break;
-		}
 	} else {
 		hdrTemplate.cbOffset = xb.type - 8 < 2 ? 0xc00000 : 0x800000;
-		hdrTemplate.cfOffset = SWAP32(findFileOffset(9));
-		hdrTemplate.patchSlots = 0x12070000;
+		cf = SWAP32(findFileOffset(9));
+		hdrTemplate.patchSlots = 0x12070200;
 		hdrTemplate.kvOffset = 0x400000;
 		hdrTemplate.smcLength = 0x300000;
 		hdrTemplate.smcOffset = 0x100000;
 		imgEnd = 0x8000;
-		hdrTemplate.cfOffset2 = hdrTemplate.cfOffset;
 		hdrTemplate.kvLength = xb.type - 8 < 2 ? 0x800000 : 0x400000;
+		hdrTemplate.cfOffset = cf;
+		hdrTemplate.cfOffset2 = cf;
 		switch (xb.flags & 7) {
-		case 0:
-			break;
 		case 1:
 		case 2:
 			copyright[10] = '5';
@@ -843,39 +818,39 @@ u32 imgAddMobile(const void *data, u32 len, u8 type)
 {
 	u32 off, end, ret;
 
-	if (!xb.bigBlock) {
-		mobileOffset = off = imgSizeAligned();
-		if (!imgFits(off, len))
-			goto full;
+	if (xb.bigBlock) {
+		if (!mobileOffset) {
+			mobileOffset = imgSizeAligned();
+			if (mobileOffset & 0x1ffff)
+				mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
+		} else if (mobileOffset + len > (mobileOffset & ~0x1ffff) + 0x20000)
+			mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
+		off = mobileOffset;
+		if (!imgFits(off, len)) {
+			log_printf(0, "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n",
+				type + 17);
+			return 0;
+		}
+		log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
+			type + 17, type, off, len, off + len);
+		imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
+		ret = mobileOffset >> 17;
+		mobileOffset += len;
+		if (mobileOffset & 0x7ff)
+			mobileOffset = (mobileOffset + 0x800) & ~0x7ff;
+		return ret;
+	}
+	mobileOffset = off = imgSizeAligned();
+	if (imgFits(off, len)) {
 		log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
 			type + 17, type, off, len, off + len);
 		ret = mobileOffset >> 14;
 		imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
 		return ret;
 	}
-	off = mobileOffset;
-	if (!off) {
-		off = imgSizeAligned();
-		if (off & 0x1ffff)
-			off = (off + 0x20000) & ~0x1ffff;
-		mobileOffset = off;
-	} else if ((off & ~0x1ffff) + 0x20000 < off + len)
-		mobileOffset = off = (off + 0x20000) & ~0x1ffff;
-	if (!imgFits(off, len)) {
-full:
-		log_printf(0, "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n",
-			type + 17);
-		return 0;
-	}
-	log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
-		type + 17, type, off, len, off + len);
-	imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
-	end = mobileOffset + len;
-	if (end & 0x7ff)
-		end = (end + 0x800) & ~0x7ff;
-	ret = mobileOffset >> 17;
-	mobileOffset = end;
-	return ret;
+	log_printf(0, "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n",
+		type + 17);
+	return 0;
 }
 
 void fixupFsTable(u32 off)
@@ -919,7 +894,7 @@ int addSmcConfig(const u8 *cfg, u32 len)
 void writeInitialHeader(void)
 {
 	if (xb.bigBlock)
-		imgWriteAt(0, &hdrTemplate, sizeof(hdrTemplate), 0xf1f1);
+		imgWriteStart(&hdrTemplate, sizeof(hdrTemplate), 0xf1f1);
 	else
 		imgWriteStart(&hdrTemplate, sizeof(hdrTemplate), 0x1ffb);
 	if (xb.netKd && xb.netKdSize) {
@@ -941,7 +916,7 @@ struct blhdr {
 	u32 size;
 };
 
-int checkBootImage(int write)
+long checkBootImage(int write)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.bl;
 	struct blhdr *b;
@@ -994,12 +969,12 @@ int checkBootImage(int write)
 		return -1;
 	xb.blSize = (off + SWAP32(b->size) + 15) & ~15;
 	log_printf(1, "final truncated bootloader size 0x%x\n", xb.blSize);
-	if (!write)
-		return 0;
-	if (xb.bigBlock)
-		imgWriteStart(xb.bl, xb.blSize, 0xf1f1);
-	else
-		imgWriteStart(xb.bl, xb.blSize, 0x1ffb);
+	if (write) {
+		if (xb.bigBlock)
+			imgWriteStart(xb.bl, xb.blSize, 0xf1f1);
+		else
+			imgWriteStart(xb.bl, xb.blSize, 0x1ffb);
+	}
 	return 0;
 }
 
@@ -1021,8 +996,8 @@ void writeFsTable(u32 off)
 		imgAdd(off, buf, 0x4000, 0x2c, 0x1ffe, 0);
 	else
 		imgAdd(off, buf, 0x4000, 0x30, 0x1ffd, 0);
-	setBeU16(off >> 14, mmcAnchor + 0x1c);
-	setBeU16(0, mmcAnchor + 0x1e);
+	setBeU16(off >> 14, (u8 *)mmcAnchor + 0x1c);
+	setBeU16(0, (u8 *)mmcAnchor + 0x1e);
 	free(buf);
 }
 

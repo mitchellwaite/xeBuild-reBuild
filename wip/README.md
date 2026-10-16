@@ -651,8 +651,11 @@ fncmp status. The data it uses are xb fields (0x28-0x5c: spare/hdr/raw
 buffers, sizes, FS start/end blocks) and COMMON globals from
 `common_bss.s` with no SYMBOLS names yet: mmcAnchor (4c9164), fsFiles
 (4c97c0), fsTable (4cb7c0), hdrTemplate (4cd7c0), imgEnd (4cd840). The
-object's own data: `copyright` (.data 44a580, patched per console type)
-and the statics mobileOffset (46f9c0), nFsFiles (46f9c4), smcPage (46f9e0).
+object's own data: `copyright` (.data 44a580, patched per console type),
+mobileOffset (46f9c0) and the statics nFsFiles (46f9c4), smcPage (46f9e0).
+mobileOffset is reloaded after imgAdd returns, so it isn't a static that
+ipa-reference can see through: a global (`u32 mobileOffset;`, in .bss
+because the original isn't -fcommon for it, or initialised to 0).
 
 Findings:
 - calcEcd and friends are the well-known NAND ECD code (`unsigned int i = 0,
@@ -665,3 +668,42 @@ Findings:
   LBA high nibble, bad-block byte, LBA low byte.
 - imgWriteStart (regparm src, len, next) is its own function, not an
   ipa-cp clone of imgWriteAt (gcc doesn't clone it).
+- checkBootImage returns `long`: as `int`, uncprop reuses the tested
+  `xb.bigBlock` (0) register for `return 0`. `u32 bigBlock` fixes it too
+  but breaks fixupEmptyFsBlocks.
+- buildImage: the size/kv/cf stores follow the asm order once the
+  swapped CB offset is a local stored after the constants; the switch has
+  no `case 0`; `else if (type != 6 && type != 8)` (MMC/16M nested) before
+  the 64M case. Left (56 lines, 16 of them ddisasm's `__ImageBase` for
+  0x400000): cold-block order (the MMC block and the type 2 `'5'`, flags<0
+  blocks), and one register.
+- imgAddMobile: big block path first, error path duplicated (crossjumped),
+  small path `if (imgFits) {...; return ret;}`. Left (18 lines): the
+  "mobileOffset already set" block's placement.
+
+Still off:
+- writeInitialHeader: the original inlines imgWriteStart(&hdrTemplate,
+  0x80, 0xf1f1) (the `cmp rawSize,127` and one-block spare loop) but calls
+  it for 0x1ffb, and checkBootImage calls it for both. Ours inlines none:
+  `-fdump-ipa-inline-details` estimates ~60 for the call (limit:
+  max-inline-insns-auto 40, or 50 with a loop-iterations hint). Helpers
+  must be macros, not static inline functions, or ipa-split splits
+  setFsTable and the `next != 0xf1f1` predicate doesn't shrink the
+  estimate. `static inline` imgWriteStart inlines every call.
+- imgWriteStart/imgWriteAt: the block count logic. The original tests
+  `len == 0`, then `rem <= 0x3fff` (jumping to the shared `(rem >> 14) + 1;
+  memcpy; memset` block), then `rem & 0x3fff`; the spare loop has no
+  blocks == 0 guard; the fsTable chain path falls through. imgAdd's
+  pseudocode (`if (rem <= 0x3fff) n = 0; else n = rem >> 14; ... ++n`) is
+  the clearest picture of the source.
+- finalizeImage: the 512-byte memcpy to the raw buffer is expanded as for
+  unknown alignment (first/last dword + rep movsd) in the original, though
+  the pointer comes from malloc; ours knows it is 4-aligned. The erased
+  check indexes `[ecx+esi]` (ours walks a pointer).
+- imgAdd, imgAddFile, writeFsTable, imgWritePage: not looked at in detail
+  yet. writeFsTable inlines imgAdd twice in the original (0x2c and 0x30
+  types); ours makes an `imgAdd.constprop` clone instead.
+- smcSetLoad (43): the original folds `(0x4000 - size) << 24` into
+  `-(size << 24)`; no type combination tried reproduces it.
+- blockEccOk (4): needs both the inline ternary loop bound (no entry
+  guard) and the pages-variable layout.
