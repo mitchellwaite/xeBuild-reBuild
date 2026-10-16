@@ -151,11 +151,36 @@ static u8 smcPage[0x1000];
 #define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
 
 /* the LBA in the spare bytes of a block's pages */
-#define setSpareLba(sp_, block) do { 	struct sp *s_ = (sp_); 	memset(s_, 0, 16); 	if (!xb.bigBlock) { 		s_->b1lo = (block) >> 8; 		s_->b5 = 0xff; 		s_->b0 = (block); 	} else { 		s_->b2lo = (block) >> 8; 		s_->b0 = 0xff; 		*((u8 *)s_ + 1) = (block); 	} } while (0)
+#define setSpareLba(sp_, block) do { \
+	struct sp *s_ = (sp_); \
+	memset(s_, 0, 16); \
+	if (xb.bigBlock) { \
+		s_->b2lo = (block) >> 8; \
+		s_->b0 = 0xff; \
+		*((u8 *)s_ + 1) = (block); \
+	} else { \
+		s_->b1lo = (block) >> 8; \
+		s_->b5 = 0xff; \
+		s_->b0 = (block); \
+	} \
+} while (0)
 
 /* the FS table entries of blocks start .. start + n: `next` for each
    (0xf1f1: leave them), or a chain (0: open, 0xffff: closed) */
-#define setFsTable(start, n, next) do { 	u32 i_; 	if ((next) != 0xf1f1) { 		if ((next) != 0 && (next) != 0xffff) { 			for (i_ = 0; i_ < (n); i_++) 				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); 		} else { 			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) 				fsTable[i_] = SWAP16((u16)(i_ + 1)); 			if ((next) == 0xffff) 				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); 		} 	} } while (0)
+#define setFsTable(start, n, next) do { \
+	u32 i_; \
+	if ((next) != 0xf1f1) { \
+		if ((next) != 0 && (next) != 0xffff) { \
+			for (i_ = 0; i_ < (n); i_++) \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+		} else { \
+			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) \
+				fsTable[i_] = SWAP16(i_ + 1); \
+			if ((next) == 0xffff) \
+				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+		} \
+	} \
+} while (0)
 
 static int imgWriteStart(const void *src, u32 len, u16 next)
 {
@@ -226,31 +251,19 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 /* one 4K page */
 static int imgWritePage(u32 off, const void *src, u16 next)
 {
-	u32 blocks, start, b, p;
+	u32 blocks, start, b, p, i;
 
-	if (off > xb.rawSize || off + 0x1000 > xb.rawSize)
+	if (xb.rawSize < off || xb.rawSize < off + 0x1000)
 		return -1;
 	start = off >> 14;
 	blocks = 1;
 	if (off & 0x3fff)
 		blocks = (0x4000 - (off & 0x3fff) < 0x1000) + 1;
 	memcpy(xb.hdr + off, src, 0x1000);
-	for (b = start; b != start + blocks; b++)
+	for (b = 0; b < blocks; b++)
 		for (p = 0; p < 8; p++)
-			setSpareLba((struct sp *)(xb.spare + (b * 32 + p) * 16), b);
-	if (next != 0xf1f1) {
-		if (next == 0 || next == 0xffff) {
-			fsTable[start - xb.fsStart] = SWAP16((u16)(start - xb.fsStart + 1));
-			if (blocks == 2)
-				fsTable[start - xb.fsStart + 1] = SWAP16((u16)(start - xb.fsStart + 2));
-			if (next == 0xffff)
-				fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
-		} else {
-			fsTable[start - xb.fsStart] = SWAP16(next);
-			if (blocks == 2)
-				fsTable[start - xb.fsStart + 1] = SWAP16(next);
-		}
-	}
+			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
+	setFsTable(start, blocks, next);
 	imgEnd = off + 0x1000;
 	return 0;
 }

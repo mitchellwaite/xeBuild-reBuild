@@ -652,7 +652,7 @@ externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `b
 `build/decomp_unit.py ... 13`). `sh wip/iwst.sh` prints every function's
 fncmp status. The data it uses are xb fields (0x28-0x5c: spare/hdr/raw
 buffers, sizes, FS start/end blocks) and COMMON globals from
-`common_bss.s` with no SYMBOLS names yet: mmcAnchor (4c9164), fsFiles
+`common_bss.s`, named in SYMBOLS: mmcAnchor (4c9164), fsFiles
 (4c97c0), fsTable (4cb7c0), hdrTemplate (4cd7c0), imgEnd (4cd840). The
 object's own data: `copyright` (.data 44a580, patched per console type),
 mobileOffset (46f9c0) and the statics nFsFiles (46f9c4), smcPage (46f9e0).
@@ -703,7 +703,13 @@ Still off:
   unknown alignment (first/last dword + rep movsd) in the original, though
   the pointer comes from malloc; ours knows it is 4-aligned. The erased
   check indexes `[ecx+esi]` (ours walks a pointer).
-- imgAdd, imgAddFile, writeFsTable, imgWritePage: not looked at in detail
+- imgWritePage (92): with the setFsTable macro the non-chain stores unroll
+  (`blocks == 2`) like the original but the chain loop doesn't (its IV
+  starts at `start - fsStart`); a `j = 0..blocks` chain loop unrolls but
+  makes imgWritePage small enough that gcc inlines it into addSmcConfig
+  and imgAddRaw. The original computes `SWAP16(next)` before the chain
+  test and the chain value un-rotated (`shr bx,8; shl edi,8; add`).
+- imgAdd, imgAddFile, writeFsTable: not looked at in detail
   yet. writeFsTable inlines imgAdd twice in the original (0x2c and 0x30
   types); ours makes an `imgAdd.constprop` clone instead.
 - smcSetLoad (43): the original folds `(0x4000 - size) << 24` into

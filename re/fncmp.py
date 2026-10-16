@@ -23,7 +23,7 @@ NAMED = set(SYMBOLS.values()) | {v.split('@')[0] for v in IAT_NAMES.values()}
 # FNCMP_LITERALS=1: a draft with string literals (wip/) compares against the
 # .s's named strings (`_msg_*`, `_str_*`, `_mu_*`, `_mc_*`) as plain labels
 if os.environ.get('FNCMP_LITERALS'):
-    NAMED = {n for n in NAMED if not re.match(r'_(msg|str|mu|ir|mc|net|bd)_', n)}
+    NAMED = {n for n in NAMED if not re.match(r'_(msg|str|mu|ir|mc|net|bd|iw)_', n)}
 # condition-code spellings: gcc's (e.g. jnb) -> ddisasm's (jae)
 CC = {'nb': 'ae', 'nae': 'b', 'z': 'e', 'nz': 'ne', 'nbe': 'a', 'na': 'be',
       'nl': 'ge', 'nge': 'l', 'nle': 'g', 'ng': 'le', 'c': 'b', 'nc': 'ae'}
@@ -137,6 +137,8 @@ def main():
     addr_of = {s: a for a, s in SYMBOLS.items()}
     at = lambda a: SYMBOLS.get(a, 'L_%x' % a)
     g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)\+(\d+)\]', r'\1[\3+\2]', r.stdout)
+    # `_x[ecx+2+ecx]`: the displacement between the registers
+    g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)\+(\d+)\+(\w+)\]', r'\1[\3+\2+\4]', g)
     # `_cpuKey[ebx-1]`: a named global indexed with a negative offset
     g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)-(\d+)\]', lambda m: m.group(0) if m.group(1) not in addr_of
                else '%s[%s]' % (at(addr_of[m.group(1)] - int(m.group(3))), m.group(2)), g)

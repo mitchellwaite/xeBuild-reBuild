@@ -157,11 +157,36 @@ static u8 smcPage[0x1000];
 #define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
 
 /* the LBA in the spare bytes of a block's pages */
-#define setSpareLba(sp_, block) do { 	struct sp *s_ = (sp_); 	memset(s_, 0, 16); 	if (!xb.bigBlock) { 		s_->b1lo = (block) >> 8; 		s_->b5 = 0xff; 		s_->b0 = (block); 	} else { 		s_->b2lo = (block) >> 8; 		s_->b0 = 0xff; 		*((u8 *)s_ + 1) = (block); 	} } while (0)
+#define setSpareLba(sp_, block) do { \
+	struct sp *s_ = (sp_); \
+	memset(s_, 0, 16); \
+	if (xb.bigBlock) { \
+		s_->b2lo = (block) >> 8; \
+		s_->b0 = 0xff; \
+		*((u8 *)s_ + 1) = (block); \
+	} else { \
+		s_->b1lo = (block) >> 8; \
+		s_->b5 = 0xff; \
+		s_->b0 = (block); \
+	} \
+} while (0)
 
 /* the FS table entries of blocks start .. start + n: `next` for each
    (0xf1f1: leave them), or a chain (0: open, 0xffff: closed) */
-#define setFsTable(start, n, next) do { 	u32 i_; 	if ((next) != 0xf1f1) { 		if ((next) != 0 && (next) != 0xffff) { 			for (i_ = 0; i_ < (n); i_++) 				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); 		} else { 			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) 				fsTable[i_] = SWAP16((u16)(i_ + 1)); 			if ((next) == 0xffff) 				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); 		} 	} } while (0)
+#define setFsTable(start, n, next) do { \
+	u32 i_; \
+	if ((next) != 0xf1f1) { \
+		if ((next) != 0 && (next) != 0xffff) { \
+			for (i_ = 0; i_ < (n); i_++) \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+		} else { \
+			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) \
+				fsTable[i_] = SWAP16(i_ + 1); \
+			if ((next) == 0xffff) \
+				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+		} \
+	} \
+} while (0)
 
 /* strings in image_write.s */
 static const char iw_4517f8[] = "flash header build version set to v.%d\n";
