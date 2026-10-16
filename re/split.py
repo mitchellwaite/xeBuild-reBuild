@@ -418,8 +418,8 @@ SYMBOLS = {
     0x4566c4: '_str_valid', 0x4566ca: '_str_error', 0x4566d0: '_msg_weight',
     0x4566eb: '_msg_cpuKeySet', 0x4566fe: '_str_hexByte', 0x456703: '_str_newline',
     0x456708: '_msg_cpuKeyWarn', 0x45674c: '_msg_cpuKeyChars', 0x45678c: '_msg_cpuKeyLen',
-    0x4567eb: '_msg_cpuKeySet2', 0x4567fe: '_msg_fuseLdv', 0x45685e: '_msg_1blKeySet',
-    0x456873: '_msg_1blSum',
+    0x4567eb: '_msg_cpuKeySet2', 0x4567fe: '_msg_fuseLdv', 0x456816: '_msg_fuseCpuKey',
+    0x456830: '_msg_fuseNull', 0x45685e: '_msg_1blKeySet', 0x456873: '_msg_1blSum',
     0x456890: '_msg_xexKeySet', 0x4568a5: '_msg_xexSum', 0x4568c2: '_msg_1blBad',
     0x4568e0: '_msg_1blBad2', 0x456904: '_msg_1blChars', 0x456944: '_msg_1blLen',
     0x4569a3: '_msg_1blBadStr', 0x4569c4: '_msg_1blBadStr2', 0x456cfc: '_msg_cbencPairing',
@@ -659,7 +659,7 @@ C_FUNCS = {
     0x41ad30, 0x41ad60, 0x41ad90, 0x41adb0,  # setInfoKey4 setInfoKey5 setKvSalt setKvAltSalt
     0x41add0, 0x41ade0, 0x41ae40, 0x41afe0,  # setSmcKey setPairing checkCpuKey setCpuKeyStr
     0x41b120, 0x41b1d0, 0x41b420, 0x41b520,  # setCpuKey setFuseLdv calcXexKey check1blKey
-    0x41b600,                                # set1blKey
+    0x41b600, 0x41b320,                      # set1blKey setFuseCpuKey
     0x41b740, 0x41ba00, 0x41bf50, 0x41c0c0,  # checkKeys smcEncrypt cbaEncrypt cbaEncryptZero
     0x41c1b0, 0x41c370, 0x41c5e0, 0x41c6b0,  # cbaEncrypt2 cbbEncrypt cdEncryptZero cdEncrypt
     0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt

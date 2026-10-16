@@ -187,7 +187,7 @@ Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops 
 
 ## app/keys.c
 
-Draft of the whole object, with string literals. 40 of 48 functions are
+Draft of the whole object, with string literals. 41 of 48 functions are
 built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
 makes from this file; add a function's name there (and its address to
 `split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
@@ -197,24 +197,31 @@ strings). setFuseLdv matched by declaring `u32 i;` before `u64 cb, cf;`
 (that stops the `xor edi,edi` for `i = 0` moving above `test al,al`); its
 print loop is `for (i = 0; i < 16; i++) ... fuse[56 + i]`, which compiles
 the same but costs more in the inliner (now over max-inline-insns-auto),
-so setFuseCpuKey calls it as the original does. Still off:
+so setFuseCpuKey calls it as the original does.
 
-- `setFuseCpuKey` (16): only the cpuKey write-back is missing (the original
-  stores the 16 key bytes it loaded back to cpuKey after the fuse copies;
-  `*(q16 *)cpuKey = *(q16 *)(fuse + 32)` is in the draft). The copies are
-  fuse lines 3..6 (24/32/40/48 = key lo, lo, hi, hi). Ours: postreload's
-  cselib deletes the store as storing what is already there, and sched2
-  hoists the key loads above the fuse+24 store; both mean gcc thinks the
-  `fuse` stores can't alias cpuKey (q8 vs q16 TBAA, MEM_REF offsets). The
-  original has them aliasing (loads after the fuse+24 store, store kept) but
-  still loads all 16 bytes before the fuse+32/40 stores. Tried: memcpy/u64/
-  u32/struct forms for each copy (build/keys/sk3.t), `extern u8 cpuKey[]`
-  (aliases, but then the 16-byte copy goes word by word), larger cpuKey.
+setFuseCpuKey matched once key1bl/cpuKey/key28c became fields of `xb`
+(0x26c/0x27c/0x28c, as in main.c's struct): as separate 16-byte variables
+gcc's oracle rules out `fuse + 24` reaching them (a pointer can't point
+before a variable's start), so the cpuKey write-back went; inside `xb` the
+fuse stores may alias it.  The copies are plain memcpys, the last one
+`memcpy(xb.cpuKey, fuse + 32, 16)`.  Its NULL block is aligned, so the
+object builds with `--param align-threshold=200`.
+
+Still off:
+
 - `smcChecksum` (29) and `smcPrepare` (24, which inlines it): the loop is
   right except `cmp ebp,[end]` operand order; after it the original moves
   both sums into registers (sum2 in esi:edi across the first setBeU64 call,
   `xor`s on the `count == 0` path), ours keeps sum2 in its stack slot. IRA
   has a loop region in both; `-fira-region`/`-fira-algorithm` don't help.
+  The operand order is SSA version order (lower version first; the
+  bound ivopts builds reuses freed names, so it sorts before the new iv).
+  `if (count) { p = buf; do { ... p++; } while (p != buf + count); }`
+  gives the original's order and guard standalone (27 lines, all RA), but
+  in smcPrepare `buf + size / 4` folds to `size & -4` and the block order
+  flips (151), so the original indexes.  The sums are spilled in the
+  parent region too (IRA pops r87/r88 l0 as spills under the loop's caps),
+  where the original keeps them in registers outside the loop.
 - `fcrtEncrypt` (13): the "invalid offset" log should be the last block with
   its own epilogue; ours puts it before the shared epilogue. All four exits
   having their own epilogue means bb-reorder copied the epilogue into each,
@@ -225,6 +232,11 @@ so setFuseCpuKey calls it as the original does. Still off:
   getBeU32 pure brings it to 51% but isn't the original. Nested if/else,
   inverted conditions, a static hash-check helper (changes the frame) and
   `__builtin_expect` on either test don't give it.
+  The bbro dump confirms it: the damaged-data exit is 359/10000 (memcmp
+  50%, `verify != 1` 51.2% after the call heuristic on the log edge).  With
+  E1 first, E2/E3/main all need 10%, so `size == 0x4000` must be predicted
+  well above 30%; gotos, `size - off`, and pure getBeU32/verifyFcrt
+  (block-scope redeclarations) don't change the layout.
 - `kvPrepare` (437): ours tail-merges the inlined kvEncrypt and kvEncryptAlt
   copies (one HMAC/RC4 sequence with the salt selected); the original keeps
   both (their registers differ), and its size error is the fallthrough of

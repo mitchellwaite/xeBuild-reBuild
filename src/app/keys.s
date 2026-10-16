@@ -50,7 +50,9 @@
 .globl _msg_extEncrypted
 .globl _msg_extMissing
 .globl _msg_extSize
+.globl _msg_fuseCpuKey
 .globl _msg_fuseLdv
+.globl _msg_fuseNull
 .globl _msg_initRandom
 .globl _msg_initStatic
 .globl _msg_pairingSet
@@ -61,7 +63,6 @@
 .globl _msg_xexSum
 .globl _pairing
 .globl _secdataKey
-.globl _setFuseCpuKey
 .globl _smcChecksum
 .globl _smcKey
 .globl _smcPrepare
@@ -228,76 +229,7 @@
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_setFuseCpuKey:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,28
-          mov ESI,DWORD PTR [ESP+48]
-          test ESI,ESI
-          je L_41b400
-          mov EAX,DWORD PTR [_cpuKey]
-          mov EDX,DWORD PTR [L_47a120]
-          mov DWORD PTR [ESI+24],EAX
-          mov DWORD PTR [ESI+28],EDX
-          mov EBX,DWORD PTR [L_47a124]
-          mov ECX,DWORD PTR [L_47a128]
-          mov EBP,DWORD PTR [_cpuKey]
-          mov EDI,DWORD PTR [L_47a120]
-          mov DWORD PTR [ESI+40],EBX
-          mov DWORD PTR [ESI+44],ECX
-          mov DWORD PTR [ESI+32],EBP
-          mov DWORD PTR [ESI+36],EDI
-          mov EAX,DWORD PTR [L_47a124]
-          mov EDX,DWORD PTR [L_47a128]
-          mov DWORD PTR [ESI+48],EAX
-          mov DWORD PTR [ESI+52],EDX
-          movzx EAX,BYTE PTR [L_479f15]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [L_47a124],EBX
-          mov DWORD PTR [L_47a128],ECX
-          lea EBX,DWORD PTR [ESI+32]
-          mov DWORD PTR [_cpuKey],EBP
-          mov DWORD PTR [L_47a120],EDI
-          add ESI,48
-          mov DWORD PTR [ESP+4],EAX
-          call _setFuseLdv
-          mov DWORD PTR [ESP+4],OFFSET L_456816
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          .byte 0x66   # nop
-          nop
-L_41b3c0:
-          movzx EAX,BYTE PTR [EBX]
-          mov DWORD PTR [ESP+4],OFFSET _str_hexByte
-          add EBX,1
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          cmp EBX,ESI
-          jne L_41b3c0
-          mov DWORD PTR [ESP+4],OFFSET _str_newline
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,28
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x66
-          .byte 0x90
-L_41b400:
-          mov DWORD PTR [ESP+4],OFFSET L_456830
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,28
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _setFuseCpuKey
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -2273,10 +2205,10 @@ _msg_cpuKeySet2:
           .string "CPU Key set to  : "
 _msg_fuseLdv:
           .string "Fuse CF LDV set to : 0x"
-L_456816:
+_msg_fuseCpuKey:
           .string "Fuse CPU Key set to: 0x"
           .zero 2
-L_456830:
+_msg_fuseNull:
           .string "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n"
 _msg_1blKeySet:
           .string "1BL Key set to  : 0x"

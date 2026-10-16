@@ -24,8 +24,6 @@ typedef struct {
 	u32 f428;			/* 428 */
 } part_t;
 
-typedef struct { u8 b[8]; } q8;
-typedef struct { u8 b[16]; } q16;
 
 /* the parts of main.c's struct xebuild used here */
 struct xebuild {
@@ -37,6 +35,10 @@ struct xebuild {
 	u8 pad064[0x074 - 0x064];
 	u8 cbLdv;			/* 074 */
 	u8 cfLdv;			/* 075 */
+	u8 pad076[0x26c - 0x076];
+	u8 key1bl[16];			/* 26c */
+	u8 cpuKey[16];			/* 27c */
+	u8 key28c[16];			/* 28c */
 };
 
 void aes_init(void);
@@ -73,9 +75,6 @@ void daeDecrypt(u8 *dae, u32 size, int perBox);
 int verifyFcrt(u8 *fcrt, u32 size);
 
 extern struct xebuild xb;
-extern u8 key1bl[16];
-extern u8 cpuKey[16];
-extern u8 key28c[16];
 
 u8 secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
 u8 daeKey[32];
@@ -234,13 +233,13 @@ int setCpuKeyStr(char *str)
 		ret = validateString(str);
 		if (ret) {
 			for (i = 0; i < 16; i++, str += 2)
-				cpuKey[i] = myatox8(str);
+				xb.cpuKey[i] = myatox8(str);
 			log_printf(1, "CPU Key set to: 0x");
 			for (i = 0; i < 16; i++)
-				log_printf(1, "%02X", cpuKey[i]);
+				log_printf(1, "%02X", xb.cpuKey[i]);
 			ret = 1;
-			if (!checkZeros(cpuKey, 16)) {
-				if (checkCpuKey(1, cpuKey))
+			if (!checkZeros(xb.cpuKey, 16)) {
+				if (checkCpuKey(1, xb.cpuKey))
 					log_printf(0, "\n");
 				else
 					log_printf(0, "\n***** WARNING: CPU key check failed, CPU key may not be valid!\n\n");
@@ -256,10 +255,10 @@ int setCpuKeyStr(char *str)
 
 int setCpuKey(int level, u8 *key)
 {
-	memcpy(cpuKey, key, 16);
+	memcpy(xb.cpuKey, key, 16);
 	log_printf(level, "CPU Key set to  : ");
 	showKey(level, key);
-	if (!checkZeros(cpuKey, 16) && !checkCpuKey(level, cpuKey))
+	if (!checkZeros(xb.cpuKey, 16) && !checkCpuKey(level, xb.cpuKey))
 		log_printf(level, "\n***** WARNING: CPU key check failed, CPU key may not be valid!\n\n");
 	log_printf(level, "\n");
 	return 1;
@@ -301,10 +300,10 @@ void setFuseCpuKey(u8 *fuse)
 		log_printf(0, "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n");
 		return;
 	}
-	*(q8 *)(fuse + 24) = *(q8 *)cpuKey;
-	*(q16 *)(fuse + 32) = *(q16 *)cpuKey;
-	*(q8 *)(fuse + 48) = *(q8 *)(cpuKey + 8);
-	*(q16 *)cpuKey = *(q16 *)(fuse + 32);
+	memcpy(fuse + 24, xb.cpuKey, 8);
+	memcpy(fuse + 32, xb.cpuKey, 16);
+	memcpy(fuse + 48, xb.cpuKey + 8, 8);
+	memcpy(xb.cpuKey, fuse + 32, 16);
 	setFuseLdv(fuse, xb.cfLdv);
 	log_printf(1, "Fuse CPU Key set to: 0x");
 	for (i = 32; i < 48; i++)
@@ -320,23 +319,23 @@ u32 calcXexKey(void)
 	u8 hash[16];
 
 	memcpy(junk, "thisisjustajunky", 16);
-	XeCryptHmacSha(junk, 16, key1bl, 16, NULL, 0, NULL, 0, hash, 16);
-	memcpy(key28c, key, 16);
-	XeCryptRc4(hash, 16, key28c, 16);
-	return sumBytes(key28c, 16);
+	XeCryptHmacSha(junk, 16, xb.key1bl, 16, NULL, 0, NULL, 0, hash, 16);
+	memcpy(xb.key28c, key, 16);
+	XeCryptRc4(hash, 16, xb.key28c, 16);
+	return sumBytes(xb.key28c, 16);
 }
 
 int check1blKey(void)
 {
-	u32 sum1 = sumBytes(key1bl, 16);
+	u32 sum1 = sumBytes(xb.key1bl, 16);
 	u32 sum2 = calcXexKey();
 
 	if (sum1 == 0x983 && sum2 == 0x800) {
 		log_printf(1, "1BL Key set to  : 0x");
-		showKey(1, key1bl);
+		showKey(1, xb.key1bl);
 		log_printf(1, " sum: 0x%x (expects: 0x983)\n", sum1);
 		log_printf(1, "xex Key set to  : 0x");
-		showKey(1, key28c);
+		showKey(1, xb.key28c);
 		log_printf(1, " sum: 0x%x (expects: 0x800)\n", sum2);
 		return 1;
 	}
@@ -345,11 +344,11 @@ int check1blKey(void)
 
 int set1blKey(u8 *key)
 {
-	memcpy(key1bl, key, 16);
+	memcpy(xb.key1bl, key, 16);
 	if (check1blKey())
 		return 1;
 	log_printf(0, "\n******* ERROR: 1BL key 0x");
-	showKey(0, key1bl);
+	showKey(0, xb.key1bl);
 	log_printf(0, " does not appear to be correct!\n");
 	return 0;
 }
@@ -363,7 +362,7 @@ int checkKeys(char *str)
 	if (len == 32) {
 		if (validateString(str)) {
 			for (i = 0, p = str; i < 16; i++, p += 2)
-				key1bl[i] = myatox8(p);
+				xb.key1bl[i] = myatox8(p);
 			if (check1blKey())
 				return 1;
 			log_printf(0, "\n******* ERROR: 1BL key 0x%s ", str);
@@ -481,12 +480,12 @@ int smcPrepare(u8 *smc, u8 *hash, u32 size)
 void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
 {
 	memcpy(cb + 16, infoKey0, 16);
-	XeCryptHmacSha(key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
 	if (!zero) {
 		log_printf(1, "CBENC pairing set to: %02x %02x %02x\n", pairing[0], pairing[1], pairing[2]);
 		memcpy(cb + 32, pairing, 3);
 		cb[35] = xb.cbLdv;
-		XeCryptHmacSha(cpuKey, 16, key, 16, cb + 32, 16, salt, 16, cb + 48, 16);
+		XeCryptHmacSha(xb.cpuKey, 16, key, 16, cb + 32, 16, salt, 16, cb + 48, 16);
 	}
 	XeCryptRc4(key, 16, cb + 32, size - 32);
 }
@@ -496,7 +495,7 @@ void cbaEncryptZero(u8 *cb, u8 *key, u32 size)
 	memset(pairing, 0, 3);
 	memcpy(cb + 16, infoKey0, 16);
 	memset(cb + 32, 0, 32);
-	XeCryptHmacSha(key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cb + 32, size - 32);
 }
 
@@ -505,11 +504,11 @@ void cbaEncrypt2(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
 	memcpy(cb + 16, infoKey0, 16);
 	if (zero)
 		memset(cb + 32, 0, 32);
-	XeCryptHmacSha(key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
 	if (!zero) {
 		memcpy(cb + 32, pairing, 3);
 		cb[35] = xb.cbLdv;
-		XeCryptHmacSha(cpuKey, 16, key, 16, cb + 32, 16, salt, 16, cb + 48, 16);
+		XeCryptHmacSha(xb.cpuKey, 16, key, 16, cb + 32, 16, salt, 16, cb + 48, 16);
 	}
 	XeCryptRc4(key, 16, cb + 32, size - 32);
 }
@@ -521,7 +520,7 @@ void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int z
 	u8 hdr[16];
 
 	memcpy(cbb + 16, infoKey1, 16);
-	ck = !(flags & 1) ? cpuKey : zeroKey;
+	ck = !(flags & 1) ? xb.cpuKey : zeroKey;
 	if (flags & 0x800)
 		log_printf(1, "\t**dual CB flag detected!**\n");
 	if (flags & 0x1000) {
@@ -539,7 +538,7 @@ void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int z
 		memcpy(cbb + 32, pairing, 3);
 		cbb[35] = xb.cbLdv;
 		if (!(flags & 1))
-			XeCryptHmacSha(cpuKey, 16, key, 16, cbb + 32, 16, salt, 16, cbb + 48, 16);
+			XeCryptHmacSha(xb.cpuKey, 16, key, 16, cbb + 32, 16, salt, 16, cbb + 48, 16);
 		else
 			log_printf(1, "\t** CBB crypto method set to work with mfg CBA!**\n");
 	}
@@ -567,7 +566,7 @@ void cdEncryptCpu(u8 *cd, u8 *prevKey, u8 *key, u32 size)
 {
 	memcpy(cd + 16, infoKey2, 16);
 	XeCryptHmacSha(prevKey, 16, cd + 16, 16, NULL, 0, NULL, 0, key, 16);
-	XeCryptHmacSha(cpuKey, 16, key, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, key, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cd + 32, size - 32);
 }
 
@@ -618,10 +617,10 @@ u32 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
 		cf->buf[543] = xb.cfLdv;
 	}
 	n = cfPatchSlots(cf, extra, block, max);
-	XeCryptHmacSha(key1bl, 16, salt, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.key1bl, 16, salt, 16, NULL, 0, NULL, 0, key, 16);
 	if (!keep) {
 		memcpy(cf->buf + 32, key, 16);
-		XeCryptHmacSha(cpuKey, 16, cf->buf, 0x220, NULL, 0, NULL, 0, cf->buf + 544, 16);
+		XeCryptHmacSha(xb.cpuKey, 16, cf->buf, 0x220, NULL, 0, NULL, 0, cf->buf + 544, 16);
 	}
 	buf = cf->buf;
 	memcpy(cf->f414, buf + 816, 16);
@@ -643,8 +642,8 @@ void kvEncrypt(u8 *kv, u32 size)
 	u8 key[16];
 
 	memcpy(kv + 16, kvSalt, 8);
-	XeCryptHmacSha(cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, kv, 16);
-	XeCryptHmacSha(cpuKey, 16, kv, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, kv, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, kv, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, kv + 16, size - 16);
 }
 
@@ -654,8 +653,8 @@ void kvEncryptAlt(u8 *kv, u32 size)
 	u8 key[16];
 
 	memcpy(kv + 16, kvAltSalt, 8);
-	XeCryptHmacSha(cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, kv, 16);
-	XeCryptHmacSha(cpuKey, 16, kv, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, kv, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, kv, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, kv + 16, size - 16);
 }
 
@@ -682,7 +681,7 @@ static int kvHashOk(u8 *kv, u32 size)
 	u8 ver[2] = { 0x07, 0x12 };
 	u8 hash[16];
 
-	XeCryptHmacSha(cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, hash, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, hash, 16);
 	return memcmp(kv, hash, 16) == 0;
 }
 
@@ -714,7 +713,7 @@ void kvPrepare(part_t *kv, int alt)
 		if (!checkZeros(kv->buf + 88, 8))
 			log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
 	} else {
-		XeCryptHmacSha(cpuKey, 16, buf + 16, kv->size - 16, ver, 2, NULL, 0, key, 16);
+		XeCryptHmacSha(xb.cpuKey, 16, buf + 16, kv->size - 16, ver, 2, NULL, 0, key, 16);
 		if (memcmp(buf, key, 16)) {
 			if (checkZeros(buf + 56, 88)) {
 				log_printf(1, "%s appears to be decrypted already, but the hash does not match the CPU key...", file);
@@ -790,8 +789,8 @@ void secdataPrepare(part_t *sd, u8 *date)
 	memcpyrev(sd->buf + 32, date, 8);
 	sd->buf[24] = 1;
 	sd->buf[25] = xb.cfLdv;
-	XeCryptHmacSha(cpuKey, 16, sd->buf + 16, sd->size - 16, NULL, 0, NULL, 0, sd->buf, 16);
-	XeCryptHmacSha(cpuKey, 16, sd->buf, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, sd->buf + 16, sd->size - 16, NULL, 0, NULL, 0, sd->buf, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, sd->buf, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, sd->buf + 16, sd->size - 16);
 }
 
@@ -830,7 +829,7 @@ void crlEncrypt(u8 *crl, u32 size, u8 *date)
 		XeCryptAesCbc(&aes, buf + 320, 16, crl + 320, iv, 1);
 		memcpy(iv, crl + 320, 16);
 		XeCryptAesCbc(&aes, buf + 336, size - 336, crl + 336, iv, 1);
-		XeCryptAesKey(&aes, cpuKey);
+		XeCryptAesKey(&aes, xb.cpuKey);
 		XeCryptAesEcb(&aes, key, crl + 304, 1);
 	} else
 		log_printf(0, "\n******* ERROR: crl data appears to be crypted with the wrong key or damaged!\n");
@@ -850,10 +849,10 @@ void daeEncryptOne(u8 *dae, u32 size, u8 *date)
 	dae[319] = xb.cfLdv;
 	memcpy(buf, dae, size);
 	memset(iv, 0, 16);
-	XeCryptHmacSha(cpuKey, 16, buf + 288, 32, NULL, 0, NULL, 0, hash, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, buf + 288, 32, NULL, 0, NULL, 0, hash, 16);
 	memcpy(dae + 320, hash, 16);
 	memcpy(buf, dae, size);
-	XeCryptAesKey(&aes, cpuKey);
+	XeCryptAesKey(&aes, xb.cpuKey);
 	XeCryptAesCbc(&aes, buf + 304, size - 304, dae + 304, iv, 1);
 	free(buf);
 }
@@ -877,7 +876,7 @@ void fcrtEncrypt(u8 *fcrt, u32 size)
 			log_printf(0, "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n");
 			return;
 		}
-		XeCryptAesKey(&aes, cpuKey);
+		XeCryptAesKey(&aes, xb.cpuKey);
 		XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
 	} else
 		log_printf(1, "**** ERROR: FCRT encrypt invalid offset!\n");

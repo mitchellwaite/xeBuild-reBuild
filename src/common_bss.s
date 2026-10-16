@@ -85,9 +85,6 @@
 .globl L_47a100
 .globl L_47a104
 .globl L_47a108
-.globl L_47a120
-.globl L_47a124
-.globl L_47a128
 .globl L_47a148
 .globl L_47a14c
 .globl L_47a14d
