@@ -642,3 +642,26 @@ only shows in `sh build.sh`.
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
   in the draft so far; give them SYMBOLS names when building it.
+
+## app/image_write.c
+
+Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
+`build/decomp_unit.py ... 13`). `sh wip/iwst.sh` prints every function's
+fncmp status. The data it uses are xb fields (0x28-0x5c: spare/hdr/raw
+buffers, sizes, FS start/end blocks) and COMMON globals from
+`common_bss.s` with no SYMBOLS names yet: mmcAnchor (4c9164), fsFiles
+(4c97c0), fsTable (4cb7c0), hdrTemplate (4cd7c0), imgEnd (4cd840). The
+object's own data: `copyright` (.data 44a580, patched per console type)
+and the statics mobileOffset (46f9c0), nFsFiles (46f9c4), smcPage (46f9e0).
+
+Findings:
+- calcEcd and friends are the well-known NAND ECD code (`unsigned int i = 0,
+  val = 0; unsigned int v = 0;`, `data = (unsigned int *)spare` at 0x1000);
+  only that declaration order matches.
+- `xb.bigBlock ? 0xf1f1 : 0x1ffb` as an argument becomes sbb/and/add;
+  the original has two calls (`if (xb.bigBlock) return f(.., 0xf1f1);
+  return f(.., 0x1ffb);`) that crossjumping merges into a branch.
+- The spare LBA writes are bitfield stores (`struct sp`), in the order
+  LBA high nibble, bad-block byte, LBA low byte.
+- imgWriteStart (regparm src, len, next) is its own function, not an
+  ipa-cp clone of imgWriteAt (gcc doesn't clone it).

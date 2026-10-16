@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **478 of 617** (464 built from `src/`, 14 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **511 of 617** (464 built from `src/`, 47 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 293 / 432 |
+| `app/` | 14 / 25 | 326 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
-| `app/image_write` | asm | 0 / 46 |
+| `app/image_write` | asm; 33 of 46 drafted functions match in `wip/app/image_write.c` | 33 / 46 |
 | `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
 | `app/keys` | mixed; 0 of 7 drafted functions match in `wip/app/keys.c` | 41 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
@@ -130,54 +130,54 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 0 / 46 in C</summary>
+<summary><code>app/image_write</code>: 33 / 46 in C</summary>
 
-- ⬜ `imgWriteStart` (0x40e950)
-- ⬜ `imgWritePage` (0x40ecc0)
-- ⬜ `imgWriteAt` (0x40eef0)
-- ⬜ `buildImage` (0x40f330)
-- ⬜ `imageFree` (0x40fb10)
-- ⬜ `calcEcd` (0x40fb60)
-- ⬜ `calcPageEcc` (0x40fbb0)
-- ⬜ `pageEccOk` (0x40fc30)
-- ⬜ `blockEccOk` (0x40fcc0)
-- ⬜ `pageErased` (0x40feb0)
-- ⬜ `blockErased` (0x40ff40)
-- ⬜ `blockPagesErased` (0x40ff80)
-- ⬜ `blockIsFF` (0x410040)
-- ⬜ `isErased` (0x410070)
-- ⬜ `setBlockSpare` (0x4100b0)
-- ⬜ `imgSizeAligned` (0x410220)
-- ⬜ `setFlashBuild` (0x410240)
-- ⬜ `smcSetLoad` (0x410290)
-- ⬜ `imgSmcOffset` (0x410350)
-- ⬜ `setPatchSlot` (0x410360)
-- ⬜ `imgCfOffset` (0x410460)
-- ⬜ `imgCfSize` (0x410490)
-- ⬜ `imgSize` (0x4104d0)
-- ⬜ `imgSetSize` (0x4104e0)
-- ⬜ `imgBigBlock` (0x4104f0)
-- ⬜ `imgAdd` (0x410500)
-- ⬜ `imgFits` (0x410b90)
-- ⬜ `imgAddFile` (0x410bb0)
-- ⬜ `imgAddFileAs` (0x411030)
-- ⬜ `imgAddMobile` (0x4110b0)
-- ⬜ `fixupFsTable` (0x4112b0)
-- ⬜ `fixupEmptyFsBlocks` (0x4112f0)
-- ⬜ `addSmcConfig` (0x411600)
-- ⬜ `writeInitialHeader` (0x411680)
-- ⬜ `checkBootImage` (0x411800)
-- ⬜ `writeFsTable` (0x411bd0)
-- ⬜ `copyAnchorBlock` (0x412110)
-- ⬜ `spareUsed` (0x4121b0)
-- ⬜ `imageGetBuffer` (0x412230)
-- ⬜ `writeImage` (0x412260)
-- ⬜ `finalizeImage` (0x4125a0)
-- ⬜ `fsStartBlock` (0x412dd0)
-- ⬜ `reservedAreaOffset` (0x412de0)
-- ⬜ `statisticsOffset` (0x412e90)
-- ⬜ `manufacturingOffset` (0x412f60)
-- ⬜ `imgAddRaw` (0x413030)
+- ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
+- ⬜ `imgWritePage` (0x40ecc0) (draft in `wip/`, no match yet)
+- ⬜ `imgWriteAt` (0x40eef0) (draft in `wip/`, no match yet)
+- ⬜ `buildImage` (0x40f330) (draft in `wip/`, no match yet)
+- ☑️ `imageFree` (0x40fb10)
+- ☑️ `calcEcd` (0x40fb60)
+- ☑️ `calcPageEcc` (0x40fbb0)
+- ☑️ `pageEccOk` (0x40fc30)
+- ⬜ `blockEccOk` (0x40fcc0) (draft in `wip/`, no match yet)
+- ☑️ `pageErased` (0x40feb0)
+- ☑️ `blockErased` (0x40ff40)
+- ☑️ `blockPagesErased` (0x40ff80)
+- ☑️ `blockIsFF` (0x410040)
+- ☑️ `isErased` (0x410070)
+- ☑️ `setBlockSpare` (0x4100b0)
+- ☑️ `imgSizeAligned` (0x410220)
+- ☑️ `setFlashBuild` (0x410240)
+- ⬜ `smcSetLoad` (0x410290) (draft in `wip/`, no match yet)
+- ☑️ `imgSmcOffset` (0x410350)
+- ☑️ `setPatchSlot` (0x410360)
+- ☑️ `imgCfOffset` (0x410460)
+- ☑️ `imgCfSize` (0x410490)
+- ☑️ `imgSize` (0x4104d0)
+- ☑️ `imgSetSize` (0x4104e0)
+- ☑️ `imgBigBlock` (0x4104f0)
+- ⬜ `imgAdd` (0x410500) (draft in `wip/`, no match yet)
+- ☑️ `imgFits` (0x410b90)
+- ⬜ `imgAddFile` (0x410bb0) (draft in `wip/`, no match yet)
+- ☑️ `imgAddFileAs` (0x411030)
+- ⬜ `imgAddMobile` (0x4110b0) (draft in `wip/`, no match yet)
+- ☑️ `fixupFsTable` (0x4112b0)
+- ☑️ `fixupEmptyFsBlocks` (0x4112f0)
+- ☑️ `addSmcConfig` (0x411600)
+- ⬜ `writeInitialHeader` (0x411680) (draft in `wip/`, no match yet)
+- ⬜ `checkBootImage` (0x411800) (draft in `wip/`, no match yet)
+- ⬜ `writeFsTable` (0x411bd0) (draft in `wip/`, no match yet)
+- ☑️ `copyAnchorBlock` (0x412110)
+- ☑️ `spareUsed` (0x4121b0)
+- ☑️ `imageGetBuffer` (0x412230)
+- ☑️ `writeImage` (0x412260)
+- ⬜ `finalizeImage` (0x4125a0) (draft in `wip/`, no match yet)
+- ☑️ `fsStartBlock` (0x412dd0)
+- ☑️ `reservedAreaOffset` (0x412de0)
+- ☑️ `statisticsOffset` (0x412e90)
+- ☑️ `manufacturingOffset` (0x412f60)
+- ☑️ `imgAddRaw` (0x413030)
 
 </details>
 <details>
