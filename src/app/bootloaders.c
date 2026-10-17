@@ -1,12 +1,12 @@
 /* bootloaders: CB/CF/CD/CE decryption, pairing, FCRT, bootloader signature
-   checks.  The functions that don't match in C yet (cfDecrypt,
-   daeVerifySig, verifyDae, verifyFcrt, cb/cd/ceDecrypt) are top-level
-   __asm__ in place, from the generated asm, and so are the object's
-   .rdata strings and .eh_frame; build.sh compiles this file with
-   -fno-toplevel-reorder -fno-asynchronous-unwind-tables.  The C functions
-   therefore name the strings with extern declarations, not literals.  C
-   drafts of the asm functions are in wip/app/bootloaders.c; to move one,
-   replace its __asm__ block with the C and drop its labels/padding. */
+   checks.  The functions that don't match in C yet (daeVerifySig,
+   ceDecrypt) are top-level __asm__ in place, from the generated asm, and so
+   are the object's .rdata strings and .eh_frame; build.sh compiles this
+   file with -fno-toplevel-reorder -fno-asynchronous-unwind-tables.  The C
+   functions therefore name the strings with extern declarations, not
+   literals.  C drafts of the asm functions are in wip/app/bootloaders.c; to
+   move one, replace its __asm__ block with the C and keep its trailing
+   padding bytes (or drop them where gcc's .p2align gives the same). */
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,10 +34,14 @@ void log_printf(int level, const char *fmt, ...);
 u32 getBeU32(const u8 *p);
 int checkZeros(const u8 *p, u32 len);
 int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
+int cbVerifySig(u8 *bl, const void *pubKey);
+int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
+int fcrtVerifySig(u8 *fcrt);
 
 extern u8 key1bl[16];
 extern u8 cpuKey[16];
 extern u8 key28c[16];
+extern void *pub1bl;
 extern void *masterPub;
 extern void *pub2a4;
 
@@ -50,6 +54,25 @@ extern const char msg_sigGood[];	/* "sig good! " */
 extern const char msg_sigCheckFail[];	/* "\nsignature check FAILED!\n" */
 extern const char msg_sigFail[];	/* "\nsignature FAILED!\n" */
 extern const char msg_noPub[];		/* "pub key to verify signature is not available, skipping!\n" */
+extern const char msg_daeSigGood[];	/* "sig %d good! " */
+extern const char msg_daeSigFail[];	/* "\nsig %d FAIL! " */
+extern const char msg_daeHash[];	/* "\n******* ERROR: dae hash incorrect, could not decrypt!\n" */
+extern const char msg_daeHeader[];	/* "\n******* ERROR: dae segment does not have the expected header!\n" */
+extern const char msg_fcrtSize[];	/* "**** ERROR: FCRT decrypt invalid size!\n" */
+extern const char msg_fcrtOffset[];	/* "**** ERROR: FCRT decrypt invalid offset!\n" */
+extern const char msg_fcrtDone[];	/* "FCRT was already decrypted..." */
+extern const char msg_fcrtHash[];	/* "\n******* ERROR: FCRT hash check failed, could not decrypt!\n" */
+extern const char msg_cbSigOk[];	/* "%cB signature OK! Decryption successful!\n" */
+extern const char msg_cbSigBad[];	/* "***** ERROR: %cB signature invalid, corrupted or decryption failed!\n" */
+extern const char msg_cbNoKey[];	/* "***** WARNING: could not check %cB signature, 1BL RSA key not loaded!\n" */
+extern const char msg_allocFail[];	/* "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n" */
+extern const char msg_cbMagic[];	/* "***** WARNING: CB/SB does not have valid magic!\n" */
+extern const char msg_cbNoData[];	/* "***** WARNING: CB/SB decrypt not provided with data!\n" */
+extern const char msg_cdSigOk[];	/* "%c%c signature OK! Decryption successful!\n" */
+extern const char msg_cdSigBad[];	/* "***** ERROR: %c%c signature invalid, corrupted or decryption failed!\n" */
+extern const char msg_cdNoKey[];	/* "***** WARNING: could not check %c%c signature, 1BL RSA key not loaded!\n" */
+extern const char msg_cdMagic[];	/* "***** WARNING: SC/SD/CD does not have valid magic!\n" */
+extern const char msg_cdNoData[];	/* "***** WARNING: SC/SD/CD decrypt not provided with data!\n" */
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
@@ -235,67 +258,31 @@ __asm__(
 
 /* decrypt a CF in place with the 1BL key; 1 if it checks out */
 int cfDecrypt(u8 *cf, u32 size);
+/* no DOM/VRP: they fold ok to 0 on the false edge and the result becomes a
+   setne; the original keeps `ok` there and if-converts to cmovne */
+__attribute__((optimize("no-tree-dominator-opts", "no-tree-vrp")))
+int cfDecrypt(u8 *cf, u32 size)
+{
+	u32 len;
+	u8 key[16];
+	int ok;
+
+	if (BL_MAGIC(cf, 'F')) {
+		len = BL_SIZE(cf);
+		if (len <= size) {
+			XeCryptHmacSha(key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
+			XeCryptRc4(key, 16, cf + 48, len - 48);
+			ok = checkZeros(cf + 496, 32);
+			if (ok)
+				ok = 1;
+			return ok;
+		}
+	}
+	return 0;
+}
+
 __asm__(
 	".intel_syntax noprefix\n"
-	"_cfDecrypt:\n"
-	"	push EDI\n"
-	"	push ESI\n"
-	"	push EBX\n"
-	"	sub ESP,64\n"
-	"	mov EBX,DWORD PTR [ESP+80]\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	and EAX,67\n"
-	"	cmp AL,67\n"
-	"	je L_401d00\n"
-	"L_401cf4:\n"
-	"	xor EAX,EAX\n"
-	"L_401cf6:\n"
-	"	add ESP,64\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	ret\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x76\n"
-	"	.byte 0x0\n"
-	"L_401d00:\n"
-	"	cmp BYTE PTR [EBX+1],70\n"
-	"	jne L_401cf4\n"
-	"	lea EAX,DWORD PTR [EBX+12]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _getBeU32\n"
-	"	lea ESI,DWORD PTR [EAX+15]\n"
-	"	and ESI,4294967280\n"
-	"	cmp ESI,DWORD PTR [ESP+84]\n"
-	"	ja L_401cf4\n"
-	"	lea EAX,DWORD PTR [EBX+32]\n"
-	"	lea EDI,DWORD PTR [ESP+48]\n"
-	"	mov DWORD PTR [ESP+36],16\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	sub ESI,48\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	mov DWORD PTR [ESP+32],EDI\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],16\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],OFFSET _key1bl\n"
-	"	call _XeCryptHmacSha\n"
-	"	lea EAX,DWORD PTR [EBX+48]\n"
-	"	mov DWORD PTR [ESP+12],ESI\n"
-	"	add EBX,496\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],EDI\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _XeCryptRc4\n"
-	"	mov DWORD PTR [ESP+4],32\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	call _checkZeros\n"
-	"	mov EDX,1\n"
-	"	test EAX,EAX\n"
-	"	cmovne EAX,EDX\n"
-	"	jmp L_401cf6\n"
 	"	.byte 0x8d\n"
 	"	.byte 0xb6\n"
 	"	.byte 0x0\n"
@@ -400,7 +387,8 @@ int verifyCrl(u8 *crl, u32 size, int perBox)
 	return 0;
 }
 
-void daeDecrypt(u8 *dae, u32 size, int perBox)
+/* not cloned for verifyDae's perBox = 1 call */
+__attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 {
 	u8 *buf;
 	u8 iv[16];
@@ -501,144 +489,66 @@ __asm__(
 
 /* check and decrypt the two DAEP segments of a DAE file */
 int verifyDae(u8 *buf, u32 size);
+/* daeVerifySig as verifyDae inlines it: `if (ok)` first, inlined before
+   profile estimation (the standalone daeVerifySig tests !ok first) */
+static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, int n)
+{
+	u8 key[16];
+	u8 hash[20];
+	int ok;
+
+	if (!pub2a4)
+		return 1;
+	if (size < 288)
+		return 1;
+	memset(key, 0, 16);
+	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, pub2a4);
+	if (ok)
+		log_printf(1, msg_daeSigGood, n);
+	else
+		log_printf(1, msg_daeSigFail, n);
+	return ok;
+}
+
+int verifyDae(u8 *buf, u32 size)
+{
+	u32 off = 0;
+	u32 len;
+	u8 *seg;
+	int n = 0;
+
+	while (off < size) {
+		seg = buf + off;
+		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
+			len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
+			n++;
+			daeSigCheck(seg, len, n);
+			daeDecrypt(seg, len, 1);
+			if (!shaCheck(seg, len, 12, 20, 336, 0)) {
+				log_printf(1, msg_daeHash);
+				n = 0;
+				off = size + 1;
+			}
+			off += len;
+		} else {
+			log_printf(1, msg_daeHeader);
+			off = size;
+		}
+	}
+	return n == 2;
+}
+
 __asm__(
 	".intel_syntax noprefix\n"
-	"_verifyDae:\n"
-	"	push EBP\n"
-	"	push EDI\n"
-	"	push ESI\n"
-	"	push EBX\n"
-	"	sub ESP,124\n"
-	"	mov EBX,DWORD PTR [ESP+148]\n"
-	"	mov ECX,DWORD PTR [ESP+144]\n"
-	"	test EBX,EBX\n"
-	"	je L_402500\n"
-	"	xor ESI,ESI\n"
-	"	xor EDI,EDI\n"
-	"L_402431:\n"
-	"	lea EBX,DWORD PTR [ECX+EDI*1]\n"
-	"	cmp BYTE PTR [EBX],68\n"
-	"	jne L_402440\n"
-	"	cmp BYTE PTR [ECX+EDI*1+1],65\n"
-	"	je L_402464\n"
-	"L_402440:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c1c0\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"L_402454:\n"
-	"	xor EAX,EAX\n"
-	"	cmp ESI,2\n"
-	"	sete AL\n"
-	"L_40245c:\n"
-	"	add ESP,124\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_402464:\n"
-	"	cmp BYTE PTR [ECX+EDI*1+2],69\n"
-	"	jne L_402440\n"
-	"	cmp BYTE PTR [ECX+EDI*1+3],80\n"
-	"	jne L_402440\n"
-	"	movzx EAX,BYTE PTR [ECX+EDI*1+4]\n"
-	"	movzx EBP,BYTE PTR [ECX+EDI*1+5]\n"
-	"	add ESI,1\n"
-	"	mov EDX,DWORD PTR [_pub2a4]\n"
-	"	shl EAX,8\n"
-	"	add EAX,EBP\n"
-	"	test EDX,EDX\n"
-	"	movzx EBP,AX\n"
-	"	je L_402497\n"
-	"	cmp AX,287\n"
-	"	ja L_402507\n"
-	"L_402497:\n"
-	"	mov DWORD PTR [ESP+8],1\n"
-	"	mov DWORD PTR [ESP+4],EBP\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	mov DWORD PTR [ESP+60],ECX\n"
-	"	call _daeDecrypt\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],336\n"
-	"	mov DWORD PTR [ESP+12],20\n"
-	"	mov DWORD PTR [ESP+8],12\n"
-	"	mov DWORD PTR [ESP+4],EBP\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	call _shaCheck\n"
-	"	test EAX,EAX\n"
-	"	mov ECX,DWORD PTR [ESP+60]\n"
-	"	je L_4025c0\n"
-	"L_4024e7:\n"
-	"	add EDI,EBP\n"
-	"	cmp DWORD PTR [ESP+148],EDI\n"
-	"	ja L_402431\n"
-	"	jmp L_402454\n"
-	"	.byte 0x90\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x74\n"
-	"	.byte 0x26\n"
-	"	.byte 0x0\n"
-	"L_402500:\n"
-	"	xor EAX,EAX\n"
-	"	jmp L_40245c\n"
-	"L_402507:\n"
-	"	lea EAX,DWORD PTR [ESP+92]\n"
-	"	mov DWORD PTR [ESP+36],20\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+32],EAX\n"
-	"	lea EAX,DWORD PTR [ESP+76]\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],32\n"
-	"	mov DWORD PTR [ESP+8],EBX\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP+60],ECX\n"
-	"	mov DWORD PTR [ESP+76],0\n"
-	"	mov DWORD PTR [ESP+80],0\n"
-	"	mov DWORD PTR [ESP+84],0\n"
-	"	mov DWORD PTR [ESP+88],0\n"
-	"	call _XeCryptHmacSha\n"
-	"	mov EAX,DWORD PTR [_pub2a4]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	lea EAX,DWORD PTR [EBX+32]\n"
-	"	mov DWORD PTR [ESP+4],EAX\n"
-	"	lea EAX,DWORD PTR [ESP+92]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _XeKeysPkcs1Verify\n"
-	"	test EAX,EAX\n"
-	"	mov ECX,DWORD PTR [ESP+60]\n"
-	"	je L_4025e9\n"
-	"	mov DWORD PTR [ESP+8],ESI\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c168\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov ECX,DWORD PTR [ESP+60]\n"
-	"	jmp L_402497\n"
-	"L_4025c0:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c188\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	xor ESI,ESI\n"
-	"	call _log_printf\n"
-	"	mov EAX,DWORD PTR [ESP+148]\n"
-	"	mov ECX,DWORD PTR [ESP+60]\n"
-	"	lea EDI,DWORD PTR [EAX+1]\n"
-	"	jmp L_4024e7\n"
-	"L_4025e9:\n"
-	"	mov DWORD PTR [ESP+8],ESI\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c176\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	mov DWORD PTR [ESP+60],ECX\n"
-	"	call _log_printf\n"
-	"	mov ECX,DWORD PTR [ESP+60]\n"
-	"	jmp L_402497\n"
 	"	.byte 0x66\n"
 	"	.byte 0x90\n"
 	".text\n"
 	".att_syntax\n");
 
-int fcrtVerifySig(u8 *fcrt)
+/* inlined into verifyFcrt before profile estimation; the prototype above
+   keeps the external definition */
+inline __attribute__((always_inline)) int fcrtVerifySig(u8 *fcrt)
 {
 	u8 hash[20];
 	void *pub;
@@ -679,199 +589,38 @@ __asm__(
 
 /* check an FCRT's signature, then decrypt it with the CPU key */
 int verifyFcrt(u8 *fcrt, u32 size);
-__asm__(
-	".intel_syntax noprefix\n"
-	"_verifyFcrt:\n"
-	"	push EBP\n"
-	"	push EDI\n"
-	"	push ESI\n"
-	"	push EBX\n"
-	"	sub ESP,604\n"
-	"	mov EBX,DWORD PTR [ESP+624]\n"
-	"	lea EAX,DWORD PTR [EBX+272]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _getBeU32\n"
-	"	mov ESI,DWORD PTR [_pub2a4]\n"
-	"	test EAX,EAX\n"
-	"	cmovns ESI,DWORD PTR [_masterPub]\n"
-	"	test ESI,ESI\n"
-	"	je L_4029b0\n"
-	"	lea EAX,DWORD PTR [EBX+256]\n"
-	"	lea EDI,DWORD PTR [ESP+104]\n"
-	"	mov DWORD PTR [ESP+36],20\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	mov DWORD PTR [ESP+32],EDI\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],64\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],OFFSET _cpuKey\n"
-	"	call _XeCryptHmacSha\n"
-	"	mov DWORD PTR [ESP+8],ESI\n"
-	"	mov DWORD PTR [ESP+4],EBX\n"
-	"	mov DWORD PTR [ESP],EDI\n"
-	"	call _XeKeysPkcs1Verify\n"
-	"	test EAX,EAX\n"
-	"	jne L_402830\n"
-	"	mov DWORD PTR [ESP+4],OFFSET _msg_sigFail\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"L_4027d4:\n"
-	"	mov EAX,DWORD PTR [EBX+256]\n"
-	"	cmp DWORD PTR [ESP+628],16384\n"
-	"	mov DWORD PTR [ESP+68],EAX\n"
-	"	mov EAX,DWORD PTR [EBX+260]\n"
-	"	mov DWORD PTR [ESP+72],EAX\n"
-	"	mov EAX,DWORD PTR [EBX+264]\n"
-	"	mov DWORD PTR [ESP+76],EAX\n"
-	"	mov EAX,DWORD PTR [EBX+268]\n"
-	"	mov DWORD PTR [ESP+80],EAX\n"
-	"	je L_402850\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c250\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	xor EAX,EAX\n"
-	"L_40281f:\n"
-	"	add ESP,604\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"	.byte 0x8d\n"
-	"	.byte 0xb6\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"L_402830:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET _msg_sigGood\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	jmp L_4027d4\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x76\n"
-	"	.byte 0x0\n"
-	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
-	"L_402850:\n"
-	"	lea EAX,DWORD PTR [EBX+284]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _getBeU32\n"
-	"	cmp EAX,16383\n"
-	"	ja L_4029d0\n"
-	"	mov ESI,DWORD PTR [ESP+628]\n"
-	"	lea EDI,DWORD PTR [EBX+EAX*1]\n"
-	"	lea EBP,DWORD PTR [ESP+84]\n"
-	"	add EBX,300\n"
-	"	mov DWORD PTR [ESP+28],20\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+24],EBP\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	sub ESI,EAX\n"
-	"	mov DWORD PTR [ESP+12],0\n"
-	"	mov DWORD PTR [ESP+8],0\n"
-	"	mov DWORD PTR [ESP+4],ESI\n"
-	"	mov DWORD PTR [ESP],EDI\n"
-	"	call _XeCryptSha\n"
-	"	mov DWORD PTR [ESP+8],20\n"
-	"	mov DWORD PTR [ESP+4],EBP\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	call _memcmp\n"
-	"	test EAX,EAX\n"
-	"	je L_402990\n"
-	"	lea EAX,DWORD PTR [ESP+104]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET _cpuKey\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	mov DWORD PTR [ESP+60],EAX\n"
-	"	call _XeCryptAesKey\n"
-	"	mov EAX,DWORD PTR [ESP+60]\n"
-	"	lea EDX,DWORD PTR [ESP+68]\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+12],EDI\n"
-	"	mov DWORD PTR [ESP+8],ESI\n"
-	"	mov DWORD PTR [ESP+16],EDX\n"
-	"	mov DWORD PTR [ESP+4],EDI\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _XeCryptAesCbc\n"
-	"	mov DWORD PTR [ESP+28],20\n"
-	"	mov DWORD PTR [ESP+24],EBP\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],0\n"
-	"	mov DWORD PTR [ESP+8],0\n"
-	"	mov DWORD PTR [ESP+4],ESI\n"
-	"	mov DWORD PTR [ESP],EDI\n"
-	"	call _XeCryptSha\n"
-	"	mov DWORD PTR [ESP+8],20\n"
-	"	mov DWORD PTR [ESP+4],EBP\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	call _memcmp\n"
-	"	mov EDX,EAX\n"
-	"	mov EAX,1\n"
-	"	test EDX,EDX\n"
-	"	je L_40281f\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c2c0\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	xor EAX,EAX\n"
-	"	jmp L_40281f\n"
-	"	.byte 0x8d\n"
-	"	.byte 0xb4\n"
-	"	.byte 0x26\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"L_402990:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c2a2\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov EAX,1\n"
-	"	jmp L_40281f\n"
-	"	.byte 0x66\n"
-	"	.byte 0x90\n"
-	"L_4029b0:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET _msg_noPub\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	jmp L_4027d4\n"
-	"	.byte 0x8d\n"
-	"	.byte 0xb4\n"
-	"	.byte 0x26\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"L_4029d0:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c278\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	add ESP,604\n"
-	"	xor EAX,EAX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_4029f1:\n"
-	"	jmp _shaSelfCheck\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	".text\n"
-	".att_syntax\n");
+int verifyFcrt(u8 *fcrt, u32 size)
+{
+	u8 iv[16];
+	u8 hash[20];
+	AESSTATE aes;
+	u32 off;
+
+	fcrtVerifySig(fcrt);
+	memcpy(iv, fcrt + 256, 16);
+	if (size != 0x4000) {
+		log_printf(1, msg_fcrtSize);
+		return 0;
+	}
+	off = getBeU32(fcrt + 284);
+	if (off >= 0x4000) {
+		log_printf(1, msg_fcrtOffset);
+		return 0;
+	}
+	XeCryptSha(fcrt + off, size - off, 0, 0, 0, 0, hash, 20);
+	if (!memcmp(fcrt + 300, hash, 20)) {
+		log_printf(1, msg_fcrtDone);
+		return 1;
+	}
+	XeCryptAesKey(&aes, cpuKey);
+	XeCryptAesCbc(&aes, fcrt + off, size - off, fcrt + off, iv, 0);
+	XeCryptSha(fcrt + off, size - off, 0, 0, 0, 0, hash, 20);
+	if (memcmp(fcrt + 300, hash, 20)) {
+		log_printf(1, msg_fcrtHash);
+		return 0;
+	}
+	return 1;
+}
 
 int shaSelfCheck(u8 *p)
 {
@@ -890,146 +639,55 @@ __asm__(
 
 /* decrypted copy of a CB/SB (free it), checked against the 1BL RSA key */
 u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey);
+/* stops DOM/uncprop and CSE proving buf == 0 on the calloc-fail path (the
+   original keeps its `xor ebx,ebx` there); `if (buf)` first keeps
+   postreload from learning it from the jump */
+__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
+u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey)
+{
+	u8 *buf;
+	u32 len;
+	u8 key[16];
+
+	if (!cb) {
+		log_printf(0, msg_cbNoData);
+		return 0;
+	}
+	if (!BL_MAGIC(cb, 'B')) {
+		log_printf(0, msg_cbMagic);
+		return 0;
+	}
+	len = BL_SIZE(cb);
+	buf = calloc(len, 1);
+	if (buf) {
+		memcpy(buf, cb, len);
+		XeCryptHmacSha(key1bl, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + 32, len - 32);
+		if (outKey)
+			memcpy(outKey, key, 16);
+		if (pub1bl) {
+			if (cbVerifySig(buf, pub1bl)) {
+				log_printf(1, msg_cbSigOk, buf[0]);
+				if (outLen)
+					*outLen = len;
+			} else {
+				log_printf(0, msg_cbSigBad, buf[0]);
+				free(buf);
+				buf = 0;
+			}
+		} else {
+			log_printf(0, msg_cbNoKey, buf[0]);
+			if (outLen)
+				*outLen = len;
+		}
+		return buf;
+	}
+	log_printf(0, msg_allocFail, cb[0], cb[1]);
+	return 0;
+}
+
 __asm__(
 	".intel_syntax noprefix\n"
-	"_cbDecrypt:\n"
-	"	push EBP\n"
-	"	push EDI\n"
-	"	push ESI\n"
-	"	push EBX\n"
-	"	sub ESP,76\n"
-	"	mov ESI,DWORD PTR [ESP+96]\n"
-	"	mov EBP,DWORD PTR [ESP+104]\n"
-	"	test ESI,ESI\n"
-	"	je L_402c4f\n"
-	"	movzx EAX,BYTE PTR [ESI]\n"
-	"	and EAX,67\n"
-	"	cmp AL,67\n"
-	"	jne L_402bc0\n"
-	"	cmp BYTE PTR [ESI+1],66\n"
-	"	jne L_402bc0\n"
-	"	lea EAX,DWORD PTR [ESI+12]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _getBeU32\n"
-	"	lea EDI,DWORD PTR [EAX+15]\n"
-	"	mov DWORD PTR [ESP+4],1\n"
-	"	and EDI,4294967280\n"
-	"	mov DWORD PTR [ESP],EDI\n"
-	"	call _calloc\n"
-	"	test EAX,EAX\n"
-	"	mov EBX,EAX\n"
-	"	je L_402c25\n"
-	"	mov DWORD PTR [ESP+4],ESI\n"
-	"	mov DWORD PTR [ESP+8],EDI\n"
-	"	lea ESI,DWORD PTR [ESP+48]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _memcpy\n"
-	"	lea EAX,DWORD PTR [EBX+16]\n"
-	"	mov DWORD PTR [ESP+36],16\n"
-	"	mov DWORD PTR [ESP+32],ESI\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],16\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],OFFSET _key1bl\n"
-	"	call _XeCryptHmacSha\n"
-	"	lea EAX,DWORD PTR [EDI-32]\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],ESI\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	lea EAX,DWORD PTR [EBX+32]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _XeCryptRc4\n"
-	"	test EBP,EBP\n"
-	"	je L_402b6b\n"
-	"	mov EAX,DWORD PTR [ESP+48]\n"
-	"	mov DWORD PTR [EBP],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+52]\n"
-	"	mov DWORD PTR [EBP+4],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+56]\n"
-	"	mov DWORD PTR [EBP+8],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+60]\n"
-	"	mov DWORD PTR [EBP+12],EAX\n"
-	"L_402b6b:\n"
-	"	mov EAX,DWORD PTR [_pub1bl]\n"
-	"	test EAX,EAX\n"
-	"	je L_402be0\n"
-	"	mov DWORD PTR [ESP+4],EAX\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	call _cbVerifySig\n"
-	"	test EAX,EAX\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	je L_402c05\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c2fc\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov EDX,DWORD PTR [ESP+100]\n"
-	"	test EDX,EDX\n"
-	"	je L_402bad\n"
-	"L_402ba7:\n"
-	"	mov EAX,DWORD PTR [ESP+100]\n"
-	"	mov DWORD PTR [EAX],EDI\n"
-	"L_402bad:\n"
-	"	add ESP,76\n"
-	"	mov EAX,EBX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_402bb7:\n"
-	"	mov ESI,ESI\n"
-	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
-	"L_402bc0:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c3f0\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	xor EBX,EBX\n"
-	"	call _log_printf\n"
-	"	add ESP,76\n"
-	"	mov EAX,EBX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_402be0:\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c370\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _log_printf\n"
-	"	mov EAX,DWORD PTR [ESP+100]\n"
-	"	test EAX,EAX\n"
-	"	jne L_402ba7\n"
-	"	jmp L_402bad\n"
-	"L_402c05:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c328\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	call _log_printf\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	xor EBX,EBX\n"
-	"	call _free\n"
-	"	jmp L_402bad\n"
-	"L_402c25:\n"
-	"	movzx EAX,BYTE PTR [ESI+1]\n"
-	"	xor EBX,EBX\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	movzx EAX,BYTE PTR [ESI]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c3b8\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _log_printf\n"
-	"	jmp L_402bad\n"
-	"L_402c4f:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c424\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	xor EBX,EBX\n"
-	"	call _log_printf\n"
-	"	jmp L_402bad\n"
 	"	.byte 0x8d\n"
 	"	.byte 0xb6\n"
 	"	.byte 0x0\n"
@@ -1042,174 +700,53 @@ __asm__(
 /* decrypted copy of an SC/SD/CD with hmacKey, signature checked if pubKey and salt */
 u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey,
 	u32 *outLen, u8 *outKey);
+/* as cbDecrypt */
+__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
+u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey, u32 *outLen, u8 *outKey)
+{
+	u8 *buf;
+	u32 len;
+	u8 key[16];
+
+	if (!bl || !hmacKey) {
+		log_printf(0, msg_cdNoData);
+		return 0;
+	}
+	if ((bl[0] & 0x43) != 0x43 || (bl[1] != 'C' && bl[1] != 'D')) {
+		log_printf(0, msg_cdMagic);
+		return 0;
+	}
+	len = BL_SIZE(bl);
+	buf = calloc(len, 1);
+	if (buf) {
+		memcpy(buf, bl, len);
+		XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + 32, len - 32);
+		if (outKey)
+			memcpy(outKey, key, 16);
+		if (pubKey && salt) {
+			if (blVerifySig(buf, len, pubKey, salt)) {
+				log_printf(1, msg_cdSigOk, buf[0], buf[1]);
+				if (outLen)
+					*outLen = len;
+			} else {
+				log_printf(0, msg_cdSigBad, buf[0], buf[1]);
+				free(buf);
+				buf = 0;
+			}
+		} else {
+			log_printf(0, msg_cdNoKey, buf[0], buf[1]);
+			if (outLen)
+				*outLen = len;
+		}
+		return buf;
+	}
+	log_printf(0, msg_allocFail, bl[0], bl[1]);
+	return 0;
+}
+
 __asm__(
 	".intel_syntax noprefix\n"
-	"_cdDecrypt:\n"
-	"	push EBP\n"
-	"	push EDI\n"
-	"	push ESI\n"
-	"	push EBX\n"
-	"	sub ESP,76\n"
-	"	mov EBP,DWORD PTR [ESP+96]\n"
-	"	mov EDI,DWORD PTR [ESP+116]\n"
-	"	test EBP,EBP\n"
-	"	je L_402e50\n"
-	"	mov EAX,DWORD PTR [ESP+108]\n"
-	"	test EAX,EAX\n"
-	"	je L_402e50\n"
-	"	movzx EAX,BYTE PTR [EBP]\n"
-	"	and EAX,67\n"
-	"	cmp AL,67\n"
-	"	jne L_402df3\n"
-	"	movzx EAX,BYTE PTR [EBP+1]\n"
-	"	sub EAX,67\n"
-	"	cmp AL,1\n"
-	"	ja L_402df3\n"
-	"	lea EAX,DWORD PTR [EBP+12]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _getBeU32\n"
-	"	lea ESI,DWORD PTR [EAX+15]\n"
-	"	mov DWORD PTR [ESP+4],1\n"
-	"	and ESI,4294967280\n"
-	"	mov DWORD PTR [ESP],ESI\n"
-	"	call _calloc\n"
-	"	test EAX,EAX\n"
-	"	mov EBX,EAX\n"
-	"	je L_402e93\n"
-	"	mov DWORD PTR [ESP+4],EBP\n"
-	"	mov DWORD PTR [ESP+8],ESI\n"
-	"	lea EBP,DWORD PTR [ESP+48]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _memcpy\n"
-	"	mov EAX,DWORD PTR [ESP+108]\n"
-	"	lea EDX,DWORD PTR [EBX+16]\n"
-	"	mov DWORD PTR [ESP+36],16\n"
-	"	mov DWORD PTR [ESP+32],EBP\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP+8],EDX\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],16\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	call _XeCryptHmacSha\n"
-	"	lea EDX,DWORD PTR [ESI-32]\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],EBP\n"
-	"	mov DWORD PTR [ESP+12],EDX\n"
-	"	lea EDX,DWORD PTR [EBX+32]\n"
-	"	mov DWORD PTR [ESP+8],EDX\n"
-	"	call _XeCryptRc4\n"
-	"	test EDI,EDI\n"
-	"	je L_402d7c\n"
-	"	mov EAX,DWORD PTR [ESP+48]\n"
-	"	mov DWORD PTR [EDI],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+52]\n"
-	"	mov DWORD PTR [EDI+4],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+56]\n"
-	"	mov DWORD PTR [EDI+8],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+60]\n"
-	"	mov DWORD PTR [EDI+12],EAX\n"
-	"L_402d7c:\n"
-	"	mov EDI,DWORD PTR [ESP+100]\n"
-	"	test EDI,EDI\n"
-	"	je L_402e13\n"
-	"	mov ECX,DWORD PTR [ESP+104]\n"
-	"	test ECX,ECX\n"
-	"	.byte 0x0f,0x84; .long L_402e13-.-4   # je L_402e13\n"
-	"	mov EAX,DWORD PTR [ESP+104]\n"
-	"	mov DWORD PTR [ESP+4],ESI\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+100]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _blVerifySig\n"
-	"	test EAX,EAX\n"
-	"	movzx EAX,BYTE PTR [EBX+1]\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	je L_402e70\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c45c\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov EDX,DWORD PTR [ESP+112]\n"
-	"	test EDX,EDX\n"
-	"	je L_402e09\n"
-	"	mov EAX,DWORD PTR [ESP+112]\n"
-	"	mov DWORD PTR [EAX],ESI\n"
-	"L_402de9:\n"
-	"	add ESP,76\n"
-	"	mov EAX,EBX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_402df3:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c518\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	xor EBX,EBX\n"
-	"	call _log_printf\n"
-	"L_402e09:\n"
-	"	add ESP,76\n"
-	"	mov EAX,EBX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_402e13:\n"
-	"	movzx EAX,BYTE PTR [EBX+1]\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c4d0\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _log_printf\n"
-	"	mov EAX,DWORD PTR [ESP+112]\n"
-	"	test EAX,EAX\n"
-	"	je L_402e09\n"
-	"	mov EAX,DWORD PTR [ESP+112]\n"
-	"	mov DWORD PTR [EAX],ESI\n"
-	"	jmp L_402de9\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x76\n"
-	"	.byte 0x0\n"
-	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
-	"L_402e50:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c54c\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	xor EBX,EBX\n"
-	"	call _log_printf\n"
-	"	jmp L_402e09\n"
-	"	.byte 0x90\n"
-	"	.byte 0x8d\n"
-	"	.byte 0xb4\n"
-	"	.byte 0x26\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"	.byte 0x0\n"
-	"L_402e70:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c488\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	call _log_printf\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	xor EBX,EBX\n"
-	"	call _free\n"
-	"	jmp L_402e09\n"
-	"L_402e93:\n"
-	"	movzx EAX,BYTE PTR [EBP+1]\n"
-	"	xor EBX,EBX\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	movzx EAX,BYTE PTR [EBP]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c3b8\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _log_printf\n"
-	"	jmp L_402e09\n"
 	"	.byte 0x66\n"
 	"	.byte 0x90\n"
 	".text\n"
@@ -1385,13 +922,17 @@ __asm__(
 	"	.string \"sig good! \"\n"
 	"_msg_sigCheckFail:\n"
 	"	.string \"\\nsignature check FAILED!\\n\"\n"
+	"_msg_daeSigGood:\n"
 	"L_44c168:\n"
 	"	.string \"sig %d good! \"\n"
+	"_msg_daeSigFail:\n"
 	"L_44c176:\n"
 	"	.string \"\\nsig %d FAIL! \"\n"
 	"	.zero 3\n"
+	"_msg_daeHash:\n"
 	"L_44c188:\n"
 	"	.string \"\\n******* ERROR: dae hash incorrect, could not decrypt!\\n\"\n"
+	"_msg_daeHeader:\n"
 	"L_44c1c0:\n"
 	"	.string \"\\n******* ERROR: dae segment does not have the expected header!\\n\"\n"
 	"_msg_sigFail:\n"
@@ -1399,41 +940,56 @@ __asm__(
 	"_msg_noPub:\n"
 	"	.string \"pub key to verify signature is not available, skipping!\\n\"\n"
 	"	.zero 3\n"
+	"_msg_fcrtSize:\n"
 	"L_44c250:\n"
 	"	.string \"**** ERROR: FCRT decrypt invalid size!\\n\"\n"
+	"_msg_fcrtOffset:\n"
 	"L_44c278:\n"
 	"	.string \"**** ERROR: FCRT decrypt invalid offset!\\n\"\n"
+	"_msg_fcrtDone:\n"
 	"L_44c2a2:\n"
 	"	.string \"FCRT was already decrypted...\"\n"
+	"_msg_fcrtHash:\n"
 	"L_44c2c0:\n"
 	"	.string \"\\n******* ERROR: FCRT hash check failed, could not decrypt!\\n\"\n"
+	"_msg_cbSigOk:\n"
 	"L_44c2fc:\n"
 	"	.string \"%cB signature OK! Decryption successful!\\n\"\n"
 	"	.zero 2\n"
+	"_msg_cbSigBad:\n"
 	"L_44c328:\n"
 	"	.string \"***** ERROR: %cB signature invalid, corrupted or decryption failed!\\n\"\n"
 	"	.zero 3\n"
+	"_msg_cbNoKey:\n"
 	"L_44c370:\n"
 	"	.string \"***** WARNING: could not check %cB signature, 1BL RSA key not loaded!\\n\"\n"
 	"	.zero 1\n"
+	"_msg_allocFail:\n"
 	"L_44c3b8:\n"
 	"	.string \"***** WARNING: Unable to allocate 0x%x bytes for %c%c!\\n\"\n"
+	"_msg_cbMagic:\n"
 	"L_44c3f0:\n"
 	"	.string \"***** WARNING: CB/SB does not have valid magic!\\n\"\n"
 	"	.zero 3\n"
+	"_msg_cbNoData:\n"
 	"L_44c424:\n"
 	"	.string \"***** WARNING: CB/SB decrypt not provided with data!\\n\"\n"
 	"	.zero 2\n"
+	"_msg_cdSigOk:\n"
 	"L_44c45c:\n"
 	"	.string \"%c%c signature OK! Decryption successful!\\n\"\n"
 	"	.zero 1\n"
+	"_msg_cdSigBad:\n"
 	"L_44c488:\n"
 	"	.string \"***** ERROR: %c%c signature invalid, corrupted or decryption failed!\\n\"\n"
 	"	.zero 2\n"
+	"_msg_cdNoKey:\n"
 	"L_44c4d0:\n"
 	"	.string \"***** WARNING: could not check %c%c signature, 1BL RSA key not loaded!\\n\"\n"
+	"_msg_cdMagic:\n"
 	"L_44c518:\n"
 	"	.string \"***** WARNING: SC/SD/CD does not have valid magic!\\n\"\n"
+	"_msg_cdNoData:\n"
 	"L_44c54c:\n"
 	"	.string \"***** WARNING: SC/SD/CD decrypt not provided with data!\\n\"\n"
 	"	.zero 3\n"

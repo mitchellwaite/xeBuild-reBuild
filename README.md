@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **513 of 617** (498 built from `src/`, 15 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **518 of 617** (503 built from `src/`, 15 matching drafts in `wip/` that the build doesn't use yet); 55 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 14 / 25 | 328 / 432 |
+| `app/` | 14 / 25 | 333 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,7 +36,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/bootloaders` | mixed; 0 of 7 drafted functions match in `wip/app/bootloaders.c` | 12 / 19 |
+| `app/bootloaders` | mixed; 0 of 2 drafted functions match in `wip/app/bootloaders.c` | 17 / 19 |
 | `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
@@ -49,26 +49,26 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/console_hdd` | asm; 13 of 14 drafted functions match in `wip/app/console_hdd.c` | 13 / 14 |
 
 <details>
-<summary><code>app/bootloaders</code>: 12 / 19 in C</summary>
+<summary><code>app/bootloaders</code>: 17 / 19 in C</summary>
 
 - ✅ `verifyExtended` (0x401630)
 - ✅ `unscramble` (0x401730)
 - ✅ `cbGetPairing` (0x4017d0)
 - ✅ `cfGetPairing` (0x401910)
 - ✅ `cfBestPairing` (0x401a00)
-- ⬜ `cfDecrypt` (0x401ce0) (draft in `wip/`, no match yet)
+- ✅ `cfDecrypt` (0x401ce0)
 - ✅ `cgDecrypt` (0x401dc0)
 - ✅ `verifySecdata` (0x401e60)
 - ✅ `crlVerifySig` (0x401f80)
 - ✅ `verifyCrl` (0x402020)
 - ✅ `daeDecrypt` (0x402210)
 - ⬜ `daeVerifySig` (0x4022f0) (draft in `wip/`, no match yet)
-- ⬜ `verifyDae` (0x402410) (draft in `wip/`, no match yet)
+- ✅ `verifyDae` (0x402410)
 - ✅ `fcrtVerifySig` (0x402610)
-- ⬜ `verifyFcrt` (0x402720) (draft in `wip/`, no match yet)
+- ✅ `verifyFcrt` (0x402720)
 - ✅ `shaSelfCheck` (0x402a00)
-- ⬜ `cbDecrypt` (0x402a70) (draft in `wip/`, no match yet)
-- ⬜ `cdDecrypt` (0x402c70) (draft in `wip/`, no match yet)
+- ✅ `cbDecrypt` (0x402a70)
+- ✅ `cdDecrypt` (0x402c70)
 - ⬜ `ceDecrypt` (0x402ec0) (draft in `wip/`, no match yet)
 
 </details>

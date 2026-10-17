@@ -29,6 +29,7 @@ int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
 int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
+int fcrtVerifySig(u8 *fcrt);
 
 extern u8 key1bl[16];
 extern u8 cpuKey[16];
@@ -135,6 +136,9 @@ u32 cfBestPairing(u8 *data, u32 size)
 	return p0;
 }
 
+/* no DOM/VRP: they fold ok to 0 on the false edge and the result becomes a
+   setne; the original keeps `ok` there and if-converts to cmovne */
+__attribute__((optimize("no-tree-dominator-opts", "no-tree-vrp")))
 int cfDecrypt(u8 *cf, u32 size)
 {
 	u32 len;
@@ -216,7 +220,8 @@ int verifyCrl(u8 *crl, u32 size, int perBox)
 	return 0;
 }
 
-void daeDecrypt(u8 *dae, u32 size, int perBox)
+/* not cloned for verifyDae's perBox = 1 call */
+__attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 {
 	u8 *buf;
 	u8 iv[16];
@@ -253,33 +258,59 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 	return ok;
 }
 
+/* daeVerifySig as verifyDae inlines it: `if (ok)` first, inlined before
+   profile estimation (the standalone daeVerifySig tests !ok first) */
+static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, int n)
+{
+	u8 key[16];
+	u8 hash[20];
+	int ok;
+
+	if (!pub2a4)
+		return 1;
+	if (size < 288)
+		return 1;
+	memset(key, 0, 16);
+	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, pub2a4);
+	if (ok)
+		log_printf(1, "sig %d good! ", n);
+	else
+		log_printf(1, "\nsig %d FAIL! ", n);
+	return ok;
+}
+
 int verifyDae(u8 *buf, u32 size)
 {
-	u32 off;
+	u32 off = 0;
 	u32 len;
 	u8 *seg;
 	int n = 0;
 
-	for (off = 0; off < size; off += len) {
+	while (off < size) {
 		seg = buf + off;
-		if (seg[0] != 'D' || seg[1] != 'A' || seg[2] != 'E' || seg[3] != 'P') {
+		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
+			len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
+			n++;
+			daeSigCheck(seg, len, n);
+			daeDecrypt(seg, len, 1);
+			if (!shaCheck(seg, len, 12, 20, 336, 0)) {
+				log_printf(1, "\n******* ERROR: dae hash incorrect, could not decrypt!\n");
+				n = 0;
+				off = size + 1;
+			}
+			off += len;
+		} else {
 			log_printf(1, "\n******* ERROR: dae segment does not have the expected header!\n");
-			break;
-		}
-		len = (u16)((seg[4] << 8) + seg[5]);
-		n++;
-		daeVerifySig(seg, len, n);
-		daeDecrypt(seg, len, 1);
-		if (!shaCheck(seg, len, 12, 20, 336, 0)) {
-			log_printf(1, "\n******* ERROR: dae hash incorrect, could not decrypt!\n");
-			n = 0;
-			off = size + 1;
+			off = size;
 		}
 	}
 	return n == 2;
 }
 
-int fcrtVerifySig(u8 *fcrt)
+/* inlined into verifyFcrt before profile estimation; the prototype above
+   keeps the external definition */
+inline __attribute__((always_inline)) int fcrtVerifySig(u8 *fcrt)
 {
 	u8 hash[20];
 	void *pub;
@@ -340,6 +371,10 @@ int shaSelfCheck(u8 *p)
 	return memcmp(hash, p, 20) == 0;
 }
 
+/* stops DOM/uncprop and CSE proving buf == 0 on the calloc-fail path (the
+   original keeps its `xor ebx,ebx` there); `if (buf)` first keeps
+   postreload from learning it from the jump */
+__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
 u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey)
 {
 	u8 *buf;
@@ -356,33 +391,35 @@ u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey)
 	}
 	len = BL_SIZE(cb);
 	buf = calloc(len, 1);
-	if (!buf) {
-		log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n", cb[0], cb[1]);
-		return 0;
-	}
-	memcpy(buf, cb, len);
-	XeCryptHmacSha(key1bl, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
-	XeCryptRc4(key, 16, buf + 32, len - 32);
-	if (outKey)
-		memcpy(outKey, key, 16);
-	if (pub1bl) {
-		if (cbVerifySig(buf, pub1bl)) {
-			log_printf(1, "%cB signature OK! Decryption successful!\n", buf[0]);
+	if (buf) {
+		memcpy(buf, cb, len);
+		XeCryptHmacSha(key1bl, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + 32, len - 32);
+		if (outKey)
+			memcpy(outKey, key, 16);
+		if (pub1bl) {
+			if (cbVerifySig(buf, pub1bl)) {
+				log_printf(1, "%cB signature OK! Decryption successful!\n", buf[0]);
+				if (outLen)
+					*outLen = len;
+			} else {
+				log_printf(0, "***** ERROR: %cB signature invalid, corrupted or decryption failed!\n", buf[0]);
+				free(buf);
+				buf = 0;
+			}
+		} else {
+			log_printf(0, "***** WARNING: could not check %cB signature, 1BL RSA key not loaded!\n", buf[0]);
 			if (outLen)
 				*outLen = len;
-		} else {
-			log_printf(0, "***** ERROR: %cB signature invalid, corrupted or decryption failed!\n", buf[0]);
-			free(buf);
-			buf = 0;
 		}
-	} else {
-		log_printf(0, "***** WARNING: could not check %cB signature, 1BL RSA key not loaded!\n", buf[0]);
-		if (outLen)
-			*outLen = len;
+		return buf;
 	}
-	return buf;
+	log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n", cb[0], cb[1]);
+	return 0;
 }
 
+/* as cbDecrypt */
+__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
 u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey, u32 *outLen, u8 *outKey)
 {
 	u8 *buf;
@@ -399,31 +436,31 @@ u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey, u32
 	}
 	len = BL_SIZE(bl);
 	buf = calloc(len, 1);
-	if (!buf) {
-		log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n", bl[0], bl[1]);
-		return 0;
-	}
-	memcpy(buf, bl, len);
-	XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
-	XeCryptRc4(key, 16, buf + 32, len - 32);
-	if (outKey)
-		memcpy(outKey, key, 16);
-	if (pubKey && salt) {
-		if (blVerifySig(buf, len, pubKey, salt)) {
-			log_printf(1, "%c%c signature OK! Decryption successful!\n", buf[0], buf[1]);
+	if (buf) {
+		memcpy(buf, bl, len);
+		XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + 32, len - 32);
+		if (outKey)
+			memcpy(outKey, key, 16);
+		if (pubKey && salt) {
+			if (blVerifySig(buf, len, pubKey, salt)) {
+				log_printf(1, "%c%c signature OK! Decryption successful!\n", buf[0], buf[1]);
+				if (outLen)
+					*outLen = len;
+			} else {
+				log_printf(0, "***** ERROR: %c%c signature invalid, corrupted or decryption failed!\n", buf[0], buf[1]);
+				free(buf);
+				buf = 0;
+			}
+		} else {
+			log_printf(0, "***** WARNING: could not check %c%c signature, 1BL RSA key not loaded!\n", buf[0], buf[1]);
 			if (outLen)
 				*outLen = len;
-		} else {
-			log_printf(0, "***** ERROR: %c%c signature invalid, corrupted or decryption failed!\n", buf[0], buf[1]);
-			free(buf);
-			buf = 0;
 		}
-	} else {
-		log_printf(0, "***** WARNING: could not check %c%c signature, 1BL RSA key not loaded!\n", buf[0], buf[1]);
-		if (outLen)
-			*outLen = len;
+		return buf;
 	}
-	return buf;
+	log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n", bl[0], bl[1]);
+	return 0;
 }
 
 u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash)

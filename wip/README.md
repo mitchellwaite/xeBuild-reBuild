@@ -136,41 +136,46 @@ Findings:
 
 ## app/bootloaders.c
 
-Draft of the whole object, with string literals. 12 of 19 functions match.
-They are built from `src/app/bootloaders.c`, which has the other 7 as
-top-level `__asm__` blocks (plus the strings and `.eh_frame`), so its C
-uses `extern` names for the strings (`msg_*` in SYMBOLS). To move one of
-the 7, replace its `__asm__` block with the C from here. The 7 that don't
-match yet:
+Draft of the whole object, with string literals. 17 of 19 functions match
+and are built from `src/app/bootloaders.c`; the other 2 are top-level
+`__asm__` blocks there (plus the strings and `.eh_frame`), so its C uses
+`extern` names for the strings (`msg_*`, labels in its .rdata asm). To move
+one, replace its `__asm__` block with the C from here. Still open:
 
-- `cbDecrypt`, `cdDecrypt`, `ceDecrypt` (1 line each): the calloc failure
-  path. The original does `xor ebx,ebx` (ebx holds the return value). Ours
-  relies on ebx already being 0 after `test eax,eax; mov ebx,eax; je`.
-  `-fdisable-tree-uncprop1` doesn't change it, so RTL drops the set, not
-  tree uncprop. A `void *` return or temp breaks the shared ebx return
-  (12 lines), and so does a single `return buf` at the end (57 lines).
-  Undeclared (int) calloc doesn't help either. The success branch has to
-  set `*outLen` itself (`buf = 0` on the free path) to get down to 1 line.
-- `cfDecrypt` (4): the original returns `checkZeros(...) != 0` as
-  `mov edx,1; test eax,eax; cmovne eax,edx`. Ours is `setne; movzx`.
-  Tried `!!`, `?1:0`, `if (ok) ok = 1`, a `ret` variable, u32: all setne.
-- `daeVerifySig` (4): block order only. The `!pub2a4` return (`mov eax,1;
-  ret` before the prologue) should come last, after the FAIL log. A
-  `memset` for the zero HMAC key and `if (!ok) FAIL else good` were needed
-  to get this far. `__builtin_expect` on the pub test doesn't move it.
-- `verifyFcrt` (10): block order. The inlined fcrtVerifySig's "sig good"
-  block should sit right after the size-error return, and the "already
-  decrypted"/"no pub key" blocks at the end.
-- `verifyDae` (189): ours clones daeDecrypt (`daeDecrypt.constprop`, perBox
-  = 1) and peels the first DAEP header test. The original calls
-  daeDecrypt normally and keeps `buf` in ecx, spilled around calls. A
-  `perBox ? cpuKey : key28c` select still gets cloned.
+- `ceDecrypt` (1 line): the calloc-fail `xor ebx,ebx`, as cb/cdDecrypt had.
+  Their fix (below) gives ce a different register rotation (40 lines):
+  with the success branch first, IRA gives bl esi instead of ebp
+  (r96's memory cost drops 10708 -> 10696 and the colouring order flips).
+  Nested ifs, `if (!hash)` first and `__builtin_expect` don't help.
+- `daeVerifySig` (4): block order. The `!pub2a4` return (`mov eax,1; ret`
+  before the prologue) should come last, after the FAIL log. Needs
+  `if (!ok) FAIL else good` (the then-branch gets gcc's early-return
+  penalty, so good is likely and inline); `if (ok)` is 16 lines. Expect on
+  pub/size/ok, `||`, nesting, a single exit: no better.
 
-What did match: `= {0}` on the second HMAC buffer in verifySecdata gave a
-different register choice; `memset(hash, 0, 16)` matched. unscramble's
-state index is `j = (j + 1) & 3` with `t = buf[i] * 251` computed first.
-The signature-log ifs are `if (ok) good else FAIL` in crlVerifySig and
-fcrtVerifySig.
+How the others matched:
+
+- cb/cdDecrypt: three passes each prove `buf == 0` on the calloc-fail path
+  and drop the original's `ret = 0`: tree uncprop (turns the 0 into
+  `buf`), CSE1 (jump equivalence, then a no-op set) and postreload's
+  move2add (implicit set from a fallthrough `ne` jump). The source has the
+  success branch first (`if (buf) { ...; return buf; } log; return 0;`,
+  so the fail block is the jump target) and
+  `optimize("no-tree-dominator-opts", "no-cse-follow-jumps")`.
+- cfDecrypt: `if (ok) ok = 1; return ok;` with
+  `optimize("no-tree-dominator-opts", "no-tree-vrp")`; DOM/VRP otherwise
+  fold ok to 0 on the false edge and phiopt makes a setne.
+- verifyDae: `noclone` on daeDecrypt (no `.constprop`); the header-error
+  path stays in the loop (`else { log; off = size; }`, so loop-header
+  copying stops after `off < size`); `buf[off + k]` addressing; and the
+  signature check is a separate `always_inline` copy (`daeSigCheck`) with
+  `if (ok)` first. Inlined before profile estimation it gets an even
+  ok/FAIL split; the standalone daeVerifySig needs `if (!ok)`.
+- verifyFcrt: fcrtVerifySig is `inline __attribute__((always_inline))`
+  with a plain prototype (external copy still emitted, same code).
+- `memset(hash, 0, 16)` in verifySecdata (not `= {0}`); unscramble's
+  `j = (j + 1) & 3` after `t = buf[i] * 251`; `if (ok) good else FAIL` in
+  crlVerifySig and fcrtVerifySig.
 
 ## app/filelist_ini (draft: wip/app/filelist_ini.c, SYMBOLS/IAT diff: filelist_ini_split.diff)
 
