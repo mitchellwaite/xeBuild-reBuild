@@ -238,16 +238,24 @@ __attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 	free(buf);
 }
 
+static void hint(int *p) { *p = 1; }
+
+/* ifcombine merges the size test with !pub2a4 and the pair keeps the size
+   test's probability; the hint call (PRED_CALL; once inlined, its store to a
+   dead local goes) lowers it so FAIL comes before the !pub2a4 return */
+__attribute__((optimize("no-early-inlining")))
 int daeVerifySig(u8 *seg, u32 size, int n)
 {
 	u8 key[16];
 	u8 hash[20];
-	int ok;
+	int ok, dead;
 
 	if (!pub2a4)
 		return 1;
-	if (size < 288)
+	if (size < 288) {
+		hint(&dead);
 		return 1;
+	}
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
 	ok = XeKeysPkcs1Verify(hash, seg + 32, pub2a4);
@@ -463,6 +471,9 @@ u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey, u32
 	return 0;
 }
 
+/* as cbDecrypt, plus register pins (in a block jump threading removes) that
+   keep IRA's original choice: bl ebp, hmacKey edi, len esi */
+__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
 u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash)
 {
 	u8 *buf;
@@ -479,27 +490,30 @@ u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash)
 	}
 	len = BL_SIZE(bl);
 	buf = calloc(len, 1);
-	if (!buf) {
-		log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %cE!\n", bl[0]);
-		return 0;
-	}
-	memcpy(buf, bl, len);
-	XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
-	XeCryptRc4(key, 16, buf + 32, len - 32);
-	if (hash) {
-		if (blCheckHash(buf, len, hash)) {
-			log_printf(1, "%c%c hash check OK! Decryption successful!\n", buf[0], buf[1]);
+	if (buf)
+		__asm__("" :: "S"(len), "D"(hmacKey));
+	if (buf) {
+		memcpy(buf, bl, len);
+		XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + 32, len - 32);
+		if (hash) {
+			if (blCheckHash(buf, len, hash)) {
+				log_printf(1, "%c%c hash check OK! Decryption successful!\n", buf[0], buf[1]);
+				if (outLen)
+					*outLen = len;
+			} else {
+				log_printf(0, "***** ERROR: %c%c hash check invalid, corrupted or decryption failed!\n", buf[0], buf[1]);
+				free(buf);
+				buf = 0;
+			}
+		} else {
+			log_printf(0, "***** WARNING: could not check %cE signature, 1BL RSA key not loaded!\n", buf[0]);
 			if (outLen)
 				*outLen = len;
-		} else {
-			log_printf(0, "***** ERROR: %c%c hash check invalid, corrupted or decryption failed!\n", buf[0], buf[1]);
-			free(buf);
-			buf = 0;
 		}
-	} else {
-		log_printf(0, "***** WARNING: could not check %cE signature, 1BL RSA key not loaded!\n", buf[0]);
-		if (outLen)
-			*outLen = len;
+		return buf;
 	}
-	return buf;
+	log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %cE!\n", bl[0]);
+	return 0;
 }
+

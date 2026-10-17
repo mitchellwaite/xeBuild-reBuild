@@ -6,7 +6,7 @@ Run after `sh build.sh` (it reads build/obj/*.o and build/xeBuild.map for the
 function names).  Functions come from the reference exe's .eh_frame (one FDE
 each, units.py); an object is C if src/<obj>.c exists, and in a mixed object
 (src/<obj>.s too) only the C_FUNCS addresses are C.  Functions a .c defines
-in top-level __asm__ (still assembly, see app/bootloaders) aren't C.  A function still in
+in top-level __asm__ (still assembly) aren't C.  A function still in
 assembly whose SYMBOLS name is defined in a draft wip/<obj>.c counts as C
 too if re/fncmp.py says it matches.  The section is replaced between the
 progress:begin/end markers.

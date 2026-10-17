@@ -1,12 +1,10 @@
 /* bootloaders: CB/CF/CD/CE decryption, pairing, FCRT, bootloader signature
-   checks.  The functions that don't match in C yet (daeVerifySig,
-   ceDecrypt) are top-level __asm__ in place, from the generated asm, and so
-   are the object's .rdata strings and .eh_frame; build.sh compiles this
-   file with -fno-toplevel-reorder -fno-asynchronous-unwind-tables.  The C
-   functions therefore name the strings with extern declarations, not
-   literals.  C drafts of the asm functions are in wip/app/bootloaders.c; to
-   move one, replace its __asm__ block with the C and keep its trailing
-   padding bytes (or drop them where gcc's .p2align gives the same). */
+   checks.  All functions are C; the object's .rdata strings, .eh_frame and
+   some inter-function padding are top-level __asm__ (from the generated
+   asm), so build.sh compiles this file with -fno-toplevel-reorder
+   -fno-asynchronous-unwind-tables, and the functions name the strings with
+   extern declarations, not literals.  wip/app/bootloaders.c is the same
+   code with string literals. */
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,6 +34,7 @@ int checkZeros(const u8 *p, u32 len);
 int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
 int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
+int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int fcrtVerifySig(u8 *fcrt);
 
 extern u8 key1bl[16];
@@ -73,6 +72,12 @@ extern const char msg_cdSigBad[];	/* "***** ERROR: %c%c signature invalid, corru
 extern const char msg_cdNoKey[];	/* "***** WARNING: could not check %c%c signature, 1BL RSA key not loaded!\n" */
 extern const char msg_cdMagic[];	/* "***** WARNING: SC/SD/CD does not have valid magic!\n" */
 extern const char msg_cdNoData[];	/* "***** WARNING: SC/SD/CD decrypt not provided with data!\n" */
+extern const char msg_ceHashOk[];	/* "%c%c hash check OK! Decryption successful!\n" */
+extern const char msg_ceHashBad[];	/* "***** ERROR: %c%c hash check invalid, corrupted or decryption failed!\n" */
+extern const char msg_ceNoKey[];	/* "***** WARNING: could not check %cE signature, 1BL RSA key not loaded!\n" */
+extern const char msg_ceAllocFail[];	/* "***** WARNING: Unable to allocate 0x%x bytes for %cE!\n" */
+extern const char msg_ceMagic[];	/* "***** WARNING: SE/CE does not have valid magic!\n" */
+extern const char msg_ceNoData[];	/* "***** WARNING: SE/CE decrypt not provided with data!\n" */
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
@@ -405,87 +410,34 @@ __attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 	free(buf);
 }
 
-__asm__(
-	".intel_syntax noprefix\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x76\n"
-	"	.byte 0x0\n"
-	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
-	".text\n"
-	".att_syntax\n");
+static void hint(int *p) { *p = 1; }
 
-/* check one DAE segment's signature (1 if no key or too short) */
-int daeVerifySig(u8 *seg, u32 size, int n);
-__asm__(
-	".intel_syntax noprefix\n"
-	"_daeVerifySig:\n"
-	"	mov EAX,DWORD PTR [_pub2a4]\n"
-	"	test EAX,EAX\n"
-	"	je L_402400\n"
-	"	push EBX\n"
-	"	mov EAX,1\n"
-	"	sub ESP,120\n"
-	"	cmp DWORD PTR [ESP+132],287\n"
-	"	jbe L_4023d8\n"
-	"	mov EDX,DWORD PTR [ESP+128]\n"
-	"	lea EAX,DWORD PTR [ESP+76]\n"
-	"	lea EBX,DWORD PTR [ESP+92]\n"
-	"	mov DWORD PTR [ESP+36],20\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	mov DWORD PTR [ESP+32],EBX\n"
-	"	mov DWORD PTR [ESP+8],EDX\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],32\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP+76],0\n"
-	"	mov DWORD PTR [ESP+80],0\n"
-	"	mov DWORD PTR [ESP+84],0\n"
-	"	mov DWORD PTR [ESP+88],0\n"
-	"	call _XeCryptHmacSha\n"
-	"	mov EAX,DWORD PTR [_pub2a4]\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	mov EAX,DWORD PTR [ESP+128]\n"
-	"	add EAX,32\n"
-	"	mov DWORD PTR [ESP+4],EAX\n"
-	"	call _XeKeysPkcs1Verify\n"
-	"	mov DWORD PTR [ESP+60],EAX\n"
-	"	test EAX,EAX\n"
-	"	mov EAX,DWORD PTR [ESP+136]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	je L_4023e0\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c168\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov EAX,DWORD PTR [ESP+60]\n"
-	"L_4023d8:\n"
-	"	add ESP,120\n"
-	"	pop EBX\n"
-	"	ret\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x76\n"
-	"	.byte 0x0\n"
-	"L_4023e0:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c176\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov EAX,DWORD PTR [ESP+60]\n"
-	"	add ESP,120\n"
-	"	pop EBX\n"
-	"	ret\n"
-	"	.byte 0x8d\n"
-	"	.byte 0x76\n"
-	"	.byte 0x0\n"
-	"L_402400:\n"
-	"	mov EAX,1\n"
-	"	ret\n"
-	"	.byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]\n"
-	"	.byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]\n"
-	".text\n"
-	".att_syntax\n");
+/* check one DAE segment's signature (1 if no key or too short).  ifcombine
+   merges the size test with !pub2a4 and the pair keeps the size test's
+   probability; the hint call (PRED_CALL; once inlined, its store to a dead
+   local goes) lowers it so the FAIL block comes before the !pub2a4 return */
+__attribute__((optimize("no-early-inlining")))
+int daeVerifySig(u8 *seg, u32 size, int n)
+{
+	u8 key[16];
+	u8 hash[20];
+	int ok, dead;
+
+	if (!pub2a4)
+		return 1;
+	if (size < 288) {
+		hint(&dead);
+		return 1;
+	}
+	memset(key, 0, 16);
+	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, pub2a4);
+	if (!ok)
+		log_printf(1, msg_daeSigFail, n);
+	else
+		log_printf(1, msg_daeSigGood, n);
+	return ok;
+}
 
 /* check and decrypt the two DAEP segments of a DAE file */
 int verifyDae(u8 *buf, u32 size);
@@ -745,162 +697,52 @@ u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey, u32
 	return 0;
 }
 
-__asm__(
-	".intel_syntax noprefix\n"
-	"	.byte 0x66\n"
-	"	.byte 0x90\n"
-	".text\n"
-	".att_syntax\n");
+/* decrypted copy of an SE/CE with hmacKey, hash checked if given; as
+   cbDecrypt, plus register pins (in a block jump threading removes) that
+   keep IRA's original choice: bl ebp, hmacKey edi, len esi */
+__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
+u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash)
+{
+	u8 *buf;
+	u32 len;
+	u8 key[16];
 
-/* decrypted copy of an SE/CE with hmacKey, hash checked if given */
-u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash);
-__asm__(
-	".intel_syntax noprefix\n"
-	"_ceDecrypt:\n"
-	"	push EBP\n"
-	"	push EDI\n"
-	"	push ESI\n"
-	"	push EBX\n"
-	"	sub ESP,76\n"
-	"	mov EBP,DWORD PTR [ESP+96]\n"
-	"	mov EDI,DWORD PTR [ESP+104]\n"
-	"	test EBP,EBP\n"
-	"	je L_403065\n"
-	"	test EDI,EDI\n"
-	"	je L_403065\n"
-	"	movzx EAX,BYTE PTR [EBP]\n"
-	"	and EAX,67\n"
-	"	cmp AL,67\n"
-	"	jne L_403000\n"
-	"	cmp BYTE PTR [EBP+1],69\n"
-	"	jne L_403000\n"
-	"	lea EAX,DWORD PTR [EBP+12]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _getBeU32\n"
-	"	lea ESI,DWORD PTR [EAX+15]\n"
-	"	mov DWORD PTR [ESP+4],1\n"
-	"	and ESI,4294967280\n"
-	"	mov DWORD PTR [ESP],ESI\n"
-	"	call _calloc\n"
-	"	test EAX,EAX\n"
-	"	mov EBX,EAX\n"
-	"	je L_403045\n"
-	"	mov DWORD PTR [ESP+4],EBP\n"
-	"	mov DWORD PTR [ESP+8],ESI\n"
-	"	lea EBP,DWORD PTR [ESP+48]\n"
-	"	mov DWORD PTR [ESP],EAX\n"
-	"	call _memcpy\n"
-	"	lea EAX,DWORD PTR [EBX+16]\n"
-	"	mov DWORD PTR [ESP+36],16\n"
-	"	mov DWORD PTR [ESP+32],EBP\n"
-	"	mov DWORD PTR [ESP+28],0\n"
-	"	mov DWORD PTR [ESP+24],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	mov DWORD PTR [ESP+20],0\n"
-	"	mov DWORD PTR [ESP+16],0\n"
-	"	mov DWORD PTR [ESP+12],16\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],EDI\n"
-	"	call _XeCryptHmacSha\n"
-	"	lea EAX,DWORD PTR [ESI-32]\n"
-	"	mov DWORD PTR [ESP+4],16\n"
-	"	mov DWORD PTR [ESP],EBP\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	lea EAX,DWORD PTR [EBX+32]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _XeCryptRc4\n"
-	"	mov ECX,DWORD PTR [ESP+108]\n"
-	"	test ECX,ECX\n"
-	"	je L_403020\n"
-	"	mov EAX,DWORD PTR [ESP+108]\n"
-	"	mov DWORD PTR [ESP+4],ESI\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _blCheckHash\n"
-	"	test EAX,EAX\n"
-	"	movzx EAX,BYTE PTR [EBX+1]\n"
-	"	mov DWORD PTR [ESP+12],EAX\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	je L_403080\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c588\n"
-	"	mov DWORD PTR [ESP],1\n"
-	"	call _log_printf\n"
-	"	mov EDX,DWORD PTR [ESP+100]\n"
-	"	test EDX,EDX\n"
-	"	je L_402ff5\n"
-	"L_402fef:\n"
-	"	mov EAX,DWORD PTR [ESP+100]\n"
-	"	mov DWORD PTR [EAX],ESI\n"
-	"L_402ff5:\n"
-	"	add ESP,76\n"
-	"	mov EAX,EBX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"	.byte 0x90\n"
-	"L_403000:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c67c\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	xor EBX,EBX\n"
-	"	call _log_printf\n"
-	"	add ESP,76\n"
-	"	mov EAX,EBX\n"
-	"	pop EBX\n"
-	"	pop ESI\n"
-	"	pop EDI\n"
-	"	pop EBP\n"
-	"	ret\n"
-	"L_403020:\n"
-	"	movzx EAX,BYTE PTR [EBX]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c5fc\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _log_printf\n"
-	"	mov EAX,DWORD PTR [ESP+100]\n"
-	"	test EAX,EAX\n"
-	"	jne L_402fef\n"
-	"	jmp L_402ff5\n"
-	"L_403045:\n"
-	"	movzx EAX,BYTE PTR [EBP]\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c644\n"
-	"	xor EBX,EBX\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	mov DWORD PTR [ESP+8],EAX\n"
-	"	call _log_printf\n"
-	"	jmp L_402ff5\n"
-	"L_403065:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c6b0\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	xor EBX,EBX\n"
-	"	call _log_printf\n"
-	"	jmp L_402ff5\n"
-	"L_403080:\n"
-	"	mov DWORD PTR [ESP+4],OFFSET L_44c5b4\n"
-	"	mov DWORD PTR [ESP],0\n"
-	"	call _log_printf\n"
-	"	mov DWORD PTR [ESP],EBX\n"
-	"	xor EBX,EBX\n"
-	"	call _free\n"
-	"	jmp L_402ff5\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"	.byte 0x90\n"
-	"\n"
-	".text\n"
-	".att_syntax\n");
+	if (!bl || !hmacKey) {
+		log_printf(0, msg_ceNoData);
+		return 0;
+	}
+	if (!BL_MAGIC(bl, 'E')) {
+		log_printf(0, msg_ceMagic);
+		return 0;
+	}
+	len = BL_SIZE(bl);
+	buf = calloc(len, 1);
+	if (buf)
+		__asm__("" :: "S"(len), "D"(hmacKey));
+	if (buf) {
+		memcpy(buf, bl, len);
+		XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + 32, len - 32);
+		if (hash) {
+			if (blCheckHash(buf, len, hash)) {
+				log_printf(1, msg_ceHashOk, buf[0], buf[1]);
+				if (outLen)
+					*outLen = len;
+			} else {
+				log_printf(0, msg_ceHashBad, buf[0], buf[1]);
+				free(buf);
+				buf = 0;
+			}
+		} else {
+			log_printf(0, msg_ceNoKey, buf[0]);
+			if (outLen)
+				*outLen = len;
+		}
+		return buf;
+	}
+	log_printf(0, msg_ceAllocFail, bl[0]);
+	return 0;
+}
 
 /* the object's strings and unwind info (FDEs for every function) */
 __asm__(
@@ -993,20 +835,26 @@ __asm__(
 	"L_44c54c:\n"
 	"	.string \"***** WARNING: SC/SD/CD decrypt not provided with data!\\n\"\n"
 	"	.zero 3\n"
+	"_msg_ceHashOk:\n"
 	"L_44c588:\n"
 	"	.string \"%c%c hash check OK! Decryption successful!\\n\"\n"
+	"_msg_ceHashBad:\n"
 	"L_44c5b4:\n"
 	"	.string \"***** ERROR: %c%c hash check invalid, corrupted or decryption failed!\\n\"\n"
 	"	.zero 1\n"
+	"_msg_ceNoKey:\n"
 	"L_44c5fc:\n"
 	"	.string \"***** WARNING: could not check %cE signature, 1BL RSA key not loaded!\\n\"\n"
 	"	.zero 1\n"
+	"_msg_ceAllocFail:\n"
 	"L_44c644:\n"
 	"	.string \"***** WARNING: Unable to allocate 0x%x bytes for %cE!\\n\"\n"
 	"	.zero 1\n"
+	"_msg_ceMagic:\n"
 	"L_44c67c:\n"
 	"	.string \"***** WARNING: SE/CE does not have valid magic!\\n\"\n"
 	"	.zero 3\n"
+	"_msg_ceNoData:\n"
 	"L_44c6b0:\n"
 	"	.string \"***** WARNING: SE/CE decrypt not provided with data!\\n\"\n"
 	"	.zero 2\n"

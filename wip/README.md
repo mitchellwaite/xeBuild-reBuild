@@ -136,22 +136,23 @@ Findings:
 
 ## app/bootloaders.c
 
-Draft of the whole object, with string literals. 17 of 19 functions match
-and are built from `src/app/bootloaders.c`; the other 2 are top-level
-`__asm__` blocks there (plus the strings and `.eh_frame`), so its C uses
-`extern` names for the strings (`msg_*`, labels in its .rdata asm). To move
-one, replace its `__asm__` block with the C from here. Still open:
+Draft of the whole object, with string literals. All 19 functions match
+and are built from `src/app/bootloaders.c`, which keeps the strings,
+`.eh_frame` and padding as top-level `__asm__`, so its C uses `extern`
+names for the strings (`msg_*`, labels in its .rdata asm).
 
-- `ceDecrypt` (1 line): the calloc-fail `xor ebx,ebx`, as cb/cdDecrypt had.
-  Their fix (below) gives ce a different register rotation (40 lines):
-  with the success branch first, IRA gives bl esi instead of ebp
-  (r96's memory cost drops 10708 -> 10696 and the colouring order flips).
-  Nested ifs, `if (!hash)` first and `__builtin_expect` don't help.
-- `daeVerifySig` (4): block order. The `!pub2a4` return (`mov eax,1; ret`
-  before the prologue) should come last, after the FAIL log. Needs
-  `if (!ok) FAIL else good` (the then-branch gets gcc's early-return
-  penalty, so good is likely and inline); `if (ok)` is 16 lines. Expect on
-  pub/size/ok, `||`, nesting, a single exit: no better.
+- `ceDecrypt`: cbDecrypt's fix (below) keeps the calloc-fail
+  `xor ebx,ebx` but rotates the registers (IRA gives bl esi instead of
+  ebp). Input-only pins `"S"(len), "D"(hmacKey)` in an `if (buf)` block
+  just before the real `if (buf)` (jump threading removes it) restore them.
+- `daeVerifySig`: block order. ifcombine merges `!pub2a4 || size < 288`
+  and the pair keeps the size test's probability (61%); expand gives the
+  first jump half of it, and the shrink-wrapped `!pub2a4` return (freq
+  ~P*P/2) came out above the FAIL block. A guarded `hint(&dead)` call on
+  the size path (PRED_CALL; the function has
+  `optimize("no-early-inlining")`) brings P to 39%. The hint stores to a
+  dead local, not a static: with `-fno-toplevel-reorder` a write-only
+  static stays in .bss.
 
 How the others matched:
 
