@@ -35,7 +35,7 @@ void netTimerStart(void);
 void netTimerEnd(void);
 int netMount(const char *drive, const char *device);
 u32 netUnmount(const char *drive);
-u32 netSendFile(const char *name, void *buf, u32 len);
+int netSendFile(const char *name, void *buf, u32 len);
 u32 netFormatSysex(void);
 int netFormatCompat(void);
 u32 netMkdir(const char *name);
@@ -362,7 +362,8 @@ int loadManifest(const char *dir, u32 ver)
 int prepSysex(void)
 {
 	if (netFormatSysex()) {
-		if (netMount(SYSEX, "\\SEP"))
+		/* hint: makes the mount failure cold where sendAvatarData inlines this */
+		if (__builtin_expect(netMount(SYSEX, "\\SEP"), 1))
 			return createSysexDirs();
 		log_printf(0, "ERROR: unable to mount sysex partition!\n");
 	} else
@@ -370,9 +371,13 @@ int prepSysex(void)
 	return 0;
 }
 
-int sendAvatarData(const char *dir, u32 ver)
+/* long, not int: uncprop then can't reuse the int netSendFile result for the
+   manifest failure's 0 (it does for the loop failure, which assigns ret) */
+long sendAvatarData(const char *dir, u32 ver)
 {
-	int i, ret;
+	int i;
+	u32 k;
+	long ret;
 
 	netTimerStart();
 	log_printf(0, "loading avatar data...\n");
@@ -384,32 +389,41 @@ int sendAvatarData(const char *dir, u32 ver)
 		if (prepSysex()) {
 			log_printf(0, "success!\nSending avatar files to HDD partition...\n");
 			log_printf(1, "sending %d items to xbox\n", manifest.count);
-			for (i = 0; i < manifest.count; i++) {
-				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, manifest.e[i].len,
-					manifest.e[i].len, manifest.e[i].path);
-				ret = netSendFile(manifest.e[i].path, manifest.e[i].data, manifest.e[i].len);
-				if (!ret) {
-					log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.e[i].path);
-					goto out;
-				}
+			if (manifest.count > 0) {
+				i = 0;
+				do {
+					/* hint: hides k from scev, so ivopts keeps the
+					   imul instead of a pointer IV (no code) */
+					k = (u32)__builtin_assume_aligned((void *)i, 1);
+					log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, manifest.e[k].len,
+						manifest.e[k].len, manifest.e[k].path);
+					ret = netSendFile(manifest.e[k].path, manifest.e[k].data, manifest.e[k].len);
+					if (__builtin_expect(!ret, 0)) {
+						log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.e[k].path);
+						goto out;
+					}
+				} while (++i < manifest.count);
+				/* hint: i live here stops ifcvt hoisting i = 0 above the guard */
+				__asm__("" :: "r"(i));
 			}
 			log_printf(1, "sending manifest to %s\n", manifest.path);
 			if (!netSendFile(manifest.path, manifest.data, manifest.size)) {
 				ret = 0;
 				log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
-				goto out;
+			} else {
+				log_printf(0, "success! Avatar data is successfully sent to the console!\n");
+				netTimerEnd();
+				ret = 1;
 			}
-			log_printf(0, "success! Avatar data is successfully sent to the console!\n");
-			netTimerEnd();
-			ret = 1;
 		}
 out:
 		netUnmount(SYSEX);
 		freeManifest();
-		return ret;
+	} else {
+		log_printf(0, "***** WARNING: avatar data skipped, unable to load data!\n");
+		ret = 1;
 	}
-	log_printf(0, "***** WARNING: avatar data skipped, unable to load data!\n");
-	return 1;
+	return ret;
 }
 
 int sendDir(const char *src, const char *dst)

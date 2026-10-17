@@ -5,22 +5,35 @@ the generated asm (and still reproduces the SHA256).
 
 ## app/console_hdd.c
 
-13 of 14 functions match with `re/fncmp.py`. `sendDir` matches: both
+All 14 functions match with `python re/fncmp.py wip/app/console_hdd.c
+<name> -O3 --param builtin-expect-probability=80` (the object needs that
+param, like fileutil/keyvault). `sendDir` matches: both
 failure paths `goto fail`, and `fail:` sits after `return 1` with a
 `__builtin_prefetch(0)` (no code on i686) that keeps it a GIMPLE block, so
 jump2 cross-jumps the xor and bbro copies it for the send failure.
 
-- `sendAvatarData` (47 lines with `int netSendFile`, see
-  build notes below; the draft still has `u32`, 60 lines):
-  - `int netSendFile` gives the loop failure's `mov edi,eax`, but the
-    manifest failure then reuses too (original: `xor edi,edi`, maybe
-    postreload move2add on a fall-through copy).
-  - The loop must keep `i` and `imul ebx,ebp,1032` (no strength
-    reduction) and be rotated with a `count > 0` guard. `-fno-ivopts`
-    gives the body but breaks the other inlined loops; an empty
-    `asm("" : "+r"(i))` at the body top stops ivopts but adds reg copies.
-    `for (...; ret && i < count; ...)` makes ch rotate (header is just
-    `if (ret)`). Combining these is not solved yet.
+`sendAvatarData` needed:
+  - `int netSendFile` with `long ret` and a `long` return: uncprop only
+    reuses a call result for a PHI's 0 when the types are compatible, so
+    the loop failure (which assigns ret) gets `mov edi,eax` and the
+    manifest failure keeps `xor edi,edi`.
+  - The loop indexes with `k = (u32)__builtin_assume_aligned((void *)i, 1)`.
+    scev can't see through it, so ivopts keeps `imul ebx,ebp,1032` instead
+    of a pointer IV, and it expands to nothing (an empty asm pin needs a
+    reg copy; with `int k` PRE's value numbers of the cast chain change
+    the SSA name reuse and flip an inlined freeManifest compare).
+  - An explicit `if (count > 0) do ... while` guard, and
+    `__asm__("" :: "r"(i))` after the loop: with i live there, RTL
+    if-conversion (ce1) can't speculate `i = 0` above the guard.
+  - `__builtin_expect` on the loop failure, and on netMount in prepSysex
+    (cold mount failure, so bbro orders the cold blocks as the original;
+    prepSysex itself is unchanged at p <= 80). The manifest send is an
+    if/else so the success path falls into `out` and jump2 cross-jumps the
+    createSysexDirs failure's `mov edi,1` with it.
+
+`wip/fnrep.py` plus small generators (variants joined by `=====`) found
+these; `-fdump-rtl-bbro-details` traces and `-fdump-tree-pre-details`
+explain the block order and SSA numbering.
 
 `sendDir` calls libmingwex's `stat` (448820). That address has no `SYMBOLS`
 name, because `_stat` is already the msvcrt import in `src/runtime/idata.s`.

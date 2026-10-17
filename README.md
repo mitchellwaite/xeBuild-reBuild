@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **520 of 617** (505 built from `src/`, 15 matching drafts in `wip/` that the build doesn't use yet); 56 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **521 of 617** (505 built from `src/`, 16 matching drafts in `wip/` that the build doesn't use yet); 56 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 15 / 25 | 335 / 432 |
+| `app/` | 15 / 25 | 336 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -45,7 +45,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
-| `app/console_hdd` | asm; 13 of 14 drafted functions match in `wip/app/console_hdd.c` | 13 / 14 |
+| `app/console_hdd` | asm; 14 of 14 drafted functions match in `wip/app/console_hdd.c` | 14 / 14 |
 
 <details>
 <summary><code>app/mode_update</code>: 11 / 14 in C</summary>
@@ -354,7 +354,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/console_hdd</code>: 13 / 14 in C</summary>
+<summary><code>app/console_hdd</code>: 14 / 14 in C</summary>
 
 - ☑️ `createSysexDirs` (0x431c20)
 - ☑️ `addTitleId` (0x431d20)
@@ -367,7 +367,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ☑️ `freeManifest` (0x432aa0)
 - ☑️ `loadManifest` (0x432b10)
 - ☑️ `prepSysex` (0x432de0)
-- ⬜ `sendAvatarData` (0x432e50) (draft in `wip/`, no match yet)
+- ☑️ `sendAvatarData` (0x432e50)
 - ☑️ `sendDir` (0x433130)
 - ☑️ `sendCompatData` (0x433440)
 
