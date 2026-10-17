@@ -5,9 +5,10 @@ the generated asm (and still reproduces the SHA256).
 
 ## app/console_hdd.c
 
-All 14 functions match with `python re/fncmp.py wip/app/console_hdd.c
-<name> -O3 --param builtin-expect-probability=80` (the object needs that
-param, like fileutil/keyvault). `sendDir` matches: both
+All 14 functions match and are built from `src/app/console_hdd.c` with
+`-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3`
+(the expect param like fileutil/keyvault; 3 aligns sendAvatarData's loop
+as the original, 1 or 2 align other loops too). `sendDir` matches: both
 failure paths `goto fail`, and `fail:` sits after `return 1` with a
 `__builtin_prefetch(0)` (no code on i686) that keeps it a GIMPLE block, so
 jump2 cross-jumps the xor and bbro copies it for the send failure.
@@ -30,21 +31,18 @@ jump2 cross-jumps the xor and bbro copies it for the send failure.
     prepSysex itself is unchanged at p <= 80). The manifest send is an
     if/else so the success path falls into `out` and jump2 cross-jumps the
     createSysexDirs failure's `mov edi,1` with it.
+  - `__asm__("" :: "i"("sending manifest to %s\n"))` before the loop:
+    gcc numbers and emits string literals in expand order, and the
+    original has the manifest literal before the loop's (fncmp doesn't
+    see .rdata order).
 
 `wip/fnrep.py` plus small generators (variants joined by `=====`) found
 these; `-fdump-rtl-bbro-details` traces and `-fdump-tree-pre-details`
 explain the block order and SSA numbering.
 
-`sendDir` calls libmingwex's `stat` (448820). That address has no `SYMBOLS`
-name, because `_stat` is already the msvcrt import in `src/runtime/idata.s`.
-Giving 448820 the name `_stat` relinked `filelist_ini`'s call and broke the
-SHA. Sort out which symbol the C `stat()` call should bind to before
-building console_hdd from C.
-
-To resume: move it back to `src/app/`. The names it needs are already in
-`re/split.py` `SYMBOLS`. Iterate with `python re/fncmp.py
-src/app/console_hdd.c <name>` or `python wip/fnrep.py`, then regenerate and
-`sh build.sh`.
+`sendDir` calls libmingwex's `stat` (448820). msvcrt's `_stat` IAT slot
+had that name, so `re/split.py` renames the slot to `__imp___stat`
+(`IAT_NAMES`, like `_stricmp`) and 448820 is `_stat`.
 
 ## app/options.c
 

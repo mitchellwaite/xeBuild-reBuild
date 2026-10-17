@@ -60,7 +60,7 @@ L_408f0e:
           lea EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],ESI
           mov DWORD PTR [ESP+4],EAX
-          call FUN_448820
+          call _stat
           test EAX,EAX
           js L_408f00
           mov DWORD PTR [ESP+4],OFFSET L_44a340

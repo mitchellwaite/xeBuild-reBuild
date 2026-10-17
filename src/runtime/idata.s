@@ -39,6 +39,7 @@
 .globl __imp___errno
 .globl __imp___exit
 .globl __imp___iob
+.globl __imp___stat
 .globl __imp___stricmp
 .globl __imp___strnicmp
 .globl __imp__bind@12
@@ -76,7 +77,6 @@
 .globl _mkdir
 .globl _onexit
 .globl _snwprintf
-.globl _stat
 .globl _unlock
 .globl _vsnprintf
 .globl _write
@@ -558,8 +558,8 @@ L_50f330:
 _snwprintf:
           .rva L_50f7a4
 L_50f334:
-.globl _stat
-_stat:
+.globl __imp___stat
+__imp___stat:
           .rva L_50f7b2
 L_50f338:
 .globl __imp___stricmp

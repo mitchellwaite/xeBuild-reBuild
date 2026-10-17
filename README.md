@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 15 of 25 app files build from C, nine more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 16 of 25 app files build from C, nine more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **521 of 617** (505 built from `src/`, 16 matching drafts in `wip/` that the build doesn't use yet); 56 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **521 of 617** (519 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 15 / 25 | 336 / 432 |
+| `app/` | 16 / 25 | 336 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -45,7 +45,6 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
-| `app/console_hdd` | asm; 14 of 14 drafted functions match in `wip/app/console_hdd.c` | 14 / 14 |
 
 <details>
 <summary><code>app/mode_update</code>: 11 / 14 in C</summary>
@@ -353,25 +352,6 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `buildFlash` (0x42e760) (draft in `wip/`, no match yet)
 
 </details>
-<details>
-<summary><code>app/console_hdd</code>: 14 / 14 in C</summary>
-
-- ☑️ `createSysexDirs` (0x431c20)
-- ☑️ `addTitleId` (0x431d20)
-- ☑️ `checkManifestHeader` (0x431d70)
-- ☑️ `readManifestString` (0x431f20)
-- ☑️ `loadFileChecked` (0x431f80)
-- ☑️ `loadStfsChecked` (0x4320b0)
-- ☑️ `parseManifestEntries` (0x432190)
-- ☑️ `parseManifest` (0x4327a0)
-- ☑️ `freeManifest` (0x432aa0)
-- ☑️ `loadManifest` (0x432b10)
-- ☑️ `prepSysex` (0x432de0)
-- ☑️ `sendAvatarData` (0x432e50)
-- ☑️ `sendDir` (0x433130)
-- ☑️ `sendCompatData` (0x433440)
-
-</details>
 
 ### Completed
 
@@ -392,6 +372,7 @@ Objects built entirely from C, in link order.
 | `app/mode_build` | 5 |
 | `app/fileutil` | 47 |
 | `app/consoleinfo` | 13 |
+| `app/console_hdd` | 14 |
 | `app/log` | 7 |
 | `app/crc32` | 1 |
 | `crypto/*` (41 XeCrypt objects) | 185 |
@@ -608,6 +589,25 @@ Objects built entirely from C, in link order.
 - ✅ `showCurrentInfo` (0x4317c0)
 - ✅ `setInfoKeys` (0x4318e0)
 - ✅ `parseConsoleInfo` (0x431a60)
+
+</details>
+<details>
+<summary><code>app/console_hdd</code>: 14 functions</summary>
+
+- ✅ `createSysexDirs` (0x431c20)
+- ✅ `addTitleId` (0x431d20)
+- ✅ `checkManifestHeader` (0x431d70)
+- ✅ `readManifestString` (0x431f20)
+- ✅ `loadFileChecked` (0x431f80)
+- ✅ `loadStfsChecked` (0x4320b0)
+- ✅ `parseManifestEntries` (0x432190)
+- ✅ `parseManifest` (0x4327a0)
+- ✅ `freeManifest` (0x432aa0)
+- ✅ `loadManifest` (0x432b10)
+- ✅ `prepSysex` (0x432de0)
+- ✅ `sendAvatarData` (0x432e50)
+- ✅ `sendDir` (0x433130)
+- ✅ `sendCompatData` (0x433440)
 
 </details>
 <details>

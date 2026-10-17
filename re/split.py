@@ -387,7 +387,7 @@ SYMBOLS = {
     0x41ed50: '_netTimerStart', 0x41ed70: '_netTimerEnd', 0x41faf0: '_netMount',
     0x41fc30: '_netUnmount', 0x420470: '_netSendFile', 0x4205d0: '_netFormatSysex',
     0x420670: '_netFormatCompat', 0x420710: '_netMkdir',
-    # (libmingwex's stat at 448820 stays unnamed: `_stat` is the msvcrt import in idata.s)
+    0x448820: '_stat',   # libmingwex; msvcrt's `_stat` IAT slot is renamed (IAT_NAMES)
     0x4481c0: '_opendir', 0x448360: '_readdir', 0x448470: '_closedir',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
@@ -641,9 +641,10 @@ SYMBOLS = {
     0x50f2f0: '__imp___errno',
 }
 # IAT slot labels (ddfix names them after the import) that clash with a
-# SYMBOLS name: msvcrt's `_strnicmp`/`_exit` slots vs the stubs for strnicmp/exit.
+# SYMBOLS name: msvcrt's `_strnicmp`/`_exit` slots vs the stubs for strnicmp/exit,
+# `_stat` vs libmingwex's stat.
 IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
-             '_stricmp': '__imp___stricmp'}
+             '_stricmp': '__imp___stricmp', '_stat': '__imp___stat'}
 # ws2_32 imports, named as winsock2.h's dllimport __stdcall declarations
 # reference them (app/net.c)
 IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (

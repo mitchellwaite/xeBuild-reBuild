@@ -299,7 +299,7 @@ _stricmp:
           .byte 0x90
           .byte 0x90
 FUN_4491e0:
-          jmp DWORD PTR [_stat]
+          jmp DWORD PTR [__imp___stat]
           .byte 0x90
           .byte 0x90
 FUN_4491e8:

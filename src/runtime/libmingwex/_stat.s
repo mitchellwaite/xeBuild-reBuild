@@ -6,11 +6,11 @@
 #   .text          00448820-00448a20
 
 .intel_syntax noprefix
-.globl FUN_448820
+.globl _stat
 
 .text
 .p2align 4
-FUN_448820:
+_stat:
           push EBP
           push EDI
           push ESI
@@ -287,7 +287,7 @@ L_4489f0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long FUN_448820 - .
+          .long _stat - .
           .byte 0xf4
           .byte 0x1
           .byte 0x0

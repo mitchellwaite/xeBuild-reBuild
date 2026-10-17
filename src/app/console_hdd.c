@@ -389,6 +389,9 @@ long sendAvatarData(const char *dir, u32 ver)
 		if (prepSysex()) {
 			log_printf(0, "success!\nSending avatar files to HDD partition...\n");
 			log_printf(1, "sending %d items to xbox\n", manifest.count);
+			/* hint: expands this literal before the loop's, for its .rdata
+			   order (no code) */
+			__asm__("" :: "i"("sending manifest to %s\n"));
 			if (manifest.count > 0) {
 				i = 0;
 				do {

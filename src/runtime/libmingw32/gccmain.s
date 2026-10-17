@@ -122,7 +122,7 @@ L_44b6bc:
           .byte 0xff
           .byte 0xff
           .byte 0xff
-          .long FUN_448820
+          .long _stat
           .long L_4492a0
           .long FUN_4492b0
 
