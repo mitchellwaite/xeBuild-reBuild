@@ -783,9 +783,11 @@ Findings:
 - buildImage: the size/kv/cf stores follow the asm order once the
   swapped CB offset is a local stored after the constants; the switch has
   no `case 0`; `else if (type != 6 && type != 8)` (MMC/16M nested) before
-  the 64M case. Left (56 lines, 16 of them ddisasm's `__ImageBase` for
-  0x400000): cold-block order (the MMC block and the type 2 `'5'`, flags<0
-  blocks), and one register.
+  the 64M case; the malloc check is two tests (`if (!hdr) return -1;
+  if (!spare) return -1;`), which puts the cold blocks in the original's
+  order. Left (22 lines, 16 of them ddisasm's `__ImageBase` for
+  0x400000): two registers (the `xb.bigBlock` test in switch case 4 is ebx
+  in the original, the type 2 `bigBlock` test edx).
 - smcSetLoad: SWAP32's top byte is `((x) & 0xff) << 24`; only that form
   folds `(0x4000 - size) << 24` into `-(size << 24)`. The other
   functions compile the same either way.

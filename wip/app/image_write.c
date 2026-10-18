@@ -334,7 +334,9 @@ int buildImage(void)
 	xb.spare = spare = malloc(spareSize);
 	xb.userSize = userSize;
 	xb.hdr = hdr = malloc(userSize);
-	if (!hdr || !spare)
+	if (!hdr)
+		return -1;
+	if (!spare)
 		return -1;
 	memset(spare, 0xff, spareSize);
 	memset(hdr, 0xff, userSize);
