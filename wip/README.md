@@ -355,17 +355,25 @@ the BLDR block's trace comes before the verify-failure block's.
 
 Still off:
 
-- `mode_update` (722): the post-loop failures assign constants (`ret =
-  5`, 3, 1), so the const-return heuristic predicts each failure taken
-  (67%) and the chain decays from 200 to ~3; the original also has the
-  netConnect failure as the fallthrough, so it isn't simply the inverse.
-  A `__builtin_expect` on the loop test makes it worse (1004/1210).
-  Everything after the argument loop is cold in ours
-  (the loop is predicted ~45 iterations), so bb-reorder scatters the main
-  path over round-4 traces; the original keeps connect, getConsoleFiles,
-  buildImage, flash, avatar and reboot as one trace. The type suffix is an
-  if/else chain (a switch gives a jump table). Moving the post-build code
-  into a static helper doesn't change it.
+- `mode_update` (299): fixed in the draft: `-ip` advances `i` by 2 (the
+  old draft had a third `i++`), `-r` loads `argv[i]` into a local before
+  the `i == argc` test, and `ip` is declared before `dumpDir` (store
+  order). Everything after netConnect is now `static void
+  updateConsole(ini, dumpDir, tmp, &ret)` with early `*pret = N; return;`.
+  An int helper (or one function) puts the 5/3 failure codes in the
+  return phi, and the const-return heuristic then predicts each failure
+  taken. The early-return heuristic only fires when the failure blocks
+  jump straight to the return block, so `tmp` (whose scope-end clobber
+  block would sit in between) belongs to mode_update and is passed in.
+  Declaring it inside the helper also lets it share a slot with `nand` and
+  drops `__chkstk_ms`. The main chain is now hot and laid out like the
+  original's. What's left is the order of the cold blocks: the original
+  interleaves the post-loop failures with the argument-loop option blocks
+  by frequency, and ours lands the main path across the round-2/3 bbro
+  threshold (78 -> 30, round 2 cuts at 43). Hill-climbing hot/cold labels
+  and expects (scratch climb2.py) gets 134 on this structure and 68 on the
+  old one (with nonsense hints like cold on netReboot). Neither is worth
+  keeping, so the structure is probably still not the original's.
 
 ## app/image_read.c
 
