@@ -189,19 +189,35 @@ How the others matched:
   `j = (j + 1) & 3` after `t = buf[i] * 251`; `if (ok) good else FAIL` in
   crlVerifySig and fcrtVerifySig.
 
-## app/filelist_ini (draft: wip/app/filelist_ini.c, SYMBOLS/IAT diff: filelist_ini_split.diff)
+## app/filelist_ini (draft: wip/app/filelist_ini.c)
 
-Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops the
-`PHI <'A', validChars[j+1]>` the original has in iniPreParse's validChars loop).
-- MATCH: iniFindKey (409310, 4-arg, `label` flag; getIniValue inlines it), findChar, checkFileNames.
-- iniPreParse: 15 lines. Left: `;` position kept in ebx (ours reloads [28]) and the
-  setne order (0xff vs '\n') in the comment count loop.
-- getters use their own 2-arg helper `findKey(buf, key)` with global iniSize and `p = &buf[i]`;
-  getIniBool must return `long` (int def). 10/30/8/8 lines: LRA reload ebx/ecx tie.
-- matchFileNames 23 (dir ptr in ebp), loadUserIni 30 (keep `iniSize + 1` in a local).
-- stat at 448820 needs SYMBOLS `_stat` + IAT_NAMES `'_stat': '__imp___stat'`.
-- validChars is read with [0] folded to 'A', so the object needs C data (bootloaders-style one .c).
-- parseIni (409430-40aa10) not started.
+Mixed since 17269c2; built from src/app/filelist_ini.c: getIniValue, memFindStr (4-arg,
+`skipNul`), memFindChar, checkFileCase, loadUserIni (keep `iniSize + 1` in a local;
+strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional IRA kept
+&st in a register instead of dir; ira-region doesn't help any other function here).
+- iniPreParse needs `-fno-tree-loop-vectorize` (with it on, PRE's eliminate drops the
+  `PHI <'A', validChars[j+1]>` of the validChars loop), and validChars as C data ([0] is
+  folded to 'A'), so it can't go into the mixed file as is. 15 lines left: the `;` position
+  kept in ebx (ours reloads [28]) and the setne order in the comment-count loop (the
+  peeled copy tests 0xff first, the loop body '
+' first). Tried: every char/uchar/&0xFF
+  spelling and both orders of the two tests (reassoc ties on SSA versions; `(char)x & 0xFF`
+  on both with '
+' first gives the right order but SImode compares), while/for/break
+  forms, and a sweep of ~35 -f flags. None below 15.
+- getters (getIniBool, iniBoolInvalid, getIniU32, iniU32Invalid): own 2-arg helper
+  `findKey(buf, key)` with global iniSize and `p = &buf[i]`; getIniBool returns `long`;
+  myatol must be declared `char myatol(char)`. Pins `__asm__("" :: "b"(q))` on
+  `q = &buf[i + len]` in findKey plus `"b"(val)` in the getter fix both LRA ties (len+1
+  in ecx, the found pointer in ebx): 2 lines each for the first three. The 2 lines: sched2
+  tie, the asm is a barrier, so the reload of q and `lea edx,[eax+esi]` (i + len, CSE'd
+  from q's address) both get priority 4 through it and luid puts the lea first; without
+  the asm, the load's latency to the cmp wins. Tried: output-operand pins (break IVopts),
+  pins on the return path, `q - buf`, `i + j`, sched heuristic flags. iniU32Invalid: 12,
+  the key[0]/`j == len` operand orders differ (cmp edx,eax).
+- parseIni (409430-40aa10, 5.6 KB) not started. It has a jump table (L_4501e8), so it
+  can't be a mixed-file C function: it needs the whole object in C (bootloaders-style,
+  strings/data as top-level asm or C).
 
 ## app/keys.c
 
