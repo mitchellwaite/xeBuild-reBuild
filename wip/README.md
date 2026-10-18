@@ -355,25 +355,31 @@ the BLDR block's trace comes before the verify-failure block's.
 
 Still off:
 
-- `mode_update` (299): fixed in the draft: `-ip` advances `i` by 2 (the
-  old draft had a third `i++`), `-r` loads `argv[i]` into a local before
-  the `i == argc` test, and `ip` is declared before `dumpDir` (store
-  order). Everything after netConnect is now `static void
-  updateConsole(ini, dumpDir, tmp, &ret)` with early `*pret = N; return;`.
-  An int helper (or one function) puts the 5/3 failure codes in the
-  return phi, and the const-return heuristic then predicts each failure
-  taken. The early-return heuristic only fires when the failure blocks
-  jump straight to the return block, so `tmp` (whose scope-end clobber
-  block would sit in between) belongs to mode_update and is passed in.
-  Declaring it inside the helper also lets it share a slot with `nand` and
-  drops `__chkstk_ms`. The main chain is now hot and laid out like the
-  original's. What's left is the order of the cold blocks: the original
-  interleaves the post-loop failures with the argument-loop option blocks
-  by frequency, and ours lands the main path across the round-2/3 bbro
-  threshold (78 -> 30, round 2 cuts at 43). Hill-climbing hot/cold labels
-  and expects (scratch climb2.py) gets 134 on this structure and 68 on the
-  old one (with nonsense hints like cold on netReboot). Neither is worth
-  keeping, so the structure is probably still not the original's.
+- `mode_update` (30, no hints): the update path is nested `if (ok) {...}
+  else {log; ret = N;}`. The failure strings in `.rdata` come after the
+  success-path strings, innermost first (buildImage, getConsoleFiles,
+  parseIni, parseConsoleInfo, netConnect), which is the else-branch order.
+  netConnect, parseConsoleInfo and parseIni are nested in mode_update, so
+  the 5s in the return phi get const-return (netConnect 33%, pCI 54.7%,
+  parseIni's 1 gets early-return 79.3%). getConsoleFiles onwards is
+  `static void updateNand(dumpDir, int *pret)` (nested, `*pret = N`),
+  called as `updateNand(dumpDir, &code); ret = code;`: profile_estimate
+  runs before IPA inlining, so inside the helper there is no const-return
+  (gCF 50%, bI 61% early-return), and the `code` copy keeps `ret` an SSA
+  name in mode_update (passing `&ret` kills its const-return) and
+  coalesced with the helper's ret (one `ebx`; a `u32` return splits it).
+  Nesting also fixes `dumpDir` in `esi` (LRA inheritance runs along
+  fallthrough EBBs, so success must be the fallthrough before bbro).
+  Left: four swaps among frequency 0-4 cold blocks in the last bbro round
+  (flash-skipped/-clean, no-HDD, writeImage error, -r/-i errors). Those
+  are Fibonacci-heap ties: strlen-loop headers (DFS back edges) and
+  blocks after a trace end get priority keys, the rest go by frequency,
+  and equal keys follow the heap's shape. A replay of the heap from the
+  bbro dump reproduces our order exactly, and no small key change
+  (+-3, up to 5 nodes, any round) nor a phantom node gives the
+  original's, so its heap history differs in shape somewhere. Hint and
+  structure searches (expects, labels, if/else swaps, tail sub-helpers)
+  didn't get below 30.
 
 ## app/image_read.c
 

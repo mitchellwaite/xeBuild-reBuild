@@ -533,106 +533,70 @@ int updateGetFile(const char *name, u8 **data, int *size)
 	return on;
 }
 
-static void updateConsole(char *ini, char *dumpDir, char *tmp, int *pret)
+static void updateNand(char *dumpDir, int *pret)
 {
 	int ret, r;
 
-	info = netGetInfo();
-	if (!parseConsoleInfo(1, dumpDir, dumpDir, &hasHdd)) {
-		log_printf(0, "\n\n***** FATAL UPDATE ERROR: unable to parse info reply from console!\n\n");
-		*pret = 5;
-		return;
-	}
-	if (xb.type == 1)
-		strcat(ini, "_retail");
-	else if (xb.type == 2)
-		strcat(ini, "_jtag");
-	else if (xb.type == 3) {
-		if (xb.glitch2mfg)
-			strcat(ini, "_glitch2m");
-		else if (xb.glitch2)
-			strcat(ini, "_glitch2");
-		else
-			strcat(ini, "_glitch");
-	} else if (xb.type == 6 || xb.type == 7)
-		strcat(ini, "_devkit");
-	else if (xb.type == 8 || xb.type == 9)
-		strcat(ini, "_testkit");
-	strcat(ini, xb.suffix);
-	strcat(ini, ".ini");
-	if (!parseIni(ini)) {
-		log_printf(0, "\n\n***** FATAL UPDATE ERROR: unable to parse %s\n\n", ini);
-		*pret = 1;
-		return;
-	}
-	if (dumpDir) {
-		sprintf(tmp, "%s%s", dumpDir, xb.outName);
-		strcpy(xb.outName, tmp);
-		log_set_name(xb.outName);
+	if (getConsoleFiles(dumpDir)) {
+		updating = 1;
+		ret = buildImage();
+		if (!ret) {
+			netUnmount("usv");
+			if (dumpDir) {
+				char nand[1024];
+
+				strcpy(nand, dumpDir);
+				strcat(nand, "nanddump.bin");
+				log_printf(1, "\n------ dumping console flash ------\n");
+				if (!netDumpNand(nand)) {
+					ret = 5;
+					log_printf(0, "failed!\n");
+				}
+			}
+			log_printf(1, "\n------ flashing console ------\n");
+			if (!noWrite) {
+				u32 size;
+				u8 *buf = imageGetBuffer(&size);
+
+				log_printf(0, "sending flash data to console...\n");
+				netTimerStart();
+				if (!netSendFlash(buf, size))
+					ret = 5;
+			} else
+				log_printf(1, "flashing console skipped, -nowrite used\n");
+			log_printf(1, "\n------ loading and sending avatar data ------\n");
+			if (hasHdd) {
+				if (noAvatar || noWrite)
+					log_printf(1, "avatar data skipped, -noava or -nowrite used\n");
+				else
+					sendAvatarData(xb.dataDir, xb.kernel);
+			} else
+				log_printf(1, "avatar data skipped, no HDD detected\n");
+			if (!noReboot) {
+				if (!ret)
+					netReboot(2);
+				else {
+					log_printf(0, "\n***** WARNING: due to previous possible errors, console reboot is not being done\n");
+					log_printf(0, "               it is not recommended to use update mode on this console again\n");
+					log_printf(0, "               until you have determined it's got a good image on it\n\n");
+				}
+			}
+			if (dumpDir) {
+				r = writeImage(xb.outName);
+				if (r)
+					log_printf(0, "\n\n***** ERROR: %i writing to file %s\n\n", r, xb.outName);
+				log_printf(0, separator);
+			}
+			log_printf(0, "%s image built, info:\n", xb.outName);
+			*pret = ret;
+		} else {
+			log_printf(0, "\n\n***** FATAL UPDATE ERROR: %i unable to complete NAND image\n\n", ret);
+			*pret = 3;
+		}
 	} else {
-		sprintf(tmp, "%s_update", xb.outName);
-		log_set_name(tmp);
-	}
-	if (!getConsoleFiles(dumpDir)) {
 		log_printf(0, "\n\n***** FATAL UPDATE ERROR: unable to get console unique files\n\n");
 		*pret = 5;
-		return;
 	}
-	updating = 1;
-	ret = buildImage();
-	if (ret) {
-		log_printf(0, "\n\n***** FATAL UPDATE ERROR: %i unable to complete NAND image\n\n", ret);
-		*pret = 3;
-		return;
-	}
-	netUnmount("usv");
-	if (dumpDir) {
-		char nand[1024];
-
-		strcpy(nand, dumpDir);
-		strcat(nand, "nanddump.bin");
-		log_printf(1, "\n------ dumping console flash ------\n");
-		if (!netDumpNand(nand)) {
-			ret = 5;
-			log_printf(0, "failed!\n");
-		}
-	}
-	log_printf(1, "\n------ flashing console ------\n");
-	if (!noWrite) {
-		u32 size;
-		u8 *buf = imageGetBuffer(&size);
-
-		log_printf(0, "sending flash data to console...\n");
-		netTimerStart();
-		if (!netSendFlash(buf, size))
-			ret = 5;
-	} else
-		log_printf(1, "flashing console skipped, -nowrite used\n");
-	log_printf(1, "\n------ loading and sending avatar data ------\n");
-	if (hasHdd) {
-		if (noAvatar || noWrite)
-			log_printf(1, "avatar data skipped, -noava or -nowrite used\n");
-		else
-			sendAvatarData(xb.dataDir, xb.kernel);
-	} else
-		log_printf(1, "avatar data skipped, no HDD detected\n");
-	if (!noReboot) {
-		if (!ret)
-			netReboot(2);
-		else {
-			log_printf(0, "\n***** WARNING: due to previous possible errors, console reboot is not being done\n");
-			log_printf(0, "               it is not recommended to use update mode on this console again\n");
-			log_printf(0, "               until you have determined it's got a good image on it\n\n");
-		}
-	}
-	if (dumpDir) {
-		r = writeImage(xb.outName);
-		if (r)
-			log_printf(0, "\n\n***** ERROR: %i writing to file %s\n\n", r, xb.outName);
-		log_printf(0, separator);
-	}
-	log_printf(0, "%s image built, info:\n", xb.outName);
-	*pret = ret;
 }
 
 int mode_update(int argc, char **argv)
@@ -641,7 +605,7 @@ int mode_update(int argc, char **argv)
 	char dumpBuf[1024] = ".\\";
 	char tmp[1024];
 	char *ip, *dumpDir;
-	int i, ret;
+	int i, ret, code;
 
 	xb.baseDir[0] = 0;
 	log_set_name("update");
@@ -744,9 +708,47 @@ int mode_update(int argc, char **argv)
 		log_printf(0, "Dumping disabled!\n");
 		dumpDir = NULL;
 	}
-	if (netConnect(ip))
-		updateConsole(ini, dumpDir, tmp, &ret);
-	else {
+	if (netConnect(ip)) {
+
+		info = netGetInfo();
+		if (parseConsoleInfo(1, dumpDir, dumpDir, &hasHdd)) {
+			if (xb.type == 1)
+				strcat(ini, "_retail");
+			else if (xb.type == 2)
+				strcat(ini, "_jtag");
+			else if (xb.type == 3) {
+				if (xb.glitch2mfg)
+					strcat(ini, "_glitch2m");
+				else if (xb.glitch2)
+					strcat(ini, "_glitch2");
+				else
+					strcat(ini, "_glitch");
+			} else if (xb.type == 6 || xb.type == 7)
+				strcat(ini, "_devkit");
+			else if (xb.type == 8 || xb.type == 9)
+				strcat(ini, "_testkit");
+			strcat(ini, xb.suffix);
+			strcat(ini, ".ini");
+			if (parseIni(ini)) {
+				if (dumpDir) {
+					sprintf(tmp, "%s%s", dumpDir, xb.outName);
+					strcpy(xb.outName, tmp);
+					log_set_name(xb.outName);
+				} else {
+					sprintf(tmp, "%s_update", xb.outName);
+					log_set_name(tmp);
+				}
+				updateNand(dumpDir, &code);
+				ret = code;
+			} else {
+				log_printf(0, "\n\n***** FATAL UPDATE ERROR: unable to parse %s\n\n", ini);
+				ret = 1;
+			}
+		} else {
+			log_printf(0, "\n\n***** FATAL UPDATE ERROR: unable to parse info reply from console!\n\n");
+			ret = 5;
+		}
+	} else {
 		ret = 5;
 		log_printf(0, "\n\n***** FATAL UPDATE ERROR: unable to find console!\n\n");
 	}
