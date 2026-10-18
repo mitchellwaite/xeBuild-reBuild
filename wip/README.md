@@ -215,6 +215,12 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   the asm, the load's latency to the cmp wins. Tried: output-operand pins (break IVopts),
   pins on the return path, `q - buf`, `i + j`, sched heuristic flags. iniU32Invalid: 12,
   the key[0]/`j == len` operand orders differ (cmp edx,eax).
+- DashLaunch (tmp/dashlaunch/iniparse.c, same as GitHub main) doesn't carry over:
+  iniFindLabelOffset is case-insensitive (myatol + _strnicmp) and skips spaces/'=', the
+  original search does neither. iniGetBool/iniGetDword-shaped getters (`if (found) {...}`,
+  `&iniData[off]` per use, the out-param helper) give 25-78 lines (iniBuf reloaded after
+  each call); its `j = sizeof(validChars) + 1` exit gives iniPreParse 36, its `while`
+  comment loop no change.
 - parseIni (409430-40aa10, 5.6 KB) not started. It has a jump table (L_4501e8), so it
   can't be a mixed-file C function: it needs the whole object in C (bootloaders-style,
   strings/data as top-level asm or C).
