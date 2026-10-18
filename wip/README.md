@@ -743,7 +743,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 34 matching functions build from `src/app/image_write.c`, a mixed
+The 36 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
@@ -778,6 +778,13 @@ Findings:
   the 64M case. Left (56 lines, 16 of them ddisasm's `__ImageBase` for
   0x400000): cold-block order (the MMC block and the type 2 `'5'`, flags<0
   blocks), and one register.
+- smcSetLoad: SWAP32's top byte is `((x) & 0xff) << 24`; only that form
+  folds `(0x4000 - size) << 24` into `-(size << 24)`. The other
+  functions compile the same either way.
+- blockEccOk: `pages` variable (no entry guard), `continue` after both
+  tests; pageEccOk ends `if (spare[15] != ...) return 0; return 1;` (the
+  standalone function compiles the same, the inlined copy branches the
+  original way).
 - imgAddMobile: big block path first, error path duplicated (crossjumped),
   small path `if (imgFits) {...; return ret;}`. Left (18 lines): the
   "mobileOffset already set" block's placement.
@@ -810,7 +817,3 @@ Still off:
 - imgAdd, imgAddFile, writeFsTable: not looked at in detail
   yet. writeFsTable inlines imgAdd twice in the original (0x2c and 0x30
   types); ours makes an `imgAdd.constprop` clone instead.
-- smcSetLoad (43): the original folds `(0x4000 - size) << 24` into
-  `-(size << 24)`; no type combination tried reproduces it.
-- blockEccOk (4): needs both the inline ternary loop bound (no entry
-  guard) and the pages-variable layout.

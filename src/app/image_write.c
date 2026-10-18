@@ -15,7 +15,7 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
+#define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 /* an input file of the image */
 struct fileent {
@@ -176,20 +176,23 @@ static u8 smcPage[0x1000];
 #define setFsTable(start, n, next) do { \
 	u32 i_; \
 	if ((next) != 0xf1f1) { \
-		if ((next) != 0 && (next) != 0xffff) { \
-			for (i_ = 0; i_ < (n); i_++) \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
-		} else { \
+		u16 v_ = SWAP16(next); \
+		if ((next) == 0 || (next) == 0xffff) { \
 			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) \
 				fsTable[i_] = SWAP16(i_ + 1); \
-			if ((next) == 0xffff) \
-				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+		} else { \
+			for (i_ = 0; i_ < (n); i_++) \
+				fsTable[(start) - xb.fsStart + i_] = v_; \
 		} \
+		if ((next) == 0xffff) \
+			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
 	} \
 } while (0)
 
 /* strings in image_write.s */
 static const char iw_4517f8[] = "flash header build version set to v.%d\n";
+static const char iw_451820[] = "\n***** ERROR: SMC size 0x%x not supported!!!\n\n";
+static const char iw_451850[] = "reset smc load address to 0x%x size 0x%x\n";
 static const char iw_45187c[] = "patch slot offset reset to: 0x%x\n";
 static const char iw_4518e8[] = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
 static const char iw_4519c4[] = "adding smc config to offset 0x%08x, len 0x%x\n";
@@ -217,8 +220,6 @@ int imgWriteStart(const void *src, u32 len, u16 next) __attribute__((regparm(3))
 int imgWriteAt(u32 off, const void *src, u32 len, u16 next) __attribute__((regparm(3)));
 int imgWritePage(u32 off, const void *src, u16 next) __attribute__((regparm(3)));
 int buildImage(void);
-int blockEccOk(u8 *blk, int bigBlock);
-u32 smcSetLoad(u32 size);
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
 u32 imgAddMobile(const void *data, u32 len, u8 type);
@@ -294,7 +295,9 @@ int pageEccOk(u8 *datc, u8 *spare)
 		return 0;
 	if (spare[14] != ((val >> 10) & 0xFF))
 		return 0;
-	return spare[15] == ((val >> 18) & 0xFF);
+	if (spare[15] != ((val >> 18) & 0xFF))
+		return 0;
+	return 1;
 }
 
 int pageErased(const u8 *data, const u8 *spare)
@@ -307,6 +310,21 @@ int pageErased(const u8 *data, const u8 *spare)
 	for (i = 0; i < 16; i++)
 		if (spare[i] != 0xff)
 			return 0;
+	return 1;
+}
+
+/* a raw block (data and spare interleaved) */
+int blockEccOk(u8 *blk, int bigBlock)
+{
+	int i, pages = bigBlock ? 256 : 32;
+
+	for (i = 0; i < pages; i++) {
+		if (pageErased(blk + i * 528, blk + i * 528 + 512))
+			continue;
+		if (pageEccOk(blk + i * 528, blk + i * 528 + 512))
+			continue;
+		return 0;
+	}
 	return 1;
 }
 
@@ -384,6 +402,20 @@ void setFlashBuild(u16 build)
 
 	*p = SWAP16(build);
 	log_printf(1, iw_4517f8, SWAP16(*p));
+}
+
+u32 smcSetLoad(u32 size)
+{
+	u32 *h = (u32 *)xb.hdr;
+
+	if (size > 0x3800) {
+		log_printf(0, iw_451820, size);
+		return 0;
+	}
+	h[30] = SWAP32(size);
+	h[31] = SWAP32(0x4000 - size);
+	log_printf(1, iw_451850, SWAP32(h[31]), SWAP32(h[30]));
+	return 0x4000 - size;
 }
 
 u32 imgSmcOffset(void)

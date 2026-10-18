@@ -601,7 +601,8 @@ SYMBOLS = {
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
     0x46f9e0: '_smcPage',
     # app/image_write's strings that its C functions use (wip/mixed.py)
-    0x4517f8: '_iw_4517f8', 0x45187c: '_iw_45187c', 0x4518e8: '_iw_4518e8',
+    0x4517f8: '_iw_4517f8', 0x451820: '_iw_451820', 0x451850: '_iw_451850',
+    0x45187c: '_iw_45187c', 0x4518e8: '_iw_4518e8',
     0x4519c4: '_iw_4519c4', 0x451a20: '_iw_451a20', 0x451a44: '_iw_451a44',
     0x451a6c: '_iw_451a6c', 0x451a94: '_iw_451a94', 0x451ab8: '_iw_451ab8',
     0x451adc: '_iw_451adc', 0x451b2c: '_iw_451b2c', 0x451b54: '_iw_451b54',
@@ -723,6 +724,7 @@ C_FUNCS = {
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF
     0x410070, 0x4100b0, 0x410220, 0x410240,  # isErased setBlockSpare imgSizeAligned setFlashBuild
+    0x40fcc0, 0x410290,                      # blockEccOk smcSetLoad
     0x410350, 0x410360, 0x410460, 0x410490,  # imgSmcOffset setPatchSlot imgCfOffset imgCfSize
     0x4104d0, 0x4104e0, 0x4104f0, 0x410b90,  # imgSize imgSetSize imgBigBlock imgFits
     0x411030, 0x4112b0, 0x4112f0, 0x411600,  # imgAddFileAs fixupFsTable fixupEmptyFsBlocks addSmcConfig

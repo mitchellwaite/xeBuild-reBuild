@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **532 of 617** (530 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **534 of 617** (532 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 347 / 432 |
+| `app/` | 16 / 25 | 349 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -39,7 +39,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
-| `app/image_write` | mixed; 0 of 12 drafted functions match in `wip/app/image_write.c` | 34 / 46 |
+| `app/image_write` | mixed; 0 of 10 drafted functions match in `wip/app/image_write.c` | 36 / 46 |
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
@@ -104,7 +104,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 34 / 46 in C</summary>
+<summary><code>app/image_write</code>: 36 / 46 in C</summary>
 
 - ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
 - ⬜ `imgWritePage` (0x40ecc0) (draft in `wip/`, no match yet)
@@ -114,7 +114,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `calcEcd` (0x40fb60)
 - ✅ `calcPageEcc` (0x40fbb0)
 - ✅ `pageEccOk` (0x40fc30)
-- ⬜ `blockEccOk` (0x40fcc0) (draft in `wip/`, no match yet)
+- ✅ `blockEccOk` (0x40fcc0)
 - ✅ `pageErased` (0x40feb0)
 - ✅ `blockErased` (0x40ff40)
 - ✅ `blockPagesErased` (0x40ff80)
@@ -123,7 +123,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `setBlockSpare` (0x4100b0)
 - ✅ `imgSizeAligned` (0x410220)
 - ✅ `setFlashBuild` (0x410240)
-- ⬜ `smcSetLoad` (0x410290) (draft in `wip/`, no match yet)
+- ✅ `smcSetLoad` (0x410290)
 - ✅ `imgSmcOffset` (0x410350)
 - ✅ `setPatchSlot` (0x410360)
 - ✅ `imgCfOffset` (0x410460)

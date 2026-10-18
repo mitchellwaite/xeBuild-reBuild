@@ -9,7 +9,7 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
+#define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 /* an input file of the image */
 struct fileent {
@@ -170,15 +170,16 @@ static u8 smcPage[0x1000];
 #define setFsTable(start, n, next) do { \
 	u32 i_; \
 	if ((next) != 0xf1f1) { \
-		if ((next) != 0 && (next) != 0xffff) { \
-			for (i_ = 0; i_ < (n); i_++) \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
-		} else { \
+		u16 v_ = SWAP16(next); \
+		if ((next) == 0 || (next) == 0xffff) { \
 			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) \
 				fsTable[i_] = SWAP16(i_ + 1); \
-			if ((next) == 0xffff) \
-				fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+		} else { \
+			for (i_ = 0; i_ < (n); i_++) \
+				fsTable[(start) - xb.fsStart + i_] = v_; \
 		} \
+		if ((next) == 0xffff) \
+			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
 	} \
 } while (0)
 
@@ -228,10 +229,13 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 		tail = len;
 	} else {
 		rem = len - first;
-		blocks = 0;
-		if (rem >= 0x4000)
+		if (rem < 0x4000) {
+			blocks = 0;
+			tail = rem;
+		} else {
 			blocks = rem / 0x4000;
-		tail = rem % 0x4000;
+			tail = rem % 0x4000;
+		}
 		if (tail)
 			blocks++;
 		if (first)
@@ -500,7 +504,9 @@ int pageEccOk(u8 *datc, u8 *spare)
 		return 0;
 	if (spare[14] != ((val >> 10) & 0xFF))
 		return 0;
-	return spare[15] == ((val >> 18) & 0xFF);
+	if (spare[15] != ((val >> 18) & 0xFF))
+		return 0;
+	return 1;
 }
 
 int pageErased(const u8 *data, const u8 *spare)
@@ -519,13 +525,14 @@ int pageErased(const u8 *data, const u8 *spare)
 /* a raw block (data and spare interleaved) */
 int blockEccOk(u8 *blk, int bigBlock)
 {
-	int i;
+	int i, pages = bigBlock ? 256 : 32;
 
-	for (i = 0; i < (bigBlock ? 256 : 32); i++) {
+	for (i = 0; i < pages; i++) {
 		if (pageErased(blk + i * 528, blk + i * 528 + 512))
 			continue;
-		if (!pageEccOk(blk + i * 528, blk + i * 528 + 512))
-			return 0;
+		if (pageEccOk(blk + i * 528, blk + i * 528 + 512))
+			continue;
+		return 0;
 	}
 	return 1;
 }
@@ -846,7 +853,7 @@ u32 imgAddMobile(const void *data, u32 len, u8 type)
 			mobileOffset = imgSizeAligned();
 			if (mobileOffset & 0x1ffff)
 				mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
-		} else if (mobileOffset + len > (mobileOffset & ~0x1ffff) + 0x20000)
+		} else if ((mobileOffset & ~0x1ffff) + 0x20000 < mobileOffset + len)
 			mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
 		off = mobileOffset;
 		if (!imgFits(off, len)) {

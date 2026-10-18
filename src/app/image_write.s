@@ -13,7 +13,6 @@
 .intel_syntax noprefix
 .globl L_470000
 .globl L_47006e
-.globl _blockEccOk
 .globl _buildImage
 .globl _copyright
 .globl _finalizeImage
@@ -24,6 +23,8 @@
 .globl _imgWritePage
 .globl _imgWriteStart
 .globl _iw_4517f8
+.globl _iw_451820
+.globl _iw_451850
 .globl _iw_45187c
 .globl _iw_4518e8
 .globl _iw_4519c4
@@ -46,7 +47,6 @@
 .globl _iw_451cdd
 .globl _iw_451f80
 .globl _smcPage
-.globl _smcSetLoad
 .globl _writeFsTable
 .globl _writeInitialHeader
 
@@ -1272,149 +1272,7 @@ L_40faf0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_blockEccOk:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,20
-          cmp DWORD PTR [ESP+44],1
-          mov EDI,DWORD PTR [ESP+40]
-          sbb EAX,EAX
-          and AL,32
-          add EAX,256
-          imul EAX,EAX,528
-          add EAX,EDI
-          mov DWORD PTR [ESP+16],EAX
-L_40fce5:
-          lea ESI,DWORD PTR [EDI+512]
-          xor EAX,EAX
-          jmp L_40fcfe
-          .byte 0x90
-L_40fcf0:
-          add EAX,1
-          cmp EAX,512
-          je L_40fdb0
-L_40fcfe:
-          cmp BYTE PTR [EDI+EAX*1],255
-          je L_40fcf0
-L_40fd04:
-          movzx EAX,BYTE PTR [EDI+524]
-          mov BYTE PTR [ESP],AL
-L_40fd0e:
-          xor EAX,EAX
-          mov EBX,EDI
-          xor ECX,ECX
-          xor EDX,EDX
-          mov EBP,EAX
-          nop
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_40fd20:
-          test DL,31
-          jne L_40fd37
-          mov EAX,EBX
-          cmp EDX,4096
-          cmove EAX,ESI
-          mov ECX,DWORD PTR [EAX]
-          lea EBX,DWORD PTR [EAX+4]
-          not ECX
-L_40fd37:
-          mov EAX,ECX
-          shr ECX,1
-          and EAX,1
-          xor EAX,EBP
-          mov EBP,EAX
-          xor EBP,110445913
-          test AL,1
-          cmovne EAX,EBP
-          add EDX,1
-          shr EAX,1
-          cmp EDX,4198
-          mov EBP,EAX
-          jne L_40fd20
-          not EAX
-          mov EDX,DWORD PTR [ESP]
-          mov ECX,EAX
-          shl ECX,6
-          and EDX,192
-          movzx ECX,CL
-          cmp EDX,ECX
-          je L_40fd7d
-L_40fd73:
-          add ESP,20
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40fd7d:
-          mov EDX,EAX
-          shr EDX,2
-          cmp BYTE PTR [EDI+525],DL
-          jne L_40fd73
-          mov EDX,EAX
-          shr EDX,10
-          cmp BYTE PTR [EDI+526],DL
-          jne L_40fd73
-          shr EAX,18
-          cmp BYTE PTR [EDI+527],AL
-          jne L_40fd73
-          jmp L_40fe86
-L_40fda7:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_40fdb0:
-          cmp BYTE PTR [EDI+512],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+513],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+514],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+515],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+516],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+517],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+518],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+519],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+520],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+521],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+522],255
-          jne L_40fd04
-          cmp BYTE PTR [EDI+523],255
-          jne L_40fd04
-          movzx EAX,BYTE PTR [EDI+524]
-          cmp AL,255
-          mov BYTE PTR [ESP],AL
-          jne L_40fd0e
-          cmp BYTE PTR [EDI+525],255
-          jne L_40fd0e
-          movzx EAX,BYTE PTR [EDI+526]
-          cmp AL,255
-          mov BYTE PTR [ESP],AL
-          jne L_40fea3
-          cmp BYTE PTR [EDI+527],255
-          jne L_40fd0e
-L_40fe86:
-          add EDI,528
-          cmp DWORD PTR [ESP+16],EDI
-          jne L_40fce5
-          add ESP,20
-          mov EAX,1
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40fea3:
-          mov BYTE PTR [ESP],255
-          jmp L_40fd0e
+#@C _blockEccOk
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -1483,65 +1341,7 @@ L_410037:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_smcSetLoad:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,16
-          mov EDX,DWORD PTR [ESP+32]
-          cmp EDX,14336
-          ja L_410320
-          mov ESI,16384
-          mov ECX,EDX
-          mov EAX,EDX
-          sub ESI,EDX
-          shl ECX,8
-          shl EAX,24
-          mov EDX,ESI
-          and ECX,16711680
-          mov EDI,DWORD PTR [L_479ed8]
-          shl EDX,8
-          add ECX,EAX
-          and EDX,16711680
-          sub EDX,EAX
-          mov EAX,ECX
-          mov DWORD PTR [EDI+120],ECX
-          shr EAX,8
-          shr ECX,24
-          mov DWORD PTR [EDI+124],EDX
-          and EAX,65280
-          mov DWORD PTR [ESP+4],OFFSET L_451850
-          mov DWORD PTR [ESP],1
-          add ECX,EAX
-          mov EAX,EDX
-          shr EDX,24
-          shr EAX,8
-          mov DWORD PTR [ESP+12],ECX
-          and EAX,65280
-          add EDX,EAX
-          mov DWORD PTR [ESP+8],EDX
-          call _log_printf
-          add ESP,16
-          mov EAX,ESI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_410317:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_410320:
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+4],OFFSET L_451820
-          xor ESI,ESI
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,16
-          mov EAX,ESI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
+#@C _smcSetLoad
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -3767,10 +3567,10 @@ L_4517d8:
           .long L_40f950
 _iw_4517f8:
           .string "flash header build version set to v.%d\n"
-L_451820:
+_iw_451820:
           .string "\n***** ERROR: SMC size 0x%x not supported!!!\n\n"
           .zero 1
-L_451850:
+_iw_451850:
           .string "reset smc load address to 0x%x size 0x%x\n"
           .zero 2
 _iw_45187c:
