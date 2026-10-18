@@ -214,7 +214,8 @@ int parseIni(char *path)
 	fclose(f);
 	if (buf[0] == 0xff || buf[1] == 0xff) {
 		log_printf(0, "\n\n***** ERROR: File descriptor ini %s\nappears to be a multi byte file, not an ascii only file!\n", path);
-		goto fail;
+		free(buf);
+		return 0;
 	}
 	buf[size] = 0xff;
 	size = iniPreParse(buf, size);
@@ -224,7 +225,8 @@ int parseIni(char *path)
 	off = memFindStr(buf, size, "[version]", 1);
 	if (off == -1) {
 		log_printf(0, "\n******* ERROR: could not find label [version] in file list ini\n");
-		goto fail;
+		free(buf);
+		return 0;
 	}
 	memset(xb.kernelStr, 0, sizeof(xb.kernelStr));
 	len = memFindChar(&buf[off], 0, sizeof(xb.kernelStr));
@@ -362,7 +364,8 @@ int parseIni(char *path)
 	off = memFindStr(buf, size, label, 1);
 	if (off == -1) {
 		log_printf(0, "\n******* ERROR: could not find label %s in file list ini\n", label);
-		goto fail;
+		free(buf);
+		return 0;
 	}
 	log_printf(1, "\nini: label %s found\n", label);
 	end = off + memFindChar(&buf[off], '[', size - off);
@@ -373,7 +376,8 @@ int parseIni(char *path)
 		nul = memFindChar(p, 0, size - pos);
 		if (nul == -1 || comma == -1) {
 			log_printf(0, "\n******* ERROR: ini problem, error in %s section!\n", label);
-			goto fail;
+			free(buf);
+			return 0;
 		}
 		noCrc = 1;
 		if (comma > nul)
@@ -382,31 +386,33 @@ int parseIni(char *path)
 			len = comma;
 			noCrc = 0;
 		}
-		e = &xb.files[blOrder[i]];
-		strncpy(e->name, (char *)p, len);
-		e->name[len] = 0;
+		strncpy(xb.files[blOrder[i]].name, (char *)p, len);
+		xb.files[blOrder[i]].name[len] = 0;
 		pos += len + 1;
-		if (noCrc)
-			e->crc = 0;
-		else {
+		/* shortcut: hoisted store makes dom2 not thread noCrc (the original
+		   stores crc = 0 only when !noCrc); find the real reason */
+		xb.files[blOrder[i]].crc = 0;
+		if (!noCrc) {
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0)
-				e->crc = 0;
+				xb.files[blOrder[i]].crc = 0;
 			else if (n != 8) {
-				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", e->name);
-				goto fail;
+				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.files[blOrder[i]].name);
+				free(buf);
+				return 0;
 			} else {
 				strncpy(tmp, (char *)&buf[pos], 8);
 				tmp[8] = 0;
-				e->crc = myatox32(tmp, 0);
+				xb.files[blOrder[i]].crc = myatox32(tmp, 0);
 			}
 			pos += n + 1;
 		}
+		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", i + 1, xb.files[blOrder[i]].name, xb.files[blOrder[i]].crc);
 		i++;
-		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", i, e->name, e->crc);
 		if (pos > end) {
 			log_printf(0, "\n******* ERROR: ini problem, can't find enough data for %s section!\n", label);
-			goto fail;
+			free(buf);
+			return 0;
 		}
 	}
 	if (xb.type != 2 && xb.type <= 5) {
@@ -432,11 +438,13 @@ int parseIni(char *path)
 			comma = memFindChar(p, ',', size - pos);
 			if (comma == -1 || comma >= nul) {
 				log_printf(0, "\n******* ERROR: an entry in [rawpatch] is missing offset info!\n");
-				goto fail;
+				free(buf);
+				return 0;
 			}
 			if (comma > 1023) {
 				log_printf(0, "\n******* ERROR: file name in [rawpatch] is too long!\n");
-				goto fail;
+				free(buf);
+				return 0;
 			}
 			name = xb.rawPatch[i].name;
 			strncpy(name, (char *)p, comma);
@@ -445,7 +453,8 @@ int parseIni(char *path)
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0 || n > 10) {
 				log_printf(0, "\n******* ERROR: offset data for file '%s' is either too large or too small!\n", name);
-				goto fail;
+				free(buf);
+				return 0;
 			}
 			strncpy(tmp, (char *)&buf[pos], n);
 			tmp[n] = 0;
@@ -453,7 +462,8 @@ int parseIni(char *path)
 			xb.rawPatch[i].offset = myatou32(tmp, -1);
 			if (xb.rawPatch[i].offset == (u32)-1) {
 				log_printf(1, "***** ERROR: [rawpatch] '%s' length is unintelligible!\n", name);
-				goto fail;
+				free(buf);
+				return 0;
 			}
 			log_printf(1, "found (%d) '%s' offset: 0x%08x\n", ++xb.nRawPatches, name, xb.rawPatch[i].offset);
 			if (pos >= end)
@@ -461,7 +471,8 @@ int parseIni(char *path)
 		}
 		if (pos < end) {
 			log_printf(0, "\n******* ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, 16);
-			goto fail;
+			free(buf);
+			return 0;
 		}
 	}
 
@@ -484,7 +495,8 @@ int parseIni(char *path)
 		}
 		if (len > 1023) {
 			log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's path!\n", 1023);
-			goto fail;
+			free(buf);
+			return 0;
 		}
 		name = xb.firmware[i];
 		strncpy(name, (char *)p, len);
@@ -497,7 +509,8 @@ int parseIni(char *path)
 			if (strlen(s) > 21) {
 				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
 				log_printf(0, "\n        Line: %s\n", name);
-				goto fail;
+				free(buf);
+				return 0;
 			}
 		}
 		pos += len + 1;
@@ -511,7 +524,8 @@ int parseIni(char *path)
 				crc = xb.firmwareCrc[i] = 0;
 			else if (n != 8) {
 				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", name);
-				goto fail;
+				free(buf);
+				return 0;
 			} else {
 				strncpy(tmp, (char *)&buf[pos], 8);
 				tmp[8] = 0;
@@ -529,7 +543,8 @@ int parseIni(char *path)
 	if (off == -1) {
 noFlashfs:
 		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
-		goto fail;
+		free(buf);
+		return 0;
 	}
 	xb.nFlashFiles2 = 0;
 	log_printf(1, "\nini: label [security] found\n");
@@ -543,7 +558,8 @@ noFlashfs:
 		len = noCrc ? nul : comma;
 		if (len > 21) {
 			log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
-			goto fail;
+			free(buf);
+			return 0;
 		}
 		name = xb.flashFiles[i];
 		strncpy(name, (char *)p, len);
@@ -558,7 +574,8 @@ noFlashfs:
 			else if (n != 8) {
 				/* sic: names the [flashfs] file */
 				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
-				goto fail;
+				free(buf);
+				return 0;
 			} else {
 				strncpy(tmp, (char *)&buf[pos], 8);
 				tmp[8] = 0;
@@ -573,9 +590,6 @@ noFlashfs:
 	free(buf);
 	log_printf(1, "------ ini parsing completed ------\n\n");
 	return 1;
-fail:
-	free(buf);
-	return 0;
 }
 
 int memFindStr(unsigned char *buf, int size, const char *key, int label)

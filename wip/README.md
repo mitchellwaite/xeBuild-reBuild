@@ -221,9 +221,22 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   `&iniData[off]` per use, the out-param helper) give 25-78 lines (iniBuf reloaded after
   each call); its `j = sizeof(validChars) + 1` exit gives iniPreParse 36, its `while`
   comment loop no change.
-- parseIni (409430-40aa10, 5.6 KB) not started. It has a jump table (L_4501e8), so it
+- parseIni (409430-40aa10, 5.6 KB) drafted in wip/app/filelist_ini.c (from a Hex-Rays
+  decompile; its tables/names are still `extern`). 474 of 1241 normalized lines equal
+  (fncmp with full context, FNCMP_LITERALS=1). It has a jump table (L_4501e8), so it
   can't be a mixed-file C function: it needs the whole object in C (bootloaders-style,
-  strings/data as top-level asm or C).
+  strings/data as top-level asm or C). Findings:
+  - Errors are `log; free(buf); return 0;` at each site (gcc crossjumps the tails), not
+    a `goto fail`.
+  - The original keeps the bl section's noCrc as a flag ([esp+52], which also holds the
+    return value: uncprop turns the return 0 after a noCrc test into noCrc). Our dom2
+    threads noCrc through the strncpy block (12 stmts, under
+    max-jump-thread-duplication-stmts=15) unless that block is bigger; the hoisted
+    `crc = 0` is a stand-in. dom3 threading the [flashfs] block is right (the original's
+    comma-at-0 copy has the strncpy folded away). [security] has one strncpy per branch.
+  - The original re-reads `xb.files[blOrder[i]]` at each use (imul [edi],1068).
+  - Version search: `ira-region=one` gives the original's `[buf+j+i]` addressing and buf
+    in a spill slot, but the frame slots move ([32] vs [44]) and the total drops.
 
 ## app/keys.c
 
