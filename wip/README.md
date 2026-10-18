@@ -709,9 +709,18 @@ Open (diff lines from `re/fncmp.py`):
   failure blocks crossjump into (a 1-insn crossjump is allowed when one
   block matches whole). Block-local `sa`/`saLen`, readinfo in both
   branches, goto forms and `int` return didn't keep the branch.
-- netRecv 56/netRecvVerbose 57: the original has a separate copy of the
-  `buf != netEmpty` check on each failure path. Registers differ: size
-  ebx, got edi, buf esi. `-fno-tree-dominator-opts` gets netRecv to 23.
+- netRecv 58/netRecvVerbose 53: the drafts now write `if (buf !=
+  &netEmpty) free(buf); return NULL;` on each failure path (the original
+  repeats the check per path) and netRecv ends `if (got == size) { *len =
+  size; return buf; }` then the short-count failure, which puts the success
+  block last as in the original. What's left in netRecv is registers (size
+  ebx, got edi, buf esi in the original; ours esi/ebx/edi), which come
+  from dom: with `optimize("no-tree-dominator-opts")` it is 13 lines (the
+  `*len = 0` store scheduled first, a recomputed `cmp` before the `je` to
+  the success block, block order). dom rewrites `*len = size` to `*len =
+  got` from the `got == size` equivalence and leaves a degenerate
+  `got = PHI <0>` preheader; moving `*len = 0` or swapping the comparison
+  didn't change it.
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 

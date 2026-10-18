@@ -90,22 +90,24 @@ static u8 *netRecv(int *len)
 		r = select(0, &fds, NULL, NULL, &tv);
 		if (r == SOCKET_ERROR || r == 0) {
 			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
-			goto fail;
+			if (buf != (u8 *)&netEmpty)
+				free(buf);
+			return NULL;
 		}
 		r = recv(netSock, (char *)buf + got, size - got, 0);
 		if (r == SOCKET_ERROR) {
 			log_printf(0, "could not receive data on socket, error %d\n", WSAGetLastError());
-			goto fail;
+			if (buf != (u8 *)&netEmpty)
+				free(buf);
+			return NULL;
 		}
 		got += r;
 	}
-	if (got != size) {
-		log_printf(0, "received only %x of %x bytes! fail\n", got, size);
-		goto fail;
+	if (got == size) {
+		*len = size;
+		return buf;
 	}
-	*len = size;
-	return buf;
-fail:
+	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 	if (buf != (u8 *)&netEmpty)
 		free(buf);
 	return NULL;
@@ -249,14 +251,18 @@ u8 *netRecvVerbose(int *len, int verbose)
 		r = select(0, &fds, NULL, NULL, &tv);
 		if (r == SOCKET_ERROR || r == 0) {
 			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
-			goto fail;
+			if (buf != (u8 *)&netEmpty)
+				free(buf);
+			return NULL;
 		}
 		r = recv(netSock, (char *)buf + got, size - got, 0);
 		if (r == SOCKET_ERROR) {
 			if (verbose)
 				putchar('\n');
 			log_printf(0, "could not receive data on socket, error %d\n", WSAGetLastError());
-			goto fail;
+			if (buf != (u8 *)&netEmpty)
+				free(buf);
+			return NULL;
 		}
 		got += r;
 		if (verbose)
@@ -271,7 +277,6 @@ u8 *netRecvVerbose(int *len, int verbose)
 	if (verbose)
 		putchar('\n');
 	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
-fail:
 	if (buf != (u8 *)&netEmpty)
 		free(buf);
 	return NULL;
