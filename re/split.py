@@ -660,6 +660,7 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
+    0x409310, 0x4093d0, 0x409410,  # memFindStr memFindChar checkFileCase
     # app/mode_update (getSecurityFiles, mode_update stay asm)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc

@@ -11,7 +11,6 @@
 
 .intel_syntax noprefix
 .globl L_450000
-.globl _checkFileCase
 .globl _fixFileCase
 .globl _getIniBool
 .globl _getIniU32
@@ -19,8 +18,6 @@
 .globl _iniPreParse
 .globl _iniU32Invalid
 .globl _loadUserIni
-.globl _memFindChar
-.globl _memFindStr
 .globl _parseIni
 
 .text
@@ -438,27 +435,7 @@ L_4092e6:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_memFindStr:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,44
-          mov EBP,DWORD PTR [ESP+72]
-          mov EDI,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP],EBP
-          call _strlen
-          mov ECX,DWORD PTR [ESP+68]
-          sub ECX,EAX
-          test ECX,ECX
-          mov DWORD PTR [ESP+28],ECX
-          jle L_4093b0
-          movsx ECX,BYTE PTR [EBP]
-          lea ESI,DWORD PTR [EAX+1]
-          mov DWORD PTR [ESP+20],ESI
-          mov DWORD PTR [ESP+24],ECX
-          xor ECX,ECX
-          jmp L_409359
+#@C _memFindStr
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -467,123 +444,14 @@ _memFindStr:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_409350:
-          add ECX,1
-          cmp ECX,DWORD PTR [ESP+28]
-          je L_4093b0
-L_409359:
-          movzx EDX,BYTE PTR [EDI+ECX*1]
-          cmp EDX,DWORD PTR [ESP+24]
-          jne L_409350
-          xor EDX,EDX
-          test EAX,EAX
-          jg L_409383
-          jmp L_40938a
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_409370:
-          lea EBX,DWORD PTR [EDI+EDX*1]
-          movzx ESI,BYTE PTR [EBX+ECX*1]
-          movsx EBX,BYTE PTR [EBP+EDX*1]
-          cmp ESI,EBX
-          cmovne EDX,DWORD PTR [ESP+20]
-L_409383:
-          add EDX,1
-          cmp EAX,EDX
-          jg L_409370
-L_40938a:
-          cmp EAX,EDX
-          jne L_409350
-          mov EBX,DWORD PTR [ESP+76]
-          lea EDX,DWORD PTR [EAX+ECX*1]
-          test EBX,EBX
-          jne L_4093bf
-          cmp BYTE PTR [EDI+EDX*1],0
-          je L_409350
-L_40939f:
-          add ESP,44
-          mov EAX,EDX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4093b0:
-          add ESP,44
-          mov EDX,4294967295
-          pop EBX
-          mov EAX,EDX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_4093bf:
-          cmp BYTE PTR [EDI+EDX*1],1
-          adc EDX,0
-          jmp L_40939f
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-_memFindChar:
-          push ESI
-          push EBX
-          mov EBX,DWORD PTR [ESP+20]
-          mov ESI,DWORD PTR [ESP+12]
-          mov ECX,DWORD PTR [ESP+16]
-          test EBX,EBX
-          jle L_409402
-          movzx EAX,BYTE PTR [ESI]
-          movsx ECX,CL
-          cmp EAX,ECX
-          mov EAX,0
-          jne L_4093fb
-          jmp L_409407
-L_4093f3:
-          movzx EDX,BYTE PTR [ESI+EAX*1]
-          cmp EDX,ECX
-          je L_409407
-L_4093fb:
-          add EAX,1
-          cmp EBX,EAX
-          jne L_4093f3
-L_409402:
-          mov EAX,4294967295
-L_409407:
-          pop EBX
-          pop ESI
-          ret 
+#@C _memFindChar
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_checkFileCase:
-          cmp BYTE PTR [L_47ad4c],0
-          jne L_409420
-          repz ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_409420:
-          jmp _fixFileCase
+#@C _checkFileCase
           .byte 0x8d
           .byte 0x74
           .byte 0x26

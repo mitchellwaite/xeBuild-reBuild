@@ -17,6 +17,9 @@ extern char fnSmc[32], fnKv[32], fnPatches[32];
 
 void log_printf(int level, const char *fmt, ...);
 long getFileSize(FILE *f);
+char myatol(char c);
+int validateString(char *s);
+unsigned int myatou32(char *dat, unsigned int def);
 
 const unsigned char validChars[74] = {
 	'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
@@ -25,7 +28,7 @@ const unsigned char validChars[74] = {
 };
 
 /* fix the case of the file names in the base dir that need it */
-void matchFileNames(void)
+void fixFileCase(void)
 {
 	char dir[1024], path[1024];
 	struct stat st;
@@ -120,7 +123,7 @@ int iniPreParse(unsigned char *buf, int size)
 	return n;
 }
 
-int iniFindKey(unsigned char *buf, int size, const char *key, int label)
+int memFindStr(unsigned char *buf, int size, const char *key, int label)
 {
 	int i, j, len;
 
@@ -144,7 +147,7 @@ int iniFindKey(unsigned char *buf, int size, const char *key, int label)
 	return -1;
 }
 
-int findChar(unsigned char *buf, char c, int size)
+int memFindChar(unsigned char *buf, char c, int size)
 {
 	int i;
 
@@ -154,10 +157,10 @@ int findChar(unsigned char *buf, char c, int size)
 	return -1;
 }
 
-void checkFileNames(void)
+void checkFileCase(void)
 {
 	if (xb.baseDir[0])
-		matchFileNames();
+		fixFileCase();
 }
 
 int loadUserIni(void)
@@ -200,10 +203,11 @@ int loadUserIni(void)
 	return 1;
 }
 
-/* getters' own helper (not iniFindKey): 10/30/8/8 diff lines; LRA ebx/ecx tie left */
+/* getters' own helper (not memFindStr); the ebx pins fix the RA ties, a sched2
+   tie (asm barrier: lea before the reload) is left */
 static int findKey(unsigned char *buf, const char *key)
 {
-	int i, j, len;
+	int i, j, len, l1;
 	unsigned char *p;
 	len = strlen(key);
 	for (i = 0; i < iniSize - len; i++) {
@@ -212,14 +216,17 @@ static int findKey(unsigned char *buf, const char *key)
 			for (j = 0; j < len; j++)
 				if (p[j] != key[j])
 					j = len + 1;
-			if (j == len && buf[i + len] != 0)
-				return i + len;
+			if (j == len) {
+				unsigned char *q = &buf[i + len];
+				__asm__("" :: "b"(q));
+				if (*q != 0)
+					return i + len;
+			}
 		}
 	}
 	return -1;
 }
 #define FIND findKey(iniBuf, key)
-// 
 long getIniBool(const char *key, int def)
 {
 	int off;
@@ -230,13 +237,14 @@ long getIniBool(const char *key, int def)
 	if (off == -1)
 		return def;
 	val = (char *)&iniBuf[off];
-	
+	__asm__("" :: "b"(val));
 	if (strnicmp(val, "true", 4) == 0)
 		return 1;
 	if (strnicmp(val, "false", 5) == 0)
 		return 0;
 	return def;
 }
+
 char *iniBoolInvalid(const char *key)
 {
 	int off;
@@ -247,11 +255,12 @@ char *iniBoolInvalid(const char *key)
 	if (off == -1)
 		return NULL;
 	val = (char *)&iniBuf[off];
+	__asm__("" :: "b"(val));
 	if (strnicmp(val, "true", 4) == 0)
 		return NULL;
-	if (strnicmp(val, "false", 5) == 0)
-		return NULL;
-	return val;
+	if (strnicmp(val, "false", 5) != 0)
+		return val;
+	return NULL;
 }
 unsigned int getIniU32(const char *key, unsigned int def)
 {
