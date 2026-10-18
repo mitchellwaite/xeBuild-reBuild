@@ -806,22 +806,40 @@ Still off:
   must be macros, not static inline functions, or ipa-split splits
   setFsTable and the `next != 0xf1f1` predicate doesn't shrink the
   estimate. `static inline` imgWriteStart inlines every call.
-- imgWriteStart/imgWriteAt: the block count logic. The original tests
-  `len == 0`, then `rem <= 0x3fff` (jumping to the shared `(rem >> 14) + 1;
-  memcpy; memset` block), then `rem & 0x3fff`; the spare loop has no
-  blocks == 0 guard; the fsTable chain path falls through. imgAdd's
-  pseudocode (`if (rem <= 0x3fff) n = 0; else n = rem >> 14; ... ++n`) is
-  the clearest picture of the source.
-- finalizeImage: the 512-byte memcpy to the raw buffer is expanded as for
-  unknown alignment (first/last dword + rep movsd) in the original, though
-  the pointer comes from malloc; ours knows it is 4-aligned. The erased
-  check indexes `[ecx+esi]` (ours walks a pointer).
-- imgWritePage (92): with the setFsTable macro the non-chain stores unroll
-  (`blocks == 2`) like the original but the chain loop doesn't (its IV
-  starts at `start - fsStart`); a `j = 0..blocks` chain loop unrolls but
-  makes imgWritePage small enough that gcc inlines it into addSmcConfig
-  and imgAddRaw. The original computes `SWAP16(next)` before the chain
-  test and the chain value un-rotated (`shr bx,8; shl edi,8; add`).
+- setFsTable is one loop with the chain/fill test inside it, which gcc
+  unswitches: that is what puts `SWAP16(next)` (rol) and `start - fsStart`
+  before the chain test. SWAP16 is `(((x) << 8) & 0xff00) + (((x) >> 8) &
+  0xff)`: the chain values' `>> 8` is then done in 16 bits (`shr bx,8`).
+  The tmp/xeBuild64 (gcc 4.9) copies of imgWriteStart/imgWriteAt/
+  imgWritePage have the original's layout too (chain loop falls through,
+  the tail memcpy+memset block last), and compute the tail with `cmovb`
+  (`rem < 0x4000 ? rem : rem & 0x3fff`), `blocks = rem >> 14`
+  unconditionally, then `if (tail) blocks++; if (off & 0x3fff) blocks++`.
+- imgWriteStart (234 lines with registers normalised, 113 with the chain
+  bias below): the head is right
+  with `tail` and `blocks` as above (all 80 spellings of the
+  tail/blocks/first statements tried come to 113). Left: block order.
+  The `rem & 0x3fff` branch's two edges come out of jump threading with
+  no probabilities, and bbro takes the memset side as the fallthrough;
+  the original takes the other one. The fill/chain unswitch test is
+  50/50 and ours lays out the fill loop first; any bias to the chain
+  (`__builtin_expect(... , 0)` on the fill test, even at probability 55)
+  gives the original's order (234 -> 113), but costs imgWritePage and
+  imgWriteAt lines. -fno-thread-jumps / max-fsm-* params change nothing.
+- imgWritePage (11 lines normalised): `blocks = (0x4000 - (off & 0x3fff)
+  >= 0x1000) ? 1 : 2` gives the original's `cmp 4096; setb`. Left: the
+  original's `and; shr; test` (combine didn't fuse the and and the test)
+  and registers. Its callers addSmcConfig/imgAddRaw match only while the
+  draft's imgWritePage does (ipa-ra), so they show 9 lines in wip/ now.
+- imgAddMobile (18): `__builtin_expect(!mobileOffset, 1)` with
+  builtin-expect-probability 80-85 leaves 2 lines: bbro then doesn't
+  duplicate the `(off + 0x20000) & ~0x1ffff` block into the "already
+  set" path (edge frequency below its 10% threshold); with expects on the
+  inner tests too the duplication comes back but the order breaks.
+- finalizeImage: `__asm__("" : "+r"(raw))` before the ECD loop gives the
+  unaligned memcpy expansion (432 -> 429); the original also keeps
+  xb.hdr/xb.spare in registers with running offsets, reloaded only after
+  the ECD bytes are written.
 - imgAdd, imgAddFile, writeFsTable: not looked at in detail
   yet. writeFsTable inlines imgAdd twice in the original (0x2c and 0x30
   types); ours makes an `imgAdd.constprop` clone instead.

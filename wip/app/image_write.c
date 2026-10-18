@@ -1144,6 +1144,7 @@ int finalizeImage(void)
 		log_printf(1, "done!\n");
 	}
 	log_printf(1, "calculating ECD bytes and assembling raw image...");
+	__asm__("" : "+r"(raw));
 	for (b = 0; b < xb.blocks; b++)
 		for (p = 0; p < 32; p++) {
 			u8 *data = xb.hdr + (b * 32 + p) * 512;
