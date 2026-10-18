@@ -263,6 +263,14 @@ Still off:
   the original's 108-byte frame; still off: the processing block (call
   daeEncryptOne, `n++`) comes before the loop head in ours, and the
   original keeps buf/size/orig in edi/ebp/esi and `len` in memory.
+  The original's off is a loop-region allocno in edx, saved around each
+  call, with the parent's copy in ebx (`xor ebx,ebx` ... `mov edx,ebx`
+  before the guard): IRA regional allocation, like smcChecksum's sums and
+  kvPrepare's alt in ecx.  Loop forms (for/while/do-while), header test
+  spellings and hints on the header, hash and loop tests (best 403) don't
+  give it, and no object-wide IRA flag (-fira-region, -fira-loop-pressure,
+  -fno-ira-hoist-pressure, ...) helps any of the five without breaking
+  the 42 that match.
 - `cfPatchSlots` (37) and `cfEncrypt` (94, inlines it): `SWAP16` is
   `((x & 0xff) << 8) + ((x & 0xff00) >> 8)` (not a rotate in the loop or the
   last slot, a rotate for `tbl[0]`), and one `tbl[0] = SWAP16(n)` after the
