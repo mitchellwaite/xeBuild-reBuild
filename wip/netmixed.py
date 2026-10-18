@@ -65,7 +65,7 @@ def main():
         data = data.replace(a, b)
     data = data.replace('\nstatic SOCKET', "\n/* net.s's data */\nstatic SOCKET", 1)
     fns = {}
-    for m in re.finditer(r'\n((?:/\*[^\n]*\*/\n)?((?:static )?(?:inline )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n',
+    for m in re.finditer(r'\n((?:/\*[^\n]*\*/\n)?(?:__attribute__[^\n]*\n)?((?:static )?(?:inline )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n',
                          src, re.S):
         fns[m.group(3)] = m.group(1)
     missing = [w for w in want if w not in fns]
@@ -84,12 +84,13 @@ def main():
     body = []
     for name in fns:
         if name in want:
-            body.append(re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, fns[name]))
+            attr, fn = re.match(r'((?:__attribute__[^\n]*\n)?)(.*)', fns[name], re.S).groups()
+            body.append(attr + re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, fn))
 
     ext = ['static const char %s[] = "%s";' % (used[a], lits[a]) for a in sorted(used)]
     asm = ['/* still in net.s; gcc gave it the local calling convention */',
            'u8 *netRecv(int *len) __attribute__((regparm(1)));']
-    sigs = {n: re.match(r'(?:/\*[^\n]*\*/\n)?([^\n]*\))', fns[n]).group(1) for n in fns}
+    sigs = {n: re.match(r'(?:/\*[^\n]*\*/\n)?(?:__attribute__[^\n]*\n)?([^\n]*\))', fns[n]).group(1) for n in fns}
     asm += ['%s;' % sigs[n] for n in fns
             if n not in want and n != 'netRecv' and not sigs[n].startswith('static')]
     head = head.replace(

@@ -13,23 +13,13 @@
 .intel_syntax noprefix
 .globl _netConnect
 .globl _netEmpty
-.globl _netEraseBlock
 .globl _netFindBeacon
-.globl _netFormatCompat
-.globl _netFormatSysex
-.globl _netGetFile
 .globl _netInfo
-.globl _netMkdir
-.globl _netMount
-.globl _netReadBlocks
 .globl _netReadInfo
 .globl _netRecv
 .globl _netRecvVerbose
 .globl _netSendFile
-.globl _netSendFlash
 .globl _netSock
-.globl _netUnmount
-.globl _netWriteBlocks
 .globl _netWritePatches
 .globl _net_45763e
 .globl _net_457688
@@ -43,11 +33,23 @@
 .globl _net_457913
 .globl _net_457919
 .globl _net_45791d
+.globl _net_457925
+.globl _net_457931
+.globl _net_457947
+.globl _net_457950
+.globl _net_457962
 .globl _net_45796c
 .globl _net_457990
 .globl _net_457998
 .globl _net_4579cb
+.globl _net_4579d1
+.globl _net_4579d8
+.globl _net_4579f9
+.globl _net_457a07
+.globl _net_457a15
 .globl _net_457a23
+.globl _net_457a29
+.globl _net_457a2f
 .globl _net_457a35
 .globl _net_457a51
 .globl _net_457a57
@@ -1116,251 +1118,13 @@ L_41f9e3:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_netMount:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,288
-          mov EBX,DWORD PTR [ESP+308]
-          mov EDI,DWORD PTR [ESP+304]
-          lea ESI,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+4],OFFSET L_457925
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP+8],EDI
-          call _sprintf
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+12],EDI
-          mov EBX,ESI
-          mov DWORD PTR [ESP+4],OFFSET L_457931
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_41fb41:
-          mov EDX,DWORD PTR [EBX]
-          add EBX,4
-          lea EAX,DWORD PTR [EDX-16843009]
-          not EDX
-          and EAX,EDX
-          and EAX,2155905152
-          je L_41fb41
-          mov EDX,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],ESI
-          shr EDX,16
-          test EAX,32896
-          cmove EAX,EDX
-          lea EDX,DWORD PTR [EBX+2]
-          mov ECX,EAX
-          cmove EBX,EDX
-          add CL,AL
-          mov EAX,DWORD PTR [_netSock]
-          sbb EBX,3
-          sub EBX,ESI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_41fbc0
-L_41fb98:
-          mov DWORD PTR [ESP+4],OFFSET _net_4577bb
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,288
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          nop
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_41fbc0:
-          lea EAX,DWORD PTR [ESP+24]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_41fb98
-          cmp DWORD PTR [ESP+24],2
-          je L_41fc10
-          xor ESI,ESI
-          cmp EBX,OFFSET _netEmpty
-          je L_41fb98
-L_41fbe0:
-          mov DWORD PTR [ESP],EBX
-          call _free
-L_41fbe8:
-          test ESI,ESI
-          je L_41fb98
-          mov DWORD PTR [ESP+4],OFFSET _net_45773c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,288
-          mov EAX,1
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x90
-L_41fc10:
-          mov DWORD PTR [ESP],EBX
-          call _getBeU16
-          cmp AX,20299
-          sete AL
-          cmp EBX,OFFSET _netEmpty
-          movzx EAX,AL
-          mov ESI,EAX
-          jne L_41fbe0
-          jmp L_41fbe8
+#@C _netMount
           .byte 0x66
           .byte 0x90
-_netUnmount:
-          push ESI
-          push EBX
-          sub ESP,292
-          mov EBX,DWORD PTR [ESP+304]
-          lea ESI,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+4],OFFSET L_457947
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+8],EBX
-          call _sprintf
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_457950
-          mov EBX,ESI
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_41fc71:
-          mov EDX,DWORD PTR [EBX]
-          add EBX,4
-          lea EAX,DWORD PTR [EDX-16843009]
-          not EDX
-          and EAX,EDX
-          and EAX,2155905152
-          je L_41fc71
-          mov EDX,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],ESI
-          shr EDX,16
-          test EAX,32896
-          cmove EAX,EDX
-          lea EDX,DWORD PTR [EBX+2]
-          mov ECX,EAX
-          cmove EBX,EDX
-          add CL,AL
-          mov EAX,DWORD PTR [_netSock]
-          sbb EBX,3
-          sub EBX,ESI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_41fcf0
-L_41fcc8:
-          mov DWORD PTR [ESP+4],OFFSET _net_4577bb
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,292
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          ret 
-L_41fce7:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41fcf0:
-          lea EAX,DWORD PTR [ESP+24]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_41fcc8
-          cmp DWORD PTR [ESP+24],2
-          je L_41fd40
-          xor ESI,ESI
-          cmp EBX,OFFSET _netEmpty
-          je L_41fcc8
-L_41fd10:
-          mov DWORD PTR [ESP],EBX
-          call _free
-L_41fd18:
-          test ESI,ESI
-          je L_41fcc8
-          mov DWORD PTR [ESP+4],OFFSET _net_45773c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,292
-          mov EAX,1
-          pop EBX
-          pop ESI
-          ret 
+#@C _netUnmount
           .byte 0x66
           .byte 0x90
-L_41fd40:
-          mov DWORD PTR [ESP],EBX
-          call _getBeU16
-          cmp AX,20299
-          sete AL
-          cmp EBX,OFFSET _netEmpty
-          movzx EAX,AL
-          mov ESI,EAX
-          jne L_41fd10
-          jmp L_41fd18
-          .byte 0x66
-          .byte 0x90
-_netGetFile:
-          push ESI
-          push EBX
-          sub ESP,292
-          mov EAX,DWORD PTR [ESP+304]
-          lea ESI,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+4],OFFSET L_457962
-          mov DWORD PTR [ESP],ESI
-          mov EBX,ESI
-          mov DWORD PTR [ESP+8],EAX
-          call _sprintf
-L_41fd89:
-          mov EDX,DWORD PTR [EBX]
-          add EBX,4
-          lea EAX,DWORD PTR [EDX-16843009]
-          not EDX
-          and EAX,EDX
-          and EAX,2155905152
-          je L_41fd89
-          mov EDX,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],ESI
-          shr EDX,16
-          test EAX,32896
-          cmove EAX,EDX
-          lea EDX,DWORD PTR [EBX+2]
-          mov ECX,EAX
-          cmove EBX,EDX
-          add CL,AL
-          mov EAX,DWORD PTR [_netSock]
-          sbb EBX,3
-          sub EBX,ESI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_41fdf0
-          add ESP,292
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41fdf0:
-          mov EAX,DWORD PTR [ESP+308]
-          call _netRecv
-          add ESP,292
-          pop EBX
-          pop ESI
-          ret 
+#@C _netGetFile
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -1388,170 +1152,13 @@ L_41fdf0:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_netSendFlash:
-          push ESI
-          push EBX
-          sub ESP,36
-          mov EBX,DWORD PTR [ESP+48]
-          test EBX,EBX
-          je L_42001b
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_4579d1
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EAX,5
-          je L_420023
-L_42001b:
-          add ESP,36
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          ret 
-L_420023:
-          call _log_get_verbose
-          test EAX,EAX
-          mov DWORD PTR [ESP],EBX
-          setne AL
-          movzx EAX,AL
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+4],EAX
-          call _netSendData
-          test EAX,EAX
-          je L_4200e0
-          lea ESI,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+4],OFFSET L_4579d8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,ESI
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_42008c
-          cmp DWORD PTR [ESP+28],2
-          je L_420100
-L_42007c:
-          cmp EBX,OFFSET _netEmpty
-          je L_42008c
-          mov DWORD PTR [ESP],EBX
-          call _free
-L_42008c:
-          mov DWORD PTR [ESP+4],OFFSET _net_4577bb
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_4200a0:
-          mov DWORD PTR [ESP],ESI
-          call __time32
-          mov EAX,DWORD PTR [_netStartTime]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP],EAX
-          call __difftime32
-          fstp QWORD PTR [ESP+8]
-          mov DWORD PTR [ESP+4],OFFSET _net_45763e
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,36
-          mov EAX,1
-          pop EBX
-          pop ESI
-          ret 
-L_4200e0:
-          mov DWORD PTR [ESP+4],OFFSET _net_4577bb
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_42001b
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_420100:
-          mov DWORD PTR [ESP],EAX
-          call _getBeU16
-          cmp AX,20299
-          jne L_42007c
-          cmp EBX,OFFSET _netEmpty
-          je L_420122
-          mov DWORD PTR [ESP],EBX
-          call _free
-L_420122:
-          mov DWORD PTR [ESP+4],OFFSET _net_45773c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_4200a0
+#@C _netSendFlash
           .byte 0x90
           .byte 0x8d
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_netReadBlocks:
-          push ESI
-          push EBX
-          sub ESP,52
-          movzx EAX,WORD PTR [ESP+72]
-          lea ESI,DWORD PTR [ESP+16]
-          mov DWORD PTR [ESP+4],OFFSET L_4579f9
-          mov DWORD PTR [ESP],ESI
-          mov EBX,ESI
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,WORD PTR [ESP+68]
-          mov DWORD PTR [ESP+8],EAX
-          call _sprintf
-L_42016d:
-          mov EDX,DWORD PTR [EBX]
-          add EBX,4
-          lea EAX,DWORD PTR [EDX-16843009]
-          not EDX
-          and EAX,EDX
-          and EAX,2155905152
-          je L_42016d
-          mov EDX,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],ESI
-          shr EDX,16
-          test EAX,32896
-          cmove EAX,EDX
-          lea EDX,DWORD PTR [EBX+2]
-          mov ECX,EAX
-          cmove EBX,EDX
-          add CL,AL
-          mov EAX,DWORD PTR [_netSock]
-          sbb EBX,3
-          sub EBX,ESI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_4201d0
-          add ESP,52
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_4201d0:
-          call _log_get_verbose
-          test EAX,EAX
-          setne AL
-          movzx EAX,AL
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP],EAX
-          call _netRecvVerbose
-          add ESP,52
-          pop EBX
-          pop ESI
-          ret 
+#@C _netReadBlocks
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -1565,192 +1172,11 @@ L_4201d0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_netWriteBlocks:
-          push ESI
-          push EBX
-          sub ESP,84
-          movzx EAX,WORD PTR [ESP+108]
-          lea ESI,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+4],OFFSET L_457a07
-          mov DWORD PTR [ESP],ESI
-          mov EBX,ESI
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,WORD PTR [ESP+104]
-          mov DWORD PTR [ESP+8],EAX
-          call _sprintf
-L_42022d:
-          mov EDX,DWORD PTR [EBX]
-          add EBX,4
-          lea EAX,DWORD PTR [EDX-16843009]
-          not EDX
-          and EAX,EDX
-          and EAX,2155905152
-          je L_42022d
-          mov EDX,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],ESI
-          shr EDX,16
-          test EAX,32896
-          cmove EAX,EDX
-          lea EDX,DWORD PTR [EBX+2]
-          mov ECX,EAX
-          cmove EBX,EDX
-          add CL,AL
-          mov EAX,DWORD PTR [_netSock]
-          sbb EBX,3
-          sub EBX,ESI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_420290
-L_420284:
-          xor EAX,EAX
-L_420286:
-          add ESP,84
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_420290:
-          call _log_get_verbose
-          test EAX,EAX
-          setne AL
-          movzx EAX,AL
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+100]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+96]
-          mov DWORD PTR [ESP],EAX
-          call _netSendData
-          test EAX,EAX
-          je L_420284
-          lea EAX,DWORD PTR [ESP+44]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_420284
-          cmp DWORD PTR [ESP+44],2
-          je L_4202f0
-L_4202cf:
-          xor EAX,EAX
-          cmp EBX,OFFSET _netEmpty
-          je L_420284
-L_4202d9:
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+28],EAX
-          call _free
-          mov EAX,DWORD PTR [ESP+28]
-          add ESP,84
-          pop EBX
-          pop ESI
-          ret 
-          nop
-L_4202f0:
-          mov DWORD PTR [ESP],EAX
-          call _getBeU16
-          cmp AX,20299
-          jne L_4202cf
-          cmp EBX,OFFSET _netEmpty
-          jne L_420310
-          mov EAX,1
-          jmp L_420286
-L_420310:
-          mov EAX,1
-          jmp L_4202d9
+#@C _netWriteBlocks
 L_420317:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_netEraseBlock:
-          push ESI
-          push EBX
-          sub ESP,84
-          movzx EAX,WORD PTR [ESP+100]
-          lea ESI,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+4],OFFSET L_457a15
-          mov DWORD PTR [ESP],ESI
-          mov EBX,ESI
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,WORD PTR [ESP+96]
-          mov DWORD PTR [ESP+8],EAX
-          call _sprintf
-L_42034d:
-          mov EDX,DWORD PTR [EBX]
-          add EBX,4
-          lea EAX,DWORD PTR [EDX-16843009]
-          not EDX
-          and EAX,EDX
-          and EAX,2155905152
-          je L_42034d
-          mov EDX,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],ESI
-          shr EDX,16
-          test EAX,32896
-          cmove EAX,EDX
-          lea EDX,DWORD PTR [EBX+2]
-          mov ECX,EAX
-          cmove EBX,EDX
-          add CL,AL
-          mov EAX,DWORD PTR [_netSock]
-          sbb EBX,3
-          sub EBX,ESI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_4203b0
-L_4203a4:
-          xor EAX,EAX
-L_4203a6:
-          add ESP,84
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_4203b0:
-          lea EAX,DWORD PTR [ESP+44]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_4203a4
-          cmp DWORD PTR [ESP+44],2
-          je L_4203f0
-L_4203c6:
-          xor EAX,EAX
-          cmp EBX,OFFSET _netEmpty
-          je L_4203a4
-L_4203d0:
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+28],EAX
-          call _free
-          mov EAX,DWORD PTR [ESP+28]
-          add ESP,84
-          pop EBX
-          pop ESI
-          ret 
-          .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_4203f0:
-          mov DWORD PTR [ESP],EBX
-          call _getBeU16
-          cmp AX,20299
-          jne L_4203c6
-          cmp EBX,OFFSET _netEmpty
-          je L_42040d
-          mov EAX,1
-          jmp L_4203d0
-L_42040d:
-          mov EAX,1
-          jmp L_4203a6
+#@C _netEraseBlock
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -1885,24 +1311,7 @@ L_4205c1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_netFormatSysex:
-          push EBX
-          sub ESP,56
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_457a29
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EAX,5
-          je L_420610
-L_420602:
-          xor EAX,EAX
-L_420604:
-          add ESP,56
-          pop EBX
-          ret 
+#@C _netFormatSysex
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -1910,38 +1319,7 @@ L_420604:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_420610:
-          lea EAX,DWORD PTR [ESP+44]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_420602
-          cmp DWORD PTR [ESP+44],2
-          je L_420645
-L_420626:
-          xor EAX,EAX
-          cmp EBX,OFFSET _netEmpty
-          je L_420602
-L_420630:
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+28],EAX
-          call _free
-          mov EAX,DWORD PTR [ESP+28]
-          add ESP,56
-          pop EBX
-          ret 
-L_420645:
-          mov DWORD PTR [ESP],EBX
-          call _getBeU16
-          cmp AX,20299
-          jne L_420626
-          cmp EBX,OFFSET _netEmpty
-          je L_420662
-          mov EAX,1
-          jmp L_420630
-L_420662:
-          mov EAX,1
-          jmp L_420604
+#@C _netFormatCompat
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -1949,172 +1327,7 @@ L_420662:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_netFormatCompat:
-          push EBX
-          sub ESP,56
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_457a2f
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EAX,5
-          je L_4206b0
-L_4206a2:
-          xor EAX,EAX
-L_4206a4:
-          add ESP,56
-          pop EBX
-          ret 
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4206b0:
-          lea EAX,DWORD PTR [ESP+44]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_4206a2
-          cmp DWORD PTR [ESP+44],2
-          je L_4206e5
-L_4206c6:
-          xor EAX,EAX
-          cmp EBX,OFFSET _netEmpty
-          je L_4206a2
-L_4206d0:
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+28],EAX
-          call _free
-          mov EAX,DWORD PTR [ESP+28]
-          add ESP,56
-          pop EBX
-          ret 
-L_4206e5:
-          mov DWORD PTR [ESP],EBX
-          call _getBeU16
-          cmp AX,20299
-          jne L_4206c6
-          cmp EBX,OFFSET _netEmpty
-          je L_420702
-          mov EAX,1
-          jmp L_4206d0
-L_420702:
-          mov EAX,1
-          jmp L_4206a4
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-_netMkdir:
-          push EDI
-          push EBX
-          xor EAX,EAX
-          sub ESP,308
-          mov EDX,DWORD PTR [ESP+320]
-          test EDX,EDX
-          je L_4207c1
-          lea EDI,DWORD PTR [ESP+48]
-          mov ECX,64
-          mov DWORD PTR [ESP+40],1380207437
-          mov DWORD PTR [ESP+44],0
-          rep stosd DWORD PTR ES:[EDI]
-          lea EAX,DWORD PTR [ESP+44]
-          lea EDI,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          call _strcpy
-          mov EAX,EDI
-L_42075a:
-          mov ECX,DWORD PTR [EAX]
-          add EAX,4
-          lea EDX,DWORD PTR [ECX-16843009]
-          not ECX
-          and EDX,ECX
-          and EDX,2155905152
-          je L_42075a
-          mov ECX,EDX
-          shr ECX,16
-          test EDX,32896
-          cmove EDX,ECX
-          lea ECX,DWORD PTR [EAX+2]
-          mov EBX,EDX
-          cmove EAX,ECX
-          add BL,DL
-          mov EDX,10
-          sbb EAX,3
-          sub EAX,EDI
-          mov WORD PTR [EDI+EAX*1],DX
-          lea EBX,DWORD PTR [EAX+1]
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_4207d0
-L_4207bf:
-          xor EAX,EAX
-L_4207c1:
-          add ESP,308
-          pop EBX
-          pop EDI
-          ret 
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4207d0:
-          lea EAX,DWORD PTR [ESP+36]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_4207bf
-          cmp DWORD PTR [ESP+36],2
-          je L_420810
-L_4207e6:
-          xor EAX,EAX
-          cmp EBX,OFFSET _netEmpty
-          je L_4207bf
-L_4207f0:
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+28],EAX
-          call _free
-          mov EAX,DWORD PTR [ESP+28]
-          add ESP,308
-          pop EBX
-          pop EDI
-          ret 
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_420810:
-          mov DWORD PTR [ESP],EBX
-          call _getBeU16
-          cmp AX,20299
-          jne L_4207e6
-          cmp EBX,OFFSET _netEmpty
-          jne L_42082d
-          mov EAX,1
-          jmp L_4207c1
-L_42082d:
-          mov EAX,1
-          jmp L_4207f0
+#@C _netMkdir
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -2383,15 +1596,15 @@ _net_457919:
           .string "OK\n"
 _net_45791d:
           .string "failed\n"
-L_457925:
+_net_457925:
           .string "MTPT%s: %s\n"
-L_457931:
+_net_457931:
           .string "mounting %s to %s:..."
-L_457947:
+_net_457947:
           .string "UMPT%s:\n"
-L_457950:
+_net_457950:
           .string "unmounting %s:..."
-L_457962:
+_net_457962:
           .string "GETF%s\n"
           .zero 2
 _net_45796c:
@@ -2403,22 +1616,22 @@ _net_457998:
           .string "received 0x%x bytes data OK, writing to file %s..."
 _net_4579cb:
           .string "GTBL\n"
-L_4579d1:
+_net_4579d1:
           .string "WRFL\n"
           .zero 1
-L_4579d8:
+_net_4579d8:
           .string "file sent OK, awaiting result..."
-L_4579f9:
+_net_4579f9:
           .string "RBLK%04x%04x\n"
-L_457a07:
+_net_457a07:
           .string "WBLK%04x%04x\n"
-L_457a15:
+_net_457a15:
           .string "ERBL%04x%04x\n"
 _net_457a23:
           .string "GTBB\n"
-L_457a29:
+_net_457a29:
           .string "FMEX\n"
-L_457a2f:
+_net_457a2f:
           .string "FMCM\n"
 _net_457a35:
           .string "sending shutdown command..."

@@ -460,8 +460,12 @@ SYMBOLS = {
     0x4576cf: '_net_4576cf', 0x4576e8: '_net_4576e8', 0x457712: '_net_457712',
     0x45773c: '_net_45773c', 0x4577bb: '_net_4577bb', 0x4578f5: '_net_4578f5',
     0x457913: '_net_457913', 0x457919: '_net_457919', 0x45791d: '_net_45791d',
-    0x45796c: '_net_45796c', 0x457990: '_net_457990', 0x457998: '_net_457998',
-    0x4579cb: '_net_4579cb', 0x457a23: '_net_457a23', 0x457a35: '_net_457a35',
+    0x457925: '_net_457925', 0x457931: '_net_457931', 0x457947: '_net_457947',
+    0x457950: '_net_457950', 0x457962: '_net_457962', 0x45796c: '_net_45796c',
+    0x457990: '_net_457990', 0x457998: '_net_457998', 0x4579cb: '_net_4579cb',
+    0x4579d1: '_net_4579d1', 0x4579d8: '_net_4579d8', 0x4579f9: '_net_4579f9',
+    0x457a07: '_net_457a07', 0x457a15: '_net_457a15', 0x457a23: '_net_457a23',
+    0x457a29: '_net_457a29', 0x457a2f: '_net_457a2f', 0x457a35: '_net_457a35',
     0x457a51: '_net_457a51', 0x457a57: '_net_457a57', 0x457a71: '_net_457a71',
     # mode_update.s strings and variables the mixed mode_update.c refers to
     0x46f040: '_path', 0x46f144: '_noReboot', 0x46f148: '_noAvatar', 0x46f14c: '_noWrite',
@@ -713,7 +717,10 @@ C_FUNCS = {
     0x41ea70, 0x41ed50, 0x41ed70, 0x41edb0,  # netFree netTimerStart netTimerEnd netTimerElapsed
     0x41ede0, 0x41f1a0, 0x41f330, 0x41f390,  # netSendStr netSendData netCheckOk netOpenSocket
     0x41fa00, 0x41fa40, 0x41fe10, 0x41fe20,  # netClose netDisconnect netGetInfo netDumpNand
-    0x41ff90, 0x420420, 0x420840,            # netGetBldrs netGetBadBlocks netReboot
+    0x41ff90, 0x420420, 0x420840, 0x41faf0,  # netGetBldrs netGetBadBlocks netReboot netMount
+    0x41fc30, 0x41fd60, 0x420140, 0x4205d0,  # netUnmount netGetFile netReadBlocks netFormatSysex
+    0x420670, 0x420200, 0x420320, 0x420710,  # netFormatCompat netWriteBlocks netEraseBlock netMkdir
+    0x41ffe0,                                # netSendFlash
     # app/build (wip/app/build.c is the whole draft; wip/mixed.py)
     0x427650, 0x4276a0, 0x4276f0, 0x427950,  # findFileOffset findFileSize findFile readMetaFile
     0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile

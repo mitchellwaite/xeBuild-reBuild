@@ -201,7 +201,9 @@ int netSendStr(const char *s)
 {
 	int len = strlen(s);
 
-	return send(netSock, s, len, 0) == len;
+	if (send(netSock, s, len, 0) != len)
+		return 0;
+	return 1;
 }
 
 /* netRecv with progress output */
@@ -511,10 +513,18 @@ u32 netSendFlash(const u8 *buf, u32 len)
 		return 0;
 	}
 	log_printf(0, "file sent OK, awaiting result...");
-	if (netCheckOk())
-		log_printf(0, "success!\n");
-	else
-		log_printf(0, "failed!\n");
+	{
+		int rlen;
+		u8 *r = netRecv(&rlen);
+
+		if (r && rlen == 2 && getBeU16(r) == OK_REPLY) {
+			netFree(r);
+			log_printf(0, "success!\n");
+		} else {
+			netFree(r);
+			log_printf(0, "failed!\n");
+		}
+	}
 	netTimerEnd();
 	return 1;
 }
@@ -529,8 +539,11 @@ u32 netReadBlocks(int *len, u16 start, u16 count)
 	return 0;
 }
 
+__attribute__((optimize("no-crossjumping", "no-early-inlining")))
 int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
 {
+	int rlen, ret;
+	u8 *r;
 	char cmd[32];
 
 	sprintf(cmd, "WBLK%04x%04x\n", start, count);
@@ -538,17 +551,38 @@ int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
 		return 0;
 	if (!netSendData(buf, len, log_get_verbose() != 0))
 		return 0;
-	return netCheckOk();
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
 }
 
+__attribute__((optimize("no-crossjumping")))
 int netEraseBlock(u16 block, u16 count)
 {
+	int rlen, ret;
+	u8 *r;
 	char cmd[32];
 
 	sprintf(cmd, "ERBL%04x%04x\n", block, count);
 	if (!netSendStr(cmd))
 		return 0;
-	return netCheckOk();
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
 }
 
 u32 netGetBadBlocks(int *len)
@@ -558,21 +592,36 @@ u32 netGetBadBlocks(int *len)
 	return 0;
 }
 
+__attribute__((optimize("no-crossjumping")))
 int netSendFile(const char *name, const u8 *buf, u32 len)
 {
-	char cmd[264] = "SNDF";
+	int rlen, ret;
+	u8 *r;
 
-	if (!name || !buf)
+	if (name && buf) {
+		char cmd[264] = "SNDF";
+
+		strcpy(cmd + 4, name);
+		strcat(cmd, "\n");
+		if (!netSendStr(cmd))
+			return 0;
+		if (!netSendData(buf, len, log_get_verbose() != 0))
+			return 0;
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = 0;
+		if (rlen == 2 && getBeU16(r) == OK_REPLY)
+			ret = 1;
+		netFree(r);
+		if (ret)
+			return 1;
 		return 0;
-	strcpy(cmd + 4, name);
-	strcat(cmd, "\n");
-	if (!netSendStr(cmd))
-		return 0;
-	if (!netSendData(buf, len, log_get_verbose() != 0))
-		return 0;
-	return netCheckOk();
+	}
+	return 0;
 }
 
+__attribute__((optimize("no-crossjumping")))
 int netFormatSysex(void)
 {
 	int len, ret;
@@ -592,6 +641,7 @@ int netFormatSysex(void)
 	return 0;
 }
 
+__attribute__((optimize("no-crossjumping")))
 int netFormatCompat(void)
 {
 	int len, ret;
@@ -611,17 +661,31 @@ int netFormatCompat(void)
 	return 0;
 }
 
+__attribute__((optimize("no-crossjumping")))
 int netMkdir(const char *name)
 {
-	char cmd[264] = "MKDR";
+	int rlen, ret;
+	u8 *r;
 
-	if (!name)
+	if (name) {
+		char cmd[264] = "MKDR";
+
+		strcpy(cmd + 4, name);
+		strcat(cmd, "\n");
+		if (!netSendStr(cmd))
+			return 0;
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = 0;
+		if (rlen == 2 && getBeU16(r) == OK_REPLY)
+			ret = 1;
+		netFree(r);
+		if (ret)
+			return 1;
 		return 0;
-	strcpy(cmd + 4, name);
-	strcat(cmd, "\n");
-	if (!netSendStr(cmd))
-		return 0;
-	return netCheckOk();
+	}
+	return 0;
 }
 
 int netReboot(int how)
@@ -642,11 +706,23 @@ int netReboot(int how)
 	return 1;
 }
 
+__attribute__((optimize("no-crossjumping", "no-early-inlining")))
 int netWritePatches(const u8 *buf, u32 len)
 {
+	int rlen, ret;
+	u8 *r;
 	if (!netSendStr("WBPT\n"))
 		return 0;
 	if (!netSendData(buf, len, 0))
 		return 0;
-	return netCheckOk();
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
 }

@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **534 of 617** (532 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **544 of 617** (542 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 349 / 432 |
+| `app/` | 16 / 25 | 359 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -42,7 +42,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/image_write` | mixed; 0 of 10 drafted functions match in `wip/app/image_write.c` | 36 / 46 |
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
-| `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
+| `app/net` | mixed; 0 of 7 drafted functions match in `wip/app/net.c` | 25 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
@@ -246,7 +246,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/net</code>: 15 / 32 in C</summary>
+<summary><code>app/net</code>: 25 / 32 in C</summary>
 
 - ⬜ `netRecv` (0x41e800) (draft in `wip/`, no match yet)
 - ✅ `netFree` (0x41ea70)
@@ -263,21 +263,21 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `netConnect` (0x41f700) (draft in `wip/`, no match yet)
 - ✅ `netClose` (0x41fa00)
 - ✅ `netDisconnect` (0x41fa40)
-- ⬜ `netMount` (0x41faf0) (draft in `wip/`, no match yet)
-- ⬜ `netUnmount` (0x41fc30) (draft in `wip/`, no match yet)
-- ⬜ `netGetFile` (0x41fd60) (draft in `wip/`, no match yet)
+- ✅ `netMount` (0x41faf0)
+- ✅ `netUnmount` (0x41fc30)
+- ✅ `netGetFile` (0x41fd60)
 - ✅ `netGetInfo` (0x41fe10)
 - ✅ `netDumpNand` (0x41fe20)
 - ✅ `netGetBldrs` (0x41ff90)
-- ⬜ `netSendFlash` (0x41ffe0) (draft in `wip/`, no match yet)
-- ⬜ `netReadBlocks` (0x420140) (draft in `wip/`, no match yet)
-- ⬜ `netWriteBlocks` (0x420200) (draft in `wip/`, no match yet)
-- ⬜ `netEraseBlock` (0x420320) (draft in `wip/`, no match yet)
+- ✅ `netSendFlash` (0x41ffe0)
+- ✅ `netReadBlocks` (0x420140)
+- ✅ `netWriteBlocks` (0x420200)
+- ✅ `netEraseBlock` (0x420320)
 - ✅ `netGetBadBlocks` (0x420420)
 - ⬜ `netSendFile` (0x420470) (draft in `wip/`, no match yet)
-- ⬜ `netFormatSysex` (0x4205d0) (draft in `wip/`, no match yet)
-- ⬜ `netFormatCompat` (0x420670) (draft in `wip/`, no match yet)
-- ⬜ `netMkdir` (0x420710) (draft in `wip/`, no match yet)
+- ✅ `netFormatSysex` (0x4205d0)
+- ✅ `netFormatCompat` (0x420670)
+- ✅ `netMkdir` (0x420710)
 - ✅ `netReboot` (0x420840)
 - ⬜ `netWritePatches` (0x420910) (draft in `wip/`, no match yet)
 

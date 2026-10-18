@@ -73,11 +73,23 @@ static const char net_4578f5[] = "\ndisconnecting from server...";
 static const char net_457913[] = "QUIT\n";
 static const char net_457919[] = "OK\n";
 static const char net_45791d[] = "failed\n";
+static const char net_457925[] = "MTPT%s: %s\n";
+static const char net_457931[] = "mounting %s to %s:...";
+static const char net_457947[] = "UMPT%s:\n";
+static const char net_457950[] = "unmounting %s:...";
+static const char net_457962[] = "GETF%s\n";
 static const char net_45796c[] = "reading flash image from console...";
 static const char net_457990[] = "GTFL\n";
 static const char net_457998[] = "received 0x%x bytes data OK, writing to file %s...";
 static const char net_4579cb[] = "GTBL\n";
+static const char net_4579d1[] = "WRFL\n";
+static const char net_4579d8[] = "file sent OK, awaiting result...";
+static const char net_4579f9[] = "RBLK%04x%04x\n";
+static const char net_457a07[] = "WBLK%04x%04x\n";
+static const char net_457a15[] = "ERBL%04x%04x\n";
 static const char net_457a23[] = "GTBB\n";
+static const char net_457a29[] = "FMEX\n";
+static const char net_457a2f[] = "FMCM\n";
 static const char net_457a35[] = "sending shutdown command...";
 static const char net_457a51[] = "SHDN\n";
 static const char net_457a57[] = "sending reboot command...";
@@ -89,17 +101,7 @@ u32 netFindBeacon(void);
 u8 *netRecvVerbose(int *len, int verbose);
 int netReadInfo(void);
 u32 netConnect(const char *ip);
-u32 netMount(const char *drive, const char *device);
-u32 netUnmount(const char *drive);
-u32 netGetFile(const char *name, int *len);
-u32 netSendFlash(const u8 *buf, u32 len);
-u32 netReadBlocks(int *len, u16 start, u16 count);
-int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count);
-int netEraseBlock(u16 block, u16 count);
 int netSendFile(const char *name, const u8 *buf, u32 len);
-int netFormatSysex(void);
-int netFormatCompat(void);
-int netMkdir(const char *name);
 int netWritePatches(const u8 *buf, u32 len);
 
 void netFree(void *p)
@@ -133,7 +135,9 @@ int netSendStr(const char *s)
 {
 	int len = strlen(s);
 
-	return send(netSock, s, len, 0) == len;
+	if (send(netSock, s, len, 0) != len)
+		return 0;
+	return 1;
 }
 
 /* send a length-prefixed block */
@@ -220,6 +224,44 @@ void netDisconnect(void)
 	netClose();
 }
 
+u32 netMount(const char *drive, const char *device)
+{
+	char cmd[260];
+
+	sprintf(cmd, net_457925, drive, device);
+	log_printf(1, net_457931, device, drive);
+	if (netSendStr(cmd) && netCheckOk()) {
+		log_printf(1, net_45773c);
+		return 1;
+	}
+	log_printf(1, net_4577bb);
+	return 0;
+}
+
+u32 netUnmount(const char *drive)
+{
+	char cmd[260];
+
+	sprintf(cmd, net_457947, drive);
+	log_printf(1, net_457950, drive);
+	if (netSendStr(cmd) && netCheckOk()) {
+		log_printf(1, net_45773c);
+		return 1;
+	}
+	log_printf(1, net_4577bb);
+	return 0;
+}
+
+u32 netGetFile(const char *name, int *len)
+{
+	char cmd[260];
+
+	sprintf(cmd, net_457962, name);
+	if (netSendStr(cmd))
+		return (u32)netRecv(len);
+	return 0;
+}
+
 struct consoleinfo *netGetInfo(void)
 {
 	return netInfo;
@@ -256,10 +298,158 @@ u32 netGetBldrs(int *len)
 	return 0;
 }
 
+u32 netSendFlash(const u8 *buf, u32 len)
+{
+	if (!buf || !netSendStr(net_4579d1))
+		return 0;
+	if (!netSendData(buf, len, log_get_verbose() != 0)) {
+		log_printf(0, net_4577bb);
+		return 0;
+	}
+	log_printf(0, net_4579d8);
+	{
+		int rlen;
+		u8 *r = netRecv(&rlen);
+
+		if (r && rlen == 2 && getBeU16(r) == OK_REPLY) {
+			netFree(r);
+			log_printf(0, net_45773c);
+		} else {
+			netFree(r);
+			log_printf(0, net_4577bb);
+		}
+	}
+	netTimerEnd();
+	return 1;
+}
+
+u32 netReadBlocks(int *len, u16 start, u16 count)
+{
+	char cmd[32];
+
+	sprintf(cmd, net_4579f9, start, count);
+	if (netSendStr(cmd))
+		return (u32)netRecvVerbose(len, log_get_verbose() != 0);
+	return 0;
+}
+
+__attribute__((optimize("no-crossjumping", "no-early-inlining")))
+int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
+{
+	int rlen, ret;
+	u8 *r;
+	char cmd[32];
+
+	sprintf(cmd, net_457a07, start, count);
+	if (!netSendStr(cmd))
+		return 0;
+	if (!netSendData(buf, len, log_get_verbose() != 0))
+		return 0;
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
+}
+
+__attribute__((optimize("no-crossjumping")))
+int netEraseBlock(u16 block, u16 count)
+{
+	int rlen, ret;
+	u8 *r;
+	char cmd[32];
+
+	sprintf(cmd, net_457a15, block, count);
+	if (!netSendStr(cmd))
+		return 0;
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
+}
+
 u32 netGetBadBlocks(int *len)
 {
 	if (netSendStr(net_457a23))
 		return (u32)netRecv(len);
+	return 0;
+}
+
+__attribute__((optimize("no-crossjumping")))
+int netFormatSysex(void)
+{
+	int len, ret;
+	u8 *r;
+
+	if (!netSendStr(net_457a29))
+		return 0;
+	r = netRecv(&len);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (len == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
+}
+
+__attribute__((optimize("no-crossjumping")))
+int netFormatCompat(void)
+{
+	int len, ret;
+	u8 *r;
+
+	if (!netSendStr(net_457a2f))
+		return 0;
+	r = netRecv(&len);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (len == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
+	return 0;
+}
+
+__attribute__((optimize("no-crossjumping")))
+int netMkdir(const char *name)
+{
+	int rlen, ret;
+	u8 *r;
+
+	if (name) {
+		char cmd[264] = "MKDR";
+
+		strcpy(cmd + 4, name);
+		strcat(cmd, "\n");
+		if (!netSendStr(cmd))
+			return 0;
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = 0;
+		if (rlen == 2 && getBeU16(r) == OK_REPLY)
+			ret = 1;
+		netFree(r);
+		if (ret)
+			return 1;
+		return 0;
+	}
 	return 0;
 }
 
