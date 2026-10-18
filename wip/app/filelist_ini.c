@@ -167,6 +167,7 @@ int loadUserIni(void)
 {
 	char path[1024];
 	FILE *f;
+	int len;
 
 	strcpy(path, xb.baseDir);
 	strcat(path, "options.ini");
@@ -177,13 +178,14 @@ int loadUserIni(void)
 		return 0;
 	}
 	iniSize = getFileSize(f);
-	iniBuf = malloc(iniSize + 1);
+	len = iniSize + 1;
+	iniBuf = malloc(len);
 	if (iniBuf == NULL) {
 		log_printf(0, "******* ERROR loading %s, unable to allocate memory\n", path);
 		fclose(f);
 		return 0;
 	}
-	memset(iniBuf, 0xff, iniSize + 1);
+	memset(iniBuf, 0xff, len);
 	log_printf(1, "loading file...", path);
 	fread(iniBuf, iniSize, 1, f);
 	fclose(f);

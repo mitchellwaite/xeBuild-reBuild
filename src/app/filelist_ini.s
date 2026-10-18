@@ -11,13 +11,20 @@
 
 .intel_syntax noprefix
 .globl L_450000
+.globl _fi_44fb84
+.globl _fi_44fbb0
+.globl _fi_450264
+.globl _fi_450290
+.globl _fi_4502cd
+.globl _fi_4502dd
+.globl _fi_4502e4
+.globl _fi_450347
 .globl _fixFileCase
 .globl _getIniBool
 .globl _getIniU32
 .globl _iniBoolInvalid
 .globl _iniPreParse
 .globl _iniU32Invalid
-.globl _loadUserIni
 .globl _parseIni
 
 .text
@@ -474,7 +481,7 @@ _parseIni:
           mov DWORD PTR [ESP],1
           mov DWORD PTR [ESP+8],ESI
           call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44fb84
+          mov DWORD PTR [ESP+4],OFFSET _fi_44fb84
           mov DWORD PTR [ESP],ESI
           call _fopen
           test EAX,EAX
@@ -1183,7 +1190,7 @@ L_409deb:
           jmp L_4095c2
 L_409df5:
           mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],OFFSET L_44fbb0
+          mov DWORD PTR [ESP+4],OFFSET _fi_44fbb0
           mov DWORD PTR [ESP],0
           call _log_printf
           mov DWORD PTR [ESP+52],0
@@ -2451,149 +2458,7 @@ L_40aee2:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_loadUserIni:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,1040
-          lea EBX,DWORD PTR [ESP+16]
-          mov DWORD PTR [ESP+4],OFFSET L_47ad4c
-          mov DWORD PTR [ESP],EBX
-          call _strcpy
-          mov EDX,EBX
-L_40af0f:
-          mov ECX,DWORD PTR [EDX]
-          add EDX,4
-          lea EAX,DWORD PTR [ECX-16843009]
-          not ECX
-          and EAX,ECX
-          and EAX,2155905152
-          je L_40af0f
-          mov ECX,EAX
-          shr ECX,16
-          test EAX,32896
-          cmove EAX,ECX
-          lea ECX,DWORD PTR [EDX+2]
-          cmove EDX,ECX
-          mov ECX,EAX
-          add CL,AL
-          sbb EDX,3
-          mov DWORD PTR [EDX],1769238639
-          mov DWORD PTR [EDX+4],779316847
-          mov DWORD PTR [EDX+8],6909545
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_450264
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44fb84
-          mov DWORD PTR [ESP],EBX
-          call _fopen
-          test EAX,EAX
-          mov EDI,EAX
-          je L_40b0e0
-          mov DWORD PTR [ESP],EAX
-          call _getFileSize
-          lea ESI,DWORD PTR [EAX+1]
-          mov DWORD PTR [_iniSize],EAX
-          mov DWORD PTR [ESP],ESI
-          call _malloc
-          test EAX,EAX
-          mov DWORD PTR [_iniBuf],EAX
-          je L_40b104
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],255
-          mov DWORD PTR [ESP],EAX
-          call _memset
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_4502cd
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [_iniSize]
-          mov DWORD PTR [ESP+12],EDI
-          mov DWORD PTR [ESP+8],1
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EAX
-          call _fread
-          mov DWORD PTR [ESP],EDI
-          call _fclose
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_4502dd
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [_iniBuf]
-          cmp BYTE PTR [EAX],255
-          je L_40b093
-          cmp BYTE PTR [EAX+1],255
-          je L_40b093
-          mov EDX,DWORD PTR [_iniSize]
-          mov BYTE PTR [EAX+EDX*1],255
-          mov DWORD PTR [ESP+4],OFFSET L_450347
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [_iniSize]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EAX
-          call _iniPreParse
-          mov DWORD PTR [ESP+4],OFFSET L_4502dd
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [_iniSize],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [_iniSize]
-          mov EDX,DWORD PTR [_iniBuf]
-          mov BYTE PTR [EDX+EAX*1],0
-          mov EAX,1
-L_40b089:
-          add ESP,1040
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_40b093:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_4502e4
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EAX
-          call _free
-          mov DWORD PTR [_iniBuf],0
-          mov DWORD PTR [_iniSize],0
-          add ESP,1040
-          pop EBX
-          xor EAX,EAX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_40b0e0:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_450290
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,1040
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_40b104:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_44fbb0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP],EDI
-          call _fclose
-          xor EAX,EAX
-          jmp L_40b089
+#@C _loadUserIni
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -3410,13 +3275,13 @@ L_44a460:
 .p2align 5
 L_44fb60:
           .string "\n------ parsing ini at '%s' ------\n"
-L_44fb84:
+_fi_44fb84:
           .string "rb"
           .zero 1
 L_44fb88:
           .string "\n******* ERROR: could not open '%s'\n"
           .zero 3
-L_44fbb0:
+_fi_44fbb0:
           .string "******* ERROR loading %s, unable to allocate memory\n"
           .zero 3
 L_44fbe8:
@@ -3560,18 +3425,18 @@ L_450258:
 L_45025d:
           .string "false"
           .zero 1
-L_450264:
+_fi_450264:
           .string "\n------ parsing user ini at '%s' ------\n"
           .zero 3
-L_450290:
+_fi_450290:
           .string "\n******* WARNING: could not open user ini at '%s', skipping\n"
-L_4502cd:
+_fi_4502cd:
           .string "loading file..."
-L_4502dd:
+_fi_4502dd:
           .string "done!\n"
-L_4502e4:
+_fi_4502e4:
           .string "***** WARNING: User ini %s\nappears to be a multi byte file, not an ascii only file - ignoring it!\n"
-L_450347:
+_fi_450347:
           .string "pre-parsing and sanitizing\n"
           .zero 29
 L_450380:
