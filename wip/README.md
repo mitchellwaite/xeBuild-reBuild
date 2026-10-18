@@ -628,8 +628,7 @@ What got them:
   likely; the original lays out send failure first.
 - netReboot: each branch has its own `if (netSendStr(...)) OK else failed`
   (crossjumping merges the tails); an `ok` variable gives `sete`.
-- netDumpNand: the send written out, `send(netSock, "GTFL
-", 5, 0) == 5`.
+- netDumpNand: the send written out, `send(netSock, "GTFL\n", 5, 0) == 5`.
   Through netSendStr the send check is a 50/50 call-predictor tie (both
   arms call); inlined at profile time the opcode predictor (`==` unlikely)
   makes failure the likely path, as the original lays it out. einline
