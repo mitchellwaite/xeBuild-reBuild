@@ -8,7 +8,7 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 
-#define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
+#define SWAP16(x) ((((x) << 8) & 0xff00) + (((x) >> 8) & 0xff))
 #define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 /* an input file of the image */
@@ -170,13 +170,11 @@ static u8 smcPage[0x1000];
 #define setFsTable(start, n, next) do { \
 	u32 i_; \
 	if ((next) != 0xf1f1) { \
-		u16 v_ = SWAP16(next); \
-		if ((next) == 0 || (next) == 0xffff) { \
-			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) \
-				fsTable[i_] = SWAP16(i_ + 1); \
-		} else { \
-			for (i_ = 0; i_ < (n); i_++) \
-				fsTable[(start) - xb.fsStart + i_] = v_; \
+		for (i_ = 0; i_ < (n); i_++) { \
+			if ((next) != 0 && (next) != 0xffff) \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+			else \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16((start) - xb.fsStart + i_ + 1); \
 		} \
 		if ((next) == 0xffff) \
 			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
@@ -196,10 +194,8 @@ static int imgWriteStart(const void *src, u32 len, u16 next)
 		tail = len;
 	} else {
 		rem = len - first;
-		blocks = 0;
-		if (rem >= 0x4000)
-			blocks = rem / 0x4000;
-		tail = rem % 0x4000;
+		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		blocks = rem / 0x4000;
 		if (tail)
 			blocks++;
 		if (first)
@@ -255,14 +251,14 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 /* one 4K page */
 static int imgWritePage(u32 off, const void *src, u16 next)
 {
-	u32 blocks, start, b, p, i;
+	u32 blocks, start, b, p, i, x, first;
 
 	if (xb.rawSize < off || xb.rawSize < off + 0x1000)
 		return -1;
 	start = off >> 14;
 	blocks = 1;
 	if (off & 0x3fff)
-		blocks = (0x4000 - (off & 0x3fff) < 0x1000) + 1;
+		blocks = (0x4000 - (off & 0x3fff) >= 0x1000) ? 1 : 2;
 	memcpy(xb.hdr + off, src, 0x1000);
 	for (b = 0; b < blocks; b++)
 		for (p = 0; p < 8; p++)
