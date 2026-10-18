@@ -247,10 +247,17 @@ Still off:
   flips (151), so the original indexes.  The sums are spilled in the
   parent region too (IRA pops r87/r88 l0 as spills under the loop's caps),
   where the original keeps them in registers outside the loop.
-- `kvPrepare` (437): ours tail-merges the inlined kvEncrypt and kvEncryptAlt
-  copies (one HMAC/RC4 sequence with the salt selected); the original keeps
-  both (their registers differ), and its size error is the fallthrough of
-  `cmp size,0x4000`.
+- `kvPrepare` (246): the hash check is the inlined `kvHashOk` (its ver/key
+  share stack slots with the inlined kvEncrypt copies, which gives the
+  original's 108-byte frame), and `__builtin_expect(kv->size != 0x4000, 1)`
+  makes the size error the fallthrough.  Still off: register allocation.
+  The original has name in esi and alt in ecx, saved around each call
+  (caller-saves); ours gives alt esi (popped right after file) and spills
+  name, so the two kvEncrypt copies come out alike and cross-jumping
+  merges their tails (the original keeps both, with buf+16 in [56] on
+  one side and edi on the other).  Hints on the other tests (all 243
+  combinations), declaration order and other expect probabilities don't
+  change it.
 - `daeEncrypt` (443): `if (size) do { ... } while (off < size)` with
   `buf[off + k]` header tests stops gcc peeling the first iteration and gets
   the original's 108-byte frame; still off: the processing block (call

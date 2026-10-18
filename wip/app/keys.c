@@ -692,8 +692,6 @@ void kvPrepare(part_t *kv, int alt)
 {
 	const char *name = "alt kv", *file = "kv_alt.bin";
 	u8 *buf, *nbuf;
-	u8 ver[2] = { 0x07, 0x12 };
-	u8 key[16];
 
 	if (!alt) {
 		name = "kv";
@@ -706,7 +704,7 @@ void kvPrepare(part_t *kv, int alt)
 		free(kv->buf);
 		kv->buf = nbuf;
 		kv->size = 0x4000;
-	} else if (kv->size != 0x4000) {
+	} else if (__builtin_expect(kv->size != 0x4000, 1)) {
 		log_printf(0, "\n******* ERROR: %s is not the correct size! Skipping verification and encryption!\n", file);
 		return;
 	}
@@ -716,8 +714,7 @@ void kvPrepare(part_t *kv, int alt)
 		if (!checkZeros(kv->buf + 88, 8))
 			log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
 	} else {
-		XeCryptHmacSha(xb.cpuKey, 16, buf + 16, kv->size - 16, ver, 2, NULL, 0, key, 16);
-		if (memcmp(buf, key, 16)) {
+		if (!kvHashOk(buf, kv->size)) {
 			if (checkZeros(buf + 56, 88)) {
 				log_printf(1, "%s appears to be decrypted already, but the hash does not match the CPU key...", file);
 				log_printf(0, "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n", file);
