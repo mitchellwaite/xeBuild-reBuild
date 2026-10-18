@@ -892,20 +892,55 @@ Still off:
   (`__builtin_expect(... , 0)` on the fill test, even at probability 55)
   gives the original's order (234 -> 113), but costs imgWritePage and
   imgWriteAt lines. -fno-thread-jumps / max-fsm-* params change nothing.
-- imgWritePage (11 lines normalised): `blocks = (0x4000 - (off & 0x3fff)
-  >= 0x1000) ? 1 : 2` gives the original's `cmp 4096; setb`. Left: the
-  original's `and; shr; test` (combine didn't fuse the and and the test)
-  and registers. Its callers addSmcConfig/imgAddRaw match only while the
-  draft's imgWritePage does (ipa-ra), so they show 9 lines in wip/ now.
-- imgAddMobile (18): `__builtin_expect(!mobileOffset, 1)` with
-  builtin-expect-probability 80-85 leaves 2 lines: bbro then doesn't
-  duplicate the `(off + 0x20000) & ~0x1ffff` block into the "already
-  set" path (edge frequency below its 10% threshold); with expects on the
-  inner tests too the duplication comes back but the order breaks.
-- finalizeImage: `__asm__("" : "+r"(raw))` before the ECD loop gives the
-  unaligned memcpy expansion (432 -> 429); the original also keeps
-  xb.hdr/xb.spare in registers with running offsets, reloaded only after
-  the ECD bytes are written.
-- imgAdd, imgAddFile, writeFsTable: not looked at in detail
-  yet. writeFsTable inlines imgAdd twice in the original (0x2c and 0x30
-  types); ours makes an `imgAdd.constprop` clone instead.
+- imgWritePage (17 lines, 7 normalised): `x = off & 0x3fff;
+  __asm__("" : "+c"(x));` before `start` gives the original's ecx and
+  separate `test`; `__attribute__((noclone))` keeps ipa-cp from cloning
+  it for 0x1ffb, and then addSmcConfig/imgAddRaw match in the draft too.
+  Left: the block loop's IV is a copy of the reloaded `start` (the
+  original reloads straight into ebp), and the end-marker index's
+  operand order. `__builtin_expect(next != 0xf1f1, 1)` at
+  builtin-expect-probability 55-60 fixes the latter (11 lines).
+- Return types: with `u32` returns the `return -1` paths lose gcc's
+  negative-return prediction; imgWriteStart then inlines into every
+  caller (ipa-split header), with `int` into none. The original inlines
+  exactly the header's 0xf1f1 call, so its estimate sits between.
+- imgWriteStart: `__builtin_expect` on the range check (0) and on
+  `next != 0xf1f1` (1) at the default probability takes it to 20
+  normalised lines (registers and the order of the fill loop's five
+  peel exits: the original has 5,1,2,3,4, ours 5,4,3,2,1; same in imgAdd).
+  Those hints also move the inline estimates, so they need checking
+  against writeInitialHeader.
+- imgAddMobile (18): expects on `!mobileOffset` and the align test at
+  probability 66-72 (or `!mobileOffset` alone at 85) leave 2 lines: the
+  "already set" path's copy of the `(off + 0x20000) & ~0x1ffff` block.
+  bbro duplicates a block only if it starts a 1-block trace and the edge
+  carries >= 10% of the entry frequency; the trace order also needs the
+  small path's fits block before the "already set" trace. No hint set
+  found that does both.
+- finalizeImage (132 normalised): the ECD loop names `xb.hdr + ...` /
+  `xb.spare + ...` in each use (PRE then keeps both in registers and
+  reloads them after the ECC write, like the original); `int blocks`
+  stops forwprop folding the remap bounds test into a MAX; the
+  bbController swap indexes `xb.spare[i * 16 + k]`; the big-block LBA loop
+  is `n = xb.blocks / 8; s = xb.spare;` with a running pointer and
+  `((struct sp *)s)->b2lo = b >> 8`. Left: the ECD memcpy (the original
+  doesn't know the destination's alignment, but an asm on `raw` also
+  loses its points-to and xb.hdr gets reloaded), registers and layout in
+  the remap loop.
+- imgAdd/imgAddFile/writeFsTable: imgAddFile's big-block path is
+  `imgAdd(off, data, len, 0x2a, 0xffff, 1)`; that call and writeFsTable's
+  two inline as ipa-cp clones called once (imgAdd must not be `inline`,
+  or imgAddMobile's calls inline too). imgAdd's head is imgWriteAt's
+  (`if (len > first)`, cmov tail), npages `len % 512 ? (len + 512) / 512
+  : len / 512` before pages, `p + (partial ? npages : 32)` inside the
+  block loop, len stored high byte first, and `left` computed at its use
+  (writeFsTable's copy unswitches on `off & 0x1ffff`). writeFsTable takes
+  `blk = off >> 14` before the big-block realign and again inside it.
+  Left: layout ties (imgAddFile's spare loop puts the small-block side
+  inline), and standalone imgAdd's `pad == 1 && tail`, which GENERIC
+  folds to `&` (both operands simple), so its then-path memcpy isn't
+  duplicated as in the original.
+- tmp/xeBuild64 decompiles with IDA (idapro on a copy of the ELF):
+  imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
+  buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
+  structure only.

@@ -260,16 +260,18 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 }
 
 /* one 4K page */
-static int imgWritePage(u32 off, const void *src, u16 next)
+static __attribute__((noclone)) int imgWritePage(u32 off, const void *src, u16 next)
 {
 	u32 blocks, start, b, p, i, x, first;
 
 	if (xb.rawSize < off || xb.rawSize < off + 0x1000)
 		return -1;
+	x = off & 0x3fff;
+	__asm__("" : "+c"(x));
 	start = off >> 14;
 	blocks = 1;
-	if (off & 0x3fff)
-		blocks = (0x4000 - (off & 0x3fff) >= 0x1000) ? 1 : 2;
+	if (x)
+		blocks = (0x4000 - x >= 0x1000) ? 1 : 2;
 	memcpy(xb.hdr + off, src, 0x1000);
 	for (b = 0; b < blocks; b++)
 		for (p = 0; p < 8; p++)
@@ -726,11 +728,11 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	npages = len % 512 ? (len + 512) / 512 : len / 512;
 	pages = len % 512 ? len / 512 + 1 : len / 512;
 	partial = len < 0x4000 && type != 0 && type != '0';
-	
 	sp9 = 32 - pages;
 	o128 = off & 0x1ffff;
-	left = o128 ? 256 - o128 / 512 : 256;
-	left = (left - (pages & 3 ? (pages + 4) & ~3 : pages)) >> 2;
+	left = pages;
+	if (left & 3)
+		left = (left + 4) & ~3;
 	for (b = start; b != start + blocks; b++) {
 		p = 0;
 		if ((u8)(type - '1') < 15) {
@@ -754,7 +756,7 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 						s[7] = xb.spare7;
 					} else {
 						s[5] = 1;
-						s[9] = left;
+						s[9] = ((o128 ? 256 - o128 / 512 : 256) - left) >> 2;
 						s[8] = len >> 8;
 						s[7] = len;
 					}
@@ -972,11 +974,15 @@ long checkBootImage(int write)
 void writeFsTable(u32 off)
 {
 	u8 *buf, *p;
+	u32 blk;
 	int i;
 
-	if (xb.bigBlock && (off & 0x1ffff))
+	blk = off >> 14;
+	if (xb.bigBlock && (off & 0x1ffff)) {
 		off = (off + 0x20000) & ~0x1ffff;
-	fsTable[(off >> 14) - xb.fsStart] = SWAP16(0x1ffd);
+		blk = off >> 14;
+	}
+	fsTable[blk - xb.fsStart] = SWAP16(0x1ffd);
 	buf = malloc(0x4000);
 	p = buf;
 	for (i = 0; i < 16; i++) {
