@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **531 of 617** (529 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **532 of 617** (530 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 346 / 432 |
+| `app/` | 16 / 25 | 347 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,9 +36,9 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/mode_update` | mixed; 0 of 2 drafted functions match in `wip/app/mode_update.c` | 12 / 14 |
+| `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
-| `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
+| `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
 | `app/image_write` | mixed; 0 of 12 drafted functions match in `wip/app/image_write.c` | 34 / 46 |
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
@@ -47,7 +47,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
 <details>
-<summary><code>app/mode_update</code>: 12 / 14 in C</summary>
+<summary><code>app/mode_update</code>: 13 / 14 in C</summary>
 
 - ✅ `getBadBlocks` (0x4030b0)
 - ✅ `update_usage` (0x4031d0)
@@ -57,7 +57,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `getMobileFiles` (0x403820)
 - ✅ `bldrGetKv` (0x403cf0)
 - ✅ `bldrGetSmc` (0x403d80)
-- ⬜ `getSecurityFiles` (0x403e10) (draft in `wip/`, no match yet)
+- ✅ `getSecurityFiles` (0x403e10)
 - ✅ `checkBadBlocks` (0x404320)
 - ✅ `getBootloaders` (0x404340)
 - ✅ `getConsoleFiles` (0x404430)
@@ -94,7 +94,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `memFindStr` (0x409310)
 - ✅ `memFindChar` (0x4093d0)
 - ✅ `checkFileCase` (0x409410)
-- ⬜ `parseIni` (0x409430)
+- ⬜ `parseIni` (0x409430) (draft in `wip/`, no match yet)
 - ✅ `getIniValue` (0x40aa10)
 - ⬜ `getIniBool` (0x40aad0) (draft in `wip/`, no match yet)
 - ⬜ `iniBoolInvalid` (0x40abf0) (draft in `wip/`, no match yet)

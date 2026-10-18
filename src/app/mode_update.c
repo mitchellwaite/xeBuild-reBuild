@@ -189,6 +189,23 @@ extern const char mu_44d186[];	/* "smc_config.bin" */
 extern const char mu_44d198[];	/* "\n***** ERROR: could not retrieve sm..." */
 extern const char mu_44d1d3[];	/* "usv:\\%s" */
 extern const char mu_44d1db[];	/* "retrieving USVR\\%s..." */
+extern const char mu_44d1f4[];	/* "\n------ getting security files ----..." */
+extern const char mu_44d21c[];	/* "OK, received 0x%x bytes\n        " */
+extern const char mu_44d23d[];	/* "retrieving USVR\\kv_enc..." */
+extern const char mu_44d257[];	/* "kv_enc" */
+extern const char mu_44d25e[];	/* "extracting BLDR\\kv_enc..." */
+extern const char mu_44d278[];	/* "OK, received 0x%x bytes\n        dec..." */
+extern const char mu_44d2ae[];	/* "keyvault is good!\n" */
+extern const char mu_44d2c1[];	/* "kv.bin" */
+extern const char mu_44d2c8[];	/* "\n***** ERROR: could not decrypt key..." */
+extern const char mu_44d300[];	/* "\n***** ERROR: could not retrieve ke..." */
+extern const char mu_44d339[];	/* "retrieving USVR\\smc_enc..." */
+extern const char mu_44d354[];	/* "smc_enc" */
+extern const char mu_44d35c[];	/* "extracting BLDR\\smc_enc..." */
+extern const char mu_44d377[];	/* "smc is good!\n" */
+extern const char mu_44d385[];	/* "smc.bin" */
+extern const char mu_44d390[];	/* "\n***** ERROR: could not decrypt smc..." */
+extern const char mu_44d3c8[];	/* "\n***** ERROR: could not retrieve sm..." */
 extern const char mu_44d400[];	/* "\n------ getting bootloaders ------\..." */
 extern const char mu_44d424[];	/* "reading bootloader data..." */
 extern const char mu_44d440[];	/* "success! Bootloader size with xell i..." */
@@ -443,6 +460,84 @@ u8 *bldrGetSmc(int *size)
 	memcpy(smc, bl + SWAP32(*(u32 *)(bl + 124)), len);
 	*size = len;
 	return smc;
+}
+
+static u32 getSmc(const char *dir)
+{
+	if (!xb.haveBldrs) {
+		log_printf(1, mu_44d339);
+		xb.smc.data = netGetFile(mu_44d354, &xb.smc.size);
+	} else {
+		log_printf(1, mu_44d35c);
+		xb.smc.data = bldrGetSmc(&xb.smc.size);
+	}
+	if (xb.smc.data && xb.smc.size > 0x2fff) {
+		log_printf(1, mu_44d278, xb.smc.size);
+		if (unscramble(xb.smc.data, xb.smc.size)) {
+			log_printf(1, mu_44d377);
+			setSmcKey(xb.smc.data);
+			if (dir)
+				writeFileIn(dir, mu_44d385, xb.smc.data, xb.smc.size);
+			return 1;
+		}
+		log_printf(0, mu_44d390);
+		return 0;
+	}
+	log_printf(0, mu_44d3c8);
+	return 0;
+}
+
+static u32 getKv(const char *dir)
+{
+	u32 ret;
+
+	if (!xb.haveBldrs) {
+		log_printf(1, mu_44d23d);
+		xb.kv.data = netGetFile(mu_44d257, &xb.kv.size);
+	} else {
+		log_printf(1, mu_44d25e);
+		xb.kv.data = bldrGetKv(&xb.kv.size);
+	}
+	if (!xb.kv.data || xb.kv.size <= 0x3fff) {
+		log_printf(0, mu_44d300);
+		return 0;
+	}
+	log_printf(1, mu_44d278, xb.kv.size);
+	ret = verifyExtended(xb.kv.data, xb.kv.size);
+	if (ret) {
+		log_printf(1, mu_44d2ae);
+		setKvSalt(xb.kv.data + 16);
+		if (dir)
+			writeFileIn(dir, mu_44d2c1, xb.kv.data, xb.kv.size);
+	} else
+		log_printf(0, mu_44d2c8);
+	return ret;
+}
+
+u32 getSecurityFiles(const char *dir)
+{
+	u32 i;
+
+	log_printf(1, mu_44d1f4);
+	for (i = 0; i < xb.numFlashFiles; i++) {
+		if (!xb.flashFiles[i][0])
+			continue;
+		if (!wantFile(xb.flashFiles[i]))
+			continue;
+		sprintf(path, mu_44d1d3, xb.flashFiles[i]);
+		log_printf(1, mu_44d1db, xb.flashFiles[i]);
+		xb.flashBuf[i] = netGetFile(path, &xb.flashSize[i]);
+		if (xb.flashBuf[i] && xb.flashSize[i]) {
+			log_printf(1, mu_44d21c, xb.flashSize[i]);
+			verifyFlashFile(i);
+			if (dir)
+				writeFileIn(dir, xb.flashFiles[i], xb.flashBuf[i], xb.flashSize[i]);
+		} else
+			log_printf(1, mu_44cfe1);
+	}
+	if (!getKv(dir))
+		return 0;
+	return getSmc(dir);
 }
 
 u32 checkBadBlocks(void)

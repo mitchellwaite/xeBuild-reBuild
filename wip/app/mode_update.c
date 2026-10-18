@@ -364,28 +364,35 @@ u8 *bldrGetSmc(int *size)
 	return smc;
 }
 
-u32 getSecurityFiles(const char *dir)
+static u32 getSmc(const char *dir)
 {
-	u32 i;
+	if (!xb.haveBldrs) {
+		log_printf(1, "retrieving USVR\\smc_enc...");
+		xb.smc.data = netGetFile("smc_enc", &xb.smc.size);
+	} else {
+		log_printf(1, "extracting BLDR\\smc_enc...");
+		xb.smc.data = bldrGetSmc(&xb.smc.size);
+	}
+	if (xb.smc.data && xb.smc.size > 0x2fff) {
+		log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.smc.size);
+		if (unscramble(xb.smc.data, xb.smc.size)) {
+			log_printf(1, "smc is good!\n");
+			setSmcKey(xb.smc.data);
+			if (dir)
+				writeFileIn(dir, "smc.bin", xb.smc.data, xb.smc.size);
+			return 1;
+		}
+		log_printf(0, "\n***** ERROR: could not decrypt smc.bin from console!\n");
+		return 0;
+	}
+	log_printf(0, "\n***** ERROR: could not retrieve smc.bin from console!\n");
+	return 0;
+}
+
+static u32 getKv(const char *dir)
+{
 	u32 ret;
 
-	log_printf(1, "\n------ getting security files ------\n");
-	for (i = 0; i < xb.numFlashFiles; i++) {
-		if (!xb.flashFiles[i][0])
-			continue;
-		if (!wantFile(xb.flashFiles[i]))
-			continue;
-		sprintf(path, "usv:\\%s", xb.flashFiles[i]);
-		log_printf(1, "retrieving USVR\\%s...", xb.flashFiles[i]);
-		xb.flashBuf[i] = netGetFile(path, &xb.flashSize[i]);
-		if (xb.flashBuf[i] && xb.flashSize[i]) {
-			log_printf(1, "OK, received 0x%x bytes\n        ", xb.flashSize[i]);
-			verifyFlashFile(i);
-			if (dir)
-				writeFileIn(dir, xb.flashFiles[i], xb.flashBuf[i], xb.flashSize[i]);
-		} else
-			log_printf(1, "not available\n");
-	}
 	if (!xb.haveBldrs) {
 		log_printf(1, "retrieving USVR\\kv_enc...");
 		xb.kv.data = netGetFile("kv_enc", &xb.kv.size);
@@ -404,32 +411,35 @@ u32 getSecurityFiles(const char *dir)
 		setKvSalt(xb.kv.data + 16);
 		if (dir)
 			writeFileIn(dir, "kv.bin", xb.kv.data, xb.kv.size);
-		if (!xb.haveBldrs) {
-			log_printf(1, "retrieving USVR\\smc_enc...");
-			xb.smc.data = netGetFile("smc_enc", &xb.smc.size);
-		} else {
-			log_printf(1, "extracting BLDR\\smc_enc...");
-			xb.smc.data = bldrGetSmc(&xb.smc.size);
-		}
-		if (xb.smc.data && xb.smc.size > 0x2fff) {
-			log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.smc.size);
-			if (unscramble(xb.smc.data, xb.smc.size)) {
-				ret = 1;
-				log_printf(1, "smc is good!\n");
-				setSmcKey(xb.smc.data);
-				if (dir)
-					writeFileIn(dir, "smc.bin", xb.smc.data, xb.smc.size);
-			} else {
-				ret = 0;
-				log_printf(0, "\n***** ERROR: could not decrypt smc.bin from console!\n");
-			}
-		} else {
-			ret = 0;
-			log_printf(0, "\n***** ERROR: could not retrieve smc.bin from console!\n");
-		}
 	} else
 		log_printf(0, "\n***** ERROR: could not decrypt keyvault from console!\n");
 	return ret;
+}
+
+u32 getSecurityFiles(const char *dir)
+{
+	u32 i;
+
+	log_printf(1, "\n------ getting security files ------\n");
+	for (i = 0; i < xb.numFlashFiles; i++) {
+		if (!xb.flashFiles[i][0])
+			continue;
+		if (!wantFile(xb.flashFiles[i]))
+			continue;
+		sprintf(path, "usv:\\%s", xb.flashFiles[i]);
+		log_printf(1, "retrieving USVR\\%s...", xb.flashFiles[i]);
+		xb.flashBuf[i] = netGetFile(path, &xb.flashSize[i]);
+		if (xb.flashBuf[i] && xb.flashSize[i]) {
+			log_printf(1, "OK, received 0x%x bytes\n        ", xb.flashSize[i]);
+			verifyFlashFile(i);
+			if (dir)
+				writeFileIn(dir, xb.flashFiles[i], xb.flashBuf[i], xb.flashSize[i]);
+		} else
+			log_printf(1, "not available\n");
+	}
+	if (!getKv(dir))
+		return 0;
+	return getSmc(dir);
 }
 
 u32 checkBadBlocks(void)

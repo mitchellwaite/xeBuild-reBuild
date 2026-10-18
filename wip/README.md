@@ -346,22 +346,15 @@ before the return block; both sides calling gives the call heuristic 50%).
 With the bad-blocks check as the outer `if (checkBadBlocks()) {...} log;`
 66-70 all match.
 
+getSecurityFiles is three functions: the loop, then `getKv(dir)` and
+`getSmc(dir)` as static helpers (inlined) with their own early returns.
+Written as one function, no hint combination works: the smc BLDR path's
+copy of the `size > 0x2fff` test needs both its edges >= 10% of the entry
+frequency, which needs the kv-good path in round 2 of bb-reorder, and then
+the BLDR block's trace comes before the verify-failure block's.
+
 Still off:
 
-- `getSecurityFiles` (12): the smc BLDR path should end with a copy of the
-  `size > 0x2fff` test (bb-reorder duplication into the success trace, as
-  the kv path already does). That needs the test-to-success edge at >= 10%
-  of the entry frequency; ours is about 7% (kv size test 39%, verify 50%,
-  smc size 39%). Early-return vs nested forms of the four checks don't
-  get there (the smc forms all canonicalize to the same CFG). Copying
-  needs both BLDR -> test and test -> success at >= 90 (entry 909), and
-  the verify failure keeps its own epilogue only while its edge is >= 90
-  too. `if (__builtin_expect(ret, 1))` on verify at 74% duplicates the
-  test (22 lines left: the verify-failure epilogue copy and an ebx/edx
-  swap in the inlined bldrGetSmc), but 72, 73 and 75 flip the equal-key
-  USVR/BLDR traces (118-132), and getConsoleFiles needs 66-70. A second
-  hint in getConsoleFiles (checkBadBlocks, getBootloaders) doesn't widen
-  its window to 74.
 - `mode_update` (722): the post-loop failures assign constants (`ret =
   5`, 3, 1), so the const-return heuristic predicts each failure taken
   (67%) and the chain decays from 200 to ~3; the original also has the

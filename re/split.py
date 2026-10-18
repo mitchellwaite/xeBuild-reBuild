@@ -481,7 +481,13 @@ SYMBOLS = {
     0x44cff0: '_mu_44cff0', 0x44d009: '_mu_44d009', 0x44d010: '_mu_44d010', 0x44d054: '_mu_44d054',
     0x44d074: '_mu_44d074', 0x44d090: '_mu_44d090', 0x44d0d4: '_mu_44d0d4', 0x44d0f8: '_mu_44d0f8',
     0x44d12c: '_mu_44d12c', 0x44d144: '_mu_44d144', 0x44d171: '_mu_44d171', 0x44d186: '_mu_44d186',
-    0x44d198: '_mu_44d198', 0x44d1d3: '_mu_44d1d3', 0x44d1db: '_mu_44d1db', 0x44d400: '_mu_44d400',
+    0x44d198: '_mu_44d198', 0x44d1d3: '_mu_44d1d3', 0x44d1db: '_mu_44d1db',
+    0x44d1f4: '_mu_44d1f4', 0x44d21c: '_mu_44d21c', 0x44d23d: '_mu_44d23d', 0x44d257: '_mu_44d257',
+    0x44d25e: '_mu_44d25e', 0x44d278: '_mu_44d278', 0x44d2ae: '_mu_44d2ae', 0x44d2c1: '_mu_44d2c1',
+    0x44d2c8: '_mu_44d2c8', 0x44d300: '_mu_44d300', 0x44d339: '_mu_44d339', 0x44d354: '_mu_44d354',
+    0x44d35c: '_mu_44d35c', 0x44d377: '_mu_44d377', 0x44d385: '_mu_44d385', 0x44d390: '_mu_44d390',
+    0x44d3c8: '_mu_44d3c8',
+    0x44d400: '_mu_44d400',
     0x44d424: '_mu_44d424', 0x44d440: '_mu_44d440', 0x44d46e: '_mu_44d46e', 0x44d479: '_mu_44d479',
     0x44d484: '_mu_44d484', 0x44d4b9: '_mu_44d4b9', 0x44d4c5: '_mu_44d4c5', 0x44d4cc: '_mu_44d4cc',
     0x44d4fc: '_mu_44d4fc', 0x44d528: '_mu_44d528', 0x44d55c: '_mu_44d55c', 0x44d590: '_mu_44d590',
@@ -667,9 +673,10 @@ C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
     0x409310, 0x4093d0, 0x409410,  # memFindStr memFindChar checkFileCase
     0x40aef0, 0x408ec0,  # loadUserIni fixFileCase
-    # app/mode_update (getSecurityFiles, mode_update stay asm)
+    # app/mode_update (mode_update stays asm)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
+    0x403e10,                                # getSecurityFiles
     0x404320, 0x404340, 0x404430, 0x404600,  # checkBadBlocks getBootloaders getConsoleFiles updateGetFile
     # app/options (parseButton stays asm: its ipa-split part at 449640 is
     # called from asm, and gcc would put it in .text.unlikely)
@@ -1026,7 +1033,11 @@ def main():
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
 
     # gcc's labels inside a C function are its own; nothing else may use ours
+    # (objects built wholly from C don't count: their .s isn't written, and
+    # des' tables hold values like 0x404000 that ddisasm took for labels)
     for pc, ls in piece_lines.items():
+        if os.path.exists(os.path.join(outdir, pc[3] + '.c')) and pc[3] not in mixed:
+            continue
         for l in ls:
             for t in SYM.findall(l.split('#')[0]):
                 if t in cfunc_labels:
