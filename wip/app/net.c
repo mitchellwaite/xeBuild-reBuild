@@ -121,8 +121,8 @@ void netFree(void *p)
 u32 netFindBeacon(void)
 {
 	SOCKET s;
+	volatile u32 addr;
 	int one = 1;
-	u32 addr = 0;
 	struct sockaddr_in sa, from;
 	int fromLen;
 	u8 pkt[8];
@@ -131,13 +131,15 @@ u32 netFindBeacon(void)
 	int r;
 
 	s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	addr = 0;
 	if (s == INVALID_SOCKET) {
 		log_printf(0, "unable to open socket, error %d\n", WSAGetLastError());
 		return addr;
 	}
 	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof one) == SOCKET_ERROR) {
 		log_printf(0, "unable to set bcast socket option, error %d\n", WSAGetLastError());
-		goto out;
+		closesocket(s);
+		return addr;
 	}
 	memset(&sa, 0, sizeof sa);
 	sa.sin_family = AF_INET;
@@ -145,7 +147,8 @@ u32 netFindBeacon(void)
 	sa.sin_addr.s_addr = INADDR_ANY;
 	if (bind(s, (struct sockaddr *)&sa, sizeof sa) == SOCKET_ERROR) {
 		log_printf(0, "unable to set bind socket, error %d\n", WSAGetLastError());
-		goto out;
+		closesocket(s);
+		return addr;
 	}
 	for (;;) {
 		memset(pkt, 0, sizeof pkt);
@@ -157,11 +160,13 @@ u32 netFindBeacon(void)
 		r = select(0, &fds, NULL, NULL, &tv);
 		if (r == SOCKET_ERROR) {
 			log_printf(0, "Socket error! %d\n", WSAGetLastError());
-			break;
+			closesocket(s);
+			return addr;
 		}
 		if (r == 0) {
 			log_printf(0, "UDP wait timeout!\n");
-			break;
+			closesocket(s);
+			return addr;
 		}
 		recvfrom(s, (char *)pkt, sizeof pkt, 0, (struct sockaddr *)&from, &fromLen);
 		if (getBeU32(pkt) == BEACON_MAGIC) {
@@ -171,7 +176,6 @@ u32 netFindBeacon(void)
 		log_printf(0, "Beacon received, but the beacon magic %X was not %X!\n",
 			   getBeU32(pkt), BEACON_MAGIC);
 	}
-out:
 	closesocket(s);
 	return addr;
 }
@@ -343,31 +347,37 @@ int netOpenSocket(u32 addr)
 int netReadInfo(void)
 {
 	u32 len;
-	u32 *p;
-	int i;
 	struct consoleinfo *info;
+	int ok = 0;
 
 	if (send(netSock, "GTIN\n", 5, 0) == 5) {
 		len = 0;
 		info = (struct consoleinfo *)netRecv((int *)&len);
-		if (info && len >= sizeof *info) {
-			info->pub1bl.reserved = 0;
-			netInfo = info;
-			p = (u32 *)info;
-			for (i = 0; i < 8; i++)
-				p[i] = SWAP32(p[i]);
-			log_printf(1, "success!\n");
-			log_printf(0, "connected to %s", getConsoleTypeStr((netInfo->hwFlags >> 28) + 1));
-			log_printf(0, " with updsvr version %d (peek version %d)\n",
-				   netInfo->version >> 8, netInfo->version & 0xff);
-			log_printf(1, "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n",
-				   netInfo->nandSize, netInfo->blockSize,
-				   netInfo->nandSize == 0x3000000 ? "No" : "Yes");
-			return 1;
-		}
+		if (info && len >= sizeof *info)
+			ok = 1;
 	}
-	log_printf(0, "failed!\n");
-	return 0;
+	if (!ok) {
+		log_printf(0, "failed!\n");
+		return 0;
+	}
+	info->pub1bl.reserved = 0;
+	netInfo = info;
+	info->version = SWAP32(info->version);
+	info->kernel = SWAP32(info->kernel);
+	info->f008 = SWAP32(info->f008);
+	info->bootstrap = SWAP32(info->bootstrap);
+	info->hwFlags = SWAP32(info->hwFlags);
+	info->nandSize = SWAP32(info->nandSize);
+	info->blockSize = SWAP32(info->blockSize);
+	info->pairing = SWAP32(info->pairing);
+	log_printf(1, "success!\n");
+	log_printf(0, "connected to %s", getConsoleTypeStr((netInfo->hwFlags >> 28) + 1));
+	log_printf(0, " with updsvr version %d (peek version %d)\n",
+		   netInfo->version >> 8, netInfo->version & 0xff);
+	log_printf(1, "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n",
+		   netInfo->nandSize, netInfo->blockSize,
+		   netInfo->nandSize == 0x3000000 ? "No" : "Yes");
+	return 1;
 }
 
 u32 netConnect(const char *ip)
@@ -598,26 +608,29 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 	int rlen, ret;
 	u8 *r;
 
-	if (name && buf) {
-		char cmd[264] = "SNDF";
-
-		strcpy(cmd + 4, name);
-		strcat(cmd, "\n");
-		if (!netSendStr(cmd))
-			return 0;
-		if (!netSendData(buf, len, log_get_verbose() != 0))
-			return 0;
-		r = netRecv(&rlen);
-		if (!r)
-			return 0;
-		ret = 0;
-		if (rlen == 2 && getBeU16(r) == OK_REPLY)
-			ret = 1;
-		netFree(r);
-		if (ret)
-			return 1;
+	if (!name)
 		return 0;
-	}
+	if (!buf)
+		return 0;
+	/* buf's uses are just over IRA's callee-saved threshold */
+	__asm__("" : : "m"(buf));
+	char cmd[264] = "SNDF";
+
+	strcpy(cmd + 4, name);
+	strcat(cmd, "\n");
+	if (!netSendStr(cmd))
+		return 0;
+	if (!netSendData(buf, len, log_get_verbose() != 0))
+		return 0;
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
 	return 0;
 }
 

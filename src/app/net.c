@@ -61,6 +61,12 @@ static u32 netEmpty;		/* returned for a zero-length reply */
 extern time_t netStartTime;
 
 /* strings in net.s */
+static const char net_457568[] = "unable to open socket, error %d\n";
+static const char net_45758c[] = "unable to set bcast socket option, error %d\n";
+static const char net_4575bc[] = "unable to set bind socket, error %d\n";
+static const char net_4575e1[] = "Socket error! %d\n";
+static const char net_4575f3[] = "UDP wait timeout!\n";
+static const char net_457608[] = "Beacon received, but the beacon magic %X was not %X!\n";
 static const char net_45763e[] = "Completed in %.0fs\n";
 static const char net_457688[] = "socket error sending data size, %d\n";
 static const char net_4576ac[] = "socket error sending data (1), %d\n";
@@ -97,7 +103,6 @@ static const char net_457a71[] = "REEB\n";
 
 /* still in net.s; gcc gave it the local calling convention */
 u8 *netRecv(int *len) __attribute__((regparm(1)));
-u32 netFindBeacon(void);
 u8 *netRecvVerbose(int *len, int verbose);
 int netReadInfo(void);
 u32 netConnect(const char *ip);
@@ -108,6 +113,69 @@ void netFree(void *p)
 {
 	if (p && p != &netEmpty)
 		free(p);
+}
+
+/* wait for the console's UDP beacon; its address, or 0 */
+u32 netFindBeacon(void)
+{
+	SOCKET s;
+	volatile u32 addr;
+	int one = 1;
+	struct sockaddr_in sa, from;
+	int fromLen;
+	u8 pkt[8];
+	fd_set fds;
+	struct timeval tv;
+	int r;
+
+	s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	addr = 0;
+	if (s == INVALID_SOCKET) {
+		log_printf(0, net_457568, WSAGetLastError());
+		return addr;
+	}
+	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof one) == SOCKET_ERROR) {
+		log_printf(0, net_45758c, WSAGetLastError());
+		closesocket(s);
+		return addr;
+	}
+	memset(&sa, 0, sizeof sa);
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(48);
+	sa.sin_addr.s_addr = INADDR_ANY;
+	if (bind(s, (struct sockaddr *)&sa, sizeof sa) == SOCKET_ERROR) {
+		log_printf(0, net_4575bc, WSAGetLastError());
+		closesocket(s);
+		return addr;
+	}
+	for (;;) {
+		memset(pkt, 0, sizeof pkt);
+		fromLen = sizeof from;
+		FD_ZERO(&fds);
+		FD_SET(s, &fds);
+		tv.tv_sec = 30;
+		tv.tv_usec = 0;
+		r = select(0, &fds, NULL, NULL, &tv);
+		if (r == SOCKET_ERROR) {
+			log_printf(0, net_4575e1, WSAGetLastError());
+			closesocket(s);
+			return addr;
+		}
+		if (r == 0) {
+			log_printf(0, net_4575f3);
+			closesocket(s);
+			return addr;
+		}
+		recvfrom(s, (char *)pkt, sizeof pkt, 0, (struct sockaddr *)&from, &fromLen);
+		if (getBeU32(pkt) == BEACON_MAGIC) {
+			addr = getLeU32(pkt + 4);
+			break;
+		}
+		log_printf(0, net_457608,
+			   getBeU32(pkt), BEACON_MAGIC);
+	}
+	closesocket(s);
+	return addr;
 }
 
 void netTimerStart(void)

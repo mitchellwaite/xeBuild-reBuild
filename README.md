@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **544 of 617** (542 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **549 of 617** (543 built from `src/`, 6 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 359 / 432 |
+| `app/` | 16 / 25 | 364 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -37,12 +37,12 @@ Objects with functions still in assembly. Per-function status in address order: 
 | Object | State | Functions in C |
 |---|---|---|
 | `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
-| `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
+| `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
 | `app/image_write` | mixed; 0 of 10 drafted functions match in `wip/app/image_write.c` | 36 / 46 |
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
-| `app/net` | mixed; 0 of 7 drafted functions match in `wip/app/net.c` | 25 / 32 |
+| `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
@@ -66,14 +66,14 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/mode_client</code>: 12 / 16 in C</summary>
+<summary><code>app/mode_client</code>: 14 / 16 in C</summary>
 
-- ⬜ `client_usage` (0x406330) (draft in `wip/`, no match yet)
+- ☑️ `client_usage` (0x406330)
 - ✅ `clientInfo` (0x406740)
 - ✅ `clientWrite` (0x406980)
 - ✅ `clientManifest` (0x406aa0)
 - ✅ `dumpKey` (0x406b60)
-- ⬜ `clientKeys` (0x406c60) (draft in `wip/`, no match yet)
+- ☑️ `clientKeys` (0x406c60)
 - ✅ `checkPatches` (0x406e50)
 - ✅ `updatePatches` (0x407160)
 - ✅ `clientPatches` (0x407320)
@@ -246,11 +246,11 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/net</code>: 25 / 32 in C</summary>
+<summary><code>app/net</code>: 28 / 32 in C</summary>
 
 - ⬜ `netRecv` (0x41e800) (draft in `wip/`, no match yet)
 - ✅ `netFree` (0x41ea70)
-- ⬜ `netFindBeacon` (0x41ea90) (draft in `wip/`, no match yet)
+- ✅ `netFindBeacon` (0x41ea90)
 - ✅ `netTimerStart` (0x41ed50)
 - ✅ `netTimerEnd` (0x41ed70)
 - ✅ `netTimerElapsed` (0x41edb0)
@@ -259,7 +259,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `netSendData` (0x41f1a0)
 - ✅ `netCheckOk` (0x41f330)
 - ✅ `netOpenSocket` (0x41f390)
-- ⬜ `netReadInfo` (0x41f470) (draft in `wip/`, no match yet)
+- ☑️ `netReadInfo` (0x41f470)
 - ⬜ `netConnect` (0x41f700) (draft in `wip/`, no match yet)
 - ✅ `netClose` (0x41fa00)
 - ✅ `netDisconnect` (0x41fa40)
@@ -274,7 +274,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `netWriteBlocks` (0x420200)
 - ✅ `netEraseBlock` (0x420320)
 - ✅ `netGetBadBlocks` (0x420420)
-- ⬜ `netSendFile` (0x420470) (draft in `wip/`, no match yet)
+- ☑️ `netSendFile` (0x420470)
 - ✅ `netFormatSysex` (0x4205d0)
 - ✅ `netFormatCompat` (0x420670)
 - ✅ `netMkdir` (0x420710)

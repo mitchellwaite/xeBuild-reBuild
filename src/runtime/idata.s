@@ -42,15 +42,11 @@
 .globl __imp___stat
 .globl __imp___stricmp
 .globl __imp___strnicmp
-.globl __imp__bind@12
-.globl __imp__closesocket@4
 .globl __imp__connect@12
 .globl __imp__htons@4
 .globl __imp__recv@16
-.globl __imp__recvfrom@24
 .globl __imp__select@20
 .globl __imp__send@16
-.globl __imp__setsockopt@20
 .globl __imp__socket@12
 .globl __initenv
 .globl __lconv_init

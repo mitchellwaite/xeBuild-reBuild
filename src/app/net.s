@@ -13,7 +13,6 @@
 .intel_syntax noprefix
 .globl _netConnect
 .globl _netEmpty
-.globl _netFindBeacon
 .globl _netInfo
 .globl _netReadInfo
 .globl _netRecv
@@ -21,6 +20,12 @@
 .globl _netSendFile
 .globl _netSock
 .globl _netWritePatches
+.globl _net_457568
+.globl _net_45758c
+.globl _net_4575bc
+.globl _net_4575e1
+.globl _net_4575f3
+.globl _net_457608
 .globl _net_45763e
 .globl _net_457688
 .globl _net_4576ac
@@ -249,171 +254,7 @@ L_41ea5a:
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_netFindBeacon:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,364
-          mov DWORD PTR [ESP+36],1
-          mov DWORD PTR [ESP+8],17
-          mov DWORD PTR [ESP+4],2
-          mov DWORD PTR [ESP],2
-          call DWORD PTR [__imp__socket@12]
-          sub ESP,12
-          cmp EAX,-1
-          mov DWORD PTR [ESP+32],0
-          je L_41ec92
-          mov ESI,EAX
-          lea EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+16],4
-          mov DWORD PTR [ESP+8],32
-          mov DWORD PTR [ESP+4],65535
-          mov DWORD PTR [ESP+12],EAX
-          mov DWORD PTR [ESP],ESI
-          call DWORD PTR [__imp__setsockopt@20]
-          sub ESP,20
-          cmp EAX,-1
-          je L_41ed20
-          lea EBX,DWORD PTR [ESP+60]
-          mov EAX,2
-          mov DWORD PTR [ESP+60],0
-          mov DWORD PTR [ESP+64],0
-          mov DWORD PTR [ESP+68],0
-          mov DWORD PTR [ESP+72],0
-          mov WORD PTR [ESP+60],AX
-          mov DWORD PTR [ESP],48
-          call DWORD PTR [__imp__htons@4]
-          sub ESP,4
-          mov WORD PTR [ESP+62],AX
-          mov DWORD PTR [ESP+64],0
-          mov DWORD PTR [ESP+8],16
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],ESI
-          call DWORD PTR [__imp__bind@12]
-          sub ESP,12
-          cmp EAX,-1
-          je L_41ed37
-          lea EBX,DWORD PTR [ESP+52]
-          lea EBP,DWORD PTR [ESP+44]
-          lea EDI,DWORD PTR [ESP+92]
-          jmp L_41ebf7
-L_41eb84:
-          test EAX,EAX
-          je L_41ecc0
-          lea EAX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+20],EAX
-          lea EAX,DWORD PTR [ESP+76]
-          mov DWORD PTR [ESP+16],EAX
-          call DWORD PTR [__imp__recvfrom@24]
-          sub ESP,24
-          mov DWORD PTR [ESP],EBX
-          call _getBeU32
-          cmp EAX,1314092658
-          je L_41ecf0
-          mov DWORD PTR [ESP],EBX
-          call _getBeU32
-          mov DWORD PTR [ESP+12],1314092658
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_457608
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_41ebf7:
-          mov DWORD PTR [EBX],0
-          mov DWORD PTR [EBX+4],0
-          mov DWORD PTR [ESP+40],16
-          mov DWORD PTR [ESP+96],ESI
-          mov DWORD PTR [ESP+92],1
-          mov DWORD PTR [ESP+44],30
-          mov DWORD PTR [ESP+48],0
-          mov DWORD PTR [ESP+16],EBP
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],0
-          call DWORD PTR [__imp__select@20]
-          sub ESP,20
-          cmp EAX,-1
-          jne L_41eb84
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET L_4575e1
-          mov DWORD PTR [ESP+8],EAX
-L_41ec6b:
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP],ESI
-          call DWORD PTR [__imp__closesocket@4]
-          sub ESP,4
-          mov EAX,DWORD PTR [ESP+32]
-          add ESP,364
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_41ec92:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET L_457568
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+32]
-          add ESP,364
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-L_41ecc0:
-          mov DWORD PTR [ESP+4],OFFSET L_4575f3
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov DWORD PTR [ESP],ESI
-          call DWORD PTR [__imp__closesocket@4]
-          sub ESP,4
-          mov EAX,DWORD PTR [ESP+32]
-          add ESP,364
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-L_41ecf0:
-          lea EAX,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESP],EAX
-          call _getLeU32
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+32],EAX
-          call DWORD PTR [__imp__closesocket@4]
-          sub ESP,4
-          mov EAX,DWORD PTR [ESP+32]
-          add ESP,364
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41ed20:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET L_45758c
-          mov DWORD PTR [ESP+8],EAX
-          jmp L_41ec6b
-L_41ed37:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET L_4575bc
-          mov DWORD PTR [ESP+8],EAX
-          jmp L_41ec6b
+#@C _netFindBeacon
           .byte 0x66
           .byte 0x90
 #@C _netTimerStart
@@ -1518,20 +1359,20 @@ L_457518:
           .string "could not receive data on socket, error %d\n"
 L_457544:
           .string "received only %x of %x bytes! fail\n"
-L_457568:
+_net_457568:
           .string "unable to open socket, error %d\n"
           .zero 3
-L_45758c:
+_net_45758c:
           .string "unable to set bcast socket option, error %d\n"
           .zero 3
-L_4575bc:
+_net_4575bc:
           .string "unable to set bind socket, error %d\n"
-L_4575e1:
+_net_4575e1:
           .string "Socket error! %d\n"
-L_4575f3:
+_net_4575f3:
           .string "UDP wait timeout!\n"
           .zero 2
-L_457608:
+_net_457608:
           .string "Beacon received, but the beacon magic %X was not %X!\n"
 _net_45763e:
           .string "Completed in %.0fs\n"

@@ -77,7 +77,9 @@ def wip_state(obj, addrs):
         if not name or not re.search(r'^\w[^;{]*\b%s\(' % re.escape(name), text, re.M):
             continue
         r = subprocess.run([sys.executable, os.path.join(ROOT, 're', 'fncmp.py'), src, name]
-                           + WIP_FLAGS.get(obj, []), capture_output=True, text=True, cwd=ROOT)
+                           + WIP_FLAGS.get(obj, []), capture_output=True, text=True, cwd=ROOT,
+                           # drafts keep their string literals
+                           env=dict(os.environ, FNCMP_LITERALS='1'))
         out[a] = 'wip' if r.stdout.strip() == 'MATCH' else 'draft'
     return out
 

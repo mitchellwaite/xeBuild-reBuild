@@ -602,13 +602,13 @@ Still off:
 
 ## app/net.c
 
-Draft of the whole object (all 32 functions, data as statics). 25 match
-and are built from `src/app/net.c` (mixed): netFree, netTimerStart/End/
-Elapsed, netSendStr, netSendData, netCheckOk, netOpenSocket, netClose,
-netDisconnect, netGetInfo, netDumpNand, netGetBldrs, netGetBadBlocks,
-netReboot, netMount, netUnmount, netGetFile, netReadBlocks,
-netFormatSysex/Compat, netWriteBlocks, netEraseBlock, netMkdir,
-netSendFlash. `python wip/netmixed.py <fns>` makes the src file from the
+Draft of the whole object (all 32 functions, data as statics). 28 match;
+26 are built from `src/app/net.c` (mixed): netFree, netFindBeacon,
+netTimerStart/End/Elapsed, netSendStr, netSendData, netCheckOk,
+netOpenSocket, netClose, netDisconnect, netGetInfo, netDumpNand,
+netGetBldrs, netGetBadBlocks, netReboot, netMount, netUnmount, netGetFile,
+netReadBlocks, netFormatSysex/Compat, netWriteBlocks, netEraseBlock,
+netMkdir, netSendFlash. `python wip/netmixed.py <fns>` makes the src file from the
 draft (it keeps a function's `__attribute__` line); test the draft with
 `FNCMP_LITERALS=1` (net.s's strings are named `net_<address>`). The src
 file gives the strings as `static const char net_X[] = "..."`, not
@@ -661,20 +661,54 @@ What got them:
   failed } }`. rlen in a block shares its stack slot with netTimerEnd's
   `now` (one `lea esi,[28+esp]` for both).
 
+What got them (this round):
+
+- netReadInfo (wip only): eight explicit field swaps, not a loop. cunroll
+  gives the loop's first copy fresh SSA names in reverse statement order,
+  so reassoc's equal-rank tie (SSA version) flips its first add. The
+  straight-line swaps then need the success block to start without a call
+  (else the call heuristic makes `len > 1183` 29% and bbro shares the
+  epilogue): `int ok = 0; if (send == 5) { r = netRecv; if (r && len >=
+  size) ok = 1; } if (!ok) { failed; return 0; } swaps; logs; return 1;`
+  (ok is threaded away after profile_estimate). Not built: in the mixed
+  file netInfo is extern, and sched2 then puts the `netInfo = info` store
+  above the two `reserved` stores.
+- netSendFile (wip only): `if (!name) return 0; if (!buf) return 0;` then
+  a C99 `char cmd[264] = "SNDF";` at function scope (an inner block's cmd
+  clobber gives the `!name` return its own PHI, so a second `xor eax,eax`
+  block), no-crossjumping, and `__asm__("" : : "m"(buf))`: separate tests
+  get the pointer heuristic, which puts buf's two uses just over IRA's
+  memory-vs-callee-saved cost, so buf went to esi. Not built: the shared
+  return-0 block is `.p2align`ed in the original (compute_alignments:
+  branch frequency > 4 x fallthru, align-loop-iterations). Ours has the
+  separate tests' frequencies (the `&&` form's would align it);
+  `--param align-loop-iterations=2` aligns it but also a netSendData block.
+- netFindBeacon: `volatile u32 addr;` set to 0 after `socket()`. The
+  original keeps addr in a stack slot, stored once and loaded on every
+  return (even the socket-failure one), so it was a memory variable; with
+  it in memory the setsockopt/bind/select-error paths, each written as
+  `log; closesocket(s); return addr;`, crossjump into one tail and the
+  timeout path keeps its own copy.
+
 Open (diff lines from `re/fncmp.py`):
 
-- netSendFile 5: netMkdir's shape with `if (name && buf)`; ours has a
-  second return-0 block for the `!name || !buf` path (no-crossjumping
-  keeps it apart; with crossjumping the head merge comes back).
-- netWritePatches 9: the same tension. The original shares one `xor
-  eax,eax` return block between send failure and both inlined
-  netSendData failures (crossjumping on) yet has no head merge (off).
-  Without the attribute it is 11 (head merge and epilogue duplication).
-- netReadInfo 4: the first of the 8 swapped words uses ebx/ecx the other
-  way round (reassoc operand ranks; the other seven agree). Eight explicit
-  field swaps fix it but change the epilogue duplication.
+- netWritePatches 9 (4 without no-crossjumping/no-early-inlining, where
+  only jump2's head merge of the two `mov eax,1` differs). With
+  no-crossjumping the inlined netSendData's two failures reach the return
+  through a block holding hdr's clobber, a different PHI edge from the
+  send failure's, so they get their own `xor`. hdr shares rlen's stack slot
+  in the original, so it really is the inlined netSendData. The head merge
+  is try_head_merge_bb (needs single-pred successors that aren't df-dirty);
+  an empty asm in the netEmpty branch stops it but breaks the threading.
 - netConnect 39: the original ends `mov eax,1; test; jne` with every
-  failure sharing one `xor eax,eax` block.
+  failure sharing one `xor eax,eax` block. Ours: phiopt1 turns `if
+  (!netReadInfo()) return 0; return 1;` into `setne` (with no-ssa-phiopt,
+  ce1 does), and uncprop makes the beacon-failure return reuse addr, so the
+  PHI lives in ebx and every failure gets `xor ebx,ebx`. The original's
+  readinfo-failure block must be a lone `eax=0` that the `log; eax=0`
+  failure blocks crossjump into (a 1-insn crossjump is allowed when one
+  block matches whole). Block-local `sa`/`saLen`, readinfo in both
+  branches, goto forms and `int` return didn't keep the branch.
 - netRecv 56/netRecvVerbose 57: the original has a separate copy of the
   `buf != netEmpty` check on each failure path. Registers differ: size
   ebx, got edi, buf esi. `-fno-tree-dominator-opts` gets netRecv to 23.

@@ -75,7 +75,8 @@ def main():
 
     def lit(m):
         pre, body = m.group(1), m.group(2)
-        if '/*' in pre or re.search(r'(?:strcpy|strcat)\([^,()]*, $|= $|char [^;]*= $', pre):
+        line = m.string[m.string.rfind('\n', 0, m.start()) + 1:m.string.find('\n', m.end())]
+        if '/*' in pre or '__asm__' in line or re.search(r'(?:strcpy|strcat)\([^,()]*, $|= $|char [^;]*= $', pre):
             return m.group(0)
         a = text[cstr(body)]
         used[a] = 'net_%x' % a
