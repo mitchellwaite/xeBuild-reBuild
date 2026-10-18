@@ -1087,8 +1087,9 @@ int writeImage(char *name)
 
 int finalizeImage(void)
 {
-	u32 b, p, i, n, size, blocks;
-	u8 *raw, *s;
+	u32 b, p, i, n, size;
+	int blocks;
+	u8 *raw, *s, *spare;
 
 	if (xb.flags & 0x10000000)
 		return 0;
@@ -1097,13 +1098,14 @@ int finalizeImage(void)
 		return -1;
 	if (xb.bigBlock) {
 		log_printf(1, "fixing up big block LBA numbers in spare...");
-		for (b = 0; b < xb.blocks / 8; b++)
-			for (p = 0; p < 256; p++) {
-				s = xb.spare + (b * 256 + p) * 16;
-				if ((s[2] & 0xf) == 0xf && s[1] == 0xff)
+		n = xb.blocks / 8;
+		s = xb.spare;
+		for (b = 0; b < n; b++)
+			for (p = 0; p < 256; p++, s += 16) {
+				if (((struct sp *)s)->b2lo == 0xf && s[1] == 0xff)
 					continue;
 				s[1] = b;
-				s[2] = (s[2] & 0xf0) | ((b >> 8) & 0xf);
+				((struct sp *)s)->b2lo = b >> 8;
 			}
 		log_printf(1, "done!\n");
 	} else if (xb.bbController) {
@@ -1111,27 +1113,22 @@ int finalizeImage(void)
 		for (i = 0; i < xb.blocks * 32; i++) {
 			u8 t;
 
-			s = xb.spare + i * 16;
-			if (!spareUsed(s))
+			if (!spareUsed(xb.spare + i * 16))
 				continue;
-			t = s[0];
-			s[0] = s[2];
-			s[2] = s[1];
-			s[1] = t;
+			t = xb.spare[i * 16];
+			xb.spare[i * 16] = xb.spare[i * 16 + 2];
+			xb.spare[i * 16 + 2] = xb.spare[i * 16 + 1];
+			xb.spare[i * 16 + 1] = t;
 		}
 		log_printf(1, "done!\n");
 	}
 	log_printf(1, "calculating ECD bytes and assembling raw image...");
-	__asm__("" : "+r"(raw));
 	for (b = 0; b < xb.blocks; b++)
 		for (p = 0; p < 32; p++) {
-			u8 *data = xb.hdr + (b * 32 + p) * 512;
-
-			s = xb.spare + (b * 32 + p) * 16;
-			if (!pageErased(data, s))
-				calcPageEcc(data, s);
-			memcpy(raw, data, 512);
-			memcpy(raw + 512, s, 16);
+			if (!pageErased(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16))
+				calcPageEcc(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16);
+			memcpy(raw, xb.hdr + (b * 32 + p) * 512, 512);
+			memcpy(raw + 512, xb.spare + (b * 32 + p) * 16, 16);
 			raw += 528;
 		}
 	log_printf(1, "done!\n");
