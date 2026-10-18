@@ -16,7 +16,6 @@
 .globl _crlKey
 .globl _daeEncrypt
 .globl _daeKey
-.globl _fcrtEncrypt
 .globl _infoKey0
 .globl _infoKey1
 .globl _infoKey2
@@ -50,6 +49,9 @@
 .globl _msg_extEncrypted
 .globl _msg_extMissing
 .globl _msg_extSize
+.globl _msg_fcrtBad
+.globl _msg_fcrtOffset
+.globl _msg_fcrtSize
 .globl _msg_fuseCpuKey
 .globl _msg_fuseLdv
 .globl _msg_fuseNull
@@ -1772,109 +1774,7 @@ L_41e604:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-_fcrtEncrypt:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,572
-          mov EBX,DWORD PTR [ESP+592]
-          cmp DWORD PTR [ESP+596],16384
-          mov EAX,DWORD PTR [EBX+256]
-          mov DWORD PTR [ESP+36],EAX
-          mov EAX,DWORD PTR [EBX+260]
-          mov DWORD PTR [ESP+40],EAX
-          mov EAX,DWORD PTR [EBX+264]
-          mov DWORD PTR [ESP+44],EAX
-          mov EAX,DWORD PTR [EBX+268]
-          mov DWORD PTR [ESP+48],EAX
-          je L_41e685
-          mov DWORD PTR [ESP+4],OFFSET L_457404
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,572
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_41e685:
-          lea EAX,DWORD PTR [EBX+284]
-          mov DWORD PTR [ESP],EAX
-          call _getBeU32
-          cmp EAX,16383
-          ja L_41e783
-          mov ESI,DWORD PTR [ESP+596]
-          lea EDI,DWORD PTR [EBX+EAX*1]
-          lea EBP,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+28],20
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+24],EBP
-          mov DWORD PTR [ESP+16],0
-          sub ESI,EAX
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],ESI
-          mov DWORD PTR [ESP],EDI
-          call _XeCryptSha
-          lea EAX,DWORD PTR [EBX+300]
-          mov DWORD PTR [ESP+8],20
-          mov DWORD PTR [ESP+4],EBP
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          je L_41e740
-          mov DWORD PTR [ESP+4],16384
-          mov DWORD PTR [ESP],EBX
-          call _verifyFcrt
-          cmp EAX,1
-          je L_41e740
-          mov DWORD PTR [ESP+4],OFFSET L_45745c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,572
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41e740:
-          lea EBX,DWORD PTR [ESP+72]
-          mov DWORD PTR [ESP+4],OFFSET _cpuKey
-          mov DWORD PTR [ESP],EBX
-          call _XeCryptAesKey
-          lea EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+12],EDI
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP+16],EAX
-          call _XeCryptAesCbc
-          add ESP,572
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_41e783:
-          mov DWORD PTR [ESP+4],OFFSET L_457430
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,572
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _fcrtEncrypt
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -2351,13 +2251,13 @@ L_457380:
           .zero 3
 L_4573b8:
           .string "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n"
-L_457404:
+_msg_fcrtSize:
           .string "****** ERROR: FCRT encrypt invalid size!\n"
           .zero 2
-L_457430:
+_msg_fcrtOffset:
           .string "**** ERROR: FCRT encrypt invalid offset!\n"
           .zero 2
-L_45745c:
+_msg_fcrtBad:
           .string "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n"
           .zero 1
 

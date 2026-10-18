@@ -65,7 +65,10 @@ int checkZeros(const u8 *p, u32 len);
 void showKey(int level, const u8 *key);
 u8 *setBeU64(u64 v, u8 *p);
 u16 getBeU16(const u8 *p);
-u32 getBeU32(const u8 *p);
+/* getBeU32 and verifyFcrt pure: fcrtEncrypt's block order needs them left
+   out of the call heuristic (with its off < 0x4000 hint at
+   builtin-expect-probability 60) */
+u32 getBeU32(const u8 *p) __attribute__((pure));
 u32 sumBytes(const u8 *p, u32 len);
 void memcpyrev(u8 *dst, const u8 *src, int len);
 int unscramble(u8 *buf, u32 len);
@@ -75,7 +78,7 @@ void kvSet(u8 *buf);
 int verifyExtended(void *buf, int size);
 int verifyCrl(void *buf, int size, int perBox);
 void daeDecrypt(u8 *dae, u32 size, int perBox);
-int verifyFcrt(u8 *fcrt, u32 size);
+int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
 
 extern struct xebuild xb;
 
@@ -137,6 +140,9 @@ extern const char msg_crlRetry[];	/* "failed! Trying alternate key..." */
 extern const char str_failedNl[];	/* "failed!\n" */
 extern const char msg_crlCrypted[];	/* "crl appears crypted, attempting to d..." */
 extern const char msg_crlBad[];	/* "\n******* ERROR: crl data appears to..." */
+extern const char msg_fcrtSize[];	/* "****** ERROR: FCRT encrypt invalid s..." */
+extern const char msg_fcrtOffset[];	/* "**** ERROR: FCRT encrypt invalid off..." */
+extern const char msg_fcrtBad[];	/* "****** WARNING: FCRT data appears to..." */
 
 void keysInit(int random)
 {
@@ -708,4 +714,29 @@ void daeEncryptOne(u8 *dae, u32 size, u8 *date)
 	XeCryptAesKey(&aes, xb.cpuKey);
 	XeCryptAesCbc(&aes, buf + 304, size - 304, dae + 304, iv, 1);
 	free(buf);
+}
+
+void fcrtEncrypt(u8 *fcrt, u32 size)
+{
+	u8 iv[16];
+	u8 hash[20];
+	u32 off;
+	AESSTATE aes;
+
+	memcpy(iv, fcrt + 256, 16);
+	if (size != 0x4000) {
+		log_printf(0, msg_fcrtSize);
+		return;
+	}
+	off = getBeU32(fcrt + 284);
+	if (__builtin_expect(off < 0x4000, 1)) {
+		XeCryptSha(fcrt + off, 0x4000 - off, NULL, 0, NULL, 0, hash, 20);
+		if (memcmp(fcrt + 300, hash, 20) && verifyFcrt(fcrt, 0x4000) != 1) {
+			log_printf(0, msg_fcrtBad);
+			return;
+		}
+		XeCryptAesKey(&aes, xb.cpuKey);
+		XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
+	} else
+		log_printf(1, msg_fcrtOffset);
 }

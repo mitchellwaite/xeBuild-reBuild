@@ -205,7 +205,7 @@ Flags: `-O3 -fno-tree-loop-vectorize` (with vectorize on, PRE's eliminate drops 
 
 ## app/keys.c
 
-Draft of the whole object, with string literals. 41 of 48 functions are
+Draft of the whole object, with string literals. 42 of 48 functions are
 built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
 makes from this file; add a function's name there (and its address to
 `split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
@@ -225,6 +225,13 @@ fuse stores may alias it.  The copies are plain memcpys, the last one
 `memcpy(xb.cpuKey, fuse + 32, 16)`.  Its NULL block is aligned, so the
 object builds with `--param align-threshold=200`.
 
+fcrtEncrypt's four exits each get their own epilogue copy, which
+bb-reorder makes only for exit edges at >= 10% of the entry frequency.
+That needs `size != 0x4000` near 50% (getBeU32 and verifyFcrt declared
+pure, so only the log side has the call heuristic) and
+`__builtin_expect(off < 0x4000, 1)` at builtin-expect-probability 60
+(set for the object).
+
 Still off:
 
 - `smcChecksum` (29) and `smcPrepare` (24, which inlines it): the loop is
@@ -240,21 +247,6 @@ Still off:
   flips (151), so the original indexes.  The sums are spilled in the
   parent region too (IRA pops r87/r88 l0 as spills under the loop's caps),
   where the original keeps them in registers outside the loop.
-- `fcrtEncrypt` (13): the "invalid offset" log should be the last block with
-  its own epilogue; ours puts it before the shared epilogue. All four exits
-  having their own epilogue means bb-reorder copied the epilogue into each,
-  which needs each exit edge at >= 10% of the entry frequency
-  (DUPLICATION_THRESHOLD); ours: `size != 0x4000` is predicted 72% taken
-  (opcode heuristic; the call heuristic is on both sides and cancels), so
-  the main path has 28% and the three exits can't all reach 10%. Declaring
-  getBeU32 pure brings it to 51% but isn't the original. Nested if/else,
-  inverted conditions, a static hash-check helper (changes the frame) and
-  `__builtin_expect` on either test don't give it.
-  The bbro dump confirms it: the damaged-data exit is 359/10000 (memcmp
-  50%, `verify != 1` 51.2% after the call heuristic on the log edge).  With
-  E1 first, E2/E3/main all need 10%, so `size == 0x4000` must be predicted
-  well above 30%; gotos, `size - off`, and pure getBeU32/verifyFcrt
-  (block-scope redeclarations) don't change the layout.
 - `kvPrepare` (437): ours tail-merges the inlined kvEncrypt and kvEncryptAlt
   copies (one HMAC/RC4 sequence with the salt selected); the original keeps
   both (their registers differ), and its size error is the fallthrough of

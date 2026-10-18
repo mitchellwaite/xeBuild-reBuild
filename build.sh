@@ -32,9 +32,10 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # getConsoleFiles' netMount hint needs 68 (66-70 in other forms)
       app/mode_update) orig="$f.c"
              cflags="-O3 --param align-threshold=200 --param builtin-expect-probability=68" ;;
-      # setFuseCpuKey aligns its fuse == NULL block
+      # setFuseCpuKey aligns its fuse == NULL block; fcrtEncrypt's offset
+      # hint needs 60
       app/keys) orig="$f.c"
-             cflags="-O3 --param align-threshold=200" ;;
+             cflags="-O3 --param align-threshold=200 --param builtin-expect-probability=60" ;;
       # console_hdd's __builtin_expect hints are tuned to this probability;
       # sendAvatarData's loop is aligned (1 and 2 align other loops too)
       app/console_hdd) orig="$f.c"

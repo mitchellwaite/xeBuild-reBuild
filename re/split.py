@@ -428,6 +428,7 @@ SYMBOLS = {
     0x457088: '_msg_extEncrypted', 0x4570c8: '_msg_extDecryptFail', 0x457110: '_msg_sdMissing',
     0x457178: '_msg_sdSize', 0x4571d5: '_str_successNl', 0x4571e0: '_msg_crlRetry',
     0x457200: '_str_failedNl', 0x45720c: '_msg_crlCrypted', 0x457248: '_msg_crlBad',
+    0x457404: '_msg_fcrtSize', 0x457430: '_msg_fcrtOffset', 0x45745c: '_msg_fcrtBad',
     0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
     # bootloaders.s strings the mixed bootloaders.c refers to (extern names)
     0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
@@ -680,7 +681,7 @@ C_FUNCS = {
     0x41c1b0, 0x41c370, 0x41c5e0, 0x41c6b0,  # cbaEncrypt2 cbbEncrypt cdEncryptZero cdEncrypt
     0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt
     0x41cff0, 0x41d6a0, 0x41d9b0, 0x41db70,  # kvEncryptAlt extendedPrepare secdataPrepare shaCheck
-    0x41dc30, 0x41dfa0, 0x41e7b0,            # crlEncrypt daeEncryptOne shaHeader
+    0x41dc30, 0x41dfa0, 0x41e7b0, 0x41e620,  # crlEncrypt daeEncryptOne shaHeader fcrtEncrypt
     # app/image_read (the rest are drafted in wip/app/image_read.c)
     0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile
     0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset
