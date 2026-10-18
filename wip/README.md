@@ -311,8 +311,21 @@ Still off:
   the kv path already does). That needs the test-to-success edge at >= 10%
   of the entry frequency; ours is about 7% (kv size test 39%, verify 50%,
   smc size 39%). Early-return vs nested forms of the four checks don't
-  get there.
-- `mode_update` (722): everything after the argument loop is cold in ours
+  get there (the smc forms all canonicalize to the same CFG). Copying
+  needs both BLDR -> test and test -> success at >= 90 (entry 909), and
+  the verify failure keeps its own epilogue only while its edge is >= 90
+  too. `if (__builtin_expect(ret, 1))` on verify at 74% duplicates the
+  test (22 lines left: the verify-failure epilogue copy and an ebx/edx
+  swap in the inlined bldrGetSmc), but 72, 73 and 75 flip the equal-key
+  USVR/BLDR traces (118-132), and getConsoleFiles needs 66-70. A second
+  hint in getConsoleFiles (checkBadBlocks, getBootloaders) doesn't widen
+  its window to 74.
+- `mode_update` (722): the post-loop failures assign constants (`ret =
+  5`, 3, 1), so the const-return heuristic predicts each failure taken
+  (67%) and the chain decays from 200 to ~3; the original also has the
+  netConnect failure as the fallthrough, so it isn't simply the inverse.
+  A `__builtin_expect` on the loop test makes it worse (1004/1210).
+  Everything after the argument loop is cold in ours
   (the loop is predicted ~45 iterations), so bb-reorder scatters the main
   path over round-4 traces; the original keeps connect, getConsoleFiles,
   buildImage, flash, avatar and reboot as one trace. The type suffix is an
