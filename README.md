@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **527 of 617** (525 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **528 of 617** (526 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 342 / 432 |
+| `app/` | 16 / 25 | 343 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -38,7 +38,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 |---|---|---|
 | `app/mode_update` | mixed; 0 of 2 drafted functions match in `wip/app/mode_update.c` | 12 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
-| `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 5 / 12 |
+| `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
 | `app/image_write` | mixed; 0 of 12 drafted functions match in `wip/app/image_write.c` | 34 / 46 |
 | `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
@@ -87,9 +87,9 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/filelist_ini</code>: 5 / 12 in C</summary>
+<summary><code>app/filelist_ini</code>: 6 / 12 in C</summary>
 
-- ⬜ `fixFileCase` (0x408ec0) (draft in `wip/`, no match yet)
+- ✅ `fixFileCase` (0x408ec0)
 - ⬜ `iniPreParse` (0x408fe0) (draft in `wip/`, no match yet)
 - ✅ `memFindStr` (0x409310)
 - ✅ `memFindChar` (0x4093d0)

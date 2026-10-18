@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 typedef unsigned char u8;
 
@@ -15,7 +17,7 @@ extern struct xebuild xb;
 extern unsigned char *iniBuf;
 extern int iniSize;
 
-void fixFileCase(void);
+extern char fnSmc[32], fnKv[32], fnPatches[32];
 int iniPreParse(unsigned char *buf, int size);
 void log_printf(int level, const char *fmt, ...);
 long getFileSize(FILE *f);
@@ -37,6 +39,35 @@ extern const char fi_4502e4[];	/* "***** WARNING: User ini %s
 appears to be a multi byte file, ..." */
 extern const char fi_450347[];	/* "pre-parsing and sanitizing
 " */
+
+/* copy the base dir's casing of the smc, kv and patches file names; IRA's
+   regional allocation keeps &st rather than dir in a register (ira-region=one) */
+__attribute__((optimize("ira-region=one")))
+void fixFileCase(void)
+{
+	char dir[1024], path[1024];
+	struct stat st;
+	DIR *d;
+	struct dirent *de;
+
+	strcpy(dir, xb.baseDir);
+	d = opendir(dir);
+	if (d == NULL)
+		return;
+	while ((de = readdir(d)) != NULL) {
+		strcpy(path, dir);
+		strcat(path, de->d_name);
+		if (stat(path, &st) < 0)
+			continue;
+		if (stricmp(de->d_name, fnSmc) == 0)
+			strcpy(fnSmc, de->d_name);
+		else if (stricmp(de->d_name, fnKv) == 0)
+			strcpy(fnKv, de->d_name);
+		else if (stricmp(de->d_name, fnPatches) == 0)
+			strcpy(fnPatches, de->d_name);
+	}
+	closedir(d);
+}
 
 /* offset after `str` in buf (past its NUL if skipNul and it ends a line), or -1 */
 int memFindStr(unsigned char *buf, int size, const char *str, int skipNul)

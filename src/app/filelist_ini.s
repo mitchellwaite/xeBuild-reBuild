@@ -19,7 +19,9 @@
 .globl _fi_4502dd
 .globl _fi_4502e4
 .globl _fi_450347
-.globl _fixFileCase
+.globl _fnKv
+.globl _fnPatches
+.globl _fnSmc
 .globl _getIniBool
 .globl _getIniU32
 .globl _iniBoolInvalid
@@ -29,92 +31,7 @@
 
 .text
 .p2align 4
-_fixFileCase:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,2124
-          lea EBP,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+4],OFFSET L_47ad4c
-          mov DWORD PTR [ESP],EBP
-          call _strcpy
-          mov DWORD PTR [ESP],EBP
-          call _opendir
-          test EAX,EAX
-          je L_408f77
-          lea ESI,DWORD PTR [ESP+1088]
-          mov EDI,EAX
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_408f00:
-          mov DWORD PTR [ESP],EDI
-          call _readdir
-          test EAX,EAX
-          mov EBX,EAX
-          je L_408f6f
-L_408f0e:
-          add EBX,8
-          mov DWORD PTR [ESP+4],EBP
-          mov DWORD PTR [ESP],ESI
-          call _strcpy
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],ESI
-          call _strcat
-          lea EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+4],EAX
-          call _stat
-          test EAX,EAX
-          js L_408f00
-          mov DWORD PTR [ESP+4],OFFSET L_44a340
-          mov DWORD PTR [ESP],EBX
-          call _stricmp
-          test EAX,EAX
-          jne L_408f82
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],OFFSET L_44a340
-          call _strcpy
-          mov DWORD PTR [ESP],EDI
-          call _readdir
-          test EAX,EAX
-          mov EBX,EAX
-          jne L_408f0e
-L_408f6f:
-          mov DWORD PTR [ESP],EDI
-          call _closedir
-L_408f77:
-          add ESP,2124
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_408f82:
-          mov DWORD PTR [ESP+4],OFFSET L_44a360
-          mov DWORD PTR [ESP],EBX
-          call _stricmp
-          test EAX,EAX
-          jne L_408fb0
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],OFFSET L_44a360
-          call _strcpy
-          jmp L_408f00
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_408fb0:
-          mov DWORD PTR [ESP+4],OFFSET L_44a3e0
-          mov DWORD PTR [ESP],EBX
-          call _stricmp
-          test EAX,EAX
-          jne L_408f00
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],OFFSET L_44a3e0
-          call _strcpy
-          jmp L_408f00
+#@C _fixFileCase
           .byte 0x8d
           .byte 0x76
           .byte 0x0
@@ -867,7 +784,7 @@ L_409945:
           call _strcpy
           jmp L_409780
 L_409963:
-          mov DWORD PTR [ESP+4],OFFSET L_44a3e0
+          mov DWORD PTR [ESP+4],OFFSET _fnPatches
           mov DWORD PTR [ESP],EBX
           call _strcpy
           mov EAX,DWORD PTR [_g479ea8]
@@ -932,7 +849,7 @@ L_409a30:
           call _strcpy
           jmp L_409780
 L_409a45:
-          mov DWORD PTR [ESP+4],OFFSET L_44a360
+          mov DWORD PTR [ESP+4],OFFSET _fnKv
           mov DWORD PTR [ESP],EBX
           call _strcpy
           jmp L_409780
@@ -943,7 +860,7 @@ L_409a45:
           .byte 0x0
           .byte 0x0
 L_409a60:
-          mov DWORD PTR [ESP+4],OFFSET L_44a340
+          mov DWORD PTR [ESP+4],OFFSET _fnSmc
           mov DWORD PTR [ESP],EBX
           call _strcpy
           jmp L_409780
@@ -3240,10 +3157,10 @@ L_44a2a0:
 L_44a320:
           .string "none"
           .zero 27
-L_44a340:
+_fnSmc:
           .string "smc.bin"
           .zero 24
-L_44a360:
+_fnKv:
           .string "kv.bin"
           .zero 25
 L_44a380:
@@ -3255,7 +3172,7 @@ L_44a3a0:
 L_44a3c0:
           .string "xell-2f.bin"
           .zero 20
-L_44a3e0:
+_fnPatches:
           .string "patches_"
           .zero 23
 L_44a400:

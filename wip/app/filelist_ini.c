@@ -28,6 +28,7 @@ const unsigned char validChars[74] = {
 };
 
 /* fix the case of the file names in the base dir that need it */
+__attribute__((optimize("ira-region=one")))
 void fixFileCase(void)
 {
 	char dir[1024], path[1024];
