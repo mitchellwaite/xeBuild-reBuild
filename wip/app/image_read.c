@@ -913,17 +913,17 @@ void remapBadBlocks(int numBlocks)
 	for (i = 0; i < xb.numBad; i++) {
 		if (xb.badRemap[i] != -1)
 			continue;
-		if (xb.badBlocks[i] >= numBlocks - 32) {
+		if (xb.badBlocks[i] < numBlocks - 32) {
+			b = findFreeRemap(numBlocks);
+			if (b) {
+				xb.badRemap[i] = b;
+				log_printf(1, "block 0x%x had no remap, assigning remap block 0x%x\n", xb.badBlocks[i], b);
+			} else
+				log_printf(1, "block 0x%x had no remap, and I could not assign one!\n", xb.badBlocks[i]);
+		} else {
 			log_printf(1, "block 0x%x had no need of remap, it's in the wear area\n", xb.badBlocks[i]);
 			xb.badRemap[i] = -5;
-			continue;
 		}
-		b = findFreeRemap(numBlocks);
-		if (b) {
-			xb.badRemap[i] = b;
-			log_printf(1, "block 0x%x had no remap, assigning remap block 0x%x\n", xb.badBlocks[i], b);
-		} else
-			log_printf(1, "block 0x%x had no remap, and I could not assign one!\n", xb.badBlocks[i]);
 	}
 	log_printf(1, "done!\n");
 }

@@ -391,13 +391,23 @@ return reuses fseek's 0). `x != x / k * k` instead of `x % k`.
 
 Still off (fncmp lines):
 
-- `remapBadBlocks` (6): the inlined findFreeRemap keeps its `numBad != 0`
-  guard.
+- `remapBadBlocks` (2): the inlined findFreeRemap keeps its `numBad != 0`
+  guard. The wear-area test as `< numBlocks - 32` with the remap path
+  first keeps ce1 (find_if_case_2) from hoisting `b = numBlocks - 1` above
+  it. `int i` drops the guard (VRP1 gets `numBad >= 1` from the signed
+  IV, so the inner loop is entered without a test) but flips the exit
+  compare to `cmp ecx,esi`; `u32 i` IV ranges stay symbolic, and
+  `__builtin_unreachable()` bounds on `i` don't help.
 - `findAnchor` (11, with `u32 shaSelfCheck`): the "invalid" log for the
   second block is jump-threaded into two copies; the original keeps one and
-  tests ok0 after it.
+  tests ok0 after it (with `xor eax,eax` hoisted above the test). Other
+  tail shapes (`ret` variable, if/else-if, ok1 first, nested) don't help.
 - `copyMmcImage` (11): uncprop reuses memcmp's 0 for `return 0`; every
-  non-int return type merges the returns instead.
+  non-int return type merges the returns instead. With `u32` it matches
+  under `-fno-if-conversion`: ce1 moves the success path's `ret = 1` above
+  the branch because that edge is predicted 61% (call 71%, early return
+  39%); the original's must have been <= 50%. `__builtin_expect` and other
+  shapes didn't get there.
 - `getImageKv` (22, nested form): the alt-KV success and the failures
   should get their own epilogues (bb-reorder needs >= 10% of the entry
   frequency on those edges).
