@@ -51,6 +51,35 @@ def functions(lines):
     return out
 
 
+def jump_tables(lines):
+    """Take gcc's jump tables (an .rdata block of a label and `.long`s,
+    inside a function) out of its output: ({function: [table lines]}, the
+    rest).  The .s has a `#@J name k n` marker where the original's k-th
+    table of the function is."""
+    tables, out, fn, k = {}, [], None, 0
+    while k < len(lines):
+        m = LABEL.match(lines[k])
+        if m and k and DEF.match(lines[k - 1]) and DEF.match(lines[k - 1]).group(1) == m.group(1):
+            fn = m.group(1)
+        if not re.match(r'^\s*\.section\s+\.rdata\b', lines[k]):
+            out.append(lines[k])
+            k += 1
+            continue
+        e = k + 1
+        while e < len(lines) and not SECTION.match(lines[e]):
+            e += 1
+        body = [l for l in lines[k + 1:e] if not re.match(r'^\s*$|^\s*\.(p2)?align\b', l)]
+        if fn and len(body) > 1 and LABEL.match(body[0]) and \
+                all(re.match(r'^\s*\.long\s+L\d+\s*$', l) for l in body[1:]):
+            tables.setdefault(fn, []).append(body)
+            # back to .text: drop the `.text` that follows
+            k = e + 1 if e < len(lines) and re.match(r'^\s*\.text\s*$', lines[e]) else e
+            continue
+        out.append(lines[k])
+        k += 1
+    return tables, out
+
+
 def drop_rdata(lines, defined):
     """Drop gcc's .rdata blocks whose labels the .s defines (a `static const
     char x[] = "..."` standing for the .s's string x, so that gcc can fold
@@ -81,15 +110,25 @@ def main():
     src, gen, dst = sys.argv[1:4]
     lines = open(src).read().split('\n')
     defined = {m.group(1) for m in map(LABEL.match, lines) if m}
-    fns = functions(drop_rdata(open(gen).read().split('\n'), defined))
+    tables, gen_lines = jump_tables(open(gen).read().split('\n'))
+    fns = functions(drop_rdata(gen_lines, defined))
     for name, body in fns.items():
         for l in body:
             m = LCOMM.match(l)
             if m and m.group(1) not in defined:
                 sys.exit('splice.py: %s defines %s, which the .s does not' % (gen, m.group(1)))
         fns[name] = [l for l in body if not LCOMM.match(l)]
-    out, used = [], set()
+    out, used, placed = [], set(), set()
     for l in lines:
+        m = re.match(r'^#@J (\S+) (\d+) (\d+)$', l)
+        if m:
+            t = tables.get(m.group(1), [])
+            k, n = int(m.group(2)), int(m.group(3))
+            if k >= len(t) or len(t[k]) - 1 != n:
+                sys.exit('splice.py: %s has no jump table %d of %d entries' % (m.group(1), k, n))
+            out += t[k]
+            placed.add((m.group(1), k))
+            continue
         m = re.match(r'^#@C (\S+)$', l)
         if not m:
             out.append(l)
@@ -105,6 +144,9 @@ def main():
     if extra:
         sys.exit('splice.py: %s defines %s, which the .s has no marker for (C_FUNCS)'
                  % (gen, ', '.join(sorted(extra))))
+    lost = ['%s %d' % (f, k) for f, t in tables.items() for k in range(len(t)) if (f, k) not in placed]
+    if lost:
+        sys.exit('splice.py: no `#@J` marker for jump table %s' % ', '.join(lost))
     open(dst, 'w', newline='\n').write('\n'.join(out))
 
 

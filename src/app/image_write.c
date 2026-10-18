@@ -14,7 +14,7 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 
-#define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
+#define SWAP16(x) ((((x) << 8) & 0xff00) + (((x) >> 8) & 0xff))
 #define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 /* an input file of the image */
@@ -131,6 +131,7 @@ u8 *setBeU16(u16 v, u8 *p);
 int findFile(int type);
 u32 findFileOffset(int type);
 int buildFlash(void);
+int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 u32 copyMuData(FILE *out, void *sha);
 int isErased(const u8 *p, u32 len);
 void writeSha1File(char *out, const char *src, const unsigned char *sha);
@@ -176,13 +177,26 @@ static u8 smcPage[0x1000];
 #define setFsTable(start, n, next) do { \
 	u32 i_; \
 	if ((next) != 0xf1f1) { \
-		u16 v_ = SWAP16(next); \
-		if ((next) == 0 || (next) == 0xffff) { \
-			for (i_ = (start) - xb.fsStart; i_ < (start) - xb.fsStart + (n); i_++) \
-				fsTable[i_] = SWAP16(i_ + 1); \
-		} else { \
-			for (i_ = 0; i_ < (n); i_++) \
-				fsTable[(start) - xb.fsStart + i_] = v_; \
+		for (i_ = 0; i_ < (n); i_++) { \
+			if ((next) != 0 && (next) != 0xffff) \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+			else \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16((start) - xb.fsStart + i_ + 1); \
+		} \
+		if ((next) == 0xffff) \
+			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+	} \
+} while (0)
+
+/* the same with the chain test first */
+#define setFsTableB(start, n, next) do { \
+	u32 i_; \
+	if ((next) != 0xf1f1) { \
+		for (i_ = 0; i_ < (n); i_++) { \
+			if ((next) == 0 || (next) == 0xffff) \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16((start) - xb.fsStart + i_ + 1); \
+			else \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
 		} \
 		if ((next) == 0xffff) \
 			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
@@ -190,6 +204,8 @@ static u8 smcPage[0x1000];
 } while (0)
 
 /* strings in image_write.s */
+static const char iw_451760[] = "***** WARNING: cfldv was not set anywhere, setting it to 1\n";
+static const char iw_45179c[] = "      please set it in ini or on command line and rebuild!\n";
 static const char iw_4517f8[] = "flash header build version set to v.%d\n";
 static const char iw_451820[] = "\n***** ERROR: SMC size 0x%x not supported!!!\n\n";
 static const char iw_451850[] = "reset smc load address to 0x%x size 0x%x\n";
@@ -219,13 +235,181 @@ static const char iw_451f80[] = "\tadding %s at raw offset 0x%x len 0x%x (end 0x
 int imgWriteStart(const void *src, u32 len, u16 next) __attribute__((regparm(3)));
 int imgWriteAt(u32 off, const void *src, u32 len, u16 next) __attribute__((regparm(3)));
 int imgWritePage(u32 off, const void *src, u16 next) __attribute__((regparm(3)));
-int buildImage(void);
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
 u32 imgAddMobile(const void *data, u32 len, u8 type);
 void writeInitialHeader(void);
 void writeFsTable(u32 off);
 int finalizeImage(void);
+
+int buildImage(void)
+{
+	u32 rawSize, spareSize, userSize, cf, bb;
+	int bigBlock;
+	u8 *spare, *hdr;
+
+	if (xb.type == 1)
+		xb.files[findFile(9)].offset = xb.files[findFile(25)].offset;
+	if (xb.flags & 0x40000000) {
+		xb.blocks = 0x1000;
+		xb.smcConfigOffset = 0x3be0000;
+		xb.bigBlock = 1;
+		xb.spare9 = 4;
+		xb.spare7 = 0x10;
+		if (xb.flags & 0x20000000) {
+			xb.fsStart = 0x2e0;
+			xb.fsEnd = 0xee0;
+			userSize = 0x4000000;
+			xb.spare8 = 0x60;
+			xb.muBlocks = 0x5c;
+		} else {
+			xb.fsStart = 0xae0;
+			xb.fsEnd = 0xee0;
+			userSize = 0x4000000;
+			xb.spare8 = 0x20;
+			xb.muBlocks = 0x15c;
+		}
+		spareSize = 0x200000;
+		bigBlock = 1;
+		rawSize = 0x4200000;
+	} else if (xb.type != 6 && xb.type != 8) {
+		if (xb.flags & 0x10000000) {
+			xb.blocks = 0xc00;
+			xb.smcConfigOffset = 0x2ffc000;
+			userSize = 0x3000000;
+			xb.fsStart = 0;
+			xb.fsEnd = 0xbfa;
+			spareSize = 0x180000;
+			rawSize = 0x3180000;
+		} else {
+			xb.blocks = 0x400;
+			xb.smcConfigOffset = 0xf7c000;
+			userSize = 0x1000000;
+			xb.fsStart = 0;
+			xb.fsEnd = 0x3dc;
+			spareSize = 0x80000;
+			rawSize = 0x1080000;
+		}
+		xb.bigBlock = 0;
+		bigBlock = 0;
+	} else {
+		xb.blocks = 0x1000;
+		xb.smcConfigOffset = 0x3dfc000;
+		userSize = 0x4000000;
+		xb.bigBlock = 0;
+		xb.fsStart = 0;
+		spareSize = 0x200000;
+		xb.fsEnd = 0xf7c;
+		bigBlock = 0;
+		rawSize = 0x4200000;
+	}
+	xb.rawSize = rawSize;
+	xb.spareSize = spareSize;
+	xb.spare = spare = malloc(spareSize);
+	xb.userSize = userSize;
+	xb.hdr = hdr = malloc(userSize);
+	if (!hdr)
+		return -1;
+	if (!spare)
+		return -1;
+	memset(spare, 0xff, spareSize);
+	memset(hdr, 0xff, userSize);
+	memset(fsFiles, 0, sizeof(fsFiles));
+	memset(fsTable, 0, sizeof(fsTable));
+	memset(&hdrTemplate, 0, sizeof(hdrTemplate));
+	hdrTemplate.magic = 0x4fff;
+	hdrTemplate.build = 0x6007;
+	memset(mmcAnchor, 0, sizeof(mmcAnchor));
+	if (xb.type == 2) {
+		hdrTemplate.cbOffset = 0x800000;
+		hdrTemplate.cfOffset = 0x700;
+		hdrTemplate.kvLength = 0x400000;
+		hdrTemplate.cfOffset2 = 0x700;
+		hdrTemplate.patchSlots = 0x12070200;
+		hdrTemplate.kvOffset = 0x400000;
+		hdrTemplate.smcLength = 0x300000;
+		hdrTemplate.smcOffset = 0x100000;
+		imgEnd = 0x8000;
+		if ((xb.flags & 7) == 4) {
+			if (xb.flags & 0x80000000) {
+				xb.bbController = 1;
+				hdrTemplate.patchSlotSize = 0x100;
+			}
+			__asm__("" :: "d"(bigBlock));
+			if (bigBlock)
+				hdrTemplate.patchSlotSize = 0x100;
+			copyright[10] = '8';
+		} else if ((xb.flags & 7) == 1 || (xb.flags & 7) == 2) {
+			copyright[10] = '5';
+			hdrTemplate.kvLength = 0;
+		} else
+			copyright[10] = '7';
+	} else {
+		hdrTemplate.cbOffset = xb.type - 8 < 2 ? 0xc00000 : 0x800000;
+		cf = SWAP32(findFileOffset(9));
+		hdrTemplate.patchSlots = 0x12070200;
+		hdrTemplate.kvOffset = 0x400000;
+		hdrTemplate.smcLength = 0x300000;
+		hdrTemplate.smcOffset = 0x100000;
+		imgEnd = 0x8000;
+		hdrTemplate.kvLength = xb.type - 8 < 2 ? 0x800000 : 0x400000;
+		hdrTemplate.cfOffset = cf;
+		hdrTemplate.cfOffset2 = cf;
+		switch (xb.flags & 7) {
+		case 1:
+		case 2:
+			copyright[10] = '5';
+			hdrTemplate.kvLength = 0;
+			break;
+		case 3:
+			copyright[10] = '7';
+			break;
+		case 4:
+			if (xb.flags & 0x80000000) {
+				xb.bbController = 1;
+				hdrTemplate.patchSlotSize = 0x100;
+			}
+			bb = xb.bigBlock;
+			__asm__("" :: "b"(bb));
+			if (bb)
+				hdrTemplate.patchSlotSize = 0x200;
+			copyright[10] = '9';
+			break;
+		case 5:
+			xb.bbController = 1;
+			hdrTemplate.patchSlotSize = 0x100;
+			copyright[9] = '1';
+			copyright[10] = '0';
+			break;
+		case 6:
+		case 7:
+			xb.bbController = 1;
+			hdrTemplate.patchSlotSize = 0x100;
+			copyright[9] = '1';
+			copyright[10] = '0';
+			hdrTemplate.smcOffset = 0x800;
+			hdrTemplate.smcLength = 0x3800;
+			break;
+		}
+	}
+	if (xb.type > 5) {
+		copyright[9] = '1';
+		hdrTemplate.qfe = 0x80;
+		copyright[10] = '0';
+		hdrTemplate.patchSlotSize = xb.bigBlock ? 0x200 : 0x100;
+	} else if (!checkZeros(xb.cpuKey, 16) && !xb.cfLdv) {
+		log_printf(0, iw_451760);
+		if (xb.type != 2)
+			log_printf(0, iw_45179c);
+		xb.cfLdv = 1;
+	}
+	memcpy(hdrTemplate.copyright, copyright, sizeof(copyright));
+	if (xb.type != 1) {
+		xb.hdr[0x49] = 0;
+		xb.hdr[0x4a] = 0;
+	}
+	return buildFlash();
+}
 
 void imageFree(void)
 {

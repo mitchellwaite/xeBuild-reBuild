@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **549 of 617** (543 built from `src/`, 6 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **550 of 617** (544 built from `src/`, 6 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 364 / 432 |
+| `app/` | 16 / 25 | 365 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -39,7 +39,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
 | `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
-| `app/image_write` | mixed; 0 of 10 drafted functions match in `wip/app/image_write.c` | 36 / 46 |
+| `app/image_write` | mixed; 0 of 9 drafted functions match in `wip/app/image_write.c` | 37 / 46 |
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
@@ -104,12 +104,12 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 36 / 46 in C</summary>
+<summary><code>app/image_write</code>: 37 / 46 in C</summary>
 
 - ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
 - ⬜ `imgWritePage` (0x40ecc0) (draft in `wip/`, no match yet)
 - ⬜ `imgWriteAt` (0x40eef0) (draft in `wip/`, no match yet)
-- ⬜ `buildImage` (0x40f330) (draft in `wip/`, no match yet)
+- ✅ `buildImage` (0x40f330)
 - ✅ `imageFree` (0x40fb10)
 - ✅ `calcEcd` (0x40fb60)
 - ✅ `calcPageEcc` (0x40fbb0)
@@ -983,12 +983,15 @@ does nothing.
   `-fno-toplevel-reorder -fno-asynchronous-unwind-tables`, and there is no
   `.s`). `progress.py` counts a function whose label is in a `.c`'s asm as
   assembly.
-- The C functions can't emit data (string literals, jump tables,
-  statics); `splice.py` refuses. Declare the `.s`'s data `extern` under
-  `SYMBOLS` names instead (`iniBuf`, `iniSize`). Literals and switches move
-  when the whole object goes to C.
+- The C functions can't emit data (string literals, statics); `splice.py`
+  refuses. Declare the `.s`'s data `extern` under `SYMBOLS` names instead
+  (`iniBuf`, `iniSize`). Literals move when the whole object goes to C.
+- Jump tables are the exception: `split.py` writes a `#@J name k n` marker
+  where the original's k-th table of C function `name` (n entries) is, and
+  `splice.py` puts gcc's table (its label and `.long`s) there, so a switch
+  can stay in a mixed object (`buildImage`).
 - `split.py` refuses a C function whose internal labels the `.s` still
-  uses (e.g. an asm jump table that points into it).
+  uses in anything else.
 - A function matched alongside asm neighbours is only provisionally matched.
   gcc can't inline into, or know the registers used by, asm functions, so
   matched code can change when its neighbours become C. Re-check it then.

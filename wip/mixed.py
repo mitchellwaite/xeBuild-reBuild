@@ -91,7 +91,9 @@ def main():
     body = []
     for name in fns:
         if name in want or name in cfg['inline']:
-            body.append(re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, fns[name]))
+            # asm templates and constraints aren't strings in the .s
+            body.append('\n'.join(l if '__asm__' in l else re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, l)
+                                  for l in fns[name].split('\n')))
 
     ext = ['static const char %s[] = "%s";' % (used[a], lits[a]) for a in sorted(used)]
     sigs = {n: SIG.match(fns[n]).group(1) for n in fns}

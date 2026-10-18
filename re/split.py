@@ -607,6 +607,7 @@ SYMBOLS = {
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
     0x46f9e0: '_smcPage',
     # app/image_write's strings that its C functions use (wip/mixed.py)
+    0x451760: '_iw_451760', 0x45179c: '_iw_45179c',
     0x4517f8: '_iw_4517f8', 0x451820: '_iw_451820', 0x451850: '_iw_451850',
     0x45187c: '_iw_45187c', 0x4518e8: '_iw_4518e8',
     0x4519c4: '_iw_4519c4', 0x451a20: '_iw_451a20', 0x451a44: '_iw_451a44',
@@ -733,7 +734,7 @@ C_FUNCS = {
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF
     0x410070, 0x4100b0, 0x410220, 0x410240,  # isErased setBlockSpare imgSizeAligned setFlashBuild
-    0x40fcc0, 0x410290,                      # blockEccOk smcSetLoad
+    0x40fcc0, 0x410290, 0x40f330,            # blockEccOk smcSetLoad buildImage
     0x410350, 0x410360, 0x410460, 0x410490,  # imgSmcOffset setPatchSlot imgCfOffset imgCfSize
     0x4104d0, 0x4104e0, 0x4104f0, 0x410b90,  # imgSize imgSetSize imgBigBlock imgFits
     0x411030, 0x4112b0, 0x4112f0, 0x411600,  # imgAddFileAs fixupFsTable fixupEmptyFsBlocks addSmcConfig
@@ -1042,6 +1043,29 @@ def main():
         ls = [l if l.lstrip().startswith(('.string', '.ascii')) else
               irename.sub(lambda m: IAT_NAMES[m.group(1)], l) for l in ls]
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
+
+    # a C function's jump tables: gcc writes its own, which re/splice.py puts
+    # at the `#@J name k n` marker (the function's k-th table, n entries)
+    jt_count = collections.Counter()
+    LONG = re.compile(r'^\s*\.long\s+([\w$.@]+)\s*$')
+    for pc, ls in piece_lines.items():
+        if pc[3] not in mixed:
+            continue
+        out, k = [], 0
+        while k < len(ls):
+            m = LONG.match(ls[k])
+            cf = cfunc_labels.get(m.group(1)) if m else None
+            if cf is None:
+                out.append(ls[k])
+                k += 1
+                continue
+            e = k
+            while e < len(ls) and LONG.match(ls[e]) and cfunc_labels.get(LONG.match(ls[e]).group(1)) == cf:
+                e += 1
+            out.append('#@J %s %d %d' % (SYMBOLS[cf], jt_count[cf], e - k))
+            jt_count[cf] += 1
+            k = e
+        piece_lines[pc] = out
 
     # gcc's labels inside a C function are its own; nothing else may use ours
     # (objects built wholly from C don't count: their .s isn't written, and

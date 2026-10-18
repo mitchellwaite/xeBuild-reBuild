@@ -125,6 +125,7 @@ u8 *setBeU16(u16 v, u8 *p);
 int findFile(int type);
 u32 findFileOffset(int type);
 int buildFlash(void);
+int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 u32 copyMuData(FILE *out, void *sha);
 int isErased(const u8 *p, u32 len);
 void writeSha1File(char *out, const char *src, const unsigned char *sha);
@@ -181,6 +182,21 @@ static u8 smcPage[0x1000];
 	} \
 } while (0)
 
+/* the same with the chain test first */
+#define setFsTableB(start, n, next) do { \
+	u32 i_; \
+	if ((next) != 0xf1f1) { \
+		for (i_ = 0; i_ < (n); i_++) { \
+			if ((next) == 0 || (next) == 0xffff) \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16((start) - xb.fsStart + i_ + 1); \
+			else \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+		} \
+		if ((next) == 0xffff) \
+			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+	} \
+} while (0)
+
 static int imgWriteStart(const void *src, u32 len, u16 next)
 {
 	u32 off = 0, first, rem, tail, blocks, start, b, p;
@@ -225,13 +241,8 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 		tail = len;
 	} else {
 		rem = len - first;
-		if (rem < 0x4000) {
-			blocks = 0;
-			tail = rem;
-		} else {
-			blocks = rem / 0x4000;
-			tail = rem % 0x4000;
-		}
+		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		blocks = rem / 0x4000;
 		if (tail)
 			blocks++;
 		if (first)
@@ -270,7 +281,7 @@ static int imgWritePage(u32 off, const void *src, u16 next)
 
 int buildImage(void)
 {
-	u32 rawSize, spareSize, userSize, cf;
+	u32 rawSize, spareSize, userSize, cf, bb;
 	int bigBlock;
 	u8 *spare, *hdr;
 
@@ -361,6 +372,7 @@ int buildImage(void)
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
 			}
+			__asm__("" :: "d"(bigBlock));
 			if (bigBlock)
 				hdrTemplate.patchSlotSize = 0x100;
 			copyright[10] = '8';
@@ -394,7 +406,9 @@ int buildImage(void)
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
 			}
-			if (xb.bigBlock)
+			bb = xb.bigBlock;
+			__asm__("" :: "b"(bb));
+			if (bb)
 				hdrTemplate.patchSlotSize = 0x200;
 			copyright[10] = '9';
 			break;
@@ -685,44 +699,45 @@ int imgBigBlock(void)
 
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 {
-	u32 first, rem, tail, blocks, start, b, p, end, pages, npages, left;
+	u32 first, rem, tail, blocks, start, b, p, end, pages, npages, left, o128;
 	u8 sp9, *s;
 	int partial;
 
 	if (off > xb.rawSize || off + len > xb.rawSize)
 		return -1;
-	start = off >> 14;
 	first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
-	if (len <= first) {
-		blocks = 1;
-		tail = len;
-	} else {
+	start = off >> 14;
+	if (len > first) {
 		rem = len - first;
-		tail = rem % 0x4000;
+		tail = rem < 0x4000 ? rem : rem % 0x4000;
 		blocks = rem / 0x4000;
 		if (tail)
 			blocks++;
 		if (first)
 			blocks++;
+		
+	} else {
+		blocks = 1;
+		tail = len;
 	}
 	memcpy(xb.hdr + off, src, len);
 	if (pad == 1 && tail)
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
-	pages = len / 512;
-	if (len % 512)
-		pages++;
-	partial = len < 0x4000 && type != '0' && type != 0;
-	npages = partial ? pages : 32;
+	npages = len % 512 ? (len + 512) / 512 : len / 512;
+	pages = len % 512 ? len / 512 + 1 : len / 512;
+	partial = len < 0x4000 && type != 0 && type != '0';
+	
 	sp9 = 32 - pages;
-	left = (off & 0x1ffff) ? 256 - ((off & 0x1ffff) >> 9) : 256;
-	left = (left - ((pages + 3) & ~3)) >> 2;
+	o128 = off & 0x1ffff;
+	left = o128 ? 256 - o128 / 512 : 256;
+	left = (left - (pages & 3 ? (pages + 4) & ~3 : pages)) >> 2;
 	for (b = start; b != start + blocks; b++) {
 		p = 0;
 		if ((u8)(type - '1') < 15) {
-			p = xb.bigBlock ? off & 0x1ffff : off & 0x3fff;
-			p >>= 9;
+			p = xb.bigBlock ? o128 : off & 0x3fff;
+			if (p) p /= 512;
 		}
-		for (end = p + npages; p < end; p++) {
+		for (end = p + (partial ? npages : 32); p < end; p++) {
 			s = xb.spare + (b * 32 + p) * 16;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
@@ -740,7 +755,8 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 					} else {
 						s[5] = 1;
 						s[9] = left;
-						*(u16 *)(s + 7) = len;
+						s[8] = len >> 8;
+						s[7] = len;
 					}
 				}
 			} else {
@@ -751,8 +767,10 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 					s[2] = 1;
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
 					s[9] = sp9;
-					if (type != '0')
-						*(u16 *)(s + 7) = len;
+					if (type != '0') {
+						s[8] = len >> 8;
+						s[7] = len;
+					}
 				}
 			}
 		}
@@ -771,6 +789,7 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 {
 	u32 off = imgSizeAligned();
 	u32 start, b, p, pages, npages, first, rem, tail, blocks;
+	u16 blk;
 	u8 *s;
 
 	if (!imgFits(off, len)) {
@@ -783,54 +802,8 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	fsFiles[nFsFiles].time = *time;
 	if (!xb.bigBlock)
 		imgWriteAt(off, data, len, 0xffff);
-	else if (off <= xb.rawSize && off + len <= xb.rawSize) {
-		start = off >> 14;
-		first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
-		if (len <= first) {
-			blocks = 1;
-			tail = len;
-		} else {
-			rem = len - first;
-			tail = rem % 0x4000;
-			blocks = rem / 0x4000;
-			if (tail)
-				blocks++;
-			if (first)
-				blocks++;
-		}
-		memcpy(xb.hdr + off, data, len);
-		if (tail)
-			memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
-		pages = len / 512;
-		if (len % 512)
-			pages++;
-		npages = len < 0x4000 ? pages : 32;
-		for (b = start; b != start + blocks; b++) {
-			for (p = 0; p < npages; p++) {
-				s = xb.spare + (b * 32 + p) * 16;
-				memset(s, 0, 16);
-				if (xb.bigBlock) {
-					s[0] = 0xff;
-					s[2] = (s[2] & 0xf0) | ((b >> 8) & 0xf);
-					s[1] = b;
-					s[12] = (s[12] & 0xc0) | 0x2a;
-					s[9] = xb.spare9;
-					s[8] = xb.spare8;
-					s[7] = xb.spare7;
-				} else {
-					s[5] = 0xff;
-					s[1] = (s[1] & 0xf0) | ((b >> 8) & 0xf);
-					s[0] = b;
-					s[2] = 1;
-					s[12] = (s[12] & 0xc0) | 0x2a;
-					s[9] = 32 - pages;
-					*(u16 *)(s + 7) = len;
-				}
-			}
-		}
-		setFsTable(start, blocks, 0xffff);
-		imgEnd = off + len;
-	}
+	else
+		imgAdd(off, data, len, 0x2a, 0xffff, 1);
 	nFsFiles++;
 }
 
@@ -998,16 +971,19 @@ long checkBootImage(int write)
 
 void writeFsTable(u32 off)
 {
-	u8 *buf;
+	u8 *buf, *p;
 	int i;
 
 	if (xb.bigBlock && (off & 0x1ffff))
 		off = (off + 0x20000) & ~0x1ffff;
 	fsTable[(off >> 14) - xb.fsStart] = SWAP16(0x1ffd);
 	buf = malloc(0x4000);
+	p = buf;
 	for (i = 0; i < 16; i++) {
-		memcpy(buf + i * 0x400, (u8 *)fsTable + i * 0x200, 0x200);
-		memcpy(buf + i * 0x400 + 0x200, (u8 *)fsFiles + i * 0x200, 0x200);
+		memcpy(p, (u8 *)fsTable + i * 0x200, 0x200);
+		p += 0x200;
+		memcpy(p, (u8 *)fsFiles + i * 0x200, 0x200);
+		p += 0x200;
 	}
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
 	if (xb.bigBlock)

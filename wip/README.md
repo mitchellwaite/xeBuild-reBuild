@@ -813,7 +813,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 36 matching functions build from `src/app/image_write.c`, a mixed
+The 37 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
@@ -847,9 +847,11 @@ Findings:
   no `case 0`; `else if (type != 6 && type != 8)` (MMC/16M nested) before
   the 64M case; the malloc check is two tests (`if (!hdr) return -1;
   if (!spare) return -1;`), which puts the cold blocks in the original's
-  order. Left (22 lines, 16 of them ddisasm's `__ImageBase` for
-  0x400000): two registers (the `xb.bigBlock` test in switch case 4 is ebx
-  in the original, the type 2 `bigBlock` test edx).
+  order. The two registers left (the `xb.bigBlock` test in switch case 4
+  is ebx in the original, the type 2 `bigBlock` test edx) take empty-asm
+  pins (`__asm__("" :: "b"(bb))`, `"d"(bigBlock)`); fncmp still shows
+  ddisasm's `__ImageBase` for 0x400000 (same bytes). Its jump table goes
+  through split.py's `#@J` marker (README, mixed objects).
 - smcSetLoad: SWAP32's top byte is `((x) & 0xff) << 24`; only that form
   folds `(0x4000 - size) << 24` into `-(size << 24)`. The other
   functions compile the same either way.
