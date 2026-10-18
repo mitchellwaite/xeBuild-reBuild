@@ -408,14 +408,29 @@ Still off (fncmp lines):
   the branch because that edge is predicted 61% (call 71%, early return
   39%); the original's must have been <= 50%. `__builtin_expect` and other
   shapes didn't get there.
-- `getImageKv` (22, nested form): the alt-KV success and the failures
-  should get their own epilogues (bb-reorder needs >= 10% of the entry
-  frequency on those edges).
-- `listFlashFiles` (23), `fsGetFile` (70), `detectController` (61): register
-  allocation (fsGetFile has fsValid and name in esi/edi swapped).
-- `getImageSmc` (~100): the original has two variables for the SMC address
-  (one for the checks and memcpy, one for the logs) and threads the size
-  check into both address branches.
+- `getImageKv`: fncmp MATCHes with `__builtin_expect(…, 1)` on `size ==
+  0x8000`, the first verifyExtended and the sanity test, at
+  builtin-expect-probability 67-70 (no natural predictor gets the alt-KV
+  success edge to 10% of entry). But jcmp shows the `size != 0x8000` exit
+  jumps to the alt-success epilogue instead of the shared one after the
+  "not sane" log, so the build differs by 4 bytes; not built yet. Without
+  hints: 26. `python wip/kvsweep.py` sweeps hint subsets x probabilities
+  with jcmp; a 3-hint sweep (56-94) was stopped before finishing.
+- `listFlashFiles` (23), `fsGetFile` (70): register allocation (fsGetFile
+  has fsValid and name in esi/edi swapped).
+- `detectController` (35, was 61): pins `"D"(n)` after the small-block log
+  and `"b"(i)` at the loop top give the original's registers. Left: the
+  original head-merges the two `found = 0` edge copies into one `xor
+  eax,eax` before `n <= 1` and keeps found in eax outside the loop (memory
+  inside); `int found` merges but spills found everywhere.
+- `getImageSmc` (117, was 163): `int addr`, `int size` and `!addr || (addr
+  != 0x800 && addr != 0x1000)` give the two address registers (int for the
+  logs, its unsigned twin for the checks and memcpy) and the layout. Left:
+  the original's addr == 0 path prints a constant 0 (a phi copy on that
+  edge, tails cross-jumped), and the bad-address path keeps its 0x1000
+  copies on the size-test edges where ours are head-merged above the call
+  (cfgcleanup try_head_merge_bb, after RA). if/else-if and separate `if
+  (!addr)` forms, casts and types were worse.
 - `scanMobiles` (31): spareVersion must be called (inlined) so the version
   load compares as `cmp [mem],reg`; left: `off` placement and the older-path
   advance block being duplicated instead of the deleted path falling through.
@@ -430,7 +445,7 @@ getNonces' magic tests are 16-bit rotates (`ROT16`).
 
 buildCleanup's first loop ends at `&xb.smc` (a pointer loop with `m !=
 &xb.smc`; `i < 11` holds the end in a register). getImageLdv's `ldv` is
-`u32`, tested as `(u8)ldv > 32`. checkHeader's SysUpdateAddr test is two
+`u32`, tested as `(u8)ldv > 32`. irlit leaves every string on an `__asm__` line alone (pins). checkHeader's SysUpdateAddr test is two
 `if`s with an `__asm__("")` between: as `||` ifcombine makes `a | b` with
 the second test's SSA name first, and forwprop orders operands by version;
 written the other way round the order is right but the blocks move.

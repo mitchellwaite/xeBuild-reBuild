@@ -265,10 +265,10 @@ void getImageLdv(void)
 void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
-	u32 addr = SWAP32(h->smcBootAddr);
-	u32 size = SWAP32(h->smcBootSize);
+	int addr = SWAP32(h->smcBootAddr);
+	int size = SWAP32(h->smcBootSize);
 
-	if (addr != 0x800 && addr != 0x1000) {
+	if (!addr || (addr != 0x800 && addr != 0x1000)) {
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 		addr = 0x1000;
 	}
@@ -318,16 +318,16 @@ void getImageKv(void)
 		log_printf(1, "KeyVault cannot be 0x%x bytes, using 0x4000\n", size);
 		size = 0x4000;
 	}
-	if (addr + size < 528 * xb.numPages) {
+	if (__builtin_expect(addr + size < 528 * xb.numPages, 1)) {
 		xb.kv.data = malloc(0x4000);
 		if (xb.kv.data) {
 			log_printf(1, "decrypting KeyVault at address 0x%x of size 0x%x\n", addr, 0x4000);
 			xb.kv.size = 0x4000;
 			memcpy(xb.kv.data, xb.image + addr, 0x4000);
-			if (verifyExtended(xb.kv.data, xb.kv.size)) {
+			if (__builtin_expect(verifyExtended(xb.kv.data, xb.kv.size), 1)) {
 				log_printf(1, "keyvault decrypted OK, will use if no kv.bin is provided\n");
 				setKvSalt(xb.kv.data + 16);
-				if (size == 0x8000) {
+				if (__builtin_expect(size == 0x8000, 1)) {
 					addr += 0x4000;
 					xb.kvAlt.data = malloc(0x4000);
 					if (xb.kvAlt.data) {
@@ -1114,11 +1114,13 @@ int detectController(u8 *raw, int size)
 	}
 	n = size / 16896;
 	log_printf(1, "\tNAND dump is from a small block machine\n");
+	__asm__("" : : "D"(n));
 	xb.bigBlock = 0;
 	xb.muChecked = 1;
 	found = 0;
 	for (i = 1; i < n; i++) {
 		u8 *b = raw + i * 16896;
+		__asm__("" : : "b"(i));
 
 		if (b[517] != 0xff || b[513] == 0xff)
 			continue;
