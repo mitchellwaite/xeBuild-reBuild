@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **528 of 617** (526 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **531 of 617** (529 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 343 / 432 |
+| `app/` | 16 / 25 | 346 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 5 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
 | `app/image_write` | mixed; 0 of 12 drafted functions match in `wip/app/image_write.c` | 34 / 46 |
-| `app/image_read` | mixed; 0 of 16 drafted functions match in `wip/app/image_read.c` | 17 / 33 |
+| `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
 | `app/net` | mixed; 0 of 17 drafted functions match in `wip/app/net.c` | 15 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
@@ -155,11 +155,11 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/image_read</code>: 17 / 33 in C</summary>
+<summary><code>app/image_read</code>: 20 / 33 in C</summary>
 
 - ✅ `fsFind` (0x4136a0)
-- ⬜ `buildCleanup` (0x4137f0) (draft in `wip/`, no match yet)
-- ⬜ `getImageLdv` (0x4138c0) (draft in `wip/`, no match yet)
+- ✅ `buildCleanup` (0x4137f0)
+- ✅ `getImageLdv` (0x4138c0)
 - ⬜ `getImageSmc` (0x413ad0) (draft in `wip/`, no match yet)
 - ⬜ `getImageKv` (0x413d30) (draft in `wip/`, no match yet)
 - ✅ `getImageMobiles` (0x414050)
@@ -187,7 +187,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `parseDump` (0x416150) (draft in `wip/`, no match yet)
 - ✅ `copyMuData` (0x416840)
 - ⬜ `detectController` (0x416aa0) (draft in `wip/`, no match yet)
-- ⬜ `checkHeader` (0x416cd0) (draft in `wip/`, no match yet)
+- ✅ `checkHeader` (0x416cd0)
 - ✅ `getNonces` (0x4172c0)
 - ⬜ `loadDump` (0x417680) (draft in `wip/`, no match yet)
 

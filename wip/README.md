@@ -363,7 +363,7 @@ Still off:
 
 ## app/image_read.c
 
-Draft of the whole object, with string literals. 17 of 33 functions are
+Draft of the whole object, with string literals. 20 of 33 functions are
 built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
 <names>` makes from this file; a new match needs its name there and its
 address in `split.py` `C_FUNCS` (all of image_read's strings are in
@@ -391,12 +391,6 @@ return reuses fseek's 0). `x != x / k * k` instead of `x % k`.
 
 Still off (fncmp lines):
 
-- `buildCleanup` (3): the first loop's end is an immediate in the
-  original, a register in ours.
-- `getImageLdv` (2): the copy of the pairing's LDV byte is scheduled before
-  the `cfLdv` test.
-- `checkHeader` (4): `size < addr || hdr.size > addr` is evaluated in the
-  other order.
 - `remapBadBlocks` (6): the inlined findFreeRemap keeps its `numBad != 0`
   guard.
 - `findAnchor` (11, with `u32 shaSelfCheck`): the "invalid" log for the
@@ -423,6 +417,13 @@ Still off (fncmp lines):
 imgGetSecurityFiles matches only with loadFlashFile `noinline`: gcc inlines
 it here (growth 39, under max-inline-insns-auto 40), the original didn't.
 getNonces' magic tests are 16-bit rotates (`ROT16`).
+
+buildCleanup's first loop ends at `&xb.smc` (a pointer loop with `m !=
+&xb.smc`; `i < 11` holds the end in a register). getImageLdv's `ldv` is
+`u32`, tested as `(u8)ldv > 32`. checkHeader's SysUpdateAddr test is two
+`if`s with an `__asm__("")` between: as `||` ifcombine makes `a | b` with
+the second test's SSA name first, and forwprop orders operands by version;
+written the other way round the order is right but the blocks move.
 
 ## app/mode_client.c
 

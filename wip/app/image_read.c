@@ -211,9 +211,12 @@ void buildCleanup(void)
 	xb.spare = 0;
 	xb.nandMu = 0;
 	xb.muChecked = 0;
-	for (i = 0; i < 11; i++)
-		if (xb.mobile[i].data)
-			free(xb.mobile[i].data);
+	{
+		struct netfile *m;
+		for (m = xb.mobile; m != &xb.smc; m++)
+			if (m->data)
+				free(m->data);
+	}
 	for (i = 0; i < 4; i++) {
 		if ((&xb.smc)[i].data)
 			free((&xb.smc)[i].data);
@@ -228,7 +231,7 @@ void getImageLdv(void)
 	struct flashhdr *h = (struct flashhdr *)xb.image;
 	u32 size = SWAP32(h->fsAddr);
 	u32 pairing;
-	u8 ldv;
+	u32 ldv;
 
 	if (!size)
 		size = 0x10000;
@@ -253,7 +256,7 @@ void getImageLdv(void)
 	}
 	if (xb.cfLdv)
 		log_printf(1, "LDV was already set to %d\n", xb.cfLdv);
-	else if (ldv > 32)
+	else if ((u8)ldv > 32)
 		xb.cfLdv = 32;
 	else
 		xb.cfLdv = ldv;
@@ -1165,7 +1168,13 @@ int checkHeader(const char *name, FILE *fp)
 		log_printf(0, "******* ERROR loading '%s', flash header KeyVaultSize is too large\n", name);
 		return 0;
 	}
-	if (size < SWAP32(hdr.sysUpdateAddr) || SWAP32(hdr.size) > SWAP32(hdr.sysUpdateAddr)) {
+	/* as `||`, ifcombine makes it `a | b` and forwprop puts the size test
+	   last; the asm keeps two jumps in this order */
+	if (size < SWAP32(hdr.sysUpdateAddr))
+		goto badSysUpdate;
+	__asm__("");
+	if (SWAP32(hdr.size) > SWAP32(hdr.sysUpdateAddr)) {
+badSysUpdate:
 		log_printf(0, "******* ERROR loading '%s', flash header SysUpdateAddr is malformed\n", name);
 		return 0;
 	}

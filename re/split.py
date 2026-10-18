@@ -695,6 +695,7 @@ C_FUNCS = {
     0x415230, 0x415970, 0x415d90, 0x415e90,  # findFsRoot findSmcConfig addRemap findFreeRemap
     0x416040, 0x416070, 0x416840,            # notZeropair spareLbaOk copyMuData
     0x4154d0, 0x4172c0,                      # imgGetSecurityFiles getNonces
+    0x4137f0, 0x4138c0, 0x416cd0,            # buildCleanup getImageLdv checkHeader
     # app/mode_client (client_usage: switch table; clientKeys, clientBinPatch, mode_client stay asm)
     0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches

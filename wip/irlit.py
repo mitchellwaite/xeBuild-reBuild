@@ -48,7 +48,8 @@ def literals(code, used):
 
     def lit(m):
         pre, body = m.group(1), m.group(2)
-        if re.search(r'(?:strcpy|strcat)\([^,()]*, $', pre) or re.search(r'\] = $', pre):
+        if (re.search(r'(?:strcpy|strcat)\([^,()]*, $', pre) or re.search(r'\] = $', pre)
+                or pre.endswith('__asm__(')):
             return m.group(0)
         a = text[cstr(body)]
         used.add(a)

@@ -185,6 +185,12 @@ static struct mobile mobiles[10];
 
 /* strings in image_read.s */
 extern const char ir_4521b8[];	/* "%s found in sector 0x%x size 0x%x..." */
+extern const char ir_4521e0[];	/* "Did not find a LDV value to use, set..." */
+extern const char ir_452220[];	/* "Did not find a LDV value to use, set..." */
+extern const char ir_452260[];	/* "***** WARNING: could not find a non-..." */
+extern const char ir_4522c4[];	/* "setting LDV from image to %d\n" */
+extern const char ir_4522e4[];	/* "setting pairing data from image to 0..." */
+extern const char ir_45230f[];	/* "LDV was already set to %d\n" */
 extern const char ir_45276c[];	/* "Unable to allocate memory for %s 0x%..." */
 extern const char ir_452799[];	/* "%s.dat" */
 extern const char ir_4527a0[];	/* "extracting %s from page 0x%x (offset..." */
@@ -222,6 +228,24 @@ extern const char ir_4535e4[];	/* "could not seek to 0x%x, not copying ..." */
 extern const char ir_453610[];	/* "could not allocate 0x%x byte buffer,..." */
 extern const char ir_453649[];	/* "reading nanddump.bin...\n" */
 extern const char ir_453664[];	/* "writing nanddump.bin MU area to outp..." */
+extern const char ir_453810[];	/* "%s file size: 0x%llx\n" */
+extern const char ir_453828[];	/* "******* ERROR loading '%s', file siz..." */
+extern const char ir_45386c[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_4538ac[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_4538ec[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453928[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_45396c[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_4539b4[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453a0c[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453a68[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453aac[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453af4[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453b48[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453b98[];	/* "******* ERROR loading '%s', flash he..." */
+extern const char ir_453bdc[];	/* "FATX magic found, truncating load si..." */
+extern const char ir_453c28[];	/* "First page does not contain a valid ..." */
+extern const char ir_453c9c[];	/* "First page contains a valid ECC, ass..." */
+extern const char ir_453d18[];	/* "nanddump header checks passed OK!\n" */
 extern const char ir_453d3c[];	/* "**** Warning: error getting CB/CBA N..." */
 extern const char ir_453d78[];	/* "**** Warning: error getting CB/CBA N..." */
 extern const char ir_453db0[];	/* "**** Warning: error getting CBB Nonc..." */
@@ -251,6 +275,71 @@ static __attribute__((noinline)) int fsFind(const char *name, u32 *block, u32 *s
 		}
 	}
 	return 0;
+}
+
+void buildCleanup(void)
+{
+	int i;
+
+	dumpSize = 0;
+	if (xb.spare)
+		free(xb.spare);
+	if (xb.image)
+		free(xb.image);
+	xb.numBad = 0;
+	xb.image = 0;
+	xb.spare = 0;
+	xb.nandMu = 0;
+	xb.muChecked = 0;
+	{
+		struct netfile *m;
+		for (m = xb.mobile; m != &xb.smc; m++)
+			if (m->data)
+				free(m->data);
+	}
+	for (i = 0; i < 4; i++) {
+		if ((&xb.smc)[i].data)
+			free((&xb.smc)[i].data);
+		(&xb.smc)[i].size = 0;
+	}
+	if (xb.netkd.data)
+		free(xb.netkd.data);
+}
+
+void getImageLdv(void)
+{
+	struct flashhdr *h = (struct flashhdr *)xb.image;
+	u32 size = SWAP32(h->fsAddr);
+	u32 pairing;
+	u32 ldv;
+
+	if (!size)
+		size = 0x10000;
+	pairing = cfBestPairing(xb.image + SWAP32(h->sysUpdateAddr), size);
+	if (!pairing)
+		pairing = cbGetPairing(xb.image + SWAP32(h->kvAddr) + SWAP32(h->kvSize));
+	if (pairing) {
+		if (!xb.cfLdv)
+			log_printf(1, ir_4522c4, pairing & 0xff);
+		log_printf(1, ir_4522e4, pairing >> 8);
+		setPairing(pairing >> 8);
+		ldv = pairing;
+	} else if (xb.type == 6 || xb.type == 7) {
+		log_printf(1, ir_4521e0);
+		ldv = 0;
+	} else if (xb.type == 8 || xb.type == 9) {
+		log_printf(1, ir_452220);
+		ldv = 0;
+	} else {
+		log_printf(0, ir_452260);
+		ldv = 1;
+	}
+	if (xb.cfLdv)
+		log_printf(1, ir_45230f, xb.cfLdv);
+	else if ((u8)ldv > 32)
+		xb.cfLdv = 32;
+	else
+		xb.cfLdv = ldv;
 }
 
 void getImageMobiles(void)
@@ -589,6 +678,93 @@ u32 copyMuData(FILE *out, void *sha)
 	fwrite(buf, dumpSize - 0x4200000, 1, out);
 	free(buf);
 	return 1;
+}
+
+int checkHeader(const char *name, FILE *fp)
+{
+	struct flashhdr hdr;
+	u8 page[0x210];
+	u32 magic;
+	long long size;
+
+	size = getFileSize64(fp);
+	log_printf(1, ir_453810, name, size);
+	if (size < 0x1080000) {
+		log_printf(0, ir_453828, name, size);
+		return 0;
+	}
+	fread(&hdr, 0x80, 1, fp);
+	rewind(fp);
+	if (SWAP16(hdr.magic) != 0xff4f) {
+		log_printf(0, ir_45386c, name);
+		return 0;
+	}
+	if (size < SWAP32(hdr.entry)) {
+		log_printf(0, ir_4538ac, name);
+		return 0;
+	}
+	if (size < SWAP32(hdr.size)) {
+		log_printf(0, ir_4538ec, name);
+		return 0;
+	}
+	if (SWAP32(hdr.kvSize) > 0x8000) {
+		log_printf(0, ir_453928, name);
+		return 0;
+	}
+	/* as `||`, ifcombine makes it `a | b` and forwprop puts the size test
+	   last; the asm keeps two jumps in this order */
+	if (size < SWAP32(hdr.sysUpdateAddr))
+		goto badSysUpdate;
+	__asm__("");
+	if (SWAP32(hdr.size) > SWAP32(hdr.sysUpdateAddr)) {
+badSysUpdate:
+		log_printf(0, ir_45396c, name);
+		return 0;
+	}
+	if (SWAP16(hdr.sysUpdateCount) != 2)
+		log_printf(0, ir_4539b4, name);
+	if (SWAP16(hdr.kvVersion) != 0x712)
+		log_printf(0, ir_453a0c, name);
+	if (size < SWAP32(hdr.kvAddr)) {
+		log_printf(0, ir_453a68, name);
+		return 0;
+	}
+	if (size < SWAP32(hdr.fsAddr)) {
+		log_printf(0, ir_453aac, name);
+		return 0;
+	}
+	if (SWAP32(hdr.smcConfigAddr))
+		log_printf(0, ir_453af4, name);
+	if (SWAP32(hdr.smcBootSize) != 0x3000 && SWAP32(hdr.smcBootSize) != 0x3800) {
+		log_printf(0, ir_453b48, name);
+		return 0;
+	}
+	if (size < SWAP32(hdr.smcBootAddr)) {
+		log_printf(0, ir_453b98, name);
+		return 0;
+	}
+	if (size > 0x3000000) {
+		fseeko64(fp, 0x3000000, SEEK_SET);
+		fread(&magic, 4, 1, fp);
+		rewind(fp);
+		if (getBeU32((u8 *)&magic) == 0x58544146) {
+			log_printf(1, ir_453bdc);
+			size = 0x3000000;
+		} else {
+			rewind(fp);
+			fread(page, 0x210, 1, fp);
+			rewind(fp);
+			if (!pageEccOk(page, page + 512)) {
+				log_printf(1, ir_453c28);
+				size = 0x3000000;
+			} else if (size > 0x4200000) {
+				log_printf(1, ir_453c9c);
+				size = 0x4200000;
+			}
+		}
+	}
+	log_printf(1, ir_453d18);
+	return size;
 }
 
 void getNonces(void)
