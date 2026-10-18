@@ -85,6 +85,7 @@ int createDir(const char *path);
 int smcConfigOk(const u8 *smc);
 u32 verifyExtended(void *buf, int size);
 int unscramble(u8 *buf, u32 len);
+u32 getSecurityFiles(const char *dir);
 void setKvSalt(u8 *key);
 void setSmcKey(u8 *key);
 int verifyFlashFile(int i);
@@ -194,6 +195,13 @@ extern const char mu_44d440[];	/* "success! Bootloader size with xell i..." */
 extern const char mu_44d46e[];	/* "fbldrs.bin" */
 extern const char mu_44d479[];	/* "failed!\n" */
 extern const char mu_44d484[];	/* "Skipping getting bootloaders on non-..." */
+extern const char mu_44d4b9[];	/* "\\SystemRoot" */
+extern const char mu_44d4c5[];	/* "usv" */
+extern const char mu_44d4cc[];	/* "\n***** ERROR: getting raw boot load..." */
+extern const char mu_44d4fc[];	/* "\n***** ERROR: getting mobile files ..." */
+extern const char mu_44d528[];	/* "\n***** ERROR: retrieving security f..." */
+extern const char mu_44d55c[];	/* "\n***** ERROR: mounting remote Syste..." */
+extern const char mu_44d590[];	/* "\n***** ERROR: getting bad blocks fa..." */
 extern const char mu_44d5ba[];	/* "failed! received 0 bytes\n" */
 extern const char mu_44d5d4[];	/* "failed! file not found on console\n" */
 
@@ -461,6 +469,31 @@ u32 getBootloaders(const char *dir)
 	if (dir)
 		writeFileIn(dir, mu_44d46e, xb.bldrs.data, xb.bldrs.size);
 	xb.haveBldrs = 1;
+	return 1;
+}
+
+int getConsoleFiles(const char *dir)
+{
+	if (!checkBadBlocks()) {
+		log_printf(0, mu_44d590);
+		return 0;
+	}
+	if (!__builtin_expect(netMount(mu_44d4c5, mu_44d4b9), 1)) {
+		log_printf(0, mu_44d55c);
+		return 0;
+	}
+	if (!getBootloaders(dir)) {
+		log_printf(0, mu_44d4cc);
+		return 0;
+	}
+	if (!getSecurityFiles(dir)) {
+		log_printf(0, mu_44d528);
+		return 0;
+	}
+	if (!getMobileFiles(dir)) {
+		log_printf(0, mu_44d4fc);
+		return 0;
+	}
 	return 1;
 }
 

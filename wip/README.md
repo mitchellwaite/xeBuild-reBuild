@@ -274,7 +274,7 @@ Still off:
 
 ## app/mode_update.c
 
-Draft of the whole object, with string literals. 11 of 14 functions are
+Draft of the whole object, with string literals. 12 of 14 functions are
 built from `src/app/mode_update.c` (mixed), which `python wip/mumixed.py
 <names>` makes from this file (strings become `mu_<address>` externs, the
 statics become externs for the `.s`'s `.bss`); a new match needs its name
@@ -293,13 +293,19 @@ first: with the extern `updating` of the mixed build that keeps the load
 before the stores; with a `static updating` the local gives 8 lines and the
 plain read matches (so the original may have had it non-static).
 
+getConsoleFiles needs `__builtin_expect(netMount(...), 1)` at 68% (build.sh
+sets `builtin-expect-probability=68` for the object). The bad-blocks trace
+only takes the shared return block if the mount-failure block (estimated
+frequency) drops below round 2's 2000 while the mount-success edge stays
+under round 1's 5000: the netMount success estimate must be about 67-70%.
+No predictor combination gives that (gcc 6's "early return" heuristic
+predicts each failure path *taken*, 61%, unless its block is the last one
+before the return block; both sides calling gives the call heuristic 50%).
+With the bad-blocks check as the outer `if (checkBadBlocks()) {...} log;`
+66-70 all match.
+
 Still off:
 
-- `getConsoleFiles` (6): the bad-blocks failure (`call getBadBlocks` out
-  of line) should fall into the shared `xor eax,eax; ret`, and the mount
-  failure get its own epilogue; ours has it the other way round. Every
-  early-return/nested combination of the five checks and the
-  int/u32 return-type combinations give 6 or worse.
 - `getSecurityFiles` (12): the smc BLDR path should end with a copy of the
   `size > 0x2fff` test (bb-reorder duplication into the success trace, as
   the kv path already does). That needs the test-to-success edge at >= 10%

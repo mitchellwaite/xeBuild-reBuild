@@ -477,7 +477,9 @@ SYMBOLS = {
     0x44d12c: '_mu_44d12c', 0x44d144: '_mu_44d144', 0x44d171: '_mu_44d171', 0x44d186: '_mu_44d186',
     0x44d198: '_mu_44d198', 0x44d1d3: '_mu_44d1d3', 0x44d1db: '_mu_44d1db', 0x44d400: '_mu_44d400',
     0x44d424: '_mu_44d424', 0x44d440: '_mu_44d440', 0x44d46e: '_mu_44d46e', 0x44d479: '_mu_44d479',
-    0x44d484: '_mu_44d484', 0x44d5ba: '_mu_44d5ba', 0x44d5d4: '_mu_44d5d4',
+    0x44d484: '_mu_44d484', 0x44d4b9: '_mu_44d4b9', 0x44d4c5: '_mu_44d4c5', 0x44d4cc: '_mu_44d4cc',
+    0x44d4fc: '_mu_44d4fc', 0x44d528: '_mu_44d528', 0x44d55c: '_mu_44d55c', 0x44d590: '_mu_44d590',
+    0x44d5ba: '_mu_44d5ba', 0x44d5d4: '_mu_44d5d4',
     # app/image_read (wip/app/image_read.c) and what it calls; names are ours
     0x4136a0: '_fsFind', 0x4138c0: '_getImageLdv', 0x413ad0: '_getImageSmc',
     0x413d30: '_getImageKv', 0x414050: '_getImageMobiles', 0x414300: '_getNetKd',
@@ -657,10 +659,10 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
-    # app/mode_update (getSecurityFiles, getConsoleFiles, mode_update stay asm)
+    # app/mode_update (getSecurityFiles, mode_update stay asm)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
-    0x404320, 0x404340, 0x404600,            # checkBadBlocks getBootloaders updateGetFile
+    0x404320, 0x404340, 0x404430, 0x404600,  # checkBadBlocks getBootloaders getConsoleFiles updateGetFile
     # app/options (parseButton stays asm: its ipa-split part at 449640 is
     # called from asm, and gcc would put it in .text.unlikely)
     0x4236f0,                                # baseFileExists.part.0

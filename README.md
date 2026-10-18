@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **521 of 617** (519 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **522 of 617** (520 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 336 / 432 |
+| `app/` | 16 / 25 | 337 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,7 +36,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/mode_update` | mixed; 0 of 3 drafted functions match in `wip/app/mode_update.c` | 11 / 14 |
+| `app/mode_update` | mixed; 0 of 2 drafted functions match in `wip/app/mode_update.c` | 12 / 14 |
 | `app/mode_client` | mixed; 0 of 4 drafted functions match in `wip/app/mode_client.c` | 12 / 16 |
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 1 / 12 |
 | `app/image_write` | mixed; 0 of 12 drafted functions match in `wip/app/image_write.c` | 34 / 46 |
@@ -47,7 +47,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
 <details>
-<summary><code>app/mode_update</code>: 11 / 14 in C</summary>
+<summary><code>app/mode_update</code>: 12 / 14 in C</summary>
 
 - ✅ `getBadBlocks` (0x4030b0)
 - ✅ `update_usage` (0x4031d0)
@@ -60,7 +60,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `getSecurityFiles` (0x403e10) (draft in `wip/`, no match yet)
 - ✅ `checkBadBlocks` (0x404320)
 - ✅ `getBootloaders` (0x404340)
-- ⬜ `getConsoleFiles` (0x404430) (draft in `wip/`, no match yet)
+- ✅ `getConsoleFiles` (0x404430)
 - ✅ `updateGetFile` (0x404600)
 - ⬜ `mode_update` (0x404770) (draft in `wip/`, no match yet)
 

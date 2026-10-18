@@ -28,9 +28,10 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # would need 95); 155 and up match
       app/consoleinfo) orig="$f.c"
              cflags="-O3 --param align-threshold=200" ;;
-      # getBadBlocks aligns its error block, which the default (100) doesn't
+      # getBadBlocks aligns its error block, which the default (100) doesn't;
+      # getConsoleFiles' netMount hint needs 68 (66-70 in other forms)
       app/mode_update) orig="$f.c"
-             cflags="-O3 --param align-threshold=200" ;;
+             cflags="-O3 --param align-threshold=200 --param builtin-expect-probability=68" ;;
       # setFuseCpuKey aligns its fuse == NULL block
       app/keys) orig="$f.c"
              cflags="-O3 --param align-threshold=200" ;;

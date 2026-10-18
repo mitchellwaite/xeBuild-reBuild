@@ -13,7 +13,6 @@
 .intel_syntax noprefix
 .globl L_404000
 .globl _clean
-.globl _getConsoleFiles
 .globl _getSecurityFiles
 .globl _hasHdd
 .globl _info
@@ -87,6 +86,13 @@
 .globl _mu_44d46e
 .globl _mu_44d479
 .globl _mu_44d484
+.globl _mu_44d4b9
+.globl _mu_44d4c5
+.globl _mu_44d4cc
+.globl _mu_44d4fc
+.globl _mu_44d528
+.globl _mu_44d55c
+.globl _mu_44d590
 .globl _mu_44d5ba
 .globl _mu_44d5d4
 .globl _noAvatar
@@ -529,124 +535,7 @@ L_4042fd:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_getConsoleFiles:
-          sub ESP,28
-          test BYTE PTR [L_479ea7],16
-          je L_4044d0
-L_404440:
-          mov DWORD PTR [ESP+4],OFFSET L_44d4b9
-          mov DWORD PTR [ESP],OFFSET L_44d4c5
-          call _netMount
-          test EAX,EAX
-          je L_404500
-          mov DWORD PTR [ESP+4],OFFSET _mu_44d400
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          cmp DWORD PTR [_g479ea8],3
-          je L_404540
-          mov DWORD PTR [ESP+4],OFFSET _mu_44d484
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_404491:
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP],EAX
-          call _getSecurityFiles
-          test EAX,EAX
-          je L_404520
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP],EAX
-          call _getMobileFiles
-          mov EDX,EAX
-          mov EAX,1
-          test EDX,EDX
-          jne L_4044f3
-          mov DWORD PTR [ESP+4],OFFSET L_44d4fc
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-          jmp L_4044f3
-L_4044d0:
-          call _getBadBlocks
-          test EAX,EAX
-          jne L_404440
-          mov DWORD PTR [ESP+4],OFFSET L_44d590
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-L_4044f3:
-          add ESP,28
-          ret 
-L_4044f7:
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_404500:
-          mov DWORD PTR [ESP+4],OFFSET L_44d55c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-          add ESP,28
-          ret 
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_404520:
-          mov DWORD PTR [ESP+4],OFFSET L_44d528
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-          jmp L_4044f3
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_404540:
-          mov DWORD PTR [ESP+4],OFFSET _mu_44d424
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP],OFFSET L_47a084
-          call _netGetBldrs
-          test EAX,EAX
-          mov DWORD PTR [_g47a080],EAX
-          je L_404572
-          mov EAX,DWORD PTR [L_47a084]
-          test EAX,EAX
-          jne L_4045a0
-L_404572:
-          mov DWORD PTR [ESP+4],OFFSET _mu_44d479
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_44d4cc
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          xor EAX,EAX
-          add ESP,28
-          ret 
-L_4045a0:
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+4],OFFSET _mu_44d440
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+32]
-          test EAX,EAX
-          je L_4045e6
-          mov EAX,DWORD PTR [L_47a084]
-          mov DWORD PTR [ESP+4],OFFSET _mu_44d46e
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [_g47a080]
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP],EAX
-          call _writeFileIn
-L_4045e6:
-          mov DWORD PTR [L_47a088],1
-          jmp L_404491
+#@C _getConsoleFiles
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -992,7 +881,7 @@ L_404cc3:
           test EAX,EAX
           mov EBX,EAX
           jne L_40501c
-          mov DWORD PTR [ESP],OFFSET L_44d4c5
+          mov DWORD PTR [ESP],OFFSET _mu_44d4c5
           call _netUnmount
           test ESI,ESI
           je L_404d9c
@@ -1789,22 +1678,22 @@ _mu_44d479:
           .zero 2
 _mu_44d484:
           .string "Skipping getting bootloaders on non-glitch machine!\n"
-L_44d4b9:
+_mu_44d4b9:
           .string "\\SystemRoot"
-L_44d4c5:
+_mu_44d4c5:
           .string "usv"
           .zero 3
-L_44d4cc:
+_mu_44d4cc:
           .string "\n***** ERROR: getting raw boot loaders failed!\n"
-L_44d4fc:
+_mu_44d4fc:
           .string "\n***** ERROR: getting mobile files failed!\n"
-L_44d528:
+_mu_44d528:
           .string "\n***** ERROR: retrieving security files failed!\n"
           .zero 3
-L_44d55c:
+_mu_44d55c:
           .string "\n***** ERROR: mounting remote SystemRoot failed!\n"
           .zero 2
-L_44d590:
+_mu_44d590:
           .string "\n***** ERROR: getting bad blocks failed!\n"
 _mu_44d5ba:
           .string "failed! received 0 bytes\n"

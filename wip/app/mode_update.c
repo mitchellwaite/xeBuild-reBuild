@@ -81,6 +81,7 @@ int createDir(const char *path);
 int smcConfigOk(const u8 *smc);
 u32 verifyExtended(void *buf, int size);
 int unscramble(u8 *buf, u32 len);
+u32 getSecurityFiles(const char *dir);
 void setKvSalt(u8 *key);
 void setSmcKey(u8 *key);
 int verifyFlashFile(int i);
@@ -464,7 +465,7 @@ int getConsoleFiles(const char *dir)
 		log_printf(0, "\n***** ERROR: getting bad blocks failed!\n");
 		return 0;
 	}
-	if (!netMount("usv", "\\SystemRoot")) {
+	if (!__builtin_expect(netMount("usv", "\\SystemRoot"), 1)) {
 		log_printf(0, "\n***** ERROR: mounting remote SystemRoot failed!\n");
 		return 0;
 	}
