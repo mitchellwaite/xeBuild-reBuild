@@ -108,6 +108,8 @@ extern const char str_jasperbigffs[];	/* "jasperbigffs" */
 extern const char msg_iniInvalid[];	/* "***** WARNING: options.ini setting '%..." */
 extern const char str_false[];	/* "false" */
 extern const char str_true[];	/* "true" */
+extern const char msg_optPerbox[];	/* "Using %s option (perbox file)\n" */
+extern const char msg_optIni[];	/* "Using %s option (ini file)\n" */
 extern const char str_power[];	/* "power" */
 extern const char str_remopower[];	/* "remopower" */
 extern const char str_remox[];	/* "remox" */
@@ -370,6 +372,36 @@ int setConsoleType(const char *name)
 		return 1;
 	}
 	return 0;
+}
+
+/* a boolean option from a perbox file or options.ini, unless the command
+   line already set it either way */
+_Bool optIniBool(const char *name, u32 set, u32 clear, int def)
+{
+	char *bad;
+
+	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
+		return 0;
+	if (perboxExists(name)) {
+		log_printf(1, msg_optPerbox, name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (!bad) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, msg_optIni, name);
+		} else {
+			log_printf(0, msg_iniInvalid, name, bad);
+			return 0;
+		}
+	}
+	{
+		/* the original ORs into eax (so `return 1` isn't hoisted) */
+		u32 f = (xb.bootFlags & ~clear) | set;
+		__asm__("" : "+a" (f));
+		xb.bootFlags = f;
+	}
+	return 1;
 }
 
 int optIniInt(const char *name, int def)

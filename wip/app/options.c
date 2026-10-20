@@ -294,7 +294,12 @@ _Bool optIniBool(const char *name, u32 set, u32 clear, int def)
 			return 0;
 		}
 	}
-	xb.bootFlags = (xb.bootFlags & ~clear) | set;
+	{
+		/* the original ORs into eax (so `return 1` isn't hoisted) */
+		u32 f = (xb.bootFlags & ~clear) | set;
+		__asm__("" : "+a" (f));
+		xb.bootFlags = f;
+	}
 	return 1;
 }
 

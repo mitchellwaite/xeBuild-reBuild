@@ -50,19 +50,18 @@ Draft of the whole object, with string literals.  The matching
 functions are built from `src/app/options.c` now, a mixed object that uses
 `extern` names for the strings: baseFileExists (+ its `.part.0`),
 perboxExists, iniConsoleType, setConsoleType, optIniInt, stripColons,
-macidSet, setBoolOption, parseButton (+ its `.part.0`), parseRawPatch,
+macidSet, setBoolOption, optIniBool, parseButton (+ its `.part.0`), parseRawPatch,
 parseRawPatches, addPatch.
 setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
 `__ImageBase` (the bytes match).  When the rest
 matches, move this file over `src/app/options.c` (literals back, data
 from the `.s`) and drop the object from `C_FUNCS`.  Still off:
 
-- `optIniBool` (6 lines): register choice in `(bootFlags & ~clear) | set`
-  (ours `or ebx,eax`, so sched2 hoists `mov eax,1` above the store).
-  Nothing calls it (applyIniOptions inlines every use), so its return type
-  is free: `_Bool` (or char/short/long) stops uncprop reusing
-  perboxExists' result for `return 0`; `int`/`u32` give 22 lines.
-  `u32 perboxExists` also works but breaks perboxExists itself.
+- `optIniBool` builds from src now: an empty asm pins the OR result to
+  eax (`"+a"`), so sched2 can't hoist `mov eax,1` above the store.  The
+  return type stays `_Bool` (uncprop would reuse perboxExists' result for
+  `return 0` with int).  The pin doesn't change applyIniOptions, which
+  inlines every use.
 - `applyIniOptions` (924): the "already set" path must be the likely one.
   Guarding each call in the caller with `if (!(xb.bootFlags & bit))` (the
   call heuristic) and `switch (xb.type) { case 2: }` (no == heuristic)

@@ -382,7 +382,7 @@ SYMBOLS = {
     0x4582a3: '_str_winbutton', 0x457df0: '_str_wirelessx', 0x457dfa: '_str_wiredx',
     0x457e01: '_str_wiredxb1', 0x457e0a: '_str_wiredxb2', 0x457e13: '_str_wiredxb3',
     0x457e1c: '_str_wiredxf1', 0x457e25: '_str_wiredxf2', 0x457e2e: '_str_eject',
-    0x457e34: '_str_kiosk',
+    0x457e34: '_str_kiosk', 0x458208: '_msg_optPerbox', 0x458227: '_msg_optIni',
     0x458ae8: '_msg_rawPatchParsed', 0x458b28: '_msg_rawPatchBadOffset', 0x458b80: '_msg_rawPatchSlotsFull',
     0x458bbc: '_msg_patchParseFailed', 0x458bf5: '_str_binFmt', 0x458bfc: '_msg_patchDuplicate',
     0x458c54: '_msg_patchTooMany',
@@ -699,7 +699,7 @@ C_FUNCS = {
     # app/options (parseButton's ipa-split part at 449640 is gcc's
     # .text.unlikely, which splice.py takes too)
     0x4236f0,                                # baseFileExists.part.0
-    0x424a70, 0x449640,                      # parseButton parseButton.part.0
+    0x424930, 0x424a70, 0x449640,            # optIniBool parseButton parseButton.part.0
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
