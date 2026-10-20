@@ -396,6 +396,26 @@ Still off:
   original's, so its heap history differs in shape somewhere. Hint and
   structure searches (expects, labels, if/else swaps, tail sub-helpers)
   didn't get below 30.
+  `python wip/fibsim.py <-fdump-rtl-bbro-details dump>` replays the heap
+  and checks every extraction (all 60 match). In bbro numbering the
+  original's last-round order needs, besides ties: `-clean` test 4 -> 3
+  (with `-v` still 2), writeImage error 2 -> 1, no-HDD 3 -> 2 and the
+  `-ip` error 3 -> 2; even then no-HDD stays the heap parent of the
+  WARNING block (linked in a consolidate at equal key), so one pair is
+  still swapped. A `__builtin_expect` making the `-noreeb` match 60-65%
+  likely gives the `-clean` change (30 -> 22 lines), but getConsoleFiles
+  needs the param at exactly 68 (67 and 69 fail), and expect is
+  first-match, so both can't hold. Param-free hints can't make 60-65%
+  there (both arms call: 50%; hot label 85%, cold 0%), and no single hint
+  call or hot/cold label on any arm of mode_update/updateNand improves 30.
+  A "phantom" branch (test of a never-written static guarding a hint
+  call, folded after IPA) does divert frequency at profile time, but its
+  test block merges into the next one and keeps its own frequency.
+  `continue` (50%) and `goto` (none) add no usable predictor in gcc 6.
+- Whole object from this draft: `.rdata` string order differs already in
+  getBadBlocks (its error string comes second, the original's last), and
+  `.data` is 4 bytes where mode_update.s has `useConsoleAddons` plus 0x14
+  zero bytes (0x18).
 
 ## app/image_read.c
 
