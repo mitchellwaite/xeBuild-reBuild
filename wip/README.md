@@ -131,6 +131,29 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
     except olddvd.  The cold trace order is further off (blk.py 87 lines),
     and there is still no dup.  In caller context the sign tests pick up
     the opcode heuristic (73%), which is why noecdremap needs the expect.
+  - 2026-10-20, mixed source forms (`wip/aiosearch.py`, best config in
+    `wip/aiosearch.json`; blk.py 76 -> 67).  No single form fits every
+    option.  noecdremap (and olddvd's in-trace copy) want the out-of-line
+    profile: guard + `optIniBool` call, IPA-inlined, whose bootFlagsOff
+    test is 39% clear.  That puts its perbox block in round 2 with
+    priority (right after the -1 chain), and with `if (!perboxExists)` the
+    in-trace tie goes to next_bb = the ini path.  Caller context can't
+    give that: the sign test's opcode heuristic (73%) DS-combined with
+    PRED_CALL gives 52.5%, and expect gives 17%; it needs 27..50%.  The
+    other options want the body in caller context (OPTK): expect on the
+    bootFlags test (17% clear, so their cold blocks are round 3 and come
+    after cygnos/macid), expect clear on bootFlagsOff, and expect true on
+    perbox.  Then the OR edge clears the 10% copy threshold, the dups
+    after nomobile/nosecurity appear, and the whole nomobile...smcnoeject
+    group matches.  Left: olddvd's perbox direction (its join block is
+    taken by whichever arm's trace is built first, an exact heap tie) and
+    the round-4 cold-block order (ties in gcc's fibonacci heap, which any
+    probability change reshuffles).  Also still off: the xellbutton
+    registers and the type reload (see above).  bb-reorder rules worth
+    knowing: better_edge_p prefers the *lower-frequency* destination
+    when probabilities are within 10%; connect_traces' dup needs both the
+    edge into the copied block and that block's edge to the next trace
+    start >= 10% of the entry frequency.
 - `parseOption` builds from src (was 69 lines here).  The key was the
   Linux build: it tests `val == NULL` after setBoolOption and jumps to the
   unknown/incomplete tail, so the value options sit inside `if (val) {...}`
