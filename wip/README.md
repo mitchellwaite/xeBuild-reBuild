@@ -121,13 +121,18 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
   the return block).  Tools: wip/blk.py (block order diff vs options.s), wip/bbmap.py
   (bb-reorder traces with source lines and edge probabilities).
   The u32 return/validateString prototypes stop the return value living in
-  esi, src declares parseOption `int` for parseCmdOptions (u32 costs it 15 lines; it matches with an int
-  return).
+  esi, but parseCmdOptions only matches with an int return (15 lines with
+  u32), so src declares it `int`.  Moving parseOption to src means
+  reconciling the two.
 - `loadAddons` (11): the original keeps j=0 in eax across the over-limit
   warning (caller-save); ours rematerialises it.  That spill also blocks
   the head merge of `lea eax,name; mov [esp+8],eax` above the `jg`, which
   is the other half of the diff.  Moving `j = 0`, a pointer instead of an
-  index, unsigned j and a do-while made no difference or worse.
+  index, unsigned j and a do-while made no difference or worse; so did an
+  early-return addPatch (`if (n > 15) {warn; return;}`).  In our
+  `-fdump-tree-optimized` the over-limit and strcpy paths join before the
+  latch, so one `j = 0` follows both calls; the original's over-limit zero is
+  the one set before `cmp edx,4`.
 
 Findings:
 - DashLaunch (same authors) has the ini reader in C:
