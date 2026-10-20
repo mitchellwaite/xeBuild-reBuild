@@ -41,6 +41,10 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # sendAvatarData's loop is aligned (1 and 2 align other loops too)
       app/console_hdd) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3" ;;
+      # parseOption's setBoolOption and vlen hints (82 and 84 lay out the
+      # done/incomplete blocks differently)
+      app/options) orig="$f.c"
+             cflags="-O3 --param builtin-expect-probability=83" ;;
       # padding between functions is top-level asm between the C ones;
       # -fno-toplevel-reorder keeps that order (gcc 6 otherwise puts all
       # top-level asm first), and the asm carries the object's .eh_frame

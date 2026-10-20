@@ -96,44 +96,21 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
     noecdremap's).
   - Also off: the xellbutton registers (ebx vs edx) and the dualboot /
     type reload (`mov edx,[type]` kept for `cmp edx,2`).
-- `parseOption` (69, was 454): what fixed most of it:
-  - macid loop `for (i = 0; i < 5; i++) ... xb.macid[i + 1] = myatox8(val
-    + i * 2)`: the IV starts at 0 (uncprop reuses stricmp's 0, which is
-    what needs ebp for vlen) and the exit test stays on i.
-  - One `setBoolOption` call after `vlen = len == strlen(opt) ? 0 :
-    strlen(val)`, then `if (!vlen && !val)` incomplete; gcc threads it
-    into the original's three copies (len<=0, '=', no '=').
-  - `switch (setBoolOption(...)) { case 1: ... }` (no `==` heuristic), so
-    the len<=0 copy's done edge (20.7%) beats the macid loop exit (16.7%)
-    when connect_traces picks done's predecessor.
-  - `goto bad`, done/incomplete written inline.
-  What is left is the first options' layout.  Ours behaves like the
-  original shifted by one option (our cputemp is laid out like its gputemp)
-  and the vlen=0 `jmp` block sits one slot early.  `__builtin_expect(len ==
-  strlen(opt), 0)` at `--param builtin-expect-probability=85` fixes the
-  shift (62 lines) but then cputemp's -1 test goes to bad.  The original
-  needs success at cputemp's -1 test and bad at edramtemp's, which uniform
-  probabilities can't give under my reading of bb-reorder (rounds: exec
-  thresholds 285/114/28 of entry freq 570).  The "early return" predictor
-  (61%) comes from tree_estimate_probability_bb: an edge into a block that
-  jumps to the return block, unless that block is the return block's
-  `next_bb`; ours fires on every success block, not on `bad` (it precedes
-  the return block).  Tools: wip/blk.py (block order diff vs options.s), wip/bbmap.py
-  (bb-reorder traces with source lines and edge probabilities).
-  More probes (2026-10-20): the Linux v1.16 build (gcc 4.9, tmp/xeBuild64,
-  parseOption at 0x40d200) has the same two quirks: cputemp's success
-  owns the return epilogue and only edramtemp's `-1` test falls into bad.
-  So they come from the source, not from tuned probabilities.  With expect
-  stand-ins, cputemp needs match >= 52.3% (so bb17 reaches round 2's
-  exec threshold, 114) and success >= bad at its `-1` test (no early-return
-  hit); that gives 30 lines, but then bad starts its own trace before the
-  gputemp/edramtemp trace reaches it.  An inline `log; return 0` copy in
-  place of `goto bad` (tail-merged later) makes every `-1` test 28% bad;
-  no inline/goto mix over the first five options beat the draft.
-  The u32 return/validateString prototypes stop the return value living in
-  esi, but parseCmdOptions only matches with an int return (15 lines with
-  u32), so src declares it `int`.  Moving parseOption to src means
-  reconciling the two.
+- `parseOption` builds from src (was 69 lines here).  The key was the
+  Linux build: it tests `val == NULL` after setBoolOption and jumps to the
+  unknown/incomplete tail, so the value options sit inside `if (val) {...}`
+  (gcc 6 threads the test away).  That alone fixed the gputemp/edramtemp
+  layout.  The rest are hints (see the comment in src): `po_hint()` calls
+  on cputemp's and gpufan's bad edges (PRED_CALL; gpufan's only moves a
+  `.p2align` from avregion's test to gameregion's, which tiny rounded
+  frequencies decide), and `__builtin_expect` on the setBoolOption `== 1`
+  and `vlen` tests with builtin-expect-probability=83 (82 and 84 differ:
+  the done edge must stay below gputemp's match edge but above the macid
+  loop exit, and the incomplete block must reach the epilogue-copy
+  threshold of 57).  The int/u32 clash is solved with an `int
+  parseOptionInt(char *) __asm__("_parseOption")` declaration for
+  parseCmdOptions.  fncmp ignores padding; compare raw offsets when the
+  object size is off.  wip/app/options.c keeps the pre-hint draft.
 - `loadAddons` builds from src: addPatch declares `path` inside the
   `numPatches <= 15` block.  With it at function scope, the inlined
   `path ={v} {CLOBBER}` joins the over-limit and strcpy paths before the

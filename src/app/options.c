@@ -63,7 +63,9 @@ u32 validateString(char *nString);
 void showHexPairs(unsigned int level, const char *s);
 int kvSetDvdKey(char *key);
 void applyIniOptions(void);
-int parseOption(char *opt);	/* u32 in wip/; int is what parseCmdOptions needs */
+u32 parseOption(char *opt);
+/* parseCmdOptions matches only when it sees an int return */
+int parseOptionInt(char *opt) __asm__("_parseOption");
 
 extern struct xebuild xb;
 
@@ -160,6 +162,48 @@ extern const char str_binFmt[];	/* "%s.bin" */
 extern const char msg_patchDuplicate[];	/* "***** WARNING: %s was provided both o..." */
 extern const char str_addon[];	/* "addon" */
 extern const char msg_patchTooMany[];	/* "***** WARNING: exceeded total number ..." */
+extern const char str_nl[];	/* "\n" */
+extern const char str_cputemp[];	/* "cputemp" */
+extern const char msg_opt_cputemp[];	/* "Using CPUTEMP option, value %d\n" */
+extern const char str_gputemp[];	/* "gputemp" */
+extern const char msg_opt_gputemp[];	/* "Using GPUTEMP option, value %d\n" */
+extern const char str_edramtemp[];	/* "edramtemp" */
+extern const char msg_opt_edramtemp[];	/* "Using EDRAMTEMP option, value %d\n" */
+extern const char str_overcputemp[];	/* "overcputemp" */
+extern const char msg_opt_overcputemp[];	/* "Using OVERCPUTEMP option, value %d\n" */
+extern const char str_overgputemp[];	/* "overgputemp" */
+extern const char msg_opt_overgputemp[];	/* "Using OVERGPUTEMP option, value %d\n" */
+extern const char str_overedramtemp[];	/* "overedramtemp" */
+extern const char msg_opt_overedramtemp[];	/* "Using OVEREDRAMTEMP option, value %d\..." */
+extern const char str_cpufan[];	/* "cpufan" */
+extern const char msg_opt_cpufan[];	/* "Using CPUFAN option, value %d\n" */
+extern const char str_gpufan[];	/* "gpufan" */
+extern const char msg_opt_gpufan[];	/* "Using GPUFAN option, value %d\n" */
+extern const char str_avregion[];	/* "avregion" */
+extern const char msg_opt_avregion[];	/* "Using AVREGION option, value 0x%x\n" */
+extern const char str_gameregion[];	/* "gameregion" */
+extern const char msg_opt_gameregion[];	/* "Using GAMEREGION option, value 0x%x\n" */
+extern const char str_dvdregion[];	/* "dvdregion" */
+extern const char msg_opt_dvdregion[];	/* "Using DVDREGION option, value 0x%x\n" */
+extern const char str_xellbutton[];	/* "xellbutton" */
+extern const char msg_opt_xellbutton[];	/* "Using XELLBUTTON option, value %s\n" */
+extern const char str_xellbutton2[];	/* "xellbutton2" */
+extern const char msg_opt_xellbutton2[];	/* "Using XELLBUTTON2 option, value %s\n" */
+extern const char str_dualboot[];	/* "dualboot" */
+extern const char msg_opt_dualboot[];	/* "Using DUALBOOT option, value %s\n" */
+extern const char str_cfldv[];	/* "cfldv" */
+extern const char msg_cfldvTooLarge[];	/* "***** WARNING: cfldv value %d on comm..." */
+extern const char msg_opt_cfldv[];	/* "Using CFLDV option, value %d\n" */
+extern const char str_macid[];	/* "macid" */
+extern const char msg_opt_macid[];	/* "Using MACID option address: " */
+extern const char str_hex02[];	/* "%02x" */
+extern const char str_colon[];	/* ":" */
+extern const char msg_macidBadValues[];	/* "\n\n***** ERROR: invalid values in ma..." */
+extern const char msg_macidBadLength[];	/* "\n\n***** ERROR: invalid length macid..." */
+extern const char str_dvdkey[];	/* "dvdkey" */
+extern const char msg_optUnknownValue[];	/* "\n\n***** ERROR: unknown option '%s' ..." */
+extern const char msg_optIncomplete[];	/* "\n\n***** ERROR: unknown or incomplet..." */
+extern const char msg_optBadValue[];	/* "\n\n***** ERROR: parsing option '%s',..." */
 
 /* strcat(xb.outName, "name") as gcc expands it: the short names become
    immediate stores (so they stay literals), the longer ones copy from the
@@ -622,7 +666,199 @@ int setBoolOption(const char *name, const char *val)
 	return 0;
 }
 
-/* one file,offset raw patch from the command line */
+/* one name[=value] from the command line option string.  The `if (val)`
+   around the value options is in the Linux build (gcc 4.9 keeps the test);
+   gcc 6 threads it away.  The hints only steer block order and alignment:
+   - po_hint() on cputemp's and gpufan's bad edges is a guarded call at
+     profile_estimate (PRED_CALL, cancelling log_printf's on the success
+     edge); inlined later, its store to a dead local goes.  cputemp's success
+     then owns an epilogue copy and only edramtemp's -1 test falls into bad;
+     gpufan's moves the jump alignment from avregion's test to gameregion's.
+   - the two __builtin_expect use build.sh's builtin-expect-probability=83:
+     the done edges stay under gputemp's (so its match trace comes first)
+     but above the macid loop exit, and the incomplete block reaches the
+     epilogue-copy threshold.
+   The return is u32 (int keeps it in esi); parseCmdOptions calls it
+   through parseOptionInt. */
+static void po_hint(int *p) { *p = 1; }
+
+__attribute__((optimize("no-early-inlining")))
+u32 parseOption(char *opt)
+{
+	int dead;
+	char *val = NULL;
+	int i, len, vlen;
+
+	len = strlen(opt);
+	for (i = 0; i < len; i++) {
+		if (opt[i] == '=') {
+			val = &opt[i + 1];
+			opt[i] = 0;
+			if (!*val) {
+				log_printf(1, msg_optNoValue, opt);
+				return 0;
+			}
+			i = len + 1;
+		}
+	}
+	if (len == strlen(opt))
+		vlen = 0;
+	else
+		vlen = strlen(val);
+	if (__builtin_expect(setBoolOption(opt, val) == 1, 0))
+		{ log_printf(1, str_nl); return 1; }
+	if (val) {
+		if (!stricmp(opt, str_cputemp)) {
+			xb.cpuTemp = myatou32(val, -1);
+			if (xb.cpuTemp == -1) {
+				po_hint(&dead);
+				goto bad;
+			}
+			log_printf(1, msg_opt_cputemp, xb.cpuTemp);
+			return 1;
+		}
+		if (!stricmp(opt, str_gputemp)) {
+			xb.gpuTemp = myatou32(val, -1);
+			if (xb.gpuTemp == -1)
+				goto bad;
+			log_printf(1, msg_opt_gputemp, xb.gpuTemp);
+			return 1;
+		}
+		if (!stricmp(opt, str_edramtemp)) {
+			xb.edramTemp = myatou32(val, -1);
+			if (xb.edramTemp == -1)
+				goto bad;
+			log_printf(1, msg_opt_edramtemp, xb.edramTemp);
+			return 1;
+		}
+		if (!stricmp(opt, str_overcputemp)) {
+			xb.overCpuTemp = myatou32(val, -1);
+			if (xb.overCpuTemp == -1)
+				goto bad;
+			log_printf(1, msg_opt_overcputemp, xb.overCpuTemp);
+			return 1;
+		}
+		if (!stricmp(opt, str_overgputemp)) {
+			xb.overGpuTemp = myatou32(val, -1);
+			if (xb.overGpuTemp == -1)
+				goto bad;
+			log_printf(1, msg_opt_overgputemp, xb.overGpuTemp);
+			return 1;
+		}
+		if (!stricmp(opt, str_overedramtemp)) {
+			xb.overEdramTemp = myatou32(val, -1);
+			if (xb.overEdramTemp == -1)
+				goto bad;
+			log_printf(1, msg_opt_overedramtemp, xb.overEdramTemp);
+			return 1;
+		}
+		if (!stricmp(opt, str_cpufan)) {
+			xb.cpuFan = myatou32(val, -1);
+			if (xb.cpuFan == -1)
+				goto bad;
+			log_printf(1, msg_opt_cpufan, xb.cpuFan);
+			return 1;
+		}
+		if (!stricmp(opt, str_gpufan)) {
+			xb.gpuFan = myatou32(val, -1);
+			if (xb.gpuFan == -1) {
+				po_hint(&dead);
+				goto bad;
+			}
+			log_printf(1, msg_opt_gpufan, xb.gpuFan);
+			return 1;
+		}
+		if (!stricmp(opt, str_avregion)) {
+			xb.avRegion = myatou32(val, -1);
+			if (xb.avRegion == -1)
+				goto bad;
+			log_printf(1, msg_opt_avregion, xb.avRegion);
+			return 1;
+		}
+		if (!stricmp(opt, str_gameregion)) {
+			xb.gameRegion = myatou32(val, -1);
+			if (xb.gameRegion == -1)
+				goto bad;
+			log_printf(1, msg_opt_gameregion, xb.gameRegion);
+			return 1;
+		}
+		if (!stricmp(opt, str_dvdregion)) {
+			xb.dvdRegion = myatou32(val, -1);
+			if (xb.dvdRegion == -1)
+				goto bad;
+			log_printf(1, msg_opt_dvdregion, xb.dvdRegion);
+			return 1;
+		}
+		if (!stricmp(opt, str_xellbutton)) {
+			xb.xellButton = parseButton(val);
+			if (!xb.xellButton)
+				goto bad;
+			log_printf(1, msg_opt_xellbutton, val);
+			return 1;
+		}
+		if (!stricmp(opt, str_xellbutton2)) {
+			xb.xellAltButton = parseButton(val);
+			if (!xb.xellAltButton)
+				goto bad;
+			log_printf(1, msg_opt_xellbutton2, val);
+			return 1;
+		}
+		if (!stricmp(opt, str_dualboot)) {
+			xb.dualButton = parseButton(val);
+			if (!xb.dualButton)
+				goto bad;
+			log_printf(1, msg_opt_dualboot, val);
+			return 1;
+		}
+		if (!stricmp(opt, str_cfldv)) {
+			xb.cfLdv = myatou32(val, 0);
+			if (xb.cfLdv > 32) {
+				log_printf(0, msg_cfldvTooLarge, xb.cfLdv);
+				xb.cfLdv = 32;
+			} else if (!xb.cfLdv)
+				goto bad;
+			log_printf(1, msg_opt_cfldv, xb.cfLdv);
+			return 1;
+		}
+		if (!stricmp(opt, str_macid)) {
+			stripColons(val);
+			if (strlen(val) != 12) {
+				log_printf(1, msg_macidBadLength, opt);
+				return 0;
+			}
+			if (!validateString(val)) {
+				log_printf(1, msg_macidBadValues, opt);
+				return 0;
+			}
+			log_printf(1, msg_opt_macid);
+			xb.macid[0] = myatox8(val);
+			val += 2;
+			log_printf(1, str_hex02, xb.macid[0]);
+			for (i = 0; i < 5; i++) {
+				log_printf(1, str_colon);
+				xb.macid[i + 1] = myatox8(val + i * 2);
+				log_printf(1, str_hex02, xb.macid[i + 1]);
+			}
+			{ log_printf(1, str_nl); return 1; }
+		}
+		if (!stricmp(opt, str_dvdkey)) {
+			if (!kvSetDvdKey(val))
+				goto bad;
+			xb.bootFlags |= 0x2000000;
+			return 1;
+		}
+	}
+	if (__builtin_expect(vlen, 0)) {
+		log_printf(1, msg_optUnknownValue, opt, val);
+		return 0;
+	}
+	log_printf(1, msg_optIncomplete, opt);
+	return 0;
+bad:
+	log_printf(1, msg_optBadValue, opt, val);
+	return 0;
+}
+
 /* the ;-separated command line options */
 int parseCmdOptions(const char *opts)
 {
@@ -634,7 +870,7 @@ int parseCmdOptions(const char *opts)
 		if (opts[i] == ';' || opts[i] == 0) {
 			opt[j] = 0;
 			if (strlen(opt) > 4) {
-				if (!parseOption(opt))
+				if (!parseOptionInt(opt))
 					return 0;
 			}
 			j = 0;

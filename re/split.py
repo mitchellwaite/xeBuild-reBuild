@@ -386,6 +386,21 @@ SYMBOLS = {
     0x458ae8: '_msg_rawPatchParsed', 0x458b28: '_msg_rawPatchBadOffset', 0x458b80: '_msg_rawPatchSlotsFull',
     0x458bbc: '_msg_patchParseFailed', 0x458bf5: '_str_binFmt', 0x458bfc: '_msg_patchDuplicate',
     0x458c54: '_msg_patchTooMany', 0x458c9c: '_str_addon',
+    # parseOption's
+    0x4584de: '_str_nl', 0x4584e0: '_str_cputemp', 0x4584e8: '_msg_opt_cputemp',
+    0x458508: '_str_gputemp', 0x458510: '_msg_opt_gputemp', 0x458530: '_str_edramtemp',
+    0x45853c: '_msg_opt_edramtemp', 0x45855e: '_str_overcputemp', 0x45856c: '_msg_opt_overcputemp',
+    0x458590: '_str_overgputemp', 0x45859c: '_msg_opt_overgputemp', 0x4585c0: '_str_overedramtemp',
+    0x4585d0: '_msg_opt_overedramtemp', 0x4585f6: '_str_cpufan', 0x458600: '_msg_opt_cpufan',
+    0x45861f: '_str_gpufan', 0x458628: '_msg_opt_gpufan', 0x458647: '_str_avregion',
+    0x458650: '_msg_opt_avregion', 0x458673: '_str_gameregion', 0x458680: '_msg_opt_gameregion',
+    0x4586a5: '_str_dvdregion', 0x4586b0: '_msg_opt_dvdregion', 0x4586d4: '_str_xellbutton',
+    0x4586e0: '_msg_opt_xellbutton', 0x458703: '_str_xellbutton2', 0x458710: '_msg_opt_xellbutton2',
+    0x458734: '_str_dualboot', 0x458740: '_msg_opt_dualboot', 0x458761: '_str_cfldv',
+    0x458768: '_msg_cfldvTooLarge', 0x4587c0: '_msg_opt_cfldv', 0x4587de: '_str_macid',
+    0x4587e4: '_msg_opt_macid', 0x458801: '_str_hex02', 0x458806: '_str_colon',
+    0x458808: '_msg_macidBadValues', 0x458854: '_msg_macidBadLength', 0x45889a: '_str_dvdkey',
+    0x4588a4: '_msg_optUnknownValue', 0x4588f8: '_msg_optIncomplete', 0x458948: '_msg_optBadValue',
     # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
@@ -702,7 +717,7 @@ C_FUNCS = {
     0x424930, 0x424a70, 0x449640,            # optIniBool parseButton parseButton.part.0
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
-    0x4258e0,                                # parseCmdOptions
+    0x425110, 0x4258e0,                      # parseOption parseCmdOptions
     0x427000, 0x4271a0, 0x427260, 0x427340,  # parseRawPatch parseRawPatches addPatch loadAddons
     # app/keys (the rest are drafted in wip/app/keys.c)
     0x41aa00, 0x41abb0, 0x41ac00, 0x41ac50,  # keysInit setCrlKey setDaeKey setSecdataKey

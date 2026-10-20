@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **556 of 617** (551 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **557 of 617** (552 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 371 / 432 |
+| `app/` | 16 / 25 | 372 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -43,7 +43,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
-| `app/options` | mixed; 0 of 2 drafted functions match in `wip/app/options.c` | 17 / 19 |
+| `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
 <details>
@@ -283,7 +283,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/options</code>: 17 / 19 in C</summary>
+<summary><code>app/options</code>: 18 / 19 in C</summary>
 
 - ✅ `baseFileExists.part.0` (0x4236f0)
 - ✅ `baseFileExists` (0x423730)
@@ -296,7 +296,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `stripColons` (0x424b20)
 - ✅ `macidSet` (0x424b60)
 - ✅ `setBoolOption` (0x424bb0)
-- ⬜ `parseOption` (0x425110) (draft in `wip/`, no match yet)
+- ✅ `parseOption` (0x425110)
 - ✅ `parseCmdOptions` (0x4258e0)
 - ⬜ `applyIniOptions` (0x4259a0) (draft in `wip/`, no match yet)
 - ✅ `parseRawPatch` (0x427000)
