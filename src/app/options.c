@@ -108,6 +108,19 @@ extern const char str_jasperbigffs[];	/* "jasperbigffs" */
 extern const char msg_iniInvalid[];	/* "***** WARNING: options.ini setting '%..." */
 extern const char str_false[];	/* "false" */
 extern const char str_true[];	/* "true" */
+extern const char str_power[];	/* "power" */
+extern const char str_remopower[];	/* "remopower" */
+extern const char str_remox[];	/* "remox" */
+extern const char str_winbutton[];	/* "winbutton" */
+extern const char str_wirelessx[];	/* "wirelessx" */
+extern const char str_wiredx[];	/* "wiredx" */
+extern const char str_wiredxb1[];	/* "wiredxb1" */
+extern const char str_wiredxb2[];	/* "wiredxb2" */
+extern const char str_wiredxb3[];	/* "wiredxb3" */
+extern const char str_wiredxf1[];	/* "wiredxf1" */
+extern const char str_wiredxf2[];	/* "wiredxf2" */
+extern const char str_eject[];	/* "eject" */
+extern const char str_kiosk[];	/* "kiosk" */
 extern const char msg_opt_nodvd[];	/* "Using NODVD (tray status fully open c..." */
 extern const char msg_opt_olddvd[];	/* "Using OLDDVD (tray status not closed ..." */
 extern const char msg_opt_cygnos[];	/* "Using CYGNOS option" */
@@ -369,6 +382,49 @@ int optIniInt(const char *name, int def)
 		return def;
 	}
 	return getIniU32(name, def);
+}
+
+int parseButton(const char *s)
+{
+	int b = 0;
+
+	if (!s)
+		return 0;
+	if (!strnicmp(s, str_power, 5))
+		b = 0x11;
+	else if (!strnicmp(s, str_remopower, 9))
+		b = 0x20;
+	else if (!strnicmp(s, str_remox, 5))
+		b = 0x22;
+	else if (!strnicmp(s, str_winbutton, 9))
+		b = 0x24;
+	else if (!strnicmp(s, str_wirelessx, 9))
+		b = 0x55;
+	else if (!strnicmp(s, str_wiredx, 6)) {
+		if (!strnicmp(s, str_wiredxb1, 8))
+			b = 0x59;
+		else if (!strnicmp(s, str_wiredxb2, 8))
+			b = 0x58;
+		else if (!strnicmp(s, str_wiredxb3, 8))
+			b = 0x5a;
+		else if (!strnicmp(s, str_wiredxf1, 8))
+			b = 0x56;
+		else if (!strnicmp(s, str_wiredxf2, 8))
+			b = 0x57;
+		else
+			b = 0x5a;
+	} else if (!strnicmp(s, str_eject, 5))
+		b = 0x12;
+	else if (!strnicmp(s, str_kiosk, 5))
+		b = 0x41;
+	return b;
+}
+
+/* parseOption stays asm (splice.py drops this copy); gcc only splits
+   parseButton (its .part.0) when the object calls it directly */
+u32 parseOption(char *opt)
+{
+	return parseButton(opt);
 }
 
 void stripColons(char *s)

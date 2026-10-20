@@ -24,6 +24,9 @@ LABEL = re.compile(r'^([\w$.@]+):\s*$')
 SECTION = re.compile(r'^\s*(\.section\b|\.text\b|\.data\b|\.bss\b|\.ident\b)')
 HEAD = re.compile(r'^\s*(\.p2align|\.globl|\.def)\b')
 LCOMM = re.compile(r'^\s*\.l?comm\s+([\w$.@]+),')
+# an ipa-split part (`name.part.N`) goes to .text.unlikely; the .s places it
+UNLIKELY = re.compile(r'^\s*\.section\s+\.text\.unlikely\b')
+PART = re.compile(r'(_[\w$]+)\.part\.\d+\b')
 
 
 def functions(lines):
@@ -38,7 +41,7 @@ def functions(lines):
             starts.append((s, m.group(1)))
     for l in lines:
         m = SECTION.match(l)
-        if m and m.group(1) not in ('.text', '.ident'):
+        if m and m.group(1) not in ('.text', '.ident') and not UNLIKELY.match(l):
             sys.exit('splice.py: gcc put something outside .text (%r); '
                      'mixed objects keep their data in the .s' % l.strip())
     out = {}
@@ -110,7 +113,10 @@ def main():
     src, gen, dst = sys.argv[1:4]
     lines = open(src).read().split('\n')
     defined = {m.group(1) for m in map(LABEL.match, lines) if m}
-    tables, gen_lines = jump_tables(open(gen).read().split('\n'))
+    # gcc numbers the parts in an object; the .s has our names (stripped binary)
+    parts = {m.group(1): m.group(0) for m in (PART.search(l) for l in lines if l.startswith('#@C ')) if m}
+    gen_text = PART.sub(lambda m: parts.get(m.group(1), m.group(0)), open(gen).read())
+    tables, gen_lines = jump_tables(gen_text.split('\n'))
     fns = functions(drop_rdata(gen_lines, defined))
     for name, body in fns.items():
         for l in body:

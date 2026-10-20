@@ -51,8 +51,6 @@
 .globl _msg_rawPatchParsed
 .globl _msg_rawPatchSlotsFull
 .globl _optIniBool
-.globl _parseButton
-.globl _parseButton.part.0
 .globl _parseCmdOptions
 .globl _parseOption
 .globl _str_binFmt
@@ -62,6 +60,7 @@
 .globl _str_coronabigffs
 .globl _str_cygnos
 .globl _str_demon
+.globl _str_eject
 .globl _str_falcon
 .globl _str_false
 .globl _str_jasper
@@ -71,6 +70,7 @@
 .globl _str_jasperbc
 .globl _str_jasperbigffs
 .globl _str_jaspersb
+.globl _str_kiosk
 .globl _str_nandmu
 .globl _str_nodvd
 .globl _str_noecdremap
@@ -80,6 +80,9 @@
 .globl _str_nosusecurity
 .globl _str_olddvd
 .globl _str_patchsmc
+.globl _str_power
+.globl _str_remopower
+.globl _str_remox
 .globl _str_smcnoblink
 .globl _str_smcnocheck
 .globl _str_smcnoeject
@@ -87,10 +90,18 @@
 .globl _str_trinitybb
 .globl _str_trinitybigffs
 .globl _str_true
+.globl _str_winbutton
 .globl _str_winchester
 .globl _str_winchester4g
 .globl _str_winchesterbb
 .globl _str_winchesterbigffs
+.globl _str_wiredx
+.globl _str_wiredxb1
+.globl _str_wiredxb2
+.globl _str_wiredxb3
+.globl _str_wiredxf1
+.globl _str_wiredxf2
+.globl _str_wirelessx
 .globl _str_xenon
 .globl _str_zephyr
 
@@ -211,59 +222,7 @@ L_4249d1:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_parseButton:
-          push EBX
-          sub ESP,24
-          mov EBX,DWORD PTR [ESP+32]
-          test EBX,EBX
-          je L_424aa4
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45828d
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,17
-          jne L_424ab0
-L_424a9d:
-          add ESP,24
-          mov EAX,EDX
-          pop EBX
-          ret 
-L_424aa4:
-          xor EDX,EDX
-          add ESP,24
-          mov EAX,EDX
-          pop EBX
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_424ab0:
-          mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_458293
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,32
-          je L_424a9d
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45829d
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,34
-          je L_424a9d
-          mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_4582a3
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,36
-          je L_424a9d
-          add ESP,24
-          mov EAX,EBX
-          pop EBX
-          jmp _parseButton.part.0
+#@C _parseButton
           .byte 0x66
           .byte 0x90
 #@C _stripColons
@@ -1062,28 +1021,28 @@ L_425c60:
           mov EBX,EAX
           je L_42698e
           mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45828d
+          mov DWORD PTR [ESP+4],OFFSET _str_power
           mov DWORD PTR [ESP],EAX
           call _strnicmp
           test EAX,EAX
           mov EDX,17
           je L_426340
           mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_458293
+          mov DWORD PTR [ESP+4],OFFSET _str_remopower
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
           mov EDX,32
           je L_426340
           mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45829d
+          mov DWORD PTR [ESP+4],OFFSET _str_remox
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
           mov EDX,34
           je L_426340
           mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_4582a3
+          mov DWORD PTR [ESP+4],OFFSET _str_winbutton
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
@@ -1115,7 +1074,7 @@ L_425d40:
           mov EBX,EAX
           je L_425d8f
           mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45828d
+          mov DWORD PTR [ESP+4],OFFSET _str_power
           mov DWORD PTR [ESP],EAX
           call _strnicmp
           test EAX,EAX
@@ -1620,21 +1579,21 @@ L_4266a2:
           jmp L_425b3f
 L_4266af:
           mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_458293
+          mov DWORD PTR [ESP+4],OFFSET _str_remopower
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
           mov EDX,32
           je L_425d8f
           mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45829d
+          mov DWORD PTR [ESP+4],OFFSET _str_remox
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
           mov EDX,34
           je L_425d8f
           mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_4582a3
+          mov DWORD PTR [ESP+4],OFFSET _str_winbutton
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
@@ -1656,7 +1615,7 @@ L_426730:
           mov EBX,EAX
           je L_426769
           mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45828d
+          mov DWORD PTR [ESP+4],OFFSET _str_power
           mov DWORD PTR [ESP],EAX
           call _strnicmp
           test EAX,EAX
@@ -1884,21 +1843,21 @@ L_426b22:
           jmp L_425b99
 L_426b2c:
           mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_458293
+          mov DWORD PTR [ESP+4],OFFSET _str_remopower
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
           mov EDX,32
           je L_426769
           mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45829d
+          mov DWORD PTR [ESP+4],OFFSET _str_remox
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
           mov EDX,34
           je L_426769
           mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_4582a3
+          mov DWORD PTR [ESP+4],OFFSET _str_winbutton
           mov DWORD PTR [ESP],EBX
           call _strnicmp
           test EAX,EAX
@@ -2309,80 +2268,7 @@ L_4274d0:
 
 .section .text.startup,"xr"
 .p2align 4
-_parseButton.part.0:
-          push EBX
-          mov EBX,EAX
-          sub ESP,24
-          mov DWORD PTR [ESP+8],9
-          mov DWORD PTR [ESP+4],OFFSET L_457df0
-          mov DWORD PTR [ESP],EAX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,85
-          je L_44977b
-          mov DWORD PTR [ESP+8],6
-          mov DWORD PTR [ESP+4],OFFSET L_457dfa
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          jne L_44973a
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],OFFSET L_457e01
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,89
-          je L_44977b
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],OFFSET L_457e0a
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,88
-          je L_44977b
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],OFFSET L_457e13
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          je L_449733
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],OFFSET L_457e1c
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,86
-          je L_44977b
-          mov DWORD PTR [ESP+8],8
-          mov DWORD PTR [ESP+4],OFFSET L_457e25
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,87
-          je L_44977b
-L_449733:
-          mov EDX,90
-          jmp L_44977b
-L_44973a:
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_457e2e
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          mov EDX,18
-          je L_44977b
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_457e34
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          cmp EAX,1
-          sbb EDX,EDX
-          and EDX,65
-L_44977b:
-          add ESP,24
-          mov EAX,EDX
-          pop EBX
-          ret 
+#@C _parseButton.part.0
           .byte 0x90
           .byte 0x90
           .byte 0x66
@@ -2400,23 +2286,23 @@ L_44977b:
 
 .section .rdata,"dr"
 .p2align 2
-L_457df0:
+_str_wirelessx:
           .string "wirelessx"
-L_457dfa:
+_str_wiredx:
           .string "wiredx"
-L_457e01:
+_str_wiredxb1:
           .string "wiredxb1"
-L_457e0a:
+_str_wiredxb2:
           .string "wiredxb2"
-L_457e13:
+_str_wiredxb3:
           .string "wiredxb3"
-L_457e1c:
+_str_wiredxf1:
           .string "wiredxf1"
-L_457e25:
+_str_wiredxf2:
           .string "wiredxf2"
-L_457e2e:
+_str_eject:
           .string "eject"
-L_457e34:
+_str_kiosk:
           .string "kiosk"
 _str_xenon:
           .string "xenon"
@@ -2515,13 +2401,13 @@ L_458227:
           .zero 1
 _msg_iniInvalid:
           .string "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n"
-L_45828d:
+_str_power:
           .string "power"
-L_458293:
+_str_remopower:
           .string "remopower"
-L_45829d:
+_str_remox:
           .string "remox"
-L_4582a3:
+_str_winbutton:
           .string "winbutton"
 _str_false:
           .string "false"

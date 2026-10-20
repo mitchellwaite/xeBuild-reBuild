@@ -50,10 +50,10 @@ Draft of the whole object, with string literals.  The matching
 functions are built from `src/app/options.c` now, a mixed object that uses
 `extern` names for the strings: baseFileExists (+ its `.part.0`),
 perboxExists, iniConsoleType, setConsoleType, optIniInt, stripColons,
-macidSet, setBoolOption, parseRawPatch, parseRawPatches, addPatch.
+macidSet, setBoolOption, parseButton (+ its `.part.0`), parseRawPatch,
+parseRawPatches, addPatch.
 setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
-`__ImageBase` (the bytes match).  parseButton matches here but stays asm in
-the build (its split part at 449640 is called from asm).  When the rest
+`__ImageBase` (the bytes match).  When the rest
 matches, move this file over `src/app/options.c` (literals back, data
 from the `.s`) and drop the object from `C_FUNCS`.  Still off:
 

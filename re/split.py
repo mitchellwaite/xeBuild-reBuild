@@ -378,6 +378,11 @@ SYMBOLS = {
     0x458432: '_str_smcnoeject', 0x45843d: '_msg_opt_smcnoeject', 0x458455: '_str_smcnoblink',
     0x458460: '_msg_opt_smcnoblink', 0x458478: '_str_nodvd', 0x45847e: '_str_olddvd',
     0x458485: '_str_cygnos', 0x45848c: '_str_demon', 0x458494: '_msg_optNoValue',
+    0x45828d: '_str_power', 0x458293: '_str_remopower', 0x45829d: '_str_remox',
+    0x4582a3: '_str_winbutton', 0x457df0: '_str_wirelessx', 0x457dfa: '_str_wiredx',
+    0x457e01: '_str_wiredxb1', 0x457e0a: '_str_wiredxb2', 0x457e13: '_str_wiredxb3',
+    0x457e1c: '_str_wiredxf1', 0x457e25: '_str_wiredxf2', 0x457e2e: '_str_eject',
+    0x457e34: '_str_kiosk',
     0x458ae8: '_msg_rawPatchParsed', 0x458b28: '_msg_rawPatchBadOffset', 0x458b80: '_msg_rawPatchSlotsFull',
     0x458bbc: '_msg_patchParseFailed', 0x458bf5: '_str_binFmt', 0x458bfc: '_msg_patchDuplicate',
     0x458c54: '_msg_patchTooMany',
@@ -691,9 +696,10 @@ C_FUNCS = {
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
     0x403e10,                                # getSecurityFiles
     0x404320, 0x404340, 0x404430, 0x404600,  # checkBadBlocks getBootloaders getConsoleFiles updateGetFile
-    # app/options (parseButton stays asm: its ipa-split part at 449640 is
-    # called from asm, and gcc would put it in .text.unlikely)
+    # app/options (parseButton's ipa-split part at 449640 is gcc's
+    # .text.unlikely, which splice.py takes too)
     0x4236f0,                                # baseFileExists.part.0
+    0x424a70, 0x449640,                      # parseButton parseButton.part.0
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
