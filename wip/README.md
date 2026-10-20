@@ -96,6 +96,41 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
     noecdremap's).
   - Also off: the xellbutton registers (ebx vs edx) and the dualboot /
     type reload (`mov edx,[type]` kept for `cmp edx,2`).
+  - 2026-10-20, checked against gcc 6.2's bb-reorder.c (fetch it from
+    gcc-mirror `releases/gcc-6.2.0`).  The perbox test is exactly 50/50
+    (call heuristic on both arms).  When the edges are hot enough to stay
+    in a trace (round 3: edge freq >= 5% of entry), better_edge_p picks
+    the next_bb arm.  When they are colder, connect_traces picks the higher
+    probability and, on a tie, the strictly longer successor trace.
+    perbox-false's trace is 3 blocks (ini test, warning, the eax reload
+    that jump2 crossjumps *before* bbro; no crossjump runs after it), and
+    perbox-true's is 2 (log, OR).  So our cold nomobile group goes false;
+    smcnocheck/cygnos/... tie 2-2 and keep the first edge (true).
+  - So in the original nomobile's perbox test must be in-trace (freq >=
+    ~180 of 1815) with true as next_bb, and the dup after nomobile and
+    nosecurity needs the OR edge >= 181 (perbox test >= ~335).  noecdremap's
+    must be cold (< 180, connect picks the longer false trace) or in-trace
+    with false as next_bb.  Its bootFlagsOff test must not favour clear
+    (the hot trace ends there; connect needs skip >= clear).
+  - With the inlined copies sharing optIniBool's own profile (IPA inline,
+    our current shape), nomobile's guard must be < 50% clear (hot path
+    skips) and noecdremap's >= 50% (hot path continues), and the inner
+    probabilities are equal, so nomobile's perbox frequency is always below
+    noecdremap's.  The constraints need the reverse, so the copies'
+    probabilities must differ per call site: the original's copies were
+    estimated in the caller's context (early-inlined, a macro, or written
+    out per option).  The Linux gcc 4.9 build has the same noecdremap vs
+    nomobile split, which also points at source structure.
+  - Probe: `__attribute__((always_inline))` on optIniBool (no `inline`
+    keyword, so the out-of-line copy is still emitted and still matches),
+    `optimize("no-early-inlining")` on applyIniOptions so a guarded
+    `po_hint(&dead)` call survives to profile_estimate (keeps the guards at
+    29% clear), and for noecdremap `if (!(bootFlags & 0x80000000)) { if
+    (__builtin_expect(!(bootFlagsOff & 0x80000000), 0)) optIniBool(...) }`.
+    The whole hot path then matches, and so do all the perbox directions
+    except olddvd.  The cold trace order is further off (blk.py 87 lines),
+    and there is still no dup.  In caller context the sign tests pick up
+    the opcode heuristic (73%), which is why noecdremap needs the expect.
 - `parseOption` builds from src (was 69 lines here).  The key was the
   Linux build: it tests `val == NULL` after setBoolOption and jumps to the
   unknown/incomplete tail, so the value options sit inside `if (val) {...}`
