@@ -1,6 +1,6 @@
 """Replay gcc 6's fibonacci_heap (bb-reorder STC) from a -fdump-rtl-bbro-details dump.
 
-python fibsim.py dump [mods]   mods: python dict literal {bb: newkey} applied to inserts/changes
+python wip/fibsim.py dump
 Checks every 'Getting bb' against the simulated extract_min; prints the extraction order.
 """
 import re, sys
