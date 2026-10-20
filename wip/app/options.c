@@ -889,10 +889,11 @@ int parseRawPatches(const char *pats)
 /* an optional patch from the ini, skipping ones the command line gave */
 void addPatch(const char *name)
 {
-	char path[1024];
 	int i;
 
 	if (xb.numPatches <= 15) {
+		char path[1024];
+
 		sprintf(path, "%s.bin", name);
 		for (i = 0; i < xb.numPatches; i++) {
 			if (!stricmp(path, xb.patches[i])) {

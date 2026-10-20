@@ -51,7 +51,7 @@ functions are built from `src/app/options.c` now, a mixed object that uses
 `extern` names for the strings: baseFileExists (+ its `.part.0`),
 perboxExists, iniConsoleType, setConsoleType, optIniInt, stripColons,
 macidSet, setBoolOption, optIniBool, parseButton (+ its `.part.0`), parseCmdOptions, parseRawPatch,
-parseRawPatches, addPatch.
+parseRawPatches, addPatch, loadAddons.
 setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
 `__ImageBase` (the bytes match).  When the rest
 matches, move this file over `src/app/options.c` (literals back, data
@@ -124,15 +124,12 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
   esi, but parseCmdOptions only matches with an int return (15 lines with
   u32), so src declares it `int`.  Moving parseOption to src means
   reconciling the two.
-- `loadAddons` (11): the original keeps j=0 in eax across the over-limit
-  warning (caller-save); ours rematerialises it.  That spill also blocks
-  the head merge of `lea eax,name; mov [esp+8],eax` above the `jg`, which
-  is the other half of the diff.  Moving `j = 0`, a pointer instead of an
-  index, unsigned j and a do-while made no difference or worse; so did an
-  early-return addPatch (`if (n > 15) {warn; return;}`).  In our
-  `-fdump-tree-optimized` the over-limit and strcpy paths join before the
-  latch, so one `j = 0` follows both calls; the original's over-limit zero is
-  the one set before `cmp edx,4`.
+- `loadAddons` builds from src: addPatch declares `path` inside the
+  `numPatches <= 15` block.  With it at function scope, the inlined
+  `path ={v} {CLOBBER}` joins the over-limit and strcpy paths before the
+  latch, so their `j = 0` sits in a multi-pred block; without the join it
+  stays in the over-limit path's extended block and cse drops it (j is
+  still the 0 set before `cmp edx,4`).
 
 Findings:
 - DashLaunch (same authors) has the ini reader in C:

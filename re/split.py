@@ -385,7 +385,7 @@ SYMBOLS = {
     0x457e34: '_str_kiosk', 0x458208: '_msg_optPerbox', 0x458227: '_msg_optIni',
     0x458ae8: '_msg_rawPatchParsed', 0x458b28: '_msg_rawPatchBadOffset', 0x458b80: '_msg_rawPatchSlotsFull',
     0x458bbc: '_msg_patchParseFailed', 0x458bf5: '_str_binFmt', 0x458bfc: '_msg_patchDuplicate',
-    0x458c54: '_msg_patchTooMany',
+    0x458c54: '_msg_patchTooMany', 0x458c9c: '_str_addon',
     # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
@@ -703,7 +703,7 @@ C_FUNCS = {
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x4258e0,                                # parseCmdOptions
-    0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
+    0x427000, 0x4271a0, 0x427260, 0x427340,  # parseRawPatch parseRawPatches addPatch loadAddons
     # app/keys (the rest are drafted in wip/app/keys.c)
     0x41aa00, 0x41abb0, 0x41ac00, 0x41ac50,  # keysInit setCrlKey setDaeKey setSecdataKey
     0x41ac70, 0x41aca0, 0x41acd0, 0x41ad00,  # setInfoKey0..3

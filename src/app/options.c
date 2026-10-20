@@ -158,6 +158,7 @@ extern const char msg_rawPatchSlotsFull[];	/* "***** ERROR: %d of %d [rawpatch] 
 extern const char msg_patchParseFailed[];	/* "***** ERROR: parsing optional patch s..." */
 extern const char str_binFmt[];	/* "%s.bin" */
 extern const char msg_patchDuplicate[];	/* "***** WARNING: %s was provided both o..." */
+extern const char str_addon[];	/* "addon" */
 extern const char msg_patchTooMany[];	/* "***** WARNING: exceeded total number ..." */
 
 /* strcat(xb.outName, "name") as gcc expands it: the short names become
@@ -705,10 +706,11 @@ int parseRawPatches(const char *pats)
 /* an optional patch from the ini, skipping ones the command line gave */
 void addPatch(const char *name)
 {
-	char path[1024];
 	int i;
 
 	if (xb.numPatches <= 15) {
+		char path[1024];
+
 		sprintf(path, str_binFmt, name);
 		for (i = 0; i < xb.numPatches; i++) {
 			if (!stricmp(path, xb.patches[i])) {
@@ -720,4 +722,27 @@ void addPatch(const char *name)
 		xb.numPatches++;
 	} else
 		log_printf(0, msg_patchTooMany, name);
+}
+
+/* the :-separated addon list from the ini */
+int loadAddons(void)
+{
+	char name[512];
+	char *s;
+	int i, j, len;
+
+	s = getIniValue(str_addon);
+	if (s) {
+		len = strlen(s);
+		for (i = 0, j = 0; i <= len; i++) {
+			if (s[i] == ':' || s[i] == 0) {
+				name[j] = 0;
+				if (strlen(name) > 4)
+					addPatch(name);
+				j = 0;
+			} else
+				name[j++] = s[i];
+		}
+	}
+	return 1;
 }

@@ -11,7 +11,6 @@
 
 .intel_syntax noprefix
 .globl _applyIniOptions
-.globl _loadAddons
 .globl _msg_ctype_corona
 .globl _msg_ctype_corona4g
 .globl _msg_ctype_coronabb
@@ -53,6 +52,7 @@
 .globl _msg_rawPatchParsed
 .globl _msg_rawPatchSlotsFull
 .globl _parseOption
+.globl _str_addon
 .globl _str_binFmt
 .globl _str_corona
 .globl _str_corona4g
@@ -1973,149 +1973,7 @@ L_427251:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_loadAddons:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,1580
-          mov DWORD PTR [ESP],OFFSET L_458c9c
-          call _getIniValue
-          test EAX,EAX
-          je L_42748e
-          mov DWORD PTR [ESP],EAX
-          mov EBX,EAX
-          call _strlen
-          test EAX,EAX
-          mov DWORD PTR [ESP+24],EAX
-          js L_42748e
-          xor EAX,EAX
-          xor EBP,EBP
-          jmp L_427398
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_427380:
-          test DL,DL
-          je L_4273a1
-          mov BYTE PTR [ESP+EAX*1+32],DL
-          add EAX,1
-L_42738b:
-          add EBP,1
-          cmp DWORD PTR [ESP+24],EBP
-          jl L_42748e
-L_427398:
-          movzx EDX,BYTE PTR [EBX+EBP*1]
-          cmp DL,58
-          jne L_427380
-L_4273a1:
-          lea EDX,DWORD PTR [ESP+32]
-          mov BYTE PTR [ESP+EAX*1+32],0
-L_4273aa:
-          mov ECX,DWORD PTR [EDX]
-          add EDX,4
-          lea EAX,DWORD PTR [ECX-16843009]
-          not ECX
-          and EAX,ECX
-          and EAX,2155905152
-          je L_4273aa
-          mov ECX,EAX
-          shr ECX,16
-          test EAX,32896
-          cmove EAX,ECX
-          lea ECX,DWORD PTR [EDX+2]
-          cmove EDX,ECX
-          mov ECX,EAX
-          add CL,AL
-          lea EAX,DWORD PTR [ESP+32]
-          sbb EDX,3
-          sub EDX,EAX
-          xor EAX,EAX
-          cmp EDX,4
-          jbe L_42738b
-          cmp DWORD PTR [L_4c4f94],15
-          jg L_4274a0
-          lea EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET _str_binFmt
-          mov DWORD PTR [ESP+8],EAX
-          lea EAX,DWORD PTR [ESP+544]
-          mov DWORD PTR [ESP],EAX
-          call _sprintf
-          mov EAX,DWORD PTR [L_4c4f94]
-          test EAX,EAX
-          jle L_4274d0
-          mov EDI,OFFSET L_4c0c94
-          xor ESI,ESI
-          jmp L_427446
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_427430:
-          mov EAX,DWORD PTR [L_4c4f94]
-          add ESI,1
-          add EDI,1068
-          cmp ESI,EAX
-          jge L_4274d0
-L_427446:
-          lea EAX,DWORD PTR [ESP+544]
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EAX
-          call _stricmp
-          test EAX,EAX
-          jne L_427430
-          mov DWORD PTR [ESP+28],EAX
-          lea EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET _msg_patchDuplicate
-          mov DWORD PTR [ESP],1
-          add EBP,1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          cmp DWORD PTR [ESP+24],EBP
-          mov EAX,DWORD PTR [ESP+28]
-          jge L_427398
-L_42748e:
-          add ESP,1580
-          mov EAX,1
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x66
-          .byte 0x90
-L_4274a0:
-          mov DWORD PTR [ESP+28],EAX
-          lea EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],OFFSET _msg_patchTooMany
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+28]
-          jmp L_42738b
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_4274d0:
-          imul EAX,EAX,1068
-          lea EDI,DWORD PTR [ESP+544]
-          mov DWORD PTR [ESP+4],EDI
-          add EAX,OFFSET L_4c0c94
-          mov DWORD PTR [ESP],EAX
-          call _strcpy
-          add DWORD PTR [L_4c4f94],1
-          xor EAX,EAX
-          jmp L_42738b
+#@C _loadAddons
           .byte 0x90
           .byte 0x90
           .byte 0x90
@@ -2466,7 +2324,7 @@ _msg_patchDuplicate:
           .zero 3
 _msg_patchTooMany:
           .string "***** WARNING: exceeded total number of optional patches with ini  %s!\n"
-L_458c9c:
+_str_addon:
           .string "addon"
           .zero 2
 
