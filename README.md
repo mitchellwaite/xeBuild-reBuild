@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **554 of 617** (549 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **555 of 617** (550 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 369 / 432 |
+| `app/` | 16 / 25 | 370 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -43,7 +43,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
-| `app/options` | mixed; 0 of 4 drafted functions match in `wip/app/options.c` | 15 / 19 |
+| `app/options` | mixed; 0 of 3 drafted functions match in `wip/app/options.c` | 16 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
 <details>
@@ -283,7 +283,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/options</code>: 15 / 19 in C</summary>
+<summary><code>app/options</code>: 16 / 19 in C</summary>
 
 - ✅ `baseFileExists.part.0` (0x4236f0)
 - ✅ `baseFileExists` (0x423730)
@@ -297,7 +297,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `macidSet` (0x424b60)
 - ✅ `setBoolOption` (0x424bb0)
 - ⬜ `parseOption` (0x425110) (draft in `wip/`, no match yet)
-- ⬜ `parseCmdOptions` (0x4258e0) (draft in `wip/`, no match yet)
+- ✅ `parseCmdOptions` (0x4258e0)
 - ⬜ `applyIniOptions` (0x4259a0) (draft in `wip/`, no match yet)
 - ✅ `parseRawPatch` (0x427000)
 - ✅ `parseRawPatches` (0x4271a0)
@@ -1008,7 +1008,7 @@ function already in C. Its default flags are `-O3`; give fileutil's
 Mixed so far: `app/filelist_ini` (`getIniValue`, with a `findInst`-style
 `findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
-`findInst`. And `app/options` (15 functions; the rest are drafted in
+`findInst`. And `app/options` (16 functions; the rest are drafted in
 `wip/app/options.c`):
 
 - Its strings are `extern const char str_*/msg_*[]`, named in `SYMBOLS`.
@@ -1017,7 +1017,7 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
 - `parseButton`'s split part (449640) is gcc's `.text.unlikely`, called
   from asm. splice.py takes `.text.unlikely` and renames gcc's `.part.N` to
   the `.s`'s name. gcc only splits a function the object calls directly, so
-  options.c keeps a stand-in `parseOption` (asm; splice drops the copy).
+  options.c keeps a stand-in `applyIniOptions` (asm; splice drops the copy).
 - `strcat(xb.outName, "name")` is expanded inline. Short names become
   immediate stores, so the literal stays and no data is emitted. Longer ones
   copy from the string itself; those are written as `OUTCAT(name)`

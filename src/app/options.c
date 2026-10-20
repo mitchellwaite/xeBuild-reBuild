@@ -63,6 +63,7 @@ u32 validateString(char *nString);
 void showHexPairs(unsigned int level, const char *s);
 int kvSetDvdKey(char *key);
 void applyIniOptions(void);
+int parseOption(char *opt);	/* u32 in wip/; int is what parseCmdOptions needs */
 
 extern struct xebuild xb;
 
@@ -452,11 +453,11 @@ int parseButton(const char *s)
 	return b;
 }
 
-/* parseOption stays asm (splice.py drops this copy); gcc only splits
+/* applyIniOptions stays asm (splice.py drops this copy); gcc only splits
    parseButton (its .part.0) when the object calls it directly */
-u32 parseOption(char *opt)
+void applyIniOptions(void)
 {
-	return parseButton(opt);
+	xb.xellButton = parseButton(getIniValue(str_power));
 }
 
 void stripColons(char *s)
@@ -621,6 +622,27 @@ int setBoolOption(const char *name, const char *val)
 }
 
 /* one file,offset raw patch from the command line */
+/* the ;-separated command line options */
+int parseCmdOptions(const char *opts)
+{
+	char opt[512];
+	int i, j, len;
+
+	len = strlen(opts);
+	for (i = 0, j = 0; i <= len; i++) {
+		if (opts[i] == ';' || opts[i] == 0) {
+			opt[j] = 0;
+			if (strlen(opt) > 4) {
+				if (!parseOption(opt))
+					return 0;
+			}
+			j = 0;
+		} else
+			opt[j++] = opts[i];
+	}
+	return 1;
+}
+
 int parseRawPatch(char *pat)
 {
 	char *val = NULL;

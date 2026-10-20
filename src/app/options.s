@@ -52,7 +52,6 @@
 .globl _msg_rawPatchBadOffset
 .globl _msg_rawPatchParsed
 .globl _msg_rawPatchSlotsFull
-.globl _parseCmdOptions
 .globl _parseOption
 .globl _str_binFmt
 .globl _str_corona
@@ -672,85 +671,7 @@ L_4258b4:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_parseCmdOptions:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,540
-          mov ESI,DWORD PTR [ESP+560]
-          mov DWORD PTR [ESP],ESI
-          call _strlen
-          test EAX,EAX
-          js L_425971
-          mov EDI,EAX
-          xor EDX,EDX
-          xor EBX,EBX
-          lea EBP,DWORD PTR [ESP+16]
-          jmp L_425922
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_425910:
-          test AL,AL
-          je L_42592a
-          add EBX,1
-          mov BYTE PTR [ESP+EDX*1+16],AL
-          add EDX,1
-          cmp EDI,EBX
-          jl L_425971
-L_425922:
-          movzx EAX,BYTE PTR [ESI+EBX*1]
-          cmp AL,59
-          jne L_425910
-L_42592a:
-          mov BYTE PTR [ESP+EDX*1+16],0
-          mov EDX,EBP
-L_425931:
-          mov ECX,DWORD PTR [EDX]
-          add EDX,4
-          lea EAX,DWORD PTR [ECX-16843009]
-          not ECX
-          and EAX,ECX
-          and EAX,2155905152
-          je L_425931
-          mov ECX,EAX
-          shr ECX,16
-          test EAX,32896
-          cmove EAX,ECX
-          lea ECX,DWORD PTR [EDX+2]
-          cmove EDX,ECX
-          mov ECX,EAX
-          add CL,AL
-          sbb EDX,3
-          sub EDX,EBP
-          cmp EDX,4
-          ja L_425981
-          xor EDX,EDX
-L_42596a:
-          add EBX,1
-          cmp EDI,EBX
-          jge L_425922
-L_425971:
-          mov EAX,1
-L_425976:
-          add ESP,540
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_425981:
-          mov DWORD PTR [ESP],EBP
-          call _parseOption
-          test EAX,EAX
-          je L_425976
-          xor EDX,EDX
-          jmp L_42596a
+#@C _parseCmdOptions
 L_425991:
           jmp _applyIniOptions
           .byte 0x90

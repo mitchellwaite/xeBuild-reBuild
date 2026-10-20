@@ -50,7 +50,7 @@ Draft of the whole object, with string literals.  The matching
 functions are built from `src/app/options.c` now, a mixed object that uses
 `extern` names for the strings: baseFileExists (+ its `.part.0`),
 perboxExists, iniConsoleType, setConsoleType, optIniInt, stripColons,
-macidSet, setBoolOption, optIniBool, parseButton (+ its `.part.0`), parseRawPatch,
+macidSet, setBoolOption, optIniBool, parseButton (+ its `.part.0`), parseCmdOptions, parseRawPatch,
 parseRawPatches, addPatch.
 setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
 `__ImageBase` (the bytes match).  When the rest
@@ -121,7 +121,7 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
   the return block).  Tools: wip/blk.py (block order diff vs options.s), wip/bbmap.py
   (bb-reorder traces with source lines and edge probabilities).
   The u32 return/validateString prototypes stop the return value living in
-  esi, but they cost parseCmdOptions 15 lines (it matched with an int
+  esi, src declares parseOption `int` for parseCmdOptions (u32 costs it 15 lines; it matches with an int
   return).
 - `loadAddons` (11): the original keeps j=0 in eax across the over-limit
   warning (caller-save); ours rematerialises it.  That spill also blocks

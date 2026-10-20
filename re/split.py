@@ -702,6 +702,7 @@ C_FUNCS = {
     0x424930, 0x424a70, 0x449640,            # optIniBool parseButton parseButton.part.0
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
+    0x4258e0,                                # parseCmdOptions
     0x427000, 0x4271a0, 0x427260,            # parseRawPatch parseRawPatches addPatch
     # app/keys (the rest are drafted in wip/app/keys.c)
     0x41aa00, 0x41abb0, 0x41ac00, 0x41ac50,  # keysInit setCrlKey setDaeKey setSecdataKey
