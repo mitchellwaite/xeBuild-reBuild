@@ -120,6 +120,16 @@ from the `.s`) and drop the object from `C_FUNCS`.  Still off:
   `next_bb`; ours fires on every success block, not on `bad` (it precedes
   the return block).  Tools: wip/blk.py (block order diff vs options.s), wip/bbmap.py
   (bb-reorder traces with source lines and edge probabilities).
+  More probes (2026-10-20): the Linux v1.16 build (gcc 4.9, tmp/xeBuild64,
+  parseOption at 0x40d200) has the same two quirks: cputemp's success
+  owns the return epilogue and only edramtemp's `-1` test falls into bad.
+  So they come from the source, not from tuned probabilities.  With expect
+  stand-ins, cputemp needs match >= 52.3% (so bb17 reaches round 2's
+  exec threshold, 114) and success >= bad at its `-1` test (no early-return
+  hit); that gives 30 lines, but then bad starts its own trace before the
+  gputemp/edramtemp trace reaches it.  An inline `log; return 0` copy in
+  place of `goto bad` (tail-merged later) makes every `-1` test 28% bad;
+  no inline/goto mix over the first five options beat the draft.
   The u32 return/validateString prototypes stop the return value living in
   esi, but parseCmdOptions only matches with an int return (15 lines with
   u32), so src declares it `int`.  Moving parseOption to src means
