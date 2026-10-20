@@ -312,13 +312,23 @@ Still off:
   give it, and no object-wide IRA flag (-fira-region, -fira-loop-pressure,
   -fno-ira-hoist-pressure, ...) helps any of the five without breaking
   the 42 that match.
-- `cfPatchSlots` (37) and `cfEncrypt` (94, inlines it): `SWAP16` is
+- `cfPatchSlots` (27) and `cfEncrypt` (94, inlines it): `SWAP16` is
   `((x & 0xff) << 8) + ((x & 0xff00) >> 8)` (not a rotate in the loop or the
   last slot, a rotate for `tbl[0]`), and one `tbl[0] = SWAP16(n)` after the
-  `if (end > max)` (the zero case shares it). Left: `cmp edx,edi` operand
-  order in the loop (the same flip as smcChecksum) and register choice in
-  the tail. cfEncrypt's inlined copy also tests `over == 0`, which the
-  standalone one doesn't; `buf[539] = (type == 2)` is an if/else there.
+  `if (end > max)` (the zero case shares it). The loop's exit `cmp` had the
+  bound first (ivopts rewrites the compare use last, so the bound reuses
+  names the other uses freed, and forwprop4 sorts by version);
+  `always_inline, optimize("no-tree-forwprop")` on cfPatchSlots fixes it
+  standalone (37 -> 27) without changing cfEncrypt.  The smcChecksum-style
+  wrapper doesn't work here: the inliner re-folds `end > max` against the
+  wrapper's low-numbered `max`.  Left: the tail.  The original computes
+  `n` twice (`lea edx,[2+eax]` / `add eax,2`: index and `block + n - 1`
+  from one, `tbl[0]` and the return from the other), ours once; no flag
+  in the attribute changes that (48 tried).  cfEncrypt's original tail
+  has `(trips + 1) + 1` unfolded and no PRE'd `block - 1`, and its copy
+  tests `over == 0` (giving n = 0), which the standalone one doesn't;
+  `while (over)` loops with a clamp or break (8 forms) give a different
+  structure (95+).  `buf[539] = (type == 2)` is an if/else there.
 
 ## app/mode_update.c
 

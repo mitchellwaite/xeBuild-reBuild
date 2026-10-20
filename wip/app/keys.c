@@ -596,6 +596,10 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
 	XeCryptRc4(key, 16, ce + 32, size - 32);
 }
 
+/* without forwprop (the standalone copy's, and the early passes of the
+   one cfEncrypt inlines) the loop's exit cmp keeps the iv first */
+u32 cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
+inline __attribute__((always_inline, optimize("no-tree-forwprop")))
 u32 cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 {
 	u8 *buf = cf->buf;
