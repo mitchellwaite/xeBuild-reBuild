@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **550 of 617** (544 built from `src/`, 6 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **552 of 617** (546 built from `src/`, 6 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 365 / 432 |
+| `app/` | 16 / 25 | 367 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -41,7 +41,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/filelist_ini` | mixed; 0 of 6 drafted functions match in `wip/app/filelist_ini.c` | 6 / 12 |
 | `app/image_write` | mixed; 0 of 9 drafted functions match in `wip/app/image_write.c` | 37 / 46 |
 | `app/image_read` | mixed; 0 of 13 drafted functions match in `wip/app/image_read.c` | 20 / 33 |
-| `app/keys` | mixed; 0 of 6 drafted functions match in `wip/app/keys.c` | 42 / 48 |
+| `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
 | `app/options` | mixed; 1 of 6 drafted functions match in `wip/app/options.c` | 13 / 19 |
 | `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
@@ -193,7 +193,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/keys</code>: 42 / 48 in C</summary>
+<summary><code>app/keys</code>: 44 / 48 in C</summary>
 
 - ✅ `keysInit` (0x41aa00)
 - ✅ `setCrlKey` (0x41abb0)
@@ -218,9 +218,9 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `check1blKey` (0x41b520)
 - ✅ `set1blKey` (0x41b600)
 - ✅ `checkKeys` (0x41b740)
-- ⬜ `smcChecksum` (0x41b8e0) (draft in `wip/`, no match yet)
+- ✅ `smcChecksum` (0x41b8e0)
 - ✅ `smcEncrypt` (0x41ba00)
-- ⬜ `smcPrepare` (0x41ba80) (draft in `wip/`, no match yet)
+- ✅ `smcPrepare` (0x41ba80)
 - ✅ `cbaEncrypt` (0x41bf50)
 - ✅ `cbaEncryptZero` (0x41c0c0)
 - ✅ `cbaEncrypt2` (0x41c1b0)

@@ -60,19 +60,30 @@
 .globl _msg_pairingSet
 .globl _msg_sdMissing
 .globl _msg_sdSize
+.globl _msg_smcBad
+.globl _msg_smcClean
+.globl _msg_smcCleanType
+.globl _msg_smcDevkit
+.globl _msg_smcEncrypted
+.globl _msg_smcGlitch
+.globl _msg_smcHacked
+.globl _msg_smcJtag
+.globl _msg_smcNoGlitch
+.globl _msg_smcNoJtag
+.globl _msg_smcRetail
 .globl _msg_weight
 .globl _msg_xexKeySet
 .globl _msg_xexSum
 .globl _pairing
 .globl _secdataKey
-.globl _smcChecksum
 .globl _smcKey
-.globl _smcPrepare
 .globl _str_Success
 .globl _str_error
+.globl _str_failed
 .globl _str_failedNl
 .globl _str_hexByte
 .globl _str_newline
+.globl _str_success
 .globl _str_successNl
 .globl _str_valid
 .globl _zeroKey
@@ -282,100 +293,7 @@ L_41b8d1:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-_smcChecksum:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          mov EAX,DWORD PTR [ESP+84]
-          mov EBP,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP+44],EAX
-          mov EAX,DWORD PTR [ESP+88]
-          test EAX,EAX
-          je L_41b9f6
-          lea EAX,DWORD PTR [EBP+EAX*4]
-          mov DWORD PTR [ESP+32],0
-          mov DWORD PTR [ESP+36],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+40],EAX
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_41b930:
-          mov EDX,DWORD PTR [EBP]
-          mov ESI,DWORD PTR [ESP+24]
-          mov EDI,DWORD PTR [ESP+28]
-          mov EBX,EDX
-          mov EAX,EDX
-          mov ECX,EDX
-          shr EAX,24
-          shl ECX,8
-          shl EBX,24
-          add EBX,EAX
-          mov EAX,ECX
-          mov ECX,DWORD PTR [ESP+32]
-          and EAX,16711680
-          add EBX,EAX
-          mov EAX,EDX
-          xor EDX,EDX
-          shr EAX,8
-          and EAX,65280
-          add EAX,EBX
-          mov EBX,DWORD PTR [ESP+36]
-          add ESI,EAX
-          adc EDI,EDX
-          sub ECX,EAX
-          sbb EBX,EDX
-          mov EAX,ECX
-          mov ECX,ESI
-          mov EDX,EBX
-          mov EBX,EDI
-          shl ECX,29
-          shld EBX,ESI,29
-          mov ESI,EDI
-          add EBP,4
-          shr ESI,3
-          mov DWORD PTR [ESP+28],EBX
-          mov EBX,EDX
-          or ESI,ECX
-          mov ECX,EAX
-          shld EBX,EAX,31
-          mov EAX,EDX
-          shl ECX,31
-          mov DWORD PTR [ESP+24],ESI
-          shr EAX,1
-          mov DWORD PTR [ESP+36],EBX
-          or EAX,ECX
-          cmp EBP,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+32],EAX
-          jne L_41b930
-          mov EAX,DWORD PTR [ESP+24]
-          mov EDX,DWORD PTR [ESP+28]
-          mov ESI,DWORD PTR [ESP+32]
-          mov EDI,DWORD PTR [ESP+36]
-L_41b9c7:
-          mov EBX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP+8],EBX
-          call _setBeU64
-          lea EAX,DWORD PTR [EBX+8]
-          mov DWORD PTR [ESP+80],ESI
-          mov DWORD PTR [ESP+84],EDI
-          mov DWORD PTR [ESP+88],EAX
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _setBeU64
-L_41b9f6:
-          xor ESI,ESI
-          xor EDI,EDI
-          xor EAX,EAX
-          xor EDX,EDX
-          jmp L_41b9c7
+#@C _smcChecksum
 #@C _smcEncrypt
           .byte 0x8d
           .byte 0xb4
@@ -391,330 +309,7 @@ L_41b9f6:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_smcPrepare:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,76
-          mov EBX,DWORD PTR [ESP+104]
-          mov DWORD PTR [ESP],EBX
-          call _malloc
-          mov EDI,DWORD PTR [ESP+96]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+44],EAX
-          mov DWORD PTR [ESP+4],EDI
-          mov EDI,EAX
-          lea ESI,DWORD PTR [EDI+EBX*1-4]
-          call _memcpy
-          mov DWORD PTR [ESP+4],4
-          mov DWORD PTR [ESP],ESI
-          call _checkZeros
-          test EAX,EAX
-          jne L_41bb15
-          mov DWORD PTR [ESP+4],OFFSET L_4569e4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EDI
-          call _unscramble
-          test EAX,EAX
-          je L_41bd43
-          mov EAX,DWORD PTR [ESP+96]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          mov DWORD PTR [ESP+4],OFFSET L_456a21
-          mov DWORD PTR [ESP],1
-          call _log_printf
-L_41bb15:
-          mov DWORD PTR [ESP+4],4
-          mov DWORD PTR [ESP],ESI
-          call _checkZeros
-          test EAX,EAX
-          jne L_41bc60
-L_41bb2d:
-          mov EAX,DWORD PTR [ESP+96]
-          mov EDI,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+8],EBX
-          shr EBX,2
-          mov DWORD PTR [ESP+4],EAX
-          mov DWORD PTR [ESP],EDI
-          call _memcpy
-          test EBX,EBX
-          je L_41be81
-          lea EAX,DWORD PTR [EDI+EBX*4]
-          mov EBP,EDI
-          mov DWORD PTR [ESP+32],0
-          mov DWORD PTR [ESP+36],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+40],EAX
-          mov DWORD PTR [ESP+28],0
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_41bb80:
-          mov EDX,DWORD PTR [EBP]
-          mov ESI,DWORD PTR [ESP+24]
-          mov EDI,DWORD PTR [ESP+28]
-          mov EBX,EDX
-          mov EAX,EDX
-          mov ECX,EDX
-          shr EAX,24
-          shl ECX,8
-          shl EBX,24
-          add EBX,EAX
-          mov EAX,ECX
-          mov ECX,DWORD PTR [ESP+32]
-          and EAX,16711680
-          add EBX,EAX
-          mov EAX,EDX
-          xor EDX,EDX
-          shr EAX,8
-          and EAX,65280
-          add EAX,EBX
-          mov EBX,DWORD PTR [ESP+36]
-          add ESI,EAX
-          adc EDI,EDX
-          sub ECX,EAX
-          sbb EBX,EDX
-          mov EAX,ECX
-          mov ECX,ESI
-          mov EDX,EBX
-          mov EBX,EDI
-          shl ECX,29
-          shld EBX,ESI,29
-          mov ESI,EDI
-          add EBP,4
-          shr ESI,3
-          mov DWORD PTR [ESP+28],EBX
-          mov EBX,EDX
-          or ESI,ECX
-          mov ECX,EAX
-          shld EBX,EAX,31
-          mov EAX,EDX
-          shl ECX,31
-          mov DWORD PTR [ESP+24],ESI
-          shr EAX,1
-          mov DWORD PTR [ESP+36],EBX
-          or EAX,ECX
-          cmp EBP,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+32],EAX
-          jne L_41bb80
-          mov EAX,DWORD PTR [ESP+24]
-          mov EDX,DWORD PTR [ESP+28]
-          mov ESI,DWORD PTR [ESP+32]
-          mov EDI,DWORD PTR [ESP+36]
-L_41bc17:
-          mov EBX,DWORD PTR [ESP+100]
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+8],EBX
-          call _setBeU64
-          mov EAX,DWORD PTR [ESP+100]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+4],EDI
-          add EAX,8
-          mov DWORD PTR [ESP+8],EAX
-          call _setBeU64
-          mov EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP],EAX
-          call _free
-          add ESP,76
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_41bc60:
-          mov EAX,DWORD PTR [_g479ea8]
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+96]
-          mov DWORD PTR [ESP],EAX
-          call _smcCheck
-          mov EDX,DWORD PTR [_g479ea8]
-          cmp EDX,1
-          je L_41bde0
-          cmp EDX,5
-          jbe L_41bd81
-          test EAX,EAX
-          je L_41be68
-          mov DWORD PTR [ESP+4],OFFSET L_456b20
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_41bcad:
-          mov EAX,DWORD PTR [L_479f00]
-L_41bcb2:
-          and EAX,4148166655
-          mov DWORD PTR [L_479f00],EAX
-L_41bcbc:
-          and EAX,146800640
-          jne L_41be11
-L_41bcc7:
-          mov EAX,DWORD PTR [_smcKey]
-          mov EDI,DWORD PTR [ESP+96]
-          test EBX,EBX
-          mov DWORD PTR [ESP+60],2035184962
-          mov DWORD PTR [EDI],EAX
-          je L_41bb2d
-          mov EAX,EBX
-          mov ECX,EDI
-          mov EDX,66
-          add EAX,EDI
-          mov DWORD PTR [ESP+104],EBX
-          mov EDI,1
-          mov EBP,EAX
-          mov EAX,117
-          jmp L_41bd05
-          .byte 0x90
-L_41bd00:
-          movzx EDX,BYTE PTR [ESP+EBX*1+60]
-L_41bd05:
-          xor DL,BYTE PTR [ECX]
-          and EDI,3
-          add ECX,1
-          mov EBX,EDI
-          mov BYTE PTR [ECX-1],DL
-          movzx EDX,DL
-          imul EDX,EDX,251
-          add EAX,EDX
-          sar EDX,8
-          mov BYTE PTR [ESP+EDI*1+60],AL
-          lea EDI,DWORD PTR [EDI+1]
-          mov EAX,EDX
-          mov ESI,EDI
-          and ESI,3
-          add AL,BYTE PTR [ESP+ESI*1+60]
-          cmp EBP,ECX
-          mov BYTE PTR [ESP+ESI*1+60],AL
-          jne L_41bd00
-          mov EBX,DWORD PTR [ESP+104]
-          jmp L_41bb2d
-L_41bd43:
-          mov DWORD PTR [ESP+4],OFFSET L_456a2a
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_456a34
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          test BYTE PTR [L_479f02],32
-          jne L_41bdc0
-L_41bd74:
-          add ESP,76
-          mov EAX,1
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_41bd81:
-          test EAX,EAX
-          je L_41be2a
-          cmp EDX,3
-          je L_41bf19
-          sub EDX,4
-          cmp EDX,1
-          jbe L_41beaf
-          mov DWORD PTR [ESP+4],OFFSET L_456c1c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          jmp L_41bcbc
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_41bdc0:
-          mov EAX,DWORD PTR [ESP+96]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          jmp L_41bb15
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_41bde0:
-          test EAX,EAX
-          je L_41be8e
-          mov DWORD PTR [ESP+4],OFFSET L_456a88
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          test EAX,2097152
-          jne L_41bcb2
-          jmp L_41bd74
-L_41be11:
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+96]
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EAX
-          call _smcPatch
-          jmp L_41bcc7
-L_41be2a:
-          cmp EDX,3
-          je L_41beeb
-          sub EDX,4
-          cmp EDX,1
-          jbe L_41becd
-          mov DWORD PTR [ESP+4],OFFSET L_456c9c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          test EAX,2097152
-          jne L_41bcbc
-          jmp L_41bd74
-L_41be68:
-          mov DWORD PTR [ESP+4],OFFSET L_456ba0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_41bcad
-L_41be81:
-          xor ESI,ESI
-          xor EDI,EDI
-          xor EAX,EAX
-          xor EDX,EDX
-          jmp L_41bc17
-L_41be8e:
-          mov DWORD PTR [ESP+8],1
-          mov DWORD PTR [ESP+4],OFFSET L_456af4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_41bcad
-L_41beaf:
-          mov DWORD PTR [ESP+4],OFFSET L_456be4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          jmp L_41bcbc
-L_41becd:
-          mov DWORD PTR [ESP+4],OFFSET L_456ba0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          jmp L_41bcbc
-L_41beeb:
-          mov EAX,DWORD PTR [L_479f00]
-          test EAX,134217728
-          jne L_41bcbc
-          mov DWORD PTR [ESP+4],OFFSET L_456c3c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          jmp L_41bcbc
-L_41bf19:
-          mov DWORD PTR [ESP+4],OFFSET L_456bc0
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_479f00]
-          and EAX,4160749567
-          mov DWORD PTR [L_479f00],EAX
-          jmp L_41bcbc
+#@C _smcPrepare
 L_41bf41:
           jmp _cbaEncrypt
           .byte 0x90
@@ -2134,38 +1729,38 @@ _msg_1blBadStr:
           .zero 3
 _msg_1blBadStr2:
           .string "does not appear to be correct!\n"
-L_4569e4:
+_msg_smcEncrypted:
           .string "SMC binary appears to be encrypted, attempting to decrypt..."
-L_456a21:
+_str_success:
           .string "success!"
-L_456a2a:
+_str_failed:
           .string "failed!"
           .zero 2
-L_456a34:
+_msg_smcBad:
           .string "\n******* ERROR: please make sure your provided a valid/decryptable SMC binary!\n\n"
           .zero 3
-L_456a88:
+_msg_smcRetail:
           .string "\n******* ERROR: hacked or unknown SMC binary found? you should use a clean SMC binary for a retail image!\n\n"
-L_456af4:
+_msg_smcCleanType:
           .string "known/clean SMC binary found! type 0x%x\n"
           .zero 3
-L_456b20:
+_msg_smcDevkit:
           .string "\n******* WARNING: hacked or unknown SMC binary found? Just a warning, there are a lot of different SMC binaries for devkits!\n\n"
           .zero 1
-L_456ba0:
+_msg_smcClean:
           .string "known/clean SMC binary found!\n"
           .zero 1
-L_456bc0:
+_msg_smcGlitch:
           .string "glitch hack found in SMC binary!\n"
           .zero 2
-L_456be4:
+_msg_smcHacked:
           .string "\n******* WARNING: hacked or unknown SMC binary found!\n"
           .zero 1
-L_456c1c:
+_msg_smcJtag:
           .string "jtag hack found in SMC binary!\n"
-L_456c3c:
+_msg_smcNoGlitch:
           .string "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for glitch images.\n\n"
-L_456c9c:
+_msg_smcNoJtag:
           .string "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for JTAG images.\n\n"
           .zero 2
 _msg_cbencPairing:

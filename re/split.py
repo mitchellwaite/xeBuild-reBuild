@@ -427,7 +427,12 @@ SYMBOLS = {
     0x456830: '_msg_fuseNull', 0x45685e: '_msg_1blKeySet', 0x456873: '_msg_1blSum',
     0x456890: '_msg_xexKeySet', 0x4568a5: '_msg_xexSum', 0x4568c2: '_msg_1blBad',
     0x4568e0: '_msg_1blBad2', 0x456904: '_msg_1blChars', 0x456944: '_msg_1blLen',
-    0x4569a3: '_msg_1blBadStr', 0x4569c4: '_msg_1blBadStr2', 0x456cfc: '_msg_cbencPairing',
+    0x4569a3: '_msg_1blBadStr', 0x4569c4: '_msg_1blBadStr2',
+    0x4569e4: '_msg_smcEncrypted', 0x456a21: '_str_success', 0x456a2a: '_str_failed',
+    0x456a34: '_msg_smcBad', 0x456a88: '_msg_smcRetail', 0x456af4: '_msg_smcCleanType',
+    0x456b20: '_msg_smcDevkit', 0x456ba0: '_msg_smcClean', 0x456bc0: '_msg_smcGlitch',
+    0x456be4: '_msg_smcHacked', 0x456c1c: '_msg_smcJtag', 0x456c3c: '_msg_smcNoGlitch',
+    0x456c9c: '_msg_smcNoJtag', 0x456cfc: '_msg_cbencPairing',
     0x456d22: '_msg_dualCb', 0x456d40: '_msg_cbb15572', 0x456d6c: '_msg_cbbMfg',
     0x456f74: '_str_Success', 0x456fc0: '_msg_extMissing', 0x457028: '_msg_extSize',
     0x457088: '_msg_extEncrypted', 0x4570c8: '_msg_extDecryptFail', 0x457110: '_msg_sdMissing',
@@ -700,6 +705,7 @@ C_FUNCS = {
     0x41b120, 0x41b1d0, 0x41b420, 0x41b520,  # setCpuKey setFuseLdv calcXexKey check1blKey
     0x41b600, 0x41b320,                      # set1blKey setFuseCpuKey
     0x41b740, 0x41ba00, 0x41bf50, 0x41c0c0,  # checkKeys smcEncrypt cbaEncrypt cbaEncryptZero
+    0x41b8e0, 0x41ba80,                      # smcChecksum smcPrepare
     0x41c1b0, 0x41c370, 0x41c5e0, 0x41c6b0,  # cbaEncrypt2 cbbEncrypt cdEncryptZero cdEncrypt
     0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt
     0x41cff0, 0x41d6a0, 0x41d9b0, 0x41db70,  # kvEncryptAlt extendedPrepare secdataPrepare shaCheck

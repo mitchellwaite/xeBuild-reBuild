@@ -240,7 +240,7 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 
 ## app/keys.c
 
-Draft of the whole object, with string literals. 42 of 48 functions are
+Draft of the whole object, with string literals. 44 of 48 functions are
 built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
 makes from this file; add a function's name there (and its address to
 `split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
@@ -257,8 +257,27 @@ setFuseCpuKey matched once key1bl/cpuKey/key28c became fields of `xb`
 gcc's oracle rules out `fuse + 24` reaching them (a pointer can't point
 before a variable's start), so the cpuKey write-back went; inside `xb` the
 fuse stores may alias it.  The copies are plain memcpys, the last one
-`memcpy(xb.cpuKey, fuse + 32, 16)`.  Its NULL block is aligned, so the
-object builds with `--param align-threshold=200`.
+`memcpy(xb.cpuKey, fuse + 32, 16)`.  Its NULL block is aligned:
+`__builtin_expect(fuse == NULL, 0)` (40% at the object's probability)
+raises its frequency over the default align-threshold.  (The object used
+`--param align-threshold=200` for this before, which also aligns
+smcChecksum's `count == 0` block.)
+
+smcChecksum and smcPrepare (which inlines it) match with two hints.  The
+original keeps the loop's sums in memory but the value after the loop in
+registers (`xor`s on the `count == 0` path, sum2 in esi:edi across the
+first call): two pseudos, where out-of-SSA coalesces ours into one.  The
+loop sums are `long long` and copied each iteration to `u64 s1, s2`
+(sunk to the exit), which `gimple_can_coalesce_p` won't merge (different
+types).  The standalone copy's exit `cmp` has the iv first in the
+original; ours gets the bound first because forwprop4 re-canonicalizes
+the compare by SSA version (the bound reuses the old iv's freed names).
+So the body is `smcSum` (always_inline, inlined into smcPrepare as is)
+and `smcChecksum` wraps it with `optimize("no-tree-forwprop",
+"no-tree-reassoc")`: the body's early passes run with the object's flags,
+the wrapper's late ones without forwprop (the cmp) and reassoc (SWAP32's
+first add).  An `optimize` attribute can't change alignment (gcc computes
+the alignment logs once per file).
 
 fcrtEncrypt's four exits each get their own epilogue copy, which
 bb-reorder makes only for exit edges at >= 10% of the entry frequency.
@@ -269,19 +288,6 @@ pure, so only the log side has the call heuristic) and
 
 Still off:
 
-- `smcChecksum` (29) and `smcPrepare` (24, which inlines it): the loop is
-  right except `cmp ebp,[end]` operand order; after it the original moves
-  both sums into registers (sum2 in esi:edi across the first setBeU64 call,
-  `xor`s on the `count == 0` path), ours keeps sum2 in its stack slot. IRA
-  has a loop region in both; `-fira-region`/`-fira-algorithm` don't help.
-  The operand order is SSA version order (lower version first; the
-  bound ivopts builds reuses freed names, so it sorts before the new iv).
-  `if (count) { p = buf; do { ... p++; } while (p != buf + count); }`
-  gives the original's order and guard standalone (27 lines, all RA), but
-  in smcPrepare `buf + size / 4` folds to `size & -4` and the block order
-  flips (151), so the original indexes.  The sums are spilled in the
-  parent region too (IRA pops r87/r88 l0 as spills under the loop's caps),
-  where the original keeps them in registers outside the loop.
 - `kvPrepare` (246): the hash check is the inlined `kvHashOk` (its ver/key
   share stack slots with the inlined kvEncrypt copies, which gives the
   original's 108-byte frame), and `__builtin_expect(kv->size != 0x4000, 1)`

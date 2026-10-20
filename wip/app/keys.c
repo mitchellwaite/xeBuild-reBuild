@@ -24,7 +24,6 @@ typedef struct {
 	u32 f428;			/* 428 */
 } part_t;
 
-
 /* the parts of main.c's struct xebuild used here */
 struct xebuild {
 	int mode;			/* 000 */
@@ -78,6 +77,9 @@ void daeDecrypt(u8 *dae, u32 size, int perBox);
 int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
 
 extern struct xebuild xb;
+
+#define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+#define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
 u8 secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
 u8 daeKey[32];
@@ -299,7 +301,7 @@ void setFuseCpuKey(u8 *fuse)
 {
 	int i;
 
-	if (fuse == NULL) {
+	if (__builtin_expect(fuse == NULL, 0)) {
 		log_printf(0, "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n");
 		return;
 	}
@@ -379,11 +381,14 @@ int checkKeys(char *str)
 	return 0;
 }
 
-#define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
-
-void smcChecksum(u32 *buf, u8 *out, u32 count)
+/* the sums are copied to a type they can't be coalesced with (signed vs
+   unsigned), so the value after the loop is its own pseudo: in registers
+   there (xor'd on the count == 0 path) while the loop's sums stay in memory */
+__attribute__((always_inline))
+static inline void smcSum(u32 *buf, u8 *out, u32 count)
 {
-	u64 sum1 = 0, sum2 = 0;
+	u64 s1 = 0, s2 = 0;
+	long long sum1 = 0, sum2 = 0;
 	u32 i, v;
 
 	for (i = 0; i < count; i++) {
@@ -392,9 +397,20 @@ void smcChecksum(u32 *buf, u8 *out, u32 count)
 		sum2 -= v;
 		sum1 = (sum1 << 29) | (u32)((u32)(sum1 >> 32) >> 3);
 		sum2 = (sum2 << 31) | (u32)((u32)(sum2 >> 32) >> 1);
+		s1 = sum1;
+		s2 = sum2;
 	}
-	setBeU64(sum1, out);
-	setBeU64(sum2, out + 8);
+	setBeU64(s1, out);
+	setBeU64(s2, out + 8);
+}
+
+/* smcPrepare inlines smcSum with the object's flags; the standalone copy
+   skips the late forwprop (it would put the loop bound first in the exit
+   cmp) and reassoc (SWAP32's first add) */
+__attribute__((optimize("no-tree-forwprop", "no-tree-reassoc")))
+void smcChecksum(u32 *buf, u8 *out, u32 count)
+{
+	smcSum(buf, out, count);
 }
 
 void smcEncrypt(u8 *buf, u32 len)
@@ -475,7 +491,7 @@ int smcPrepare(u8 *smc, u8 *hash, u32 size)
 		smcEncrypt(smc, size);
 	}
 	memcpy(buf, smc, size);
-	smcChecksum((u32 *)buf, hash, size / 4);
+	smcSum((u32 *)buf, hash, size / 4);
 	free(buf);
 	return 0;
 }
@@ -579,8 +595,6 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
 	XeCryptHmacSha(prevKey, 16, ce + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, ce + 32, size - 32);
 }
-
-#define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
 u32 cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 {

@@ -29,7 +29,6 @@
 .globl L_479ef8
 .globl L_479efc
 .globl L_479f00
-.globl L_479f02
 .globl L_479f03
 .globl L_479f04
 .globl L_479f06

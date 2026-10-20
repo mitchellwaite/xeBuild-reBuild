@@ -27,7 +27,6 @@ typedef struct {
 	u32 f428;			/* 428 */
 } part_t;
 
-
 /* the parts of main.c's struct xebuild used here */
 struct xebuild {
 	int mode;			/* 000 */
@@ -82,6 +81,9 @@ int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
 
 extern struct xebuild xb;
 
+#define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+#define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
+
 extern u8 secdataKey[8];
 extern u8 daeKey[32];
 extern u8 crlKey[32];
@@ -124,6 +126,19 @@ extern const char msg_1blChars[];	/* "\n******* ERROR: invalid or unexpect..." *
 extern const char msg_1blLen[];	/* "\n***** ERROR: unable to set 1BL key..." */
 extern const char msg_1blBadStr[];	/* "\n******* ERROR: 1BL key 0x%s " */
 extern const char msg_1blBadStr2[];	/* "does not appear to be correct!\n" */
+extern const char msg_smcEncrypted[];	/* "SMC binary appears to be encrypted, ..." */
+extern const char str_success[];	/* "success!" */
+extern const char str_failed[];	/* "failed!" */
+extern const char msg_smcBad[];	/* "\n******* ERROR: please make sure yo..." */
+extern const char msg_smcRetail[];	/* "\n******* ERROR: hacked or unknown S..." */
+extern const char msg_smcCleanType[];	/* "known/clean SMC binary found! type 0..." */
+extern const char msg_smcDevkit[];	/* "\n******* WARNING: hacked or unknown..." */
+extern const char msg_smcClean[];	/* "known/clean SMC binary found!\n" */
+extern const char msg_smcGlitch[];	/* "glitch hack found in SMC binary!\n" */
+extern const char msg_smcHacked[];	/* "\n******* WARNING: hacked or unknown..." */
+extern const char msg_smcJtag[];	/* "jtag hack found in SMC binary!\n" */
+extern const char msg_smcNoGlitch[];	/* "\n******* ERROR: clean SMC binary fo..." */
+extern const char msg_smcNoJtag[];	/* "\n******* ERROR: clean SMC binary fo..." */
 extern const char msg_cbencPairing[];	/* "CBENC pairing set to: %02x %02x %02x..." */
 extern const char msg_dualCb[];	/* "\t**dual CB flag detected!**\n" */
 extern const char msg_cbb15572[];	/* "\t**15572+ CBB crypto method detecte..." */
@@ -349,7 +364,7 @@ void setFuseCpuKey(u8 *fuse)
 {
 	int i;
 
-	if (fuse == NULL) {
+	if (__builtin_expect(fuse == NULL, 0)) {
 		log_printf(0, msg_fuseNull);
 		return;
 	}
@@ -429,6 +444,32 @@ int checkKeys(char *str)
 	return 0;
 }
 
+__attribute__((always_inline))
+static inline void smcSum(u32 *buf, u8 *out, u32 count)
+{
+	u64 s1 = 0, s2 = 0;
+	long long sum1 = 0, sum2 = 0;
+	u32 i, v;
+
+	for (i = 0; i < count; i++) {
+		v = SWAP32(buf[i]);
+		sum1 += v;
+		sum2 -= v;
+		sum1 = (sum1 << 29) | (u32)((u32)(sum1 >> 32) >> 3);
+		sum2 = (sum2 << 31) | (u32)((u32)(sum2 >> 32) >> 1);
+		s1 = sum1;
+		s2 = sum2;
+	}
+	setBeU64(s1, out);
+	setBeU64(s2, out + 8);
+}
+
+__attribute__((optimize("no-tree-forwprop", "no-tree-reassoc")))
+void smcChecksum(u32 *buf, u8 *out, u32 count)
+{
+	smcSum(buf, out, count);
+}
+
 void smcEncrypt(u8 *buf, u32 len)
 {
 	u8 s[4] = { 'B', 'u', 'N', 'y' };
@@ -442,6 +483,74 @@ void smcEncrypt(u8 *buf, u32 len)
 		s[j] += t;
 		s[(j + 1) & 3] += t >> 8;
 	}
+}
+
+int smcPrepare(u8 *smc, u8 *hash, u32 size)
+{
+	u8 *buf = malloc(size);
+	u32 patch;
+	int bad;
+
+	memcpy(buf, smc, size);
+	if (!checkZeros(buf + size - 4, 4)) {
+		log_printf(1, msg_smcEncrypted);
+		if (unscramble(buf, size)) {
+			memcpy(smc, buf, size);
+			log_printf(1, str_success);
+		} else {
+			log_printf(1, str_failed);
+			log_printf(0, msg_smcBad);
+			if (!(xb.bootFlags & 0x200000))
+				return 1;
+			memcpy(buf, smc, size);
+		}
+	}
+	if (checkZeros(buf + size - 4, 4)) {
+		bad = smcCheck(smc, size, xb.type);
+		if (xb.type == 1) {
+			if (bad) {
+				log_printf(0, msg_smcRetail);
+				if (!(xb.bootFlags & 0x200000))
+					return 1;
+			} else
+				log_printf(1, msg_smcCleanType, 1);
+			xb.bootFlags &= 0xf73fffff;
+		} else if (xb.type > 5) {
+			if (bad)
+				log_printf(0, msg_smcDevkit);
+			else
+				log_printf(1, msg_smcClean);
+			xb.bootFlags &= 0xf73fffff;
+		} else if (bad) {
+			if (xb.type == 3) {
+				log_printf(1, msg_smcGlitch);
+				xb.bootFlags &= ~0x8000000;
+			} else if (xb.type == 4 || xb.type == 5)
+				log_printf(1, msg_smcHacked);
+			else
+				log_printf(1, msg_smcJtag);
+		} else {
+			if (xb.type == 3) {
+				if (!(xb.bootFlags & 0x8000000))
+					log_printf(0, msg_smcNoGlitch);
+			} else if (xb.type == 4 || xb.type == 5)
+				log_printf(1, msg_smcClean);
+			else {
+				log_printf(0, msg_smcNoJtag);
+				if (!(xb.bootFlags & 0x200000))
+					return 1;
+			}
+		}
+		patch = xb.bootFlags & 0x8c00000;
+		if (patch)
+			smcPatch(smc, size, patch);
+		memcpy(smc, smcKey, 4);
+		smcEncrypt(smc, size);
+	}
+	memcpy(buf, smc, size);
+	smcSum((u32 *)buf, hash, size / 4);
+	free(buf);
+	return 0;
 }
 
 void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)

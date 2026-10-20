@@ -67,20 +67,21 @@ def main():
     data = src[src.index('u8 secdataKey[8]'):src.index('\n\n', src.index('u8 pairing[3];'))]
     data = re.sub(r'^u8 (\w+\[\d+\])(?: = \{[^}]*\})?;', r'extern u8 \1;', data, flags=re.M)
     fns = {}
-    for m in re.finditer(r'\n((?:static )?[^\n;{}#]*?\b(\w+)\([^;{]*\)\n\{.*?\n\})\n', src, re.S):
+    for m in re.finditer(r'\n((?:__attribute__[^\n]*\n)?(?:static )?[^\n;{}#]*?\b(\w+)\([^;{]*\)\n\{.*?\n\})\n', src, re.S):
         fns[m.group(2)] = m.group(1)
     used = {}
 
     def lit(m):
         s = cstr(m.group(1))
-        if s == 'thisisjustajunky':
+        # (and optimize-attribute flags)
+        if s == 'thisisjustajunky' or s.startswith('no-'):
             return m.group(0)
         a = text[s]
         used[a] = NAMES[a]
         return NAMES[a]
     body = []
     for name in fns:
-        if name in want or name == 'kvHashOk':
+        if name in want or name in ('kvHashOk', 'smcSum'):
             body.append(re.sub(r'"((?:[^"\\]|\\.)*)"', lit, fns[name]))
     def show(s):
         c = s.encode('unicode_escape').decode('latin1').replace('"', '\\"')
