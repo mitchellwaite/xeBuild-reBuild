@@ -412,6 +412,35 @@ Still off:
   call, folded after IPA) does divert frequency at profile time, but its
   test block merges into the next one and keeps its own frequency.
   `continue` (50%) and `goto` (none) add no usable predictor in gcc 6.
+- Crafted profile (2026-10-20): `sh wip/mufdo.sh <dir> [overrides]` builds
+  mode_update with `-fbranch-probabilities` and a `.gcda` from
+  `wip/gcda.py` that reproduces the guessed profile exactly (no overrides:
+  the same 30-line diff) with counts only for mode_update and updateNand.
+  Overrides set single edge probabilities with no source change and leave
+  getConsoleFiles' param alone: `mode_update:39>40=62` (the `-noreeb` match)
+  gives 22, plus `updateNand:24>25=14.5` (writeImage error) gives **8**. Left
+  is one swap: "avatar data skipped, no HDD detected" (updateNand 13>18) is
+  placed right after the `-clean` arm instead of after the WARNING block.
+  Moving 13>18 alone breaks others (18-28%: 28 lines, 30-36%: 8), and
+  greedy single-edge and random 2-3-edge searches (`wip/mufdo_search.py`)
+  over all two-way branches find nothing below 8. Next: read the bbro
+  dump/heap (`wip/fibsim.py`) for no-HDD vs WARNING keys and set counts
+  for unequal keys directly (a block-count override instead of edge
+  probabilities), or override the major arm or three-way edges.
+  What a profile build needs, all found the hard way: the arcs compile and
+  the profile compile must both use `-o -` (static functions' profile ids
+  and the `.gcda` name come from the aux name); the summary record must come
+  before the function records; `-fno-inline-small-functions` (else known_hot
+  and count-scaled badness inline getConsoleFiles into mode_update; the
+  called-once inline of updateNand stays); `-fno-partial-inlining` (feedback
+  fnsplit makes `.part` clones); `-fno-ipa-profile` (it raises the hot
+  threshold to 99.9% of the unit's time); `-fno-reorder-functions` (a hot
+  node goes to `.text.hot`). Counts for every function in the TU don't work
+  (inline order follows counts); the TU can't be cut down to mode_update
+  alone either (747 lines: it needs update_usage etc. visible).
+  Moving it to the build would mean a second compile of the same C file with
+  these flags, splicing only mode_update from it (splice.py would need to
+  allow a second pass), and generating the `.gcda` in build.sh.
 - Whole object from this draft: `.rdata` string order differs already in
   getBadBlocks (its error string comes second, the original's last), and
   `.data` is 4 bytes where mode_update.s has `useConsoleAddons` plus 0x14
