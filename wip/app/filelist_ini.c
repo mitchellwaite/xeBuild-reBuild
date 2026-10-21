@@ -374,8 +374,6 @@ u32 parseIni(char *path)
 	pos = off;
 	for (i = 0; i < nbl; ) {
 		p = &buf[pos];
-		/* hint: pos in esi makes IRA colour i*4 before nbl, as the original */
-		__asm__("" :: "S"(pos));
 		comma = memFindChar(p, ',', size - pos);
 		nul = memFindChar(p, 0, size - pos);
 		len = comma;
@@ -478,8 +476,11 @@ u32 parseIni(char *path)
 
 	/* [flashfs]: name[,crc]; a trailing 1 or 2 on the name is dropped */
 	off = memFindStr(buf, size, "[flashfs]", 1);
-	if (off == -1)
-		goto noFlashfs;
+	if (off == -1) {
+		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
+		free(buf);
+		return 0;
+	}
 	xb.nFirmware = 0;
 	log_printf(1, "\nini: label [flashfs] found\n");
 	pos = off;
@@ -539,7 +540,7 @@ u32 parseIni(char *path)
 	/* [security]: name[,crc] */
 	off = memFindStr(buf, size, "[security]", 1);
 	if (off == -1) {
-noFlashfs:
+		/* sic: names [flashfs] */
 		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
 		free(buf);
 		return 0;
