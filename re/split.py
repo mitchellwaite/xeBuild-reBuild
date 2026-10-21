@@ -746,6 +746,7 @@ C_FUNCS = {
     0x4154d0, 0x4172c0,                      # imgGetSecurityFiles getNonces
     0x4137f0, 0x4138c0, 0x416cd0,            # buildCleanup getImageLdv checkHeader
     0x414960, 0x415ef0, 0x4160d0,            # findAnchor remapBadBlocks copyMmcImage
+    0x414650, 0x414e90, 0x414760,            # listFlashFiles scanMobiles fsGetFile
     # app/mode_client (client_usage: switch table; clientKeys, clientBinPatch, mode_client stay asm)
     0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches

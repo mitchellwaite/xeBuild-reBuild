@@ -463,13 +463,18 @@ void listFlashFiles(void)
 		return;
 	for (i = 0; i < 256; i++) {
 		struct fsent *e = &fs->ent[i];
-		u32 block;
+		u32 block, size, time;
+		u16 b16;
 
 		if (!e->name[0])
 			continue;
-		block = SWAP16(e->block);
+		/* this load order keeps e in ebp */
+		b16 = e->block;
+		size = e->size;
+		block = SWAP16(b16);
+		time = e->time;
 		log_printf(1, "sector: 0x%04x offset: 0x%08x size: 0x%08x timestamp: 0x%08x name: %s\n",
-			   block, fsOffset + (block << 14), SWAP32(e->size), SWAP32(e->time), e->name);
+			   block, fsOffset + (block << 14), SWAP32(size), SWAP32(time), e->name);
 	}
 }
 
@@ -477,8 +482,11 @@ int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time)
 {
 	u32 block, len, t, off, left, done;
 	u8 *p;
+	int v = fsValid;
 
-	if (fsValid != 1)
+	/* code-free hint: fsValid (reused for return 1) in esi, name in edi */
+	__asm__("" : : "S"(v));
+	if (v != 1)
 		return 0;
 	if (!fsFind(name, &block, &len, &t, 1))
 		return 0;
@@ -647,8 +655,10 @@ int scanMobiles(void)
 		u8 t = s[12] & 0x3f;
 		int n, i;
 		u16 len;
-		u32 ver, lo;
+		u32 ver;
 
+		/* sink moves this into spareVersion's join, after lo */
+		off = page << 9;
 		if (t == fsType) {
 			n = 0;
 			len = 0x4000;
@@ -658,7 +668,6 @@ int scanMobiles(void)
 		} else
 			goto next;
 		ver = spareVersion(s);
-		off = page << 9;
 		if (log_get_verbose() == 2) {
 			log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
 				   n + 'A', ver, off, page * 528, s[9], len, page);
@@ -684,7 +693,8 @@ int scanMobiles(void)
 			mobiles[n].len = len;
 			mobiles[n].offset = off;
 		} else {
-			if (len & 0x8000) {
+			/* lays the advance block after the found path's stores */
+			if (__builtin_expect(len & 0x8000, 1)) {
 				page++;
 				goto align;
 			}

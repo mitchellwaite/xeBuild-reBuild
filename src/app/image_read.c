@@ -204,6 +204,7 @@ extern const char ir_452912[];	/* "    xbox IP : %d.%d.%d.%d\n" */
 extern const char ir_452930[];	/* "    xbox MAC: %02x:%02x:%02x:%02x:%0..." */
 extern const char ir_452958[];	/* "    port    : %d\n" */
 extern const char ir_45296a[];	/* "    host IP : %d.%d.%d.%d\n" */
+extern const char ir_452988[];	/* "sector: 0x%04x offset: 0x%08x size: ..." */
 extern const char ir_4529d0[];	/* "attempting to find valid anchor bloc..." */
 extern const char ir_4529f8[];	/* "anchor block v %d at 0x2fe8000 is va..." */
 extern const char ir_452a24[];	/* "anchor block at 0x2fe8000 is invalid..." */
@@ -211,6 +212,10 @@ extern const char ir_452a4c[];	/* "anchor block v %d at 0x2fec000 is va..." */
 extern const char ir_452a78[];	/* "anchor block v %d at 0x2fec000 is se..." */
 extern const char ir_452aa4[];	/* "anchor block at 0x2fec000 is invalid..." */
 extern const char ir_452acc[];	/* "anchor block v %d at 0x2fe8000 is se..." */
+extern const char ir_452b6c[];	/* "mobile%c.dat ver %02d offset 0x%08x ..." */
+extern const char ir_452bc3[];	/* "%02x " */
+extern const char ir_452bc9[];	/* "(DELETE)\n" */
+extern const char ir_452bd3[];	/* "\n" */
 extern const char ir_452bd8[];	/* "bigblock file system offset set to 0..." */
 extern const char ir_452c20[];	/* "Scanning for mobile data and fsroot...." */
 extern const char ir_452c47[];	/* "done! fsroot found ok!" */
@@ -271,7 +276,7 @@ extern const char ir_453f54[];	/* "**** Warning: error getting CF Nonce..." */
 extern const char ir_453f94[];	/* "**** Warning: error getting CG Nonce..." */
 extern const char ir_453fcc[];	/* "**** Warning: error getting CG Nonce..." */
 
-static __attribute__((noinline)) int fsFind(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
+static int fsFind(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 {
 	int i;
 
@@ -451,6 +456,60 @@ int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 	return 0;
 }
 
+void listFlashFiles(void)
+{
+	int i;
+
+	if (fsValid != 1)
+		return;
+	for (i = 0; i < 256; i++) {
+		struct fsent *e = &fs->ent[i];
+		u32 block, size, time;
+		u16 b16;
+
+		if (!e->name[0])
+			continue;
+		/* this load order keeps e in ebp */
+		b16 = e->block;
+		size = e->size;
+		block = SWAP16(b16);
+		time = e->time;
+		log_printf(1, ir_452988,
+			   block, fsOffset + (block << 14), SWAP32(size), SWAP32(time), e->name);
+	}
+}
+
+int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time)
+{
+	u32 block, len, t, off, left, done;
+	u8 *p;
+	int v = fsValid;
+
+	/* code-free hint: fsValid (reused for return 1) in esi, name in edi */
+	__asm__("" : : "S"(v));
+	if (v != 1)
+		return 0;
+	if (!fsFind(name, &block, &len, &t, 1))
+		return 0;
+	off = fsOffset + (block << 14);
+	p = calloc(len, 1);
+	left = len;
+	done = 0;
+	while (left > 0x4000) {
+		memcpy(p + done, xb.image + off, 0x4000);
+		left -= 0x4000;
+		done += 0x4000;
+		block = SWAP16(fs->map[block]) & 0x1fff;
+		off = fsOffset + (block << 14);
+	}
+	if (left)
+		memcpy(p + done, xb.image + off, left);
+	*buf = p;
+	*size = len;
+	*time = t;
+	return 1;
+}
+
 int findAnchor(void)
 {
 	u32 v0, v1;
@@ -521,6 +580,90 @@ u32 spareVersion(u8 *s)
 	else
 		lo = s[2];
 	return (s[3] << 8) | (s[4] << 16) | (s[6] << 24) | lo;
+}
+
+int scanMobiles(void)
+{
+	struct flashhdr *h = (struct flashhdr *)xb.image;
+	u32 end, page, off;
+	u8 fsType;
+
+	if (!xb.bigBlock) {
+		end = xb.numPages - 1152;
+		fsType = 48;
+	} else {
+		end = xb.numPages - 9216;
+		fsType = 44;
+	}
+	if (log_get_verbose() == 2) {
+		log_printf(2, ir_452bd3);
+		showMobilePages();
+	}
+	page = SWAP32(h->sysUpdateAddr) >> 9;
+	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
+	while (page < end) {
+		u8 *s = xb.spare + page * 16;
+		u8 t = s[12] & 0x3f;
+		int n, i;
+		u16 len;
+		u32 ver;
+
+		/* sink moves this into spareVersion's join, after lo */
+		off = page << 9;
+		if (t == fsType) {
+			n = 0;
+			len = 0x4000;
+		} else if (t >= 0x31 && t <= 0x39) {
+			n = t - 48;
+			len = s[7] + (s[8] << 8);
+		} else
+			goto next;
+		ver = spareVersion(s);
+		if (log_get_verbose() == 2) {
+			log_printf(2, ir_452b6c,
+				   n + 'A', ver, off, page * 528, s[9], len, page);
+			for (i = 0; i < 16; i++)
+				log_printf(2, ir_452bc3, xb.spare[page * 16 + i]);
+			if (len & 0x8000)
+				log_printf(2, ir_452bc9);
+			else
+				log_printf(2, ir_452bd3);
+		}
+		if (ver >= mobiles[n].version || !mobiles[n].found) {
+			if (!len)
+				goto next;
+			if (len & 0x8000) {
+				mobiles[n].found = 0;
+				page++;
+				goto align;
+			}
+			mobiles[n].found = 1;
+			mobiles[n].version = ver;
+			mobiles[n].spare = page * 16;
+			mobiles[n].page = page;
+			mobiles[n].len = len;
+			mobiles[n].offset = off;
+		} else {
+			/* lays the advance block after the found path's stores */
+			if (__builtin_expect(len & 0x8000, 1)) {
+				page++;
+				goto align;
+			}
+			if (!len)
+				goto next;
+		}
+		page += len >> 9;
+		if (len & 0x1ff)
+			page++;
+align:
+		if (xb.bigBlock)
+			page = (page + 3) & ~3;
+		continue;
+next:
+		page++;
+		page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
+	}
+	return mobiles[0].found;
 }
 
 void setFsOffset(void)

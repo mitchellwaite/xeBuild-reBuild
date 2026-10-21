@@ -42,7 +42,9 @@ def main():
     for name in fns:
         if name in want:
             f = literals(fns[name], used)
-            f = re.sub(r'^static ', 'static __attribute__((noinline)) ', f)
+            # fsGetFile inlines fsFind (as the original); fsFindFile's call keeps it emitted
+            if name != 'fsFind':
+                f = re.sub(r'^static ', 'static __attribute__((noinline)) ', f)
             body.append(f)
     head = head.replace(
         ' smc.bin */',

@@ -508,7 +508,7 @@ Still off:
 
 ## app/image_read.c
 
-Draft of the whole object, with string literals. 23 of 33 functions are
+Draft of the whole object, with string literals. 26 of 33 functions are
 built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
 <names>` makes from this file; a new match needs its name there and its
 address in `split.py` `C_FUNCS` (all of image_read's strings are in
@@ -568,13 +568,14 @@ Still off (fncmp lines):
   makes the return block (bb 18) its own trace before the "not sane" log
   (17), so connect_traces chains alt-success -> return and 17 gets the
   copy; the original has it the other way. Early-return shapes are worse.
-- `listFlashFiles` (23), `fsGetFile` (70): register allocation (fsGetFile
-  has fsValid and name in esi/edi swapped).
 - `detectController` (35, was 61): pins `"D"(n)` after the small-block log
   and `"b"(i)` at the loop top give the original's registers. Left: the
   original head-merges the two `found = 0` edge copies into one `xor
   eax,eax` before `n <= 1` and keeps found in eax outside the loop (memory
   inside); `int found` merges but spills found everywhere.
+  `optimize("ira-algorithm=priority")` with `int found` gets the head
+  merge and found's eax/memory split, but loses the division's `sar
+  ebx,31` and the loop's LBA registers (fncmp 42 lines, the best so far).
 - `getImageSmc` (117, was 163): `int addr`, `int size` and `!addr || (addr
   != 0x800 && addr != 0x1000)` give the two address registers (int for the
   logs, its unsigned twin for the checks and memcpy) and the layout. Left:
@@ -583,13 +584,21 @@ Still off (fncmp lines):
   copies on the size-test edges where ours are head-merged above the call
   (cfgcleanup try_head_merge_bb, after RA). if/else-if and separate `if
   (!addr)` forms, casts and types were worse.
-- `scanMobiles` (31): spareVersion must be called (inlined) so the version
-  load compares as `cmp [mem],reg`; left: `off` placement and the older-path
-  advance block being duplicated instead of the deleted path falling through.
 - `showMobilePages` (115): register allocation of the page IVs and letter.
 - `loadDump` (~780): in progress; numPages is stored once from a `pages`
   variable; the name buffer and spill slots differ.
 - `checkBlock` (200), `parseDump` (366): block layout not worked on yet.
+
+listFlashFiles: load order `b16 = e->block; size = e->size; block =
+SWAP16(b16); time = e->time;` keeps e in ebp (the other orders of the
+three loads and the swap don't). fsGetFile: `int v = fsValid;
+__asm__("" : : "S"(v));` (v is reused for `return 1`); it inlines fsFind,
+so irmixed leaves fsFind without noinline (fsFindFile's call keeps it
+emitted). scanMobiles: `off = page << 9` at the loop top, before the type
+tests, so tree-sink moves it into spareVersion's inlined join (after lo,
+before the high bytes; written after the call it lands after ver, before
+the call above the tests); and `__builtin_expect(len & 0x8000, 1)` in the
+older-version path puts the advance block after the found path's stores.
 
 imgGetSecurityFiles matches only with loadFlashFile `noinline`: gcc inlines
 it here (growth 39, under max-inline-insns-auto 40), the original didn't.
