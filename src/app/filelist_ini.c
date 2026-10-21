@@ -92,7 +92,10 @@ int iniPreParse(unsigned char *buf, int size)
 	memcpy(tmp, buf, size + 1);
 	/* remove comments */
 	for (i = 0; i < n; i++) {
-		if (buf[i] == ';') {
+		/* 35% (builtin-expect-probability=65, build.sh): the comment
+		   block's memcpy path is then hot enough for the default
+		   align-threshold to align it after the ret */
+		if (__builtin_expect(buf[i] == ';', 0)) {
 			i++;
 			for (j = 0; buf[i + j] != '\n' && buf[i + j] != 0xff && i + j < n; j++)
 				;
@@ -145,7 +148,7 @@ int iniPreParse(unsigned char *buf, int size)
 		   estimated with it as the hottest block: that scales the comment
 		   block and its inner loop's preheader to equal REG_FREQs, so LRA
 		   assigns the inheritance of i (ebx) before &buf[i] (ecx) */
-		for (j = 0; j < 18; j++)
+		for (j = 0; j < 44; j++)
 			if (i < 0)
 				buf[j] = 1;
 		if (buf[i] == 0 && buf[i + 1] == 0) {

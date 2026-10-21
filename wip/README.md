@@ -458,6 +458,23 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
     `extern const char *const consoleNames[8]`); strings as `static const char
     fi_<addr>[]` copies (memFindStr's strlen must fold). With those, parseIni from
     src differs only by the issues above.
+- Fifth 2026-10-21 session: align-threshold back to the default (100).
+  - parseIni's two [rawpatch] alignments can't come from its profile: block
+    37 (multi-byte error, branch freq 77) is aligned and the nul-found block
+    (79) and latch (82) aren't, so at any threshold the loop would have to be
+    >= 4% colder relative to block 37, and every way of cooling it (prefetch
+    on the found arm, dead early exits, split error tests, expects on the
+    found test) moves IRA's spill slots (&tmp vs nbl rank) or downstream
+    bbro by hundreds of lines. Even 1.5% does. With the default threshold
+    (100; 100-111 work) all of parseIni's alignments match, so 120 was the
+    stand-in: iniPreParse's memcpy block (77 vs max 8995) was the reason.
+  - iniPreParse at 100: its block must be > 89. The bb8 -> memcpy edge
+    (POSITIVE 73% with the memcpy call heuristic: 52.5%) can't rise: at 53%
+    bbro lays the block inline. So the ';' test (NONEQUAL 28%) is
+    `__builtin_expect(buf[i] == ';', 0)` with `builtin-expect-probability=65`
+    (64-66 align it), and the dead loop's K = 44 (43-45) restores the spill
+    slots and the ebx inheritance tie. All 11 functions JMATCH; the build
+    reproduces the SHA.
 
 ## app/keys.c
 
