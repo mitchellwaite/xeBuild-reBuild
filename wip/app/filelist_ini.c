@@ -244,6 +244,8 @@ u32 parseIni(char *path)
 		blOrder = blJtag;
 		nbl = 9;
 		sprintf(tmp, "%s_jtag_%s.bin", xb.kernelStr, xb.outName);
+		if (comma < -1)
+			buf[0] = 1;
 	} else {
 		if (xb.type == 6 || xb.type == 7) {
 			xb.nFiles = 11;
@@ -487,6 +489,8 @@ u32 parseIni(char *path)
 	for (i = 0; i < 256; i++) {
 		p = &buf[pos];
 		nul = memFindChar(p, 0, size - pos);
+		if (nul < -1)
+			buf[0] = 1;
 		comma = memFindChar(p, ',', size - pos);
 		noCrc = 1;
 		len = nul;
