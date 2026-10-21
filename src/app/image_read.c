@@ -245,6 +245,13 @@ extern const char ir_4535e4[];	/* "could not seek to 0x%x, not copying ..." */
 extern const char ir_453610[];	/* "could not allocate 0x%x byte buffer,..." */
 extern const char ir_453649[];	/* "reading nanddump.bin...\n" */
 extern const char ir_453664[];	/* "writing nanddump.bin MU area to outp..." */
+extern const char ir_453694[];	/* "\tNAND dump is from a mmc machine\n" */
+extern const char ir_4536b8[];	/* "\tNAND dump uses big block controlle..." */
+extern const char ir_4536e0[];	/* "\tNAND dump is from a big block mach..." */
+extern const char ir_453708[];	/* "***** WARNING: NAND dump too small t..." */
+extern const char ir_453760[];	/* "\tNAND dump is from a small block ma..." */
+extern const char ir_45378c[];	/* "\tNAND dump uses small block control..." */
+extern const char ir_4537b4[];	/* "***** WARNING: NAND dump does not ap..." */
 extern const char ir_453810[];	/* "%s file size: 0x%llx\n" */
 extern const char ir_453828[];	/* "******* ERROR loading '%s', file siz..." */
 extern const char ir_45386c[];	/* "******* ERROR loading '%s', flash he..." */
@@ -902,6 +909,77 @@ u32 copyMuData(FILE *out, void *sha)
 	fwrite(buf, dumpSize - 0x4200000, 1, out);
 	free(buf);
 	return 1;
+}
+
+int detectController(u8 *raw, int size)
+{
+	int i, n;
+	u32 found;
+
+	if (size == 0x3000000) {
+		log_printf(1, ir_453694);
+		log_printf(1, ir_4536b8);
+		xb.bbController = 1;
+		xb.bigBlock = 0;
+		xb.muChecked = 1;
+		xb.mmc = 1;
+		return 1;
+	}
+	if (raw[512] == 0xff) {
+		log_printf(1, ir_4536e0);
+		log_printf(1, ir_4536b8);
+		if (size < 0x4200000) {
+			log_printf(0, ir_453708);
+			return 0;
+		}
+		xb.bigBlock = 1;
+		xb.bbController = 1;
+		return 1;
+	}
+	if (raw[517] != 0xff) {
+		log_printf(0, ir_4537b4);
+		return 0;
+	}
+	n = size / 16896;
+	log_printf(1, ir_453760);
+	xb.bigBlock = 0;
+	xb.muChecked = 1;
+	found = 0;
+	/* code-free hints: found in eax outside the loop (one head-merged xor
+	   for both found = 0 edges), i in ebx */
+	if (n > 1)
+		__asm__("" : "+a"(found));
+	for (i = 1; i < n; i++) {
+		u8 *b = raw + i * 16896;
+		int hi, lo;
+		__asm__("" : : "b"(i));
+
+		if (b[517] != 0xff || b[513] == 0xff)
+			continue;
+		hi = (b[514] & 0xf) * 256;
+		lo = b[513];
+		if (hi + lo == i) {
+			i = n;
+			log_printf(1, ir_4536b8);
+			xb.bbController = 1;
+			found = 1;
+		} else {
+			int lo2 = b[512];
+
+			/* lo and lo2 kept live past their adds, so each sum takes
+			   hi's register (ebp, ecx) */
+			__asm__("" : : "a"(lo));
+			__asm__("" : : "d"(lo2));
+			if (lo2 + (b[513] & 0xf) * 256 == i) {
+				__asm__("" : : "d"(lo2));
+				i = n;
+				log_printf(1, ir_45378c);
+				xb.bbController = 0;
+				found = 1;
+			}
+		}
+	}
+	return found;
 }
 
 int checkHeader(const char *name, FILE *fp)

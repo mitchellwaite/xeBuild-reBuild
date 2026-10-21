@@ -1129,26 +1129,41 @@ int detectController(u8 *raw, int size)
 	}
 	n = size / 16896;
 	log_printf(1, "\tNAND dump is from a small block machine\n");
-	__asm__("" : : "D"(n));
 	xb.bigBlock = 0;
 	xb.muChecked = 1;
 	found = 0;
+	/* code-free hints: found in eax outside the loop (one head-merged xor
+	   for both found = 0 edges), i in ebx */
+	if (n > 1)
+		__asm__("" : "+a"(found));
 	for (i = 1; i < n; i++) {
 		u8 *b = raw + i * 16896;
+		int hi, lo;
 		__asm__("" : : "b"(i));
 
 		if (b[517] != 0xff || b[513] == 0xff)
 			continue;
-		if (b[513] + (b[514] & 0xf) * 256 == i) {
+		hi = (b[514] & 0xf) * 256;
+		lo = b[513];
+		if (hi + lo == i) {
 			i = n;
 			log_printf(1, "\tNAND dump uses big block controller\n");
 			xb.bbController = 1;
 			found = 1;
-		} else if (b[512] + (b[513] & 0xf) * 256 == i) {
-			i = n;
-			log_printf(1, "\tNAND dump uses small block controller\n");
-			xb.bbController = 0;
-			found = 1;
+		} else {
+			int lo2 = b[512];
+
+			/* lo and lo2 kept live past their adds, so each sum takes
+			   hi's register (ebp, ecx) */
+			__asm__("" : : "a"(lo));
+			__asm__("" : : "d"(lo2));
+			if (lo2 + (b[513] & 0xf) * 256 == i) {
+				__asm__("" : : "d"(lo2));
+				i = n;
+				log_printf(1, "\tNAND dump uses small block controller\n");
+				xb.bbController = 0;
+				found = 1;
+			}
 		}
 	}
 	return found;
