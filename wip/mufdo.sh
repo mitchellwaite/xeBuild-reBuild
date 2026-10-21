@@ -9,7 +9,7 @@
 # Best so far (8 lines): mode_update:39>40=62 updateNand:24>25=14.5
 set -e
 d=$1; shift
-R=$PWD
+R=$(pwd -P)  # /c/... even when started from Python ($PWD is C:/..., which breaks PATH)
 mkdir -p "$d"
 [ -f "$d/m.c" ] || cp wip/app/mode_update.c "$d/m.c"
 d=$(cd "$d" && pwd -W 2>/dev/null || pwd)

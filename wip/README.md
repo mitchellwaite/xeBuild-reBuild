@@ -469,10 +469,24 @@ Still off:
   placed right after the `-clean` arm instead of after the WARNING block.
   Moving 13>18 alone breaks others (18-28%: 28 lines, 30-36%: 8), and
   greedy single-edge and random 2-3-edge searches (`wip/mufdo_search.py`)
-  over all two-way branches find nothing below 8. Next: read the bbro
-  dump/heap (`wip/fibsim.py`) for no-HDD vs WARNING keys and set counts
-  for unequal keys directly (a block-count override instead of edge
-  probabilities), or override the major arm or three-way edges.
+  over all two-way branches find nothing below 8.
+  2026-10-21: in bbro numbering (profile build) the original's round-4
+  order is `-clean` (46) then devkit strcat (90), WARNING (122), no-HDD
+  (118), testkit strcat (94); ours at 8 lines is 118, 90, 122. Adding
+  `updateNand:13>18=22 updateNand:19>20=60` (WARNING up to 3, no-HDD down
+  to 2) gives 20 lines with 122, 90, 118: only devkit/WARNING swapped.
+  WARNING can't pass netReboot (`20>22` over 50 flips that branch).
+  On every config 90's tree (90[94]) is linked *under* the 118/122 node
+  at an equal key, so it comes out after it. `python wip/fibwhatif.py
+  <dump>` (event-driven what-if replay) finds no key change that gives
+  the original's whole round-4 order: any 1-3 nodes by +-2, any 1-2 by
+  +-4, any 4 of the 14 nearby nodes by +-2, dropping one insertion, or
+  one phantom node at any time. A greedy search from the 20-line point
+  and 400 random steps each from 8 and 20 (`wip/mufdo_search.py`) find
+  nothing below 8. Swapping the hasHdd arms (no-HDD first) changes nothing.
+  So the original's heap history differs from ours somewhere outside
+  these blocks' keys (trace structure or CFG); edge or count overrides
+  alone won't fix it.
   What a profile build needs, all found the hard way: the arcs compile and
   the profile compile must both use `-o -` (static functions' profile ids
   and the `.gcda` name come from the aux name); the summary record must come
