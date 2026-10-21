@@ -407,6 +407,57 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   - Dead-store and dead-loop searches (all of parseIni, 5 variables / k-loops) with the
     current flags: nothing gets below 8 fncmp lines; the H3/H5 changes they find come
     with 30+ other lines.
+- Fourth 2026-10-21 session (gcc 6.2 sources: cfgcleanup.c, ifcvt.c, ira-emit.c,
+  cfgexpand.c).
+  - Crossjump fixed (6 lines left): the [security] name-length error is `goto secName`
+    to a block after `return 1`. try_crossjump_bb pairs (e, e2) only when e's block
+    index is lower, and redirects e's block into a split of e2's. The return block's
+    preds start [sec crc error, sec name error, ...] (outof_cfglayout moves them to
+    the front), so with the name error first in the chain it was redirected into a
+    split of the crc error, whose head then fell into the shared tail and later
+    matched flashfs's `[4]=msg`. With the name error last, the crc error is the one
+    redirected (its `[4]=msg` stays), as in the original.
+  - Guard: the original's `xor edx,edx; mov edi,11` before `test` is find_if_case_2,
+    not case 1, in ce1/ce2 (before IRA): the preheader is the guard's branch target
+    (expand's jumpif, because the guard's GIMPLE next_bb isn't the preheader). Case 1
+    can't apply (it needs skip probability > 54%). After that, outof_cfglayout must
+    find the loop header right after the guard so it inverts the jump to `jle NF`;
+    IRA's buf move then splits the fallthrough edge (its own block, `mov ebp,[44]`),
+    and ce3 leaves it alone (case 1 needs a jump at its end). Our chain is
+    [guard, preheader, header] (loopinit's split_edge_bb_loc), so the jump sense is
+    `jle` from the start. `goto secSearch; secNF: <error> secSearch: off = ...; if (off
+    == -1) goto secNF;` gets the chain [guard, NF, preheader, header]: ce2 converts,
+    but NF stays between guard and header, so the jump stays `jg`, and ce3 then
+    speculates the IRA block too (`mov ebp,[44]` before `test`, 6 lines, no other
+    change). Fixed (2 lines left) by also moving [flashfs]'s identical not-found
+    block (`goto noFlashfs`) after the [security] code: jump2 then crossjumps the
+    whole [security] block into it (block index order), leaving a forwarder with
+    the guard as its only pred, and try_simplify_condjump inverts the guard to
+    `jle` into IRA's reload block (which follows the forwarder) before ce3 sees it.
+  - PHI order (flashfs len == 0 path): single dead stores that fix it (e.g. `if (comma
+    < -1)` after the [rawpatch] strncpy) flip the comma/nul compare ties in the bl,
+    [rawpatch] and [security] loops. Greedy searches (scratch hill.py: best single
+    insertion of `if (v < -1) buf[0] = 1;` per round) reach P fixed with 5 more stores
+    but a flipped [version] exit compare (6 lines, before the goto changes), or 18 lines
+    from the current draft.
+  - jcmp shows three differences fncmp can't (they predate this session): [rawpatch]'s
+    `pos = pos + n + 1` is `lea ebp,[ebx+ebp+1]` in the original (`[ebp+ebx+1]`
+    ours; operand order is an encoding difference; `n + pos`, `pos + (n + 1)` don't
+    help), and two [rawpatch] blocks get jump alignment in ours only: the nul-found
+    block (`cmp bl,44`, freq 79) and the latch (`add edi,1`, branch 82) against
+    freq_max 9120 / 120 = 76. The comma-found block (79) is aligned in both, by the
+    prev_bb * 10 rule. So the original's [rawpatch] loop is relatively colder (or
+    the nul-found block colder than the comma-found one); iniPreParse needs
+    align-threshold >= 117, so the param can't do it.
+  - The mixed build plumbing is ready (scratch patch, re-creatable): parseIni's data
+    names are blJtag 44a020, blDevgl 44a044, blTestk 44a05c, blDevk 44a074, blRetail
+    44a08c, locDevgl 44a0c0, locTestk 44a140, locDevk 44a1a0, locJtag 44a200,
+    locRetail 44a2a0, fnNone 44a320, fnKvAlt 44a380, fnXellGg 44a3a0, fnXell2f 44a3c0,
+    fnSmcConfig 44a400, fnFreeboot 44a420, fnFuses 44a440, fnPayload 44a460, blOrder
+    479e84 (COMMON, so `extern int *blOrder`), consoleNames 450400 (its [0] is NULL;
+    `extern const char *const consoleNames[8]`); strings as `static const char
+    fi_<addr>[]` copies (memFindStr's strlen must fold). With those, parseIni from
+    src differs only by the issues above.
 
 ## app/keys.c
 

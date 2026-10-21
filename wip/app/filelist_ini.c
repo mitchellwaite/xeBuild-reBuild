@@ -485,11 +485,8 @@ u32 parseIni(char *path)
 
 	/* [flashfs]: name[,crc]; a trailing 1 or 2 on the name is dropped */
 	off = memFindStr(buf, size, "[flashfs]", 1);
-	if (off == -1) {
-		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
-		free(buf);
-		return 0;
-	}
+	if (off == -1)
+		goto noFlashfs;
 	xb.nFirmware = 0;
 	log_printf(1, "\nini: label [flashfs] found\n");
 	pos = off;
@@ -518,7 +515,7 @@ u32 parseIni(char *path)
 				s = strrchr(xb.firmware[i], '\\');
 			s = s ? s + 1 : xb.firmware[i];
 			if (strlen(s) > 21) {
-				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's xb.firmware[i]!\n", 21);
+				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
 				log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
 				free(buf);
 				return 0;
@@ -549,13 +546,20 @@ u32 parseIni(char *path)
 	}
 
 	/* [security]: name[,crc] */
+	/* the not-found block sits between the search's guard and its preheader:
+	   ce2 then speculates the preheader into the guard, and jump2 (once this
+	   block is crossjumped into noFlashfs) inverts the guard to fall into
+	   IRA's buf reload */
+	goto secSearch;
+noSecurity:
+	/* sic: names [flashfs] */
+	log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
+	free(buf);
+	return 0;
+secSearch:
 	off = memFindStr(buf, size, "[security]", 1);
-	if (off == -1) {
-		/* sic: names [flashfs] */
-		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
-		free(buf);
-		return 0;
-	}
+	if (off == -1)
+		goto noSecurity;
 	xb.nFlashFiles2 = 0;
 	log_printf(1, "\nini: label [security] found\n");
 	end = off + memFindChar(&buf[off], '[', size - off);
@@ -571,11 +575,8 @@ u32 parseIni(char *path)
 			noCrc = 0;
 			len = comma;
 		}
-		if (len > 21) {
-			log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
-			free(buf);
-			return 0;
-		}
+		if (len > 21)
+			goto secName;
 		strncpy(xb.flashFiles[i], (char *)p, len);
 		xb.flashFiles[i][len] = 0;
 		pos = pos + len + 1;
@@ -605,6 +606,17 @@ u32 parseIni(char *path)
 	free(buf);
 	log_printf(1, "------ ini parsing completed ------\n\n");
 	return 1;
+	/* after the security blocks, so jump2 redirects noSecurity into it */
+noFlashfs:
+	log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
+	free(buf);
+	return 0;
+	/* last in the block chain: jump2 then crossjumps the crc error into the
+	   shared tail instead of splitting it */
+secName:
+	log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
+	free(buf);
+	return 0;
 }
 
 int memFindStr(unsigned char *buf, int size, const char *key, int label)
