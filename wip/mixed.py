@@ -61,8 +61,8 @@ def strings(lo, hi):
     return out
 
 
-FN = re.compile(r'\n((?:/\*[^\n]*\*/\n)?((?:static )?(?:inline )?(?:__attribute__\(\(\w+\)\) )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n', re.S)
-ATTR = re.compile(r'__attribute__\(\(\w+\)\) ')
+FN = re.compile(r'\n((?:/\*[^\n]*\*/\n)?((?:static )?(?:inline )?(?:__attribute__\(\([\w, ]+\)\) )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n', re.S)
+ATTR = re.compile(r'__attribute__\(\([\w, ]+\)\) ')
 SIG = re.compile(r'(?:/\*[^\n]*\*/\n)?(.*?\))\n\{', re.S)
 
 

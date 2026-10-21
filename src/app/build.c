@@ -316,8 +316,6 @@ static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
 static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 
 /* still in build.s */
-int loadBaseFile(const char *name, struct fileent *e) __attribute__((regparm(2)));
-int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta);
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common);
 int checkBl(u8 *bl, u32 size, int type, u32 crc);
@@ -448,6 +446,39 @@ void makeTimestamp(u8 *out, FILETIME *ft)
 int timestampToFileTime(const u16 *ts, FILETIME *ft)
 {
 	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
+}
+
+/* read baseDir/name into e */
+static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
+{
+	if (xb.baseDir[0]) {
+		char path[0x400];
+
+		strcpy(path, xb.baseDir);
+		strcat(path, name);
+		return loadFileCrc(path, e, 1, 0, 0);
+	}
+	return -1;
+}
+
+/* the same with its timestamp from name.meta if there is one */
+int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta)
+{
+	if (xb.baseDir[0]) {
+		char path[0x400];
+		int r;
+
+		strcpy(path, xb.baseDir);
+		strcat(path, name);
+		r = loadFileCrc(path, e, 1, 0, 0);
+		if (!r && meta) {
+			strcat(path, ".meta");
+			if (!readMetaFile(path, meta))
+				log_printf(1, bd_458d98, path);
+		}
+		return r;
+	}
+	return -1;
 }
 
 int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta)

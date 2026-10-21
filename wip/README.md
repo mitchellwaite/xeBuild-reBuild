@@ -837,12 +837,13 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 22 match and are built
+Draft of the whole object (all 41 functions). 24 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
-patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime. Switch tables go through
+patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
+loadBaseFile, loadBaseFileMeta. Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -872,8 +873,13 @@ only shows in `sh build.sh`.
   first. `SWAP16` with u16/u32 casts folds to a rotate before the bswap
   pass and is computed at its argument store, like the original (the
   `+`/mask SWAP16 forms of the other objects become bswap16 calls again).
-- loadBaseFileMeta (21): the original falls through to `return 0` when
-  meta is NULL; ours (pointer heuristic) falls into the meta block.
+- loadBaseFile, loadBaseFileMeta: `path` is declared inside `if
+  (xb.baseDir[0]) { ... }`. Declared at function scope, tail merging
+  (`-ftree-tail-merge`) joins the baseDir `return -1` with the inlined
+  loadFileCrc's fopen-failure one, which moves the cold blocks; scoped,
+  the clobber of `path` sits on one path only and the two stay apart.
+  loadBaseFile is `noinline, noclone` in the mixed file: blmodMissing is
+  its only C caller, so gcc would inline it or make a `.constprop` copy.
 - loadInputFile (~360): the SUPD / nanddump / USVR / common-dir fallback
   chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
   `common & failed` with `and`, and its loadCommonFile tail call is a
@@ -883,11 +889,19 @@ only shows in `sh build.sh`.
   registers. Left: the original copies the epilogue into the size-error
   (-3) block, not the crc-failure one. In ours the -3 block is colder
   (call + negative-return heuristics, 1.7%) than the crc failure (20.8%).
+  bb-reorder copies the 7-insn epilogue only over edges above the
+  duplication threshold (10% of entry): so in the original the -3 edge
+  is above it and the crc failure below, which needs other predictions
+  on both (no negative-return on -3, no opcode-nonequal on `crc != c`?).
 - extractSmcConfig (~140): the original's two search loops aren't header-
   copied (`xor eax,eax; jmp cond`); `found == 1` (cmp eax,1) is right.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
-  the original.
+  the original. They are separate round-1 traces, ordered by frequency:
+  room 1615 (both arms call, 50%), `size -= 4` 905 (`== 0xffffffff`,
+  28%), the post-loop 900. The original has both below the post-loop.
+  An `if (xb.nAddons > 0)` guard fixes `size -= 4` but hoists `added = 0`
+  (15 lines); `continue` is a 50% predictor in gcc 6, no help.
 - logPowerButton: fncmp can't tell its identically shaped log blocks
   apart, so check the string order in the link. The original's .rdata
   string order is gcc's expand order, i.e. source order: cases 0x59, 0x58,
@@ -897,8 +911,7 @@ only shows in `sh build.sh`.
   header-copied and keeps `off` on the stack; `__attribute__((cold))` is
   not it.
 - blmodMissing matches now that loadBaseFile has its other callers.
-- loadBaseFile (4) is static with gcc's local convention (eax, edx); its
-  two `return -1` blocks come out in the other order.
+- loadBaseFile is static with gcc's local convention (eax, edx).
 - With the whole object drafted, ipa-cp clones loadFileCrc (verbose=1) and
   loadInputFile (loadBlFiles' constant arguments); the original has neither
   clone and calls loadFileCrc out of line only from loadInputFile. The
@@ -922,6 +935,10 @@ only shows in `sh build.sh`.
   clusters by case count, then label number; 12..13 counts as one range).
 - patchSmcConfig (10): two cold blocks (gpu/cpu fan warnings) in the
   other order; the gpu warning passes no argument (the cpu one does).
+  Its string is after the function's last ones in .rdata, so its block is
+  last at expand; a `goto` to a block after the return reproduces the
+  string order, but not the layout. The two traces tie (keys -1035148)
+  and come out of the fibheap in the other order.
 - patchBlsResign/patchBlsBlmod (~330), fixupPatchSet: the patch-set walk
   loop isn't header-copied in the original; `-fno-tree-ch` reproduces
   that shape, so something in the source stops pass_ch.

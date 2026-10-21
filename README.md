@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **559 of 617** (555 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **561 of 617** (557 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 374 / 432 |
+| `app/` | 16 / 25 | 376 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -44,7 +44,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
-| `app/build` | mixed; 0 of 19 drafted functions match in `wip/app/build.c` | 22 / 41 |
+| `app/build` | mixed; 0 of 17 drafted functions match in `wip/app/build.c` | 24 / 41 |
 
 <details>
 <summary><code>app/mode_update</code>: 13 / 14 in C</summary>
@@ -307,9 +307,9 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/build</code>: 22 / 41 in C</summary>
+<summary><code>app/build</code>: 24 / 41 in C</summary>
 
-- ⬜ `loadBaseFile` (0x427500) (draft in `wip/`, no match yet)
+- ✅ `loadBaseFile` (0x427500)
 - ✅ `findFileOffset` (0x427650)
 - ✅ `findFileSize` (0x4276a0)
 - ✅ `findFile` (0x4276f0)
@@ -317,7 +317,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `readMetaFile` (0x427950)
 - ✅ `makeTimestamp` (0x4279b0)
 - ✅ `timestampToFileTime` (0x427a70)
-- ⬜ `loadBaseFileMeta` (0x427ab0) (draft in `wip/`, no match yet)
+- ✅ `loadBaseFileMeta` (0x427ab0)
 - ✅ `loadCommonFile` (0x427cc0)
 - ⬜ `loadInputFile` (0x428040) (draft in `wip/`, no match yet)
 - ✅ `loadBinFile` (0x428780)

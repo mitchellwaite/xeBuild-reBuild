@@ -344,34 +344,36 @@ int timestampToFileTime(const u16 *ts, FILETIME *ft)
 }
 
 /* read baseDir/name into e */
-static int loadBaseFile(const char *name, struct fileent *e)
+static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
 {
-	char path[0x400];
+	if (xb.baseDir[0]) {
+		char path[0x400];
 
-	if (!xb.baseDir[0])
-		return -1;
-	strcpy(path, xb.baseDir);
-	strcat(path, name);
-	return loadFileCrc(path, e, 1, 0, 0);
+		strcpy(path, xb.baseDir);
+		strcat(path, name);
+		return loadFileCrc(path, e, 1, 0, 0);
+	}
+	return -1;
 }
 
 /* the same with its timestamp from name.meta if there is one */
 int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta)
 {
-	char path[0x400];
-	int r;
+	if (xb.baseDir[0]) {
+		char path[0x400];
+		int r;
 
-	if (!xb.baseDir[0])
-		return -1;
-	strcpy(path, xb.baseDir);
-	strcat(path, name);
-	r = loadFileCrc(path, e, 1, 0, 0);
-	if (!r && meta) {
-		strcat(path, ".meta");
-		if (!readMetaFile(path, meta))
-			log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
+		strcpy(path, xb.baseDir);
+		strcat(path, name);
+		r = loadFileCrc(path, e, 1, 0, 0);
+		if (!r && meta) {
+			strcat(path, ".meta");
+			if (!readMetaFile(path, meta))
+				log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
+		}
+		return r;
 	}
-	return r;
+	return -1;
 }
 
 int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta)

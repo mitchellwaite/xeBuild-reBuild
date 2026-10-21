@@ -160,7 +160,8 @@ def main():
             text = (m.group(2) or m.group(1)).startswith('.text')
         elif text:
             mine.append(l)
-    diff = list(difflib.unified_diff(norm(ref), norm(mine), 'original', src, lineterm='', n=2))
+    diff = list(difflib.unified_diff(norm(ref), norm(mine), 'original', src, lineterm='',
+                                     n=int(os.environ.get('FNCMP_CONTEXT', 2))))
     print('\n'.join(diff) if diff else 'MATCH')
     sys.exit(1 if diff else 0)
 
