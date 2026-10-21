@@ -844,7 +844,7 @@ u32 imgAddMobile(const void *data, u32 len, u8 type)
 		return ret;
 	}
 	mobileOffset = off = imgSizeAligned();
-	if (imgFits(off, len)) {
+	if (__builtin_expect(imgFits(off, len), 1)) {
 		log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
 			type + 17, type, off, len, off + len);
 		ret = mobileOffset >> 14;

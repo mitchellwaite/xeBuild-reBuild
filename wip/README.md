@@ -1021,13 +1021,27 @@ Still off:
   peel exits: the original has 5,1,2,3,4, ours 5,4,3,2,1; same in imgAdd).
   Those hints also move the inline estimates, so they need checking
   against writeInitialHeader.
-- imgAddMobile (18): expects on `!mobileOffset` and the align test at
-  probability 66-72 (or `!mobileOffset` alone at 85) leave 2 lines: the
-  "already set" path's copy of the `(off + 0x20000) & ~0x1ffff` block.
-  bbro duplicates a block only if it starts a 1-block trace and the edge
-  carries >= 10% of the entry frequency; the trace order also needs the
-  small path's fits block before the "already set" trace. No hint set
-  found that does both.
+- imgAddMobile: MATCH in the draft with `__builtin_expect(imgFits(off,
+  len), 1)` on the small-block test and `--param
+  builtin-expect-probability=50` (progress.py WIP_FLAGS; image_write has
+  no other expects, so build.sh can take the param when it moves to src).
+  The 50% expect overrides the early-return heuristic (39%), which puts
+  the fits block's trace before the "already set" one; the 50/50 base
+  keeps the align block a 1-block trace, so bbro still duplicates it.
+  (Earlier tries: hint calls via PRED_CALL get the order but pull the
+  align block into a longer trace, losing the copy.)
+- imgWritePage (17): two RA spots. (1) After the memcpy the original
+  loads start straight into ebp (the block iv) and derives end/pgoff from
+  it; ours reloads start into esi and copies to ebp last (the iv's PHI
+  copy is emitted after ivtmp*512 and end in the preheader, so LRA
+  inherits esi). (2) Tail `fsTable[start + n - 1 - fsStart]`: expand
+  sorts plus operands by regno, giving `(plus end not)`, so the add ties
+  to end (`mov eax,[4+esp]; not ecx`); the original ties to the not.
+  Tried without luck: all expression/cast forms of the tail (reassoc
+  canonicalises them), loop forms (b from start adds a guard), local
+  types/order, ~60 optimize attributes, setFsTable as a function, guarded
+  dead uses of start+blocks. Best: `__asm__("" :: "a"(start + blocks));`
+  before the loop, 11 lines (fixes (1)'s ebp, tail becomes lea).
 - finalizeImage (132 normalised): the ECD loop names `xb.hdr + ...` /
   `xb.spare + ...` in each use (PRE then keeps both in registers and
   reloads them after the ECC write, like the original); `int blocks`
