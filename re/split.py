@@ -209,7 +209,8 @@ SYMBOLS = {
     # filelist_ini.s strings the mixed filelist_ini.c refers to
     0x44fb84: '_fi_44fb84', 0x44fbb0: '_fi_44fbb0', 0x450264: '_fi_450264',
     0x450290: '_fi_450290', 0x4502cd: '_fi_4502cd', 0x4502dd: '_fi_4502dd',
-    0x4502e4: '_fi_4502e4', 0x450347: '_fi_450347',
+    0x4502e4: '_fi_4502e4', 0x450347: '_fi_450347', 0x450258: '_fi_450258',
+    0x45025d: '_fi_45025d',
     # app/fileutil (src/app/fileutil.c); the author's names where his tools'
     # util.c has the function (cOzInABox/XeBuild tools/*/util.c), else ours
     0x420a90: '_getConsoleTypeStr', 0x420ab0: '_getBeU16', 0x420ad0: '_getBeU32',
@@ -712,6 +713,7 @@ C_FUNCS = {
     0x40aa10,   # app/filelist_ini getIniValue
     0x409310, 0x4093d0, 0x409410,  # memFindStr memFindChar checkFileCase
     0x40aef0, 0x408ec0,  # loadUserIni fixFileCase
+    0x40aad0, 0x40abf0, 0x40acf0, 0x40ade0,  # getIniBool iniBoolInvalid getIniU32 iniU32Invalid
     # app/mode_update (mode_update stays asm)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc

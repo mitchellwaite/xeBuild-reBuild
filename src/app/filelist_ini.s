@@ -13,6 +13,8 @@
 .globl L_450000
 .globl _fi_44fb84
 .globl _fi_44fbb0
+.globl _fi_450258
+.globl _fi_45025d
 .globl _fi_450264
 .globl _fi_450290
 .globl _fi_4502cd
@@ -22,11 +24,7 @@
 .globl _fnKv
 .globl _fnPatches
 .globl _fnSmc
-.globl _getIniBool
-.globl _getIniU32
-.globl _iniBoolInvalid
 .globl _iniPreParse
-.globl _iniU32Invalid
 .globl _parseIni
 
 .text
@@ -1967,290 +1965,19 @@ L_40a9fb:
           .byte 0x8d
           .byte 0x76
           .byte 0x0
-_getIniBool:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          mov EBX,DWORD PTR [_iniSize]
-          mov EDI,DWORD PTR [ESP+80]
-          test EBX,EBX
-          jne L_40aaf1
-L_40aae5:
-          mov EAX,DWORD PTR [ESP+84]
-L_40aae9:
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40aaf1:
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EDI
-          mov ESI,EAX
-          mov DWORD PTR [ESP+24],EAX
-          call _strlen
-          sub EBX,EAX
-          test EBX,EBX
-          mov DWORD PTR [ESP+36],EBX
-          jle L_40aae5
-          movsx ECX,BYTE PTR [EDI]
-          add ESI,EAX
-          mov DWORD PTR [ESP+28],ESI
-          xor ESI,ESI
-          mov DWORD PTR [ESP+32],ECX
-          lea ECX,DWORD PTR [EAX+1]
-          mov DWORD PTR [ESP+44],ECX
-          jmp L_40ab3e
+#@C _getIniBool
           .byte 0x8d
           .byte 0x76
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_40ab30:
-          add ESI,1
-          add DWORD PTR [ESP+28],1
-          cmp ESI,DWORD PTR [ESP+36]
-          je L_40aae5
-L_40ab3e:
-          mov EBX,DWORD PTR [ESP+24]
-          movzx EDX,BYTE PTR [EBX+ESI*1]
-          cmp EDX,DWORD PTR [ESP+32]
-          jne L_40ab30
-          xor EDX,EDX
-          test EAX,EAX
-          jle L_40ab79
-          lea EBP,DWORD PTR [EBX+ESI*1]
-          mov DWORD PTR [ESP+40],ESI
-          mov ESI,DWORD PTR [ESP+44]
-          jmp L_40ab6e
-          nop
-L_40ab60:
-          movzx EBX,BYTE PTR [EBP+EDX*1]
-          movsx ECX,BYTE PTR [EDI+EDX*1]
-          cmp EBX,ECX
-          cmovne EDX,ESI
-L_40ab6e:
-          add EDX,1
-          cmp EAX,EDX
-          jg L_40ab60
-          mov ESI,DWORD PTR [ESP+40]
-L_40ab79:
-          cmp EAX,EDX
-          jne L_40ab30
-          mov EBX,DWORD PTR [ESP+28]
-          lea EDX,DWORD PTR [EAX+ESI*1]
-          cmp BYTE PTR [EBX],0
-          je L_40ab30
-          cmp EDX,-1
-          je L_40aae5
-          mov DWORD PTR [ESP+8],4
-          mov DWORD PTR [ESP+4],OFFSET L_450258
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          mov EDX,EAX
-          mov EAX,1
-          test EDX,EDX
-          je L_40aae9
-          mov EAX,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45025d
-          mov DWORD PTR [ESP],EAX
-          call _strnicmp
-          mov EDX,EAX
-          xor EAX,EAX
-          test EDX,EDX
-          jne L_40aae5
-          jmp L_40aae9
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_iniBoolInvalid:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          mov EBX,DWORD PTR [_iniSize]
-          mov EDI,DWORD PTR [ESP+80]
-          test EBX,EBX
-          je L_40ace0
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EDI
-          mov ESI,EAX
-          mov DWORD PTR [ESP+24],EAX
-          call _strlen
-          sub EBX,EAX
-          test EBX,EBX
-          mov DWORD PTR [ESP+36],EBX
-          jle L_40ace0
-          movsx ECX,BYTE PTR [EDI]
-          add ESI,EAX
-          mov DWORD PTR [ESP+28],ESI
-          xor ESI,ESI
-          mov DWORD PTR [ESP+32],ECX
-          lea ECX,DWORD PTR [EAX+1]
-          mov DWORD PTR [ESP+44],ECX
-          jmp L_40ac54
-L_40ac42:
-          add ESI,1
-          add DWORD PTR [ESP+28],1
-          cmp ESI,DWORD PTR [ESP+36]
-          je L_40ace0
-L_40ac54:
-          mov EBX,DWORD PTR [ESP+24]
-          movzx EDX,BYTE PTR [EBX+ESI*1]
-          cmp EDX,DWORD PTR [ESP+32]
-          jne L_40ac42
-          xor EDX,EDX
-          test EAX,EAX
-          jle L_40ac8e
-          lea EBP,DWORD PTR [EBX+ESI*1]
-          mov DWORD PTR [ESP+40],ESI
-          mov ESI,DWORD PTR [ESP+44]
-          jmp L_40ac83
-L_40ac75:
-          movzx EBX,BYTE PTR [EBP+EDX*1]
-          movsx ECX,BYTE PTR [EDI+EDX*1]
-          cmp EBX,ECX
-          cmovne EDX,ESI
-L_40ac83:
-          add EDX,1
-          cmp EAX,EDX
-          jg L_40ac75
-          mov ESI,DWORD PTR [ESP+40]
-L_40ac8e:
-          cmp EAX,EDX
-          jne L_40ac42
-          mov EBX,DWORD PTR [ESP+28]
-          lea EDX,DWORD PTR [EAX+ESI*1]
-          cmp BYTE PTR [EBX],0
-          je L_40ac42
-          cmp EDX,-1
-          je L_40ace0
-          mov DWORD PTR [ESP+8],4
-          mov DWORD PTR [ESP+4],OFFSET L_450258
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          test EAX,EAX
-          je L_40ace0
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_45025d
-          mov DWORD PTR [ESP],EBX
-          call _strnicmp
-          mov EDX,EAX
-          mov EAX,EBX
-          test EDX,EDX
-          jne L_40ace2
-          nop
-L_40ace0:
-          xor EAX,EAX
-L_40ace2:
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _iniBoolInvalid
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_getIniU32:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          mov EBX,DWORD PTR [_iniSize]
-          mov EAX,DWORD PTR [ESP+84]
-          mov EDI,DWORD PTR [ESP+80]
-          test EBX,EBX
-          mov DWORD PTR [ESP+44],EAX
-          jne L_40ad20
-L_40ad0d:
-          mov EAX,DWORD PTR [ESP+44]
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_40ad20:
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EDI
-          mov ESI,EAX
-          mov DWORD PTR [ESP+20],EAX
-          call _strlen
-          sub EBX,EAX
-          test EBX,EBX
-          mov DWORD PTR [ESP+32],EBX
-          jle L_40ad0d
-          movsx ECX,BYTE PTR [EDI]
-          add ESI,EAX
-          mov DWORD PTR [ESP+24],ESI
-          xor ESI,ESI
-          mov DWORD PTR [ESP+28],ECX
-          lea ECX,DWORD PTR [EAX+1]
-          mov DWORD PTR [ESP+40],ECX
-          jmp L_40ad63
-L_40ad55:
-          add ESI,1
-          add DWORD PTR [ESP+24],1
-          cmp ESI,DWORD PTR [ESP+32]
-          je L_40ad0d
-L_40ad63:
-          mov EBX,DWORD PTR [ESP+20]
-          movzx EDX,BYTE PTR [EBX+ESI*1]
-          cmp EDX,DWORD PTR [ESP+28]
-          jne L_40ad55
-          xor EDX,EDX
-          test EAX,EAX
-          jle L_40ad9d
-          lea EBP,DWORD PTR [EBX+ESI*1]
-          mov DWORD PTR [ESP+36],ESI
-          mov ESI,DWORD PTR [ESP+40]
-          jmp L_40ad92
-L_40ad84:
-          movzx EBX,BYTE PTR [EBP+EDX*1]
-          movsx ECX,BYTE PTR [EDI+EDX*1]
-          cmp EBX,ECX
-          cmovne EDX,ESI
-L_40ad92:
-          add EDX,1
-          cmp EAX,EDX
-          jg L_40ad84
-          mov ESI,DWORD PTR [ESP+36]
-L_40ad9d:
-          cmp EAX,EDX
-          jne L_40ad55
-          mov EBX,DWORD PTR [ESP+24]
-          lea EDX,DWORD PTR [EAX+ESI*1]
-          cmp BYTE PTR [EBX],0
-          je L_40ad55
-          cmp EDX,-1
-          je L_40ad0d
-          mov EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+84],EAX
-          mov EAX,DWORD PTR [ESP+24]
-          mov DWORD PTR [ESP+80],EAX
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _myatou32
+#@C _getIniU32
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -2265,110 +1992,7 @@ L_40ad9d:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_iniU32Invalid:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          mov EBX,DWORD PTR [_iniSize]
-          mov EDI,DWORD PTR [ESP+80]
-          test EBX,EBX
-          je L_40aee0
-          mov EAX,DWORD PTR [_iniBuf]
-          mov DWORD PTR [ESP],EDI
-          mov ESI,EAX
-          mov DWORD PTR [ESP+24],EAX
-          call _strlen
-          sub EBX,EAX
-          test EBX,EBX
-          mov DWORD PTR [ESP+36],EBX
-          jle L_40aee0
-          movsx EBX,BYTE PTR [EDI]
-          lea ECX,DWORD PTR [EAX+1]
-          add ESI,EAX
-          mov DWORD PTR [ESP+28],ESI
-          xor ESI,ESI
-          mov DWORD PTR [ESP+44],ECX
-          mov DWORD PTR [ESP+32],EBX
-          jmp L_40ae44
-L_40ae32:
-          add ESI,1
-          add DWORD PTR [ESP+28],1
-          cmp ESI,DWORD PTR [ESP+36]
-          je L_40aee0
-L_40ae44:
-          mov EBX,DWORD PTR [ESP+24]
-          movzx EDX,BYTE PTR [EBX+ESI*1]
-          cmp EDX,DWORD PTR [ESP+32]
-          jne L_40ae32
-          xor EDX,EDX
-          test EAX,EAX
-          jle L_40ae7e
-          lea EBP,DWORD PTR [EBX+ESI*1]
-          mov DWORD PTR [ESP+40],ESI
-          mov ESI,DWORD PTR [ESP+44]
-          jmp L_40ae73
-L_40ae65:
-          movzx EBX,BYTE PTR [EBP+EDX*1]
-          movsx ECX,BYTE PTR [EDI+EDX*1]
-          cmp EBX,ECX
-          cmovne EDX,ESI
-L_40ae73:
-          add EDX,1
-          cmp EAX,EDX
-          jg L_40ae65
-          mov ESI,DWORD PTR [ESP+40]
-L_40ae7e:
-          cmp EAX,EDX
-          jne L_40ae32
-          mov EBX,DWORD PTR [ESP+28]
-          lea ECX,DWORD PTR [EAX+ESI*1]
-          movzx EDX,BYTE PTR [EBX]
-          test DL,DL
-          je L_40ae32
-          cmp ECX,-1
-          je L_40aee0
-          cmp DL,48
-          je L_40aeb4
-L_40ae9a:
-          mov EDI,DWORD PTR [ESP+28]
-          mov DWORD PTR [ESP],EDI
-          call _validateString
-          test EAX,EAX
-          jne L_40aee0
-          add ESP,60
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40aeb4:
-          movsx EAX,BYTE PTR [EBX+1]
-          mov DWORD PTR [ESP],EAX
-          call _myatol
-          cmp AL,120
-          jne L_40ae9a
-          mov EDI,DWORD PTR [ESP+28]
-          mov EAX,EDI
-          add EAX,2
-          mov DWORD PTR [ESP],EAX
-          call _validateString
-          mov EDX,EAX
-          mov EAX,EDI
-          test EDX,EDX
-          je L_40aee2
-          .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
-L_40aee0:
-          xor EAX,EAX
-L_40aee2:
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
+#@C _iniU32Invalid
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -3337,9 +2961,9 @@ L_4501e8:
           .long L_409945
           .long L_409a30
           .long L_409770
-L_450258:
+_fi_450258:
           .string "true"
-L_45025d:
+_fi_45025d:
           .string "false"
           .zero 1
 _fi_450264:

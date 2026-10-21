@@ -689,7 +689,10 @@ static int findKey(unsigned char *buf, const char *key)
 					j = len + 1;
 			if (j == len) {
 				unsigned char *q = &buf[i + len];
-				__asm__("" :: "b"(q));
+				int d;
+				__asm__("" : "=r"(d) : "b"(q));
+				if (d)
+					__builtin_unreachable();
 				if (*q != 0)
 					return i + len;
 			}

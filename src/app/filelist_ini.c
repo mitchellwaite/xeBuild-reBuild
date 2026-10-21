@@ -21,11 +21,16 @@ extern char fnSmc[32], fnKv[32], fnPatches[32];
 int iniPreParse(unsigned char *buf, int size);
 void log_printf(int level, const char *fmt, ...);
 long getFileSize(FILE *f);
+char myatol(char c);
+int validateString(char *s);
+unsigned int myatou32(char *dat, unsigned int def);
 
 /* filelist_ini.s strings */
 extern const char fi_44fb84[];	/* "rb" */
 extern const char fi_44fbb0[];	/* "******* ERROR loading %s, unable to allocate memory
 " */
+extern const char fi_450258[];	/* "true" */
+extern const char fi_45025d[];	/* "false" */
 extern const char fi_450264[];	/* "
 ------ parsing user ini at '%s' ------
 " */
@@ -139,6 +144,98 @@ char *getIniValue(const char *key)
 	if (off == -1)
 		return NULL;
 	return (char *)&iniBuf[off];
+}
+
+/* getters' own helper (not memFindStr).  The ebx pins fix RA ties; findKey's
+   has an output (kept by the unreachable) so it is no sched2 barrier */
+static int findKey(unsigned char *buf, const char *key)
+{
+	int i, j, len;
+	unsigned char *p;
+	len = strlen(key);
+	for (i = 0; i < iniSize - len; i++) {
+		if (key[0] == buf[i]) {
+			p = &buf[i];
+			for (j = 0; j < len; j++)
+				if (p[j] != key[j])
+					j = len + 1;
+			if (j == len) {
+				unsigned char *q = &buf[i + len];
+				int d;
+				__asm__("" : "=r"(d) : "b"(q));
+				if (d)
+					__builtin_unreachable();
+				if (*q != 0)
+					return i + len;
+			}
+		}
+	}
+	return -1;
+}
+#define FIND findKey(iniBuf, key)
+long getIniBool(const char *key, int def)
+{
+	int off;
+	char *val;
+	if (iniSize == 0)
+		return def;
+	off = FIND;
+	if (off == -1)
+		return def;
+	val = (char *)&iniBuf[off];
+	__asm__("" :: "b"(val));
+	if (strnicmp(val, fi_450258, 4) == 0)
+		return 1;
+	if (strnicmp(val, fi_45025d, 5) == 0)
+		return 0;
+	return def;
+}
+
+char *iniBoolInvalid(const char *key)
+{
+	int off;
+	char *val;
+	if (iniSize == 0)
+		return NULL;
+	off = FIND;
+	if (off == -1)
+		return NULL;
+	val = (char *)&iniBuf[off];
+	__asm__("" :: "b"(val));
+	if (strnicmp(val, fi_450258, 4) == 0)
+		return NULL;
+	if (strnicmp(val, fi_45025d, 5) != 0)
+		return val;
+	return NULL;
+}
+unsigned int getIniU32(const char *key, unsigned int def)
+{
+	int off;
+	if (iniSize == 0)
+		return def;
+	off = FIND;
+	if (off == -1)
+		return def;
+	return myatou32((char *)&iniBuf[off], def);
+}
+char *iniU32Invalid(const char *key)
+{
+	int off;
+	char *val;
+	if (iniSize == 0)
+		return NULL;
+	off = FIND;
+	if (off == -1)
+		return NULL;
+	val = (char *)&iniBuf[off];
+	if (val[0] == '0' && myatol(val[1]) == 'x') {
+		if (validateString(val + 2) == 0)
+			return val;
+		return NULL;
+	}
+	if (validateString(val) != 0)
+		return NULL;
+	return val;
 }
 
 /* load and pre-parse options.ini from the base dir; 0 if there is none */

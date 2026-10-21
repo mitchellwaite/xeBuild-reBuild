@@ -251,16 +251,14 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   on both with '
 ' first gives the right order but SImode compares), while/for/break
   forms, and a sweep of ~35 -f flags. None below 15.
-- getters (getIniBool, iniBoolInvalid, getIniU32, iniU32Invalid): own 2-arg helper
-  `findKey(buf, key)` with global iniSize and `p = &buf[i]`; getIniBool returns `long`;
-  myatol must be declared `char myatol(char)`. Pins `__asm__("" :: "b"(q))` on
-  `q = &buf[i + len]` in findKey plus `"b"(val)` in the getter fix both LRA ties (len+1
-  in ecx, the found pointer in ebx): 2 lines each for the first three. The 2 lines: sched2
-  tie, the asm is a barrier, so the reload of q and `lea edx,[eax+esi]` (i + len, CSE'd
-  from q's address) both get priority 4 through it and luid puts the lea first; without
-  the asm, the load's latency to the cmp wins. Tried: output-operand pins (break IVopts),
-  pins on the return path, `q - buf`, `i + j`, sched heuristic flags. iniU32Invalid: 12,
-  the key[0]/`j == len` operand orders differ (cmp edx,eax).
+- getters (getIniBool, iniBoolInvalid, getIniU32, iniU32Invalid): built from src since
+  this commit. Own 2-arg helper `findKey(buf, key)` with global iniSize and `p = &buf[i]`;
+  getIniBool returns `long`; myatol must be declared `char myatol(char)`. The q pin in
+  findKey is `int d; __asm__("" : "=r"(d) : "b"(q)); if (d) __builtin_unreachable();`:
+  with an output the asm isn't volatile, so it's no sched2 barrier (an input-only pin was,
+  and luid put the `lea edx,[eax+esi]` before the reload of q); the unreachable keeps DCE
+  from deleting it. The getters keep their `"b"(val)` pins. Worth trying wherever an
+  input-only pin fixes RA but leaves a scheduling tie.
 - DashLaunch (tmp/dashlaunch/iniparse.c, same as GitHub main) doesn't carry over:
   iniFindLabelOffset is case-insensitive (myatol + _strnicmp) and skips spaces/'=', the
   original search does neither. iniGetBool/iniGetDword-shaped getters (`if (found) {...}`,
