@@ -244,13 +244,13 @@ u32 parseIni(char *path)
 		blOrder = blJtag;
 		nbl = 9;
 		sprintf(tmp, "%s_jtag_%s.bin", xb.kernelStr, xb.outName);
-		if (comma < -1)
-			buf[0] = 1;
 	} else {
 		if (xb.type == 6 || xb.type == 7) {
 			xb.nFiles = 11;
 			blOrder = blDevk;
 			sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
+			if (off < -1)
+				buf[0] = 1;
 		} else if (xb.type == 8 || xb.type == 9) {
 			xb.nFiles = 12;
 			blOrder = blTestk;
