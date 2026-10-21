@@ -655,6 +655,26 @@ Still off:
   isn't now.  Forcing 50% (expect + param) on each other branch, or
   sweeping their probability, never removes it; manual inlining of the
   patch loops (instead of the patchNand call) is much worse.
+  Located with `-fdump-rtl-reload-details`: the register is LRA's
+  inheritance pseudo for `len - 512` (orig `_77`, live only over the four
+  post-loop insns). Nothing conflicting holds esi or edi there and no
+  conflicting reload prefers either, so `find_hard_regno_for_1` falls
+  through to `lra_hard_reg_usage` (the frequency-weighted sum of pseudos
+  already in each register; esi is tried first and needs usage <= edi).
+  Estimated at that point: esi ~8000, edi ~7750. Things that keep edi
+  (probe: which register reloads `[esp+76]`): `__builtin_expect` at each
+  of the 11 conditions with probability 5..95 in both directions;
+  `inline`/`always_inline` on patchNand (it is IPA-inlined, growth 38 >
+  early-inlining-insns; always_inline is worse); every order of the copy
+  loop's increments and a `for` form; int/u32 types for len, rlen, off,
+  rem, start and count; `off %= bs` spellings; about 50 per-function
+  `optimize` flags (RA, sched, cse, gcse, loop); and the params
+  lra-inheritance-ebb-probability-cutoff, ira-loop-reserved-regs and
+  max-predicted-iterations. `"D"(file)` pins (guarded or not) change
+  IRA's allocation everywhere (100+ lines). One lead left: LRA assigns
+  reload threads in order of thread frequency. If the `nand` reload
+  thread (edi, tfreq 180) went before this one (tfreq 280), edi's usage
+  would pass esi's by about 20.
 - `mode_client` (about 410): only `-rb` calls getArgs; the other options
   check their arguments inline with different `||` orders and loads
   hoisted above the argc test in some (see the asm).  The `-bp`/`-wb`
