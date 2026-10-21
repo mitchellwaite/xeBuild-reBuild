@@ -383,9 +383,11 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
     BRANCH_COST 3, a skip probability over ~54% for two insns (ours: REG_BR_PROB 300). So
     the original's guard had a very different probability. A hinted copy of memFindStr
     for [security] loses the CSE of size - 10 with [rawpatch].
-  - [security] log/latch (2 hunks): ours inherits the `[52]` reload into esi across the call
-    (EBB 321 322 323, fallthrough 50%). Exit-likely hints (expect + any probability param)
-    and `break`/`continue` forms change the layout; latch clobber asms change RA.
+  - [security] log/latch (2 hunks): fixed with `--param
+    lra-inheritance-ebb-probability-cutoff=60` (51-70; build.sh object flags): ours
+    inherited the `[52]` reload into esi across the call because the latch is the log
+    block's 50% fallthrough (EBB 321 322 323). Exit-likely hints, `break`/`continue` forms
+    and latch clobber asms all changed other code. The other 10 C functions don't move.
   - [flashfs] len == 0 path: PHIs `_292 = PHI <len-1, -1>` and `noCrc_506 = PHI <.., 0>`
     in the block after the trailing-1/2 test, both from jump threading's update_ssa (order
     by old SSA version); the original has noCrc's copy first. Untried: shifting those
