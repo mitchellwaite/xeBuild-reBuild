@@ -837,15 +837,14 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 20 match and are built
+Draft of the whole object (all 41 functions). 21 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
-patchFreeboot, encodeUpdateBls; logPowerButton matches but can't be built
-(below). Five have switch tables in build.s's .rdata, so they can only
-ever count as wip matches until the whole object is C: logPowerButton,
-checkBl, loadBlFiles, loadConsoleBlFiles, encodeBls. `python wip/mixed.py app/build
+patchFreeboot, encodeUpdateBls, logPowerButton. Switch tables go through
+split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
+loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
 netmixed.py: strings become `bd_<address>` statics, set up per object in
 its `OBJS`); `python wip/mixedsyms.py bd syms.txt` puts the string names
@@ -885,9 +884,11 @@ only shows in `sh build.sh`.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original.
-- logPowerButton matches here but can't be built from the mixed C: its
-  switch table is in build.s's .rdata. Which arm of each fat/slim
-  `if` comes first matters (wip-matching orientation found by trying all 32).
+- logPowerButton: fncmp can't tell its identically shaped log blocks
+  apart, so check the string order in the link. The original's .rdata
+  string order is gcc's expand order, i.e. source order: cases 0x59, 0x58,
+  0x5a, 0x56, 0x57 after 0x55, each `if ((xb.flags & 7) > 4)` first. The
+  case order sets the bb-reorder ties of the three outlined arms.
 - fixupPatchSet (~95): like extractSmcConfig, the original's loop is not
   header-copied and keeps `off` on the stack; `__attribute__((cold))` is
   not it.

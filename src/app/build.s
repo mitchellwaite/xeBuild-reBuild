@@ -56,6 +56,22 @@
 .globl _bd_459ed8
 .globl _bd_459ede
 .globl _bd_459ee4
+.globl _bd_45a0bc
+.globl _bd_45a0f0
+.globl _bd_45a128
+.globl _bd_45a15c
+.globl _bd_45a194
+.globl _bd_45a1cc
+.globl _bd_45a1f8
+.globl _bd_45a23c
+.globl _bd_45a278
+.globl _bd_45a2b4
+.globl _bd_45a2f4
+.globl _bd_45a334
+.globl _bd_45a36c
+.globl _bd_45a3ac
+.globl _bd_45a3e8
+.globl _bd_45a428
 .globl _bd_45a590
 .globl _bd_45a5cc
 .globl _bd_45a5e0
@@ -87,7 +103,6 @@
 .globl _loadConsoleBlFiles
 .globl _loadFileCrc
 .globl _loadInputFile
-.globl _logPowerButton
 .globl _patchBlsBlmod
 .globl _patchBlsResign
 .globl _patchSmcConfig
@@ -4864,195 +4879,7 @@ L_42c8d1:
 L_42c8f7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_logPowerButton:
-          sub ESP,28
-          mov EAX,DWORD PTR [ESP+32]
-          sub EAX,17
-          cmp EAX,73
-          ja L_42cb80
-          jmp DWORD PTR [EAX*4+L_45a468]
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42c920:
-          mov EAX,DWORD PTR [L_479ea4]
-          and EAX,7
-          cmp EAX,4
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+8],EAX
-          jbe L_42cb60
-          mov DWORD PTR [ESP+4],OFFSET L_45a2f4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42c951:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a0bc
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-L_42c96f:
-          add ESP,28
-          ret 
-L_42c973:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a0f0
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42c993:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a128
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42c9b3:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a15c
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42c9d3:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a194
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_42ca00:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a1cc
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42ca23:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a1f8
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_42ca50:
-          mov EAX,DWORD PTR [L_479ea4]
-          and EAX,7
-          cmp EAX,4
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+8],EAX
-          jbe L_42cb43
-          mov DWORD PTR [ESP+4],OFFSET L_45a36c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42ca84:
-          mov EAX,DWORD PTR [L_479ea4]
-          and EAX,7
-          cmp EAX,4
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+8],EAX
-          ja L_42cb90
-          mov DWORD PTR [ESP+4],OFFSET L_45a428
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42cac0:
-          mov EAX,DWORD PTR [L_479ea4]
-          and EAX,7
-          cmp EAX,4
-          jbe L_42cb20
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a2b4
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42caf0:
-          mov EAX,DWORD PTR [L_479ea4]
-          and EAX,7
-          cmp EAX,4
-          jbe L_42cb20
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a23c
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42cb20:
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+4],OFFSET L_45a278
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-L_42cb43:
-          mov DWORD PTR [ESP+4],OFFSET L_45a3ac
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-          .byte 0x66
-          .byte 0x90
-L_42cb60:
-          mov DWORD PTR [ESP+4],OFFSET L_45a334
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_42cb80:
-          mov EAX,1
-          jmp L_42c96f
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42cb90:
-          mov DWORD PTR [ESP+4],OFFSET L_45a3e8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_42c96f
+#@C _logPowerButton
           .byte 0x90
           .byte 0x8d
           .byte 0x74
@@ -13163,125 +12990,52 @@ L_45a050:
 L_45a074:
           .string "***** WARNING: skipping xell, there doesn't appear to be enough room!\n"
           .zero 1
-L_45a0bc:
+_bd_45a0bc:
           .string "    - console power button is being used to %s \n"
           .zero 3
-L_45a0f0:
+_bd_45a0f0:
           .string "    - console DVD eject button is being used to %s \n"
           .zero 3
-L_45a128:
+_bd_45a128:
           .string "    - IR remote power button is being used to %s \n"
           .zero 1
-L_45a15c:
+_bd_45a15c:
           .string "    - IR remote guide/X button is being used to %s \n"
           .zero 3
-L_45a194:
+_bd_45a194:
           .string "    - IR remote windows button is being used to %s \n"
           .zero 3
-L_45a1cc:
+_bd_45a1cc:
           .string "    - KIOSK debug pin is being used to %s \n"
-L_45a1f8:
+_bd_45a1f8:
           .string "    - wireless controller powering on console is being used to %s \n"
-L_45a23c:
+_bd_45a23c:
           .string "wired controller (rear top usb port) is being used to %s \n"
           .zero 1
-L_45a278:
+_bd_45a278:
           .string "wired controller (INVALID FOR FATS!!) is being used to %s \n"
-L_45a2b4:
+_bd_45a2b4:
           .string "wired controller (rear middle usb port) is being used to %s \n"
           .zero 2
-L_45a2f4:
+_bd_45a2f4:
           .string "wired controller (rear bottom usb port) is being used to %s \n"
           .zero 2
-L_45a334:
+_bd_45a334:
           .string "wired controller (rear usb port) is being used to %s \n"
           .zero 1
-L_45a36c:
+_bd_45a36c:
           .string "wired controller (front left usb port) is being used to %s \n"
           .zero 3
-L_45a3ac:
+_bd_45a3ac:
           .string "wired controller (front top usb port) is being used to %s \n"
-L_45a3e8:
+_bd_45a3e8:
           .string "wired controller (front right usb port) is being used to %s \n"
           .zero 2
-L_45a428:
+_bd_45a428:
           .string "wired controller (front bottom usb port) is being used to %s \n"
           .zero 1
 L_45a468:
-          .long L_42c951
-          .long L_42c973
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42c993
-          .long L_42cb80
-          .long L_42c9b3
-          .long L_42cb80
-          .long L_42c9d3
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42ca00
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42cb80
-          .long L_42ca23
-          .long L_42ca50
-          .long L_42ca84
-          .long L_42cac0
-          .long L_42caf0
-          .long L_42c920
+#@J _logPowerButton 0 74
 _bd_45a590:
           .string "patching freeboot.bin with with kernel version string '%s'\n"
 _bd_45a5cc:

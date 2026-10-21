@@ -874,17 +874,11 @@ int logPowerButton(int reason, const char *use)
 	case 0x55:
 		log_printf(1, "    - wireless controller powering on console is being used to %s \n", use);
 		break;
-	case 0x56:
+	case 0x59:
 		if ((xb.flags & 7) > 4)
-			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
+			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
 		else
-			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
-		break;
-	case 0x57:
-		if ((xb.flags & 7) <= 4)
-			log_printf(1, "wired controller (front bottom usb port) is being used to %s \n", use);
-		else
-			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
+			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		break;
 	case 0x58:
 		if ((xb.flags & 7) > 4)
@@ -892,17 +886,23 @@ int logPowerButton(int reason, const char *use)
 		else
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		break;
-	case 0x59:
-		if ((xb.flags & 7) > 4)
-			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
-		else
-			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
-		break;
 	case 0x5a:
-		if ((xb.flags & 7) <= 4)
-			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
-		else
+		if ((xb.flags & 7) > 4)
 			log_printf(1, "wired controller (rear bottom usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
+		break;
+	case 0x56:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
+		break;
+	case 0x57:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
+		else
+			log_printf(1, "wired controller (front bottom usb port) is being used to %s \n", use);
 		break;
 	default:
 		return 1;

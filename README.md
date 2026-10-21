@@ -23,7 +23,7 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **558 of 617** (553 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **558 of 617** (554 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
@@ -44,7 +44,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
-| `app/build` | mixed; 1 of 21 drafted functions match in `wip/app/build.c` | 21 / 41 |
+| `app/build` | mixed; 0 of 20 drafted functions match in `wip/app/build.c` | 21 / 41 |
 
 <details>
 <summary><code>app/mode_update</code>: 13 / 14 in C</summary>
@@ -343,7 +343,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ⬜ `addBlsToImage` (0x42c090) (draft in `wip/`, no match yet)
 - ✅ `isUpdateBl` (0x42c600)
 - ⬜ `addUpdateBls` (0x42c620) (draft in `wip/`, no match yet)
-- ☑️ `logPowerButton` (0x42c900)
+- ✅ `logPowerButton` (0x42c900)
 - ✅ `patchFreeboot` (0x42cbb0)
 - ✅ `patchPayloadSize` (0x42cee0)
 - ⬜ `encodeBls` (0x42cfa0) (draft in `wip/`, no match yet)

@@ -276,6 +276,22 @@ static const char bd_459ed2[] = "sum1:";
 static const char bd_459ed8[] = "sum2:";
 static const char bd_459ede[] = "sum3:";
 static const char bd_459ee4[] = "fin :";
+static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
+static const char bd_45a0f0[] = "    - console DVD eject button is being used to %s \n";
+static const char bd_45a128[] = "    - IR remote power button is being used to %s \n";
+static const char bd_45a15c[] = "    - IR remote guide/X button is being used to %s \n";
+static const char bd_45a194[] = "    - IR remote windows button is being used to %s \n";
+static const char bd_45a1cc[] = "    - KIOSK debug pin is being used to %s \n";
+static const char bd_45a1f8[] = "    - wireless controller powering on console is being used to %s \n";
+static const char bd_45a23c[] = "wired controller (rear top usb port) is being used to %s \n";
+static const char bd_45a278[] = "wired controller (INVALID FOR FATS!!) is being used to %s \n";
+static const char bd_45a2b4[] = "wired controller (rear middle usb port) is being used to %s \n";
+static const char bd_45a2f4[] = "wired controller (rear bottom usb port) is being used to %s \n";
+static const char bd_45a334[] = "wired controller (rear usb port) is being used to %s \n";
+static const char bd_45a36c[] = "wired controller (front left usb port) is being used to %s \n";
+static const char bd_45a3ac[] = "wired controller (front top usb port) is being used to %s \n";
+static const char bd_45a3e8[] = "wired controller (front right usb port) is being used to %s \n";
+static const char bd_45a428[] = "wired controller (front bottom usb port) is being used to %s \n";
 static const char bd_45a590[] = "patching freeboot.bin with with kernel version string '%s'\n";
 static const char bd_45a5cc[] = "Boot options set:\n";
 static const char bd_45a5e0[] = "    - Set debug UART speed to cygnos/demon compatible\n";
@@ -305,7 +321,6 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 int checkBl(u8 *bl, u32 size, int type, u32 crc);
 int extractSmcConfig(struct fileent *e, u8 *buf, u32 size);
 void appendAddonPatches(struct fileent *e);
-int logPowerButton(int reason, const char *use);
 void fixupPatchSet(void);
 int patchSmcConfig(u8 *smc);
 int verifyBlSigs(void);
@@ -600,6 +615,66 @@ void patchHeaderOpts(void)
 	if (xb.xellAltButton)
 		log_printf(1, bd_459e9c);
 	xb.hdr[0x4e] = xb.xellAltButton;
+}
+
+int logPowerButton(int reason, const char *use)
+{
+	switch (reason) {
+	case 0x11:
+		log_printf(1, bd_45a0bc, use);
+		break;
+	case 0x12:
+		log_printf(1, bd_45a0f0, use);
+		break;
+	case 0x20:
+		log_printf(1, bd_45a128, use);
+		break;
+	case 0x22:
+		log_printf(1, bd_45a15c, use);
+		break;
+	case 0x24:
+		log_printf(1, bd_45a194, use);
+		break;
+	case 0x41:
+		log_printf(1, bd_45a1cc, use);
+		break;
+	case 0x55:
+		log_printf(1, bd_45a1f8, use);
+		break;
+	case 0x59:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a23c, use);
+		else
+			log_printf(1, bd_45a278, use);
+		break;
+	case 0x58:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a2b4, use);
+		else
+			log_printf(1, bd_45a278, use);
+		break;
+	case 0x5a:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a2f4, use);
+		else
+			log_printf(1, bd_45a334, use);
+		break;
+	case 0x56:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a36c, use);
+		else
+			log_printf(1, bd_45a3ac, use);
+		break;
+	case 0x57:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a3e8, use);
+		else
+			log_printf(1, bd_45a428, use);
+		break;
+	default:
+		return 1;
+	}
+	return 0;
 }
 
 void showSmcConfig(const u8 *smc)
