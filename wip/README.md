@@ -322,6 +322,44 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 - iniPreParse: 15 more loop shapes tried this session (continue/else/do-while/while,
   explicit per-path increments, inner while); none moves the not-';' split block, still 11.
 
+- Second 2026-10-21 session: parseIni 866 -> 1233/1241. Most of the gap was profile, not
+  code shape; the IRA rotation and the bl-loop cold order fixed themselves once the block
+  frequencies were right. In order:
+  - `u32 noCrc` and a `u32` return: with int, uncprop turned the n == 0 path's PHI arg into
+    noCrc (gimple_can_coalesce_p needs compatible types); the original keeps `xor ebx,ebx`.
+  - `struct fileent files[19]` (padding keeps the offsets): the files loop's trip count is
+    PRED_LOOP_ITERATIONS_GUESSED from the array bound (35 -> 97.2%); 19 (jtag's nFiles) puts
+    the cold loc blocks among the bl blocks as in the original (18 is too cold).
+  - label test `off < 0` (bl entry frequency), bl `len = comma; noCrc = 0; if (comma > nul)
+    {...}` (the comma path's block placement).
+  - [flashfs] and [security] each have their own not-found block. The shared `goto
+    noFlashfs` meant the error block wasn't dominated by the security test, so only the
+    found edge got PRED_CALL (found 62%); with its own block the two call predictions
+    cancel (found 80%), which warms [security] enough for the original's cold order.
+  - Dead stores `if (nul < -1) buf[0] = 1;` (flashfs loop) and `if (off < -1) buf[0] = 1;`
+    (devk branch): their freed SSA names flip the comma/nul compare order in all three
+    loops. Found with a greedy search (scratch hill.py: insert after every statement,
+    keep the best, repeat); an uninitialised variable in the dead store works too but
+    don't.
+  - The `"S"(pos)` pin of the first pass isn't needed after the frequency fixes.
+  Left (8 lines, all [flashfs]/[security] cold code; none moved by single dead stores,
+  declaration order or loop-end forms):
+  - [security] search: the original sets `i = 0` / `11` before the guard's `jle` and
+    hoists `buf + i` (`lea esi,[ebp+edx]`); ours (and both [rawpatch] searches) compute
+    `(buf + j) + i` in the inner loop. Probably range info splitting `(sizetype)(i + j)`.
+  - [security] log: LRA keeps `xb.flashFiles[i]` in esi because the latch (`i++`, `+= 22`)
+    is the log block's fallthrough at RA time (EBB); the original reloads into eax and
+    later does `add [52],22`. GIMPLE order is log, latch, exit in both [flashfs] and
+    [security].
+  - Copy-order ties: flashfs `mov ebx,-1` / `xor edi,edi`, security `xor eax,eax` /
+    `xor ebx,ebx` (PHI copies; declaration order moves the bl one, not these).
+  - security crc-size error: crossjump shares `mov [4+esp],msg` with flashfs's error.
+- iniPreParse (11 lines): the `;` block must be in the compare's LRA EBB (`mov ebx,eax`
+  inheritance). `else __asm__("");` makes it the fallthrough (no PRE split block), but
+  the edge is 28% and LRA's EBB cutoff is 40%; with the cutoff param at 0 it inherits into
+  esi instead. Raising the `;` probability (expect, switch) swaps the stack slots; gcc 6's
+  continue predictor is 50% and the C front end emits no goto prediction.
+
 ## app/keys.c
 
 Draft of the whole object, with string literals. 44 of 48 functions are
