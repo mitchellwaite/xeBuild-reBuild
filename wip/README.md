@@ -382,7 +382,11 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
     in a jump at ce3 (ours falls through into the header) and, by cheap_bb_rtx_cost_p with
     BRANCH_COST 3, a skip probability over ~54% for two insns (ours: REG_BR_PROB 300). So
     the original's guard had a very different probability. A hinted copy of memFindStr
-    for [security] loses the CSE of size - 10 with [rawpatch].
+    for [security] loses the CSE of size - 10 with [rawpatch]. Checked against this
+    function's successful ce3 conversions (bb 151/207/267: fallthrough 28%, one insn).
+    memFindStr is inlined at IPA, after parseIni's profile_estimate, so every inline
+    copy starts with memFindStr's own 3%; an early `return -1` in memFindStr (plain or
+    hinted) changes far more than the guard.
   - [security] log/latch (2 hunks): fixed with `--param
     lra-inheritance-ebb-probability-cutoff=60` (51-70; build.sh object flags): ours
     inherited the `[52]` reload into esi across the call because the latch is the log
@@ -395,7 +399,14 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
     parseIni don't, per a 1600-variant search).
   - security crc-size error: crossjump pairs it with [flashfs]'s same-message error (7-insn
     tail incl. `[4]=msg`) before the common error tail; in the original it joins the common
-    tail at `[esp]=0`. Return block preds at jump2 start with the [security] error (bb318).
+    tail at `[esp]=0`. Return block preds at jump2 start with the [security] error (bb318),
+    so try_crossjump_bb pairs everything with it first (310 -> 318 splits it at `[esp]=0`,
+    later 268 -> 318 matches 7). The pred order comes from earlier edge removals
+    (unordered_remove moves the last pred into the hole). If-chain order and argument
+    spellings of the [security] crc error don't change it.
+  - Dead-store and dead-loop searches (all of parseIni, 5 variables / k-loops) with the
+    current flags: nothing gets below 8 fncmp lines; the H3/H5 changes they find come
+    with 30+ other lines.
 
 ## app/keys.c
 
