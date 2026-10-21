@@ -630,7 +630,7 @@ SYMBOLS = {
     # app/image_write's data (COMMON globals in common_bss.s, and its own)
     0x4c9164: '_mmcAnchor', 0x4c97c0: '_fsFiles', 0x4cb7c0: '_fsTable',
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
-    0x46f9e0: '_smcPage',
+    0x46f9c0: '_mobileOffset', 0x46f9e0: '_smcPage',
     # app/image_write's strings that its C functions use (wip/mixed.py)
     0x451760: '_iw_451760', 0x45179c: '_iw_45179c',
     0x4517f8: '_iw_4517f8', 0x451820: '_iw_451820', 0x451850: '_iw_451850',
@@ -642,6 +642,7 @@ SYMBOLS = {
     0x451ba4: '_iw_451ba4', 0x451be4: '_iw_451be4', 0x451c18: '_iw_451c18',
     0x451c38: '_iw_451c38', 0x451c94: '_iw_451c94', 0x451cdd: '_iw_451cdd',
     0x451f80: '_iw_451f80',
+    0x451924: '_iw_451924', 0x451978: '_iw_451978',
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
@@ -768,7 +769,7 @@ C_FUNCS = {
     0x411030, 0x4112b0, 0x4112f0, 0x411600,  # imgAddFileAs fixupFsTable fixupEmptyFsBlocks addSmcConfig
     0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
-    0x412f60, 0x413030,                      # manufacturingOffset imgAddRaw
+    0x412f60, 0x413030, 0x4110b0,            # manufacturingOffset imgAddRaw imgAddMobile
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

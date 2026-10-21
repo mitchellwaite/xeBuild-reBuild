@@ -45,6 +45,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # done/incomplete blocks differently)
       app/options) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=83" ;;
+      # imgAddMobile's 50/50 imgFits hint
+      app/image_write) orig="$f.c"
+             cflags="-O3 --param builtin-expect-probability=50" ;;
       # padding between functions is top-level asm between the C ones;
       # -fno-toplevel-reorder keeps that order (gcc 6 otherwise puts all
       # top-level asm first), and the asm carries the object's .eh_frame

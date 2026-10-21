@@ -211,6 +211,8 @@ static const char iw_451820[] = "\n***** ERROR: SMC size 0x%x not supported!!!\n
 static const char iw_451850[] = "reset smc load address to 0x%x size 0x%x\n";
 static const char iw_45187c[] = "patch slot offset reset to: 0x%x\n";
 static const char iw_4518e8[] = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
+static const char iw_451924[] = "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n";
+static const char iw_451978[] = "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n";
 static const char iw_4519c4[] = "adding smc config to offset 0x%08x, len 0x%x\n";
 static const char iw_451a20[] = "%c%c v%d at 0x%x size 0x%x (CB)\n";
 static const char iw_451a44[] = "%c%c v%d at 0x%x size 0x%x (dual CB)\n";
@@ -237,7 +239,6 @@ int imgWriteAt(u32 off, const void *src, u32 len, u16 next) __attribute__((regpa
 int imgWritePage(u32 off, const void *src, u16 next) __attribute__((regparm(3)));
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
-u32 imgAddMobile(const void *data, u32 len, u8 type);
 void writeInitialHeader(void);
 void writeFsTable(u32 off);
 int finalizeImage(void);
@@ -671,6 +672,45 @@ void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len)
 
 	log_printf(1, iw_4518e8, name, off, len, off + len);
 	imgAddFile(name, data, time, len);
+}
+
+u32 imgAddMobile(const void *data, u32 len, u8 type)
+{
+	u32 off, end, ret;
+
+	if (xb.bigBlock) {
+		if (!mobileOffset) {
+			mobileOffset = imgSizeAligned();
+			if (mobileOffset & 0x1ffff)
+				mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
+		} else if ((mobileOffset & ~0x1ffff) + 0x20000 < mobileOffset + len)
+			mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
+		off = mobileOffset;
+		if (!imgFits(off, len)) {
+			log_printf(0, iw_451924,
+				type + 17);
+			return 0;
+		}
+		log_printf(1, iw_451978,
+			type + 17, type, off, len, off + len);
+		imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
+		ret = mobileOffset >> 17;
+		mobileOffset += len;
+		if (mobileOffset & 0x7ff)
+			mobileOffset = (mobileOffset + 0x800) & ~0x7ff;
+		return ret;
+	}
+	mobileOffset = off = imgSizeAligned();
+	if (__builtin_expect(imgFits(off, len), 1)) {
+		log_printf(1, iw_451978,
+			type + 17, type, off, len, off + len);
+		ret = mobileOffset >> 14;
+		imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
+		return ret;
+	}
+	log_printf(0, iw_451924,
+		type + 17);
+	return 0;
 }
 
 void fixupFsTable(u32 off)

@@ -61,7 +61,8 @@ def strings(lo, hi):
     return out
 
 
-FN = re.compile(r'\n((?:/\*[^\n]*\*/\n)?((?:static )?(?:inline )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n', re.S)
+FN = re.compile(r'\n((?:/\*[^\n]*\*/\n)?((?:static )?(?:inline )?(?:__attribute__\(\(\w+\)\) )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n', re.S)
+ATTR = re.compile(r'__attribute__\(\(\w+\)\) ')
 SIG = re.compile(r'(?:/\*[^\n]*\*/\n)?(.*?\))\n\{', re.S)
 
 
@@ -96,7 +97,8 @@ def main():
                                   for l in fns[name].split('\n')))
 
     ext = ['static const char %s[] = "%s";' % (used[a], lits[a]) for a in sorted(used)]
-    sigs = {n: SIG.match(fns[n]).group(1) for n in fns}
+    # attributes like noclone matter for the definition only
+    sigs = {n: ATTR.sub('', SIG.match(fns[n]).group(1)) for n in fns}
     asm = []
     for n in fns:
         if n in want or n in cfg['inline']:

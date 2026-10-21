@@ -17,7 +17,6 @@
 .globl _finalizeImage
 .globl _imgAdd
 .globl _imgAddFile
-.globl _imgAddMobile
 .globl _imgWriteAt
 .globl _imgWritePage
 .globl _imgWriteStart
@@ -28,6 +27,8 @@
 .globl _iw_451850
 .globl _iw_45187c
 .globl _iw_4518e8
+.globl _iw_451924
+.globl _iw_451978
 .globl _iw_4519c4
 .globl _iw_451a20
 .globl _iw_451a44
@@ -47,6 +48,7 @@
 .globl _iw_451c94
 .globl _iw_451cdd
 .globl _iw_451f80
+.globl _mobileOffset
 .globl _smcPage
 .globl _writeFsTable
 .globl _writeInitialHeader
@@ -1790,144 +1792,7 @@ L_411005:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_imgAddMobile:
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,32
-          mov EDX,DWORD PTR [L_479ef0]
-          mov EBX,DWORD PTR [ESP+52]
-          mov EAX,DWORD PTR [ESP+56]
-          test EDX,EDX
-          je L_4111b3
-          mov EDX,DWORD PTR [L_46f9c0]
-          test EDX,EDX
-          jne L_411280
-          mov EDX,DWORD PTR [_imgEnd]
-          mov ESI,EDX
-          lea ECX,DWORD PTR [EDX+16384]
-          and ESI,16383
-          sub ECX,ESI
-          test ESI,ESI
-          cmovne EDX,ECX
-          test EDX,131071
-          je L_411109
-          add EDX,131072
-          and EDX,4294836224
-L_411109:
-          lea ESI,DWORD PTR [EBX+EDX*1]
-          mov DWORD PTR [L_46f9c0],EDX
-L_411112:
-          mov EDI,DWORD PTR [L_479ef8]
-          lea ECX,DWORD PTR [EDI+262143]
-          shl ECX,14
-          cmp ECX,ESI
-          jb L_4111ea
-          movzx EDI,AL
-          mov DWORD PTR [ESP+24],ESI
-          mov DWORD PTR [ESP+20],EBX
-          lea EAX,DWORD PTR [EDI+17]
-          mov DWORD PTR [ESP+16],EDX
-          mov DWORD PTR [ESP+12],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_451978
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+12],EDI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],8190
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [L_46f9c0]
-          mov DWORD PTR [ESP],EAX
-          call _imgAdd
-          mov EAX,DWORD PTR [L_46f9c0]
-          add EBX,EAX
-          mov EDI,EAX
-          lea EAX,DWORD PTR [EBX+2048]
-          shr EDI,17
-          and EAX,4294965248
-          test EBX,2047
-          cmovne EBX,EAX
-          mov EAX,EDI
-          mov DWORD PTR [L_46f9c0],EBX
-          add ESP,32
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_4111b3:
-          mov EDX,DWORD PTR [_imgEnd]
-          mov ESI,EDX
-          lea ECX,DWORD PTR [EDX+16384]
-          and ESI,16383
-          sub ECX,ESI
-          test ESI,ESI
-          mov ESI,DWORD PTR [L_479ef8]
-          cmovne EDX,ECX
-          lea EDI,DWORD PTR [EBX+EDX*1]
-          mov DWORD PTR [L_46f9c0],EDX
-          lea ECX,DWORD PTR [ESI+262143]
-          shl ECX,14
-          cmp ECX,EDI
-          jae L_411213
-L_4111ea:
-          movzx EAX,AL
-          mov DWORD PTR [ESP+4],OFFSET L_451924
-          mov DWORD PTR [ESP],0
-          add EAX,17
-          xor EDI,EDI
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          add ESP,32
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-L_411213:
-          movzx ESI,AL
-          mov DWORD PTR [ESP+24],EDI
-          mov DWORD PTR [ESP+20],EBX
-          lea EAX,DWORD PTR [ESI+17]
-          mov DWORD PTR [ESP+16],EDX
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+4],OFFSET L_451978
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [L_46f9c0]
-          mov DWORD PTR [ESP+8],EBX
-          mov EBX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],8190
-          mov EDI,EAX
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+4],EBX
-          shr EDI,14
-          call _imgAdd
-          add ESP,32
-          mov EAX,EDI
-          pop EBX
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_411280:
-          mov ECX,EDX
-          lea ESI,DWORD PTR [EDX+EBX*1]
-          and ECX,4294836224
-          add ECX,131072
-          cmp ECX,ESI
-          jae L_411112
-          add EDX,131072
-          and EDX,4294836224
-          jmp L_411109
+#@C _imgAddMobile
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -3143,10 +3008,10 @@ L_4518a0:
 _iw_4518e8:
           .string "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n"
           .zero 2
-L_451924:
+_iw_451924:
           .string "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n"
           .zero 2
-L_451978:
+_iw_451978:
           .string "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n"
           .zero 2
 _iw_4519c4:
@@ -5400,7 +5265,7 @@ _iw_451f80:
 
 .bss
 .p2align 5
-L_46f9c0:
+_mobileOffset:
           .zero 4
 L_46f9c4:
           .zero 28
