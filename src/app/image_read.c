@@ -163,7 +163,7 @@ int findFreeRemap(int numBlocks);
 void remapBadBlocks(int numBlocks);
 int notZeropair(void);
 int spareLbaOk(int pages);
-int copyMmcImage(u8 *raw);
+u32 copyMmcImage(u8 *raw);
 int parseDump(u8 *raw);
 u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
@@ -204,6 +204,13 @@ extern const char ir_452912[];	/* "    xbox IP : %d.%d.%d.%d\n" */
 extern const char ir_452930[];	/* "    xbox MAC: %02x:%02x:%02x:%02x:%0..." */
 extern const char ir_452958[];	/* "    port    : %d\n" */
 extern const char ir_45296a[];	/* "    host IP : %d.%d.%d.%d\n" */
+extern const char ir_4529d0[];	/* "attempting to find valid anchor bloc..." */
+extern const char ir_4529f8[];	/* "anchor block v %d at 0x2fe8000 is va..." */
+extern const char ir_452a24[];	/* "anchor block at 0x2fe8000 is invalid..." */
+extern const char ir_452a4c[];	/* "anchor block v %d at 0x2fec000 is va..." */
+extern const char ir_452a78[];	/* "anchor block v %d at 0x2fec000 is se..." */
+extern const char ir_452aa4[];	/* "anchor block at 0x2fec000 is invalid..." */
+extern const char ir_452acc[];	/* "anchor block v %d at 0x2fe8000 is se..." */
 extern const char ir_452bd8[];	/* "bigblock file system offset set to 0..." */
 extern const char ir_452c20[];	/* "Scanning for mobile data and fsroot...." */
 extern const char ir_452c47[];	/* "done! fsroot found ok!" */
@@ -220,6 +227,11 @@ extern const char ir_452e09[];	/* "not found!\n" */
 extern const char ir_452f7c[];	/* "block 0x%x was remapped to block 0x%..." */
 extern const char ir_452fb8[];	/* "block 0x%x was remapped to block 0x%..." */
 extern const char ir_452ffc[];	/* "MAX REMAPS of 32 exceeded, remapping..." */
+extern const char ir_453049[];	/* "cleaning up stray remaps\n" */
+extern const char ir_453064[];	/* "block 0x%x had no remap, assigning r..." */
+extern const char ir_45309c[];	/* "block 0x%x had no remap, and I could..." */
+extern const char ir_4530d4[];	/* "block 0x%x had no need of remap, it'..." */
+extern const char ir_45310c[];	/* "\n\n***** ERROR: nanddump.bin is a Z..." */
 extern const char ir_45355c[];	/* "size is not a multiple of %d bytes, ..." */
 extern const char ir_453594[];	/* "no data to copy..\n" */
 extern const char ir_4535a7[];	/* "rb" */
@@ -439,6 +451,39 @@ int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 	return 0;
 }
 
+int findAnchor(void)
+{
+	u32 v0, v1;
+	u32 ok0, ok1;
+
+	log_printf(1, ir_4529d0);
+	v0 = getBeU32(xb.image + 0x2fe8018);
+	v1 = getBeU32(xb.image + 0x2fec018);
+	ok0 = shaSelfCheck(xb.image + 0x2fe8000);
+	if (ok0)
+		log_printf(1, ir_4529f8, v0);
+	else
+		log_printf(1, ir_452a24);
+	ok1 = shaSelfCheck(xb.image + 0x2fec000);
+	if (ok1)
+		log_printf(1, ir_452a4c, v1);
+	else {
+		log_printf(1, ir_452aa4);
+		__asm__("");	/* dom3 doesn't thread this copy: one log, ok0 tested after it */
+	}
+	if (__builtin_expect(ok0, 1) && (__builtin_expect(!ok1, 1) || v0 >= v1)) {
+		log_printf(1, ir_452acc, v0);
+		memcpy(anchor, xb.image + 0x2fe8000, 0x200);
+		return 1;
+	}
+	if (__builtin_expect(ok1, 1)) {
+		log_printf(1, ir_452a78, v1);
+		memcpy(anchor, xb.image + 0x2fec000, 0x200);
+		return 1;
+	}
+	return 0;
+}
+
 int mmcFindMobiles(void)
 {
 	int i;
@@ -620,6 +665,32 @@ int findFreeRemap(int numBlocks)
 	return 0;
 }
 
+void remapBadBlocks(int numBlocks)
+{
+	u32 i;
+	int b;
+
+	log_printf(1, ir_453049);
+	for (i = 0; i < xb.numBad; i++) {
+		if (xb.badRemap[i] != -1)
+			continue;
+		if (xb.badBlocks[i] < numBlocks - 32) {
+			if (!xb.numBad)	/* i < numBad: drops the inlined loop's guard */
+				__builtin_unreachable();
+			b = findFreeRemap(numBlocks);
+			if (b) {
+				xb.badRemap[i] = b;
+				log_printf(1, ir_453064, xb.badBlocks[i], b);
+			} else
+				log_printf(1, ir_45309c, xb.badBlocks[i]);
+		} else {
+			log_printf(1, ir_4530d4, xb.badBlocks[i]);
+			xb.badRemap[i] = -5;
+		}
+	}
+	log_printf(1, ir_452d4e);
+}
+
 int notZeropair(void)
 {
 	return memcmp(zeropair, xb.image + 16, 14) != 0;
@@ -633,6 +704,16 @@ int spareLbaOk(int pages)
 		if (memcmp(xb.spare, xb.spare + i * 16, 3))
 			return 0;
 	return 1;
+}
+
+__attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
+{
+	xb.numBad = 0;
+	memcpy(xb.image, raw, xb.imageSize);
+	if (notZeropair())
+		return 1;
+	log_printf(0, ir_45310c);
+	return 0;
 }
 
 u32 copyMuData(FILE *out, void *sha)

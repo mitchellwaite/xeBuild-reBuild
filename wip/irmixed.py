@@ -32,7 +32,7 @@ def main():
     data = re.sub(r'^char (\w+)\[(\d*)\] = [^;]*;', r'extern char \1[\2];', data, flags=re.M)
     data = data.replace('/* gcc emits these in reverse */', "/* image_read.s's data */")
     fns = {}
-    for m in re.finditer(r'\n((?:static )?(?:inline )?[^\n;{}#]*?\b(\w+)\([^;{]*\)\n\{.*?\n\})\n', src, re.S):
+    for m in re.finditer(r'\n((?:__attribute__\(\([^\n]*?\)\) )?(?:static )?(?:inline )?[^\n;{}#(]*?\b(\w+)\([^;{]*\)\n\{.*?\n\})\n', src, re.S):
         fns[m.group(2)] = m.group(1)
     missing = [w for w in want if w not in fns]
     if missing:

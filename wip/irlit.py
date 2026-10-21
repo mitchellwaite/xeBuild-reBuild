@@ -50,7 +50,7 @@ def literals(code, used):
         pre, body = m.group(1), m.group(2)
         line = code[code.rfind('\n', 0, m.start()) + 1:m.start()] + pre
         if (re.search(r'(?:strcpy|strcat)\([^,()]*, $', pre) or re.search(r'\] = $', pre)
-                or '__asm__' in line):
+                or '__asm__' in line or '__attribute__' in line):
             return m.group(0)
         a = text[cstr(body)]
         used.add(a)

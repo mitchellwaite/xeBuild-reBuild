@@ -159,7 +159,7 @@ int findFreeRemap(int numBlocks);
 void remapBadBlocks(int numBlocks);
 int notZeropair(void);
 int spareLbaOk(int pages);
-int copyMmcImage(u8 *raw);
+u32 copyMmcImage(u8 *raw);
 int parseDump(u8 *raw);
 u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
@@ -504,7 +504,7 @@ int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time)
 int findAnchor(void)
 {
 	u32 v0, v1;
-	int ok0, ok1;
+	u32 ok0, ok1;
 
 	log_printf(1, "attempting to find valid anchor block\n");
 	v0 = getBeU32(xb.image + 0x2fe8018);
@@ -517,14 +517,16 @@ int findAnchor(void)
 	ok1 = shaSelfCheck(xb.image + 0x2fec000);
 	if (ok1)
 		log_printf(1, "anchor block v %d at 0x2fec000 is valid\n", v1);
-	else
+	else {
 		log_printf(1, "anchor block at 0x2fec000 is invalid\n");
-	if (ok0 && (!ok1 || v0 >= v1)) {
+		__asm__("");	/* dom3 doesn't thread this copy: one log, ok0 tested after it */
+	}
+	if (__builtin_expect(ok0, 1) && (__builtin_expect(!ok1, 1) || v0 >= v1)) {
 		log_printf(1, "anchor block v %d at 0x2fe8000 is selected\n", v0);
 		memcpy(anchor, xb.image + 0x2fe8000, 0x200);
 		return 1;
 	}
-	if (ok1) {
+	if (__builtin_expect(ok1, 1)) {
 		log_printf(1, "anchor block v %d at 0x2fec000 is selected\n", v1);
 		memcpy(anchor, xb.image + 0x2fec000, 0x200);
 		return 1;
@@ -914,6 +916,8 @@ void remapBadBlocks(int numBlocks)
 		if (xb.badRemap[i] != -1)
 			continue;
 		if (xb.badBlocks[i] < numBlocks - 32) {
+			if (!xb.numBad)	/* i < numBad: drops the inlined loop's guard */
+				__builtin_unreachable();
 			b = findFreeRemap(numBlocks);
 			if (b) {
 				xb.badRemap[i] = b;
@@ -943,7 +947,8 @@ int spareLbaOk(int pages)
 	return 1;
 }
 
-int copyMmcImage(u8 *raw)
+/* ce1 would hoist ret = 1 above the branch (edge predicted 61%) */
+__attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
 {
 	xb.numBad = 0;
 	memcpy(xb.image, raw, xb.imageSize);

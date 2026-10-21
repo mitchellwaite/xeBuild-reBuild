@@ -73,5 +73,8 @@ def trim(x):
     return x
 a, b = trim(a), trim(b)
 import difflib
+# the .o's relocated fields hold addends where the exe has addresses (A)
+if len(a) == len(b):
+    b = [x if re.fullmatch(re.escape(x).replace('A', '(?:A|(?:0x)?[0-9a-f]+)'), y) else y for x, y in zip(a, b)]
 d = list(difflib.unified_diff(a, b, 'orig', 'ours', lineterm='', n=1))
 print('JMATCH' if not d else '\n'.join(d))

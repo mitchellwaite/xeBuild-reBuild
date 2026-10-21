@@ -508,7 +508,7 @@ Still off:
 
 ## app/image_read.c
 
-Draft of the whole object, with string literals. 20 of 33 functions are
+Draft of the whole object, with string literals. 23 of 33 functions are
 built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
 <names>` makes from this file; a new match needs its name there and its
 address in `split.py` `C_FUNCS` (all of image_read's strings are in
@@ -534,25 +534,24 @@ block;` (unused) so block's SSA name comes before the loads and the compare
 is `cmp esi,[mem]`, and `numBad >= 32`. copyMuData returns `u32` (an `int`
 return reuses fseek's 0). `x != x / k * k` instead of `x % k`.
 
+remapBadBlocks: the inlined findFreeRemap drops its `numBad != 0` guard
+only with `if (!xb.numBad) __builtin_unreachable();` before the call (VRP
+keeps `numBad > i` symbolic for `u32 i`; `int i` flips the exit compare).
+copyMmcImage returns `u32` (an `int` return reuses memcmp's 0) and has
+`optimize("no-if-conversion")`, or ce1 hoists `ret = 1` above the branch.
+irmixed takes an `__attribute__((…))` prefix on the definition line.
+findAnchor: dom3 registers four threads through the second shaSelfCheck
+(ok0 known x valid/invalid log) and keeps one per incoming edge, in an
+order `unordered_remove` shuffles, so it can't keep both "valid" threads
+the original has; an `__asm__("")` after the "invalid" log stops those
+threads being registered. Then `u32 ok0, ok1` (int ok1 is reused for
+`return 0`) and expects `(ok0, 1)`, `(!ok1, 1)`, `(ok1, 1)` (the sweep's
+only full match; others leave the cold `!ok0 && ok1` copy unaligned).
+`wip/jcmp.py` now treats an exe address against any .o addend as equal, so
+it prints JMATCH for a real match.
+
 Still off (fncmp lines):
 
-- `remapBadBlocks` (2): the inlined findFreeRemap keeps its `numBad != 0`
-  guard. The wear-area test as `< numBlocks - 32` with the remap path
-  first keeps ce1 (find_if_case_2) from hoisting `b = numBlocks - 1` above
-  it. `int i` drops the guard (VRP1 gets `numBad >= 1` from the signed
-  IV, so the inner loop is entered without a test) but flips the exit
-  compare to `cmp ecx,esi`; `u32 i` IV ranges stay symbolic, and
-  `__builtin_unreachable()` bounds on `i` don't help.
-- `findAnchor` (11, with `u32 shaSelfCheck`): the "invalid" log for the
-  second block is jump-threaded into two copies; the original keeps one and
-  tests ok0 after it (with `xor eax,eax` hoisted above the test). Other
-  tail shapes (`ret` variable, if/else-if, ok1 first, nested) don't help.
-- `copyMmcImage` (11): uncprop reuses memcmp's 0 for `return 0`; every
-  non-int return type merges the returns instead. With `u32` it matches
-  under `-fno-if-conversion`: ce1 moves the success path's `ret = 1` above
-  the branch because that edge is predicted 61% (call 71%, early return
-  39%); the original's must have been <= 50%. `__builtin_expect` and other
-  shapes didn't get there.
 - `getImageKv`: fncmp MATCHes with `__builtin_expect(…, 1)` on `size ==
   0x8000`, the first verifyExtended and the sanity test, at
   builtin-expect-probability 67-70 (no natural predictor gets the alt-KV
@@ -560,7 +559,10 @@ Still off (fncmp lines):
   jumps to the alt-success epilogue instead of the shared one after the
   "not sane" log, so the build differs by 4 bytes; not built yet. Without
   hints: 26. `python wip/kvsweep.py` sweeps hint subsets x probabilities
-  with jcmp; a 3-hint sweep (56-94) was stopped before finishing.
+  with jcmp; a 3-hint sweep (56-94) was stopped before finishing. At the
+  default probability (90, which findAnchor's hints need, and the param is
+  object-wide) no subset of up to 4 hints matches; best is 12 lines
+  (`size == 0x8000` and the alt verifyExtended, both 1).
 - `listFlashFiles` (23), `fsGetFile` (70): register allocation (fsGetFile
   has fsValid and name in esi/edi swapped).
 - `detectController` (35, was 61): pins `"D"(n)` after the small-block log
