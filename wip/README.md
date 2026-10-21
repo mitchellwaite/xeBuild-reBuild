@@ -354,11 +354,44 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   - Copy-order ties: flashfs `mov ebx,-1` / `xor edi,edi`, security `xor eax,eax` /
     `xor ebx,ebx` (PHI copies; declaration order moves the bl one, not these).
   - security crc-size error: crossjump shares `mov [4+esp],msg` with flashfs's error.
-- iniPreParse (11 lines): the `;` block must be in the compare's LRA EBB (`mov ebx,eax`
-  inheritance). `else __asm__("");` makes it the fallthrough (no PRE split block), but
-  the edge is 28% and LRA's EBB cutoff is 40%; with the cutoff param at 0 it inherits into
-  esi instead. Raising the `;` probability (expect, switch) swaps the stack slots; gcc 6's
-  continue predictor is 50% and the C front end emits no goto prediction.
+- Third 2026-10-21 session. Object flags for the draft are now `-O3 -fno-tree-loop-vectorize
+  --param align-threshold=120` (re/progress.py WIP_FLAGS); the 10 built functions still
+  JMATCH with them.
+  - iniPreParse matches (fncmp and jcmp). The `;` block was never an EBB problem: the
+    original's `mov ebx,eax` is LRA inheriting i from the `;` block (bb6) into the inner
+    loop's preheader (bb8, EBB 6 7 8). Ours had no free register for it because LRA
+    assigns the `&buf[i+1]` reload group (3 refs in bb6, freq 3*16 = 48) before the i
+    inheritance group (2 refs in bb6 + 1 in bb8, 16+16+15 = 47), and the former took ebx.
+    REG_FREQ is block freq / 10, floored, so bb6 162 -> 16, bb8 155 -> 15. A dead loop
+    `for (j = 0; j < 18; j++) if (i < 0) buf[j] = 1;` at the top of the empty-lines loop
+    body is estimated before VRP/DCE remove it and becomes the hottest block, scaling the
+    profile so bb6/bb8 are 147/140 (both 14): the tie goes to the lower regno (i's group).
+    K = 18 or 21 there; in the lines-to-strings loop it flips that loop's exit cmp.
+    The memcpy block after `ret` is aligned in the original (77 > max/T needs T >= 117;
+    T = 200 aligns too much), hence align-threshold 117-150.
+  - parseIni 15 lines (fncmp count of +/- lines). [security]'s log reads `xb.flashCrc[i]`
+    (no crc variable): out-of-SSA emits a block's constant PHI copies in reverse PHI order,
+    and with crc's PHI created later (FRE) the n == 0 path is `xor eax,eax; xor ebx,ebx`.
+    The same form in [flashfs] changes nothing (kept the crc variable there).
+  Left:
+  - [security] search guard: the original's `xor edx,edx; mov edi,11` before `test eax,eax`
+    is ce3 if-conversion (find_if_case_1) speculating the preheader into the guard block,
+    as it does for the body's `xor eax,eax` before `cmp ...,91`. Needs the preheader to end
+    in a jump at ce3 (ours falls through into the header) and, by cheap_bb_rtx_cost_p with
+    BRANCH_COST 3, a skip probability over ~54% for two insns (ours: REG_BR_PROB 300). So
+    the original's guard had a very different probability. A hinted copy of memFindStr
+    for [security] loses the CSE of size - 10 with [rawpatch].
+  - [security] log/latch (2 hunks): ours inherits the `[52]` reload into esi across the call
+    (EBB 321 322 323, fallthrough 50%). Exit-likely hints (expect + any probability param)
+    and `break`/`continue` forms change the layout; latch clobber asms change RA.
+  - [flashfs] len == 0 path: PHIs `_292 = PHI <len-1, -1>` and `noCrc_506 = PHI <.., 0>`
+    in the block after the trailing-1/2 test, both from jump threading's update_ssa (order
+    by old SSA version); the original has noCrc's copy first. Untried: shifting those
+    versions with a dead store before the threading (single dead stores anywhere in
+    parseIni don't, per a 1600-variant search).
+  - security crc-size error: crossjump pairs it with [flashfs]'s same-message error (7-insn
+    tail incl. `[4]=msg`) before the common error tail; in the original it joins the common
+    tail at `[esp]=0`. Return block preds at jump2 start with the [security] error (bb318).
 
 ## app/keys.c
 

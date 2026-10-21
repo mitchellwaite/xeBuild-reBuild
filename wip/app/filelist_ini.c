@@ -173,6 +173,13 @@ int iniPreParse(unsigned char *buf, int size)
 	memcpy(tmp, buf, size + 1);
 	/* remove empty lines */
 	for (i = 0; i < n; i++) {
+		/* dead (VRP drops it, then the empty loop), but the profile is
+		   estimated with it as the hottest block: that scales the comment
+		   block and its inner loop's preheader to equal REG_FREQs, so LRA
+		   assigns the inheritance of i (ebx) before &buf[i] (ecx) */
+		for (j = 0; j < 18; j++)
+			if (i < 0)
+				buf[j] = 1;
 		if (buf[i] == 0 && buf[i + 1] == 0) {
 			memcpy(&buf[i], &tmp[i + 1], n - i - 1);
 			n--;
@@ -575,7 +582,7 @@ u32 parseIni(char *path)
 		if (!noCrc) {
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0)
-				crc = xb.flashCrc[i] = 0;
+				xb.flashCrc[i] = 0;
 			else if (n != 8) {
 				/* sic: names the [flashfs] file */
 				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
@@ -584,12 +591,14 @@ u32 parseIni(char *path)
 			} else {
 				strncpy(tmp, (char *)&buf[pos], 8);
 				tmp[8] = 0;
-				crc = xb.flashCrc[i] = myatox32(tmp, 0);
+				xb.flashCrc[i] = myatox32(tmp, 0);
 			}
 			pos = pos + n + 1;
 		} else
-			crc = xb.flashCrc[i] = 0;
-		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], crc);
+			xb.flashCrc[i] = 0;
+		/* re-read, not a crc variable: FRE's later PHI orders the n == 0
+		   path's copies crc first */
+		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], xb.flashCrc[i]);
 		if (pos >= end)
 			i = 10;
 	}
