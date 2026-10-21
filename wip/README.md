@@ -308,6 +308,20 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   - `python wip/skel.py <fn> [flags]`, a call/string/jump skeleton diff (ignores registers), shows block order and
     duplication differences much more clearly than fncmp's line diff here.
 
+- 2026-10-21 session: parseIni 486 -> 866/1241 (wip draft). Fixes, in order of gain:
+  `pos = pos + len + 1` (not `pos += len + 1`, which lets PRE make a len+1 PHI; this put
+  buf in a spill slot and gave the 1180-byte frame); bl `if (len < 0)` error test after
+  picking len (stops dom2 duplicating the strncpy block, gives the original's `js`);
+  `if (!noCrc) {crc...} else crc = 0` in bl and [flashfs]; loop exits as
+  `if (pos >= end) i = N;` instead of `break` (the original lays the exit as fallthrough);
+  `flags & 7` as an if/else chain (5, 6, 7 order).
+  Left: register allocation in the bl loop (IRA spills `i` for `pos`; the original keeps i
+  in ebp and spills `i*4`; nbl starts in ebp in the original), comma/nul compare operand
+  order in [rawpatch] (SSA-version tie: nul's PHI is created in vrp2 with a lower
+  version), the bl trace (original: comma>nul block falls into strncpy) and cold-block order.
+- iniPreParse: 15 more loop shapes tried this session (continue/else/do-while/while,
+  explicit per-path increments, inner while); none moves the not-';' split block, still 11.
+
 ## app/keys.c
 
 Draft of the whole object, with string literals. 44 of 48 functions are

@@ -327,20 +327,14 @@ int parseIni(char *path)
 				strcat(e->name, "g2m");
 				strcat(e->name, consoleNames[xb.flags & 7]);
 			} else {
-				switch (xb.flags & 7) {
-				case 5:
+				if ((xb.flags & 7) == 5)
 					strcat(e->name, "trinity");
-					break;
-				case 6:
+				else if ((xb.flags & 7) == 6)
 					strcat(e->name, "corona");
-					break;
-				case 7:
+				else if ((xb.flags & 7) == 7)
 					strcat(e->name, "winchester");
-					break;
-				default:
+				else
 					strcat(e->name, "fat");
-					break;
-				}
 			}
 			strcat(e->name, xb.suffix);
 			if (xb.blSuffix[0])
@@ -380,11 +374,6 @@ int parseIni(char *path)
 		p = &buf[pos];
 		comma = memFindChar(p, ',', size - pos);
 		nul = memFindChar(p, 0, size - pos);
-		if (nul == -1 || comma == -1) {
-			log_printf(0, "\n******* ERROR: ini problem, error in %s section!\n", label);
-			free(buf);
-			return 0;
-		}
 		noCrc = 1;
 		if (comma > nul)
 			len = nul;
@@ -392,12 +381,15 @@ int parseIni(char *path)
 			len = comma;
 			noCrc = 0;
 		}
+		if (len < 0) {
+			log_printf(0, "\n******* ERROR: ini problem, error in %s section!\n", label);
+			free(buf);
+			return 0;
+		}
 		strncpy(xb.files[blOrder[i]].name, (char *)p, len);
 		xb.files[blOrder[i]].name[len] = 0;
-		pos += len + 1;
-		if (noCrc)
-			xb.files[blOrder[i]].crc = 0;
-		else {
+		pos = pos + len + 1;
+		if (!noCrc) {
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0)
 				xb.files[blOrder[i]].crc = 0;
@@ -410,8 +402,9 @@ int parseIni(char *path)
 				tmp[8] = 0;
 				xb.files[blOrder[i]].crc = myatox32(tmp, 0);
 			}
-			pos += n + 1;
-		}
+			pos = pos + n + 1;
+		} else
+			xb.files[blOrder[i]].crc = 0;
 		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", i + 1, xb.files[blOrder[i]].name, xb.files[blOrder[i]].crc);
 		i++;
 		if (pos > end) {
@@ -453,7 +446,7 @@ int parseIni(char *path)
 			}
 			strncpy(xb.rawPatch[i].name, (char *)p, comma);
 			xb.rawPatch[i].name[comma] = 0;
-			pos += comma + 1;
+			pos = pos + comma + 1;
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0 || n > 10) {
 				log_printf(0, "\n******* ERROR: offset data for file '%s' is either too large or too small!\n", xb.rawPatch[i].name);
@@ -462,7 +455,7 @@ int parseIni(char *path)
 			}
 			strncpy(tmp, (char *)&buf[pos], n);
 			tmp[n] = 0;
-			pos += n + 1;
+			pos = pos + n + 1;
 			xb.rawPatch[i].offset = myatou32(tmp, -1);
 			if (xb.rawPatch[i].offset == (u32)-1) {
 				log_printf(1, "***** ERROR: [rawpatch] '%s' length is unintelligible!\n", xb.rawPatch[i].name);
@@ -471,7 +464,7 @@ int parseIni(char *path)
 			}
 			log_printf(1, "found (%d) '%s' offset: 0x%08x\n", ++xb.nRawPatches, xb.rawPatch[i].name, xb.rawPatch[i].offset);
 			if (pos >= end)
-				break;
+				i = 16;
 		}
 		if (pos < end) {
 			log_printf(0, "\n******* ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, 16);
@@ -516,12 +509,10 @@ int parseIni(char *path)
 				return 0;
 			}
 		}
-		pos += len + 1;
+		pos = pos + len + 1;
 		if (xb.firmware[i][len - 1] == '1' || xb.firmware[i][len - 1] == '2')
 			xb.firmware[i][len - 1] = 0;
-		if (noCrc)
-			crc = xb.firmwareCrc[i] = 0;
-		else {
+		if (!noCrc) {
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0)
 				crc = xb.firmwareCrc[i] = 0;
@@ -534,11 +525,12 @@ int parseIni(char *path)
 				tmp[8] = 0;
 				crc = xb.firmwareCrc[i] = myatox32(tmp, 0);
 			}
-			pos += n + 1;
-		}
+			pos = pos + n + 1;
+		} else
+			crc = xb.firmwareCrc[i] = 0;
 		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFirmware, xb.firmware[i], crc);
 		if (pos >= size)
-			break;
+			i = 256;
 	}
 
 	/* [security]: name[,crc] */
@@ -571,10 +563,8 @@ noFlashfs:
 		}
 		strncpy(xb.flashFiles[i], (char *)p, len);
 		xb.flashFiles[i][len] = 0;
-		pos += len + 1;
-		if (noCrc)
-			crc = xb.flashCrc[i] = 0;
-		else {
+		pos = pos + len + 1;
+		if (!noCrc) {
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0)
 				crc = xb.flashCrc[i] = 0;
@@ -588,11 +578,12 @@ noFlashfs:
 				tmp[8] = 0;
 				crc = xb.flashCrc[i] = myatox32(tmp, 0);
 			}
-			pos += n + 1;
-		}
+			pos = pos + n + 1;
+		} else
+			crc = xb.flashCrc[i] = 0;
 		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], crc);
 		if (pos >= end)
-			break;
+			i = 10;
 	}
 	free(buf);
 	log_printf(1, "------ ini parsing completed ------\n\n");
