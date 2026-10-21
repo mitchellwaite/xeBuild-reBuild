@@ -33,7 +33,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* 1aac the ini's firmware files */
 	u32 firmwareCrc[256];		/* 41aac */
 	u32 nFirmware;			/* 41eac */
-	struct fileent files[35];	/* 41eb0 */
+	struct fileent files[19];	/* 41eb0 */
+	u8 padf[(35 - 19) * 0x42c];
 	char blSuffix[0x40];		/* 4b0b4 -r */
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
@@ -190,11 +191,12 @@ void checkFileCase(void);
 
 /* read the file list ini: the files for this build type, the bootloaders'
    names and crcs, [rawpatch], [flashfs] and [security] */
-int parseIni(char *path)
+u32 parseIni(char *path)
 {
 	FILE *f;
 	unsigned char *buf, *p;
-	int size, off, end, pos, len, nul, comma, n, i, nbl, noCrc;
+	int size, off, end, pos, len, nul, comma, n, i, nbl;
+	u32 noCrc;
 	struct fileent *e;
 	char *s;
 	u32 crc;
@@ -362,7 +364,7 @@ int parseIni(char *path)
 	else
 		sprintf(label, "[%sbl]", consoleNames[xb.flags & 7]);
 	off = memFindStr(buf, size, label, 1);
-	if (off == -1) {
+	if (off < 0) {
 		log_printf(0, "\n******* ERROR: could not find label %s in file list ini\n", label);
 		free(buf);
 		return 0;
@@ -372,14 +374,15 @@ int parseIni(char *path)
 	pos = off;
 	for (i = 0; i < nbl; ) {
 		p = &buf[pos];
+		/* hint: pos in esi makes IRA colour i*4 before nbl, as the original */
+		__asm__("" :: "S"(pos));
 		comma = memFindChar(p, ',', size - pos);
 		nul = memFindChar(p, 0, size - pos);
-		noCrc = 1;
-		if (comma > nul)
+		len = comma;
+		noCrc = 0;
+		if (comma > nul) {
 			len = nul;
-		else {
-			len = comma;
-			noCrc = 0;
+			noCrc = 1;
 		}
 		if (len < 0) {
 			log_printf(0, "\n******* ERROR: ini problem, error in %s section!\n", label);
