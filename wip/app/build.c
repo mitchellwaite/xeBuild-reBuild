@@ -825,6 +825,7 @@ void appendAddonPatches(struct fileent *e)
 
 	memset(buf, 0xff, 0x4000);
 	memcpy(buf, e->data, size);
+	if (xb.nAddons)
 	for (i = 0; i < xb.nAddons; i++) {
 		a = &addons[i];
 		if (!loadBinFile(a)) {
@@ -852,8 +853,8 @@ void appendAddonPatches(struct fileent *e)
 	e->data = buf;
 	e->size = size;
 	if (xb.nAddons)
-		log_printf(1, "added 0x%x bytes to patches via %d external patch files\n"
-			   "    patches now 0x%x bytes total with addon byte count appended\n", added, xb.nAddons, size);
+		log_printf(1, "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n",
+			   added, xb.nAddons, size);
 }
 
 /* what a power-on reason code is; 1 for an unknown one.  Console types

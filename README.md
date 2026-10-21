@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **561 of 617** (557 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **562 of 617** (557 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 376 / 432 |
+| `app/` | 16 / 25 | 377 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -44,7 +44,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
-| `app/build` | mixed; 0 of 17 drafted functions match in `wip/app/build.c` | 24 / 41 |
+| `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
 
 <details>
 <summary><code>app/mode_update</code>: 13 / 14 in C</summary>
@@ -307,7 +307,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 
 </details>
 <details>
-<summary><code>app/build</code>: 24 / 41 in C</summary>
+<summary><code>app/build</code>: 25 / 41 in C</summary>
 
 - ✅ `loadBaseFile` (0x427500)
 - ✅ `findFileOffset` (0x427650)
@@ -323,7 +323,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 - ✅ `loadBinFile` (0x428780)
 - ✅ `loadLocalFile` (0x4288c0)
 - ✅ `setFileData` (0x428ac0)
-- ⬜ `appendAddonPatches` (0x428b10) (draft in `wip/`, no match yet)
+- ☑️ `appendAddonPatches` (0x428b10)
 - ✅ `showSmcConfig` (0x428d20)
 - ✅ `iniRangeOk` (0x429180)
 - ⬜ `patchSmcConfig` (0x4291f0) (draft in `wip/`, no match yet)

@@ -893,6 +893,11 @@ only shows in `sh build.sh`.
   duplication threshold (10% of entry): so in the original the -3 edge
   is above it and the crc failure below, which needs other predictions
   on both (no negative-return on -3, no opcode-nonequal on `crc != c`?).
+  The size check in a static helper returning 0/1 (IPA-inlined after
+  checkBl's profile is estimated) does get the epilogue copied into -3,
+  but -3 is then too hot (placed after the jump table) and `size` takes a
+  register (119 lines). The crc failure can't drop below 10% by
+  predictions alone: the switch default (`c = 0; goto bad`) brings ~8%.
 - extractSmcConfig (~140): the original's two search loops aren't header-
   copied (`xor eax,eax; jmp cond`); `found == 1` (cmp eax,1) is right.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
@@ -901,7 +906,19 @@ only shows in `sh build.sh`.
   room 1615 (both arms call, 50%), `size -= 4` 905 (`== 0xffffffff`,
   28%), the post-loop 900. The original has both below the post-loop.
   An `if (xb.nAddons > 0)` guard fixes `size -= 4` but hoists `added = 0`
-  (15 lines); `continue` is a 50% predictor in gcc 6, no help.
+  (15 lines); `continue` is a 50% predictor in gcc 6, no help. The draft's
+  `if (xb.nAddons)` guard is a fncmp MATCH, but the link differs in one
+  byte: the room check is `lea edx,[esi+eax]` (size + a->size) in the
+  original, `[eax+esi]` in ours (fncmp doesn't see lea operand order).
+  PRE's elimination refolds `prephitmp + size` with the lower SSA version
+  first; with the guard, ch2 renames size's PHI (size_76) and frees the old
+  header PHI names, which PRE reuses (prephitmp_5), so size comes second.
+  Without the guard PRE got a fresh name (pretmp_77 > size_71) and the
+  order was right. A guarded do-while (no ch) gets the order right but
+  hoists `added = 0` above the test and tests `je` (5 lines); with a `> 0`
+  guard it's `jle` but opcode-positive moves the room log again. ~300
+  combinations of equivalent spellings (in and around the loop) all keep
+  `[eax+esi]`.
 - logPowerButton: fncmp can't tell its identically shaped log blocks
   apart, so check the string order in the link. The original's .rdata
   string order is gcc's expand order, i.e. source order: cases 0x59, 0x58,
@@ -938,7 +955,17 @@ only shows in `sh build.sh`.
   Its string is after the function's last ones in .rdata, so its block is
   last at expand; a `goto` to a block after the return reproduces the
   string order, but not the layout. The two traces tie (keys -1035148)
-  and come out of the fibheap in the other order.
+  and come out of the fibheap in the other order. The tied blocks are the
+  inlined iniRangeOk "out of range" logs (cpu bb23, gpu bb30, round 3);
+  ties pop LIFO, and their insertion order comes from the round-2 tie of
+  the cpu/gpu range tests (22, 29), itself from hot-path order. A
+  string after the function's others means the original's gpu warning
+  block is a jump-threading copy (copies go at the end of the CFG), so
+  that block must end in a test on a local that every path into it
+  knows, which then disappears; our draft has no such test (vrp2 only
+  copies the reload tests). Arm order, nesting, `== 0` forms and
+  `__builtin_expect` on the warning tests change nothing; expects on the
+  outer `!= 0xffffffff` tests break the hot layout.
 - patchBlsResign/patchBlsBlmod (~330), fixupPatchSet: the patch-set walk
   loop isn't header-copied in the original; `-fno-tree-ch` reproduces
   that shape, so something in the source stops pass_ch.
