@@ -562,7 +562,12 @@ Still off (fncmp lines):
   with jcmp; a 3-hint sweep (56-94) was stopped before finishing. At the
   default probability (90, which findAnchor's hints need, and the param is
   object-wide) no subset of up to 4 hints matches; best is 12 lines
-  (`size == 0x8000` and the alt verifyExtended, both 1).
+  (`size == 0x8000` and the alt verifyExtended, both 1). With jcmp fixed,
+  a full 66-72 x up-to-3-hint sweep has no JMATCH; only the 3-hint set at
+  67-70 fncmp-matches, and no fourth hint helps. bbro (P=68): STC round 2
+  makes the return block (bb 18) its own trace before the "not sane" log
+  (17), so connect_traces chains alt-success -> return and 17 gets the
+  copy; the original has it the other way. Early-return shapes are worse.
 - `listFlashFiles` (23), `fsGetFile` (70): register allocation (fsGetFile
   has fsValid and name in esi/edi swapped).
 - `detectController` (35, was 61): pins `"D"(n)` after the small-block log
