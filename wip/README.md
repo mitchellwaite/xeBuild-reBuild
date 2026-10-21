@@ -243,8 +243,10 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 &st in a register instead of dir; ira-region doesn't help any other function here).
 - iniPreParse needs `-fno-tree-loop-vectorize` (with it on, PRE's eliminate drops the
   `PHI <'A', validChars[j+1]>` of the validChars loop), and validChars as C data ([0] is
-  folded to 'A'), so it can't go into the mixed file as is. 11 lines left (fncmp with
-  those flags): the `;` position kept in ebx (ours reloads [28]).
+  folded to 'A'). Built from src since the third 2026-10-21 session: the mixed C keeps a
+  `static const` string copy of validChars (74 chars, so gcc emits `.ascii` with no NUL;
+  a brace list gives `.byte`s, which re/splice.py refuses), split.py names the .s's
+  label `_validChars`, and splice.py drops gcc's copy. Object flags in build.sh.
   - setne order (fixed): the original's loop body tests `'\n'` first and its ch2 header
     copy 0xff first. `&` operands sort by SSA version, the body keeps the source order
     and the copy takes names off the LIFO free list. So the source tests `'\n'` first,
@@ -275,9 +277,9 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 - parseIni (409430-40aa10, 5.6 KB) drafted in wip/app/filelist_ini.c (from a Hex-Rays
   decompile; its tables/names are still `extern`). 486 of 1241 normalized lines equal
   (fncmp with full context, FNCMP_LITERALS=1), 549 with
-  `--param max-jump-thread-duplication-stmts=12`. It has a jump table (L_4501e8), so it
-  can't be a mixed-file C function: it needs the whole object in C (bootloaders-style,
-  strings/data as top-level asm or C). Findings:
+  `--param max-jump-thread-duplication-stmts=12`. It has a jump table (L_4501e8); re/splice.py
+  places gcc's tables at the .s's `#@J` markers, so it can join the mixed file once it
+  matches (its strings need extern names or splice-dropped static copies). Findings:
   - Errors are `log; free(buf); return 0;` at each site (gcc crossjumps the tails), not
     a `goto fail`.
   - Build-name sprintf: one `sprintf(tmp, "<fmt>", xb.kernelStr, xb.outName)` per

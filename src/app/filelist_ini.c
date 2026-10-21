@@ -74,6 +74,94 @@ void fixFileCase(void)
 	closedir(d);
 }
 
+/* filelist_ini.s's _validChars; gcc folds [0] to 'A' from this copy, which
+   re/splice.py drops (static, so it isn't .globl; a string, so gcc emits it
+   as .ascii; 74 chars, no NUL) */
+static const unsigned char validChars[74] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;[]_\n\\/-$:";
+
+/* strip comments and invalid characters; returns the new size.  Needs
+   -fno-tree-loop-vectorize (with it, PRE drops the validChars loop's
+   PHI <'A', validChars[j+1]>) */
+int iniPreParse(unsigned char *buf, int size)
+{
+	unsigned char *tmp;
+	int i, j, n = size;
+
+	tmp = malloc(size + 1);
+	memcpy(tmp, buf, size + 1);
+	/* remove comments */
+	for (i = 0; i < n; i++) {
+		if (buf[i] == ';') {
+			i++;
+			for (j = 0; buf[i + j] != '\n' && buf[i + j] != 0xff && i + j < n; j++)
+				;
+			if (n - i - j > 0) {
+				memcpy(&buf[i], &tmp[i + j], n - i - j);
+				n -= j;
+				memcpy(tmp, buf, size + 1);
+				i--;
+			}
+		}
+	}
+	/* invalid characters to spaces */
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < (int)sizeof(validChars); j++)
+			if ((char)buf[i] == (char)validChars[j])
+				break;
+		if (j == sizeof(validChars))
+			buf[i] = ' ';
+	}
+	/* a ';' at the start or end of a line */
+	for (i = 0; i < n; i++)
+		if (buf[i] == ';') {
+			if (i == 0)
+				buf[i] = ' ';
+			else if (buf[i - 1] == '\n' || buf[i + 1] == '\n')
+				buf[i] = ' ';
+		}
+	memcpy(tmp, buf, size + 1);
+	/* remove spaces */
+	for (i = 0; i < n; i++) {
+		if (buf[i] == ' ') {
+			memcpy(&buf[i], &tmp[i + 1], n - i - 1);
+			n--;
+			memcpy(tmp, buf, size + 1);
+			i--;
+		}
+	}
+	/* lines to strings */
+	for (i = 0; i < n; i++)
+		if (buf[i] == '\n' || buf[i] == ';')
+			buf[i] = 0;
+	/* dead (VRP drops it): its freed SSA name puts the comment loop's
+	   header copy in 0xff-first order */
+	if (i < 0)
+		buf[0] = 1;
+	memcpy(tmp, buf, size + 1);
+	/* remove empty lines */
+	for (i = 0; i < n; i++) {
+		/* dead (VRP drops it, then the empty loop), but the profile is
+		   estimated with it as the hottest block: that scales the comment
+		   block and its inner loop's preheader to equal REG_FREQs, so LRA
+		   assigns the inheritance of i (ebx) before &buf[i] (ecx) */
+		for (j = 0; j < 18; j++)
+			if (i < 0)
+				buf[j] = 1;
+		if (buf[i] == 0 && buf[i + 1] == 0) {
+			memcpy(&buf[i], &tmp[i + 1], n - i - 1);
+			n--;
+			memcpy(tmp, buf, size + 1);
+			i--;
+		}
+	}
+	if (n <= size) {
+		buf[n] = 0;
+		n++;
+	}
+	return n;
+}
+
 /* offset after `str` in buf (past its NUL if skipNul and it ends a line), or -1 */
 int memFindStr(unsigned char *buf, int size, const char *str, int skipNul)
 {

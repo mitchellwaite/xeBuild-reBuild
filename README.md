@@ -23,7 +23,7 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **574 of 617** (568 built from `src/`, 6 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **574 of 617** (569 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
@@ -38,7 +38,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 |---|---|---|
 | `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
 | `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
-| `app/filelist_ini` | mixed; 1 of 2 drafted functions match in `wip/app/filelist_ini.c` | 11 / 12 |
+| `app/filelist_ini` | mixed; 0 of 1 drafted functions match in `wip/app/filelist_ini.c` | 11 / 12 |
 | `app/image_write` | mixed; 0 of 8 drafted functions match in `wip/app/image_write.c` | 38 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
@@ -90,7 +90,7 @@ Objects with functions still in assembly. Per-function status in address order: 
 <summary><code>app/filelist_ini</code>: 11 / 12 in C</summary>
 
 - ✅ `fixFileCase` (0x408ec0)
-- ☑️ `iniPreParse` (0x408fe0)
+- ✅ `iniPreParse` (0x408fe0)
 - ✅ `memFindStr` (0x409310)
 - ✅ `memFindChar` (0x4093d0)
 - ✅ `checkFileCase` (0x409410)

@@ -45,6 +45,10 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # done/incomplete blocks differently)
       app/options) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=83" ;;
+      # iniPreParse: vectorization makes PRE drop a PHI; its memcpy block is
+      # aligned (117-150 align it without aligning anything else)
+      app/filelist_ini) orig="$f.c"
+             cflags="-O3 -fno-tree-loop-vectorize --param align-threshold=120" ;;
       # imgAddMobile's 50/50 imgFits hint
       app/image_write) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=50" ;;
