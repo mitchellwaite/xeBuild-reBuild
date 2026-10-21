@@ -197,23 +197,35 @@ static u8 smcPage[0x1000];
 	} \
 } while (0)
 
+/* hot/cold labels: branch hints that don't depend on
+   builtin-expect-probability (50 for the object); found by search */
 static int imgWriteStart(const void *src, u32 len, u16 next)
 {
 	u32 off = 0, first, rem, tail, blocks, start, b, p;
 
-	if (off > xb.rawSize || off + len > xb.rawSize)
+	if (off > xb.rawSize || off + len > xb.rawSize) {
+		lrng: __attribute__((hot));
 		return -1;
+	}
 	start = off >> 14;
 	first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
 	if (len <= first) {
 		blocks = 1;
 		tail = len;
 	} else {
+		lbg: __attribute__((cold));
 		rem = len - first;
-		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		if (rem < 0x4000)
+			tail = rem;
+		else {
+			lrb: __attribute__((cold));
+			tail = rem % 0x4000;
+		}
 		blocks = rem / 0x4000;
-		if (tail)
+		if (tail) {
+			lbt: __attribute__((cold));
 			blocks++;
+		}
 		if (first)
 			blocks++;
 	}
@@ -223,7 +235,21 @@ static int imgWriteStart(const void *src, u32 len, u16 next)
 	for (b = 0; b < blocks; b++)
 		for (p = 0; p < 32; p++)
 			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
-	setFsTable(start, blocks, next);
+	if (next != 0xf1f1) {
+		lnxt: __attribute__((hot));
+		for (b = 0; b < blocks; b++) {
+			if (next != 0 && next != 0xffff)
+				fsTable[start - xb.fsStart + b] = SWAP16(next);
+			else {
+				llbl: __attribute__((hot));
+				fsTable[start - xb.fsStart + b] = SWAP16(start - xb.fsStart + b + 1);
+			}
+		}
+		if (next == 0xffff) {
+			lem: __attribute__((cold));
+			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
+		}
+	}
 	imgEnd = off + len;
 	return 0;
 }

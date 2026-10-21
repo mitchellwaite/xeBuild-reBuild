@@ -924,7 +924,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 37 matching functions build from `src/app/image_write.c`, a mixed
+The 38 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
@@ -1021,10 +1021,13 @@ Still off:
   peel exits: the original has 5,1,2,3,4, ours 5,4,3,2,1; same in imgAdd).
   Those hints also move the inline estimates, so they need checking
   against writeInitialHeader.
-- imgAddMobile: MATCH in the draft with `__builtin_expect(imgFits(off,
+- imgAddMobile: builds from C with `__builtin_expect(imgFits(off,
   len), 1)` on the small-block test and `--param
-  builtin-expect-probability=50` (progress.py WIP_FLAGS; image_write has
-  no other expects, so build.sh can take the param when it moves to src).
+  builtin-expect-probability=50` (build.sh, for the whole object). That
+  makes every expect in image_write 50%, so the expect hints below are
+  gone. Use label attributes instead (`l: __attribute__((hot));` or
+  `cold` at the start of a block): PRED_HOT/COLD_LABEL is 85%, combined
+  with the other heuristics by DS, whatever the param.
   The 50% expect overrides the early-return heuristic (39%), which puts
   the fits block's trace before the "already set" one; the 50/50 base
   keeps the align block a 1-block trace, so bbro still duplicates it.
@@ -1065,6 +1068,25 @@ Still off:
   inline), and standalone imgAdd's `pad == 1 && tail`, which GENERIC
   folds to `&` (both operands simple), so its then-path memcpy isn't
   duplicated as in the original.
+- imgWriteStart with labels (2026-10-20): 172 -> 60 normalised lines.
+  A hot label on the chain store moves the fill loop out of the main
+  trace (89). The `len & 0x3fff` test after threading: its tail == 0
+  memcpy copy is shared with the `len == 0` path, and bbro only chains it
+  after the test if that edge's frequency beats the `len == 0` edge's
+  (a cold `len == 0` label alone gets the head right, 88). The best
+  combination from a coordinate-descent search over 10 label spots
+  doesn't follow that reasoning though: cold labels in the
+  `len > first` branch, the `rem >= 0x4000` side and `tail != 0`, hot on
+  `next != 0xf1f1`, the chain store and `return -1`, cold on the 0xffff
+  end marker). The ternary tail as if/else is not equivalent (other
+  counts). Left: the fill loop's vector peel registers (bound spilled),
+  `lea r,[r-1]` vs `mov/sub`, and the order of the cold blocks after the
+  main trace. Same labels on imgWriteAt: 249 -> 202, but its frame is
+  76 bytes vs 60 (structural); imgAdd's head form didn't help there.
+  writeInitialHeader: imgWriteStart(0xf1f1) specialised to len 128
+  still estimates size 65 (growth ~60, limit 40, or 50 with a
+  loop-iterations hint); `op2 != 61937` covers only size 16, so the
+  original body must be smaller where next is known.
 - tmp/xeBuild64 decompiles with IDA (idapro on a copy of the ELF):
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
