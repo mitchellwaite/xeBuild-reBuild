@@ -581,10 +581,11 @@ u32 spareVersion(u8 *s)
 	return (s[3] << 8) | (s[4] << 16) | (s[6] << 24) | lo;
 }
 
-void showMobilePages(void)
+/* not matched yet (wip/README.md): register allocation before the loop */
+__attribute__((optimize("no-tree-loop-ivcanon"))) void showMobilePages(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
-	u32 end, page;
+	u32 page, end;
 	u32 off;
 	u8 fsType;
 
@@ -599,11 +600,12 @@ void showMobilePages(void)
 	log_printf(2, "Showing all pages with mobile info:\n");
 	log_printf(2, separator);
 	page = SWAP32(h->sysUpdateAddr) >> 9;
-	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
-	off = page << 9;
+	if (page & 0x1f)
+		page = (page & ~0x1f) + 32;
+	off = page * 512;
 	log_printf(2, "starting mobile scan at page 0x%x (offset 0x%x) of 0x%x pages (0x%x total)\n",
 		   page, off, end, xb.numPages);
-	for (; page < end; page++, off += 512) {
+	for (; page < end; page++) {
 		u8 *s = xb.spare + page * 16;
 		u8 t = s[12] & 0x3f;
 		int letter, i;
@@ -612,15 +614,20 @@ void showMobilePages(void)
 
 		if (t == fsType) {
 			letter = 'A';
-		len = 0x4000;
+			len = 0x4000;
 		} else if (t >= 0x31 && t <= 0x39) {
+			int hi = s[8] << 8, lo = s[7];
+
 			letter = t + 17;
-		len = s[7] + (s[8] << 8);
+			__asm__("" : "+r"(lo));
+			len = lo + hi;
+			__asm__("" : : "r"(lo));
 		} else
 			continue;
+		__asm__("" : : "a"(letter));
 		ver = spareVersion(s);
 		log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
-			   letter, ver, off, page * 528, s[9], (u16)len, page);
+			   letter, ver, page << 9, page * 528, s[9], (u16)len, page);
 		for (i = 0; i < 16; i++)
 			log_printf(2, "%02x ", xb.spare[page * 16 + i]);
 		if (len < 0)

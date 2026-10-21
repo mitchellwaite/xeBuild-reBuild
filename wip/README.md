@@ -576,7 +576,20 @@ Still off (fncmp lines):
   copies on the size-test edges where ours are head-merged above the call
   (cfgcleanup try_head_merge_bb, after RA). if/else-if and separate `if
   (!addr)` forms, casts and types were worse.
-- `showMobilePages` (115): register allocation of the page IVs and letter.
+- `showMobilePages` (45 fncmp lines, was 163). What got it there:
+  `u32 page, end;` with the if-form align (page's PHI gets the lower SSA
+  version, so the entry test is `cmp page,end`); `page << 9` in the loop's
+  printf instead of an `off` IV (off goes to memory, page*528 to ebp);
+  `optimize("no-tree-loop-ivcanon")` (ivcanon's counter changes the SSA
+  names ivopts recycles, which flips the inner loop's `cmp ebx,esi`);
+  `"a"(letter)`; and an opaque `lo` for len kept live past the add (sum in
+  hi's esi). Left: the block before the loop. The original's cmov result
+  is eax (`cmove eax,edi`), copied to edx, ebx and edi; the edx copy is
+  split into edi around the log call (IRA gave a call-crossing page a
+  call-clobbered reg), and page*528 is computed in edi then moved to ebp.
+  Ours keeps one page in edi. Pins ("a"/"d"/"b"/"D" on page and off),
+  expects, IRA/sched option attributes and other loop forms didn't get
+  closer. Also the len spill store comes before `movzx edx,si` in ours.
 - `loadDump` (~780): in progress; numPages is stored once from a `pages`
   variable; the name buffer and spill slots differ.
 - `checkBlock` (200), `parseDump` (366): block layout not worked on yet.
