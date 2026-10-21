@@ -243,14 +243,21 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 &st in a register instead of dir; ira-region doesn't help any other function here).
 - iniPreParse needs `-fno-tree-loop-vectorize` (with it on, PRE's eliminate drops the
   `PHI <'A', validChars[j+1]>` of the validChars loop), and validChars as C data ([0] is
-  folded to 'A'), so it can't go into the mixed file as is. 15 lines left: the `;` position
-  kept in ebx (ours reloads [28]) and the setne order in the comment-count loop (the
-  peeled copy tests 0xff first, the loop body '
-' first). Tried: every char/uchar/&0xFF
-  spelling and both orders of the two tests (reassoc ties on SSA versions; `(char)x & 0xFF`
-  on both with '
-' first gives the right order but SImode compares), while/for/break
-  forms, and a sweep of ~35 -f flags. None below 15.
+  folded to 'A'), so it can't go into the mixed file as is. 11 lines left (fncmp with
+  those flags): the `;` position kept in ebx (ours reloads [28]).
+  - setne order (fixed): the original's loop body tests `'\n'` first and its ch2 header
+    copy 0xff first. `&` operands sort by SSA version, the body keeps the source order
+    and the copy takes names off the LIFO free list. So the source tests `'\n'` first,
+    and a dead `if (i < 0) buf[0] = 1;` after the lines-to-strings loop (VRP1 drops it
+    after release_ssa, before ch2; its freed .MEM name shifts the free list) puts the
+    copy in 0xff-first order. An empty extra loop does the same but survives to RTL.
+  - ebx: at RA time PRE's split-edge block for the not-`;` `i + 1` sits right after the
+    `cmp ...,59` (split_edge_bb_loc puts it after the source when the join's previous
+    block falls into the join), so the `;` block isn't in the compare's EBB and LRA
+    can't inherit the reload of i into ebx. The original's `;` block must follow the
+    compare. Tried: `continue`, `k = i + 1`, `else ;`, explicit increments (moves i to
+    ebp, 146 lines), output-asm pins on &buf[i] and i (143), the LRA EBB probability
+    cutoff param (no change).
 - getters (getIniBool, iniBoolInvalid, getIniU32, iniU32Invalid): built from src since
   this commit. Own 2-arg helper `findKey(buf, key)` with global iniSize and `p = &buf[i]`;
   getIniBool returns `long`; myatol must be declared `char myatol(char)`. The q pin in
@@ -266,21 +273,40 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   each call); its `j = sizeof(validChars) + 1` exit gives iniPreParse 36, its `while`
   comment loop no change.
 - parseIni (409430-40aa10, 5.6 KB) drafted in wip/app/filelist_ini.c (from a Hex-Rays
-  decompile; its tables/names are still `extern`). 474 of 1241 normalized lines equal
-  (fncmp with full context, FNCMP_LITERALS=1). It has a jump table (L_4501e8), so it
+  decompile; its tables/names are still `extern`). 486 of 1241 normalized lines equal
+  (fncmp with full context, FNCMP_LITERALS=1), 549 with
+  `--param max-jump-thread-duplication-stmts=12`. It has a jump table (L_4501e8), so it
   can't be a mixed-file C function: it needs the whole object in C (bootloaders-style,
   strings/data as top-level asm or C). Findings:
   - Errors are `log; free(buf); return 0;` at each site (gcc crossjumps the tails), not
     a `goto fail`.
-  - The original keeps the bl section's noCrc as a flag ([esp+52], which also holds the
-    return value: uncprop turns the return 0 after a noCrc test into noCrc). Our dom2
-    threads noCrc through the strncpy block (12 stmts, under
-    max-jump-thread-duplication-stmts=15) unless that block is bigger; the hoisted
-    `crc = 0` is a stand-in. dom3 threading the [flashfs] block is right (the original's
-    comma-at-0 copy has the strncpy folded away). [security] has one strncpy per branch.
+  - Build-name sprintf: one `sprintf(tmp, "<fmt>", xb.kernelStr, xb.outName)` per
+    branch (crossjumped into one call; jtag's isn't, its nbl = 9 reuses the [version]
+    loop's j == 9).
+  - File loop: `e->type`/`e->offset` are assigned from locJtag/locDevk/... inside each
+    build-type branch (separate loads per branch), and the switch re-reads `e->type`
+    (the original's `cmp [ebx+1028],27` / `mov edx,[ebx+1028]`). A `loc` pointer picked
+    by the branches gives a cmov and one shared load.
+  - [rawpatch], [flashfs], [security] use `xb.rawPatch[i].name`, `xb.firmware[i]`,
+    `xb.flashFiles[i]` directly, not a `name` pointer: `x[i][len] = 0` is `i*size+len`
+    addressing in the original while the strncpy dest and the log use an IV pointer.
+  - [security] sets noCrc/len in an if/else (jump threading then gives the original's
+    two strncpy copies; the ternary gave a cmov). Ours still makes a third copy for the
+    both-not-found path with len folded to -1; the original sends it to the crc copy.
+  - bl section noCrc: the original keeps it in [esp+52] (shared with the return value:
+    uncprop turns the return 0 after a noCrc test into noCrc) and doesn't thread its
+    strncpy block. Ours has 13 statements there (dom2's limit is 15), so it threads;
+    param 12 is the stand-in. The original's block must be bigger (or hold something
+    that stops threading, e.g. a volatile asm).
   - The original re-reads `xb.files[blOrder[i]]` at each use (imul [edi],1068).
+  - Register allocation: the original spills buf to [44] from the malloc on; ours gives
+    it ebp in IRA's top region (same costs, so it's the competing pseudos).
+    `-fno-tree-pre` gets [44] (and 618 lines), so some PRE redundancy in our source
+    isn't in the original's. Declaration order doesn't matter (546-549 over 25 orders).
   - Version search: `ira-region=one` gives the original's `[buf+j+i]` addressing and buf
     in a spill slot, but the frame slots move ([32] vs [44]) and the total drops.
+  - `python wip/skel.py <fn> [flags]`, a call/string/jump skeleton diff (ignores registers), shows block order and
+    duplication differences much more clearly than fncmp's line diff here.
 
 ## app/keys.c
 

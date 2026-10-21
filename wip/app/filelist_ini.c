@@ -125,7 +125,7 @@ int iniPreParse(unsigned char *buf, int size)
 	for (i = 0; i < n; i++) {
 		if (buf[i] == ';') {
 			i++;
-			for (j = 0; buf[i + j] != 0xff && buf[i + j] != '\n' && i + j < n; j++)
+			for (j = 0; buf[i + j] != '\n' && buf[i + j] != 0xff && i + j < n; j++)
 				;
 			if (n - i - j > 0) {
 				memcpy(&buf[i], &tmp[i + j], n - i - j);
@@ -165,6 +165,10 @@ int iniPreParse(unsigned char *buf, int size)
 	for (i = 0; i < n; i++)
 		if (buf[i] == '\n' || buf[i] == ';')
 			buf[i] = 0;
+	/* dead (VRP drops it): its freed SSA name puts the comment loop's
+	   header copy in 0xff-first order */
+	if (i < 0)
+		buf[0] = 1;
 	memcpy(tmp, buf, size + 1);
 	/* remove empty lines */
 	for (i = 0; i < n; i++) {
@@ -191,9 +195,8 @@ int parseIni(char *path)
 	FILE *f;
 	unsigned char *buf, *p;
 	int size, off, end, pos, len, nul, comma, n, i, nbl, noCrc;
-	struct fileloc *loc;
 	struct fileent *e;
-	char *name, *s;
+	char *s;
 	u32 crc;
 	char label[50];
 	char tmp[0x400];
@@ -243,30 +246,29 @@ int parseIni(char *path)
 		if (xb.type == 6 || xb.type == 7) {
 			xb.nFiles = 11;
 			blOrder = blDevk;
-			s = "%s_devk_%s.bin";
+			sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
 		} else if (xb.type == 8 || xb.type == 9) {
 			xb.nFiles = 12;
 			blOrder = blTestk;
-			s = "%s_testk_%s.bin";
+			sprintf(tmp, "%s_testk_%s.bin", xb.kernelStr, xb.outName);
 		} else {
 			xb.nFiles = 14;
 			if (xb.type == 4 || xb.type == 5) {
 				blOrder = blDevgl;
-				s = "%s_devgl_%s.bin";
+				sprintf(tmp, "%s_devgl_%s.bin", xb.kernelStr, xb.outName);
 			} else {
 				blOrder = blRetail;
 				if (xb.type == 1)
-					s = "%s_retail_%s.bin";
+					sprintf(tmp, "%s_retail_%s.bin", xb.kernelStr, xb.outName);
 				else if (xb.glitch2mfg)
-					s = "%s_g2m_%s.bin";
+					sprintf(tmp, "%s_g2m_%s.bin", xb.kernelStr, xb.outName);
 				else if (xb.glitch2)
-					s = "%s_g2_%s.bin";
+					sprintf(tmp, "%s_g2_%s.bin", xb.kernelStr, xb.outName);
 				else
-					s = "%s_gg_%s.bin";
+					sprintf(tmp, "%s_gg_%s.bin", xb.kernelStr, xb.outName);
 			}
 		}
 		nbl = 6;
-		sprintf(tmp, s, xb.kernelStr, xb.outName);
 	}
 	xb.nFlashFiles = xb.nFiles - 2;
 	strcpy(xb.outName, tmp);
@@ -275,18 +277,22 @@ int parseIni(char *path)
 	/* the files this build type uses */
 	for (i = 0; i < xb.nFiles; i++) {
 		e = &xb.files[i];
-		if (xb.type == 2)
-			loc = locJtag;
-		else if (xb.type == 6 || xb.type == 7)
-			loc = locDevk;
-		else if (xb.type == 4 || xb.type == 5)
-			loc = locDevgl;
-		else if (xb.type == 8 || xb.type == 9)
-			loc = locTestk;
-		else
-			loc = locRetail;
-		e->type = loc[i].type;
-		e->offset = loc[i].offset;
+		if (xb.type == 2) {
+			e->type = locJtag[i].type;
+			e->offset = locJtag[i].offset;
+		} else if (xb.type == 6 || xb.type == 7) {
+			e->type = locDevk[i].type;
+			e->offset = locDevk[i].offset;
+		} else if (xb.type == 4 || xb.type == 5) {
+			e->type = locDevgl[i].type;
+			e->offset = locDevgl[i].offset;
+		} else if (xb.type == 8 || xb.type == 9) {
+			e->type = locTestk[i].type;
+			e->offset = locTestk[i].offset;
+		} else {
+			e->type = locRetail[i].type;
+			e->offset = locRetail[i].offset;
+		}
 		switch (e->type) {
 		case 0:
 		case 26:
@@ -389,10 +395,9 @@ int parseIni(char *path)
 		strncpy(xb.files[blOrder[i]].name, (char *)p, len);
 		xb.files[blOrder[i]].name[len] = 0;
 		pos += len + 1;
-		/* shortcut: hoisted store makes dom2 not thread noCrc (the original
-		   stores crc = 0 only when !noCrc); find the real reason */
-		xb.files[blOrder[i]].crc = 0;
-		if (!noCrc) {
+		if (noCrc)
+			xb.files[blOrder[i]].crc = 0;
+		else {
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0)
 				xb.files[blOrder[i]].crc = 0;
@@ -446,13 +451,12 @@ int parseIni(char *path)
 				free(buf);
 				return 0;
 			}
-			name = xb.rawPatch[i].name;
-			strncpy(name, (char *)p, comma);
-			name[comma] = 0;
+			strncpy(xb.rawPatch[i].name, (char *)p, comma);
+			xb.rawPatch[i].name[comma] = 0;
 			pos += comma + 1;
 			n = memFindChar(&buf[pos], 0, size - pos);
 			if (n == 0 || n > 10) {
-				log_printf(0, "\n******* ERROR: offset data for file '%s' is either too large or too small!\n", name);
+				log_printf(0, "\n******* ERROR: offset data for file '%s' is either too large or too small!\n", xb.rawPatch[i].name);
 				free(buf);
 				return 0;
 			}
@@ -461,11 +465,11 @@ int parseIni(char *path)
 			pos += n + 1;
 			xb.rawPatch[i].offset = myatou32(tmp, -1);
 			if (xb.rawPatch[i].offset == (u32)-1) {
-				log_printf(1, "***** ERROR: [rawpatch] '%s' length is unintelligible!\n", name);
+				log_printf(1, "***** ERROR: [rawpatch] '%s' length is unintelligible!\n", xb.rawPatch[i].name);
 				free(buf);
 				return 0;
 			}
-			log_printf(1, "found (%d) '%s' offset: 0x%08x\n", ++xb.nRawPatches, name, xb.rawPatch[i].offset);
+			log_printf(1, "found (%d) '%s' offset: 0x%08x\n", ++xb.nRawPatches, xb.rawPatch[i].name, xb.rawPatch[i].offset);
 			if (pos >= end)
 				break;
 		}
@@ -498,24 +502,23 @@ int parseIni(char *path)
 			free(buf);
 			return 0;
 		}
-		name = xb.firmware[i];
-		strncpy(name, (char *)p, len);
-		name[len] = 0;
+		strncpy(xb.firmware[i], (char *)p, len);
+		xb.firmware[i][len] = 0;
 		if (len > 21) {
-			s = strrchr(name, '/');
+			s = strrchr(xb.firmware[i], '/');
 			if (s == NULL)
-				s = strrchr(name, '\\');
-			s = s ? s + 1 : name;
+				s = strrchr(xb.firmware[i], '\\');
+			s = s ? s + 1 : xb.firmware[i];
 			if (strlen(s) > 21) {
-				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
-				log_printf(0, "\n        Line: %s\n", name);
+				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's xb.firmware[i]!\n", 21);
+				log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
 				free(buf);
 				return 0;
 			}
 		}
 		pos += len + 1;
-		if (name[len - 1] == '1' || name[len - 1] == '2')
-			name[len - 1] = 0;
+		if (xb.firmware[i][len - 1] == '1' || xb.firmware[i][len - 1] == '2')
+			xb.firmware[i][len - 1] = 0;
 		if (noCrc)
 			crc = xb.firmwareCrc[i] = 0;
 		else {
@@ -523,7 +526,7 @@ int parseIni(char *path)
 			if (n == 0)
 				crc = xb.firmwareCrc[i] = 0;
 			else if (n != 8) {
-				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", name);
+				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
 				free(buf);
 				return 0;
 			} else {
@@ -533,7 +536,7 @@ int parseIni(char *path)
 			}
 			pos += n + 1;
 		}
-		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFirmware, name, crc);
+		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFirmware, xb.firmware[i], crc);
 		if (pos >= size)
 			break;
 	}
@@ -554,16 +557,20 @@ noFlashfs:
 		p = &buf[pos];
 		comma = memFindChar(p, ',', size - pos);
 		nul = memFindChar(p, 0, size - pos);
-		noCrc = comma > nul;
-		len = noCrc ? nul : comma;
+		if (comma > nul) {
+			noCrc = 1;
+			len = nul;
+		} else {
+			noCrc = 0;
+			len = comma;
+		}
 		if (len > 21) {
 			log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
 			free(buf);
 			return 0;
 		}
-		name = xb.flashFiles[i];
-		strncpy(name, (char *)p, len);
-		name[len] = 0;
+		strncpy(xb.flashFiles[i], (char *)p, len);
+		xb.flashFiles[i][len] = 0;
 		pos += len + 1;
 		if (noCrc)
 			crc = xb.flashCrc[i] = 0;
@@ -583,7 +590,7 @@ noFlashfs:
 			}
 			pos += n + 1;
 		}
-		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, name, crc);
+		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], crc);
 		if (pos >= end)
 			break;
 	}
