@@ -213,6 +213,9 @@ void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
 void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+/* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
+   call argument it is computed at its store */
+#define SWAP16(x) ((u16)(((u32)(x) << 8) | ((u32)(x) >> 8)))
 /* an SMC config fan byte */
 struct fan {
 	u8 speed:7, override:1;
@@ -337,7 +340,7 @@ void makeTimestamp(u8 *out, FILETIME *ft)
 
 int timestampToFileTime(const u16 *ts, FILETIME *ft)
 {
-	return DosDateTimeToFileTime(__builtin_bswap16(ts[0]), __builtin_bswap16(ts[1]), ft);
+	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
 }
 
 /* read baseDir/name into e */
@@ -541,13 +544,16 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 int checkBl(u8 *bl, u32 size, int type, u32 crc)
 {
 	u32 blsize, c;
+	int m;
 
 	blsize = getBeU32(bl + 12);
 	if (blsize > size) {
 		log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
 		return -3;
 	}
-	if ((bl[0] & 0x43) != 0x43)
+	m = bl[0];
+	__asm__("" :: "a"(m));
+	if ((m & 0x43) != 0x43)
 		goto magic;
 	switch (type) {
 	case 5:

@@ -219,6 +219,9 @@ void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
 void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+/* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
+   call argument it is computed at its store */
+#define SWAP16(x) ((u16)(((u32)(x) << 8) | ((u32)(x) >> 8)))
 /* an SMC config fan byte */
 struct fan {
 	u8 speed:7, override:1;
@@ -313,7 +316,6 @@ static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
 static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 
 /* still in build.s */
-int timestampToFileTime(const u16 *ts, FILETIME *ft);
 int loadBaseFile(const char *name, struct fileent *e) __attribute__((regparm(2)));
 int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta);
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
@@ -441,6 +443,11 @@ void makeTimestamp(u8 *out, FILETIME *ft)
 	out[1] = date;
 	out[2] = time >> 8;
 	out[3] = time;
+}
+
+int timestampToFileTime(const u16 *ts, FILETIME *ft)
+{
+	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
 }
 
 int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta)

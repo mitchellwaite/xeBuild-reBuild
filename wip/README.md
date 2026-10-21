@@ -837,12 +837,12 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 21 match and are built
+Draft of the whole object (all 41 functions). 22 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
-patchFreeboot, encodeUpdateBls, logPowerButton. Switch tables go through
+patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime. Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -867,18 +867,22 @@ only shows in `sh build.sh`.
   `not dword`).
 - patchPayloadSize's messages say `%r4` (sic), so the source did too.
 - raiseKernel takes (magic, build, qfe) words; only build is used.
-- timestampToFileTime (16 lines, uncalled): the original computes and
-  stores each argument in turn in eax; ours loads both halves first.
-  Not the prototype, not TER or sched2.
+- timestampToFileTime: `__builtin_bswap16` stays a call in GIMPLE, which
+  TER won't put into the call's arguments, so both swaps were computed
+  first. `SWAP16` with u16/u32 casts folds to a rotate before the bswap
+  pass and is computed at its argument store, like the original (the
+  `+`/mask SWAP16 forms of the other objects become bswap16 calls again).
 - loadBaseFileMeta (21): the original falls through to `return 0` when
   meta is NULL; ours (pointer heuristic) falls into the meta block.
 - loadInputFile (~360): the SUPD / nanddump / USVR / common-dir fallback
   chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
   `common & failed` with `and`, and its loadCommonFile tail call is a
   separate return. Two shapes tried (early returns, `r = 0`).
-- checkBl (64): structure right (the SE case's dead extra crc32 call is in
-  the source). The original has bl[0] in eax and bl[1] in edx (ours the
-  other way), and its crc-failure block shares the success epilogue.
+- checkBl (14): structure right (the SE case's dead extra crc32 call is in
+  the source); an `asm("" :: "a"(m))` on bl[0] gives the original's
+  registers. Left: the original copies the epilogue into the size-error
+  (-3) block, not the crc-failure one. In ours the -3 block is colder
+  (call + negative-return heuristics, 1.7%) than the crc failure (20.8%).
 - extractSmcConfig (~140): the original's two search loops aren't header-
   copied (`xor eax,eax; jmp cond`); `found == 1` (cmp eax,1) is right.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
@@ -899,8 +903,13 @@ only shows in `sh build.sh`.
   loadInputFile (loadBlFiles' constant arguments); the original has neither
   clone and calls loadFileCrc out of line only from loadInputFile. The
   clone moves loadLocalFile's registers (76 lines in the full draft; it
-  matches in the mixed file, which leaves the big callers out). Find what
-  stops the cloning before moving the rest over.
+  matches in the mixed file, which leaves the big callers out). The cause
+  is loadInputFile's `crc == 0` clone (`-fdump-ipa-cp-details`: time 40,
+  size 322, freq_sum 6066, evaluation 753 against 500). With it stopped
+  (a test `noclone`) the loadFileCrc clone goes too and loadLocalFile
+  matches. Most of freq_sum is loadBlFiles' and loadConsoleBlFiles' calls
+  at ~2.07 per call (`-fdump-ipa-cgraph`); at ~1 each it would be under
+  500. So match those loops first.
 - showSmcConfig: the fan bytes are bitfields (`u8 speed:7, override:1`;
   `cmp byte,0; js` plus a separate reload for the speed), the regions
   `__builtin_bswap16`/a SWAP32 macro with `(x << 24) + (x >> 24)` first.

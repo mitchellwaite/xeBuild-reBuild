@@ -106,7 +106,6 @@
 .globl _patchBlsBlmod
 .globl _patchBlsResign
 .globl _patchSmcConfig
-.globl _timestampToFileTime
 .globl _verifyBlSigs
 
 .text
@@ -403,22 +402,7 @@ L_4279a7:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 #@C _makeTimestamp
-_timestampToFileTime:
-          sub ESP,28
-          mov EDX,DWORD PTR [ESP+32]
-          mov EAX,DWORD PTR [ESP+36]
-          mov DWORD PTR [ESP+8],EAX
-          movzx EAX,WORD PTR [EDX+2]
-          rol AX,8
-          movzx EAX,AX
-          mov DWORD PTR [ESP+4],EAX
-          movzx EAX,WORD PTR [EDX]
-          rol AX,8
-          movzx EAX,AX
-          mov DWORD PTR [ESP],EAX
-          call _DosDateTimeToFileTime
-          add ESP,28
-          ret 
+#@C _timestampToFileTime
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
