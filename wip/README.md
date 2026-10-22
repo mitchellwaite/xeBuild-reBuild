@@ -1109,6 +1109,7 @@ Still off:
   - Inline limits: getArgs at `-wb` has growth 43 (> max-inline-insns-auto
     40), `-rb` 62.  Any per-file `max-inline-insns-auto` other than 40
     breaks clientKeys (dumpKey inlining), so a limit param is out.
+  - Parked by the user (2026-10-22): mode_client stays mixed, 15 of 16.
   - Whole object (2026-10-22): every other function matches when the draft
     is compiled as one file (client_usage and clientKeys included), and its
     `.rdata` string order is the original's except "failed!\n"
