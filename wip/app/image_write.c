@@ -197,8 +197,7 @@ static u8 smcPage[0x1000];
 	} \
 } while (0)
 
-/* hot/cold labels: branch hints that don't depend on
-   builtin-expect-probability (50 for the object); found by search */
+/* hot/cold labels: hints whatever builtin-expect-probability; found by search */
 static int imgWriteStart(const void *src, u32 len, u16 next)
 {
 	u32 off = 0, first, rem, tail, blocks, start, b, p;
@@ -250,6 +249,55 @@ static int imgWriteStart(const void *src, u32 len, u16 next)
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
 		}
 	}
+	imgEnd = off + len;
+	return 0;
+}
+
+/* imgWriteStart for big-block NAND (no FS table) */
+static int imgWriteHdr(const void *src, u32 len)
+{
+	/* its own function: called once, so it inlines.  imgWriteStart can't
+	   for this call: the u16 `next` is passed promoted to int, so the
+	   inliner never sees its value.  The two b0 stores are spelt
+	   differently, or cselim sinks them after byte 1.  Absolute page
+	   numbers in the inner loop: gcc then guesses its trip count instead
+	   of knowing 32, which makes the call block's alignment come out */
+	u32 off = 0, first, rem, tail, blocks, start, b, p;
+	struct sp *s;
+
+	if (off > xb.rawSize || off + len > xb.rawSize)
+		return -1;
+	start = off >> 14;
+	first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
+	if (len <= first) {
+		blocks = 1;
+		tail = len;
+	} else {
+		rem = len - first;
+		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		blocks = rem / 0x4000;
+		if (tail)
+			blocks++;
+		if (first)
+			blocks++;
+	}
+	memcpy(xb.hdr + off, src, len);
+	if (tail)
+		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
+	for (b = 0; b < blocks; b++)
+		for (p = (start + b) * 32; p < (start + b + 1) * 32; p++) {
+			s = (struct sp *)(xb.spare + p * 16);
+			memset(s, 0, 16);
+			if (xb.bigBlock) {
+				s->b2lo = (start + b) >> 8;
+				s->b0 = 0xff;
+				*((u8 *)s + 1) = start + b;
+			} else {
+				s->b1lo = (start + b) >> 8;
+				s->b5 = 0xff;
+				*(u8 *)s = start + b;
+			}
+		}
 	imgEnd = off + len;
 	return 0;
 }
@@ -923,7 +971,7 @@ int addSmcConfig(const u8 *cfg, u32 len)
 void writeInitialHeader(void)
 {
 	if (xb.bigBlock)
-		imgWriteStart(&hdrTemplate, sizeof(hdrTemplate), 0xf1f1);
+		imgWriteHdr(&hdrTemplate, sizeof(hdrTemplate));
 	else
 		imgWriteStart(&hdrTemplate, sizeof(hdrTemplate), 0x1ffb);
 	if (xb.netKd && xb.netKdSize) {

@@ -648,7 +648,7 @@ SYMBOLS = {
     0x451ba4: '_iw_451ba4', 0x451be4: '_iw_451be4', 0x451c18: '_iw_451c18',
     0x451c38: '_iw_451c38', 0x451c94: '_iw_451c94', 0x451cdd: '_iw_451cdd',
     0x451f80: '_iw_451f80',
-    0x451924: '_iw_451924', 0x451978: '_iw_451978',
+    0x451924: '_iw_451924', 0x451978: '_iw_451978', 0x4519f4: '_iw_4519f4',
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
@@ -781,7 +781,7 @@ C_FUNCS = {
     0x411030, 0x4112b0, 0x4112f0, 0x411600,  # imgAddFileAs fixupFsTable fixupEmptyFsBlocks addSmcConfig
     0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
-    0x412f60, 0x413030, 0x4110b0,            # manufacturingOffset imgAddRaw imgAddMobile
+    0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

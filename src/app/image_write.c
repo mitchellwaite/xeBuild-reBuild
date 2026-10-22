@@ -214,6 +214,7 @@ static const char iw_4518e8[] = "\tadding as %s at raw offset 0x%x len 0x%08x (e
 static const char iw_451924[] = "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n";
 static const char iw_451978[] = "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n";
 static const char iw_4519c4[] = "adding smc config to offset 0x%08x, len 0x%x\n";
+static const char iw_4519f4[] = "Inserting netKd data from dump into header\n";
 static const char iw_451a20[] = "%c%c v%d at 0x%x size 0x%x (CB)\n";
 static const char iw_451a44[] = "%c%c v%d at 0x%x size 0x%x (dual CB)\n";
 static const char iw_451a6c[] = "%c%c v%d at 0x%x size 0x%x (devkit CC)\n";
@@ -239,9 +240,57 @@ int imgWriteAt(u32 off, const void *src, u32 len, u16 next) __attribute__((regpa
 int imgWritePage(u32 off, const void *src, u16 next) __attribute__((regparm(3)));
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
-void writeInitialHeader(void);
 void writeFsTable(u32 off);
 int finalizeImage(void);
+
+/* imgWriteStart for big-block NAND (no FS table) */
+static int imgWriteHdr(const void *src, u32 len)
+{
+	/* its own function: called once, so it inlines.  imgWriteStart can't
+	   for this call: the u16 `next` is passed promoted to int, so the
+	   inliner never sees its value.  The two b0 stores are spelt
+	   differently, or cselim sinks them after byte 1.  Absolute page
+	   numbers in the inner loop: gcc then guesses its trip count instead
+	   of knowing 32, which makes the call block's alignment come out */
+	u32 off = 0, first, rem, tail, blocks, start, b, p;
+	struct sp *s;
+
+	if (off > xb.rawSize || off + len > xb.rawSize)
+		return -1;
+	start = off >> 14;
+	first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
+	if (len <= first) {
+		blocks = 1;
+		tail = len;
+	} else {
+		rem = len - first;
+		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		blocks = rem / 0x4000;
+		if (tail)
+			blocks++;
+		if (first)
+			blocks++;
+	}
+	memcpy(xb.hdr + off, src, len);
+	if (tail)
+		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
+	for (b = 0; b < blocks; b++)
+		for (p = (start + b) * 32; p < (start + b + 1) * 32; p++) {
+			s = (struct sp *)(xb.spare + p * 16);
+			memset(s, 0, 16);
+			if (xb.bigBlock) {
+				s->b2lo = (start + b) >> 8;
+				s->b0 = 0xff;
+				*((u8 *)s + 1) = start + b;
+			} else {
+				s->b1lo = (start + b) >> 8;
+				s->b5 = 0xff;
+				*(u8 *)s = start + b;
+			}
+		}
+	imgEnd = off + len;
+	return 0;
+}
 
 int buildImage(void)
 {
@@ -749,6 +798,21 @@ int addSmcConfig(const u8 *cfg, u32 len)
 	if (xb.bigBlock)
 		return imgWritePage(xb.smcConfigOffset, smcPage, 0xf1f1);
 	return imgWritePage(xb.smcConfigOffset, smcPage, 0x1ffb);
+}
+
+void writeInitialHeader(void)
+{
+	if (xb.bigBlock)
+		imgWriteHdr(&hdrTemplate, sizeof(hdrTemplate));
+	else
+		imgWriteStart(&hdrTemplate, sizeof(hdrTemplate), 0x1ffb);
+	if (xb.netKd && xb.netKdSize) {
+		log_printf(1, iw_4519f4);
+		if (xb.bigBlock)
+			imgWriteAt(0x80, xb.netKd, xb.netKdSize, 0xf1f1);
+		else
+			imgWriteAt(0x80, xb.netKd, xb.netKdSize, 0x1ffb);
+	}
 }
 
 long checkBootImage(int write)

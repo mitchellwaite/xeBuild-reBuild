@@ -30,6 +30,7 @@
 .globl _iw_451924
 .globl _iw_451978
 .globl _iw_4519c4
+.globl _iw_4519f4
 .globl _iw_451a20
 .globl _iw_451a44
 .globl _iw_451a6c
@@ -51,7 +52,6 @@
 .globl _mobileOffset
 .globl _smcPage
 .globl _writeFsTable
-.globl _writeInitialHeader
 
 .text
 .p2align 4
@@ -1833,115 +1833,7 @@ L_411671:
           .byte 0x90
           .byte 0x90
           .byte 0x90
-_writeInitialHeader:
-          push EDI
-          push ESI
-          sub ESP,20
-          mov EDI,DWORD PTR [L_479ef0]
-          test EDI,EDI
-          je L_411780
-          cmp DWORD PTR [L_479ee8],127
-          jbe L_41173c
-          mov ECX,DWORD PTR [L_479ed8]
-          mov EAX,DWORD PTR [_hdrTemplate]
-          mov ESI,OFFSET _hdrTemplate
-          mov DWORD PTR [ECX],EAX
-          lea EDI,DWORD PTR [ECX+4]
-          mov EAX,DWORD PTR [L_4cd83c]
-          and EDI,4294967292
-          mov DWORD PTR [ECX+124],EAX
-          sub ECX,EDI
-          sub ESI,ECX
-          sub ECX,-128
-          shr ECX,2
-          rep movsd 
-          mov DWORD PTR [ESP+8],16256
-          mov DWORD PTR [ESP+4],0
-          mov EAX,DWORD PTR [L_479ed8]
-          sub EAX,-128
-          mov DWORD PTR [ESP],EAX
-          call _memset
-          xor EDX,EDX
-          .byte 0x66   # nop
-          nop
-L_4116f0:
-          mov EAX,DWORD PTR [L_479ed0]
-          add EAX,EDX
-          mov DWORD PTR [EAX],0
-          mov DWORD PTR [EAX+4],0
-          mov DWORD PTR [EAX+8],0
-          mov DWORD PTR [EAX+12],0
-          mov ESI,DWORD PTR [L_479ef0]
-          test ESI,ESI
-          je L_411760
-          add EDX,16
-          and BYTE PTR [EAX+2],240
-          mov BYTE PTR [EAX],255
-          cmp EDX,512
-          mov BYTE PTR [EAX+1],0
-          jne L_4116f0
-L_411732:
-          mov DWORD PTR [_imgEnd],128
-L_41173c:
-          mov ECX,DWORD PTR [L_47a104]
-          test ECX,ECX
-          je L_411750
-          mov EDX,DWORD PTR [L_47a108]
-          test EDX,EDX
-          jne L_411796
-L_411750:
-          add ESP,20
-          pop ESI
-          pop EDI
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_411760:
-          add EDX,16
-          and BYTE PTR [EAX+1],240
-          mov BYTE PTR [EAX+5],255
-          cmp EDX,512
-          mov BYTE PTR [EAX],0
-          jne L_4116f0
-          jmp L_411732
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_411780:
-          mov ECX,8187
-          mov EDX,128
-          mov EAX,OFFSET _hdrTemplate
-          call _imgWriteStart
-          jmp L_41173c
-L_411796:
-          mov DWORD PTR [ESP+4],OFFSET L_4519f4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [L_479ef0]
-          test EAX,EAX
-          jne L_4117d6
-          mov ECX,DWORD PTR [L_47a108]
-          mov EDX,DWORD PTR [L_47a104]
-          mov EAX,128
-          mov DWORD PTR [ESP],8187
-          call _imgWriteAt
-          add ESP,20
-          pop ESI
-          pop EDI
-          ret 
-L_4117d6:
-          mov ECX,DWORD PTR [L_47a108]
-          mov EDX,DWORD PTR [L_47a104]
-          mov EAX,128
-          mov DWORD PTR [ESP],61937
-          call _imgWriteAt
-          add ESP,20
-          pop ESI
-          pop EDI
-          ret 
+#@C _writeInitialHeader
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -3017,7 +2909,7 @@ _iw_451978:
 _iw_4519c4:
           .string "adding smc config to offset 0x%08x, len 0x%x\n"
           .zero 2
-L_4519f4:
+_iw_4519f4:
           .string "Inserting netKd data from dump into header\n"
 _iw_451a20:
           .string "%c%c v%d at 0x%x size 0x%x (CB)\n"

@@ -1295,7 +1295,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 38 matching functions build from `src/app/image_write.c`, a mixed
+The 39 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
@@ -1346,14 +1346,6 @@ Findings:
   "mobileOffset already set" block's placement.
 
 Still off:
-- writeInitialHeader: the original inlines imgWriteStart(&hdrTemplate,
-  0x80, 0xf1f1) (the `cmp rawSize,127` and one-block spare loop) but calls
-  it for 0x1ffb, and checkBootImage calls it for both. Ours inlines none:
-  `-fdump-ipa-inline-details` estimates ~60 for the call (limit:
-  max-inline-insns-auto 40, or 50 with a loop-iterations hint). Helpers
-  must be macros, not static inline functions, or ipa-split splits
-  setFsTable and the `next != 0xf1f1` predicate doesn't shrink the
-  estimate. `static inline` imgWriteStart inlines every call.
 - setFsTable is one loop with the chain/fill test inside it, which gcc
   unswitches: that is what puts `SWAP16(next)` (rol) and `start - fsStart`
   before the chain test. SWAP16 is `(((x) << 8) & 0xff00) + (((x) >> 8) &
@@ -1454,10 +1446,41 @@ Still off:
   `lea r,[r-1]` vs `mov/sub`, and the order of the cold blocks after the
   main trace. Same labels on imgWriteAt: 249 -> 202, but its frame is
   76 bytes vs 60 (structural); imgAdd's head form didn't help there.
-  writeInitialHeader: imgWriteStart(0xf1f1) specialised to len 128
-  still estimates size 65 (growth ~60, limit 40, or 50 with a
-  loop-iterations hint); `op2 != 61937` covers only size 16, so the
-  original body must be smaller where next is known.
+- writeInitialHeader builds from C (2026-10-21). Why imgWriteStart never
+  inlined: i386 promotes prototyped u16 arguments, so the call's jump
+  function is an int constant while the `next != 0xf1f1` predicate is on
+  the 16-bit parameter; evaluate_conditions_for_known_args drops
+  conditions whose operand size differs, so the 0xf1f1 and 0x1ffb calls
+  get the same estimate (65). The big-block call goes to imgWriteHdr, a
+  static copy without the FS table that only it calls, so it inlines as a
+  called-once function. An exact copy gets merged back by ICF. Three more
+  things were needed:
+  - The bigBlock arm writes `s->b0 = 0xff` and the other arm writes
+    `*(u8 *)s = block`. With both spelled `s->b0`, cselim sinks the pair
+    to the join and b0 is stored after byte 1.
+  - The inner loop runs over absolute page numbers, `(start + b) * 32`
+    up to `(start + b + 1) * 32`. Only fncmp can't see why: with a known
+    32-trip inner loop under the guessed outer loop, the inlined loop is
+    156x the entry, so the 0x1ffb call block falls under align-threshold
+    and loses its `.p2align`. With a 32-trip loop and a constant length
+    it is 14x and the netKd block gains one. The original sits in
+    between (35-50x); a guessed inner trip count lands there.
+    Hot/cold labels can't tune it, since loop-iteration predictions are
+    first-match and outrank the label predictions.
+  - imgWriteHdr has no labels and the plain ternary tail; the smaller
+    "just the header" versions (no outer loop, or a constant length)
+    change the block order.
+- imgWritePage's tail (`mov eax,ecx; not eax; add eax,[end]`): expand
+  substitutes (TER) the single-use `~fsStart` into the sum, and
+  simplify_plus_minus sorts the plus operands by regno. The new not
+  register comes last, so the add is tied to `end`. With -fno-tree-ter
+  the not is tied, as in the original, but the sum is split into
+  `+start +blocks`. The original needs gimple `_86 = ~fs + end` with
+  `end` being the spilled loop bound. With an `"S"(start + blocks)` asm
+  pin before the loop (13 lines), the pin also gets `start` reloaded
+  straight into ebp, but dom3 replaces `end` in the tail with the IV's
+  exit value (`lea eax,[ebp+ecx]`). Asm outputs on `end` and
+  loop forms over `start..start+blocks` (guard) are worse.
 - tmp/xeBuild64 decompiles with IDA (idapro on a copy of the ELF):
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;

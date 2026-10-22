@@ -79,7 +79,6 @@
 .globl L_47a0fc
 .globl L_47a100
 .globl L_47a104
-.globl L_47a108
 .globl L_47a148
 .globl L_47a14c
 .globl L_47a14d
@@ -177,7 +176,6 @@
 .globl L_4cb7c6
 .globl L_4cb7c8
 .globl L_4cb7ca
-.globl L_4cd83c
 .globl L_4cdc64
 .globl L_4ce064
 .globl L_4ce068
