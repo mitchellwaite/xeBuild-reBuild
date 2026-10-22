@@ -51,9 +51,11 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
                    updateNand:19>20=60 updateNand:24>25=14.5 --only=mode_update,updateNand" ;;
       # fcrtEncrypt's offset hint needs 60 (and setFuseCpuKey's NULL hint
       # then aligns that block; align-threshold=200 would also align
-      # smcChecksum's count == 0 block, which the original doesn't)
+      # smcChecksum's count == 0 block, which the original doesn't);
+      # -fno-toplevel-reorder emits the key buffers and string arrays in
+      # definition order
       app/keys) orig="$f.c"
-             cflags="-O3 --param builtin-expect-probability=60" ;;
+             cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=60" ;;
       # console_hdd's __builtin_expect hints are tuned to this probability;
       # sendAvatarData's loop is aligned (1 and 2 align other loops too)
       app/console_hdd) orig="$f.c"

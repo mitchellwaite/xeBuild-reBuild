@@ -594,10 +594,12 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 
 ## app/keys.c
 
-Draft of the whole object, with string literals. 47 of 48 functions are
-built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
-makes from this file; add a function's name there (and its address to
-`split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
+Whole object in C since 2026-10-22 (no keys.s): `src/app/keys.c` is this
+draft plus the key buffers' initial values, three functions' strings as
+arrays in the original's order, and the original's function order
+(shaCheck before crlEncrypt, daeEncrypt before fcrtEncrypt, shaHeader
+last), built with `-fno-toplevel-reorder`.  wip/keysmixed.py (the mixed
+build's generator) is gone; the notes below are the matching history.  Line counts
 below are `FNCMP_LITERALS=1 python re/fncmp.py wip/app/keys.c <name>` (the
 variable makes the draft's literals compare equal to the `.s`'s named
 strings). setFuseLdv matched by declaring `u32 i;` before `u64 cb, cf;`
@@ -677,9 +679,20 @@ prototype up top and puts `__attribute__((always_inline))` on its own
 line before `inline short cfPatchSlots(` so keysmixed picks it up (its
 `grep` of src for names misses `short`/`u16` functions: pass them).
 
-Still off:
-
-- `daeEncrypt` (5, was 443; PARKED 2026-10-22): `if (__builtin_expect(size, 1)) do { ... }
+- `daeEncrypt` (matched 2026-10-22): the 5-line version below kept a
+  reload of off after the shared "success!" log.  LRA's inheritance EBB
+  breaks at any block whose head is a label (lra_inheritance), so the
+  original's save-without-restore means that block fell into its own
+  copy of the encrypt code, which crossjumping merged into the main one
+  after reload.  A source copy in the n path alone gave 8; in the n == 0
+  path the copy's `n++` folds to `n = 1` and won't merge.  So both first
+  attempts share one block: `if (!n) log(...)` before each decrypt lets
+  gcc thread the n paths apart while the success block (with the copy)
+  stays shared.  That gave 87 (a [56]/[60] spill slot swap in the n == 0
+  alternate path); a cold label on the success block fixed it
+  (scratchpad climb over hints and labels on this shape).  The pins stay.
+  Earlier notes:
+  `if (__builtin_expect(size, 1)) do { ... }
   while (off < size)`, `buf[off + k]` header tests with per-test hints,
   hot labels on the `n != 0` retry arm and the alternate-key arm, the
   second give-up path `goto fail` into the first's `n = 0; off = size + 1`.

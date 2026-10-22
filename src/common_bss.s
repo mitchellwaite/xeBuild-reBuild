@@ -28,6 +28,7 @@
 .globl L_479ef8
 .globl L_479efc
 .globl L_479f00
+.globl L_479f02
 .globl L_479f03
 .globl L_479f04
 .globl L_479f06
@@ -35,6 +36,7 @@
 .globl L_479f08
 .globl L_479f0c
 .globl L_479f10
+.globl L_479f14
 .globl L_479f15
 .globl L_479f18
 .globl L_479f1c
@@ -82,6 +84,17 @@
 .globl L_47a0fc
 .globl L_47a100
 .globl L_47a104
+.globl L_47a10b
+.globl L_47a110
+.globl L_47a114
+.globl L_47a118
+.globl L_47a11b
+.globl L_47a120
+.globl L_47a124
+.globl L_47a128
+.globl L_47a130
+.globl L_47a134
+.globl L_47a138
 .globl L_47a148
 .globl L_47a14c
 .globl L_47a14d

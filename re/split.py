@@ -447,31 +447,6 @@ SYMBOLS = {
     0x44a644: '_kvAltSalt', 0x44a64c: '_kvSalt', 0x44a654: '_infoKey5', 0x44a664: '_infoKey4',
     0x44a674: '_infoKey3', 0x44a684: '_infoKey2', 0x44a694: '_infoKey1', 0x44a6a4: '_infoKey0',
     0x479560: '_zeroKey', 0x479570: '_pairing',
-    # keys.s strings the mixed keys.c refers to (extern names)
-    0x456664: '_msg_initRandom', 0x456680: '_msg_initStatic', 0x4566a4: '_msg_pairingSet',
-    0x4566c4: '_str_valid', 0x4566ca: '_str_error', 0x4566d0: '_msg_weight',
-    0x4566eb: '_msg_cpuKeySet', 0x4566fe: '_str_hexByte', 0x456703: '_str_newline',
-    0x456708: '_msg_cpuKeyWarn', 0x45674c: '_msg_cpuKeyChars', 0x45678c: '_msg_cpuKeyLen',
-    0x4567eb: '_msg_cpuKeySet2', 0x4567fe: '_msg_fuseLdv', 0x456816: '_msg_fuseCpuKey',
-    0x456830: '_msg_fuseNull', 0x45685e: '_msg_1blKeySet', 0x456873: '_msg_1blSum',
-    0x456890: '_msg_xexKeySet', 0x4568a5: '_msg_xexSum', 0x4568c2: '_msg_1blBad',
-    0x4568e0: '_msg_1blBad2', 0x456904: '_msg_1blChars', 0x456944: '_msg_1blLen',
-    0x4569a3: '_msg_1blBadStr', 0x4569c4: '_msg_1blBadStr2',
-    0x4569e4: '_msg_smcEncrypted', 0x456a21: '_str_success', 0x456a2a: '_str_failed',
-    0x456a34: '_msg_smcBad', 0x456a88: '_msg_smcRetail', 0x456af4: '_msg_smcCleanType',
-    0x456b20: '_msg_smcDevkit', 0x456ba0: '_msg_smcClean', 0x456bc0: '_msg_smcGlitch',
-    0x456be4: '_msg_smcHacked', 0x456c1c: '_msg_smcJtag', 0x456c3c: '_msg_smcNoGlitch',
-    0x456c9c: '_msg_smcNoJtag', 0x456cfc: '_msg_cbencPairing',
-    0x456d22: '_msg_dualCb', 0x456d40: '_msg_cbb15572', 0x456d6c: '_msg_cbbMfg',
-    0x456d9f: '_str_kv', 0x456da2: '_str_kvBin', 0x456da9: '_str_altKv',
-    0x456db0: '_str_kvAltBin', 0x456dbc: '_msg_kvSize', 0x456e10: '_msg_kvHash',
-    0x456e60: '_msg_kvPreDecrypted', 0x456ec8: '_msg_kvEncrypted',
-    0x456f00: '_msg_kvDecryptFail', 0x456f24: '_msg_kvDecryptErr',
-    0x456f74: '_str_Success', 0x456f80: '_msg_kvNotDecrypted', 0x456fc0: '_msg_extMissing', 0x457028: '_msg_extSize',
-    0x457088: '_msg_extEncrypted', 0x4570c8: '_msg_extDecryptFail', 0x457110: '_msg_sdMissing',
-    0x457178: '_msg_sdSize', 0x4571d5: '_str_successNl', 0x4571e0: '_msg_crlRetry',
-    0x457200: '_str_failedNl', 0x45720c: '_msg_crlCrypted', 0x457248: '_msg_crlBad',
-    0x457404: '_msg_fcrtSize', 0x457430: '_msg_fcrtOffset', 0x45745c: '_msg_fcrtBad',
     0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
     # bootloaders.c's string arrays
     0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
@@ -706,20 +681,6 @@ C_FUNCS = {
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
     0x425110, 0x4258e0,                      # parseOption parseCmdOptions
     0x427000, 0x4271a0, 0x427260, 0x427340,  # parseRawPatch parseRawPatches addPatch loadAddons
-    # app/keys (the rest are drafted in wip/app/keys.c)
-    0x41aa00, 0x41abb0, 0x41ac00, 0x41ac50,  # keysInit setCrlKey setDaeKey setSecdataKey
-    0x41ac70, 0x41aca0, 0x41acd0, 0x41ad00,  # setInfoKey0..3
-    0x41ad30, 0x41ad60, 0x41ad90, 0x41adb0,  # setInfoKey4 setInfoKey5 setKvSalt setKvAltSalt
-    0x41add0, 0x41ade0, 0x41ae40, 0x41afe0,  # setSmcKey setPairing checkCpuKey setCpuKeyStr
-    0x41b120, 0x41b1d0, 0x41b420, 0x41b520,  # setCpuKey setFuseLdv calcXexKey check1blKey
-    0x41b600, 0x41b320,                      # set1blKey setFuseCpuKey
-    0x41b740, 0x41ba00, 0x41bf50, 0x41c0c0,  # checkKeys smcEncrypt cbaEncrypt cbaEncryptZero
-    0x41b8e0, 0x41ba80,                      # smcChecksum smcPrepare
-    0x41c1b0, 0x41c370, 0x41c5e0, 0x41c6b0,  # cbaEncrypt2 cbbEncrypt cdEncryptZero cdEncrypt
-    0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt
-    0x41cff0, 0x41d6a0, 0x41d9b0, 0x41db70,  # kvEncryptAlt extendedPrepare secdataPrepare shaCheck
-    0x41dc30, 0x41dfa0, 0x41e7b0, 0x41e620,  # crlEncrypt daeEncryptOne shaHeader fcrtEncrypt
-    0x41d0e0, 0x41c910, 0x41ca20,            # kvPrepare cfPatchSlots cfEncrypt
     # app/image_read (the rest are drafted in wip/app/image_read.c)
     0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile
     0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset

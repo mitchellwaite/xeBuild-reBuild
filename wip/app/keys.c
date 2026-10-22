@@ -935,40 +935,30 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 		}
 		len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
 		if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
-			if (n) {
-				retry: __attribute__((hot));
-				memcpy(dae, orig + off, len);
-				daeDecrypt(dae, len, 1);
-				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
-					log_printf(1, "success!\n");
-				} else {
-					memcpy(dae, orig + off, len);
-					daeDecrypt(dae, len, 0);
-					if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
-fail:
-						n = 0;
-						off = size + 1;
-						goto next;
-					}
-				}
-			} else {
+			if (!n)
 				log_printf(1, "dae appears encrypted, attempting to decrypt with CPU key...");
-				memcpy(dae, orig + off, len);
-				daeDecrypt(dae, len, 1);
-				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+			memcpy(dae, orig + off, len);
+			daeDecrypt(dae, len, 1);
+			if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+				ok: __attribute__((cold));
+				log_printf(1, "success!\n");
+				daeEncryptOne(dae, len, date);
+				n++;
+				goto next;
+			}
+			if (!n)
+				log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
+			memcpy(dae, orig + off, len);
+			daeDecrypt(dae, len, 0);
+			if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+				if (!n)
 					log_printf(1, "success!\n");
-				} else {
-					altKey: __attribute__((hot));
-					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
-					memcpy(dae, orig + off, len);
-					daeDecrypt(dae, len, 0);
-					if (shaCheck(dae, len, 12, 20, 336, NULL)) {
-						log_printf(1, "success!\n");
-					} else {
-						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
-						goto fail;
-					}
-				}
+			} else {
+				if (!n)
+					log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
+				n = 0;
+				off = size + 1;
+				goto next;
 			}
 		}
 		daeEncryptOne(dae, len, date);

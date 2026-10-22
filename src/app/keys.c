@@ -1,9 +1,6 @@
 /* keys: CPU/1BL keys, pairing, the per-image HMAC nonces, and encrypting
    the bootloaders, SMC, keyvault, extended, secdata, CRL, DAE and FCRT
-   for the image being built.  Mixed object: the functions here are
-   spliced into keys.s (re/splice.py), which still holds the rest and
-   the data, so strings and key buffers are extern names for the
-   .s's.  wip/app/keys.c is the whole draft. */
+   for the image being built. */
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,103 +77,58 @@ void daeDecrypt(u8 *dae, u32 size, int perBox);
 int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
 /* external copy of the always_inline cfPatchSlots */
 short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
+int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
+void shaHeader(u8 *buf);
 
 extern struct xebuild xb;
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 #define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
-extern u8 secdataKey[8];
-extern u8 daeKey[32];
-extern u8 crlKey[32];
-extern u8 smcKey[4];
-extern u8 kvAltSalt[8];
-extern u8 kvSalt[8];
-extern u8 infoKey5[16];
-extern u8 infoKey4[16];
-extern u8 infoKey3[16];
-extern u8 infoKey2[16];
-extern u8 infoKey1[16];
-extern u8 infoKey0[16];
-extern u8 zeroKey[16];
-extern u8 pairing[3];
-
-/* strings in keys.s */
-extern const char msg_initRandom[];	/* "initializing random nonces\n" */
-extern const char msg_initStatic[];	/* "initializing static pairing value\n" */
-extern const char msg_pairingSet[];	/* "pairing set to: %02x %02x %02x\n" */
-extern const char str_valid[];	/* "valid" */
-extern const char str_error[];	/* "error" */
-extern const char msg_weight[];	/* " (weight:0x%x %s; ecd: %s)" */
-extern const char msg_cpuKeySet[];	/* "CPU Key set to: 0x" */
-extern const char str_hexByte[];	/* "%02X" */
-extern const char str_newline[];	/* "\n" */
-extern const char msg_cpuKeyWarn[];	/* "\n***** WARNING: CPU key check faile..." */
-extern const char msg_cpuKeyChars[];	/* "\n******* ERROR: invalid or unexpect..." */
-extern const char msg_cpuKeyLen[];	/* "\n***** ERROR: unable to set CPU key..." */
-extern const char msg_cpuKeySet2[];	/* "CPU Key set to  : " */
-extern const char msg_fuseLdv[];	/* "Fuse CF LDV set to : 0x" */
-extern const char msg_fuseCpuKey[];	/* "Fuse CPU Key set to: 0x" */
-extern const char msg_fuseNull[];	/* "\nERROR: YOU SHOULD NOT BE SEEING TH..." */
-extern const char msg_1blKeySet[];	/* "1BL Key set to  : 0x" */
-extern const char msg_1blSum[];	/* " sum: 0x%x (expects: 0x983)\n" */
-extern const char msg_xexKeySet[];	/* "xex Key set to  : 0x" */
-extern const char msg_xexSum[];	/* " sum: 0x%x (expects: 0x800)\n" */
-extern const char msg_1blBad[];	/* "\n******* ERROR: 1BL key 0x" */
-extern const char msg_1blBad2[];	/* " does not appear to be correct!\n" */
-extern const char msg_1blChars[];	/* "\n******* ERROR: invalid or unexpect..." */
-extern const char msg_1blLen[];	/* "\n***** ERROR: unable to set 1BL key..." */
-extern const char msg_1blBadStr[];	/* "\n******* ERROR: 1BL key 0x%s " */
-extern const char msg_1blBadStr2[];	/* "does not appear to be correct!\n" */
-extern const char msg_smcEncrypted[];	/* "SMC binary appears to be encrypted, ..." */
-extern const char str_success[];	/* "success!" */
-extern const char str_failed[];	/* "failed!" */
-extern const char msg_smcBad[];	/* "\n******* ERROR: please make sure yo..." */
-extern const char msg_smcRetail[];	/* "\n******* ERROR: hacked or unknown S..." */
-extern const char msg_smcCleanType[];	/* "known/clean SMC binary found! type 0..." */
-extern const char msg_smcDevkit[];	/* "\n******* WARNING: hacked or unknown..." */
-extern const char msg_smcClean[];	/* "known/clean SMC binary found!\n" */
-extern const char msg_smcGlitch[];	/* "glitch hack found in SMC binary!\n" */
-extern const char msg_smcHacked[];	/* "\n******* WARNING: hacked or unknown..." */
-extern const char msg_smcJtag[];	/* "jtag hack found in SMC binary!\n" */
-extern const char msg_smcNoGlitch[];	/* "\n******* ERROR: clean SMC binary fo..." */
-extern const char msg_smcNoJtag[];	/* "\n******* ERROR: clean SMC binary fo..." */
-extern const char msg_cbencPairing[];	/* "CBENC pairing set to: %02x %02x %02x..." */
-extern const char msg_dualCb[];	/* "\t**dual CB flag detected!**\n" */
-extern const char msg_cbb15572[];	/* "\t**15572+ CBB crypto method detecte..." */
-extern const char msg_cbbMfg[];	/* "\t** CBB crypto method set to work w..." */
-extern const char str_kv[];	/* "kv" */
-extern const char str_kvBin[];	/* "kv.bin" */
-extern const char str_altKv[];	/* "alt kv" */
-extern const char str_kvAltBin[];	/* "kv_alt.bin" */
-extern const char msg_kvSize[];	/* "\n******* ERROR: %s is not the corre..." */
-extern const char msg_kvHash[];	/* "%s appears to be decrypted already, ..." */
-extern const char msg_kvPreDecrypted[];	/* "\n******* WARNING: could not verify ..." */
-extern const char msg_kvEncrypted[];	/* "%s appears to be encrypted, attempti..." */
-extern const char msg_kvDecryptFail[];	/* "Failed!\n%s could not be decrypted!\..." */
-extern const char msg_kvDecryptErr[];	/* "\n******* ERROR: could not decrypt %..." */
-extern const char str_Success[];	/* "Success!\n" */
-extern const char msg_kvNotDecrypted[];	/* "\n******* ERROR: please be sure your..." */
-extern const char msg_extMissing[];	/* "******* WARNING: extended.bin was no..." */
-extern const char msg_extSize[];	/* "******* WARNING: extended.bin is not..." */
-extern const char msg_extEncrypted[];	/* "extended.bin appears to be encrypted..." */
-extern const char msg_extDecryptFail[];	/* "Failed!\nextended.bin could not be d..." */
-extern const char msg_sdMissing[];	/* "******* WARNING: secdata.bin was not..." */
-extern const char msg_sdSize[];	/* "******* WARNING: secdata.bin is not ..." */
-extern const char str_successNl[];	/* "success!\n" */
-extern const char msg_crlRetry[];	/* "failed! Trying alternate key..." */
-extern const char str_failedNl[];	/* "failed!\n" */
-extern const char msg_crlCrypted[];	/* "crl appears crypted, attempting to d..." */
-extern const char msg_crlBad[];	/* "\n******* ERROR: crl data appears to..." */
-extern const char msg_fcrtSize[];	/* "****** ERROR: FCRT encrypt invalid s..." */
-extern const char msg_fcrtOffset[];	/* "**** ERROR: FCRT encrypt invalid off..." */
-extern const char msg_fcrtBad[];	/* "****** WARNING: FCRT data appears to..." */
+u8 secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
+u8 daeKey[32] = {
+	0xa1, 0xb2, 0x69, 0x50, 0x58, 0xf4, 0xed, 0x05, 0xe5, 0x80, 0xc7, 0xee, 0x18, 0x9a, 0x27, 0xb5,
+	0xac, 0x5e, 0xbc, 0x70, 0x89, 0x29, 0x65, 0x90, 0xf4, 0x24, 0xed, 0x2a, 0xd3, 0x62, 0x83, 0x14
+};
+u8 crlKey[32] = {
+	0xc7, 0x03, 0xb9, 0x32, 0xd4, 0x07, 0x7d, 0x41, 0x60, 0x52, 0xa8, 0x13, 0x5e, 0xde, 0x68, 0x18,
+	0xd9, 0x75, 0x98, 0xa6, 0xf8, 0x5d, 0x9b, 0x86, 0x7b, 0xc4, 0x34, 0x99, 0xe3, 0x3d, 0xa4, 0xaa
+};
+u8 smcKey[4] = { 0x8e, 0x03, 0x75, 0xcc };
+u8 kvAltSalt[8] = { 0x36, 0xca, 0xb0, 0x87, 0x8b, 0x83, 0xb7, 0xf6 };
+u8 kvSalt[8] = { 0x36, 0xca, 0xb0, 0x87, 0x8b, 0x83, 0xb7, 0xf6 };
+u8 infoKey5[16] = {
+	0xb9, 0xa2, 0x1e, 0x3b, 0xfc, 0x2e, 0xab, 0xb4,
+	0x19, 0x81, 0x2d, 0x8a, 0x85, 0xaa, 0xa8, 0xce
+};
+u8 infoKey4[16] = {
+	0xce, 0xe5, 0x04, 0xee, 0x9f, 0x61, 0x2b, 0x9b,
+	0xa5, 0x20, 0xf8, 0xeb, 0x0b, 0x64, 0x68, 0x2a
+};
+u8 infoKey3[16] = {
+	0x56, 0xa9, 0x81, 0xcd, 0x8c, 0xbc, 0x07, 0x29,
+	0xdd, 0x0b, 0x7b, 0xbc, 0x76, 0xe5, 0x79, 0x98
+};
+u8 infoKey2[16] = {
+	0xb3, 0x38, 0x64, 0x1c, 0xeb, 0xd0, 0x1e, 0x10,
+	0x2c, 0xdd, 0xe0, 0xf3, 0x19, 0xa1, 0x9f, 0x84
+};
+u8 infoKey1[16] = {
+	0xfb, 0xe2, 0x70, 0x9a, 0xe7, 0xa1, 0x3f, 0x42,
+	0xcf, 0xec, 0x45, 0x92, 0x8e, 0x3f, 0x0e, 0x37
+};
+u8 infoKey0[16] = {
+	0x37, 0x10, 0xa2, 0xf2, 0x2e, 0xd5, 0xf0, 0xa8,
+	0xe4, 0x9c, 0xb4, 0xc7, 0xa1, 0x39, 0x5d, 0xaa
+};
+u8 zeroKey[16] = { 0 };
+u8 pairing[3] = { 0 };
 
 void keysInit(int random)
 {
 	aes_init();
 	if (random) {
-		log_printf(1, msg_initRandom);
+		log_printf(1, "initializing random nonces\n");
 		XeCryptRandom(infoKey0, 16);
 		XeCryptRandom(infoKey1, 16);
 		XeCryptRandom(infoKey2, 16);
@@ -190,7 +142,7 @@ void keysInit(int random)
 		XeCryptRandom(daeKey, 32);
 		XeCryptRandom(secdataKey, 8);
 	} else if (pairing[0] == 0 && pairing[1] == 0 && pairing[2] == 0) {
-		log_printf(1, msg_initStatic);
+		log_printf(1, "initializing static pairing value\n");
 		pairing[0] = 0x23;
 		pairing[1] = 0x45;
 		pairing[2] = 0xf1;
@@ -281,7 +233,7 @@ int setPairing(u32 pair)
 		pairing[2] = pair;
 		pairing[0] = pair >> 16;
 		pairing[1] = pair >> 8;
-		log_printf(1, msg_pairingSet, pairing[0], pairing[1], pairing[2]);
+		log_printf(1, "pairing set to: %02x %02x %02x\n", pairing[0], pairing[1], pairing[2]);
 		return 1;
 	}
 	return 0;
@@ -300,8 +252,8 @@ int checkCpuKey(int level, u8 *key)
 	XeCryptUidEccEncode(tmp);
 	ecd = memcmp(key, tmp, 16) == 0;
 	wok = weight == 53;
-	log_printf(level, msg_weight, weight,
-		wok ? str_valid : str_error, ecd ? str_valid : str_error);
+	log_printf(level, " (weight:0x%x %s; ecd: %s)", weight,
+		wok ? "valid" : "error", ecd ? "valid" : "error");
 	return wok && ecd;
 }
 
@@ -315,21 +267,21 @@ int setCpuKeyStr(char *str)
 		if (ret) {
 			for (i = 0; i < 16; i++, str += 2)
 				xb.cpuKey[i] = myatox8(str);
-			log_printf(1, msg_cpuKeySet);
+			log_printf(1, "CPU Key set to: 0x");
 			for (i = 0; i < 16; i++)
-				log_printf(1, str_hexByte, xb.cpuKey[i]);
+				log_printf(1, "%02X", xb.cpuKey[i]);
 			ret = 1;
 			if (!checkZeros(xb.cpuKey, 16)) {
 				if (checkCpuKey(1, xb.cpuKey))
-					log_printf(0, str_newline);
+					log_printf(0, "\n");
 				else
-					log_printf(0, msg_cpuKeyWarn);
+					log_printf(0, "\n***** WARNING: CPU key check failed, CPU key may not be valid!\n\n");
 			}
 		} else
-			log_printf(0, msg_cpuKeyChars);
+			log_printf(0, "\n******* ERROR: invalid or unexpected characters in CPU key!\n");
 	} else {
 		ret = 0;
-		log_printf(0, msg_cpuKeyLen, str, len);
+		log_printf(0, "\n***** ERROR: unable to set CPU key to '%s', %d is not the correct length, 32 chars required!\n", str, len);
 	}
 	return ret;
 }
@@ -337,11 +289,11 @@ int setCpuKeyStr(char *str)
 int setCpuKey(int level, u8 *key)
 {
 	memcpy(xb.cpuKey, key, 16);
-	log_printf(level, msg_cpuKeySet2);
+	log_printf(level, "CPU Key set to  : ");
 	showKey(level, key);
 	if (!checkZeros(xb.cpuKey, 16) && !checkCpuKey(level, xb.cpuKey))
-		log_printf(level, msg_cpuKeyWarn);
-	log_printf(level, str_newline);
+		log_printf(level, "\n***** WARNING: CPU key check failed, CPU key may not be valid!\n\n");
+	log_printf(level, "\n");
 	return 1;
 }
 
@@ -367,11 +319,18 @@ void setFuseLdv(u8 *fuse, u8 ldv)
 	}
 	setBeU64(cb, fuse + 56);
 	setBeU64(cf, fuse + 64);
-	log_printf(1, msg_fuseLdv);
+	log_printf(1, "Fuse CF LDV set to : 0x");
 	for (i = 0; i < 16; i++)
-		log_printf(1, str_hexByte, fuse[56 + i]);
-	log_printf(1, str_newline);
+		log_printf(1, "%02X", fuse[56 + i]);
+	log_printf(1, "\n");
 }
+
+/* setFuseCpuKey, daeEncrypt and fcrtEncrypt expand their error blocks
+   first, so their strings are arrays in the original's order
+   (-fno-toplevel-reorder emits them here), aligned as literals are (4
+   from 31 bytes, else 1) */
+static const char msg_fuseCpuKey[] __attribute__((aligned(1))) = "Fuse CPU Key set to: 0x";
+static const char msg_fuseNull[] __attribute__((aligned(4))) = "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n";
 
 void setFuseCpuKey(u8 *fuse)
 {
@@ -388,8 +347,8 @@ void setFuseCpuKey(u8 *fuse)
 	setFuseLdv(fuse, xb.cfLdv);
 	log_printf(1, msg_fuseCpuKey);
 	for (i = 32; i < 48; i++)
-		log_printf(1, str_hexByte, fuse[i]);
-	log_printf(1, str_newline);
+		log_printf(1, "%02X", fuse[i]);
+	log_printf(1, "\n");
 }
 
 u32 calcXexKey(void)
@@ -412,12 +371,12 @@ int check1blKey(void)
 	u32 sum2 = calcXexKey();
 
 	if (sum1 == 0x983 && sum2 == 0x800) {
-		log_printf(1, msg_1blKeySet);
+		log_printf(1, "1BL Key set to  : 0x");
 		showKey(1, xb.key1bl);
-		log_printf(1, msg_1blSum, sum1);
-		log_printf(1, msg_xexKeySet);
+		log_printf(1, " sum: 0x%x (expects: 0x983)\n", sum1);
+		log_printf(1, "xex Key set to  : 0x");
 		showKey(1, xb.key28c);
-		log_printf(1, msg_xexSum, sum2);
+		log_printf(1, " sum: 0x%x (expects: 0x800)\n", sum2);
 		return 1;
 	}
 	return 0;
@@ -428,9 +387,9 @@ int set1blKey(u8 *key)
 	memcpy(xb.key1bl, key, 16);
 	if (check1blKey())
 		return 1;
-	log_printf(0, msg_1blBad);
+	log_printf(0, "\n******* ERROR: 1BL key 0x");
 	showKey(0, xb.key1bl);
-	log_printf(0, msg_1blBad2);
+	log_printf(0, " does not appear to be correct!\n");
 	return 0;
 }
 
@@ -446,17 +405,20 @@ int checkKeys(char *str)
 				xb.key1bl[i] = myatox8(p);
 			if (check1blKey())
 				return 1;
-			log_printf(0, msg_1blBadStr, str);
-			log_printf(0, msg_1blBadStr2);
+			log_printf(0, "\n******* ERROR: 1BL key 0x%s ", str);
+			log_printf(0, "does not appear to be correct!\n");
 			return 0;
 		}
-		log_printf(0, msg_1blChars);
+		log_printf(0, "\n******* ERROR: invalid or unexpected characters in 1BL key!\n");
 		return 0;
 	}
-	log_printf(0, msg_1blLen, str, len);
+	log_printf(0, "\n***** ERROR: unable to set 1BL key to '%s', %d is not the correct length, 32 chars required!\n", str, len);
 	return 0;
 }
 
+/* the sums are copied to a type they can't be coalesced with (signed vs
+   unsigned), so the value after the loop is its own pseudo: in registers
+   there (xor'd on the count == 0 path) while the loop's sums stay in memory */
 __attribute__((always_inline))
 static inline void smcSum(u32 *buf, u8 *out, u32 count)
 {
@@ -477,6 +439,9 @@ static inline void smcSum(u32 *buf, u8 *out, u32 count)
 	setBeU64(s2, out + 8);
 }
 
+/* smcPrepare inlines smcSum with the object's flags; the standalone copy
+   skips the late forwprop (it would put the loop bound first in the exit
+   cmp) and reassoc (SWAP32's first add) */
 __attribute__((optimize("no-tree-forwprop", "no-tree-reassoc")))
 void smcChecksum(u32 *buf, u8 *out, u32 count)
 {
@@ -506,13 +471,13 @@ int smcPrepare(u8 *smc, u8 *hash, u32 size)
 
 	memcpy(buf, smc, size);
 	if (!checkZeros(buf + size - 4, 4)) {
-		log_printf(1, msg_smcEncrypted);
+		log_printf(1, "SMC binary appears to be encrypted, attempting to decrypt...");
 		if (unscramble(buf, size)) {
 			memcpy(smc, buf, size);
-			log_printf(1, str_success);
+			log_printf(1, "success!");
 		} else {
-			log_printf(1, str_failed);
-			log_printf(0, msg_smcBad);
+			log_printf(1, "failed!");
+			log_printf(0, "\n******* ERROR: please make sure your provided a valid/decryptable SMC binary!\n\n");
 			if (!(xb.bootFlags & 0x200000))
 				return 1;
 			memcpy(buf, smc, size);
@@ -522,34 +487,34 @@ int smcPrepare(u8 *smc, u8 *hash, u32 size)
 		bad = smcCheck(smc, size, xb.type);
 		if (xb.type == 1) {
 			if (bad) {
-				log_printf(0, msg_smcRetail);
+				log_printf(0, "\n******* ERROR: hacked or unknown SMC binary found? you should use a clean SMC binary for a retail image!\n\n");
 				if (!(xb.bootFlags & 0x200000))
 					return 1;
 			} else
-				log_printf(1, msg_smcCleanType, 1);
+				log_printf(1, "known/clean SMC binary found! type 0x%x\n", 1);
 			xb.bootFlags &= 0xf73fffff;
 		} else if (xb.type > 5) {
 			if (bad)
-				log_printf(0, msg_smcDevkit);
+				log_printf(0, "\n******* WARNING: hacked or unknown SMC binary found? Just a warning, there are a lot of different SMC binaries for devkits!\n\n");
 			else
-				log_printf(1, msg_smcClean);
+				log_printf(1, "known/clean SMC binary found!\n");
 			xb.bootFlags &= 0xf73fffff;
 		} else if (bad) {
 			if (xb.type == 3) {
-				log_printf(1, msg_smcGlitch);
+				log_printf(1, "glitch hack found in SMC binary!\n");
 				xb.bootFlags &= ~0x8000000;
 			} else if (xb.type == 4 || xb.type == 5)
-				log_printf(1, msg_smcHacked);
+				log_printf(1, "\n******* WARNING: hacked or unknown SMC binary found!\n");
 			else
-				log_printf(1, msg_smcJtag);
+				log_printf(1, "jtag hack found in SMC binary!\n");
 		} else {
 			if (xb.type == 3) {
 				if (!(xb.bootFlags & 0x8000000))
-					log_printf(0, msg_smcNoGlitch);
+					log_printf(0, "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for glitch images.\n\n");
 			} else if (xb.type == 4 || xb.type == 5)
-				log_printf(1, msg_smcClean);
+				log_printf(1, "known/clean SMC binary found!\n");
 			else {
-				log_printf(0, msg_smcNoJtag);
+				log_printf(0, "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for JTAG images.\n\n");
 				if (!(xb.bootFlags & 0x200000))
 					return 1;
 			}
@@ -571,7 +536,7 @@ void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
 	memcpy(cb + 16, infoKey0, 16);
 	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
 	if (!zero) {
-		log_printf(1, msg_cbencPairing, pairing[0], pairing[1], pairing[2]);
+		log_printf(1, "CBENC pairing set to: %02x %02x %02x\n", pairing[0], pairing[1], pairing[2]);
 		memcpy(cb + 32, pairing, 3);
 		cb[35] = xb.cbLdv;
 		XeCryptHmacSha(xb.cpuKey, 16, key, 16, cb + 32, 16, salt, 16, cb + 48, 16);
@@ -611,9 +576,9 @@ void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int z
 	memcpy(cbb + 16, infoKey1, 16);
 	ck = !(flags & 1) ? xb.cpuKey : zeroKey;
 	if (flags & 0x800)
-		log_printf(1, msg_dualCb);
+		log_printf(1, "\t**dual CB flag detected!**\n");
 	if (flags & 0x1000) {
-		log_printf(1, msg_cbb15572);
+		log_printf(1, "\t**15572+ CBB crypto method detected!**\n");
 		memcpy(hdr, cba, 16);
 		hdr[6] = 0;
 		hdr[7] = 0;
@@ -629,7 +594,7 @@ void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int z
 		if (!(flags & 1))
 			XeCryptHmacSha(xb.cpuKey, 16, key, 16, cbb + 32, 16, salt, 16, cbb + 48, 16);
 		else
-			log_printf(1, msg_cbbMfg);
+			log_printf(1, "\t** CBB crypto method set to work with mfg CBA!**\n");
 	}
 	XeCryptRc4(key, 16, cbb + 32, size - 32);
 }
@@ -666,6 +631,9 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
 	XeCryptRc4(key, 16, ce + 32, size - 32);
 }
 
+/* The slot index i and the count n are separate (the original computes
+   the last index as trips + 2 but n as (trips + 1) + 1); n is 16-bit, so
+   its add isn't CSE'd with the index's. */
 __attribute__((always_inline))
 inline short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 {
@@ -753,24 +721,6 @@ void kvEncryptAlt(u8 *kv, u32 size)
 	XeCryptRc4(key, 16, kv + 16, size - 16);
 }
 
-int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut)
-{
-	u8 hash[20];
-
-	XeCryptSha(buf + dataOff, size - dataOff, NULL, 0, NULL, 0, hash, 20);
-	if (memcmp(buf + hashOff, hash, hashLen) == 0) {
-		if (hashOut)
-			memcpy(hashOut, hash, 20);
-		return 1;
-	}
-	return 0;
-}
-
-void shaHeader(u8 *buf)
-{
-	XeCryptSha(buf + 20, 0x1ec, NULL, 0, NULL, 0, buf, 20);
-}
-
 static int kvHashOk(u8 *kv, u32 size)
 {
 	u8 ver[2] = { 0x07, 0x12 };
@@ -780,14 +730,18 @@ static int kvHashOk(u8 *kv, u32 size)
 	return memcmp(kv, hash, 16) == 0;
 }
 
+/* The size check comes after the 0x3ff0 fix-up (profile estimated before
+   jump threading: a colder main path makes alt a caller-saved ecx).  The
+   hints and labels give bb-reorder the original's trace order and LRA
+   its spill-slot order (wip/README.md). */
 void kvPrepare(part_t *kv, int alt)
 {
-	const char *file = str_kvBin, *name = str_kv;
+	const char *file = "kv.bin", *name = "kv";
 	u8 *buf, *nbuf;
 
 	if (alt) {
-		file = str_kvAltBin;
-		name = str_altKv;
+		file = "kv_alt.bin";
+		name = "alt kv";
 	}
 	if (kv->size == 0x3ff0) {
 		nbuf = malloc(0x4000);
@@ -798,7 +752,7 @@ void kvPrepare(part_t *kv, int alt)
 		kv->size = 0x4000;
 	}
 	if (__builtin_expect(kv->size != 0x4000, 1)) {
-		log_printf(0, msg_kvSize, file);
+		log_printf(0, "\n******* ERROR: %s is not the correct size! Skipping verification and encryption!\n", file);
 		return;
 	}
 	buf = malloc(0x4000);
@@ -806,24 +760,24 @@ void kvPrepare(part_t *kv, int alt)
 	if (__builtin_expect(!checkZeros(buf, 16), 0)) {
 		if (!kvHashOk(buf, kv->size)) {
 			if (__builtin_expect(checkZeros(buf + 56, 88), 0)) {
-				log_printf(1, msg_kvHash, file);
-				log_printf(0, msg_kvPreDecrypted, file);
+				log_printf(1, "%s appears to be decrypted already, but the hash does not match the CPU key...", file);
+				log_printf(0, "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n", file);
 			} else {
-				log_printf(1, msg_kvEncrypted, file);
+				log_printf(1, "%s appears to be encrypted, attempting to decrypt...", file);
 				memcpy(buf, kv->buf, kv->size);
 				if (!verifyExtended(buf, 0x4000)) {
 				failed: __attribute__((hot));
-					log_printf(1, msg_kvDecryptFail, file);
-					log_printf(0, msg_kvDecryptErr, name, file);
+					log_printf(1, "Failed!\n%s could not be decrypted!\n", file);
+					log_printf(0, "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n", name, file);
 					memcpy(buf, kv->buf, kv->size);
 				} else
-					log_printf(1, str_Success);
+					log_printf(1, "Success!\n");
 			}
 		} else {
 		hashOk: __attribute__((hot));
 		}
 	} else if (!checkZeros(kv->buf + 88, 8))
-		log_printf(0, msg_kvNotDecrypted, file);
+		log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
 	else {
 	zerosOk: __attribute__((hot));
 	}
@@ -842,9 +796,9 @@ void extendedPrepare(part_t *ext)
 
 	if (ext->size != 0x4000) {
 		if (!ext->size)
-			log_printf(1, msg_extMissing);
+			log_printf(1, "******* WARNING: extended.bin was not provided or was invalid! Making up an clean/empty extended.bin!\n");
 		else
-			log_printf(1, msg_extSize);
+			log_printf(1, "******* WARNING: extended.bin is not the correct size! Making up an clean/empty extended.bin!\n");
 		if (ext->buf)
 			free(ext->buf);
 		ext->size = 0x4000;
@@ -853,12 +807,12 @@ void extendedPrepare(part_t *ext)
 	buf = malloc(0x4000);
 	memcpy(buf, ext->buf, 0x4000);
 	if (!checkZeros(buf, 16) && !kvHashOk(buf, ext->size)) {
-		log_printf(1, msg_extEncrypted);
+		log_printf(1, "extended.bin appears to be encrypted, attempting to decrypt...");
 		memcpy(buf, ext->buf, ext->size);
 		if (verifyExtended(buf, 0x4000))
-			log_printf(1, str_Success);
+			log_printf(1, "Success!\n");
 		else {
-			log_printf(1, msg_extDecryptFail);
+			log_printf(1, "Failed!\nextended.bin could not be decrypted, filling clean/empty data.\n");
 			memset(buf, 0, ext->size);
 		}
 	}
@@ -873,9 +827,9 @@ void secdataPrepare(part_t *sd, u8 *date)
 
 	if (sd->size != 0x400) {
 		if (!sd->size)
-			log_printf(1, msg_sdMissing);
+			log_printf(1, "******* WARNING: secdata.bin was not provided or was invalid! Making up an clean/empty secdata.bin!\n");
 		else
-			log_printf(1, msg_sdSize);
+			log_printf(1, "******* WARNING: secdata.bin is not the correct size! Making up an clean/empty secdata.bin!\n");
 		free(sd->buf);
 		sd->size = 0x400;
 		sd->buf = calloc(0x400, 1);
@@ -889,6 +843,19 @@ void secdataPrepare(part_t *sd, u8 *date)
 	XeCryptRc4(key, 16, sd->buf + 16, sd->size - 16);
 }
 
+int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut)
+{
+	u8 hash[20];
+
+	XeCryptSha(buf + dataOff, size - dataOff, NULL, 0, NULL, 0, hash, 20);
+	if (memcmp(buf + hashOff, hash, hashLen) == 0) {
+		if (hashOut)
+			memcpy(hashOut, hash, 20);
+		return 1;
+	}
+	return 0;
+}
+
 void crlEncrypt(u8 *crl, u32 size, u8 *date)
 {
 	u8 *buf = malloc(size);
@@ -899,18 +866,18 @@ void crlEncrypt(u8 *crl, u32 size, u8 *date)
 
 	memcpy(buf, crl, size);
 	if (!shaCheck(crl, size, 12, 20, 336, NULL)) {
-		log_printf(1, msg_crlCrypted);
+		log_printf(1, "crl appears crypted, attempting to decrypt with CPU key...");
 		if (verifyCrl(buf, size, 1)) {
-			log_printf(1, str_successNl);
+			log_printf(1, "success!\n");
 			memcpy(crl, buf, size);
 		} else {
-			log_printf(1, msg_crlRetry);
+			log_printf(1, "failed! Trying alternate key...");
 			memcpy(buf, crl, size);
 			if (verifyCrl(buf, size, 0)) {
-				log_printf(1, str_successNl);
+				log_printf(1, "success!\n");
 				memcpy(crl, buf, size);
 			} else
-				log_printf(1, str_failedNl);
+				log_printf(1, "failed!\n");
 		}
 	}
 	if (shaCheck(crl, size, 12, 20, 336, NULL)) {
@@ -927,7 +894,7 @@ void crlEncrypt(u8 *crl, u32 size, u8 *date)
 		XeCryptAesKey(&aes, xb.cpuKey);
 		XeCryptAesEcb(&aes, key, crl + 304, 1);
 	} else
-		log_printf(0, msg_crlBad);
+		log_printf(0, "\n******* ERROR: crl data appears to be crypted with the wrong key or damaged!\n");
 	free(buf);
 }
 
@@ -952,6 +919,77 @@ void daeEncryptOne(u8 *dae, u32 size, u8 *date)
 	free(buf);
 }
 
+static const char msg_daeBad[] __attribute__((aligned(4))) = "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n";
+static const char msg_daeEncrypted[] __attribute__((aligned(4))) = "dae appears encrypted, attempting to decrypt with CPU key...";
+static const char msg_daeHeader[] __attribute__((aligned(4))) = "\n******* ERROR: dae segment does not have the expected header!\n";
+static const char msg_daeRetry[] __attribute__((aligned(4))) = "failed! Attempting to decrypt with alternate key...\n";
+static const char msg_daeHash[] __attribute__((aligned(4))) = "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n";
+
+/* The `!n` tests are threaded apart into one decrypt sequence per n, which
+   leaves the first-key success shared by both; its own encrypt copy keeps
+   it in one LRA EBB (no reload of off before the encrypt), and crossjumping
+   then merges that copy into the main one.  The asm pins put off's zero in
+   ebx across malloc/memcpy and off in edx in the loop, as the original. */
+void daeEncrypt(u8 *buf, u32 size, u8 *date)
+{
+	u8 *orig = malloc(size);
+	u8 *dae;
+	u32 off = 0;
+	u32 len;
+	int n = 0;
+	__asm__("" : "+b"(off));
+
+	memcpy(orig, buf, size);
+	if (__builtin_expect(size, 1)) do {
+		dae = buf + off;
+		__asm__("" :: "d"(off));
+		if (__builtin_expect(buf[off] != 'D', 0) || __builtin_expect(buf[off + 1] != 'A', 1) || __builtin_expect(buf[off + 2] != 'E', 1) || __builtin_expect(buf[off + 3] != 'P', 1)) {
+			log_printf(0, msg_daeHeader);
+			break;
+		}
+		len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
+		if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
+			if (!n)
+				log_printf(1, msg_daeEncrypted);
+			memcpy(dae, orig + off, len);
+			daeDecrypt(dae, len, 1);
+			if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+				ok: __attribute__((cold));
+				log_printf(1, "success!\n");
+				daeEncryptOne(dae, len, date);
+				n++;
+				goto next;
+			}
+			if (!n)
+				log_printf(1, msg_daeRetry);
+			memcpy(dae, orig + off, len);
+			daeDecrypt(dae, len, 0);
+			if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+				if (!n)
+					log_printf(1, "success!\n");
+			} else {
+				if (!n)
+					log_printf(0, msg_daeHash);
+				n = 0;
+				off = size + 1;
+				goto next;
+			}
+		}
+		daeEncryptOne(dae, len, date);
+		n++;
+	next:
+		off += len;
+	} while (off < size);
+	if (n != 2) {
+		log_printf(0, msg_daeBad);
+	}
+	free(orig);
+}
+
+static const char msg_fcrtSize[] __attribute__((aligned(4))) = "****** ERROR: FCRT encrypt invalid size!\n";
+static const char msg_fcrtOffset[] __attribute__((aligned(4))) = "**** ERROR: FCRT encrypt invalid offset!\n";
+static const char msg_fcrtBad[] __attribute__((aligned(4))) = "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n";
+
 void fcrtEncrypt(u8 *fcrt, u32 size)
 {
 	u8 iv[16];
@@ -975,4 +1013,9 @@ void fcrtEncrypt(u8 *fcrt, u32 size)
 		XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
 	} else
 		log_printf(1, msg_fcrtOffset);
+}
+
+void shaHeader(u8 *buf)
+{
+	XeCryptSha(buf + 20, 0x1ec, NULL, 0, NULL, 0, buf, 20);
 }
