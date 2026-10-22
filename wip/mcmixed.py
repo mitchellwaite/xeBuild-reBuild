@@ -60,7 +60,9 @@ def main():
     body = []
     for name in fns:
         if name in want:
-            body.append(re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, fns[name]))
+            # asm templates and constraints aren't data
+            body.append('\n'.join(l if '__asm__' in l else re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, l)
+                                  for l in fns[name].split('\n')))
 
     def show(s):
         c = s.encode('unicode_escape').decode('latin1').replace('"', '\\"')

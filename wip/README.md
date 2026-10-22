@@ -1018,45 +1018,28 @@ build showed it (`.text` 0x10 longer); compare jump targets before
 building: `python wip/jcmp.py wip/app/mode_client.c <fn>` diffs `objdump`
 offsets and internal jump targets of a `gcc -c` object against the exe.
 
+`clientBinPatch` matched (built): `const u8 *data` (the caller's `u8 *`
+vs inlined patchNand's `const u8 *` kept them apart in out-of-SSA, so data
+was copied into a second stack slot) and the memcpy/patchNand choice as
+`switch (cinfo->nandSize) { default: patchNand; break; case 0x3000000:
+memcpy; }` (the original's layout needs a 50% branch; `==` predicts 28%)
+fix registers, slots and layout.  The last register (after patchNand's
+512-byte loop LRA reloads `len - 512` into esi, gcc picked edi) is a tie in
+LRA's `find_hard_regno_for_1`: no cost or preference separates esi and
+edi, so it takes esi only if `lra_hard_reg_usage[esi] <= [edi]`.  Usage
+counts hard-register references too, so before "Done!" two
+`{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }`
+add four edi refs at that block's frequency (code-free; one pair is too
+little, three refs flip a tail-copy reload instead).  That also flips the
+earlier start/count reload pair (tfreq 372 each, start's thread first by
+regno), which decides on the same esi-vs-edi comparison; an extra
+`__asm__("" :: "r"(count))` before netWriteBlocks raises count's thread
+frequency so it is assigned first and takes esi.  Read the order and
+assignments in `-fdump-rtl-reload-details` ("Assigning to ... tfreq").
+Expect sweeps (pairs over all 11 conditions, 55-95) never got below 8 lines.
+
 Still off:
 
-- `clientBinPatch` (9 lines): `const u8 *data` (the caller's `u8 *` vs
-  inlined patchNand's `const u8 *` kept them apart in out-of-SSA, so data
-  was copied into a second stack slot) and the memcpy/patchNand choice as
-  `switch (cinfo->nandSize) { default: patchNand; break; case 0x3000000:
-  memcpy; }` (the original's layout needs a 50% branch; `==` predicts
-  28%, `__builtin_expect` with `builtin-expect-probability=50` is the only
-  `if` that matches) fix registers, slots and layout.  Left: after
-  patchNand's 512-byte loop LRA reloads `len - 512` into edi where the
-  original uses esi.  It's a tie between esi and edi broken by
-  frequency-weighted register usage (`register_usage_leveling`), so some
-  block frequency still differs.  Declaration order, local types,
-  patchNand spellings that still match, error-first branch flips and pins
-  on `file`/`off`/`count`/`start` didn't move it.  An unguarded
-  `__asm__("" :: "D"(file), "S"(off))` was needed before `const data` and
-  isn't now.  Forcing 50% (expect + param) on each other branch, or
-  sweeping their probability, never removes it; manual inlining of the
-  patch loops (instead of the patchNand call) is much worse.
-  Located with `-fdump-rtl-reload-details`: the register is LRA's
-  inheritance pseudo for `len - 512` (orig `_77`, live only over the four
-  post-loop insns). Nothing conflicting holds esi or edi there and no
-  conflicting reload prefers either, so `find_hard_regno_for_1` falls
-  through to `lra_hard_reg_usage` (the frequency-weighted sum of pseudos
-  already in each register; esi is tried first and needs usage <= edi).
-  Estimated at that point: esi ~8000, edi ~7750. Things that keep edi
-  (probe: which register reloads `[esp+76]`): `__builtin_expect` at each
-  of the 11 conditions with probability 5..95 in both directions;
-  `inline`/`always_inline` on patchNand (it is IPA-inlined, growth 38 >
-  early-inlining-insns; always_inline is worse); every order of the copy
-  loop's increments and a `for` form; int/u32 types for len, rlen, off,
-  rem, start and count; `off %= bs` spellings; about 50 per-function
-  `optimize` flags (RA, sched, cse, gcse, loop); and the params
-  lra-inheritance-ebb-probability-cutoff, ira-loop-reserved-regs and
-  max-predicted-iterations. `"D"(file)` pins (guarded or not) change
-  IRA's allocation everywhere (100+ lines). One lead left: LRA assigns
-  reload threads in order of thread frequency. If the `nand` reload
-  thread (edi, tfreq 180) went before this one (tfreq 280), edi's usage
-  would pass esi's by about 20.
 - `mode_client` (about 410): only `-rb` calls getArgs; the other options
   check their arguments inline with different `||` orders and loads
   hoisted above the argc test in some (see the asm).  The `-bp`/`-wb`

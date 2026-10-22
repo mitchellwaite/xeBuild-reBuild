@@ -499,8 +499,14 @@ void clientBinPatch(const char *file, const char *soff)
 					case 0x3000000:
 						memcpy(nand + rem, data, len);
 					}
+					/* code-free hints: edi refs raise LRA's edi usage so the
+					   post-loop len - 512 reload takes esi; the count use
+					   orders its reload thread before start's (count esi) */
+					{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }
+					{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }
 					log_printf(0, "Done!\n");
 					log_printf(0, "Writing 0x%x blocks from console starting at block 0x%x...\n", count, start);
+					__asm__("" :: "r"(count));
 					if (netWriteBlocks(nand, rlen, start, count))
 						log_printf(0, "Success! Completed patching NAND!\n");
 					else

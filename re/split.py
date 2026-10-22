@@ -329,7 +329,10 @@ SYMBOLS = {
     0x44f2b0: '_mc_44f2b0', 0x44f2b8: '_mc_44f2b8', 0x44f2f0: '_mc_44f2f0',
     0x44f330: '_mc_44f330', 0x44f384: '_mc_44f384', 0x44f3f0: '_mc_44f3f0',
     0x44f434: '_mc_44f434', 0x44f464: '_mc_44f464', 0x44f494: '_mc_44f494',
-    0x44f4e8: '_mc_44f4e8', 0x44f684: '_mc_44f684', 0x44f6d5: '_mc_44f6d5',
+    0x44f4e8: '_mc_44f4e8', 0x44f510: '_mc_44f510', 0x44f52c: '_mc_44f52c',
+    0x44f570: '_mc_44f570', 0x44f594: '_mc_44f594', 0x44f5d0: '_mc_44f5d0',
+    0x44f5f4: '_mc_44f5f4', 0x44f628: '_mc_44f628',
+    0x44f684: '_mc_44f684', 0x44f6d5: '_mc_44f6d5',
     0x44f6eb: '_mc_44f6eb', 0x44f6f8: '_mc_44f6f8', 0x44f724: '_mc_44f724',
     0x446c90: '___main',
     # app/consoleinfo (src/app/consoleinfo.c); names are ours
@@ -722,11 +725,11 @@ C_FUNCS = {
     0x414960, 0x415ef0, 0x4160d0,            # findAnchor remapBadBlocks copyMmcImage
     0x414650, 0x414e90, 0x414760,            # listFlashFiles scanMobiles fsGetFile
     0x416aa0,                                # detectController
-    # app/mode_client (client_usage: switch table; clientKeys, clientBinPatch, mode_client stay asm)
+    # app/mode_client (client_usage: switch table; clientKeys, mode_client stay asm)
     0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches
     0x4076b0, 0x407850, 0x407a00, 0x408080,  # clientReadBlocks clientWriteBlocks patchNand clientEraseBlock
-    0x408160, 0x406e50,                      # getArgs checkPatches
+    0x408160, 0x406e50, 0x407bf0,            # getArgs checkPatches clientBinPatch
     # app/net (the rest are drafted in wip/app/net.c)
     0x41ea70, 0x41ed50, 0x41ed70, 0x41edb0,  # netFree netTimerStart netTimerEnd netTimerElapsed
     0x41ede0, 0x41f1a0, 0x41f330, 0x41f390,  # netSendStr netSendData netCheckOk netOpenSocket

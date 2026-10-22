@@ -11,7 +11,6 @@
 
 .intel_syntax noprefix
 .globl _cinfo
-.globl _clientBinPatch
 .globl _clientKeys
 .globl _client_usage
 .globl _mc_44e10c
@@ -121,6 +120,13 @@
 .globl _mc_44f464
 .globl _mc_44f494
 .globl _mc_44f4e8
+.globl _mc_44f510
+.globl _mc_44f52c
+.globl _mc_44f570
+.globl _mc_44f594
+.globl _mc_44f5d0
+.globl _mc_44f5f4
+.globl _mc_44f628
 .globl _mc_44f684
 .globl _mc_44f6d5
 .globl _mc_44f6eb
@@ -498,342 +504,7 @@ L_407841:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_clientBinPatch:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,108
-          mov EAX,DWORD PTR [_cinfo]
-          mov EDI,DWORD PTR [ESP+128]
-          mov EBP,DWORD PTR [EAX+20]
-          mov EBX,DWORD PTR [EAX+24]
-          mov EAX,DWORD PTR [ESP+132]
-          mov DWORD PTR [ESP+4],4294967295
-          mov DWORD PTR [ESP],EAX
-          call _myatoh32
-          mov ECX,DWORD PTR [_cinfo]
-          mov ESI,EAX
-          mov EDX,DWORD PTR [ECX+20]
-          cmp EDX,50331648
-          je L_407c53
-          mov EBX,1041204193
-          mov EAX,EDX
-          mul EBX
-          shr EDX,12
-          shl EDX,14
-          mov EBP,EDX
-          mov EDX,DWORD PTR [ECX+24]
-          mov EAX,EDX
-          mul EBX
-          mov EBX,EDX
-          shr EBX,12
-          shl EBX,14
-L_407c53:
-          cmp ESI,-1
-          je L_407d60
-          mov EAX,DWORD PTR [ESP+132]
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44f510
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+12],EAX
-          call _log_printf
-          lea EAX,DWORD PTR [ESP+88]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EAX
-          call _FileToBuffer
-          test EAX,EAX
-          mov DWORD PTR [ESP+44],EAX
-          je L_407d40
-          mov ECX,DWORD PTR [ESP+88]
-          test ECX,ECX
-          je L_407d40
-          lea EAX,DWORD PTR [ESI+ECX*1]
-          cmp EBP,EAX
-          jbe L_407f20
-          mov EAX,ESI
-          xor EDX,EDX
-          mov DWORD PTR [ESP+4],OFFSET L_44f52c
-          div EBX
-          mov DWORD PTR [ESP],0
-          mov ESI,EDX
-          mov EAX,EDX
-          xor EDX,EDX
-          div EBX
-          xor EDX,EDX
-          mov DWORD PTR [ESP+48],EAX
-          lea EAX,DWORD PTR [ECX+ESI*1]
-          div EBX
-          mov EBX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+16],EBX
-          mov DWORD PTR [ESP+12],EBX
-          cmp EDX,1
-          sbb EAX,-1
-          mov EDI,EAX
-          mov DWORD PTR [ESP+60],EAX
-          mov DWORD PTR [ESP+8],EDI
-          call _log_printf
-          lea EAX,DWORD PTR [ESP+92]
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EAX
-          call _netReadBlocks
-          test EAX,EAX
-          mov DWORD PTR [ESP+56],EAX
-          je L_407d1f
-          mov EAX,DWORD PTR [ESP+92]
-          test EAX,EAX
-          jne L_407d80
-L_407d1f:
-          mov DWORD PTR [ESP+4],OFFSET L_44f5f4
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_407d40:
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET _mc_44f4e8
-          mov DWORD PTR [ESP],0
-          call _log_printf
-L_407d58:
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_407d60:
-          mov DWORD PTR [ESP+4],OFFSET _mc_44f684
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_407d80:
-          mov DWORD PTR [ESP+4],OFFSET L_44f570
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [_cinfo]
-          cmp DWORD PTR [EAX+20],50331648
-          je L_407f45
-          mov EDI,DWORD PTR [ESP+56]
-          cmp ESI,511
-          mov EBX,DWORD PTR [ESP+88]
-          lea EDX,DWORD PTR [EDI+512]
-          jle L_408054
-          sub ESI,512
-          mov EAX,ESI
-          shr EAX,9
-          lea ECX,DWORD PTR [EAX+1]
-          shl EAX,9
-          sub ESI,EAX
-          imul ECX,ECX,528
-          add EDI,ECX
-          add EDX,ECX
-          mov DWORD PTR [ESP+64],EDI
-L_407de1:
-          test ESI,ESI
-          jne L_407fd0
-L_407de9:
-          cmp EBX,511
-          jle L_407ea1
-          lea EAX,DWORD PTR [EBX-512]
-          mov EBP,DWORD PTR [ESP+44]
-          mov EBX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+76],EAX
-          shr EAX,9
-          mov DWORD PTR [ESP+68],EAX
-          add EAX,1
-          imul EAX,EAX,528
-          mov DWORD PTR [ESP+72],EAX
-          add EAX,EDX
-          mov DWORD PTR [ESP+52],EAX
-L_407e21:
-          mov EAX,DWORD PTR [EBP]
-          lea EDI,DWORD PTR [EBX+4]
-          mov ECX,EBX
-          mov ESI,EBP
-          add EBP,512
-          and EDI,4294967292
-          mov DWORD PTR [EBX],EAX
-          mov EAX,DWORD PTR [EBP-4]
-          sub ECX,EDI
-          sub ESI,ECX
-          add ECX,512
-          shr ECX,2
-          mov DWORD PTR [EBX+508],EAX
-          rep movsd 
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EBX
-          add EBX,528
-          mov DWORD PTR [ESP+40],EDX
-          call _calcPageEcc
-          mov EDX,DWORD PTR [ESP+40]
-          add EDX,528
-          cmp EDX,DWORD PTR [ESP+52]
-          jne L_407e21
-          mov ESI,DWORD PTR [ESP+76]
-          mov EAX,DWORD PTR [ESP+68]
-          mov EBX,ESI
-          shl EAX,9
-          sub EBX,EAX
-          mov EAX,ESI
-          mov ESI,DWORD PTR [ESP+44]
-          and EAX,4294966784
-          lea EAX,DWORD PTR [ESI+EAX*1+512]
-          mov ESI,DWORD PTR [ESP+72]
-          add DWORD PTR [ESP+64],ESI
-          mov DWORD PTR [ESP+44],EAX
-L_407ea1:
-          test EBX,EBX
-          jne L_407f90
-L_407ea9:
-          mov DWORD PTR [ESP+4],OFFSET _mc_44f2b0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EDI,DWORD PTR [ESP+48]
-          mov ESI,DWORD PTR [ESP+60]
-          mov DWORD PTR [ESP+4],OFFSET L_44f594
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+12],EDI
-          mov DWORD PTR [ESP+8],ESI
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+92]
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESP],EAX
-          call _netWriteBlocks
-          test EAX,EAX
-          je L_407f70
-          mov DWORD PTR [ESP+4],OFFSET L_44f5d0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_407d58
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_407f20:
-          mov DWORD PTR [ESP+16],EBP
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_44f628
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_407d58
-L_407f45:
-          mov EAX,DWORD PTR [ESP+88]
-          add ESI,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP],ESI
-          mov DWORD PTR [ESP+4],EAX
-          call _memcpy
-          jmp L_407ea9
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_407f70:
-          mov DWORD PTR [ESP+4],OFFSET _mc_44f464
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_407d58
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_407f90:
-          cmp EBX,4
-          jae L_408025
-          test EBX,EBX
-          je L_407fb3
-          mov EAX,DWORD PTR [ESP+44]
-          mov EDI,DWORD PTR [ESP+64]
-          test BL,2
-          movzx EAX,BYTE PTR [EAX]
-          mov BYTE PTR [EDI],AL
-          jne L_40805d
-L_407fb3:
-          mov EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          call _calcPageEcc
-          jmp L_407ea9
-          nop
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_407fd0:
-          mov EDI,DWORD PTR [ESP+64]
-          mov EAX,DWORD PTR [ESP+44]
-          mov EBP,512
-          sub EBP,ESI
-          mov DWORD PTR [ESP+40],EDX
-          mov DWORD PTR [ESP+8],EBP
-          sub EBX,EBP
-          add ESI,EDI
-          mov DWORD PTR [ESP+4],EAX
-          mov DWORD PTR [ESP],ESI
-          call _memcpy
-          mov EDX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EDX
-          call _calcPageEcc
-          mov EDX,DWORD PTR [ESP+40]
-          mov EAX,EDI
-          add DWORD PTR [ESP+44],EBP
-          add EAX,528
-          mov DWORD PTR [ESP+64],EAX
-          add EDX,528
-          jmp L_407de9
-L_408025:
-          mov EBP,DWORD PTR [ESP+44]
-          mov ESI,DWORD PTR [ESP+64]
-          mov EAX,DWORD PTR [EBP]
-          lea EDI,DWORD PTR [ESI+4]
-          mov ECX,ESI
-          and EDI,4294967292
-          mov DWORD PTR [ESI],EAX
-          mov EAX,DWORD PTR [EBP+EBX*1-4]
-          sub ECX,EDI
-          mov DWORD PTR [ESI+EBX*1-4],EAX
-          mov ESI,EBP
-          sub ESI,ECX
-          add ECX,EBX
-          shr ECX,2
-          rep movsd 
-          jmp L_407fb3
-L_408054:
-          mov DWORD PTR [ESP+64],EDI
-          jmp L_407de1
-L_40805d:
-          mov EAX,DWORD PTR [ESP+44]
-          mov EDI,DWORD PTR [ESP+64]
-          movzx EAX,WORD PTR [EAX+EBX*1-2]
-          mov WORD PTR [EDI+EBX*1-2],AX
-          jmp L_407fb3
+#@C _clientBinPatch
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -1912,22 +1583,22 @@ _mc_44f494:
           .string "\n\n***** ERROR: File %s size (0x%x) is not a multiple of console block size (0x%x)!\n"
 _mc_44f4e8:
           .string "\n\n***** ERROR: Unable to read file %s!\n"
-L_44f510:
+_mc_44f510:
           .string "file: %s start offset 0x%x\n"
-L_44f52c:
+_mc_44f52c:
           .string "Reading 0x%x blocks from console starting at block 0x%x (%d)...\n"
           .zero 3
-L_44f570:
+_mc_44f570:
           .string "Success!\nPatching in binary data..."
-L_44f594:
+_mc_44f594:
           .string "Writing 0x%x blocks from console starting at block 0x%x...\n"
-L_44f5d0:
+_mc_44f5d0:
           .string "Success! Completed patching NAND!\n"
           .zero 1
-L_44f5f4:
+_mc_44f5f4:
           .string "\n\n***** ERROR: Reading data from console failed!\n"
           .zero 2
-L_44f628:
+_mc_44f628:
           .string "\n\n***** ERROR: File %s size patched into offset 0x%x will exceed NAND system area (0x%x)!\n"
           .zero 1
 _mc_44f684:

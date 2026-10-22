@@ -147,6 +147,13 @@ extern const char mc_44f434[];	/* "Done! Wrote 0x%x (%d) bytes to conso..." */
 extern const char mc_44f464[];	/* "\n\n***** ERROR: Writing data to con..." */
 extern const char mc_44f494[];	/* "\n\n***** ERROR: File %s size (0x%x)..." */
 extern const char mc_44f4e8[];	/* "\n\n***** ERROR: Unable to read file..." */
+extern const char mc_44f510[];	/* "file: %s start offset 0x%x\n" */
+extern const char mc_44f52c[];	/* "Reading 0x%x blocks from console sta..." */
+extern const char mc_44f570[];	/* "Success!\nPatching in binary data..." */
+extern const char mc_44f594[];	/* "Writing 0x%x blocks from console sta..." */
+extern const char mc_44f5d0[];	/* "Success! Completed patching NAND!\n" */
+extern const char mc_44f5f4[];	/* "\n\n***** ERROR: Reading data from c..." */
+extern const char mc_44f628[];	/* "\n\n***** ERROR: File %s size patche..." */
 extern const char mc_44f684[];	/* "\n\n***** ERROR: Invalid arguments s..." */
 extern const char mc_44f6d5[];	/* "erasing block 0x%x..." */
 extern const char mc_44f6eb[];	/* "Success!\n" */
@@ -440,6 +447,64 @@ void patchNand(u8 *buf, int off, const u8 *data, int len)
 		memcpy(buf, data, len);
 		calcPageEcc(buf, spare);
 	}
+}
+
+void clientBinPatch(const char *file, const char *soff)
+{
+	u32 size = cinfo->nandSize;
+	u32 bs = cinfo->blockSize;
+	u32 off, rem, start, count;
+	size_t len;
+	int rlen;
+	const u8 *data;
+	u8 *nand;
+
+	off = myatoh32(soff, -1);
+	if (cinfo->nandSize != 0x3000000) {
+		size = cinfo->nandSize / 0x4200 * 0x4000;
+		bs = cinfo->blockSize / 0x4200 * 0x4000;
+	}
+	if (off != -1) {
+		log_printf(0, mc_44f510, file, soff);
+		data = FileToBuffer(file, &len);
+		if (data && len) {
+			if (off + len < size) {
+				rem = off % bs;
+				start = rem / bs;
+				count = (len + rem) / bs;
+				if ((len + rem) % bs)
+					count++;
+				log_printf(0, mc_44f52c, count, start, start);
+				nand = netReadBlocks(&rlen, start, count);
+				if (nand && rlen) {
+					log_printf(0, mc_44f570);
+					switch (cinfo->nandSize) {
+					default:
+						patchNand(nand, rem, data, len);
+						break;
+					case 0x3000000:
+						memcpy(nand + rem, data, len);
+					}
+					/* code-free hints: edi refs raise LRA's edi usage so the
+					   post-loop len - 512 reload takes esi; the count use
+					   orders its reload thread before start's (count esi) */
+					{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }
+					{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }
+					log_printf(0, mc_44f2b0);
+					log_printf(0, mc_44f594, count, start);
+					__asm__("" :: "r"(count));
+					if (netWriteBlocks(nand, rlen, start, count))
+						log_printf(0, mc_44f5d0);
+					else
+						log_printf(0, mc_44f464);
+				} else
+					log_printf(0, mc_44f5f4);
+			} else
+				log_printf(0, mc_44f628, file, off, size);
+		} else
+			log_printf(0, mc_44f4e8, file);
+	} else
+		log_printf(0, mc_44f684);
 }
 
 void clientEraseBlock(const char *sblock)
