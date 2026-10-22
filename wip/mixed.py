@@ -59,8 +59,11 @@ def strings(lo, hi):
     return out
 
 
-FN = re.compile(r'\n((?:/\*[^\n]*\*/\n)?((?:static )?(?:inline )?(?:__attribute__\(\([\w, ]+\)\) )?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n', re.S)
-ATTR = re.compile(r'__attribute__\(\([\w, ]+\)\) ')
+# __attribute__((noinline, noclone)) or ((optimize("no-early-inlining"))),
+# before the type or on a line of its own
+AT = r'__attribute__\(\((?:[\w, ]|"[^"\n]*"|\([^()\n]*\))+\)\)[ \n]'
+FN = re.compile(r'\n((?:/\*[^\n]*\*/\n)?((?:%s)?(?:static )?(?:inline )?(?:%s)?[^\n;{}#]*?\b(\w+)\([^;{]*\))\n\{.*?\n\})\n' % (AT, AT), re.S)
+ATTR = re.compile(AT)
 SIG = re.compile(r'(?:/\*[^\n]*\*/\n)?(.*?\))\n\{', re.S)
 
 
@@ -90,8 +93,9 @@ def main():
     body = []
     for name in fns:
         if name in want or name in cfg['inline']:
-            # asm templates and constraints aren't strings in the .s
-            body.append('\n'.join(l if '__asm__' in l else re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, l)
+            # asm templates and constraints and attribute arguments aren't
+            # strings in the .s
+            body.append('\n'.join(l if '__asm__' in l or '__attribute__' in l else re.sub(r'([^\n"]*?)"((?:[^"\\]|\\.)*)"', lit, l)
                                   for l in fns[name].split('\n')))
 
     ext = ['static const char %s[] = "%s";' % (used[a], lits[a]) for a in sorted(used)]

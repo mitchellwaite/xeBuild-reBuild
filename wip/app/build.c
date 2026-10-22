@@ -544,19 +544,35 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 		xb.kernel = k;
 }
 
+/* checkBl's guarded hint call (PRED_CALL); inlined later, its store goes */
+static void cb_hint(int *p)
+{
+	*p = 1;
+}
+
 /* check a bootloader's magic and size and (with its header's per-console
    fields cleared) its crc32 against the ini's; -1 skips the crc for the
    SC/SD/SE that are built rather than read */
+__attribute__((optimize("no-early-inlining")))
 int checkBl(u8 *bl, u32 size, int type, u32 crc)
 {
 	u32 blsize, c;
-	int m;
+	int m, dead;
 
+	/* hints (none emit code): the original copies the epilogue into the
+	   size-error block, which needs that edge >= 10% of entry, and not into
+	   the crc failure one, which needs it below. The hot label and cb_hint
+	   (on the other edge) take the size error from 1.7% to 19%, the crc
+	   expects (build.sh's probability 99) keep `bad` under 10%, and the "D"
+	   pin loads type before the first call as the original does. */
+	__asm__("" : : "D"(type));
 	blsize = getBeU32(bl + 12);
 	if (blsize > size) {
+		size_err: __attribute__((hot));
 		log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
 		return -3;
 	}
+	cb_hint(&dead);
 	m = bl[0];
 	__asm__("" :: "a"(m));
 	if ((m & 0x43) != 0x43)
@@ -570,7 +586,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x30);
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		break;
 	case 7:
@@ -579,7 +595,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		break;
 	case 8:
@@ -588,7 +604,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
 		break;
@@ -599,7 +615,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 			goto magic;
 		memset(bl + 0x20, 0, 0x210);
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
 		break;
@@ -610,7 +626,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		break;
 	case 12:
@@ -620,7 +636,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		break;
 	case 13:
@@ -630,7 +646,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		break;
 	case 14:
@@ -642,7 +658,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (__builtin_expect(crc != c, 0))
 			goto bad;
 		break;
 	default:

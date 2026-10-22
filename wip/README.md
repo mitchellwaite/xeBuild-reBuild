@@ -1462,7 +1462,25 @@ only shows in `sh build.sh`.
   chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
   `common & failed` with `and`, and its loadCommonFile tail call is a
   separate return. Two shapes tried (early returns, `r = 0`).
-- checkBl (14): structure right (the SE case's dead extra crc32 call is in
+- checkBl: fncmp MATCH (2026-10-22, probability 98) but the link is 16
+  bytes short: the original aligns the crc-failure (`bad`) block
+  (`.p2align 4,,10`, so the next case block's padding goes too). Hints:
+  hot label on the size error plus a guarded `cb_hint` call on the other
+  edge (1.7% -> 19%, over the copy threshold), `__builtin_expect` on every
+  `crc != c` (keeps `bad` under it), a `"D"(type)` pin. `bad` is aligned
+  only as a "loop head" (it has a fallthru pred, the B case): needs
+  branch freq > 4 x fallthru and their sum > 100 (1% of entry). Ours: only
+  3 crc-fail edges branch there (others share tails), ratio 3, sum ~55;
+  the switch default adds nothing (its block gets freq 0 at expand) but
+  its 10% stale share makes `bad` > 1000 if crc fails are any likelier.
+  A `(unsigned)(type - 5) > 16` pre-check (expect 0) instead of the
+  default fixes the frequencies, but with 9 switch edges instead of 10
+  the case-block ties (fibheap) come out in another order (18 lines);
+  moving `case 12` last fixes that but loses a duplicated `crc == -1`
+  test after the SE raiseKernel (2 lines). align-threshold /
+  align-loop-iterations params would do it but move other functions'
+  alignment. Earlier notes:
+  structure right (the SE case's dead extra crc32 call is in
   the source); an `asm("" :: "a"(m))` on bl[0] gives the original's
   registers. Left: the original copies the epilogue into the size-error
   (-3) block, not the crc-failure one. In ours the -3 block is colder
