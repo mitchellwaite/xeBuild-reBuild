@@ -1109,6 +1109,38 @@ Still off:
   - Inline limits: getArgs at `-wb` has growth 43 (> max-inline-insns-auto
     40), `-rb` 62.  Any per-file `max-inline-insns-auto` other than 40
     breaks clientKeys (dumpKey inlining), so a limit param is out.
+  - Whole object (2026-10-22): every other function matches when the draft
+    is compiled as one file (client_usage and clientKeys included), and its
+    `.rdata` string order is the original's except "failed!\n"
+    (clientInfo) and "Unable to read file %s!" (filelist_ini's ordered
+    string arrays fix those).  mode_client is the only blocker.
+  - Best so far, 138 lines: the `goto fail` tail above plus 50% expects
+    (param 50) on -bp, -wb, -eb, -e, -c, `mode && arg`, the switch-path
+    `netConnect` and the trailing `if (reboot)`; found by a greedy search
+    over every condition seeded with the notes' set.  Left: the `mode &&
+    arg` false path should fall through (orig) but the switch path does,
+    -bp/-wb's `a` register, one duplicated netDisconnect, and the cold
+    block order at the end.  Other tail spellings (one netConnect, `goto
+    done`, if/else flips) are 164-270.
+  - Not getArgs at every option: the original's -bp reloads `argv[i + 1]`
+    after storing i, which hand-written checks give and an inlined getArgs
+    (a `static inline` copy) can't (after inlining `start` is a local
+    argv can't point to).  The copy at -bp/-wb/-eb/-ip is 269 unhinted but
+    worse than the hand-written form once hinted (needs -fno-ipa-icf: ICF
+    folds getArgs into the copy and inlines -rb too).  A `pure` strnicmp
+    (no PRED_CALL on the next-option edges) is 1072.
+  - Crafted profile (`wip/mcfdo.py`, `wip/mcfdo_search.py`, re/gcda.py
+    `--threshold`): mode_client's entry is < 1/1000 of the loop, so every
+    block must be hot and the default threshold overflows the counts (ICE
+    in create_edge); `--threshold=64` works.  NOPROF on clientEraseBlock
+    stops its inlining into mode_client's case 10 (+63 lines), so it gets
+    counts too.  With no overrides the profile build is 208 lines for the
+    138-line hinted source: profile mode orders the cold switch cases and
+    error blocks differently (not a count-resolution issue, thresholds
+    64-8000 agree).  The greedy override search from the plain draft
+    stopped at 273.  Compile from the same path as the instrumented
+    compile: otherwise gcc drops the profile (`coverage-mismatch`), with
+    no message when the .gcda is just missing.
 
 ## app/net.c
 

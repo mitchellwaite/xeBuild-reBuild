@@ -2,6 +2,7 @@
 
 python re/gcda.py <x.gcno> <x.c.042t.profile_estimate> <out.gcda>
                    [fn:src>dst=prob ... | @file] [--only=fn,fn] [--src=file.c]
+                   [--threshold=N]
 
 The .gcno (and the dump, with -fdump-tree-profile_estimate-blocks-details)
 come from one compile with the object's flags plus -fprofile-arcs
@@ -269,6 +270,12 @@ def main():
             continue
         if a.startswith('--src='):
             srcfile = a[6:]
+            continue
+        if a.startswith('--threshold='):
+            # a smaller hot threshold when every block must be hot and the
+            # smallest flow is tiny (counts * 10000 must still fit 64 bits)
+            global THRESHOLD
+            THRESHOLD = int(a[12:])
             continue
         m = re.match(r'(\w+):(\d+)>(\d+)=([\d.]+)$', a)
         over.setdefault(m.group(1), {})[(int(m.group(2)), int(m.group(3)))] = float(m.group(4))
