@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **576 of 617** (573 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **577 of 617** (574 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 17 / 25 | 391 / 432 |
+| `app/` | 17 / 25 | 392 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -41,7 +41,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/image_write` | mixed; 0 of 7 drafted functions match in `wip/app/image_write.c` | 39 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
-| `app/net` | mixed; 0 of 4 drafted functions match in `wip/app/net.c` | 28 / 32 |
+| `app/net` | mixed; 0 of 3 drafted functions match in `wip/app/net.c` | 29 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
 | `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
 
@@ -228,7 +228,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/net</code>: 28 / 32 in C</summary>
+<summary><code>app/net</code>: 29 / 32 in C</summary>
 
 - ⬜ `netRecv` (0x41e800) (draft in `wip/`, no match yet)
 - ✅ `netFree` (0x41ea70)
@@ -237,7 +237,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `netTimerEnd` (0x41ed70)
 - ✅ `netTimerElapsed` (0x41edb0)
 - ✅ `netSendStr` (0x41ede0)
-- ⬜ `netRecvVerbose` (0x41ee30) (draft in `wip/`, no match yet)
+- ✅ `netRecvVerbose` (0x41ee30)
 - ✅ `netSendData` (0x41f1a0)
 - ✅ `netCheckOk` (0x41f330)
 - ✅ `netOpenSocket` (0x41f390)

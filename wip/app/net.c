@@ -212,8 +212,11 @@ int netSendStr(const char *s)
 	return 1;
 }
 
-/* netRecv with progress output */
-u8 *netRecvVerbose(int *len, int verbose)
+/* netRecv with progress output.  verbose is unsigned: as an int, uncprop
+   reuses it for got's 0 and keeps it in a register.  The hints (with
+   builtin-expect-probability=60) start the verbose loop's trace before the
+   shared recv-failure block and leave its size <= 0 exit unaligned. */
+u8 *netRecvVerbose(int *len, u32 verbose)
 {
 	fd_set fds;
 	struct timeval tv;
@@ -244,7 +247,7 @@ u8 *netRecvVerbose(int *len, int verbose)
 		return (u8 *)&netEmpty;
 	}
 	buf = calloc(size, 1);
-	if (verbose)
+	if (__builtin_expect(verbose, 0))
 		printf("waiting for 0x%x bytes\n", size);
 	got = 0;
 	while (got < size) {
@@ -257,7 +260,7 @@ u8 *netRecvVerbose(int *len, int verbose)
 		}
 		r = recv(netSock, (char *)buf + got, size - got, 0);
 		if (r == SOCKET_ERROR) {
-			if (verbose)
+			if (__builtin_expect(verbose, 0))
 				putchar('\n');
 			log_printf(0, "could not receive data on socket, error %d\n", WSAGetLastError());
 			if (buf != (u8 *)&netEmpty)
@@ -265,16 +268,16 @@ u8 *netRecvVerbose(int *len, int verbose)
 			return NULL;
 		}
 		got += r;
-		if (verbose)
+		if (__builtin_expect(verbose, 0))
 			printf("received 0x%08x of 0x%08x\r", got, size);
 	}
-	if (verbose)
+	if (__builtin_expect(verbose, 0))
 		putchar('\n');
 	if (got == size) {
 		*len = size;
 		return buf;
 	}
-	if (verbose)
+	if (__builtin_expect(verbose, 0))
 		putchar('\n');
 	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 	if (buf != (u8 *)&netEmpty)

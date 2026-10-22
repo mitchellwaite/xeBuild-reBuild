@@ -1030,13 +1030,13 @@ Still off:
 
 ## app/net.c
 
-Draft of the whole object (all 32 functions, data as statics). 28 match
+Draft of the whole object (all 32 functions, data as statics). 29 match
 and are built from `src/app/net.c` (mixed): netFree, netFindBeacon,
 netTimerStart/End/Elapsed, netSendStr, netSendData, netCheckOk,
 netOpenSocket, netClose, netDisconnect, netGetInfo, netDumpNand,
 netGetBldrs, netGetBadBlocks, netReboot, netMount, netUnmount, netGetFile,
 netReadBlocks, netFormatSysex/Compat, netWriteBlocks, netEraseBlock,
-netMkdir, netSendFlash, netReadInfo, netSendFile. `python wip/netmixed.py <fns>` makes the src file from the
+netMkdir, netSendFlash, netReadInfo, netSendFile, netRecvVerbose. `python wip/netmixed.py <fns>` makes the src file from the
 draft (it keeps a function's `__attribute__` line); test the draft with
 `FNCMP_LITERALS=1` (net.s's strings are named `net_<address>`). The src
 file gives the strings as `static const char net_X[] = "..."`, not
@@ -1225,6 +1225,20 @@ Open (diff lines from `re/fncmp.py`):
     rotation (54 lines); `FNCMP_GCCSYM=_netRecvVerbose.constprop.2`
     compares a clone. netRecvVerbose's own original keeps verbose in its
     stack slot and tv's address in ebp, unlike ours.
+  - netRecvVerbose (built): `u32 verbose` (as an int, uncprop gives the
+    non-verbose loop's `got = 0` the value of verbose, known 0 there, which
+    keeps verbose in ebx; uncprop needs the two to be coalescable, i.e. the
+    same type) and `__builtin_expect(verbose, 0)` on its `if (verbose)`
+    tests. One hint on the "waiting for" printf already matches fncmp
+    (verbose path 29% -> 40%, so its loop's trace starts before the shared
+    recv-failure block's), but aligns the verbose `size <= 0` exit; hinting
+    all five is byte-identical. The original's loop is unswitched on
+    verbose, as ours. With it matching, its constprop clone is netRecv
+    except for the rotation and the `*len = 0` slot (54 lines): the clone
+    has size_13 and got's names 28/36/79 after header copying, so got's
+    pseudo follows size's. Equivalent spellings (declaration order, `||`
+    order, `&buf[got]`, `got = got + r`, casts) don't change the GIMPLE;
+    the hand-rotated loop breaks netRecvVerbose (138).
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 

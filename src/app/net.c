@@ -61,6 +61,11 @@ static u32 netEmpty;		/* returned for a zero-length reply */
 extern time_t netStartTime;
 
 /* strings in net.s */
+static const char net_4574b0[] = "timeout waiting for data, %d\n";
+static const char net_4574d0[] = "unable to fetch first 4 bytes, %d\n";
+static const char net_4574f4[] = "timeout waiting for data, error %d\n";
+static const char net_457518[] = "could not receive data on socket, error %d\n";
+static const char net_457544[] = "received only %x of %x bytes! fail\n";
 static const char net_457568[] = "unable to open socket, error %d\n";
 static const char net_45758c[] = "unable to set bcast socket option, error %d\n";
 static const char net_4575bc[] = "unable to set bind socket, error %d\n";
@@ -68,6 +73,8 @@ static const char net_4575e1[] = "Socket error! %d\n";
 static const char net_4575f3[] = "UDP wait timeout!\n";
 static const char net_457608[] = "Beacon received, but the beacon magic %X was not %X!\n";
 static const char net_45763e[] = "Completed in %.0fs\n";
+static const char net_457652[] = "waiting for 0x%x bytes\n";
+static const char net_45766a[] = "received 0x%08x of 0x%08x\r";
 static const char net_457688[] = "socket error sending data size, %d\n";
 static const char net_4576ac[] = "socket error sending data (1), %d\n";
 static const char net_4576cf[] = "sent 0x%08x of 0x%08x\r";
@@ -109,7 +116,6 @@ static const char net_457a71[] = "REEB\n";
 
 /* still in net.s; gcc gave it the local calling convention */
 u8 *netRecv(int *len) __attribute__((regparm(1)));
-u8 *netRecvVerbose(int *len, int verbose);
 u32 netConnect(const char *ip);
 int netWritePatches(const u8 *buf, u32 len);
 
@@ -210,6 +216,75 @@ int netSendStr(const char *s)
 	if (send(netSock, s, len, 0) != len)
 		return 0;
 	return 1;
+}
+
+u8 *netRecvVerbose(int *len, u32 verbose)
+{
+	fd_set fds;
+	struct timeval tv;
+	u8 hdr[4];
+	u8 *buf;
+	int size, got, r;
+
+	tv.tv_sec = 15;
+	tv.tv_usec = 0;
+	FD_ZERO(&fds);
+	FD_SET(netSock, &fds);
+	*len = 0;
+	r = select(0, &fds, NULL, NULL, &tv);
+	if (r == SOCKET_ERROR || r == 0) {
+		log_printf(0, net_4574b0, WSAGetLastError());
+		return NULL;
+	}
+	r = recv(netSock, (char *)hdr, 4, 0);
+	if (r == SOCKET_ERROR || r == 0) {
+		log_printf(0, net_4574d0, WSAGetLastError());
+		return NULL;
+	}
+	size = getBeU32(hdr);
+	if (size == -1)
+		return NULL;
+	if (size == 0) {
+		*len = 0;
+		return (u8 *)&netEmpty;
+	}
+	buf = calloc(size, 1);
+	if (__builtin_expect(verbose, 0))
+		printf(net_457652, size);
+	got = 0;
+	while (got < size) {
+		r = select(0, &fds, NULL, NULL, &tv);
+		if (r == SOCKET_ERROR || r == 0) {
+			log_printf(0, net_4574f4, WSAGetLastError());
+			if (buf != (u8 *)&netEmpty)
+				free(buf);
+			return NULL;
+		}
+		r = recv(netSock, (char *)buf + got, size - got, 0);
+		if (r == SOCKET_ERROR) {
+			if (__builtin_expect(verbose, 0))
+				putchar('\n');
+			log_printf(0, net_457518, WSAGetLastError());
+			if (buf != (u8 *)&netEmpty)
+				free(buf);
+			return NULL;
+		}
+		got += r;
+		if (__builtin_expect(verbose, 0))
+			printf(net_45766a, got, size);
+	}
+	if (__builtin_expect(verbose, 0))
+		putchar('\n');
+	if (got == size) {
+		*len = size;
+		return buf;
+	}
+	if (__builtin_expect(verbose, 0))
+		putchar('\n');
+	log_printf(0, net_457544, got, size);
+	if (buf != (u8 *)&netEmpty)
+		free(buf);
+	return NULL;
 }
 
 /* send a length-prefixed block */
