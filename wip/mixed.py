@@ -18,9 +18,7 @@ from ddfix import Image
 OBJS = {
     'app/build': dict(prefix='bd', rdata=(0x458ca4, 0x45b4a4),
                       regparm={'loadBaseFile': 2},
-                      # still asm, but inlined into C functions: kept whole
-                      # (splice.py only takes the C_FUNCS bodies)
-                      inline={'loadFileCrc'},
+                      inline=set(),
                       note=' and payloads, encoding the flash */'),
     'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
                             regparm={'imgWriteStart': 3, 'imgWriteAt': 3, 'imgWritePage': 3},

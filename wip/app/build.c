@@ -279,10 +279,14 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 c
 	e->size = size;
 	if (pad && (size & 15))
 		e->size = (size + 15) & ~15;
-	if (verbose) {
-		if (size != e->size)
+	/* hints: the "bytes" log must be hot enough for bb-reorder's second round
+	   (build.sh's expect probability, 92-99); the pin sets e's register in the
+	   out-of-line copy only (callers with pad == 0 drop this block) */
+	if (__builtin_expect(verbose, 1)) {
+		if (size != e->size) {
 			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, (size + 15) & ~15);
-		else
+			__asm__("" : : "S"(e));
+		} else
 			log_printf(1, "reading %s (0x%x bytes)", name, size);
 	}
 	e->data = calloc(e->size + 0x10000, 1);

@@ -1408,13 +1408,13 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 24 match and are built
+Draft of the whole object (all 41 functions). 25 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
-loadBaseFile, loadBaseFileMeta. Switch tables go through
+loadBaseFile, loadBaseFileMeta, loadFileCrc. Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -1428,10 +1428,17 @@ only shows in `sh build.sh`.
 - loadFileCrc is an inlined helper: loadBaseFile, loadBaseFileMeta,
   loadCommonFile, loadInputFile, loadBinFile and loadLocalFile (twice) are
   wrappers around it, and loadCommonFile/loadBinFile/loadLocalFile match
-  with it inlined. Its own out-of-line copy is 14 lines off (the
-  verbose "reading %s (0x%x bytes)" block is placed after the returns), so
-  the mixed C keeps its body only for inlining (`inline` in mixed.py's
-  OBJS); splice.py drops gcc's copy of a function the .s still defines.
+  with it inlined. Its out-of-line copy (called by loadInputFile) matches
+  with two hints. The "reading %s (0x%x bytes)" block must reach
+  bb-reorder's round 2 (frequency >= 2000 of 10000; it's 1102 unhinted),
+  else it lands after the returns: `__builtin_expect(verbose, 1)` at
+  probability 92-99 (build.sh's 95) gives 2095. Hints on the zero-size
+  test raise it too but change the pad-path frequency that the inlined
+  callers inherit (loadCommonFile breaks); verbose is constant 1 in every
+  caller, so they don't see this hint. The out-of-line copy then has e
+  and f swapped (esi/ebx): an `"S"(e)` pin in the pad-log block fixes it,
+  and only loadCommonFile (e in esi already) keeps that block when
+  inlined; a pin elsewhere moves the other callers' registers.
 - The Win32 time calls are timeutil.c's cdecl ports, not imports: no
   windows.h, declare them as in timeutil.c.
 - rotSumSha is XeCryptRotSumSha with logging: byte loops over a `u8

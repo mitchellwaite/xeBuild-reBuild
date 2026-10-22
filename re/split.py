@@ -746,6 +746,7 @@ C_FUNCS = {
     0x42b3f0, 0x42b610, 0x42c600, 0x42cee0,  # rotSumSha countBits isUpdateBl patchPayloadSize
     0x428d20, 0x42b3d0, 0x42cbb0, 0x42dfb0,  # showSmcConfig blmodMissing patchFreeboot encodeUpdateBls
     0x42c900, 0x427a70, 0x427500, 0x427ab0,  # logPowerButton timestampToFileTime loadBaseFile loadBaseFileMeta
+    0x427730,  # loadFileCrc
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

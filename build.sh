@@ -80,6 +80,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # netSendFile's !name hint (55-65), netRecvVerbose's verbose hint (65)
       app/net) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=65" ;;
+      # loadFileCrc's verbose hint (92-99)
+      app/build) orig="$f.c"
+             cflags="-O3 --param builtin-expect-probability=95" ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;

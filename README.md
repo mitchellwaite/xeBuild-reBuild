@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **579 of 617** (576 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 59 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **580 of 617** (577 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 59 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 18 / 25 | 394 / 432 |
+| `app/` | 18 / 25 | 395 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -42,7 +42,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
 | `app/net` | mixed; 0 of 3 drafted functions match in `wip/app/net.c` | 29 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
-| `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
+| `app/build` | mixed; 1 of 16 drafted functions match in `wip/app/build.c` | 26 / 41 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -269,13 +269,13 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/build</code>: 25 / 41 in C</summary>
+<summary><code>app/build</code>: 26 / 41 in C</summary>
 
 - ✅ `loadBaseFile` (0x427500)
 - ✅ `findFileOffset` (0x427650)
 - ✅ `findFileSize` (0x4276a0)
 - ✅ `findFile` (0x4276f0)
-- ⬜ `loadFileCrc` (0x427730) (draft in `wip/`, no match yet)
+- ✅ `loadFileCrc` (0x427730)
 - ✅ `readMetaFile` (0x427950)
 - ✅ `makeTimestamp` (0x4279b0)
 - ✅ `timestampToFileTime` (0x427a70)
