@@ -143,7 +143,18 @@ extern const char msg_cbencPairing[];	/* "CBENC pairing set to: %02x %02x %02x..
 extern const char msg_dualCb[];	/* "\t**dual CB flag detected!**\n" */
 extern const char msg_cbb15572[];	/* "\t**15572+ CBB crypto method detecte..." */
 extern const char msg_cbbMfg[];	/* "\t** CBB crypto method set to work w..." */
+extern const char str_kv[];	/* "kv" */
+extern const char str_kvBin[];	/* "kv.bin" */
+extern const char str_altKv[];	/* "alt kv" */
+extern const char str_kvAltBin[];	/* "kv_alt.bin" */
+extern const char msg_kvSize[];	/* "\n******* ERROR: %s is not the corre..." */
+extern const char msg_kvHash[];	/* "%s appears to be decrypted already, ..." */
+extern const char msg_kvPreDecrypted[];	/* "\n******* WARNING: could not verify ..." */
+extern const char msg_kvEncrypted[];	/* "%s appears to be encrypted, attempti..." */
+extern const char msg_kvDecryptFail[];	/* "Failed!\n%s could not be decrypted!\..." */
+extern const char msg_kvDecryptErr[];	/* "\n******* ERROR: could not decrypt %..." */
 extern const char str_Success[];	/* "Success!\n" */
+extern const char msg_kvNotDecrypted[];	/* "\n******* ERROR: please be sure your..." */
 extern const char msg_extMissing[];	/* "******* WARNING: extended.bin was no..." */
 extern const char msg_extSize[];	/* "******* WARNING: extended.bin is not..." */
 extern const char msg_extEncrypted[];	/* "extended.bin appears to be encrypted..." */
@@ -707,6 +718,62 @@ static int kvHashOk(u8 *kv, u32 size)
 
 	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, hash, 16);
 	return memcmp(kv, hash, 16) == 0;
+}
+
+void kvPrepare(part_t *kv, int alt)
+{
+	const char *file = str_kvBin, *name = str_kv;
+	u8 *buf, *nbuf;
+
+	if (alt) {
+		file = str_kvAltBin;
+		name = str_altKv;
+	}
+	if (kv->size == 0x3ff0) {
+		nbuf = malloc(0x4000);
+		memset(nbuf, 0, 16);
+		memcpy(nbuf + 16, kv->buf, 0x3ff0);
+		free(kv->buf);
+		kv->buf = nbuf;
+		kv->size = 0x4000;
+	}
+	if (__builtin_expect(kv->size != 0x4000, 1)) {
+		log_printf(0, msg_kvSize, file);
+		return;
+	}
+	buf = malloc(0x4000);
+	memcpy(buf, kv->buf, 0x4000);
+	if (__builtin_expect(!checkZeros(buf, 16), 0)) {
+		if (!kvHashOk(buf, kv->size)) {
+			if (__builtin_expect(checkZeros(buf + 56, 88), 0)) {
+				log_printf(1, msg_kvHash, file);
+				log_printf(0, msg_kvPreDecrypted, file);
+			} else {
+				log_printf(1, msg_kvEncrypted, file);
+				memcpy(buf, kv->buf, kv->size);
+				if (!verifyExtended(buf, 0x4000)) {
+				failed: __attribute__((hot));
+					log_printf(1, msg_kvDecryptFail, file);
+					log_printf(0, msg_kvDecryptErr, name, file);
+					memcpy(buf, kv->buf, kv->size);
+				} else
+					log_printf(1, str_Success);
+			}
+		} else {
+		hashOk: __attribute__((hot));
+		}
+	} else if (!checkZeros(kv->buf + 88, 8))
+		log_printf(0, msg_kvNotDecrypted, file);
+	else {
+	zerosOk: __attribute__((hot));
+	}
+	memcpy(kv->buf, buf, kv->size);
+	if (__builtin_expect(!alt, 0)) {
+		kvSet(kv->buf);
+		kvEncrypt(kv->buf, kv->size);
+	} else
+		kvEncryptAlt(kv->buf, kv->size);
+	free(buf);
 }
 
 void extendedPrepare(part_t *ext)

@@ -706,14 +706,18 @@ static int kvHashOk(u8 *kv, u32 size)
 	return memcmp(kv, hash, 16) == 0;
 }
 
+/* The size check comes after the 0x3ff0 fix-up (profile estimated before
+   jump threading: a colder main path makes alt a caller-saved ecx).  The
+   hints and labels give bb-reorder the original's trace order and LRA
+   its spill-slot order (wip/README.md). */
 void kvPrepare(part_t *kv, int alt)
 {
-	const char *name = "alt kv", *file = "kv_alt.bin";
+	const char *file = "kv.bin", *name = "kv";
 	u8 *buf, *nbuf;
 
-	if (!alt) {
-		name = "kv";
-		file = "kv.bin";
+	if (alt) {
+		file = "kv_alt.bin";
+		name = "alt kv";
 	}
 	if (kv->size == 0x3ff0) {
 		nbuf = malloc(0x4000);
@@ -722,40 +726,43 @@ void kvPrepare(part_t *kv, int alt)
 		free(kv->buf);
 		kv->buf = nbuf;
 		kv->size = 0x4000;
-	} else if (__builtin_expect(kv->size != 0x4000, 1)) {
+	}
+	if (__builtin_expect(kv->size != 0x4000, 1)) {
 		log_printf(0, "\n******* ERROR: %s is not the correct size! Skipping verification and encryption!\n", file);
 		return;
 	}
 	buf = malloc(0x4000);
 	memcpy(buf, kv->buf, 0x4000);
-	if (checkZeros(buf, 16)) {
-		if (!checkZeros(kv->buf + 88, 8))
-			log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
-	} else {
+	if (__builtin_expect(!checkZeros(buf, 16), 0)) {
 		if (!kvHashOk(buf, kv->size)) {
-			if (checkZeros(buf + 56, 88)) {
+			if (__builtin_expect(checkZeros(buf + 56, 88), 0)) {
 				log_printf(1, "%s appears to be decrypted already, but the hash does not match the CPU key...", file);
 				log_printf(0, "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n", file);
 			} else {
 				log_printf(1, "%s appears to be encrypted, attempting to decrypt...", file);
 				memcpy(buf, kv->buf, kv->size);
-				if (verifyExtended(buf, 0x4000))
-					log_printf(1, "Success!\n");
-				else {
+				if (!verifyExtended(buf, 0x4000)) {
+				failed: __attribute__((hot));
 					log_printf(1, "Failed!\n%s could not be decrypted!\n", file);
 					log_printf(0, "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n", name, file);
 					memcpy(buf, kv->buf, kv->size);
-				}
+				} else
+					log_printf(1, "Success!\n");
 			}
+		} else {
+		hashOk: __attribute__((hot));
 		}
+	} else if (!checkZeros(kv->buf + 88, 8))
+		log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
+	else {
+	zerosOk: __attribute__((hot));
 	}
 	memcpy(kv->buf, buf, kv->size);
-	if (alt)
-		kvEncryptAlt(kv->buf, kv->size);
-	else {
+	if (__builtin_expect(!alt, 0)) {
 		kvSet(kv->buf);
 		kvEncrypt(kv->buf, kv->size);
-	}
+	} else
+		kvEncryptAlt(kv->buf, kv->size);
 	free(buf);
 }
 

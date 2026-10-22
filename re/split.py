@@ -463,7 +463,11 @@ SYMBOLS = {
     0x456be4: '_msg_smcHacked', 0x456c1c: '_msg_smcJtag', 0x456c3c: '_msg_smcNoGlitch',
     0x456c9c: '_msg_smcNoJtag', 0x456cfc: '_msg_cbencPairing',
     0x456d22: '_msg_dualCb', 0x456d40: '_msg_cbb15572', 0x456d6c: '_msg_cbbMfg',
-    0x456f74: '_str_Success', 0x456fc0: '_msg_extMissing', 0x457028: '_msg_extSize',
+    0x456d9f: '_str_kv', 0x456da2: '_str_kvBin', 0x456da9: '_str_altKv',
+    0x456db0: '_str_kvAltBin', 0x456dbc: '_msg_kvSize', 0x456e10: '_msg_kvHash',
+    0x456e60: '_msg_kvPreDecrypted', 0x456ec8: '_msg_kvEncrypted',
+    0x456f00: '_msg_kvDecryptFail', 0x456f24: '_msg_kvDecryptErr',
+    0x456f74: '_str_Success', 0x456f80: '_msg_kvNotDecrypted', 0x456fc0: '_msg_extMissing', 0x457028: '_msg_extSize',
     0x457088: '_msg_extEncrypted', 0x4570c8: '_msg_extDecryptFail', 0x457110: '_msg_sdMissing',
     0x457178: '_msg_sdSize', 0x4571d5: '_str_successNl', 0x4571e0: '_msg_crlRetry',
     0x457200: '_str_failedNl', 0x45720c: '_msg_crlCrypted', 0x457248: '_msg_crlBad',
@@ -715,6 +719,7 @@ C_FUNCS = {
     0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt
     0x41cff0, 0x41d6a0, 0x41d9b0, 0x41db70,  # kvEncryptAlt extendedPrepare secdataPrepare shaCheck
     0x41dc30, 0x41dfa0, 0x41e7b0, 0x41e620,  # crlEncrypt daeEncryptOne shaHeader fcrtEncrypt
+    0x41d0e0,                                # kvPrepare
     # app/image_read (the rest are drafted in wip/app/image_read.c)
     0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile
     0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset

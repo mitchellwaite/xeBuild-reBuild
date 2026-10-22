@@ -640,19 +640,32 @@ pure, so only the log side has the call heuristic) and
 `__builtin_expect(off < 0x4000, 1)` at builtin-expect-probability 60
 (set for the object).
 
+kvPrepare (built since 2026-10-22) has alt in ecx, saved around each call.
+IRA only offers a call-clobbered register when its caller-save cost
+(frequency of the calls crossed x save+restore) is below the memory
+cost, and `improve_allocation` then takes a callee-saved one if spilling
+its owner is cheaper; so the main path has to be colder than the
+`else if` form makes it.  The size check is a separate `if` after the
+0x3ff0 fix-up: profile_estimate runs before jump threading, so the 60%
+error edge applies to both paths (main 4000 instead of 4823).  The
+rest is bb-reorder and LRA (found by coordinate descent over structure
+and hints, scratch harness `build/keys/kvgen.py`):
+- `if (!checkZeros(buf, 16))` first: the original re-saves alt before
+  the second checkZeros, so that block starts a new LRA EBB (a jump
+  target at expand time); `__builtin_expect(..., 0)` makes the other arm
+  the main trace.
+- bb-reorder's exec thresholds are {500, 200, 50}‰ of the entry
+  frequency; a block whose predecessor ends a trace gets priority in its
+  round.  Hot labels are 85% DS predictors (cold labels are absolute,
+  frequency 0); the C front end emits no `goto` predictor.  Hot labels on
+  the "ok" arms of the 88-byte check and the hash check, one on the
+  verifyExtended failure arm, and `if (__builtin_expect(!alt, 0))
+  {kvSet ...} else ...` give the original's trace order (D, K, F, G, H)
+  and LRA's spill-slot order ([56]/[60]; slots go to spilled pseudos by
+  descending frequency).
+
 Still off:
 
-- `kvPrepare` (246): the hash check is the inlined `kvHashOk` (its ver/key
-  share stack slots with the inlined kvEncrypt copies, which gives the
-  original's 108-byte frame), and `__builtin_expect(kv->size != 0x4000, 1)`
-  makes the size error the fallthrough.  Still off: register allocation.
-  The original has name in esi and alt in ecx, saved around each call
-  (caller-saves); ours gives alt esi (popped right after file) and spills
-  name, so the two kvEncrypt copies come out alike and cross-jumping
-  merges their tails (the original keeps both, with buf+16 in [56] on
-  one side and edi on the other).  Hints on the other tests (all 243
-  combinations), declaration order and other expect probabilities don't
-  change it.
 - `daeEncrypt` (443): `if (size) do { ... } while (off < size)` with
   `buf[off + k]` header tests stops gcc peeling the first iteration and gets
   the original's 108-byte frame; still off: the processing block (call

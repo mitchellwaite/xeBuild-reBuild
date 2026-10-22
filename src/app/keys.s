@@ -23,7 +23,6 @@
 .globl _infoKey4
 .globl _infoKey5
 .globl _kvAltSalt
-.globl _kvPrepare
 .globl _kvSalt
 .globl _msg_1blBad
 .globl _msg_1blBad2
@@ -57,6 +56,13 @@
 .globl _msg_fuseNull
 .globl _msg_initRandom
 .globl _msg_initStatic
+.globl _msg_kvDecryptErr
+.globl _msg_kvDecryptFail
+.globl _msg_kvEncrypted
+.globl _msg_kvHash
+.globl _msg_kvNotDecrypted
+.globl _msg_kvPreDecrypted
+.globl _msg_kvSize
 .globl _msg_pairingSet
 .globl _msg_sdMissing
 .globl _msg_sdSize
@@ -78,10 +84,14 @@
 .globl _secdataKey
 .globl _smcKey
 .globl _str_Success
+.globl _str_altKv
 .globl _str_error
 .globl _str_failed
 .globl _str_failedNl
 .globl _str_hexByte
+.globl _str_kv
+.globl _str_kvAltBin
+.globl _str_kvBin
 .globl _str_newline
 .globl _str_success
 .globl _str_successNl
@@ -732,323 +742,7 @@ L_41ce47:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_kvPrepare:
-          push EBP
-          push EDI
-          mov EAX,OFFSET L_456d9f
-          push ESI
-          push EBX
-          mov ESI,OFFSET L_456da9
-          mov EBX,OFFSET L_456db0
-          sub ESP,108
-          mov ECX,DWORD PTR [ESP+132]
-          mov EDI,DWORD PTR [ESP+128]
-          test ECX,ECX
-          cmove ESI,EAX
-          mov EAX,OFFSET L_456da2
-          cmove EBX,EAX
-          mov EAX,DWORD PTR [EDI+1040]
-          cmp EAX,16368
-          je L_41d490
-          cmp EAX,16384
-          je L_41d150
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_456dbc
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41d150:
-          mov EBP,DWORD PTR [EDI+1036]
-L_41d156:
-          mov DWORD PTR [ESP],16384
-          mov DWORD PTR [ESP+56],ECX
-          call _malloc
-          mov DWORD PTR [ESP+4],EBP
-          mov DWORD PTR [ESP+8],16384
-          mov EBP,EAX
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],EBP
-          mov DWORD PTR [ESP+52],EBP
-          call _checkZeros
-          test EAX,EAX
-          mov ECX,DWORD PTR [ESP+56]
-          je L_41d300
-          mov DWORD PTR [ESP+4],8
-          mov EAX,DWORD PTR [EDI+1036]
-          mov DWORD PTR [ESP+56],ECX
-          add EAX,88
-          mov DWORD PTR [ESP],EAX
-          call _checkZeros
-          test EAX,EAX
-          mov ECX,DWORD PTR [ESP+56]
-          je L_41d503
-          lea EAX,DWORD PTR [ESP+78]
-          mov ESI,DWORD PTR [EDI+1040]
-          mov EBX,DWORD PTR [EDI+1036]
-          lea EBP,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP+56],EAX
-L_41d1dd:
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+60],ECX
-          mov DWORD PTR [ESP+4],EAX
-          call _memcpy
-          mov ECX,DWORD PTR [ESP+60]
-          test ECX,ECX
-          je L_41d3a3
-          mov EBX,DWORD PTR [EDI+1036]
-          mov EDX,DWORD PTR [L_44a648]
-          mov ECX,DWORD PTR [EDI+1040]
-          mov EAX,DWORD PTR [_kvAltSalt]
-          mov BYTE PTR [ESP+78],7
-          mov BYTE PTR [ESP+79],18
-          mov DWORD PTR [EBX+20],EDX
-          mov EDX,DWORD PTR [ESP+56]
-          mov DWORD PTR [EBX+16],EAX
-          lea ESI,DWORD PTR [ECX-16]
-          lea EAX,DWORD PTR [EBX+16]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EBX
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP+16],EDX
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+56],EAX
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EBP
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+56]
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],EBP
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptRc4
-L_41d2e2:
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+128],EAX
-          add ESP,108
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          jmp _free
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41d300:
-          lea EDX,DWORD PTR [ESP+78]
-          lea EBP,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+32],EBP
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+56],EDX
-          mov DWORD PTR [ESP+16],EDX
-          mov EDX,DWORD PTR [EDI+1040]
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          mov DWORD PTR [ESP+60],ECX
-          mov BYTE PTR [ESP+78],7
-          mov BYTE PTR [ESP+79],18
-          lea EAX,DWORD PTR [EDX-16]
-          mov DWORD PTR [ESP+12],EAX
-          mov EAX,DWORD PTR [ESP+52]
-          add EAX,16
-          mov DWORD PTR [ESP+8],EAX
-          call _XeCryptHmacSha
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+8],16
-          mov DWORD PTR [ESP+4],EBP
-          mov DWORD PTR [ESP],EAX
-          call _memcmp
-          test EAX,EAX
-          mov ECX,DWORD PTR [ESP+60]
-          jne L_41d540
-          mov ESI,DWORD PTR [EDI+1040]
-          mov EBX,DWORD PTR [EDI+1036]
-          jmp L_41d1dd
-L_41d3a3:
-          mov EAX,DWORD PTR [EDI+1036]
-          mov DWORD PTR [ESP],EAX
-          call _kvSet
-          mov EBX,DWORD PTR [EDI+1036]
-          mov EAX,DWORD PTR [_kvSalt]
-          mov ECX,DWORD PTR [EDI+1040]
-          mov BYTE PTR [ESP+78],7
-          mov BYTE PTR [ESP+79],18
-          mov EDX,DWORD PTR [L_44a650]
-          mov DWORD PTR [EBX+16],EAX
-          mov EAX,DWORD PTR [ESP+56]
-          lea EDI,DWORD PTR [EBX+16]
-          lea ESI,DWORD PTR [ECX-16]
-          mov DWORD PTR [EBX+20],EDX
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+32],EBX
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],2
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+36],16
-          mov DWORD PTR [ESP+32],EBP
-          mov DWORD PTR [ESP+28],0
-          mov DWORD PTR [ESP+24],0
-          mov DWORD PTR [ESP+20],0
-          mov DWORD PTR [ESP+16],0
-          mov DWORD PTR [ESP+12],16
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],OFFSET _cpuKey
-          call _XeCryptHmacSha
-          mov DWORD PTR [ESP+12],ESI
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP+4],16
-          mov DWORD PTR [ESP],EBP
-          call _XeCryptRc4
-          jmp L_41d2e2
-          .byte 0x90
-L_41d490:
-          mov DWORD PTR [ESP],16384
-          mov DWORD PTR [ESP+56],ECX
-          call _malloc
-          mov EDX,DWORD PTR [EDI+1036]
-          mov DWORD PTR [EAX],0
-          mov EBP,EAX
-          mov DWORD PTR [EAX+4],0
-          mov DWORD PTR [EAX+8],0
-          lea EAX,DWORD PTR [EAX+16]
-          mov DWORD PTR [EAX-4],0
-          mov DWORD PTR [ESP+8],16368
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+52],EDX
-          call _memcpy
-          mov EDX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP],EDX
-          call _free
-          mov DWORD PTR [EDI+1036],EBP
-          mov DWORD PTR [EDI+1040],16384
-          mov ECX,DWORD PTR [ESP+56]
-          jmp L_41d156
-L_41d503:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_456f80
-          lea EBP,DWORD PTR [ESP+80]
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+60],ECX
-          call _log_printf
-          lea EAX,DWORD PTR [ESP+78]
-          mov ESI,DWORD PTR [EDI+1040]
-          mov EBX,DWORD PTR [EDI+1036]
-          mov ECX,DWORD PTR [ESP+60]
-          mov DWORD PTR [ESP+56],EAX
-          jmp L_41d1dd
-L_41d540:
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+4],88
-          mov DWORD PTR [ESP+60],ECX
-          add EAX,56
-          mov DWORD PTR [ESP],EAX
-          call _checkZeros
-          test EAX,EAX
-          mov ECX,DWORD PTR [ESP+60]
-          jne L_41d620
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_456ec8
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+60],ECX
-          call _log_printf
-          mov EAX,DWORD PTR [EDI+1040]
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [EDI+1036]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+4],16384
-          mov DWORD PTR [ESP],EAX
-          call _verifyExtended
-          test EAX,EAX
-          mov ECX,DWORD PTR [ESP+60]
-          jne L_41d665
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_456f00
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+12],EBX
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],OFFSET L_456f24
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov ESI,DWORD PTR [EDI+1040]
-          mov EBX,DWORD PTR [EDI+1036]
-          mov EAX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+8],ESI
-          mov DWORD PTR [ESP+4],EBX
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-          mov ECX,DWORD PTR [ESP+60]
-          jmp L_41d1dd
-L_41d620:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_456e10
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_456e60
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov ESI,DWORD PTR [EDI+1040]
-          mov EBX,DWORD PTR [EDI+1036]
-          mov ECX,DWORD PTR [ESP+60]
-          jmp L_41d1dd
-L_41d665:
-          mov DWORD PTR [ESP+4],OFFSET _str_Success
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+60],ECX
-          call _log_printf
-          mov ESI,DWORD PTR [EDI+1040]
-          mov EBX,DWORD PTR [EDI+1036]
-          mov ECX,DWORD PTR [ESP+60]
-          jmp L_41d1dd
+#@C _kvPrepare
           .byte 0x8d
           .byte 0xb4
           .byte 0x26
@@ -1773,35 +1467,35 @@ _msg_cbb15572:
           .zero 3
 _msg_cbbMfg:
           .string "\t** CBB crypto method set to work with mfg CBA!**\n"
-L_456d9f:
+_str_kv:
           .string "kv"
-L_456da2:
+_str_kvBin:
           .string "kv.bin"
-L_456da9:
+_str_altKv:
           .string "alt kv"
-L_456db0:
+_str_kvAltBin:
           .string "kv_alt.bin"
           .zero 1
-L_456dbc:
+_msg_kvSize:
           .string "\n******* ERROR: %s is not the correct size! Skipping verification and encryption!\n"
           .zero 1
-L_456e10:
+_msg_kvHash:
           .string "%s appears to be decrypted already, but the hash does not match the CPU key..."
           .zero 1
-L_456e60:
+_msg_kvPreDecrypted:
           .string "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n"
           .zero 3
-L_456ec8:
+_msg_kvEncrypted:
           .string "%s appears to be encrypted, attempting to decrypt..."
           .zero 3
-L_456f00:
+_msg_kvDecryptFail:
           .string "Failed!\n%s could not be decrypted!\n"
-L_456f24:
+_msg_kvDecryptErr:
           .string "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n"
 _str_Success:
           .string "Success!\n"
           .zero 2
-L_456f80:
+_msg_kvNotDecrypted:
           .string "\n******* ERROR: please be sure your provided a DEcrypted %s!\n"
           .zero 2
 _msg_extMissing:
