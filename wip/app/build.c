@@ -199,7 +199,9 @@ extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .
 int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
 int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
-int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
+/* int in xboxrom.c; as u32 here verifyBlSigs' inlined findFile(11) counts
+   from its 0 result instead of a new xor (uncprop) */
+u32 blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen, u8 *hashOut,
 	const void *pubKey, const void *prvKey);
 u32 calcConfigSum(const u8 *buf);
@@ -945,27 +947,29 @@ void fixupPatchSet(void)
 {
 	struct fileent *e = &xb.files[findFile(23)];
 	u8 *p = e->data;
-	u32 off, i;
+	u32 off, i, v;
 	int n = 0;
 
 	log_printf(1, "Fixing up patch set...");
 	off = 0;
 	while (off < e->size) {
-		if (n == 2) {
-			for (i = 0; i < e->size - off; i++)
-				e->data[i] = e->data[off + i];
-			e->size -= off;
-			break;
-		}
-		if (getBeU32(p + off) == 0xffffffff) {
-			n++;
+		if (n != 2) {
+			v = getBeU32(p + off);
 			off += 4;
-		} else
-			off += getBeU32(p + off + 4) * 4 + 8;
+			if (v != 0xffffffff)
+				off += getBeU32(p + off) * 4 + 4;
+			else
+				n++;
+			continue;
+		}
+		copy: __attribute__((hot));
+		for (i = 0; i < e->size - off; i++)
+			e->data[i] = e->data[off + i];
+		e->size -= off;
+		break;
 	}
 	log_printf(1, "Done!\n");
 }
-
 /* the SMC config's temperatures, fans and regions (\370 is the degree
    sign in the console's code page) */
 void showSmcConfig(const u8 *smc)
@@ -1142,66 +1146,63 @@ int verifyBlSigs(void)
 	int ok = 1, sb, sd;
 	const u8 *salt;
 
-	if ((u32)xb.nFiles <= 1)
-		return 1;
 	for (i = 1; i < (u32)xb.nFiles; i++) {
 		e = &xb.files[i];
 		switch (e->type) {
 		case 5:
 		case 11:
 		case 17:
-			if (!pub1bl)
+			if (pub1bl) {
+				if (!cbVerifySig(e->data, pub1bl))
+					log_printf(0, "\n***** ERROR: %s failed signature check!\n", e->name);
+				else
+					log_printf(1, "%s signature is good\n", e->name);
+			} else
 				log_printf(1, "could not check signature of %s, 1BL RSA key not present!\n", e->name);
-			else if (cbVerifySig(e->data, pub1bl))
-				log_printf(1, "%s signature is good\n", e->name);
-			else
-				log_printf(0, "\n***** ERROR: %s failed signature check!\n", e->name);
 			break;
 		case 12:
 		case 13:
 			sb = findFile(11);
-			if (!sb) {
-				log_printf(1, "could not locate SB data to check %s!\n", e->name);
-				break;
-			}
-			salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
-			if (blVerifySig(e->data, e->size, xb.files[sb].data + 616, salt))
-				log_printf(1, "%s signature is good\n", e->name);
-			else if (!xb.prvKey)
-				log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", e->name);
-			else if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
-				log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
-				if (blSign(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt))
-					log_printf(1, "%s resigned successfully!\n", e->name);
-				else {
-					log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
-					ok = 0;
-				}
+			if (sb) {
+				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
+				if (blVerifySig(e->data, e->size, xb.files[sb].data + 616, salt))
+					log_printf(1, "%s signature is good\n", e->name);
+				else if (xb.prvKey) {
+					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+						log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
+						if (!blSign(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
+							log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
+							ok = 0;
+						} else
+							log_printf(1, "%s resigned successfully!\n", e->name);
+					} else
+						log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", e->name);
+				} else
+					log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", e->name);
 			} else
-				log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", e->name);
+				log_printf(1, "could not locate SB data to check %s!\n", e->name);
 			break;
 		case 14:
 			sd = findFile(13);
-			if (!sd) {
-				log_printf(1, "\n***** ERROR: could not locate SD data to check %s!\n", e->name);
-				break;
-			}
-			if (blCheckHash(e->data, e->size, xb.files[sd].data + 588))
-				log_printf(1, "%s hash from SE is good\n", e->name);
-			else if (!xb.prvKey)
-				log_printf(0, "\n***** ERROR: %s failed hash check!\n", e->name);
-			else {
-				sb = findFile(11);
-				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
-					log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
-					if (blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
-							  xb.files[sd].data + 588, xb.files[sb].data + 616, xb.prvKey))
-						log_printf(1, "SE resigned successfully to correct %s hash!\n", e->name);
-					else
-						log_printf(0, "\n***** ERROR: failed to resign SE to correct %s hash!\n", e->name);
+			if (sd) {
+				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588)) {
+					if (xb.prvKey) {
+						sb = findFile(11);
+						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+							log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
+							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
+									   xb.files[sd].data + 588, xb.files[sb].data + 616, xb.prvKey))
+								log_printf(0, "\n***** ERROR: failed to resign SE to correct %s hash!\n", e->name);
+							else
+								log_printf(1, "SE resigned successfully to correct %s hash!\n", e->name);
+						} else
+							log_printf(0, "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n", e->name);
+					} else
+						log_printf(0, "\n***** ERROR: %s failed hash check!\n", e->name);
 				} else
-					log_printf(0, "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n", e->name);
-			}
+					log_printf(1, "%s hash from SE is good\n", e->name);
+			} else
+				log_printf(1, "\n***** ERROR: could not locate SD data to check %s!\n", e->name);
 			break;
 		}
 	}

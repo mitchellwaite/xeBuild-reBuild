@@ -1494,8 +1494,18 @@ only shows in `sh build.sh`.
   but -3 is then too hot (placed after the jump table) and `size` takes a
   register (119 lines). The crc failure can't drop below 10% by
   predictions alone: the switch default (`c = 0; goto bad`) brings ~8%.
-- extractSmcConfig (~140): the original's two search loops aren't header-
+- extractSmcConfig (145): the original's two search loops aren't header-
   copied (`xor eax,eax; jmp cond`); `found == 1` (cmp eax,1) is right.
+  bb-reorder rotates each loop so its hottest exit falls through: the
+  original's is `found == 1` (into checkZeros), ours the bound test. Ours
+  rates found at 1.8% (loop exit 4.5% with opcode-nonequal 28%), the bound
+  exit 4.5%. A `continue` skips the loop-exit heuristic for its branch
+  (found 28%), but then the bound test gets copied in front of the loop
+  (157 lines). `while (i + n <= size && (found = ...) != 1)` and a single
+  `ret`/`goto out` exit change nothing. Second clue: the original keeps a
+  0 return value in a pseudo across the "SMC patched info" block (saved to
+  [esp+0x1c], 44-byte frame vs our 28), so at GIMPLE the return value isn't
+  the constant 0 on that path; source shape unknown.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original. They are separate round-1 traces, ordered by frequency:
@@ -1520,9 +1530,17 @@ only shows in `sh build.sh`.
   string order is gcc's expand order, i.e. source order: cases 0x59, 0x58,
   0x5a, 0x56, 0x57 after 0x55, each `if ((xb.flags & 7) > 4)` first. The
   case order sets the bb-reorder ties of the three outlined arms.
-- fixupPatchSet (~95): like extractSmcConfig, the original's loop is not
-  header-copied and keeps `off` on the stack; `__attribute__((cold))` is
-  not it.
+- fixupPatchSet (71): the original's copy (n == 2) is the loop's hot
+  fallthrough and the record parsing goes after the return. Ours had the
+  loop-exit heuristic on `n == 2` (4.5%). Now (2026-10-22) `if (n != 2)
+  { parse; continue; }` (PRED_CONTINUE bypasses the loop-exit heuristic, 51%)
+  plus a hot label on the copy, and `v = getBeU32(p + off); off += 4;`
+  first (the original computes off + 4 once for both arms): layout matches.
+  Left: registers. Five values live in the loop (p, n, off, e, findFile's
+  index); the original spills off, ours spills n. Pins ("D"(n), "b"(p),
+  "S"(e)), an "m"(off) operand and the index form (`xb.files[f]`) move the
+  spill elsewhere but not to off. -fno-tree-ch isn't it: pass_ch doesn't
+  copy this loop in ours either.
 - blmodMissing matches now that loadBaseFile has its other callers.
 - loadBaseFile is static with gcc's local convention (eax, edx).
 - With the whole object drafted, ipa-cp clones loadFileCrc (verbose=1) and
@@ -1544,8 +1562,17 @@ only shows in `sh build.sh`.
   the hold-address pattern and its 9199 replacement are one `u32[4]`;
   `strncmp(kernelStr, "9199", 4)` (inline `repz cmpsb`).
 - encodeUpdateBls: a `switch`, not an if-chain (block order).
-- verifyBlSigs (169): a switch with SC/SD before SE (gcc orders bit-test
+- verifyBlSigs (50): a switch with SC/SD before SE (gcc orders bit-test
   clusters by case count, then label number; 12..13 counts as one range).
+  The .rdata strings give the nesting (2026-10-22): each case tests the
+  positive condition first (`if (pub1bl)`, `if (sb)`, `if (xb.prvKey)`,
+  `if (sd)`) and the sign/resign results are `if (!blSign(...)) fail; else
+  ok` (failure strings come first). No early `nFiles <= 1` return: that's
+  the loop guard (it stores ok = 1 and joins the common exit). blCheckHash
+  declared u32 so the inlined findFile(11) counts from its 0 result.
+  Left: two swaps among the cold log traces (SB-mismatch before SE-good,
+  freqs 103 vs 128; the early exit before not-available, 6 vs 15) and the
+  order of the `i = 1` and `ok = 1` stores.
 - patchSmcConfig (10): two cold blocks (gpu/cpu fan warnings) in the
   other order; the gpu warning passes no argument (the cpu one does).
   Its string is after the function's last ones in .rdata, so its block is
