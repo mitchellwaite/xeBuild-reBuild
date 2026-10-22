@@ -1133,6 +1133,24 @@ Open (diff lines from `re/fncmp.py`):
   in the original, so it really is the inlined netSendData. The head merge
   is try_head_merge_bb (needs single-pred successors that aren't df-dirty);
   an empty asm in the netEmpty branch stops it but breaks the threading.
+  2026-10-21 (gcc 6.2 cfgcleanup.c, bb-reorder.c): the same unmerged pair
+  of `mov eax,1` after `cmp r,netEmpty` is in all seven of netWriteBlocks,
+  netEraseBlock, netSendFile, netFormatSysex/Compat, netMkdir and
+  netWritePatches, and nowhere else in the exe, and our six matches all
+  lean on no-crossjumping, so the original avoids the merge some common
+  way. No tail form does (netFormatSysex: `return ret`, `ret = cond`,
+  `if (!ret)`, explicit `r != &netEmpty`, nested ifs, free per path: 4-23
+  lines with crossjumping on). One candidate mechanism: a dirty successor
+  makes try_head_merge_bb return false and sets only block_was_dirty, not
+  `changed`, so if no later iteration runs the merge is lost; csa (just
+  before jump2) leaves the blocks it touches dirty. Not reproduced.
+  Writing the free out as `if (r != &netEmpty) free(r); else if (ret)
+  __asm__("");` stops the merge and leaves 7 lines: the free block's
+  epilogue copy, because the written-out test gives the free path 62% of
+  the failure block (204), under bbro's copy threshold (entry 2486 / 10 =
+  248); netFree inlined late gives 81% (265). A late-inlined helper with
+  the asm in netFree's else (53%), a netEmpty asm after netFree, and an
+  asm in netFree itself (breaks 14 other functions) were worse.
 - netConnect 39: the original ends `mov eax,1; test; jne` with every
   failure sharing one `xor eax,eax` block. Ours: phiopt1 turns `if
   (!netReadInfo()) return 0; return 1;` into `setne` (with no-ssa-phiopt,
@@ -1142,6 +1160,14 @@ Open (diff lines from `re/fncmp.py`):
   failure blocks crossjump into (a 1-insn crossjump is allowed when one
   block matches whole). Block-local `sa`/`saLen`, readinfo in both
   branches, goto forms and `int` return didn't keep the branch.
+  phiopt's conditional_replacement needs the middle block empty with a
+  single predecessor (the join may have more), and ce1 likewise, so the
+  original must have reached expand with the readinfo-failure `return 0`
+  in a block other failures share. The `mov eax,1` above `test` then is
+  find_if_case_2 speculating the `1` copy (eax dead on the shared path),
+  which is why readinfo's result moves to edx. no-ssa-phiopt +
+  no-if-conversion + no-tree-dominator-opts is 26 lines (the success
+  return gets its own epilogue, failures their own copies).
 - netRecv 58/netRecvVerbose 53: the drafts now write `if (buf !=
   &netEmpty) free(buf); return NULL;` on each failure path (the original
   repeats the check per path) and netRecv ends `if (got == size) { *len =
