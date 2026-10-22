@@ -8,6 +8,7 @@ without the underscore) against the original instructions from
 build/xeBuild.lines.json.  Labels are compared only as labels; named symbols
 (SYMBOLS) must agree.  Prints MATCH or a unified diff.  It ignores alignment
 padding and doesn't check the bytes; `sh build.sh` has the last word.
+FNCMP_GCCSYM=_f.constprop.0 compares that gcc function (a clone) instead.
 """
 import difflib, json, os, re, subprocess, sys
 
@@ -148,6 +149,8 @@ def main():
                '%s[' % at(addr_of[m.group(1)] + int(m.group(3))), g)
     # `lea ebx, _x[eax]` -> `lea ebx, [_x+eax]`, as ddisasm spells it
     g = re.sub(r'(\blea\s+\w+,\s*)(_\w+)\[([^\]]*)\]', r'\1[\2+\3]', g).split('\n')
+    # FNCMP_GCCSYM: compare gcc's function of another name (a clone, `_f.constprop.0`)
+    sym = os.environ.get('FNCMP_GCCSYM', sym)
     if sym + ':' not in g:
         sys.exit('%s not defined (inlined, or static and unused?)' % sym)
     # the function's .text lines up to the next function (jump tables go to .rdata)

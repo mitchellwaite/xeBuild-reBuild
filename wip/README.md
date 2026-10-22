@@ -1180,6 +1180,51 @@ Open (diff lines from `re/fncmp.py`):
   got` from the `got == size` equivalence and leaves a degenerate
   `got = PHI <0>` preheader; moving `*len = 0` or swapping the comparison
   didn't change it.
+  2026-10-22, what the 13 lines are:
+  - `*len = size` and the recomputed `cmp`: no-dom also turns off
+    phi-only cprop, so a loop-closed `got_3 = PHI <got_44>` survives to
+    RTL; cse's jump equivalence on `got_3 == size` then stores got, and
+    the exit compare isn't the latch's. With dom on both are right (dom
+    makes it `*len = got_44`, and cse's equivalence on the latch's own
+    compare turns it back into size, `je` reusing the `jle` flags). So dom
+    has to stay on; the problem is only the register rotation.
+  - The rotation is IRA order, which follows pseudo numbers, which follow
+    SSA versions. Into-SSA gives the loop PHI `got_1`; ch's header copy
+    replaces it with a recycled name (`got_74`, freed by vrp1's asserts),
+    so got's pseudo (r107) comes after size's (r98), got is one unsplit
+    allocno colored first, and it takes ebx. With the loop's PHI kept
+    (`got = 0; if (got < size) do { ... } while (got < size);`) got is
+    r87, IRA splits it at the loop, and size/buf/got get ebx/esi/edi as in
+    the original, with `*len = size` and the flag reuse right (28 lines).
+    What's left there is layout: that explicit guard is predicted 73%
+    (the header copy of a `while` gets the loop's 97%), and when dom
+    threads its false path straight to the short-count log, the `got ==
+    size` edge goes to 81%, so the tail flips; with the success test inside
+    the guard (30 lines) the sense is right but the log block (freq 358 vs
+    the while form's 186) starts its own trace before recv-fail's.
+    `while (got < size) { do ... while (got < size); }` with
+    `optimize("no-tree-ch")` also gets the registers (28: guard `cmp
+    got,size`, tail at the end). Declaration order and FD_SET spellings
+    change nothing. `__builtin_expect` can't help: the object's 60% is
+    fixed by netSendFile.
+  - `*len = 0`: sched2 issues `mov [edx],0` alone at t=3 (it waits only on
+    the frame allocation's memory clobber; the stack stores wait a cycle
+    for sp). The original issues it in insn order after `[60]=1` and
+    before `[64]=sock`, as if it depended on the `[esp+44]` spill store
+    only, i.e. RTL alias didn't know edx was the incoming pointer. Ours
+    knows: `dx = ax` is the parameter set-up insn, before
+    NOTE_INSN_FUNCTION_BEG, where find_base_value still takes an argument
+    register's base. In the original the len pseudo was probably spilled
+    whole and `mov edx,eax` is an LRA reload copy after the note (base
+    unknown). So it is the same IRA difference again.
+  - netRecv may be IPA-CP's `netRecvVerbose.constprop` (verbose 0): the
+    local calling convention, the function order (the clone is emitted
+    first, netRecvVerbose after netSendStr) and the 13 calls + 2 tail
+    jumps to it all fit. Replacing netRecv with `#define netRecv(len)
+    netRecvVerbose(len, 0)` makes gcc clone it, but the clone has the same
+    rotation (54 lines); `FNCMP_GCCSYM=_netRecvVerbose.constprop.2`
+    compares a clone. netRecvVerbose's own original keeps verbose in its
+    stack slot and tv's address in ebp, unlike ours.
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 
