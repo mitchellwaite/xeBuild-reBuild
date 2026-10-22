@@ -237,6 +237,13 @@ How the others matched:
 
 ## app/filelist_ini (draft: wip/app/filelist_ini.c)
 
+Whole object in C now (no filelist_ini.s). The literal order gcc emits for parseIni
+(expand-time block order) puts error strings before the code they follow in the
+original, so its strings are `static const` arrays in the original's order, defined
+before it and emitted in place by `-fno-toplevel-reorder` (`aligned(4)` from 31 bytes,
+`aligned(1)` below: a user alignment stops gcc's array bump). validChars and
+consoleNames are defined after loadUserIni (extern before) for the same reason.
+
 Mixed since 17269c2; built from src/app/filelist_ini.c: getIniValue, memFindStr (4-arg,
 `skipNul`), memFindChar, checkFileCase, loadUserIni (keep `iniSize + 1` in a local;
 strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional IRA kept

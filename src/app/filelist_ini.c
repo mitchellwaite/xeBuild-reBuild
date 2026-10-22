@@ -1,5 +1,5 @@
-/* filelist_ini: reading the file list ini.  Mixed object: the functions here
-   are spliced into filelist_ini.s (re/splice.py), which holds the data. */
+/* filelist_ini: reading the file list ini, and the tables that say which
+   files each build type uses */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,33 +59,60 @@ extern struct xebuild xb;
 extern unsigned char *iniBuf;
 extern int iniSize;
 
-extern char fnSmc[32], fnKv[32], fnPatches[32];
+/* .data, in this order (-fno-toplevel-reorder) */
+/* the bl section's file order per build type (blOrder is one of them) */
+int blJtag[9] = {4, 5, 6, 7, 8, 15, 16, 9, 10};
+int blDevgl[6] = {3, 4, 5, 6, 8, 9};
+int blTestk[6] = {4, 5, 6, 7, 8, 9};
+int blDevk[6] = {3, 4, 5, 6, 7, 8};
+int blRetail[6] = {3, 4, 5, 6, 8, 9};
+
+/* {offset, type} of each file for each build type */
+struct fileloc { u32 offset; int type; };
+struct fileloc locDevgl[14] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 7}, {-1, 8},
+	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
+	{0x3febe00, 27}
+};
+struct fileloc locTestk[12] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 4}, {0xc000, 11}, {-1, 12}, {-1, 13},
+	{-1, 14}, {0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
+};
+struct fileloc locDevk[11] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 13}, {-1, 14},
+	{0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
+};
+struct fileloc locJtag[19] = {
+	{0, 0}, {0x200, 1}, {0x1000, 2}, {0x4000, 3}, {0x8000, 17}, {-1, 18}, {-1, 19},
+	{0x70000, 20}, {-1, 21}, {0x80000, 9}, {-1, 10}, {0x90000, 22}, {0x91000, 23},
+	{0x95000, 24}, {0x95060, 25}, {0xd5060, 5}, {-1, 7}, {-1, 26}, {0x3febe00, 27}
+};
+struct fileloc locRetail[14] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 5}, {-1, 6}, {-1, 7}, {-1, 8},
+	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
+	{0x3febe00, 27}
+};
+
+char fnNone[32] = "none";
+char fnSmc[32] = "smc.bin";
+char fnKv[32] = "kv.bin";
+char fnKvAlt[32] = "kv_alt.bin";
+char fnXellGg[32] = "xell-gggggg.bin";
+char fnXell2f[32] = "xell-2f.bin";
+char fnPatches[32] = "patches_";
+char fnSmcConfig[32] = "smc_config.bin";
+char fnFreeboot[32] = "freeboot.bin";
+char fnFuses[32] = "fuses.bin";
+char fnPayload[32] = "payload.bin";
+
+extern const char *const consoleNames[8];
+extern const unsigned char validChars[74];
 int iniPreParse(unsigned char *buf, int size);
 void log_printf(int level, const char *fmt, ...);
 long getFileSize(FILE *f);
 char myatol(char c);
 int validateString(char *s);
 unsigned int myatou32(char *dat, unsigned int def);
-
-/* filelist_ini.s strings */
-extern const char fi_44fb84[];	/* "rb" */
-extern const char fi_44fbb0[];	/* "******* ERROR loading %s, unable to allocate memory
-" */
-extern const char fi_450258[];	/* "true" */
-extern const char fi_45025d[];	/* "false" */
-extern const char fi_450264[];	/* "
------- parsing user ini at '%s' ------
-" */
-extern const char fi_450290[];	/* "
-******* WARNING: could not open user ini at '%s', skipping
-" */
-extern const char fi_4502cd[];	/* "loading file..." */
-extern const char fi_4502dd[];	/* "done!
-" */
-extern const char fi_4502e4[];	/* "***** WARNING: User ini %s
-appears to be a multi byte file, ..." */
-extern const char fi_450347[];	/* "pre-parsing and sanitizing
-" */
 
 /* copy the base dir's casing of the smc, kv and patches file names; IRA's
    regional allocation keeps &st rather than dir in a register (ira-region=one) */
@@ -116,11 +143,6 @@ void fixFileCase(void)
 	closedir(d);
 }
 
-/* filelist_ini.s's _validChars; gcc folds [0] to 'A' from this copy, which
-   re/splice.py drops (static, so it isn't .globl; a string, so gcc emits it
-   as .ascii; 74 chars, no NUL) */
-static const unsigned char validChars[74] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;[]_\n\\/-$:";
 
 /* strip comments and invalid characters; returns the new size.  Needs
    -fno-tree-loop-vectorize (with it, PRE drops the validChars loop's
@@ -207,66 +229,103 @@ int iniPreParse(unsigned char *buf, int size)
 	return n;
 }
 
-/* .data: {offset, type} per file for each build type, the bl section's file
-   order, and the file names; blOrder is COMMON; consoleNames[0] is NULL */
-struct fileloc { u32 offset; int type; };
-extern struct fileloc locRetail[], locDevgl[], locTestk[], locDevk[], locJtag[];
-extern int blJtag[], blDevgl[], blTestk[], blDevk[], blRetail[];
-extern char fnNone[32], fnKvAlt[32], fnXellGg[32], fnXell2f[32], fnSmcConfig[32],
-	fnFreeboot[32], fnFuses[32], fnPayload[32];
 extern int *blOrder;
-extern const char *const consoleNames[8];
 u32 myatox32(char *dat, u32 def);
 int memFindStr(unsigned char *buf, int size, const char *key, int label);
 int memFindChar(unsigned char *buf, char c, int size);
 void checkFileCase(void);
 
-/* filelist_ini.s strings parseIni refers to; the four section labels are
-   static copies (memFindStr's strlen of them must fold; re/splice.py drops
-   gcc's copies) */
-extern const char fi_44fb60[];	/* "\n------ parsing ini at '%s' ------\n" */
-extern const char fi_44fb88[];	/* "\n******* ERROR: could not open '%s'\n" */
-extern const char fi_44fbe8[];	/* "\n\n***** ERROR: File descriptor ini %s\nappears to be ..." */
-static const char fi_44fc48[] = "[version]";
-extern const char fi_44fc52[];	/* "ini version %s\n" */
-extern const char fi_44fc62[];	/* "%s_jtag_%s.bin" */
-extern const char fi_44fc71[];	/* "%s_devk_%s.bin" */
-extern const char fi_44fc80[];	/* "%s_testk_%s.bin" */
-extern const char fi_44fc90[];	/* "%s_devgl_%s.bin" */
-extern const char fi_44fca0[];	/* "%s_retail_%s.bin" */
-extern const char fi_44fcb1[];	/* "%s_g2m_%s.bin" */
-extern const char fi_44fcbf[];	/* "%s_g2_%s.bin" */
-extern const char fi_44fccc[];	/* "%s_gg_%s.bin" */
-extern const char fi_44fcdc[];	/* "\n******* ERROR: could not find label [version] in file..." */
-extern const char fi_44fd1d[];	/* "[%sbl%s]" */
-extern const char fi_44fd26[];	/* "[%sbl]" */
-extern const char fi_44fd2d[];	/* "\nini: label %s found\n" */
-extern const char fi_44fd44[];	/* "\n******* ERROR: ini problem, error in %s section!\n" */
-extern const char fi_44fd78[];	/* "\n******* ERROR: crc data for file '%s' in ini is incor..." */
-extern const char fi_44fdba[];	/* "found (%d) '%s' crc: 0x%08x\n" */
-extern const char fi_44fdd8[];	/* "\n******* ERROR: ini problem, can't find enough data fo..." */
-extern const char fi_44fe20[];	/* "\n******* ERROR: could not find label %s in file list i..." */
-extern const char fi_44fe5a[];	/* "none" */
-extern const char fi_44fe60[];	/* "ini dictates dual CB for this model\n" */
-static const char fi_44fe85[] = "[rawpatch]";
-extern const char fi_44fe90[];	/* "\nini: label [rawpatch] found\n" */
-extern const char fi_44feb0[];	/* "\n******* ERROR: an entry in [rawpatch] is missing offs..." */
-extern const char fi_44fef0[];	/* "\n******* ERROR: offset data for file '%s' is either to..." */
-extern const char fi_44ff40[];	/* "found (%d) '%s' offset: 0x%08x\n" */
-extern const char fi_44ff60[];	/* "***** ERROR: [rawpatch] '%s' length is unintelligible!\n" */
-extern const char fi_44ff98[];	/* "\n******* ERROR: file name in [rawpatch] is too long!\n" */
-extern const char fi_44ffd0[];	/* "\n******* ERROR: %d of %d [rawpatch] slots are already ..." */
-extern const char fi_450010[];	/* "\n[rawpatch] label not found in ini\n" */
-static const char fi_450034[] = "[flashfs]";
-extern const char fi_45003e[];	/* "\nini: label [flashfs] found\n" */
-extern const char fi_45005c[];	/* "\n******* ERROR: file in [flashfs] has greater than %d ..." */
-extern const char fi_4500a7[];	/* "\n        Line: %s\n" */
-extern const char fi_4500bc[];	/* "\n******* ERROR: file in [flashfs] has greater than %d ..." */
-extern const char fi_450108[];	/* "\n******* ERROR: could not find label [flashfs] in file..." */
-static const char fi_450149[] = "[security]";
-extern const char fi_450154[];	/* "\nini: label [security] found\n" */
-extern const char fi_450174[];	/* "\n******* ERROR: file in [security] has greater than %d..." */
-extern const char fi_4501c0[];	/* "------ ini parsing completed ------\n\n" */
+/* offset after `str` in buf (past its NUL if skipNul and it ends a line), or -1 */
+int memFindStr(unsigned char *buf, int size, const char *str, int skipNul)
+{
+	int i, j, len;
+
+	len = strlen(str);
+	for (i = 0; i < size - len; i++) {
+		if (str[0] == buf[i]) {
+			for (j = 0; j < len; j++)
+				if (buf[i + j] != str[j])
+					j = len + 1;
+			if (j == len) {
+				if (skipNul) {
+					if (buf[i + len] == 0)
+						return i + len + 1;
+					return i + len;
+				}
+				if (buf[i + len] != 0)
+					return i + len;
+			}
+		}
+	}
+	return -1;
+}
+
+int memFindChar(unsigned char *buf, char c, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++)
+		if (buf[i] == c)
+			return i;
+	return -1;
+}
+
+void checkFileCase(void)
+{
+	if (xb.baseDir[0])
+		fixFileCase();
+}
+
+/* parseIni's strings, in the original's .rdata order: gcc emits a
+   function's literals in its expand-time block order, which put the
+   error messages before the code they follow in the original.  As
+   arrays (-fno-toplevel-reorder keeps definition order) they land where
+   they did, aligned as literals are (4 from 31 bytes, else 1) */
+static const char fi_44fb60[] __attribute__((aligned(4))) = "\n------ parsing ini at '%s' ------\n";
+static const char fi_44fb84[] __attribute__((aligned(1))) = "rb";
+static const char fi_44fb88[] __attribute__((aligned(4))) = "\n******* ERROR: could not open '%s'\n";
+static const char fi_44fbb0[] __attribute__((aligned(4))) = "******* ERROR loading %s, unable to allocate memory\n";
+static const char fi_44fbe8[] __attribute__((aligned(4))) = "\n\n***** ERROR: File descriptor ini %s\nappears to be a multi byte file, not an ascii only file!\n";
+static const char fi_44fc48[] __attribute__((aligned(1))) = "[version]";
+static const char fi_44fc52[] __attribute__((aligned(1))) = "ini version %s\n";
+static const char fi_44fc62[] __attribute__((aligned(1))) = "%s_jtag_%s.bin";
+static const char fi_44fc71[] __attribute__((aligned(1))) = "%s_devk_%s.bin";
+static const char fi_44fc80[] __attribute__((aligned(1))) = "%s_testk_%s.bin";
+static const char fi_44fc90[] __attribute__((aligned(1))) = "%s_devgl_%s.bin";
+static const char fi_44fca0[] __attribute__((aligned(1))) = "%s_retail_%s.bin";
+static const char fi_44fcb1[] __attribute__((aligned(1))) = "%s_g2m_%s.bin";
+static const char fi_44fcbf[] __attribute__((aligned(1))) = "%s_g2_%s.bin";
+static const char fi_44fccc[] __attribute__((aligned(1))) = "%s_gg_%s.bin";
+static const char fi_44fcdc[] __attribute__((aligned(4))) = "\n******* ERROR: could not find label [version] in file list ini\n";
+static const char fi_44fd1d[] __attribute__((aligned(1))) = "[%sbl%s]";
+static const char fi_44fd26[] __attribute__((aligned(1))) = "[%sbl]";
+static const char fi_44fd2d[] __attribute__((aligned(1))) = "\nini: label %s found\n";
+static const char fi_44fd44[] __attribute__((aligned(4))) = "\n******* ERROR: ini problem, error in %s section!\n";
+static const char fi_44fd78[] __attribute__((aligned(4))) = "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n";
+static const char fi_44fdba[] __attribute__((aligned(1))) = "found (%d) '%s' crc: 0x%08x\n";
+static const char fi_44fdd8[] __attribute__((aligned(4))) = "\n******* ERROR: ini problem, can't find enough data for %s section!\n";
+static const char fi_44fe20[] __attribute__((aligned(4))) = "\n******* ERROR: could not find label %s in file list ini\n";
+static const char fi_44fe5a[] __attribute__((aligned(1))) = "none";
+static const char fi_44fe60[] __attribute__((aligned(4))) = "ini dictates dual CB for this model\n";
+static const char fi_44fe85[] __attribute__((aligned(1))) = "[rawpatch]";
+static const char fi_44fe90[] __attribute__((aligned(1))) = "\nini: label [rawpatch] found\n";
+static const char fi_44feb0[] __attribute__((aligned(4))) = "\n******* ERROR: an entry in [rawpatch] is missing offset info!\n";
+static const char fi_44fef0[] __attribute__((aligned(4))) = "\n******* ERROR: offset data for file '%s' is either too large or too small!\n";
+static const char fi_44ff40[] __attribute__((aligned(4))) = "found (%d) '%s' offset: 0x%08x\n";
+static const char fi_44ff60[] __attribute__((aligned(4))) = "***** ERROR: [rawpatch] '%s' length is unintelligible!\n";
+static const char fi_44ff98[] __attribute__((aligned(4))) = "\n******* ERROR: file name in [rawpatch] is too long!\n";
+static const char fi_44ffd0[] __attribute__((aligned(4))) = "\n******* ERROR: %d of %d [rawpatch] slots are already full!\n";
+static const char fi_450010[] __attribute__((aligned(4))) = "\n[rawpatch] label not found in ini\n";
+static const char fi_450034[] __attribute__((aligned(1))) = "[flashfs]";
+static const char fi_45003e[] __attribute__((aligned(1))) = "\nini: label [flashfs] found\n";
+static const char fi_45005c[] __attribute__((aligned(4))) = "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n";
+static const char fi_4500a7[] __attribute__((aligned(1))) = "\n        Line: %s\n";
+static const char fi_4500bc[] __attribute__((aligned(4))) = "\n******* ERROR: file in [flashfs] has greater than %d chars in it's path!\n";
+static const char fi_450108[] __attribute__((aligned(4))) = "\n******* ERROR: could not find label [flashfs] in file list ini\n";
+static const char fi_450149[] __attribute__((aligned(1))) = "[security]";
+static const char fi_450154[] __attribute__((aligned(1))) = "\nini: label [security] found\n";
+static const char fi_450174[] __attribute__((aligned(4))) = "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n";
+static const char fi_4501c0[] __attribute__((aligned(4))) = "------ ini parsing completed ------\n\n";
 
 /* read the file list ini: the files for this build type, the bootloaders'
    names and crcs, [rawpatch], [flashfs] and [security] */
@@ -722,47 +781,6 @@ secName:
 	return 0;
 }
 
-/* offset after `str` in buf (past its NUL if skipNul and it ends a line), or -1 */
-int memFindStr(unsigned char *buf, int size, const char *str, int skipNul)
-{
-	int i, j, len;
-
-	len = strlen(str);
-	for (i = 0; i < size - len; i++) {
-		if (str[0] == buf[i]) {
-			for (j = 0; j < len; j++)
-				if (buf[i + j] != str[j])
-					j = len + 1;
-			if (j == len) {
-				if (skipNul) {
-					if (buf[i + len] == 0)
-						return i + len + 1;
-					return i + len;
-				}
-				if (buf[i + len] != 0)
-					return i + len;
-			}
-		}
-	}
-	return -1;
-}
-
-int memFindChar(unsigned char *buf, char c, int size)
-{
-	int i;
-
-	for (i = 0; i < size; i++)
-		if (buf[i] == c)
-			return i;
-	return -1;
-}
-
-void checkFileCase(void)
-{
-	if (xb.baseDir[0])
-		fixFileCase();
-}
-
 /* offset of the value after `key` in buf, or -1 */
 static int findIniKey(unsigned char *buf, int size, const char *key)
 {
@@ -832,9 +850,9 @@ long getIniBool(const char *key, int def)
 		return def;
 	val = (char *)&iniBuf[off];
 	__asm__("" :: "b"(val));
-	if (strnicmp(val, fi_450258, 4) == 0)
+	if (strnicmp(val, "true", 4) == 0)
 		return 1;
-	if (strnicmp(val, fi_45025d, 5) == 0)
+	if (strnicmp(val, "false", 5) == 0)
 		return 0;
 	return def;
 }
@@ -850,9 +868,9 @@ char *iniBoolInvalid(const char *key)
 		return NULL;
 	val = (char *)&iniBuf[off];
 	__asm__("" :: "b"(val));
-	if (strnicmp(val, fi_450258, 4) == 0)
+	if (strnicmp(val, "true", 4) == 0)
 		return NULL;
-	if (strnicmp(val, fi_45025d, 5) != 0)
+	if (strnicmp(val, "false", 5) != 0)
 		return val;
 	return NULL;
 }
@@ -895,10 +913,10 @@ int loadUserIni(void)
 
 	strcpy(path, xb.baseDir);
 	strcat(path, "options.ini");
-	log_printf(1, fi_450264, path);
+	log_printf(1, "\n------ parsing user ini at '%s' ------\n", path);
 	f = fopen(path, fi_44fb84);
 	if (f == NULL) {
-		log_printf(1, fi_450290, path);
+		log_printf(1, "\n******* WARNING: could not open user ini at '%s', skipping\n", path);
 		return 0;
 	}
 	iniSize = getFileSize(f);
@@ -910,21 +928,29 @@ int loadUserIni(void)
 		return 0;
 	}
 	memset(iniBuf, 0xff, len);
-	log_printf(1, fi_4502cd, path);
+	log_printf(1, "loading file...", path);
 	fread(iniBuf, iniSize, 1, f);
 	fclose(f);
-	log_printf(1, fi_4502dd, path);
+	log_printf(1, "done!\n", path);
 	if (iniBuf[0] == 0xff || iniBuf[1] == 0xff) {
-		log_printf(0, fi_4502e4, path);
+		log_printf(0, "***** WARNING: User ini %s\nappears to be a multi byte file, not an ascii only file - ignoring it!\n", path);
 		free(iniBuf);
 		iniBuf = NULL;
 		iniSize = 0;
 		return 0;
 	}
 	iniBuf[iniSize] = 0xff;
-	log_printf(1, fi_450347);
+	log_printf(1, "pre-parsing and sanitizing\n");
 	iniSize = iniPreParse(iniBuf, iniSize);
-	log_printf(1, fi_4502dd);
+	log_printf(1, "done!\n");
 	iniBuf[iniSize] = 0;
 	return 1;
 }
+
+/* .rdata after the functions' strings */
+/* iniPreParse's; 74 chars, no NUL */
+const unsigned char validChars[74] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;[]_\n\\/-$:";
+const char *const consoleNames[8] = {
+	NULL, "xenon", "zephyr", "falcon", "jasper", "trinity", "corona", "winchester"
+};

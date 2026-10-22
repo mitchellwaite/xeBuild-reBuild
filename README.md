@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 16 of 25 app files build from C, nine more are mixed (filelist_ini has every function in C but its data is still in its `.s`); see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 17 of 25 app files build from C, eight more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **575 of 617** (570 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **575 of 617** (570 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 16 / 25 | 390 / 432 |
+| `app/` | 17 / 25 | 390 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -38,7 +38,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s`). Per-function
 |---|---|---|
 | `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
 | `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
-| `app/filelist_ini` | mixed; every function in C, data and `.eh_frame` still in `src/app/filelist_ini.s` | 12 / 12 |
 | `app/image_write` | mixed; 0 of 8 drafted functions match in `wip/app/image_write.c` | 38 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
@@ -84,23 +83,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s`). Per-function
 - ✅ `clientEraseBlock` (0x408080)
 - ✅ `getArgs` (0x408160)
 - ⬜ `mode_client` (0x408260) (draft in `wip/`, no match yet)
-
-</details>
-<details>
-<summary><code>app/filelist_ini</code>: 12 / 12 in C</summary>
-
-- ✅ `fixFileCase` (0x408ec0)
-- ✅ `iniPreParse` (0x408fe0)
-- ✅ `memFindStr` (0x409310)
-- ✅ `memFindChar` (0x4093d0)
-- ✅ `checkFileCase` (0x409410)
-- ✅ `parseIni` (0x409430)
-- ✅ `getIniValue` (0x40aa10)
-- ✅ `getIniBool` (0x40aad0)
-- ✅ `iniBoolInvalid` (0x40abf0)
-- ✅ `getIniU32` (0x40acf0)
-- ✅ `iniU32Invalid` (0x40ade0)
-- ✅ `loadUserIni` (0x40aef0)
 
 </details>
 <details>
@@ -361,6 +343,7 @@ Objects built entirely from C, in link order.
 |---|---|
 | `app/bootloaders` | 19 |
 | `app/stfs` | 7 |
+| `app/filelist_ini` | 12 |
 | `app/timeutil` | 7 |
 | `app/smc` | 4 |
 | `app/sysupdate` | 12 |
@@ -411,6 +394,23 @@ Objects built entirely from C, in link order.
 - ✅ `stfsInit` (0x405f20)
 - ✅ `stfsFree` (0x405f50)
 - ✅ `stfsLoad` (0x405fa0)
+
+</details>
+<details>
+<summary><code>app/filelist_ini</code>: 12 functions</summary>
+
+- ✅ `fixFileCase` (0x408ec0)
+- ✅ `iniPreParse` (0x408fe0)
+- ✅ `memFindStr` (0x409310)
+- ✅ `memFindChar` (0x4093d0)
+- ✅ `checkFileCase` (0x409410)
+- ✅ `parseIni` (0x409430)
+- ✅ `getIniValue` (0x40aa10)
+- ✅ `getIniBool` (0x40aad0)
+- ✅ `iniBoolInvalid` (0x40abf0)
+- ✅ `getIniU32` (0x40acf0)
+- ✅ `iniU32Invalid` (0x40ade0)
+- ✅ `loadUserIni` (0x40aef0)
 
 </details>
 <details>
@@ -1005,7 +1005,9 @@ encodings, so `sh build.sh` has the last word. It reports MATCH for every
 function already in C. Its default flags are `-O3`; give fileutil's
 `--param` or crypto's `-Isrc/crypto` explicitly.
 
-Mixed so far: `app/filelist_ini` (`getIniValue`, with a `findInst`-style
+The first mixed object was `app/filelist_ini` (whole C now; parseIni's
+strings are `static const` arrays defined before it so that, with
+`-fno-toplevel-reorder`, they keep the original's `.rdata` order; `getIniValue`, with a `findInst`-style
 `findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
 `findInst`. And `app/options` (16 functions; the rest are drafted in

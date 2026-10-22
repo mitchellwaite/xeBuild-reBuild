@@ -198,7 +198,7 @@ SYMBOLS = {
     0x433570: '_log_set_verbose', 0x4335a0: '_log_verbose_flag', 0x433600: '_log_get_verbose',
     0x433610: '_log_set_name', 0x433690: '_log_printf', 0x433740: '_log_init',
     0x4337a0: '_log_finish',
-    # app/filelist_ini (src/app/filelist_ini.c, mixed); names are ours
+    # app/filelist_ini (src/app/filelist_ini.c); names are ours
     0x40aa10: '_getIniValue', 0x4c93a4: '_iniBuf', 0x4c97ac: '_iniSize',
     0x408ec0: '_fixFileCase',       # copies the dir's casing of smc.bin/kv.bin/patches_
     0x408fe0: '_iniPreParse',       # (buf, len) -> new len; DashLaunch iniPreParse
@@ -206,24 +206,7 @@ SYMBOLS = {
     0x4093d0: '_memFindChar',       # (buf, c, len) -> index or -1
     0x409410: '_checkFileCase',     # fixFileCase if the base dir is set
     0x44a340: '_fnSmc', 0x44a360: '_fnKv', 0x44a3e0: '_fnPatches',  # .data char[32]
-    # filelist_ini.s strings the mixed filelist_ini.c refers to
-    0x44fb84: '_fi_44fb84', 0x44fbb0: '_fi_44fbb0', 0x450264: '_fi_450264',
-    0x450290: '_fi_450290', 0x4502cd: '_fi_4502cd', 0x4502dd: '_fi_4502dd',
-    0x4502e4: '_fi_4502e4', 0x450347: '_fi_450347', 0x450258: '_fi_450258',
-    0x45025d: '_fi_45025d',
-    0x450380: '_validChars',        # iniPreParse's char[74]; the C keeps a static copy
-    # parseIni's strings and data
-    0x44fb60: '_fi_44fb60', 0x44fb88: '_fi_44fb88', 0x44fbe8: '_fi_44fbe8', 0x44fc48: '_fi_44fc48',
-    0x44fc52: '_fi_44fc52', 0x44fc62: '_fi_44fc62', 0x44fc71: '_fi_44fc71', 0x44fc80: '_fi_44fc80',
-    0x44fc90: '_fi_44fc90', 0x44fca0: '_fi_44fca0', 0x44fcb1: '_fi_44fcb1', 0x44fcbf: '_fi_44fcbf',
-    0x44fccc: '_fi_44fccc', 0x44fcdc: '_fi_44fcdc', 0x44fd1d: '_fi_44fd1d', 0x44fd26: '_fi_44fd26',
-    0x44fd2d: '_fi_44fd2d', 0x44fd44: '_fi_44fd44', 0x44fd78: '_fi_44fd78', 0x44fdba: '_fi_44fdba',
-    0x44fdd8: '_fi_44fdd8', 0x44fe20: '_fi_44fe20', 0x44fe5a: '_fi_44fe5a', 0x44fe60: '_fi_44fe60',
-    0x44fe85: '_fi_44fe85', 0x44fe90: '_fi_44fe90', 0x44feb0: '_fi_44feb0', 0x44fef0: '_fi_44fef0',
-    0x44ff40: '_fi_44ff40', 0x44ff60: '_fi_44ff60', 0x44ff98: '_fi_44ff98', 0x44ffd0: '_fi_44ffd0',
-    0x450010: '_fi_450010', 0x450034: '_fi_450034', 0x45003e: '_fi_45003e', 0x45005c: '_fi_45005c',
-    0x4500a7: '_fi_4500a7', 0x4500bc: '_fi_4500bc', 0x450108: '_fi_450108', 0x450149: '_fi_450149',
-    0x450154: '_fi_450154', 0x450174: '_fi_450174', 0x4501c0: '_fi_4501c0',
+    0x450380: '_validChars',        # iniPreParse's char[74]
     0x44a020: '_blJtag', 0x44a044: '_blDevgl', 0x44a05c: '_blTestk', 0x44a074: '_blDevk',
     0x44a08c: '_blRetail',          # int[]: the bl section's file order per build type
     0x44a0c0: '_locDevgl', 0x44a140: '_locTestk', 0x44a1a0: '_locDevk', 0x44a200: '_locJtag',
@@ -732,11 +715,6 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
-    0x40aa10,   # app/filelist_ini getIniValue
-    0x409310, 0x4093d0, 0x409410,  # memFindStr memFindChar checkFileCase
-    0x40aef0, 0x408ec0, 0x408fe0,  # loadUserIni fixFileCase iniPreParse
-    0x40aad0, 0x40abf0, 0x40acf0, 0x40ade0,  # getIniBool iniBoolInvalid getIniU32 iniU32Invalid
-    0x409430,                                # parseIni
     # app/mode_update (mode_update stays asm)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
