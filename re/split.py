@@ -719,7 +719,7 @@ C_FUNCS = {
     0x41c760, 0x41c860, 0x41ce50, 0x41cf00,  # cdEncryptCpu ceEncrypt cgEncrypt kvEncrypt
     0x41cff0, 0x41d6a0, 0x41d9b0, 0x41db70,  # kvEncryptAlt extendedPrepare secdataPrepare shaCheck
     0x41dc30, 0x41dfa0, 0x41e7b0, 0x41e620,  # crlEncrypt daeEncryptOne shaHeader fcrtEncrypt
-    0x41d0e0,                                # kvPrepare
+    0x41d0e0, 0x41c910, 0x41ca20,            # kvPrepare cfPatchSlots cfEncrypt
     # app/image_read (the rest are drafted in wip/app/image_read.c)
     0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile
     0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset

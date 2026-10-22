@@ -78,6 +78,8 @@ int verifyExtended(void *buf, int size);
 int verifyCrl(void *buf, int size, int perBox);
 void daeDecrypt(u8 *dae, u32 size, int perBox);
 int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
+/* external copy of the always_inline cfPatchSlots */
+short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
 
 extern struct xebuild xb;
 
@@ -662,6 +664,64 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
 	memcpy(ce + 16, infoKey3, 16);
 	XeCryptHmacSha(prevKey, 16, ce + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, ce + 32, size - 32);
+}
+
+__attribute__((always_inline))
+inline short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
+{
+	u8 *buf = cf->buf;
+	u32 end = cf->size + extra;
+	u32 over;
+	short n = 0;
+	u32 i;
+	u16 *tbl = (u16 *)(buf + 48);
+
+	if (__builtin_expect(end > max, 1)) {
+		over = end - max;
+		cf->f428 = max - cf->size;
+		cf->f424 = over;
+		for (i = 1; over > 0x4000; i++, over -= 0x4000) {
+			tbl[i] = SWAP16(block + i - 1);
+			n++;
+		}
+		if (over) {
+			tbl[i] = SWAP16(block + i - 1);
+			n++;
+		}
+	}
+	tbl[0] = SWAP16(n);
+	return n;
+}
+
+u16 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
+{
+	u8 key[16];
+	u8 salt[16];
+	short n;
+	u8 *buf;
+
+	memcpy(salt, infoKey4, 16);
+	if (!keep) {
+		buf = cf->buf;
+		memset(buf + 32, 0, 528);
+		if (xb.type == 2)
+			cf->buf[539] = 1;
+		else
+			cf->buf[539] = 0;
+		memcpy(cf->buf + 540, pairing, 3);
+		cf->buf[543] = xb.cfLdv;
+	}
+	n = cfPatchSlots(cf, extra, block, max);
+	XeCryptHmacSha(xb.key1bl, 16, salt, 16, NULL, 0, NULL, 0, key, 16);
+	if (!keep) {
+		memcpy(cf->buf + 32, key, 16);
+		XeCryptHmacSha(xb.cpuKey, 16, cf->buf, 0x220, NULL, 0, NULL, 0, cf->buf + 544, 16);
+	}
+	buf = cf->buf;
+	memcpy(cf->f414, buf + 816, 16);
+	memcpy(buf + 32, salt, 16);
+	XeCryptRc4(key, 16, cf->buf + 48, cf->size - 48);
+	return n;
 }
 
 void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size)

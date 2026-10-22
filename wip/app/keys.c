@@ -75,6 +75,8 @@ int verifyExtended(void *buf, int size);
 int verifyCrl(void *buf, int size, int perBox);
 void daeDecrypt(u8 *dae, u32 size, int perBox);
 int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
+/* external copy of the always_inline cfPatchSlots */
+short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
 
 extern struct xebuild xb;
 
@@ -596,34 +598,41 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
 	XeCryptRc4(key, 16, ce + 32, size - 32);
 }
 
-/* without forwprop (the standalone copy's, and the early passes of the
-   one cfEncrypt inlines) the loop's exit cmp keeps the iv first */
-u32 cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
-inline __attribute__((always_inline, optimize("no-tree-forwprop")))
-u32 cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
+/* The slot index i and the count n are separate (the original computes
+   the last index as trips + 2 but n as (trips + 1) + 1); n is 16-bit, so
+   its add isn't CSE'd with the index's. */
+__attribute__((always_inline))
+inline short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 {
 	u8 *buf = cf->buf;
 	u32 end = cf->size + extra;
-	u32 over, n = 0;
+	u32 over;
+	short n = 0;
+	u32 i;
 	u16 *tbl = (u16 *)(buf + 48);
 
-	if (end > max) {
+	if (__builtin_expect(end > max, 1)) {
 		over = end - max;
 		cf->f428 = max - cf->size;
 		cf->f424 = over;
-		for (n = 1; over > 0x4000; n++, over -= 0x4000)
-			tbl[n] = SWAP16(block + n - 1);
-		tbl[n] = SWAP16(block + n - 1);
+		for (i = 1; over > 0x4000; i++, over -= 0x4000) {
+			tbl[i] = SWAP16(block + i - 1);
+			n++;
+		}
+		if (over) {
+			tbl[i] = SWAP16(block + i - 1);
+			n++;
+		}
 	}
 	tbl[0] = SWAP16(n);
 	return n;
 }
 
-u32 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
+u16 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
 {
 	u8 key[16];
 	u8 salt[16];
-	u32 n;
+	short n;
 	u8 *buf;
 
 	memcpy(salt, infoKey4, 16);
@@ -911,25 +920,27 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 {
 	u8 *orig = malloc(size);
 	u8 *dae;
-	u32 off, len;
+	u32 off;
+	u32 len;
 	int n = 0;
 
 	memcpy(orig, buf, size);
 	off = 0;
 	if (size) do {
 		dae = buf + off;
-		if (buf[off] != 'D' || buf[off + 1] != 'A' || buf[off + 2] != 'E' || buf[off + 3] != 'P') {
+		if (dae[0] != 'D' || __builtin_expect(dae[1] != 'A', 1) || __builtin_expect(dae[2] != 'E', 1) || __builtin_expect(dae[3] != 'P', 1)) {
 			log_printf(0, "\n******* ERROR: dae segment does not have the expected header!\n");
 			break;
 		}
 		len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
 		if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
 			if (n) {
+				retry: __attribute__((hot));
 				memcpy(dae, orig + off, len);
 				daeDecrypt(dae, len, 1);
-				if (shaCheck(dae, len, 12, 20, 336, NULL))
+				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
 					log_printf(1, "success!\n");
-				else {
+				} else {
 					memcpy(dae, orig + off, len);
 					daeDecrypt(dae, len, 0);
 					if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
@@ -942,15 +953,16 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 				log_printf(1, "dae appears encrypted, attempting to decrypt with CPU key...");
 				memcpy(dae, orig + off, len);
 				daeDecrypt(dae, len, 1);
-				if (shaCheck(dae, len, 12, 20, 336, NULL))
+				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
 					log_printf(1, "success!\n");
-				else {
+				} else {
+					altKey: __attribute__((hot));
 					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
 					memcpy(dae, orig + off, len);
 					daeDecrypt(dae, len, 0);
-					if (shaCheck(dae, len, 12, 20, 336, NULL))
+					if (shaCheck(dae, len, 12, 20, 336, NULL)) {
 						log_printf(1, "success!\n");
-					else {
+					} else {
 						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
 						n = 0;
 						off = size + 1;
@@ -964,7 +976,9 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 	next:
 		off += len;
 	} while (off < size);
-	if (n != 2)
+	if (n != 2) {
 		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
+	}
 	free(orig);
 }
+

@@ -594,7 +594,7 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 
 ## app/keys.c
 
-Draft of the whole object, with string literals. 44 of 48 functions are
+Draft of the whole object, with string literals. 47 of 48 functions are
 built from `src/app/keys.c` (mixed), which `python wip/keysmixed.py <names>`
 makes from this file; add a function's name there (and its address to
 `split.py` `C_FUNCS`, its strings to `SYMBOLS`) when it matches. Line counts
@@ -664,38 +664,32 @@ and hints, scratch harness `build/keys/kvgen.py`):
   and LRA's spill-slot order ([56]/[60]; slots go to spilled pseudos by
   descending frequency).
 
+cfPatchSlots and cfEncrypt (built since 2026-10-22): the slot index `i`
+(u32, from 1) and the count `n` are separate variables, the last slot is
+`if (over)` after a `over > 0x4000` loop (the original computes the last
+index as `trips + 2` and n as `(trips + 1) + 1`, and cfEncrypt's copy
+keeps the `over == 0` test).  n is `short` (cfPatchSlots returns short,
+cfEncrypt u16 with a `short n`): a 16-bit add isn't CSE'd with the
+index's, so the standalone's `lea edx,[2+eax]` / `add eax,2` pair comes
+out.  No optimize attribute any more; `__builtin_expect(end > max, 1)`
+orders cfEncrypt's two cold blocks.  The draft declares the external
+prototype up top and puts `__attribute__((always_inline))` on its own
+line before `inline short cfPatchSlots(` so keysmixed picks it up (its
+`grep` of src for names misses `short`/`u16` functions: pass them).
+
 Still off:
 
-- `daeEncrypt` (443): `if (size) do { ... } while (off < size)` with
-  `buf[off + k]` header tests stops gcc peeling the first iteration and gets
-  the original's 108-byte frame; still off: the processing block (call
-  daeEncryptOne, `n++`) comes before the loop head in ours, and the
-  original keeps buf/size/orig in edi/ebp/esi and `len` in memory.
-  The original's off is a loop-region allocno in edx, saved around each
-  call, with the parent's copy in ebx (`xor ebx,ebx` ... `mov edx,ebx`
-  before the guard): IRA regional allocation, like smcChecksum's sums and
-  kvPrepare's alt in ecx.  Loop forms (for/while/do-while), header test
-  spellings and hints on the header, hash and loop tests (best 403) don't
-  give it, and no object-wide IRA flag (-fira-region, -fira-loop-pressure,
-  -fno-ira-hoist-pressure, ...) helps any of the five without breaking
-  the 42 that match.
-- `cfPatchSlots` (27) and `cfEncrypt` (94, inlines it): `SWAP16` is
-  `((x & 0xff) << 8) + ((x & 0xff00) >> 8)` (not a rotate in the loop or the
-  last slot, a rotate for `tbl[0]`), and one `tbl[0] = SWAP16(n)` after the
-  `if (end > max)` (the zero case shares it). The loop's exit `cmp` had the
-  bound first (ivopts rewrites the compare use last, so the bound reuses
-  names the other uses freed, and forwprop4 sorts by version);
-  `always_inline, optimize("no-tree-forwprop")` on cfPatchSlots fixes it
-  standalone (37 -> 27) without changing cfEncrypt.  The smcChecksum-style
-  wrapper doesn't work here: the inliner re-folds `end > max` against the
-  wrapper's low-numbered `max`.  Left: the tail.  The original computes
-  `n` twice (`lea edx,[2+eax]` / `add eax,2`: index and `block + n - 1`
-  from one, `tbl[0]` and the return from the other), ours once; no flag
-  in the attribute changes that (48 tried).  cfEncrypt's original tail
-  has `(trips + 1) + 1` unfolded and no PRE'd `block - 1`, and its copy
-  tests `over == 0` (giving n = 0), which the standalone one doesn't;
-  `while (over)` loops with a clamp or break (8 forms) give a different
-  structure (95+).  `buf[539] = (type == 2)` is an if/else there.
+- `daeEncrypt` (81, was 443): `if (size) do { ... } while (off < size)`
+  with `goto next` for the failures, `__builtin_expect(dae[k] != ..., 1)` on
+  the A/E/P tests (the original's error block falls through after the A
+  test), hot labels on the `n != 0` retry arm and the alternate-key arm.
+  Found with `build/keys/daegen.py` (coordinate descent over loop form,
+  header spelling, types/declaration order and hints).  Left: register
+  roles in the loop (the original has off in edx, saved around calls, with
+  the parent copy in ebx, and buf in edi; ours swaps buf and off), the
+  `n != 2` exit layout and the failure tails.  The original's header uses
+  `[ebx]` (dae) for 'D' but `[edi+edx+k]` (buf[off + k]) for the rest;
+  that spelling (`hdr=mix`) costs more at the current hints (429).
 
 ## app/mode_update.c
 

@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **582 of 617** (578 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 59 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **584 of 617** (580 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 59 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 18 / 25 | 397 / 432 |
+| `app/` | 18 / 25 | 399 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -39,7 +39,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
 | `app/image_write` | mixed; 0 of 7 drafted functions match in `wip/app/image_write.c` | 39 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
-| `app/keys` | mixed; 0 of 3 drafted functions match in `wip/app/keys.c` | 45 / 48 |
+| `app/keys` | mixed; 0 of 1 drafted functions match in `wip/app/keys.c` | 47 / 48 |
 | `app/net` | mixed; 0 of 3 drafted functions match in `wip/app/net.c` | 29 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
 | `app/build` | mixed; 2 of 16 drafted functions match in `wip/app/build.c` | 27 / 41 |
@@ -155,7 +155,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/keys</code>: 45 / 48 in C</summary>
+<summary><code>app/keys</code>: 47 / 48 in C</summary>
 
 - ✅ `keysInit` (0x41aa00)
 - ✅ `setCrlKey` (0x41abb0)
@@ -191,8 +191,8 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `cdEncrypt` (0x41c6b0)
 - ✅ `cdEncryptCpu` (0x41c760)
 - ✅ `ceEncrypt` (0x41c860)
-- ⬜ `cfPatchSlots` (0x41c910) (draft in `wip/`, no match yet)
-- ⬜ `cfEncrypt` (0x41ca20) (draft in `wip/`, no match yet)
+- ✅ `cfPatchSlots` (0x41c910)
+- ✅ `cfEncrypt` (0x41ca20)
 - ✅ `cgEncrypt` (0x41ce50)
 - ✅ `kvEncrypt` (0x41cf00)
 - ✅ `kvEncryptAlt` (0x41cff0)
@@ -1034,7 +1034,7 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
   (`memcpy(dst + strlen(dst), str_name, sizeof "name")`). Which names are
   long differs between iniConsoleType and setConsoleType, so follow gcc.
 
-And `app/keys` (45 of 48 functions; the whole object is drafted in
+And `app/keys` (47 of 48 functions; the whole object is drafted in
 `wip/app/keys.c`; `python wip/keysmixed.py <matching functions>` makes
 `src/app/keys.c` from it: literals become `msg_*`/`str_*` names, the key
 buffers `extern`). The names (`keysInit`, `cbaEncrypt`,
