@@ -4,7 +4,6 @@
 #   .bss           00479e84-0050eca8
 
 .intel_syntax noprefix
-.globl L_479e84
 .globl L_479ea4
 .globl L_479ea7
 .globl L_479eac
@@ -110,7 +109,6 @@
 .globl L_4bc580
 .globl L_4bc588
 .globl L_4bc590
-.globl L_4bce00
 .globl L_4c0000
 .globl L_4c0020
 .globl L_4c0c94
@@ -161,13 +159,11 @@
 .globl L_4c912c
 .globl L_4c9130
 .globl L_4c9134
-.globl L_4c9138
 .globl L_4c917f
 .globl L_4c9180
 .globl L_4c9182
 .globl L_4c9184
 .globl L_4c9186
-.globl L_4c9364
 .globl L_4c93a8
 .globl L_4c97a8
 .globl L_4c97d6
@@ -194,6 +190,7 @@
 .globl L_50ec90
 .globl L_50ec94
 .globl _XeCryptRandomState
+.globl _blOrder
 .globl _buildMode
 .globl _cpuKey
 .globl _flashFiles
@@ -218,7 +215,7 @@
 
 .bss
 .p2align 2
-L_479e84:
+_blOrder:
           .zero 28
 _xb:
           .zero 4

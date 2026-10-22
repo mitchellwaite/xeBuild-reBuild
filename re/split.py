@@ -212,6 +212,27 @@ SYMBOLS = {
     0x4502e4: '_fi_4502e4', 0x450347: '_fi_450347', 0x450258: '_fi_450258',
     0x45025d: '_fi_45025d',
     0x450380: '_validChars',        # iniPreParse's char[74]; the C keeps a static copy
+    # parseIni's strings and data
+    0x44fb60: '_fi_44fb60', 0x44fb88: '_fi_44fb88', 0x44fbe8: '_fi_44fbe8', 0x44fc48: '_fi_44fc48',
+    0x44fc52: '_fi_44fc52', 0x44fc62: '_fi_44fc62', 0x44fc71: '_fi_44fc71', 0x44fc80: '_fi_44fc80',
+    0x44fc90: '_fi_44fc90', 0x44fca0: '_fi_44fca0', 0x44fcb1: '_fi_44fcb1', 0x44fcbf: '_fi_44fcbf',
+    0x44fccc: '_fi_44fccc', 0x44fcdc: '_fi_44fcdc', 0x44fd1d: '_fi_44fd1d', 0x44fd26: '_fi_44fd26',
+    0x44fd2d: '_fi_44fd2d', 0x44fd44: '_fi_44fd44', 0x44fd78: '_fi_44fd78', 0x44fdba: '_fi_44fdba',
+    0x44fdd8: '_fi_44fdd8', 0x44fe20: '_fi_44fe20', 0x44fe5a: '_fi_44fe5a', 0x44fe60: '_fi_44fe60',
+    0x44fe85: '_fi_44fe85', 0x44fe90: '_fi_44fe90', 0x44feb0: '_fi_44feb0', 0x44fef0: '_fi_44fef0',
+    0x44ff40: '_fi_44ff40', 0x44ff60: '_fi_44ff60', 0x44ff98: '_fi_44ff98', 0x44ffd0: '_fi_44ffd0',
+    0x450010: '_fi_450010', 0x450034: '_fi_450034', 0x45003e: '_fi_45003e', 0x45005c: '_fi_45005c',
+    0x4500a7: '_fi_4500a7', 0x4500bc: '_fi_4500bc', 0x450108: '_fi_450108', 0x450149: '_fi_450149',
+    0x450154: '_fi_450154', 0x450174: '_fi_450174', 0x4501c0: '_fi_4501c0',
+    0x44a020: '_blJtag', 0x44a044: '_blDevgl', 0x44a05c: '_blTestk', 0x44a074: '_blDevk',
+    0x44a08c: '_blRetail',          # int[]: the bl section's file order per build type
+    0x44a0c0: '_locDevgl', 0x44a140: '_locTestk', 0x44a1a0: '_locDevk', 0x44a200: '_locJtag',
+    0x44a2a0: '_locRetail',         # {offset, type}[] per file for each build type
+    0x44a320: '_fnNone', 0x44a380: '_fnKvAlt', 0x44a3a0: '_fnXellGg', 0x44a3c0: '_fnXell2f',
+    0x44a400: '_fnSmcConfig', 0x44a420: '_fnFreeboot', 0x44a440: '_fnFuses',
+    0x44a460: '_fnPayload',         # .data char[32] file names
+    0x450400: '_consoleNames',      # const char *[8] by xb.flags & 7; [0] is NULL
+    0x479e84: '_blOrder',           # COMMON int *: one of the bl* tables
     # app/fileutil (src/app/fileutil.c); the author's names where his tools'
     # util.c has the function (cOzInABox/XeBuild tools/*/util.c), else ours
     0x420a90: '_getConsoleTypeStr', 0x420ab0: '_getBeU16', 0x420ad0: '_getBeU32',
@@ -715,6 +736,7 @@ C_FUNCS = {
     0x409310, 0x4093d0, 0x409410,  # memFindStr memFindChar checkFileCase
     0x40aef0, 0x408ec0, 0x408fe0,  # loadUserIni fixFileCase iniPreParse
     0x40aad0, 0x40abf0, 0x40acf0, 0x40ade0,  # getIniBool iniBoolInvalid getIniU32 iniU32Invalid
+    0x409430,                                # parseIni
     # app/mode_update (mode_update stays asm)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc

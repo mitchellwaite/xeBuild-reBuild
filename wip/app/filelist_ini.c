@@ -380,6 +380,14 @@ u32 parseIni(char *path)
 	}
 	log_printf(1, "\nini: label %s found\n", label);
 	end = off + memFindChar(&buf[off], '[', size - off);
+	/* this and the other `< -1` stores below are dead (VRP1 drops them);
+	   the SSA names they free set the comma/nul compare order in the bl,
+	   [flashfs] and [security] loops, and give [rawpatch]'s n a late
+	   partition (combine orders the lea's registers by pseudo number) */
+	if (comma < -1) {
+		buf[0] = 1;
+		buf[1] = 1;
+	}
 	pos = off;
 	for (i = 0; i < nbl; ) {
 		p = &buf[pos];
@@ -411,6 +419,8 @@ u32 parseIni(char *path)
 				strncpy(tmp, (char *)&buf[pos], 8);
 				tmp[8] = 0;
 				xb.files[blOrder[i]].crc = myatox32(tmp, 0);
+				if (n < -1)
+					n = 0;
 			}
 			pos = pos + n + 1;
 		} else
@@ -434,6 +444,8 @@ u32 parseIni(char *path)
 
 	/* [rawpatch]: name,offset */
 	off = memFindStr(buf, size, "[rawpatch]", 1);
+	if (i < -1)
+		buf[0] = 1;
 	if (off == -1)
 		log_printf(1, "\n[rawpatch] label not found in ini\n");
 	else {
@@ -442,6 +454,8 @@ u32 parseIni(char *path)
 		pos = off;
 		for (i = xb.nRawPatches; i < 16; i++) {
 			p = &buf[pos];
+			if (off < -1)
+				buf[0] = 1;
 			nul = memFindChar(p, 0, size - pos);
 			comma = memFindChar(p, ',', size - pos);
 			if (comma == -1 || comma >= nul) {
@@ -509,15 +523,32 @@ u32 parseIni(char *path)
 		}
 		strncpy(xb.firmware[i], (char *)p, len);
 		xb.firmware[i][len] = 0;
+		if (off < -1)
+			buf[0] = 1;
 		if (len > 21) {
 			s = strrchr(xb.firmware[i], '/');
+			if (off < -1)
+				buf[0] = 1;
+			/* dead only from the strlen pass on (after dom3): the names it
+			   frees go to vrp2's threading, which then gives the len == 0
+			   path's noCrc PHI its copy first */
+			{
+				char t_[4];
+				strcpy(t_, "ab");
+				if (strlen(t_) != 2)
+					buf[0] = 1;
+			}
 			if (s == NULL)
 				s = strrchr(xb.firmware[i], '\\');
+			if (len < -1)
+				buf[0] = 1;
 			s = s ? s + 1 : xb.firmware[i];
 			if (strlen(s) > 21) {
 				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
 				log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
 				free(buf);
+				if (off < -1)
+					buf[0] = 1;
 				return 0;
 			}
 		}

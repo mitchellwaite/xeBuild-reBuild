@@ -475,6 +475,22 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
     (64-66 align it), and the dead loop's K = 44 (43-45) restores the spill
     slots and the ebx inheritance tie. All 11 functions JMATCH; the build
     reproduces the SHA.
+  - parseIni matches (built from src since this session; 12 of 12). The
+    lea order is combine's simplify_plus_minus sorting registers by pseudo
+    number: [rawpatch]'s n is coalesced with its memFindChar loop's i,
+    whose ch2 header-copy PHI took free-list name 11, so its partition
+    (and pseudo) came before pos's. The [flashfs] PHI order and the
+    [security] comma/nul compare are the same resource: one recycled name
+    that dom3 (the compare's PHI) or vrp2's threading (the noCrc PHI)
+    takes. `< -1` dead stores die in VRP1, too early to separate them; a
+    `strcpy` to a dead local plus `if (strlen(t_) != 2)` survives until the
+    strlen pass (between dom3 and vrp2) and frees names in that window.
+    With it, greedy searches over single `< -1` stores (scratch hill.py,
+    scored by jcmp's mnemonic-and-register diff, which fncmp's line count
+    misses) fixed the rest. 10 dead statements in all.
+  - Mixed plumbing: strings as `fi_<addr>` (four section labels static),
+    data names in split.py (bl*, loc*, fn*, consoleNames, blOrder in
+    common_bss).
 
 ## app/keys.c
 
