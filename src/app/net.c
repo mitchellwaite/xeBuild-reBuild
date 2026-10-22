@@ -262,7 +262,7 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 		}
 		r = recv(netSock, (char *)buf + got, size - got, 0);
 		if (r == SOCKET_ERROR) {
-			if (__builtin_expect(verbose, 0))
+			if (verbose)
 				putchar('\n');
 			log_printf(0, net_457518, WSAGetLastError());
 			if (buf != (u8 *)&netEmpty)
@@ -270,16 +270,16 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 			return NULL;
 		}
 		got += r;
-		if (__builtin_expect(verbose, 0))
+		if (verbose)
 			printf(net_45766a, got, size);
 	}
-	if (__builtin_expect(verbose, 0))
+	if (verbose)
 		putchar('\n');
 	if (got == size) {
 		*len = size;
 		return buf;
 	}
-	if (__builtin_expect(verbose, 0))
+	if (verbose)
 		putchar('\n');
 	log_printf(0, net_457544, got, size);
 	if (buf != (u8 *)&netEmpty)
@@ -575,7 +575,7 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 	int rlen, ret;
 	u8 *r;
 
-	/* the hint (with builtin-expect-probability=60, 55-65 work) makes the
+	/* the hint (with builtin-expect-probability=65, 55-65 work) makes the
 	   shared return-0 block frequent enough to be aligned */
 	if (__builtin_expect(!name, 0))
 		return 0;

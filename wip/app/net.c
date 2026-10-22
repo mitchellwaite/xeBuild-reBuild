@@ -212,10 +212,12 @@ int netSendStr(const char *s)
 	return 1;
 }
 
-/* netRecv with progress output.  verbose is unsigned: as an int, uncprop
-   reuses it for got's 0 and keeps it in a register.  The hints (with
-   builtin-expect-probability=60) start the verbose loop's trace before the
-   shared recv-failure block and leave its size <= 0 exit unaligned. */
+/* netRecv with progress output; netRecv is probably its constprop clone
+   (verbose 0).  verbose is unsigned: as an int, uncprop reuses it for got's
+   0 and keeps it in a register.  The hint (with builtin-expect-probability
+   65; 60 aligns the verbose size <= 0 exit) starts the verbose loop's trace
+   before the shared recv-failure block.  Hinting every test also matches,
+   but then IPA-CP doesn't clone. */
 u8 *netRecvVerbose(int *len, u32 verbose)
 {
 	fd_set fds;
@@ -260,7 +262,7 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 		}
 		r = recv(netSock, (char *)buf + got, size - got, 0);
 		if (r == SOCKET_ERROR) {
-			if (__builtin_expect(verbose, 0))
+			if (verbose)
 				putchar('\n');
 			log_printf(0, "could not receive data on socket, error %d\n", WSAGetLastError());
 			if (buf != (u8 *)&netEmpty)
@@ -268,16 +270,16 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 			return NULL;
 		}
 		got += r;
-		if (__builtin_expect(verbose, 0))
+		if (verbose)
 			printf("received 0x%08x of 0x%08x\r", got, size);
 	}
-	if (__builtin_expect(verbose, 0))
+	if (verbose)
 		putchar('\n');
 	if (got == size) {
 		*len = size;
 		return buf;
 	}
-	if (__builtin_expect(verbose, 0))
+	if (verbose)
 		putchar('\n');
 	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 	if (buf != (u8 *)&netEmpty)
@@ -616,7 +618,7 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 	int rlen, ret;
 	u8 *r;
 
-	/* the hint (with builtin-expect-probability=60, 55-65 work) makes the
+	/* the hint (with builtin-expect-probability=65, 55-65 work) makes the
 	   shared return-0 block frequent enough to be aligned */
 	if (__builtin_expect(!name, 0))
 		return 0;

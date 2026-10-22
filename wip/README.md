@@ -1113,7 +1113,7 @@ What got them (this round):
   frequency > 4 x the fallthru from the send failure, align-loop-iterations;
   ours was 4750 vs 2190, the strlen loop's expansion halving the send
   block). `__builtin_expect(!name, 0)` with the object's
-  `builtin-expect-probability=60` (55-65) aligns it and changes nothing
+  `builtin-expect-probability` 55-65 (now 65, for netRecvVerbose) aligns it and changes nothing
   else; `!name || !buf` tests buf first and flips the send branch, and
   `--param align-loop-iterations=2` also aligns a netSendData block.
 - netFindBeacon: `volatile u32 addr;` set to 0 after `socket()`. The
@@ -1205,7 +1205,7 @@ Open (diff lines from `re/fncmp.py`):
     `while (got < size) { do ... while (got < size); }` with
     `optimize("no-tree-ch")` also gets the registers (28: guard `cmp
     got,size`, tail at the end). Declaration order and FD_SET spellings
-    change nothing. `__builtin_expect` can't help: the object's 60% is
+    change nothing. `__builtin_expect` can't help: the object's 65% is
     fixed by netSendFile.
   - `*len = 0`: sched2 issues `mov [edx],0` alone at t=3 (it waits only on
     the frame allocation's memory clobber; the stack stores wait a cycle
@@ -1228,17 +1228,40 @@ Open (diff lines from `re/fncmp.py`):
   - netRecvVerbose (built): `u32 verbose` (as an int, uncprop gives the
     non-verbose loop's `got = 0` the value of verbose, known 0 there, which
     keeps verbose in ebx; uncprop needs the two to be coalescable, i.e. the
-    same type) and `__builtin_expect(verbose, 0)` on its `if (verbose)`
-    tests. One hint on the "waiting for" printf already matches fncmp
-    (verbose path 29% -> 40%, so its loop's trace starts before the shared
-    recv-failure block's), but aligns the verbose `size <= 0` exit; hinting
-    all five is byte-identical. The original's loop is unswitched on
-    verbose, as ours. With it matching, its constprop clone is netRecv
-    except for the rotation and the `*len = 0` slot (54 lines): the clone
-    has size_13 and got's names 28/36/79 after header copying, so got's
-    pseudo follows size's. Equivalent spellings (declaration order, `||`
-    order, `&buf[got]`, `got = got + r`, casts) don't change the GIMPLE;
-    the hand-rotated loop breaks netRecvVerbose (138).
+    same type) and `__builtin_expect(verbose, 0)` on the "waiting for"
+    printf with the object's probability at 65 (verbose path 29% -> 35%,
+    so its loop's trace starts before the shared recv-failure block's).
+    At 52-62 the hint matches fncmp but aligns the verbose `size <= 0`
+    exit; hinting all five tests matches at 55-65 too, but then IPA-CP
+    finds no benefit in cloning for verbose 0, so the single hint is the
+    one consistent with netRecv being the clone. The original's loop is
+    unswitched on verbose, as ours.
+  - The clone (`#define netRecv(len) netRecvVerbose(len, 0)`, compare with
+    `FNCMP_GCCSYM=_netRecvVerbose.constprop.2`) is netRecv except for the
+    register rotation and the `*len = 0` slot (54 lines). The rotation is
+    not pseudo order but a caller-save cost threshold: an allocno crossing
+    calls keeps edx/ecx (and then gets colored late, leaving ebx to size)
+    only while class cost + call freq x 8 stays under its memory cost
+    (ira-costs.c, the ALLOCNO_CALL_FREQ adjustment; "N avail. regs" in the
+    IRA dump: 1-6 below the threshold, 3-6 above). got sits right at it:
+    the do-while form was 1984 vs ~1970, the clone 1904 vs ~1970. One more
+    use of got on the short-count failure path (an empty `asm ("" : :
+    "g"(got))` before its log) puts the clone over and leaves
+    netRecvVerbose matching: the clone is then 6 lines, only the
+    `*len = 0` slot. Uses in the loop (or at the success return, or after
+    `got = 0`) also move netRecvVerbose's got, which sits just under the
+    same threshold the other way; hints on the loop's error tests wreck
+    it. What the original had there instead of the asm is unknown.
+  - `*len = 0` slot: our `dx = ax` is LRA's inheritance rewrite of the
+    parameter move (insn 2, before NOTE_INSN_FUNCTION_BEG), so alias
+    analysis knows edx is the incoming pointer and sched2 issues the store
+    at t=3 alone. Hiding len behind `asm ("" : "+r"(len))` makes the store
+    wait (it then aliases only the alias-set-0 spill slot: points-to says
+    *len can't be fds, and tv is long), which is the original's order, but
+    loses the edx copy. So the original's `mov edx,eax` was probably a
+    reload of the spilled len, not inherited, after the note, turned into a
+    copy by postreload. bb2 is one EBB and nothing in it blocks
+    inheritance in ours; the LRA/sched params tried don't change it.
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 
