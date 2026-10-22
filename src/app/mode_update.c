@@ -113,6 +113,9 @@ extern struct xebuild xb;
 extern char separator[];
 extern int promptEnter;
 
+/* mode_update and updateNand are built with a crafted profile (build.sh);
+   the rest keep gcc's guessed one */
+#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
 extern int useConsoleAddons;
 
 /* mode_update.s's data */
@@ -279,7 +282,7 @@ extern const char mu_44de04[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
 extern const char mu_44de38[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
 extern const char mu_44de80[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
 
-u32 getBadBlocks(void)
+NOPROF u32 getBadBlocks(void)
 {
 	u8 *list;
 	int len, i;
@@ -288,10 +291,7 @@ u32 getBadBlocks(void)
 
 	log_printf(1, mu_44c6e8);
 	list = netGetBadBlocks(&len);
-	if (!list) {
-		log_printf(0, mu_44c76c);
-		return 0;
-	}
+	if (list) {
 	if (len) {
 		blocks = info->nandType / info->f018;
 		log_printf(1, mu_44c70c, len / 2);
@@ -306,10 +306,13 @@ u32 getBadBlocks(void)
 	} else
 		log_printf(1, mu_44c74c);
 	netFree(list);
-	return 1;
+		return 1;
+	}
+	log_printf(0, mu_44c76c);
+	return 0;
 }
 
-void update_usage(void)
+NOPROF void update_usage(void)
 {
 	log_printf(0, separator);
 	log_printf(0, mu_44c7b4, mu_44c7ab);
@@ -347,7 +350,7 @@ void update_usage(void)
 	exit(1);
 }
 
-int wantFile(const char *name)
+NOPROF int wantFile(const char *name)
 {
 	int ret = 1;
 
@@ -361,7 +364,7 @@ int wantFile(const char *name)
 	return ret;
 }
 
-void parseAddonIdx(const u8 *addons, int len, const u8 *idx, size_t idxLen)
+NOPROF void parseAddonIdx(const u8 *addons, int len, const u8 *idx, size_t idxLen)
 {
 	u32 e, i, n;
 	u32 off = 4;
@@ -403,7 +406,7 @@ void parseAddonIdx(const u8 *addons, int len, const u8 *idx, size_t idxLen)
 	}
 }
 
-void getAddons(void)
+NOPROF void getAddons(void)
 {
 	u8 *addons, *idx;
 	int len;
@@ -429,7 +432,7 @@ void getAddons(void)
 		log_printf(0, mu_44cf6c);
 }
 
-u32 getMobileFiles(const char *dir)
+NOPROF u32 getMobileFiles(const char *dir)
 {
 	u8 i;
 	char name[64];
@@ -497,7 +500,7 @@ u32 getMobileFiles(const char *dir)
 	return 0;
 }
 
-u8 *bldrGetKv(int *size)
+NOPROF u8 *bldrGetKv(int *size)
 {
 	u8 *bl = xb.bldrs.data;
 	u32 len = SWAP32(*(u32 *)(bl + 96));
@@ -508,7 +511,7 @@ u8 *bldrGetKv(int *size)
 	return kv;
 }
 
-u8 *bldrGetSmc(int *size)
+NOPROF u8 *bldrGetSmc(int *size)
 {
 	u8 *bl = xb.bldrs.data;
 	u32 len = SWAP32(*(u32 *)(bl + 120));
@@ -519,7 +522,7 @@ u8 *bldrGetSmc(int *size)
 	return smc;
 }
 
-static u32 getSmc(const char *dir)
+NOPROF static u32 getSmc(const char *dir)
 {
 	if (!xb.haveBldrs) {
 		log_printf(1, mu_44d339);
@@ -544,7 +547,7 @@ static u32 getSmc(const char *dir)
 	return 0;
 }
 
-static u32 getKv(const char *dir)
+NOPROF static u32 getKv(const char *dir)
 {
 	u32 ret;
 
@@ -571,7 +574,7 @@ static u32 getKv(const char *dir)
 	return ret;
 }
 
-u32 getSecurityFiles(const char *dir)
+NOPROF u32 getSecurityFiles(const char *dir)
 {
 	u32 i;
 
@@ -597,14 +600,14 @@ u32 getSecurityFiles(const char *dir)
 	return getSmc(dir);
 }
 
-u32 checkBadBlocks(void)
+NOPROF u32 checkBadBlocks(void)
 {
 	if (xb.flags & 0x10000000)
 		return 1;
 	return getBadBlocks();
 }
 
-u32 getBootloaders(const char *dir)
+NOPROF u32 getBootloaders(const char *dir)
 {
 	log_printf(1, mu_44d400);
 	if (xb.type != 3) {
@@ -624,7 +627,7 @@ u32 getBootloaders(const char *dir)
 	return 1;
 }
 
-int getConsoleFiles(const char *dir)
+NOPROF int getConsoleFiles(const char *dir)
 {
 	if (!checkBadBlocks()) {
 		log_printf(0, mu_44d590);
@@ -649,7 +652,7 @@ int getConsoleFiles(const char *dir)
 	return 1;
 }
 
-int updateGetFile(const char *name, u8 **data, int *size)
+NOPROF int updateGetFile(const char *name, u8 **data, int *size)
 {
 	char *p;
 	u8 *buf;

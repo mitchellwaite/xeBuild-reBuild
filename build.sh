@@ -9,10 +9,16 @@ OBJ=build/obj
 ROOT=$PWD
 # gcc finds cc1/as and their DLLs through PATH
 PATH="$PWD/$TC:$PATH"
+# ccp <gcc flags>: compile src/$f.c (as $orig) in $p, assembly to stdout
+ccp() {
+  (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
+    "$ROOT/$TC/gcc.exe" -S "$@" -I"$ROOT/src/$(dirname "$f")" -x c - -o -)
+}
 objs=
 for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
   mkdir -p "$OBJ/$(dirname "$f")"
   if [ -f "src/$f.c" ]; then
+    prof=
     case "$f" in
       # original build path, for __FILE__ in assert(); fed through stdin so
       # the #line can name it (gcc 6 has no -ffile-prefix-map)
@@ -29,10 +35,20 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # would need 95); 155 and up match
       app/consoleinfo) orig="$f.c"
              cflags="-O3 --param align-threshold=200" ;;
-      # getBadBlocks aligns its error block, which the default (100) doesn't;
-      # getConsoleFiles' netMount hint needs 68 (66-70 in other forms)
+      # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
+      # mode_update's cold blocks are laid out by frequency ties that no
+      # guessed profile we found gives (wip/README.md), so it and the static
+      # updateNand it inlines are built with a crafted profile: gcc's guessed
+      # one with these edges changed (profile_estimate bb numbers; re/gcda.py).
+      # The other functions are optimize("no-branch-probabilities") and keep
+      # the guessed profile; -fno-ipa-profile keeps their hot test, and
+      # -fno-reorder-functions keeps mode_update out of .text.hot.
       app/mode_update) orig="$f.c"
-             cflags="-O3 --param align-threshold=200 --param builtin-expect-probability=68" ;;
+             cflags="-O3 --param builtin-expect-probability=68 -fno-ipa-profile -fno-reorder-functions"
+             prof="mode_update:59>3=97.9 mode_update:65>66=16 mode_update:67>68=16
+                   mode_update:69>70=30 mode_update:75>76=21 mode_update:79>80=80.5
+                   mode_update:80>82=17 updateNand:2>3=49.5 updateNand:13>18=27
+                   updateNand:19>20=60 updateNand:24>25=14.5 --only=mode_update,updateNand" ;;
       # fcrtEncrypt's offset hint needs 60 (and setFuseCpuKey's NULL hint
       # then aligns that block; align-threshold=200 would also align
       # smcChecksum's count == 0 block, which the original doesn't)
@@ -69,42 +85,30 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
              cflags="-O3" ;;
       *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
     esac
-    if [ -f "src/$f.s" ]; then
-      # mixed object: splice the C functions into the .s (re/splice.py)
+    uw=
+    [ -f "src/$f.s" ] && uw=-fno-asynchronous-unwind-tables
+    if [ -n "$prof" ]; then
+      # profile build: an instrumented compile gives the .gcno and the guessed
+      # profile, re/gcda.py the .gcda. All compiles run in $p with `-o -`: the
+      # .gcda name and static functions' profile ids come from the aux name
+      p="$OBJ/$f.fdo"
+      mkdir -p "$p"
+      pw=$(cd "$p" && { pwd -W 2>/dev/null || pwd; })
+      ccp $cflags $uw -fprofile-arcs -ftest-coverage \
+        -fdump-tree-profile_estimate-blocks-details >/dev/null
+      python re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
+        $prof --src="src/$f.c" >/dev/null
+      ccp $cflags $uw -fbranch-probabilities -fprofile-dir="$pw" > "$OBJ/$f.c.s"
+    elif [ -n "$uw" ]; then
       { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
-        "$TC/gcc.exe" -S $cflags -fno-asynchronous-unwind-tables \
-          -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
-      fdo=
-      if [ "$f" = app/mode_update ]; then
-        # mode_update's cold blocks are laid out by frequency ties that no
-        # guessed profile we found gives (wip/README.md): re/gcda.py writes the
-        # guessed profile with these edges changed (profile_estimate bb
-        # numbers), and only mode_update is taken from the profile build.
-        # Both compiles use `-o -`: the .gcda name and static functions'
-        # profile ids come from the aux name. pf keeps the profile from
-        # changing inlining and placement (wip/README.md); at the object's
-        # align-threshold=200 the profile build aligns two more labels.
-        p="$OBJ/$f.fdo"
-        mkdir -p "$p"
-        pw=$(cd "$p" && { pwd -W 2>/dev/null || pwd; })
-        pf="-fno-inline-small-functions -fno-partial-inlining -fno-ipa-profile -fno-reorder-functions --param align-threshold=100"
-        (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
-          "$ROOT/$TC/gcc.exe" -S $cflags $pf -fno-asynchronous-unwind-tables -I"$ROOT/src/app" \
-            -fprofile-arcs -ftest-coverage -fdump-tree-profile_estimate-blocks-details \
-            -x c - -o - >/dev/null)
-        python re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
-          mode_update:59\>3=97.9 mode_update:65\>66=16 mode_update:67\>68=16 \
-          mode_update:69\>70=30 mode_update:75\>76=21 mode_update:79\>80=80.5 \
-          mode_update:80\>82=17 updateNand:2\>3=49.5 updateNand:13\>18=27 \
-          updateNand:19\>20=60 updateNand:24\>25=14.5 \
-          --only=mode_update,updateNand --src="src/$f.c" >/dev/null
-        (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
-          "$ROOT/$TC/gcc.exe" -S $cflags $pf -fno-asynchronous-unwind-tables -I"$ROOT/src/app" \
-            -fbranch-probabilities -fprofile-dir="$pw" -x c - -o -) > "$OBJ/$f.fdo.s"
-        fdo="_mode_update=$OBJ/$f.fdo.s"
-      fi
-      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s" $fdo
+        "$TC/gcc.exe" -S $cflags $uw -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
+    fi
+    if [ -n "$uw" ]; then
+      # mixed object: splice the C functions into the .s (re/splice.py)
+      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s"
       "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
+    elif [ -n "$prof" ]; then
+      "$TC/as.exe" --32 "$OBJ/$f.c.s" -o "$OBJ/$f.o"
     else
       { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
         "$TC/gcc.exe" -c $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.o"

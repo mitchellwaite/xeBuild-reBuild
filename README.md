@@ -1049,16 +1049,19 @@ buffers `extern`). The names (`keysInit`, `cbaEncrypt`,
 - `crlEncrypt` writes the success branch twice (CPU key, then the alternate
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
 
-And `app/mode_update` (all 14 functions in C, data in the `.s`;
-`python wip/mumixed.py <functions>` makes `src/app/mode_update.c` from
-`wip/app/mode_update.c`). `mode_update` itself only matches when built with
-a profile: its cold blocks are placed by bb-reorder's Fibonacci-heap ties,
-and no guessed profile we found gives the original's (wip/README.md has the
-search, `wip/fibsolve.py`). build.sh compiles the file a second time with
-`-fbranch-probabilities` and a `.gcda` from `re/gcda.py` (gcc's guessed
-profile with 11 edges changed) and `re/splice.py ... _mode_update=<that
-output>` takes only `mode_update` from it. The edges are a fit to the
-layout, not the original's profile.
+And `app/mode_update` (all 14 functions in C, data in the `.s`).
+`mode_update` itself only matches when built with a profile: its cold
+blocks are placed by bb-reorder's Fibonacci-heap ties, and no guessed
+profile we found gives the original's (wip/README.md has the search,
+`wip/fibsolve.py`). build.sh compiles the object with
+`-fbranch-probabilities` and a `.gcda` from `re/gcda.py`: counts for
+`mode_update` and its inlined `updateNand` only, gcc's guessed profile with
+11 edges changed. The edges are a fit to the layout, not the original's
+profile. The other functions are `optimize("no-branch-probabilities",
+"no-reorder-functions")` (`NOPROF`), so they keep the guessed profile and
+`.text`. getBadBlocks is written success-first (no early-return predictor),
+which puts its error block over the default align-threshold, as the
+original's is.
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 
