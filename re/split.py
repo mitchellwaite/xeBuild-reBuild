@@ -466,7 +466,7 @@ SYMBOLS = {
     0x457200: '_str_failedNl', 0x45720c: '_msg_crlCrypted', 0x457248: '_msg_crlBad',
     0x457404: '_msg_fcrtSize', 0x457430: '_msg_fcrtOffset', 0x45745c: '_msg_fcrtBad',
     0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
-    # bootloaders.s strings the mixed bootloaders.c refers to (extern names)
+    # bootloaders.c's string arrays
     0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
     0x44c110: '_msg_cfSlot1', 0x44c143: '_msg_sigGood', 0x44c14e: '_msg_sigCheckFail',
     0x44c200: '_msg_sigFail', 0x44c214: '_msg_noPub',

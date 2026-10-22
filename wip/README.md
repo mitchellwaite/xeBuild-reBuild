@@ -194,9 +194,10 @@ Findings:
 ## app/bootloaders.c
 
 Draft of the whole object, with string literals. All 19 functions match
-and are built from `src/app/bootloaders.c`, which keeps the strings,
-`.eh_frame` and padding as top-level `__asm__`, so its C uses `extern`
-names for the strings (`msg_*`, labels in its .rdata asm).
+and are built from `src/app/bootloaders.c`, which has no asm left: its
+strings are `static const` arrays (`msg_*`) in the original's .rdata order
+(built with `-fno-toplevel-reorder`); with literals, daeVerifySig,
+fcrtVerifySig and cb/cd/ceDecrypt emit their error strings first.
 
 - `ceDecrypt`: cbDecrypt's fix (below) keeps the calloc-fail
   `xor ebx,ebx` but rotates the registers (IRA gives bl esi instead of

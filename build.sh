@@ -56,11 +56,10 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # imgAddMobile's 50/50 imgFits hint
       app/image_write) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=50" ;;
-      # padding between functions is top-level asm between the C ones;
-      # -fno-toplevel-reorder keeps that order (gcc 6 otherwise puts all
-      # top-level asm first), and the asm carries the object's .eh_frame
+      # its string arrays are defined in the original's .rdata order, which
+      # -fno-toplevel-reorder keeps
       app/bootloaders) orig="$f.c"
-             cflags="-O3 -fno-toplevel-reorder -fno-asynchronous-unwind-tables" ;;
+             cflags="-O3 -fno-toplevel-reorder" ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;
