@@ -1049,6 +1049,14 @@ IAT slots are renamed to winsock2.h's `__imp__send@16` spelling
 (`IAT_NAMES`; `.string` lines are skipped so "bind"/"connect" in messages
 survive).
 
+Tools: `python wip/netmixed.py <fns>` lists the string SYMBOLS it uses (add
+missing ones to split.py, and the function to C_FUNCS, then regenerate);
+`sh wip/mixedcmp.sh app/net src/app/net.c good.o --param
+builtin-expect-probability=65` compares the spliced object with a good
+build's net.o including alignment (fncmp doesn't); `python wip/fnvar.py
+wip/app/net.c <fn> <forms file> [attrs]` scores body variants (FLAGS for
+the probability, CMPFN/GCCSYM for the netRecvVerbose clone).
+
 What got them:
 
 - netGetBldrs/netGetBadBlocks: an integer (u32) return type. With a
