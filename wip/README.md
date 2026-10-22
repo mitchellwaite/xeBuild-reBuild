@@ -1262,6 +1262,24 @@ Open (diff lines from `re/fncmp.py`):
     reload of the spilled len, not inherited, after the note, turned into a
     copy by postreload. bb2 is one EBB and nothing in it blocks
     inheritance in ours; the LRA/sched params tried don't change it.
+    2026-10-22, the mechanism in gcc 6.2: init_alias_analysis seeds eax,
+    edx and ecx with the argument base (FUNCTION_ARG_REGNO_P) and marks
+    them seen; `edx = eax` keeps that base only while copying_arguments,
+    i.e. before NOTE_INSN_FUNCTION_BEG in insn order (find_base_value
+    returns 0 for a non-fixed hard reg after it, and record_set then drops
+    edx's base). So the original's copy came after the note. LRA undoes an
+    inheritance only if the inheritance pseudo is spilled (r156 got edx
+    here), and in one block it always inherits, so the original reached
+    LRA with something else: a block boundary between the parameter move
+    and the store, or a separate pointer for the store. Entry-block
+    spellings (explicit fd stores, winsock.h FD_SET, store orders,
+    `len[0]`) change nothing. An asm-laundered copy just for the store
+    (`int *l = len; asm ("" : "+r"(l)); *l = 0;`, or `"=r" : "0"`) puts
+    the store in the original's slot, but leaves `mov eax,edx` in the clone
+    (3 lines) and moves netRecvVerbose's `lea ebp` (2); earlier positions
+    are worse (10/11), a volatile asm too (4/7). A register variable would
+    give both functions the same register, but the originals differ (eax
+    in netRecvVerbose's fresh load, edx in the clone's copy).
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 
