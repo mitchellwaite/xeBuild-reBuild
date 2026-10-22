@@ -91,6 +91,7 @@ def main():
     img = Image(os.path.join(ROOT, 'xeBuild.exe'))
     bases = section_bases()
     objs = collections.OrderedDict()   # obj -> [(va, name, state)]
+    mixed_objs = set()                 # objects that still have a src/<obj>.s
     for i, (_, fdes) in enumerate(units(img)):
         obj = NAMES[i][0]
         if obj.startswith('runtime/'):
@@ -98,6 +99,8 @@ def main():
         names = func_names(obj, bases)
         has_c = os.path.exists(os.path.join(ROOT, 'src', obj + '.c'))
         mixed = has_c and os.path.exists(os.path.join(ROOT, 'src', obj + '.s'))
+        if mixed:
+            mixed_objs.add(obj)
         built = {a for a, _ in fdes if has_c and (not mixed or a in C_FUNCS)
                  and a not in asm_funcs(obj, fdes)}
         wip = wip_state(obj, sorted(a for a, _ in fdes if a not in built))
@@ -110,11 +113,15 @@ def main():
     def in_c(fs):
         return n(fs, 'C', 'wip')
 
+    # fully built from C: every function is C and no src/<obj>.s is left
+    # (a mixed object's .s still holds its data, padding and .eh_frame)
     def complete(obj):
-        return n(objs[obj], 'C') == len(objs[obj])
+        return obj not in mixed_objs and n(objs[obj], 'C') == len(objs[obj])
 
     def state(obj, fs):
         s = 'C' if complete(obj) else 'mixed' if n(fs, 'C') else 'asm'
+        if obj in mixed_objs and n(fs, 'C') == len(fs):
+            s += '; every function in C, data and `.eh_frame` still in `src/%s.s`' % obj
         drafted = n(fs, 'wip', 'draft')
         if drafted:
             s += '; %d of %d drafted functions match in `wip/%s.c`' % (n(fs, 'wip'), drafted, obj)
@@ -151,7 +158,7 @@ def main():
     done = [o for o in objs if complete(o)]
     todo = [o for o in objs if o not in done]
     out += ['', '### In progress', '',
-            'Objects with functions still in assembly. Per-function status in address order: '
+            'Objects with functions or data still in assembly (a `src/<obj>.s`). Per-function status in address order: '
             '✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. '
             '"Functions in C" counts both ✅ and ☑️.', '',
             '| Object | State | Functions in C |', '|---|---|---|']
