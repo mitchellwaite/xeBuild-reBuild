@@ -505,50 +505,6 @@ SYMBOLS = {
     0x4574b0: '_net_4574b0', 0x4574d0: '_net_4574d0', 0x4574f4: '_net_4574f4',
     0x457518: '_net_457518', 0x457544: '_net_457544', 0x457652: '_net_457652',
     0x45766a: '_net_45766a',
-    # mode_update.s strings and variables the mixed mode_update.c refers to
-    0x46f040: '_path', 0x46f144: '_noReboot', 0x46f148: '_noAvatar', 0x46f14c: '_noWrite',
-    0x46f150: '_clean', 0x46f154: '_hasHdd', 0x46f158: '_updating', 0x46f15c: '_info',
-    0x44c6e8: '_mu_44c6e8', 0x44c70c: '_mu_44c70c', 0x44c730: '_mu_44c730', 0x44c74c: '_mu_44c74c',
-    0x44c76c: '_mu_44c76c', 0x44c7ab: '_mu_44c7ab', 0x44c7b4: '_mu_44c7b4', 0x44c7e1: '_mu_44c7e1',
-    0x44c7ec: '_mu_44c7ec', 0x44c810: '_mu_44c810', 0x44c844: '_mu_44c844', 0x44c850: '_mu_44c850',
-    0x44c888: '_mu_44c888', 0x44c8ca: '_mu_44c8ca', 0x44c8e8: '_mu_44c8e8', 0x44c918: '_mu_44c918',
-    0x44c95c: '_mu_44c95c', 0x44c9a8: '_mu_44c9a8', 0x44c9e8: '_mu_44c9e8', 0x44ca2c: '_mu_44ca2c',
-    0x44ca74: '_mu_44ca74', 0x44cac8: '_mu_44cac8', 0x44cb18: '_mu_44cb18', 0x44cb58: '_mu_44cb58',
-    0x44cb90: '_mu_44cb90', 0x44cbb0: '_mu_44cbb0', 0x44cbbc: '_mu_44cbbc', 0x44cc04: '_mu_44cc04',
-    0x44cc58: '_mu_44cc58', 0x44ccc8: '_mu_44ccc8', 0x44cd14: '_mu_44cd14', 0x44cd6c: '_mu_44cd6c',
-    0x44cdc0: '_mu_44cdc0', 0x44cddb: '_mu_44cddb', 0x44cde8: '_mu_44cde8', 0x44cdf4: '_mu_44cdf4',
-    0x44ce08: '_mu_44ce08', 0x44ce21: '_mu_44ce21', 0x44ce40: '_mu_44ce40', 0x44ce9c: '_mu_44ce9c',
-    0x44cea3: '_mu_44cea3', 0x44cebc: '_mu_44cebc', 0x44ced0: '_mu_44ced0', 0x44cf18: '_mu_44cf18',
-    0x44cf6c: '_mu_44cf6c', 0x44cfac: '_mu_44cfac', 0x44cfd4: '_mu_44cfd4', 0x44cfe1: '_mu_44cfe1',
-    0x44cff0: '_mu_44cff0', 0x44d009: '_mu_44d009', 0x44d010: '_mu_44d010', 0x44d054: '_mu_44d054',
-    0x44d074: '_mu_44d074', 0x44d090: '_mu_44d090', 0x44d0d4: '_mu_44d0d4', 0x44d0f8: '_mu_44d0f8',
-    0x44d12c: '_mu_44d12c', 0x44d144: '_mu_44d144', 0x44d171: '_mu_44d171', 0x44d186: '_mu_44d186',
-    0x44d198: '_mu_44d198', 0x44d1d3: '_mu_44d1d3', 0x44d1db: '_mu_44d1db',
-    0x44d1f4: '_mu_44d1f4', 0x44d21c: '_mu_44d21c', 0x44d23d: '_mu_44d23d', 0x44d257: '_mu_44d257',
-    0x44d25e: '_mu_44d25e', 0x44d278: '_mu_44d278', 0x44d2ae: '_mu_44d2ae', 0x44d2c1: '_mu_44d2c1',
-    0x44d2c8: '_mu_44d2c8', 0x44d300: '_mu_44d300', 0x44d339: '_mu_44d339', 0x44d354: '_mu_44d354',
-    0x44d35c: '_mu_44d35c', 0x44d377: '_mu_44d377', 0x44d385: '_mu_44d385', 0x44d390: '_mu_44d390',
-    0x44d3c8: '_mu_44d3c8',
-    0x44d400: '_mu_44d400',
-    0x44d424: '_mu_44d424', 0x44d440: '_mu_44d440', 0x44d46e: '_mu_44d46e', 0x44d479: '_mu_44d479',
-    0x44d484: '_mu_44d484', 0x44d4b9: '_mu_44d4b9', 0x44d4c5: '_mu_44d4c5', 0x44d4cc: '_mu_44d4cc',
-    0x44d4fc: '_mu_44d4fc', 0x44d528: '_mu_44d528', 0x44d55c: '_mu_44d55c', 0x44d590: '_mu_44d590',
-    0x44d5ba: '_mu_44d5ba', 0x44d5d4: '_mu_44d5d4',
-    0x44d5f7: '_mu_44d5f7', 0x44d5fe: '_mu_44d5fe', 0x44d603: '_mu_44d603', 0x44d606: '_mu_44d606',
-    0x44d609: '_mu_44d609', 0x44d614: '_mu_44d614', 0x44d63a: '_mu_44d63a', 0x44d640: '_mu_44d640',
-    0x44d68a: '_mu_44d68a', 0x44d6a3: '_mu_44d6a3', 0x44d6a8: '_mu_44d6a8', 0x44d6f4: '_mu_44d6f4',
-    0x44d73a: '_mu_44d73a', 0x44d740: '_mu_44d740', 0x44d78c: '_mu_44d78c', 0x44d7e3: '_mu_44d7e3',
-    0x44d7e7: '_mu_44d7e7', 0x44d7ec: '_mu_44d7ec', 0x44d840: '_mu_44d840', 0x44d882: '_mu_44d882',
-    0x44d88c: '_mu_44d88c', 0x44d8c8: '_mu_44d8c8', 0x44d8d0: '_mu_44d8d0', 0x44d910: '_mu_44d910',
-    0x44d918: '_mu_44d918', 0x44d950: '_mu_44d950', 0x44d958: '_mu_44d958', 0x44d9c7: '_mu_44d9c7',
-    0x44d9ca: '_mu_44d9ca', 0x44d9d0: '_mu_44d9d0', 0x44da21: '_mu_44da21', 0x44da3d: '_mu_44da3d',
-    0x44da40: '_mu_44da40', 0x44da91: '_mu_44da91', 0x44da98: '_mu_44da98', 0x44dac6: '_mu_44dac6',
-    0x44dad0: '_mu_44dad0', 0x44db0e: '_mu_44db0e', 0x44db21: '_mu_44db21', 0x44db26: '_mu_44db26',
-    0x44db30: '_mu_44db30', 0x44db58: '_mu_44db58', 0x44db7c: '_mu_44db7c', 0x44dba0: '_mu_44dba0',
-    0x44dbcc: '_mu_44dbcc', 0x44dbfc: '_mu_44dbfc', 0x44dc2c: '_mu_44dc2c', 0x44dc54: '_mu_44dc54',
-    0x44dca8: '_mu_44dca8', 0x44dcf8: '_mu_44dcf8', 0x44dd40: '_mu_44dd40', 0x44dd67: '_mu_44dd67',
-    0x44dd80: '_mu_44dd80', 0x44ddc0: '_mu_44ddc0', 0x44de04: '_mu_44de04', 0x44de38: '_mu_44de38',
-    0x44de80: '_mu_44de80',
     # app/image_read (wip/app/image_read.c) and what it calls; names are ours
     0x4136a0: '_fsFind', 0x4138c0: '_getImageLdv', 0x413ad0: '_getImageSmc',
     0x413d30: '_getImageKv', 0x414050: '_getImageMobiles', 0x414300: '_getNetKd',
@@ -735,12 +691,6 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
-    # app/mode_update (mode_update is built with a crafted profile, build.sh)
-    0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
-    0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
-    0x403e10,                                # getSecurityFiles
-    0x404320, 0x404340, 0x404430, 0x404600,  # checkBadBlocks getBootloaders getConsoleFiles updateGetFile
-    0x404770,                                # mode_update
     # app/options (parseButton's ipa-split part at 449640 is gcc's
     # .text.unlikely, which splice.py takes too)
     0x4236f0,                                # baseFileExists.part.0

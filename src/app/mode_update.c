@@ -1,8 +1,5 @@
 /* mode_update: `xeBuild update`, rebuilds and reflashes a console over the network.
-   Mixed object: the functions here are spliced into mode_update.s
-   (re/splice.py), which still holds the rest and the data, so strings
-   and variables are extern names for the .s's.  wip/app/mode_update.c
-   is the whole draft. */
+   mode_update and updateNand are built with a crafted profile (build.sh). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,174 +110,176 @@ extern struct xebuild xb;
 extern char separator[];
 extern int promptEnter;
 
-/* mode_update and updateNand are built with a crafted profile (build.sh);
-   the rest keep gcc's guessed one */
+/* the other functions keep gcc's guessed profile, and .text */
 #define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
-extern int useConsoleAddons;
+int useConsoleAddons = 1;
 
-/* mode_update.s's data */
-extern struct consoleinfo *info;
-extern int updating;
-extern int hasHdd;
-extern int clean;
-extern int noWrite;
-extern int noAvatar;
-extern int noReboot;
-extern char path[260];
+/* .bss in the original's order (-fno-toplevel-reorder emits definition
+   order); globals, not statics, so that gcc assumes calls can change them */
+char path[260] = { 0 };
+int noReboot = 0;
+int noAvatar = 0;
+int noWrite = 0;
+int clean = 0;
+int hasHdd = 0;
+int updating = 0;
+struct consoleinfo *info = 0;
 
-/* strings in mode_update.s */
-extern const char mu_44c6e8[];	/* "\n------ getting bad blocks ------\n" */
-extern const char mu_44c70c[];	/* "processing %d bad blocks on device\n" */
-extern const char mu_44c730[];	/* "marking bad block at 0x%x\n" */
-extern const char mu_44c74c[];	/* "no bad blocks found on device\n" */
-extern const char mu_44c76c[];	/* "\n\n***** ERROR: unable to retrieve ..." */
-extern const char mu_44c7ab[];	/* "xeBuild" */
-extern const char mu_44c7b4[];	/* "Usage   :\n   %s update <switch> [<o..." */
-extern const char mu_44c7e1[];	/* "Examples:\n" */
-extern const char mu_44c7ec[];	/* "   %s update -f 16197 -a nofcrt\n" */
-extern const char mu_44c810[];	/* "   %s update -f 16203 -d myflash -ip..." */
-extern const char mu_44c844[];	/* "\nSwitches:\n" */
-extern const char mu_44c850[];	/* "   -f <dir> : use different data dir..." */
-extern const char mu_44c888[];	/* "   -d <dir> : dumps NAND and other d..." */
-extern const char mu_44c8ca[];	/* "   -a <name>: append patches\n" */
-extern const char mu_44c8e8[];	/* "   -ip <add>: force attempt to conne..." */
-extern const char mu_44c918[];	/* "   -i <ext> : adds _<ext> into firmw..." */
-extern const char mu_44c95c[];	/* "   -r <ext> : adds _<ext> into ini b..." */
-extern const char mu_44c9a8[];	/* "   -nowrite : will not write anythin..." */
-extern const char mu_44c9e8[];	/* "              without -d results of ..." */
-extern const char mu_44ca2c[];	/* "   -noava   : will not send avatar d..." */
-extern const char mu_44ca74[];	/* "   -clean   : secdata, extended and ..." */
-extern const char mu_44cac8[];	/* "   -noreeb  : do not automatically r..." */
-extern const char mu_44cb18[];	/* "   -noenter : suppresses prompt for ..." */
-extern const char mu_44cb58[];	/* "   -v       : shows more info during..." */
-extern const char mu_44cb90[];	/* "   -?       : shows this help\n\n" */
-extern const char mu_44cbb0[];	/* "legend:\n" */
-extern const char mu_44cbbc[];	/* "<name>      = name.bin contents will..." */
-extern const char mu_44cc04[];	/* "<dir>       = path, absolute or rela..." */
-extern const char mu_44cc58[];	/* "<ext>       = using this option woul..." */
-extern const char mu_44ccc8[];	/* "              and patches_jasper_<ex..." */
-extern const char mu_44cd14[];	/* "<add>       = without this option ne..." */
-extern const char mu_44cd6c[];	/* "              If provided the correc..." */
-extern const char mu_44cdc0[];	/* "\npress <enter> to quit...\n" */
-extern const char mu_44cddb[];	/* "extended.bin" */
-extern const char mu_44cde8[];	/* "secdata.bin" */
-extern const char mu_44cdf4[];	/* "Statistics.settings" */
-extern const char mu_44ce08[];	/* "skipping %s, -clean flag" */
-extern const char mu_44ce21[];	/* "addon patch from console: %s\n" */
-extern const char mu_44ce40[];	/* "***** WARNING: exceeded total number..." */
-extern const char mu_44ce9c[];	/* "addons" */
-extern const char mu_44cea3[];	/* "OK, received 0x%x bytes\n" */
-extern const char mu_44cebc[];	/* ".\\%d\\bin\\addon.idx" */
-extern const char mu_44ced0[];	/* "\n\n***** WARNING: unable to open %s..." */
-extern const char mu_44cf18[];	/* "\n\n***** WARNING: addons.bin from c..." */
-extern const char mu_44cf6c[];	/* "\n\n***** WARNING: Unable to retriev..." */
-extern const char mu_44cfac[];	/* "\n------ getting mobile settings ---..." */
-extern const char mu_44cfd4[];	/* "Mobile%c.dat" */
-extern const char mu_44cfe1[];	/* "not available\n" */
-extern const char mu_44cff0[];	/* "retrieving USVR\\blmod..." */
-extern const char mu_44d009[];	/* "blmod" */
-extern const char mu_44d010[];	/* "\n\n***** WARNING: Unable to retriev..." */
-extern const char mu_44d054[];	/* "console has no available blmod\n" */
-extern const char mu_44d074[];	/* "retrieving USVR\\addons..." */
-extern const char mu_44d090[];	/* "skipping USVR\\addons, addons have b..." */
-extern const char mu_44d0d4[];	/* "console has no available addons\n" */
-extern const char mu_44d0f8[];	/* "retrieving USVR\\Static.settings (sm..." */
-extern const char mu_44d12c[];	/* "usv:\\Static.settings" */
-extern const char mu_44d144[];	/* "OK, received 0x%x bytes\n        ver..." */
-extern const char mu_44d171[];	/* "smc_config is good!\n" */
-extern const char mu_44d186[];	/* "smc_config.bin" */
-extern const char mu_44d198[];	/* "\n***** ERROR: could not retrieve sm..." */
-extern const char mu_44d1d3[];	/* "usv:\\%s" */
-extern const char mu_44d1db[];	/* "retrieving USVR\\%s..." */
-extern const char mu_44d1f4[];	/* "\n------ getting security files ----..." */
-extern const char mu_44d21c[];	/* "OK, received 0x%x bytes\n        " */
-extern const char mu_44d23d[];	/* "retrieving USVR\\kv_enc..." */
-extern const char mu_44d257[];	/* "kv_enc" */
-extern const char mu_44d25e[];	/* "extracting BLDR\\kv_enc..." */
-extern const char mu_44d278[];	/* "OK, received 0x%x bytes\n        dec..." */
-extern const char mu_44d2ae[];	/* "keyvault is good!\n" */
-extern const char mu_44d2c1[];	/* "kv.bin" */
-extern const char mu_44d2c8[];	/* "\n***** ERROR: could not decrypt key..." */
-extern const char mu_44d300[];	/* "\n***** ERROR: could not retrieve ke..." */
-extern const char mu_44d339[];	/* "retrieving USVR\\smc_enc..." */
-extern const char mu_44d354[];	/* "smc_enc" */
-extern const char mu_44d35c[];	/* "extracting BLDR\\smc_enc..." */
-extern const char mu_44d377[];	/* "smc is good!\n" */
-extern const char mu_44d385[];	/* "smc.bin" */
-extern const char mu_44d390[];	/* "\n***** ERROR: could not decrypt smc..." */
-extern const char mu_44d3c8[];	/* "\n***** ERROR: could not retrieve sm..." */
-extern const char mu_44d400[];	/* "\n------ getting bootloaders ------\..." */
-extern const char mu_44d424[];	/* "reading bootloader data..." */
-extern const char mu_44d440[];	/* "success! Bootloader size with xell i..." */
-extern const char mu_44d46e[];	/* "fbldrs.bin" */
-extern const char mu_44d479[];	/* "failed!\n" */
-extern const char mu_44d484[];	/* "Skipping getting bootloaders on non-..." */
-extern const char mu_44d4b9[];	/* "\\SystemRoot" */
-extern const char mu_44d4c5[];	/* "usv" */
-extern const char mu_44d4cc[];	/* "\n***** ERROR: getting raw boot load..." */
-extern const char mu_44d4fc[];	/* "\n***** ERROR: getting mobile files ..." */
-extern const char mu_44d528[];	/* "\n***** ERROR: retrieving security f..." */
-extern const char mu_44d55c[];	/* "\n***** ERROR: mounting remote Syste..." */
-extern const char mu_44d590[];	/* "\n***** ERROR: getting bad blocks fa..." */
-extern const char mu_44d5ba[];	/* "failed! received 0 bytes\n" */
-extern const char mu_44d5d4[];	/* "failed! file not found on console\n" */
-extern const char mu_44d5f7[];	/* "update" */
-extern const char mu_44d5fe[];	/* "help" */
-extern const char mu_44d603[];	/* "-?" */
-extern const char mu_44d606[];	/* "/?" */
-extern const char mu_44d609[];	/* "-noenter" */
-extern const char mu_44d614[];	/* "<enter> key on completion suppressed..." */
-extern const char mu_44d63a[];	/* "-ip" */
-extern const char mu_44d640[];	/* "\n\n***** ERROR: option flag -ip on ..." */
-extern const char mu_44d68a[];	/* "setting forced IP to %s\n" */
-extern const char mu_44d6a3[];	/* "-a" */
-extern const char mu_44d6a8[];	/* "\n\n***** ERROR: option flag -a on c..." */
-extern const char mu_44d6f4[];	/* "***** WARNING: exceeded total number..." */
-extern const char mu_44d73a[];	/* "-r" */
-extern const char mu_44d740[];	/* "\n\n***** ERROR: option flag -r on c..." */
-extern const char mu_44d78c[];	/* "***** WARNING: option flag -r %s on ..." */
-extern const char mu_44d7e3[];	/* "_%s" */
-extern const char mu_44d7e7[];	/* "-i" */
-extern const char mu_44d7ec[];	/* "\n\n***** ERROR: data directory flag..." */
-extern const char mu_44d840[];	/* "suffix '%s' added from command line ..." */
-extern const char mu_44d882[];	/* "-nowrite" */
-extern const char mu_44d88c[];	/* "-nowrite: flash image and avatars wi..." */
-extern const char mu_44d8c8[];	/* "-noava" */
-extern const char mu_44d8d0[];	/* "-noava: avatar data, if available, w..." */
-extern const char mu_44d910[];	/* "-noreeb" */
-extern const char mu_44d918[];	/* "-noreeb: console will not reboot aft..." */
-extern const char mu_44d950[];	/* "-clean" */
-extern const char mu_44d958[];	/* "-clean: secdata, extended and statis..." */
-extern const char mu_44d9c7[];	/* "-v" */
-extern const char mu_44d9ca[];	/* "-d" */
-extern const char mu_44d9d0[];	/* "\n\n***** ERROR: dump directory flag..." */
-extern const char mu_44da21[];	/* "dump directory set to '%s'\n" */
-extern const char mu_44da3d[];	/* "-f" */
-extern const char mu_44da40[];	/* "\n\n***** ERROR: data directory flag..." */
-extern const char mu_44da91[];	/* "%s\\" */
-extern const char mu_44da98[];	/* "data directory set from command line..." */
-extern const char mu_44dac6[];	/* "%s\\bin\\" */
-extern const char mu_44dad0[];	/* "\n\n***** ERROR: unknown option '%s'..." */
-extern const char mu_44db0e[];	/* "Dumping disabled!\n" */
-extern const char mu_44db21[];	/* "%s%s" */
-extern const char mu_44db26[];	/* "%s_update" */
-extern const char mu_44db30[];	/* "\n------ dumping console flash -----..." */
-extern const char mu_44db58[];	/* "\n------ flashing console ------\n" */
-extern const char mu_44db7c[];	/* "sending flash data to console...\n" */
-extern const char mu_44dba0[];	/* "flashing console skipped, -nowrite u..." */
-extern const char mu_44dbcc[];	/* "\n------ loading and sending avatar ..." */
-extern const char mu_44dbfc[];	/* "avatar data skipped, -noava or -nowr..." */
-extern const char mu_44dc2c[];	/* "avatar data skipped, no HDD detected..." */
-extern const char mu_44dc54[];	/* "\n***** WARNING: due to previous pos..." */
-extern const char mu_44dca8[];	/* "               it is not recommended..." */
-extern const char mu_44dcf8[];	/* "               until you have determ..." */
-extern const char mu_44dd40[];	/* "\n\n***** ERROR: %i writing to file ..." */
-extern const char mu_44dd67[];	/* "%s image built, info:\n" */
-extern const char mu_44dd80[];	/* "\n\n***** FATAL UPDATE ERROR: %i una..." */
-extern const char mu_44ddc0[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
-extern const char mu_44de04[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
-extern const char mu_44de38[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
-extern const char mu_44de80[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
+/* the strings, in the original .rdata order (-fno-toplevel-reorder emits
+   them where they are defined), aligned as literals are (4 from 31
+   bytes, else 1) */
+static const char mu_44c6e8[] __attribute__((aligned(4))) = "\n------ getting bad blocks ------\n";
+static const char mu_44c70c[] __attribute__((aligned(4))) = "processing %d bad blocks on device\n";
+static const char mu_44c730[] __attribute__((aligned(1))) = "marking bad block at 0x%x\n";
+static const char mu_44c74c[] __attribute__((aligned(4))) = "no bad blocks found on device\n";
+static const char mu_44c76c[] __attribute__((aligned(4))) = "\n\n***** ERROR: unable to retrieve bad block list from device!\n";
+static const char mu_44c7ab[] __attribute__((aligned(1))) = "xeBuild";
+static const char mu_44c7b4[] __attribute__((aligned(4))) = "Usage   :\n   %s update <switch> [<option>]\n\n";
+static const char mu_44c7e1[] __attribute__((aligned(1))) = "Examples:\n";
+static const char mu_44c7ec[] __attribute__((aligned(4))) = "   %s update -f 16197 -a nofcrt\n";
+static const char mu_44c810[] __attribute__((aligned(4))) = "   %s update -f 16203 -d myflash -ip 192.168.2.100\n";
+static const char mu_44c844[] __attribute__((aligned(1))) = "\nSwitches:\n";
+static const char mu_44c850[] __attribute__((aligned(4))) = "   -f <dir> : use different data dir and file lists\n";
+static const char mu_44c888[] __attribute__((aligned(4))) = "   -d <dir> : dumps NAND and other data to <dir> before flashing\n";
+static const char mu_44c8ca[] __attribute__((aligned(1))) = "   -a <name>: append patches\n";
+static const char mu_44c8e8[] __attribute__((aligned(4))) = "   -ip <add>: force attempt to connect to addr\n";
+static const char mu_44c918[] __attribute__((aligned(4))) = "   -i <ext> : adds _<ext> into firmware ini and patches file names\n";
+static const char mu_44c95c[] __attribute__((aligned(4))) = "   -r <ext> : adds _<ext> into ini bl section name and patches file names\n";
+static const char mu_44c9a8[] __attribute__((aligned(4))) = "   -nowrite : will not write anything to console flash or HDD\n";
+static const char mu_44c9e8[] __attribute__((aligned(4))) = "              without -d results of update are not kept anywhere\n";
+static const char mu_44ca2c[] __attribute__((aligned(4))) = "   -noava   : will not send avatar data if available and HDD present\n";
+static const char mu_44ca74[] __attribute__((aligned(4))) = "   -clean   : secdata, extended and statistics will not be retrieved from console\n";
+static const char mu_44cac8[] __attribute__((aligned(4))) = "   -noreeb  : do not automatically reboot console after writes are completed\n";
+static const char mu_44cb18[] __attribute__((aligned(4))) = "   -noenter : suppresses prompt for enter key when finished\n";
+static const char mu_44cb58[] __attribute__((aligned(4))) = "   -v       : shows more info during update process\n";
+static const char mu_44cb90[] __attribute__((aligned(4))) = "   -?       : shows this help\n\n";
+static const char mu_44cbb0[] __attribute__((aligned(1))) = "legend:\n";
+static const char mu_44cbbc[] __attribute__((aligned(4))) = "<name>      = name.bin contents will be appended to hv/kernel patches\n\n";
+static const char mu_44cc04[] __attribute__((aligned(4))) = "<dir>       = path, absolute or relative, to a directory - do not terminate with \\\n";
+static const char mu_44cc58[] __attribute__((aligned(4))) = "<ext>       = using this option would cause the builder to look for _glitch_<ext>.ini instead of _glitch.ini\n";
+static const char mu_44ccc8[] __attribute__((aligned(4))) = "              and patches_jasper_<ext>.bin instead of patches_jasper.bin\n";
+static const char mu_44cd14[] __attribute__((aligned(4))) = "<add>       = without this option network will be scanned for server broadcast beacon\n";
+static const char mu_44cd6c[] __attribute__((aligned(4))) = "              If provided the correct format is an IPv4 address like 192.168.0.100\n";
+static const char mu_44cdc0[] __attribute__((aligned(1))) = "\npress <enter> to quit...\n";
+static const char mu_44cddb[] __attribute__((aligned(1))) = "extended.bin";
+static const char mu_44cde8[] __attribute__((aligned(1))) = "secdata.bin";
+static const char mu_44cdf4[] __attribute__((aligned(1))) = "Statistics.settings";
+static const char mu_44ce08[] __attribute__((aligned(1))) = "skipping %s, -clean flag";
+static const char mu_44ce21[] __attribute__((aligned(1))) = "addon patch from console: %s\n";
+static const char mu_44ce40[] __attribute__((aligned(4))) = "***** WARNING: exceeded total number of optional patches while processing %s from console!\n";
+static const char mu_44ce9c[] __attribute__((aligned(1))) = "addons";
+static const char mu_44cea3[] __attribute__((aligned(1))) = "OK, received 0x%x bytes\n";
+static const char mu_44cebc[] __attribute__((aligned(1))) = ".\\%d\\bin\\addon.idx";
+static const char mu_44ced0[] __attribute__((aligned(4))) = "\n\n***** WARNING: unable to open %s to parse addons.bin from console!\n";
+static const char mu_44cf18[] __attribute__((aligned(4))) = "\n\n***** WARNING: addons.bin from console is not a multiple of 4 bytes! Skipping!\n";
+static const char mu_44cf6c[] __attribute__((aligned(4))) = "\n\n***** WARNING: Unable to retrieve addons.bin from console!\n";
+static const char mu_44cfac[] __attribute__((aligned(4))) = "\n------ getting mobile settings ------\n";
+static const char mu_44cfd4[] __attribute__((aligned(1))) = "Mobile%c.dat";
+static const char mu_44cfe1[] __attribute__((aligned(1))) = "not available\n";
+static const char mu_44cff0[] __attribute__((aligned(1))) = "retrieving USVR\\blmod...";
+static const char mu_44d009[] __attribute__((aligned(1))) = "blmod";
+static const char mu_44d010[] __attribute__((aligned(4))) = "\n\n***** WARNING: Unable to retrieve blmod.bin data from console!\n";
+static const char mu_44d054[] __attribute__((aligned(4))) = "console has no available blmod\n";
+static const char mu_44d074[] __attribute__((aligned(1))) = "retrieving USVR\\addons...";
+static const char mu_44d090[] __attribute__((aligned(4))) = "skipping USVR\\addons, addons have been specified on command line\n";
+static const char mu_44d0d4[] __attribute__((aligned(4))) = "console has no available addons\n";
+static const char mu_44d0f8[] __attribute__((aligned(4))) = "retrieving USVR\\Static.settings (smc_config.bin)...";
+static const char mu_44d12c[] __attribute__((aligned(1))) = "usv:\\Static.settings";
+static const char mu_44d144[] __attribute__((aligned(4))) = "OK, received 0x%x bytes\n        verifying...";
+static const char mu_44d171[] __attribute__((aligned(1))) = "smc_config is good!\n";
+static const char mu_44d186[] __attribute__((aligned(1))) = "smc_config.bin";
+static const char mu_44d198[] __attribute__((aligned(4))) = "\n***** ERROR: could not retrieve smc_config from console!\n";
+static const char mu_44d1d3[] __attribute__((aligned(1))) = "usv:\\%s";
+static const char mu_44d1db[] __attribute__((aligned(1))) = "retrieving USVR\\%s...";
+static const char mu_44d1f4[] __attribute__((aligned(4))) = "\n------ getting security files ------\n";
+static const char mu_44d21c[] __attribute__((aligned(4))) = "OK, received 0x%x bytes\n        ";
+static const char mu_44d23d[] __attribute__((aligned(1))) = "retrieving USVR\\kv_enc...";
+static const char mu_44d257[] __attribute__((aligned(1))) = "kv_enc";
+static const char mu_44d25e[] __attribute__((aligned(1))) = "extracting BLDR\\kv_enc...";
+static const char mu_44d278[] __attribute__((aligned(4))) = "OK, received 0x%x bytes\n        decrypt and verify...";
+static const char mu_44d2ae[] __attribute__((aligned(1))) = "keyvault is good!\n";
+static const char mu_44d2c1[] __attribute__((aligned(1))) = "kv.bin";
+static const char mu_44d2c8[] __attribute__((aligned(4))) = "\n***** ERROR: could not decrypt keyvault from console!\n";
+static const char mu_44d300[] __attribute__((aligned(4))) = "\n***** ERROR: could not retrieve keyvault from console!\n";
+static const char mu_44d339[] __attribute__((aligned(1))) = "retrieving USVR\\smc_enc...";
+static const char mu_44d354[] __attribute__((aligned(1))) = "smc_enc";
+static const char mu_44d35c[] __attribute__((aligned(1))) = "extracting BLDR\\smc_enc...";
+static const char mu_44d377[] __attribute__((aligned(1))) = "smc is good!\n";
+static const char mu_44d385[] __attribute__((aligned(1))) = "smc.bin";
+static const char mu_44d390[] __attribute__((aligned(4))) = "\n***** ERROR: could not decrypt smc.bin from console!\n";
+static const char mu_44d3c8[] __attribute__((aligned(4))) = "\n***** ERROR: could not retrieve smc.bin from console!\n";
+static const char mu_44d400[] __attribute__((aligned(4))) = "\n------ getting bootloaders ------\n";
+static const char mu_44d424[] __attribute__((aligned(1))) = "reading bootloader data...";
+static const char mu_44d440[] __attribute__((aligned(4))) = "success! Bootloader size with xell is 0x%08x\n";
+static const char mu_44d46e[] __attribute__((aligned(1))) = "fbldrs.bin";
+static const char mu_44d479[] __attribute__((aligned(1))) = "failed!\n";
+static const char mu_44d484[] __attribute__((aligned(4))) = "Skipping getting bootloaders on non-glitch machine!\n";
+static const char mu_44d4b9[] __attribute__((aligned(1))) = "\\SystemRoot";
+static const char mu_44d4c5[] __attribute__((aligned(1))) = "usv";
+static const char mu_44d4cc[] __attribute__((aligned(4))) = "\n***** ERROR: getting raw boot loaders failed!\n";
+static const char mu_44d4fc[] __attribute__((aligned(4))) = "\n***** ERROR: getting mobile files failed!\n";
+static const char mu_44d528[] __attribute__((aligned(4))) = "\n***** ERROR: retrieving security files failed!\n";
+static const char mu_44d55c[] __attribute__((aligned(4))) = "\n***** ERROR: mounting remote SystemRoot failed!\n";
+static const char mu_44d590[] __attribute__((aligned(4))) = "\n***** ERROR: getting bad blocks failed!\n";
+static const char mu_44d5ba[] __attribute__((aligned(1))) = "failed! received 0 bytes\n";
+static const char mu_44d5d4[] __attribute__((aligned(4))) = "failed! file not found on console\n";
+static const char mu_44d5f7[] __attribute__((aligned(1))) = "update";
+static const char mu_44d5fe[] __attribute__((aligned(1))) = "help";
+static const char mu_44d603[] __attribute__((aligned(1))) = "-?";
+static const char mu_44d606[] __attribute__((aligned(1))) = "/?";
+static const char mu_44d609[] __attribute__((aligned(1))) = "-noenter";
+static const char mu_44d614[] __attribute__((aligned(4))) = "<enter> key on completion suppressed\n";
+static const char mu_44d63a[] __attribute__((aligned(1))) = "-ip";
+static const char mu_44d640[] __attribute__((aligned(4))) = "\n\n***** ERROR: option flag -ip on command line but no argument provided!\n";
+static const char mu_44d68a[] __attribute__((aligned(1))) = "setting forced IP to %s\n";
+static const char mu_44d6a3[] __attribute__((aligned(1))) = "-a";
+static const char mu_44d6a8[] __attribute__((aligned(4))) = "\n\n***** ERROR: option flag -a on command line but no argument provided!\n";
+static const char mu_44d6f4[] __attribute__((aligned(4))) = "***** WARNING: exceeded total number of optional patches with -a %s!\n";
+static const char mu_44d73a[] __attribute__((aligned(1))) = "-r";
+static const char mu_44d740[] __attribute__((aligned(4))) = "\n\n***** ERROR: option flag -r on command line but no argument provided!\n";
+static const char mu_44d78c[] __attribute__((aligned(4))) = "***** WARNING: option flag -r %s on command line replacing previous setting of -r %s!\n";
+static const char mu_44d7e3[] __attribute__((aligned(1))) = "_%s";
+static const char mu_44d7e7[] __attribute__((aligned(1))) = "-i";
+static const char mu_44d7ec[] __attribute__((aligned(4))) = "\n\n***** ERROR: data directory flag -i on command line but no argument provided!\n";
+static const char mu_44d840[] __attribute__((aligned(4))) = "suffix '%s' added from command line to ini and patches filenames\n";
+static const char mu_44d882[] __attribute__((aligned(1))) = "-nowrite";
+static const char mu_44d88c[] __attribute__((aligned(4))) = "-nowrite: flash image and avatars will not be sent to xbox\n";
+static const char mu_44d8c8[] __attribute__((aligned(1))) = "-noava";
+static const char mu_44d8d0[] __attribute__((aligned(4))) = "-noava: avatar data, if available, will not be sent to console\n";
+static const char mu_44d910[] __attribute__((aligned(1))) = "-noreeb";
+static const char mu_44d918[] __attribute__((aligned(4))) = "-noreeb: console will not reboot after writes are done\n";
+static const char mu_44d950[] __attribute__((aligned(1))) = "-clean";
+static const char mu_44d958[] __attribute__((aligned(4))) = "-clean: secdata, extended and statistics will not be retrieved from console, builder will make clean versions\n";
+static const char mu_44d9c7[] __attribute__((aligned(1))) = "-v";
+static const char mu_44d9ca[] __attribute__((aligned(1))) = "-d";
+static const char mu_44d9d0[] __attribute__((aligned(4))) = "\n\n***** ERROR: dump directory flag -d on command line but no argument provided!\n";
+static const char mu_44da21[] __attribute__((aligned(1))) = "dump directory set to '%s'\n";
+static const char mu_44da3d[] __attribute__((aligned(1))) = "-f";
+static const char mu_44da40[] __attribute__((aligned(4))) = "\n\n***** ERROR: data directory flag -f on command line but no argument provided!\n";
+static const char mu_44da91[] __attribute__((aligned(1))) = "%s\\";
+static const char mu_44da98[] __attribute__((aligned(4))) = "data directory set from command line to '%s'\n";
+static const char mu_44dac6[] __attribute__((aligned(1))) = "%s\\bin\\";
+static const char mu_44dad0[] __attribute__((aligned(4))) = "\n\n***** ERROR: unknown option '%s' provided on command line!\n";
+static const char mu_44db0e[] __attribute__((aligned(1))) = "Dumping disabled!\n";
+static const char mu_44db21[] __attribute__((aligned(1))) = "%s%s";
+static const char mu_44db26[] __attribute__((aligned(1))) = "%s_update";
+static const char mu_44db30[] __attribute__((aligned(4))) = "\n------ dumping console flash ------\n";
+static const char mu_44db58[] __attribute__((aligned(4))) = "\n------ flashing console ------\n";
+static const char mu_44db7c[] __attribute__((aligned(4))) = "sending flash data to console...\n";
+static const char mu_44dba0[] __attribute__((aligned(4))) = "flashing console skipped, -nowrite used\n";
+static const char mu_44dbcc[] __attribute__((aligned(4))) = "\n------ loading and sending avatar data ------\n";
+static const char mu_44dbfc[] __attribute__((aligned(4))) = "avatar data skipped, -noava or -nowrite used\n";
+static const char mu_44dc2c[] __attribute__((aligned(4))) = "avatar data skipped, no HDD detected\n";
+static const char mu_44dc54[] __attribute__((aligned(4))) = "\n***** WARNING: due to previous possible errors, console reboot is not being done\n";
+static const char mu_44dca8[] __attribute__((aligned(4))) = "               it is not recommended to use update mode on this console again\n";
+static const char mu_44dcf8[] __attribute__((aligned(4))) = "               until you have determined it's got a good image on it\n\n";
+static const char mu_44dd40[] __attribute__((aligned(4))) = "\n\n***** ERROR: %i writing to file %s\n\n";
+static const char mu_44dd67[] __attribute__((aligned(1))) = "%s image built, info:\n";
+static const char mu_44dd80[] __attribute__((aligned(4))) = "\n\n***** FATAL UPDATE ERROR: %i unable to complete NAND image\n\n";
+static const char mu_44ddc0[] __attribute__((aligned(4))) = "\n\n***** FATAL UPDATE ERROR: unable to get console unique files\n\n";
+static const char mu_44de04[] __attribute__((aligned(4))) = "\n\n***** FATAL UPDATE ERROR: unable to parse %s\n\n";
+static const char mu_44de38[] __attribute__((aligned(4))) = "\n\n***** FATAL UPDATE ERROR: unable to parse info reply from console!\n\n";
+static const char mu_44de80[] __attribute__((aligned(4))) = "\n\n***** FATAL UPDATE ERROR: unable to find console!\n\n";
 
 NOPROF u32 getBadBlocks(void)
 {

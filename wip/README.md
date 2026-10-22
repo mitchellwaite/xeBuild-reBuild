@@ -629,15 +629,12 @@ Still off:
 
 ## app/mode_update.c
 
-Draft of the whole object, with string literals. All 14 functions are
-built from `src/app/mode_update.c` (mixed; `mode_update` from build.sh's
-profile compile, see the 2026-10-22 note below), which `python wip/mumixed.py
-<names>` makes from this file (strings become `mu_<address>` externs, the
-statics become externs for the `.s`'s `.bss`); a new match needs its name
-there, its address in `split.py` `C_FUNCS` and the printed strings in
-`SYMBOLS`. The object builds with `--param align-threshold=200`
-(getBadBlocks' error block). Line counts are `FNCMP_LITERALS=1 python
-re/fncmp.py wip/app/mode_update.c <name>`.
+The whole object is built from `src/app/mode_update.c` (no `.s` since
+2026-10-22; `mode_update` from build.sh's profile compile, see the
+2026-10-22 notes below). This draft, with string literals and statics, is
+what `wip/mufdo.sh` experiments on; it is older than src (getBadBlocks there
+still has the early return that needed `align-threshold=200`). Line counts
+are `FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_update.c <name>`.
 
 Matching notes: uncprop return reuse is steered by prototype types
 (getSecurityFiles and verifyExtended `u32`, unscramble `int`; netMount and
@@ -778,10 +775,22 @@ Still off:
   Tuning went fastest by building with `-fdump-rtl-bbro-details` and
   comparing the last two rounds' keys against the target set, not by fncmp
   line counts.
-- Whole object from this draft: `.rdata` string order differs already in
-  getBadBlocks (its error string comes second, the original's last), and
-  `.data` is 4 bytes where mode_update.s has `useConsoleAddons` plus 0x14
-  zero bytes (0x18).
+- Whole object (2026-10-22): one `-fbranch-probabilities` compile. Functions
+  without counts in the `.gcda` are compiled as never executed, and counts
+  for all of them change inlining (inlining checkBadBlocks/getBootloaders
+  into getConsoleFiles needs -finline-small-functions, and with it the
+  profile inlines getConsoleFiles into mode_update). So only mode_update and
+  updateNand get counts, and the rest are
+  `optimize("no-branch-probabilities", "no-reorder-functions")`: they keep
+  the guessed profile (the attribute also stops getConsoleFiles inlining
+  into mode_update, CIF_OPTIMIZATION_MISMATCH) and `.text` (without it the
+  profile's callees go to `.text.hot`). `-fno-ipa-profile` keeps the hot
+  test. The profile build aligns two more mode_update labels at
+  align-threshold=200, so getBadBlocks is success-first (`if (list) {...
+  return 1;}`): no early-return predictor, its error block at 6.7% (freq
+  126) is aligned at the default. Strings are static arrays in .rdata order
+  and the variables zero-initialized globals (extern-like aliasing, which
+  updateGetFile needs) in .bss order, under -fno-toplevel-reorder.
 
 ## app/image_read.c
 

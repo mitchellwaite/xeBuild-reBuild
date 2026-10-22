@@ -44,7 +44,7 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # the guessed profile; -fno-ipa-profile keeps their hot test, and
       # -fno-reorder-functions keeps mode_update out of .text.hot.
       app/mode_update) orig="$f.c"
-             cflags="-O3 --param builtin-expect-probability=68 -fno-ipa-profile -fno-reorder-functions"
+             cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=68 -fno-ipa-profile -fno-reorder-functions"
              prof="mode_update:59>3=97.9 mode_update:65>66=16 mode_update:67>68=16
                    mode_update:69>70=30 mode_update:75>76=21 mode_update:79>80=80.5
                    mode_update:80>82=17 updateNand:2>3=49.5 updateNand:13>18=27

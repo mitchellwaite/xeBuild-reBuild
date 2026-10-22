@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 17 of 25 app files build from C, eight more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 18 of 25 app files build from C, seven more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **578 of 617** (575 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **578 of 617** (575 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 59 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 17 / 25 | 393 / 432 |
+| `app/` | 18 / 25 | 393 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,7 +36,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/mode_update` | mixed; every function in C, data and `.eh_frame` still in `src/app/mode_update.s` | 14 / 14 |
 | `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
 | `app/image_write` | mixed; 0 of 7 drafted functions match in `wip/app/image_write.c` | 39 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
@@ -45,25 +44,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
 | `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
 
-<details>
-<summary><code>app/mode_update</code>: 14 / 14 in C</summary>
-
-- ✅ `getBadBlocks` (0x4030b0)
-- ✅ `update_usage` (0x4031d0)
-- ✅ `wantFile` (0x403460)
-- ✅ `parseAddonIdx` (0x4034f0)
-- ✅ `getAddons` (0x403700)
-- ✅ `getMobileFiles` (0x403820)
-- ✅ `bldrGetKv` (0x403cf0)
-- ✅ `bldrGetSmc` (0x403d80)
-- ✅ `getSecurityFiles` (0x403e10)
-- ✅ `checkBadBlocks` (0x404320)
-- ✅ `getBootloaders` (0x404340)
-- ✅ `getConsoleFiles` (0x404430)
-- ✅ `updateGetFile` (0x404600)
-- ✅ `mode_update` (0x404770)
-
-</details>
 <details>
 <summary><code>app/mode_client</code>: 14 / 16 in C</summary>
 
@@ -342,6 +322,7 @@ Objects built entirely from C, in link order.
 | Object | Functions |
 |---|---|
 | `app/bootloaders` | 19 |
+| `app/mode_update` | 14 |
 | `app/stfs` | 7 |
 | `app/filelist_ini` | 12 |
 | `app/timeutil` | 7 |
@@ -382,6 +363,25 @@ Objects built entirely from C, in link order.
 - ✅ `cbDecrypt` (0x402a70)
 - ✅ `cdDecrypt` (0x402c70)
 - ✅ `ceDecrypt` (0x402ec0)
+
+</details>
+<details>
+<summary><code>app/mode_update</code>: 14 functions</summary>
+
+- ✅ `getBadBlocks` (0x4030b0)
+- ✅ `update_usage` (0x4031d0)
+- ✅ `wantFile` (0x403460)
+- ✅ `parseAddonIdx` (0x4034f0)
+- ✅ `getAddons` (0x403700)
+- ✅ `getMobileFiles` (0x403820)
+- ✅ `bldrGetKv` (0x403cf0)
+- ✅ `bldrGetSmc` (0x403d80)
+- ✅ `getSecurityFiles` (0x403e10)
+- ✅ `checkBadBlocks` (0x404320)
+- ✅ `getBootloaders` (0x404340)
+- ✅ `getConsoleFiles` (0x404430)
+- ✅ `updateGetFile` (0x404600)
+- ✅ `mode_update` (0x404770)
 
 </details>
 <details>
@@ -1049,7 +1049,7 @@ buffers `extern`). The names (`keysInit`, `cbaEncrypt`,
 - `crlEncrypt` writes the success branch twice (CPU key, then the alternate
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
 
-And `app/mode_update` (all 14 functions in C, data in the `.s`).
+And `app/mode_update` (whole object in C).
 `mode_update` itself only matches when built with a profile: its cold
 blocks are placed by bb-reorder's Fibonacci-heap ties, and no guessed
 profile we found gives the original's (wip/README.md has the search,
@@ -1061,7 +1061,9 @@ profile. The other functions are `optimize("no-branch-probabilities",
 "no-reorder-functions")` (`NOPROF`), so they keep the guessed profile and
 `.text`. getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the
-original's is.
+original's is. Its strings are static arrays in the original's `.rdata`
+order and its variables zero-initialized globals in `.bss` order, under
+`-fno-toplevel-reorder` (the filelist_ini recipe).
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 
