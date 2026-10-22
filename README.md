@@ -23,7 +23,7 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **576 of 617** (571 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **576 of 617** (573 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
@@ -41,7 +41,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/image_write` | mixed; 0 of 7 drafted functions match in `wip/app/image_write.c` | 39 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/keys` | mixed; 0 of 4 drafted functions match in `wip/app/keys.c` | 44 / 48 |
-| `app/net` | mixed; 2 of 6 drafted functions match in `wip/app/net.c` | 28 / 32 |
+| `app/net` | mixed; 0 of 4 drafted functions match in `wip/app/net.c` | 28 / 32 |
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
 | `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
 
@@ -241,7 +241,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `netSendData` (0x41f1a0)
 - ✅ `netCheckOk` (0x41f330)
 - ✅ `netOpenSocket` (0x41f390)
-- ☑️ `netReadInfo` (0x41f470)
+- ✅ `netReadInfo` (0x41f470)
 - ⬜ `netConnect` (0x41f700) (draft in `wip/`, no match yet)
 - ✅ `netClose` (0x41fa00)
 - ✅ `netDisconnect` (0x41fa40)
@@ -256,7 +256,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `netWriteBlocks` (0x420200)
 - ✅ `netEraseBlock` (0x420320)
 - ✅ `netGetBadBlocks` (0x420420)
-- ☑️ `netSendFile` (0x420470)
+- ✅ `netSendFile` (0x420470)
 - ✅ `netFormatSysex` (0x4205d0)
 - ✅ `netFormatCompat` (0x420670)
 - ✅ `netMkdir` (0x420710)

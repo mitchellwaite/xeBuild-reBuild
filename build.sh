@@ -60,6 +60,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # -fno-toplevel-reorder keeps
       app/bootloaders) orig="$f.c"
              cflags="-O3 -fno-toplevel-reorder" ;;
+      # netSendFile's !name hint (55-65)
+      app/net) orig="$f.c"
+             cflags="-O3 --param builtin-expect-probability=60" ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;

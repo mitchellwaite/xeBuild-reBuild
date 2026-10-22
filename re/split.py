@@ -500,6 +500,8 @@ SYMBOLS = {
     0x457a51: '_net_457a51', 0x457a57: '_net_457a57', 0x457a71: '_net_457a71',
     0x457568: '_net_457568', 0x45758c: '_net_45758c', 0x4575bc: '_net_4575bc',
     0x4575e1: '_net_4575e1', 0x4575f3: '_net_4575f3', 0x457608: '_net_457608',
+    0x45772f: '_net_45772f', 0x457732: '_net_457732', 0x457736: '_net_457736',
+    0x457746: '_net_457746', 0x457758: '_net_457758', 0x457784: '_net_457784',
     # mode_update.s strings and variables the mixed mode_update.c refers to
     0x46f040: '_path', 0x46f144: '_noReboot', 0x46f148: '_noAvatar', 0x46f14c: '_noWrite',
     0x46f150: '_clean', 0x46f154: '_hasHdd', 0x46f158: '_updating', 0x46f15c: '_info',
@@ -763,7 +765,7 @@ C_FUNCS = {
     0x41ff90, 0x420420, 0x420840, 0x41faf0,  # netGetBldrs netGetBadBlocks netReboot netMount
     0x41fc30, 0x41fd60, 0x420140, 0x4205d0,  # netUnmount netGetFile netReadBlocks netFormatSysex
     0x420670, 0x420200, 0x420320, 0x420710,  # netFormatCompat netWriteBlocks netEraseBlock netMkdir
-    0x41ffe0, 0x41ea90,                      # netSendFlash netFindBeacon
+    0x41ffe0, 0x41ea90, 0x41f470, 0x420470,  # netSendFlash netFindBeacon netReadInfo netSendFile
     # app/build (wip/app/build.c is the whole draft; wip/mixed.py)
     0x427650, 0x4276a0, 0x4276f0, 0x427950,  # findFileOffset findFileSize findFile readMetaFile
     0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile

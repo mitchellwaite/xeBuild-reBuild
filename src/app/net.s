@@ -14,10 +14,8 @@
 .globl _netConnect
 .globl _netEmpty
 .globl _netInfo
-.globl _netReadInfo
 .globl _netRecv
 .globl _netRecvVerbose
-.globl _netSendFile
 .globl _netSock
 .globl _netWritePatches
 .globl _net_457568
@@ -32,7 +30,13 @@
 .globl _net_4576cf
 .globl _net_4576e8
 .globl _net_457712
+.globl _net_45772f
+.globl _net_457732
+.globl _net_457736
 .globl _net_45773c
+.globl _net_457746
+.globl _net_457758
+.globl _net_457784
 .globl _net_4577bb
 .globl _net_4578f5
 .globl _net_457913
@@ -573,191 +577,7 @@ L_41f18a:
 #@C _netOpenSocket
           .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_netReadInfo:
-          push EBX
-          sub ESP,56
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+8],5
-          mov DWORD PTR [ESP+4],OFFSET L_457736
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EAX,5
-          je L_41f4c0
-L_41f4a2:
-          mov DWORD PTR [ESP+4],OFFSET _net_4577bb
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,56
-          xor EAX,EAX
-          pop EBX
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_41f4c0:
-          lea EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+44],0
-          call _netRecv
-          test EAX,EAX
-          je L_41f4a2
-          cmp DWORD PTR [ESP+44],1183
-          jbe L_41f4a2
-          mov EDX,DWORD PTR [EAX]
-          mov DWORD PTR [EAX+280],0
-          mov DWORD PTR [EAX+284],0
-          mov DWORD PTR [_netInfo],EAX
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          add EDX,ECX
-          mov DWORD PTR [EAX],EDX
-          mov EDX,DWORD PTR [EAX+4]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          add EDX,ECX
-          mov DWORD PTR [EAX+4],EDX
-          mov EDX,DWORD PTR [EAX+8]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          add EDX,ECX
-          mov DWORD PTR [EAX+8],EDX
-          mov EDX,DWORD PTR [EAX+12]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shl ECX,8
-          and ECX,16711680
-          add ECX,EBX
-          shr EDX,8
-          and EDX,65280
-          add EDX,ECX
-          mov DWORD PTR [EAX+12],EDX
-          mov EDX,DWORD PTR [EAX+16]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          add EDX,ECX
-          mov DWORD PTR [EAX+16],EDX
-          mov EDX,DWORD PTR [EAX+20]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          add EDX,ECX
-          mov DWORD PTR [EAX+20],EDX
-          mov EDX,DWORD PTR [EAX+24]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          add EDX,ECX
-          mov DWORD PTR [EAX+24],EDX
-          mov EDX,DWORD PTR [EAX+28]
-          mov ECX,EDX
-          mov EBX,EDX
-          shl ECX,24
-          shr EBX,24
-          add EBX,ECX
-          mov ECX,EDX
-          shr EDX,8
-          shl ECX,8
-          and EDX,65280
-          and ECX,16711680
-          add ECX,EBX
-          mov EBX,OFFSET L_457732
-          add EDX,ECX
-          mov DWORD PTR [EAX+28],EDX
-          mov DWORD PTR [ESP+4],OFFSET _net_45773c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [_netInfo]
-          mov EAX,DWORD PTR [EAX+16]
-          shr EAX,28
-          add EAX,1
-          mov DWORD PTR [ESP],EAX
-          call _getConsoleTypeStr
-          mov DWORD PTR [ESP+4],OFFSET L_457746
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          mov EAX,DWORD PTR [_netInfo]
-          mov EAX,DWORD PTR [EAX]
-          mov DWORD PTR [ESP+4],OFFSET L_457758
-          mov DWORD PTR [ESP],0
-          movzx EDX,AL
-          shr EAX,8
-          mov DWORD PTR [ESP+12],EDX
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov ECX,DWORD PTR [_netInfo]
-          mov EAX,OFFSET L_45772f
-          mov EDX,DWORD PTR [ECX+20]
-          cmp EDX,50331648
-          cmovne EAX,EBX
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,DWORD PTR [ECX+24]
-          mov DWORD PTR [ESP+8],EDX
-          mov DWORD PTR [ESP+4],OFFSET L_457784
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+12],EAX
-          call _log_printf
-          add ESP,56
-          mov EAX,1
-          pop EBX
-          ret 
+#@C _netReadInfo
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -1036,114 +856,7 @@ L_420317:
           .byte 0x74
           .byte 0x26
           .byte 0x0
-_netSendFile:
-          push EDI
-          push EBX
-          sub ESP,308
-          mov EDX,DWORD PTR [ESP+320]
-          test EDX,EDX
-          je L_420530
-          mov ECX,DWORD PTR [ESP+324]
-          test ECX,ECX
-          je L_420530
-          lea EDI,DWORD PTR [ESP+48]
-          xor EAX,EAX
-          mov ECX,64
-          mov DWORD PTR [ESP+40],1178881619
-          mov DWORD PTR [ESP+44],0
-          rep stosd DWORD PTR ES:[EDI]
-          lea EAX,DWORD PTR [ESP+44]
-          lea EDI,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+4],EDX
-          mov DWORD PTR [ESP],EAX
-          call _strcpy
-          mov EAX,EDI
-L_4204c9:
-          mov ECX,DWORD PTR [EAX]
-          add EAX,4
-          lea EDX,DWORD PTR [ECX-16843009]
-          not ECX
-          and EDX,ECX
-          and EDX,2155905152
-          je L_4204c9
-          mov ECX,EDX
-          shr ECX,16
-          test EDX,32896
-          cmove EDX,ECX
-          lea ECX,DWORD PTR [EAX+2]
-          mov EBX,EDX
-          cmove EAX,ECX
-          add BL,DL
-          mov EDX,10
-          sbb EAX,3
-          sub EAX,EDI
-          mov WORD PTR [EDI+EAX*1],DX
-          lea EBX,DWORD PTR [EAX+1]
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+4],EDI
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__send@16]
-          sub ESP,16
-          cmp EBX,EAX
-          je L_420540
-          .byte 0x66   # nop
-          nop
-L_420530:
-          xor EAX,EAX
-L_420532:
-          add ESP,308
-          pop EBX
-          pop EDI
-          ret 
-          .byte 0x90
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_420540:
-          call _log_get_verbose
-          test EAX,EAX
-          setne AL
-          movzx EAX,AL
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [ESP+328]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [ESP+324]
-          mov DWORD PTR [ESP],EAX
-          call _netSendData
-          test EAX,EAX
-          je L_420530
-          lea EAX,DWORD PTR [ESP+36]
-          call _netRecv
-          test EAX,EAX
-          mov EBX,EAX
-          je L_420530
-          cmp DWORD PTR [ESP+36],2
-          je L_4205a1
-L_420585:
-          xor EAX,EAX
-          cmp EBX,OFFSET _netEmpty
-          je L_420530
-L_42058f:
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+28],EAX
-          call _free
-          mov EAX,DWORD PTR [ESP+28]
-          jmp L_420532
-L_4205a1:
-          mov DWORD PTR [ESP],EAX
-          call _getBeU16
-          cmp AX,20299
-          jne L_420585
-          cmp EBX,OFFSET _netEmpty
-          jne L_4205c1
-          mov EAX,1
-          jmp L_420532
-L_4205c1:
-          mov EAX,1
-          jmp L_42058f
+#@C _netSendFile
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -1392,21 +1105,21 @@ _net_4576e8:
           .string "could not create client socket, error %d\n"
 _net_457712:
           .string "could not connect, error %d\n"
-L_45772f:
+_net_45772f:
           .string "No"
-L_457732:
+_net_457732:
           .string "Yes"
-L_457736:
+_net_457736:
           .string "GTIN\n"
 _net_45773c:
           .string "success!\n"
-L_457746:
+_net_457746:
           .string "connected to %s"
           .zero 2
-L_457758:
+_net_457758:
           .string " with updsvr version %d (peek version %d)\n"
           .zero 1
-L_457784:
+_net_457784:
           .string "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n"
 _net_4577bb:
           .string "failed!\n"

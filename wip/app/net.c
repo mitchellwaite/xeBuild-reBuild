@@ -613,7 +613,9 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 	int rlen, ret;
 	u8 *r;
 
-	if (!name)
+	/* the hint (with builtin-expect-probability=60, 55-65 work) makes the
+	   shared return-0 block frequent enough to be aligned */
+	if (__builtin_expect(!name, 0))
 		return 0;
 	if (!buf)
 		return 0;

@@ -23,7 +23,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OBJDUMP = os.path.join(ROOT, 'tools', 'toolchain-4745', 'mingw32', 'bin', 'objdump.exe')
 BEGIN, END = '<!-- progress:begin -->', '<!-- progress:end -->'
 # gcc flags for re/fncmp.py on a wip draft (as build.sh would use); default -O3
-WIP_FLAGS = {'app/image_write': ['-O3', '--param', 'builtin-expect-probability=50']}
+WIP_FLAGS = {'app/image_write': ['-O3', '--param', 'builtin-expect-probability=50'],
+             'app/net': ['-O3', '--param', 'builtin-expect-probability=60']}
 SYMLINE = re.compile(r'\(sec\s+(\d+)\).*\(ty\s+20\).*0x([0-9a-f]+) (\S+)$')
 MAPLINE = re.compile(r'^ (\.text(?:\.startup)?)\s+0x([0-9a-f]+)\s+0x[0-9a-f]+ build/obj/(\S+)\.o$')
 # per-function state -> marker

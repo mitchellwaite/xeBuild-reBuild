@@ -3,9 +3,9 @@
 python wip/netmixed.py fn1 fn2 ...   (the functions that match)
 
 String literals passed to functions become static arrays named after net.s's strings
-(`net_<address>`).  netInfo and netStartTime become extern declarations (the
-.s's netReadInfo writes netInfo; a static nothing in the C writes would read
-as 0), netSock loses its initializer (the .s has it) and netRecv, still asm,
+(`net_<address>`).  netInfo and netStartTime become extern declarations (while
+the .s's netReadInfo writes netInfo, a static nothing in the C writes would
+read as 0), netSock loses its initializer (the .s has it) and netRecv, still asm,
 gets a declaration with the local calling convention gcc gave it (len in
 eax).  Prints the SYMBOLS entries for the strings used.
 """
@@ -62,6 +62,9 @@ def main():
     data = src[first:end]
     for a, b in DATA.items():
         assert a in data, a
+        # with netReadInfo in C, netInfo stays static (splice.py drops its .lcomm)
+        if 'netInfo' in a and 'netReadInfo' in want:
+            continue
         data = data.replace(a, b)
     data = data.replace('\nstatic SOCKET', "\n/* net.s's data */\nstatic SOCKET", 1)
     fns = {}

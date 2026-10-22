@@ -56,7 +56,7 @@ int writeFile(const char *name, const void *buf, size_t size);
 
 /* net.s's data */
 static SOCKET netSock;
-extern struct consoleinfo *netInfo;
+static struct consoleinfo *netInfo;
 static u32 netEmpty;		/* returned for a zero-length reply */
 extern time_t netStartTime;
 
@@ -73,7 +73,13 @@ static const char net_4576ac[] = "socket error sending data (1), %d\n";
 static const char net_4576cf[] = "sent 0x%08x of 0x%08x\r";
 static const char net_4576e8[] = "could not create client socket, error %d\n";
 static const char net_457712[] = "could not connect, error %d\n";
+static const char net_45772f[] = "No";
+static const char net_457732[] = "Yes";
+static const char net_457736[] = "GTIN\n";
 static const char net_45773c[] = "success!\n";
+static const char net_457746[] = "connected to %s";
+static const char net_457758[] = " with updsvr version %d (peek version %d)\n";
+static const char net_457784[] = "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n";
 static const char net_4577bb[] = "failed!\n";
 static const char net_4578f5[] = "\ndisconnecting from server...";
 static const char net_457913[] = "QUIT\n";
@@ -104,9 +110,7 @@ static const char net_457a71[] = "REEB\n";
 /* still in net.s; gcc gave it the local calling convention */
 u8 *netRecv(int *len) __attribute__((regparm(1)));
 u8 *netRecvVerbose(int *len, int verbose);
-int netReadInfo(void);
 u32 netConnect(const char *ip);
-int netSendFile(const char *name, const u8 *buf, u32 len);
 int netWritePatches(const u8 *buf, u32 len);
 
 void netFree(void *p)
@@ -272,6 +276,42 @@ int netOpenSocket(u32 addr)
 		log_printf(0, net_457712, WSAGetLastError());
 		return 0;
 	}
+	return 1;
+}
+
+int netReadInfo(void)
+{
+	u32 len;
+	struct consoleinfo *info;
+	int ok = 0;
+
+	if (send(netSock, net_457736, 5, 0) == 5) {
+		len = 0;
+		info = (struct consoleinfo *)netRecv((int *)&len);
+		if (info && len >= sizeof *info)
+			ok = 1;
+	}
+	if (!ok) {
+		log_printf(0, net_4577bb);
+		return 0;
+	}
+	info->pub1bl.reserved = 0;
+	netInfo = info;
+	info->version = SWAP32(info->version);
+	info->kernel = SWAP32(info->kernel);
+	info->f008 = SWAP32(info->f008);
+	info->bootstrap = SWAP32(info->bootstrap);
+	info->hwFlags = SWAP32(info->hwFlags);
+	info->nandSize = SWAP32(info->nandSize);
+	info->blockSize = SWAP32(info->blockSize);
+	info->pairing = SWAP32(info->pairing);
+	log_printf(1, net_45773c);
+	log_printf(0, net_457746, getConsoleTypeStr((netInfo->hwFlags >> 28) + 1));
+	log_printf(0, net_457758,
+		   netInfo->version >> 8, netInfo->version & 0xff);
+	log_printf(1, net_457784,
+		   netInfo->nandSize, netInfo->blockSize,
+		   netInfo->nandSize == 0x3000000 ? net_45772f : net_457732);
 	return 1;
 }
 
@@ -451,6 +491,40 @@ u32 netGetBadBlocks(int *len)
 {
 	if (netSendStr(net_457a23))
 		return (u32)netRecv(len);
+	return 0;
+}
+
+__attribute__((optimize("no-crossjumping")))
+int netSendFile(const char *name, const u8 *buf, u32 len)
+{
+	int rlen, ret;
+	u8 *r;
+
+	/* the hint (with builtin-expect-probability=60, 55-65 work) makes the
+	   shared return-0 block frequent enough to be aligned */
+	if (__builtin_expect(!name, 0))
+		return 0;
+	if (!buf)
+		return 0;
+	/* buf's uses are just over IRA's callee-saved threshold */
+	__asm__("" : : "m"(buf));
+	char cmd[264] = "SNDF";
+
+	strcpy(cmd + 4, name);
+	strcat(cmd, "\n");
+	if (!netSendStr(cmd))
+		return 0;
+	if (!netSendData(buf, len, log_get_verbose() != 0))
+		return 0;
+	r = netRecv(&rlen);
+	if (!r)
+		return 0;
+	ret = 0;
+	if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		ret = 1;
+	netFree(r);
+	if (ret)
+		return 1;
 	return 0;
 }
 

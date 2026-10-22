@@ -1030,13 +1030,13 @@ Still off:
 
 ## app/net.c
 
-Draft of the whole object (all 32 functions, data as statics). 28 match;
-26 are built from `src/app/net.c` (mixed): netFree, netFindBeacon,
+Draft of the whole object (all 32 functions, data as statics). 28 match
+and are built from `src/app/net.c` (mixed): netFree, netFindBeacon,
 netTimerStart/End/Elapsed, netSendStr, netSendData, netCheckOk,
 netOpenSocket, netClose, netDisconnect, netGetInfo, netDumpNand,
 netGetBldrs, netGetBadBlocks, netReboot, netMount, netUnmount, netGetFile,
 netReadBlocks, netFormatSysex/Compat, netWriteBlocks, netEraseBlock,
-netMkdir, netSendFlash. `python wip/netmixed.py <fns>` makes the src file from the
+netMkdir, netSendFlash, netReadInfo, netSendFile. `python wip/netmixed.py <fns>` makes the src file from the
 draft (it keeps a function's `__attribute__` line); test the draft with
 `FNCMP_LITERALS=1` (net.s's strings are named `net_<address>`). The src
 file gives the strings as `static const char net_X[] = "..."`, not
@@ -1098,19 +1098,24 @@ What got them (this round):
   (else the call heuristic makes `len > 1183` 29% and bbro shares the
   epilogue): `int ok = 0; if (send == 5) { r = netRecv; if (r && len >=
   size) ok = 1; } if (!ok) { failed; return 0; } swaps; logs; return 1;`
-  (ok is threaded away after profile_estimate). Not built: in the mixed
-  file netInfo is extern, and sched2 then puts the `netInfo = info` store
-  above the two `reserved` stores.
+  (ok is threaded away after profile_estimate). netInfo must stay
+  `static` in the mixed file (netmixed.py keeps it once netReadInfo is in
+  C; splice.py drops its .lcomm): as an extern, sched2 puts the `netInfo =
+  info` store above the two `reserved` stores (`malloc` on netRecv's
+  declaration also fixes that).
 - netSendFile (wip only): `if (!name) return 0; if (!buf) return 0;` then
   a C99 `char cmd[264] = "SNDF";` at function scope (an inner block's cmd
   clobber gives the `!name` return its own PHI, so a second `xor eax,eax`
   block), no-crossjumping, and `__asm__("" : : "m"(buf))`: separate tests
   get the pointer heuristic, which puts buf's two uses just over IRA's
-  memory-vs-callee-saved cost, so buf went to esi. Not built: the shared
-  return-0 block is `.p2align`ed in the original (compute_alignments:
-  branch frequency > 4 x fallthru, align-loop-iterations). Ours has the
-  separate tests' frequencies (the `&&` form's would align it);
-  `--param align-loop-iterations=2` aligns it but also a netSendData block.
+  memory-vs-callee-saved cost, so buf went to esi. The shared return-0
+  block is `.p2align`ed in the original (compute_alignments: branch
+  frequency > 4 x the fallthru from the send failure, align-loop-iterations;
+  ours was 4750 vs 2190, the strlen loop's expansion halving the send
+  block). `__builtin_expect(!name, 0)` with the object's
+  `builtin-expect-probability=60` (55-65) aligns it and changes nothing
+  else; `!name || !buf` tests buf first and flips the send branch, and
+  `--param align-loop-iterations=2` also aligns a netSendData block.
 - netFindBeacon: `volatile u32 addr;` set to 0 after `socket()`. The
   original keeps addr in a stack slot, stored once and loaded on every
   return (even the socket-failure one), so it was a memory variable; with
