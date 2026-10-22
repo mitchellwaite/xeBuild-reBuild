@@ -1561,7 +1561,16 @@ only shows in `sh build.sh`.
   knows, which then disappears; our draft has no such test (vrp2 only
   copies the reload tests). Arm order, nesting, `== 0` forms and
   `__builtin_expect` on the warning tests change nothing; expects on the
-  outer `!= 0xffffffff` tests break the hot layout.
+  outer `!= 0xffffffff` tests break the hot layout. In the link the
+  whole gpu pair (range log + warning) comes before the cpu pair. Breaking
+  the tie needs the gpu range-fail path hotter without making gpu's ok
+  block (`[18+esi]`, also a LIFO tie, already right) colder than cpu's, so
+  only the outer test can carry it. Tried (2026-10-22, probability 98):
+  hot/cold labels on the outer arms (85%, 46-78 lines), a guarded hint
+  call in the gpu ok arm (log order right, ok blocks swap: 8 lines), in
+  the outer else (100+ lines), `ok = iniRangeOk(); ...` threading forms
+  (10-35 lines). With no-early-inlining, iniRangeOk is a call heading both
+  outer arms, so PRED_CALL stays symmetric.
 - patchBlsResign/patchBlsBlmod (~330), fixupPatchSet: the patch-set walk
   loop isn't header-copied in the original; `-fno-tree-ch` reproduces
   that shape, so something in the source stops pass_ch.
