@@ -1,7 +1,7 @@
 """Write a .gcda that reproduces gcc's guessed profile (for -fbranch-probabilities).
 
 python re/gcda.py <x.gcno> <x.c.042t.profile_estimate> <out.gcda>
-                   [fn:src>dst=prob ...] [--only=fn,fn] [--src=file.c]
+                   [fn:src>dst=prob ... | @file] [--only=fn,fn] [--src=file.c]
 
 The .gcno (and the dump, with -fdump-tree-profile_estimate-blocks-details)
 come from one compile with the object's flags plus -fprofile-arcs
@@ -259,7 +259,11 @@ def map_bb(fns, name, bb):
 def main():
     gcno, dump, out = sys.argv[1:4]
     over, only, srcfile = {}, None, None
+    args = []
     for a in sys.argv[4:]:
+        # @file: overrides one per line (# comments)
+        args += [l.split('#')[0].strip() for l in open(a[1:])] if a.startswith('@') else [a]
+    for a in filter(None, args):
         if a.startswith('--only='):
             only = a[7:].split(',')
             continue

@@ -225,6 +225,62 @@ Findings:
   gcc sees before bbro, to work out which profile gives the original
   layout.  The goto form helps there because it fixes block order and the
   CFG shape, so only the profile is left to find.
+- 2026-10-22, crafted profile (like mode_update): `wip/app/options_fdo.c`
+  is the whole mixed-object src/app/options.c with applyIniOptions in C,
+  `wip/app/options_fdo.prof` its edge overrides (re/gcda.py, `@file` now
+  accepted), written by `python wip/aiodesign.py <profile_estimate dump>`.
+  Its code is byte-identical to the original (fncmp only shows ddisasm's
+  `__ImageBase` for 0x400000) and the block layout is exact; what is left is
+  label alignment padding (13 labels, the object is 0x50 bytes larger).
+  To try it: copy both to src/app/options.{c,prof}; build.sh options cflags
+  `-O3 --param builtin-expect-probability=83 -fno-ipa-profile
+  -fno-reorder-functions` and `prof="@src/app/options.prof
+  --only=applyIniOptions"`; split.py: 0x4259a0 in C_FUNCS, SYMBOLS for the
+  .rdata strings it uses (0x458988 cfldv too large, 0x4589e0/0x458a38
+  macid bad chars/length, 0x458a10 "' provided...", 0x458a60 xell
+  default, 0x458aa0 alternate disabled, 0x458ac3 dualboot ignored,
+  0x458ade "rev", 0x458ae2 "_%s"); regenerate.  What it took:
+  - Counts only for applyIniOptions; the rest are `#pragma GCC optimize
+    ("no-branch-probabilities", "no-reorder-functions")`.  A callee with an
+    optimize attribute can't be inlined into a caller with other options
+    (ipa-inline.c:453), so applyIniOptions inlines always_inline copies
+    (optIniInt, stripColons, macidSet, parseButton's first tests), and
+    po_hint needs parseOption's attribute too.  A profile build never
+    splits (feedback fnsplit: "not inlinable"), so parseButton's part is
+    an explicit `cold`, `.text.unlikely` function named `_parseButton.part.0`,
+    and parseButton calls it (with an expect on the winbutton match: the
+    cold call is predicted never taken otherwise, and 36 isn't hoisted).
+  - The layout: the original's cold blocks are ordered by heap ties among
+    identical options.  Here every trace start gets its own frequency in
+    the original's order (bands per STC round, priority keys where a pred
+    ends a trace, round 3's count test on stale threaded counts, the 10%
+    copy threshold); see the comments in aiodesign.py.  The strip loop's
+    back edge must stay <= 87% (ivopts uses the profile's trip count).
+  - Source: xellAltButton/dualButton u32 (else uncprop reuses the field
+    load as parseButton's 0); the option set as two statements (nodvd's
+    `and ~4; or 2`); an empty `__asm__("")` in macid's valid branch (stops
+    find_if_case_2 hoisting `i = 0` above validateString's test; it does so
+    even with the guessed profile); `if (xb.type == 2)` outside the type
+    2..5 block (VRP threads that block's range test past it, not a switch,
+    and smcnoblink's skip path gets the original's type reload).
+  - Alignment (final.c compute_alignments): a jump target with no fallthru
+    is aligned when its incoming edge frequency > freq_max / 100 (or it is
+    10x its layout predecessor); with a fallthru, when branch > 4 x
+    fallthru (align-loop-iterations).  mingw emits only `.p2align 4,,10`,
+    so labels at 1..5 mod 16 never get padding; alignreq-style tables need
+    that.  The original's padding fits gcc's guessed profile (freq_max
+    3716, threshold 37: "alternate xell" at 38 aligned, getIniU32 at 37
+    not).  The designed bands put getIniU32 and a few others above my
+    threshold (25).  A threshold of 52 (freq_max 5200..5299) would sort all
+    but xellbutton2's header rest, which needs a priority key, and
+    L_425c30 (dualButton test after olddvd's warning): the original pads it
+    as a loop (branch > 4 x fallthru), and with olddvd's I falling out of P
+    that can't hold under a consistent profile (PL + 5G > 4I with I >= PL).
+    The original's frequencies there must be stale ones left by jump
+    threading; a profile alone can't give them.  Next: find what source
+    leaves that stale frequency (the IPA-inlined optIniBool with its own
+    guard, as the first drafts had?), or derive the frequencies from the
+    natural guessed profile plus tie-breaking nudges instead of bands.
 
 ## app/bootloaders.c
 
