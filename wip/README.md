@@ -281,6 +281,7 @@ Findings:
     leaves that stale frequency (the IPA-inlined optIniBool with its own
     guard, as the first drafts had?), or derive the frequencies from the
     natural guessed profile plus tie-breaking nudges instead of bands.
+    Parked 2026-10-22 (user).  Analysis tools: wip/aio/README.md.
 
 ## app/bootloaders.c
 
