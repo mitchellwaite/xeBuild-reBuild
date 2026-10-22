@@ -752,6 +752,31 @@ Still off:
   Moving it to the build would mean a second compile of the same C file with
   these flags, splicing only mode_update from it (splice.py would need to
   allow a second pass), and generating the `.gcda` in build.sh.
+- 2026-10-22: `mode_update` MATCHes with a crafted profile (overrides in
+  `wip/mufdo.sh`'s header, 11 edges, no `-noreeb` override). How it was
+  found: `python wip/fibsolve.py <bbro dump> [K]` searches the last STC
+  round symbolically. The heap only compares keys, so each undetermined
+  comparison branches (<, =, >) over a weak order of the round's small keys,
+  pruned at the first extraction that breaks the original's trace order
+  (`WANT`; `FLEX` are traces connect_traces attaches elsewhere, so their
+  extraction time is free). Limited discrepancy search (K = comparisons
+  unlike the dump's integers); `FIBD=n` keeps keys integers within n of the
+  dump's (Bellman-Ford), `FIBALL=1` keeps going and prints fewest-change
+  solutions, `FIBFIX=bb,..` pins keys. Exhaustive search without K never
+  finishes; at K=4 it finds solutions in a minute. The no-HDD swap needs
+  four key levels: devkit strcat > WARNING > no-HDD > testkit (ours has
+  3, 2, 3, 2), which drags along retail/jtag/`%s_update`/nowrite-skip/argc<=0
+  +1 and -clean at the guessed 4: 9 keys
+  (`python wip/fibmin.py <dump> bb=key..` checks and shrinks a set). The
+  argc<=0 block (`ip = dumpDir = NULL` before the loop) is entry x loop exit,
+  so the loop exit must be above gcc's 2% PRED_LOOP_EXIT floor (2.1%; 2.14%,
+  i.e. 15%/7 exits, fails; ours has 21 exits), and the other edges then
+  hold the update tail at 9 (round 3's threshold is 10) and the parseIni
+  failure at 7. The window is narrow (97.95 and 97.86 fail), so this is a fit
+  to the layout, not the original's profile; no source for it is known.
+  Tuning went fastest by building with `-fdump-rtl-bbro-details` and
+  comparing the last two rounds' keys against the target set, not by fncmp
+  line counts.
 - Whole object from this draft: `.rdata` string order differs already in
   getBadBlocks (its error string comes second, the original's last), and
   `.data` is 4 bytes where mode_update.s has `useConsoleAddons` plus 0x14

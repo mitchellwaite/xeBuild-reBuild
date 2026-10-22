@@ -6,7 +6,11 @@
 # writes <dir>/-.gcda (counts for mode_update and updateNand only; the
 # overrides use the dump's bb numbers) and runs fncmp on the profile build.
 # Prints the fncmp line count; the diff is in <dir>/fdo.diff.
-# Best so far (8 lines): mode_update:39>40=62 updateNand:24>25=14.5
+# MATCH (2026-10-22, see wip/README.md):
+#   mode_update:65>66=16 mode_update:67>68=16 mode_update:69>70=30
+#   mode_update:75>76=21 mode_update:79>80=80.5 mode_update:80>82=17
+#   mode_update:59>3=97.9 updateNand:2>3=49.5 updateNand:13>18=27
+#   updateNand:19>20=60 updateNand:24>25=14.5
 set -e
 d=$1; shift
 R=$(pwd -P)  # /c/... even when started from Python ($PWD is C:/..., which breaks PATH)
