@@ -1061,8 +1061,10 @@ profile. The other functions are `optimize("no-branch-probabilities",
 "no-reorder-functions")` (`NOPROF`), so they keep the guessed profile and
 `.text`. getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the
-original's is. Its strings are static arrays in the original's `.rdata`
-order and its variables zero-initialized globals in `.bss` order, under
+original's is. 126 of its 152 strings are plain literals, which gcc
+emits in the original's `.rdata` order; in seven functions the first few
+aren't, so those are static arrays defined right before the function. The
+variables are zero-initialized globals in `.bss` order. Both rely on
 `-fno-toplevel-reorder` (the filelist_ini recipe).
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):

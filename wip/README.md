@@ -788,9 +788,16 @@ Still off:
   test. The profile build aligns two more mode_update labels at
   align-threshold=200, so getBadBlocks is success-first (`if (list) {...
   return 1;}`): no early-return predictor, its error block at 6.7% (freq
-  126) is aligned at the default. Strings are static arrays in .rdata order
-  and the variables zero-initialized globals (extern-like aliasing, which
-  updateGetFile needs) in .bss order, under -fno-toplevel-reorder.
+  126) is aligned at the default. The variables are zero-initialized
+  globals (extern-like aliasing, which updateGetFile needs) in .bss order,
+  under -fno-toplevel-reorder. Strings are literals except where a
+  function's literal order (its expand-time block order) differs from the
+  original's: there the strings up to the last out-of-order one are arrays
+  defined before the function, in address order (an array placed for a
+  later function moves the earlier ones up, e.g. getSmc/getKv's, which come
+  out with getSecurityFiles that inlines them). Found by inlining all and
+  making the first mismatch (and its function's earlier strings) arrays until
+  the order matched: 26 arrays.
 
 ## app/image_read.c
 
