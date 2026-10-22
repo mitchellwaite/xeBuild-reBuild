@@ -679,17 +679,22 @@ line before `inline short cfPatchSlots(` so keysmixed picks it up (its
 
 Still off:
 
-- `daeEncrypt` (81, was 443): `if (size) do { ... } while (off < size)`
-  with `goto next` for the failures, `__builtin_expect(dae[k] != ..., 1)` on
-  the A/E/P tests (the original's error block falls through after the A
-  test), hot labels on the `n != 0` retry arm and the alternate-key arm.
+- `daeEncrypt` (5, was 443): `if (__builtin_expect(size, 1)) do { ... }
+  while (off < size)`, `buf[off + k]` header tests with per-test hints,
+  hot labels on the `n != 0` retry arm and the alternate-key arm, the
+  second give-up path `goto fail` into the first's `n = 0; off = size + 1`.
+  Two register pins: `__asm__("" : "+b"(off))` after the declarations
+  makes the zero an ebx value live across malloc/memcpy (the original's
+  `xor ebx,ebx` ... `mov edx,ebx`: off's parent allocno in ebx, the loop's
+  in edx), and `__asm__("" :: "d"(off))` at the loop top keeps off in edx
+  and buf in edi (IRA otherwise pops off first: it has strictly more uses).
   Found with `build/keys/daegen.py` (coordinate descent over loop form,
-  header spelling, types/declaration order and hints).  Left: register
-  roles in the loop (the original has off in edx, saved around calls, with
-  the parent copy in ebx, and buf in edi; ours swaps buf and off), the
-  `n != 2` exit layout and the failure tails.  The original's header uses
-  `[ebx]` (dae) for 'D' but `[edi+edx+k]` (buf[off + k]) for the rest;
-  that spelling (`hdr=mix`) costs more at the current hints (429).
+  header spelling, types/declaration order, pins and hints).  Left: the
+  shared "success!" block (first-attempt success in both n paths) saves
+  off to [44] and jumps past the encrypt block's own save; ours reloads
+  edx and jumps to the save, so sched2 also mixes the save into the
+  argument stores.  Making that block fall into daeEncryptOne
+  (`goto ok` ... `ok: log_printf(...)` before it) changes too much.
 
 ## app/mode_update.c
 

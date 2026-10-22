@@ -920,15 +920,16 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 {
 	u8 *orig = malloc(size);
 	u8 *dae;
-	u32 off;
+	u32 off = 0;
 	u32 len;
 	int n = 0;
+	__asm__("" : "+b"(off));
 
 	memcpy(orig, buf, size);
-	off = 0;
-	if (size) do {
+	if (__builtin_expect(size, 1)) do {
 		dae = buf + off;
-		if (dae[0] != 'D' || __builtin_expect(dae[1] != 'A', 1) || __builtin_expect(dae[2] != 'E', 1) || __builtin_expect(dae[3] != 'P', 1)) {
+		__asm__("" :: "d"(off));
+		if (__builtin_expect(buf[off] != 'D', 0) || __builtin_expect(buf[off + 1] != 'A', 1) || __builtin_expect(buf[off + 2] != 'E', 1) || __builtin_expect(buf[off + 3] != 'P', 1)) {
 			log_printf(0, "\n******* ERROR: dae segment does not have the expected header!\n");
 			break;
 		}
@@ -944,6 +945,7 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 					memcpy(dae, orig + off, len);
 					daeDecrypt(dae, len, 0);
 					if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
+fail:
 						n = 0;
 						off = size + 1;
 						goto next;
@@ -964,9 +966,7 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 						log_printf(1, "success!\n");
 					} else {
 						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
-						n = 0;
-						off = size + 1;
-						goto next;
+						goto fail;
 					}
 				}
 			}
