@@ -679,7 +679,7 @@ line before `inline short cfPatchSlots(` so keysmixed picks it up (its
 
 Still off:
 
-- `daeEncrypt` (5, was 443): `if (__builtin_expect(size, 1)) do { ... }
+- `daeEncrypt` (5, was 443; PARKED 2026-10-22): `if (__builtin_expect(size, 1)) do { ... }
   while (off < size)`, `buf[off + k]` header tests with per-test hints,
   hot labels on the `n != 0` retry arm and the alternate-key arm, the
   second give-up path `goto fail` into the first's `n = 0; off = size + 1`.
