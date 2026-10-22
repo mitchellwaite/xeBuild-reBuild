@@ -190,6 +190,41 @@ Findings:
   `*(.text.startup)` when this object is built from C.
 - The temperature/fan/region fields must be u32 (an int would let the
   -1 default reuse the loaded value).
+- 2026-10-21, applyIniOptions written as goto code in the original's
+  block order (`wip/app/options_aio_goto.c`; to try it, replace the
+  stand-in in src/app/options.c and put it after macidSet).  With
+  `optimize("no-reorder-blocks", "no-reorder-blocks-and-partition",
+  "no-tree-tail-merge", "no-crossjumping")` gcc keeps the source block
+  order exactly (fncmp 247 lines, from 1177 with bbro on).  The inlined
+  parseButton tail is called by name: `int parseButtonPart(const char *)
+  __asm__("_parseButton.part.1") __attribute__((regparm(1)))` (gcc's
+  number for the part in the whole-C build).  Why each flag:
+  - tree tail-merge drops one of two identical split-edge forwarders, then
+    the survivor merges with its successor at the forwarder's position
+    (moves the cpufan block into the chain).
+  - jump2's crossjump redirects each chain test (`cmp [x],-1; je`) into
+    the identical tail of its duplicate after the previous option's store.
+    The original's duplicates are bbro copies made after jump2.  The 50%
+    probability rule in outgoing_edges_match can't protect them: it needs
+    the two tests' probabilities 50% apart, and then the gpufan..dvdregion
+    labels can't get the original's alignment.
+  Two things this approach cannot do, both of which need bbro's STC:
+  - the epilogue copy after sprintf (only connect_traces' copy_bb
+    duplicates the `add esp; pop; pop; ret` block; no other gcc 6 pass
+    copies an epilogue, and without bbro it is emitted once);
+  - macid's shared error tail (`mov [esp+4],msg` in each predecessor, one
+    log/showHexPairs/log): only crossjumping makes that, and it has to be
+    off for the duplicates.
+  Smaller things still open in that draft: `(f & ~4) | 2` folds to `& ~6`
+  (write it as two statements, like setBoolOption), `(f | X) & Y` folds to
+  `f & Y` in the nomobile/nosecurity duplicates (needs a pin), and
+  registers (esi for bootFlagsOff, the xellbutton2 registers).
+  So STC has to stay on.  Next step: a full STC simulator (find_traces,
+  connect_traces, copy_bb_p from gcc 6.2 bb-reorder.c, on top of
+  wip/fibsim.py's heap) fed with the CFG, frequencies and REG_BR_PROB values
+  gcc sees before bbro, to work out which profile gives the original
+  layout.  The goto form helps there because it fixes block order and the
+  CFG shape, so only the profile is left to find.
 
 ## app/bootloaders.c
 
