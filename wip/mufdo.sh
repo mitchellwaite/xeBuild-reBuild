@@ -1,5 +1,5 @@
 #!/bin/sh
-# mode_update with a crafted profile (wip/gcda.py); see wip/README.md.
+# mode_update with a crafted profile (re/gcda.py); see wip/README.md.
 #   sh wip/mufdo.sh <dir> [fn:src>dst=prob ...]
 # Copies wip/app/mode_update.c to <dir>/m.c (first run), compiles it once with
 # -fprofile-arcs -ftest-coverage for the .gcno and the profile_estimate dump,
@@ -24,6 +24,6 @@ if [ ! -f "$d/-.gcno" ] || [ "$d/m.c" -nt "$d/-.gcno" ]; then
   (cd "$d" && PATH="$R/tools/toolchain-4745/mingw32/bin:$PATH" gcc -S -I "$R/wip/app" $FL \
     -fprofile-arcs -ftest-coverage -fdump-tree-profile_estimate-blocks-details "$d/m.c" -o - >/dev/null)
 fi
-python wip/gcda.py "$d/-.gcno" "$d/m.c.042t.profile_estimate" "$d/-.gcda" "$@" --only=mode_update,updateNand >/dev/null
+python re/gcda.py "$d/-.gcno" "$d/m.c.042t.profile_estimate" "$d/-.gcda" "$@" --only=mode_update,updateNand >/dev/null
 FNCMP_LITERALS=1 python re/fncmp.py "$d/m.c" mode_update $FL -fbranch-probabilities "-fprofile-dir=$d" > "$d/fdo.diff" 2>&1 || true
 grep -c '^[-+][^-+]' "$d/fdo.diff" || true

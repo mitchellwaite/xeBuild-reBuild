@@ -1,7 +1,7 @@
 """Write a .gcda that reproduces gcc's guessed profile (for -fbranch-probabilities).
 
-python wip/gcda.py <x.gcno> <x.c.042t.profile_estimate> <out.gcda>
-                   [fn:src>dst=prob ...] [--only=fn,fn]
+python re/gcda.py <x.gcno> <x.c.042t.profile_estimate> <out.gcda>
+                   [fn:src>dst=prob ...] [--only=fn,fn] [--src=file.c]
 
 The .gcno (and the dump, with -fdump-tree-profile_estimate-blocks-details)
 come from one compile with the object's flags plus -fprofile-arcs
@@ -14,8 +14,10 @@ hot test agrees with the guessed one (cold iff freq < entry freq / 1000,
 integer division). A static function's entry count is its call sites' (an
 inlined called-once body keeps its own counts). An override `fn:src>dst=prob`
 (dump bb numbers) sets one edge probability in % (the other edges of src keep
-their ratios). --only writes counts for those functions only (the rest stay
-guessed). wip/mufdo.sh is the driver for mode_update.
+their ratios). --src names the C file when the gcno's (a #line name) isn't
+one. --only writes counts for those functions only (the rest stay
+guessed). build.sh builds mode_update with it (wip/mufdo.sh is the
+experiment driver).
 """
 import re, struct, sys
 
@@ -256,10 +258,13 @@ def map_bb(fns, name, bb):
 
 def main():
     gcno, dump, out = sys.argv[1:4]
-    over, only = {}, None
+    over, only, srcfile = {}, None, None
     for a in sys.argv[4:]:
         if a.startswith('--only='):
             only = a[7:].split(',')
+            continue
+        if a.startswith('--src='):
+            srcfile = a[6:]
             continue
         m = re.match(r'(\w+):(\d+)>(\d+)=([\d.]+)$', a)
         over.setdefault(m.group(1), {})[(int(m.group(2)), int(m.group(3)))] = float(m.group(4))
@@ -269,7 +274,7 @@ def main():
     est, calls = read_dump(dump)
     # a static function's entry count must be its call sites' (an inlined
     # called-once body keeps its own counts); the rest get the hot-test scale
-    text = open(fns[0]['src']).read()
+    text = open(srcfile or fns[0]['src']).read()
     static = {f['name'] for f in fns
               if re.search(r'^static\b[^;{]*\b%s\s*\(' % f['name'], text, re.M)}
     fl = {fn['name']: flows(fn, est[fn['name']], over.get(fn['name'], {})) for fn in fns}

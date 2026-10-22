@@ -534,6 +534,21 @@ SYMBOLS = {
     0x44d484: '_mu_44d484', 0x44d4b9: '_mu_44d4b9', 0x44d4c5: '_mu_44d4c5', 0x44d4cc: '_mu_44d4cc',
     0x44d4fc: '_mu_44d4fc', 0x44d528: '_mu_44d528', 0x44d55c: '_mu_44d55c', 0x44d590: '_mu_44d590',
     0x44d5ba: '_mu_44d5ba', 0x44d5d4: '_mu_44d5d4',
+    0x44d5f7: '_mu_44d5f7', 0x44d5fe: '_mu_44d5fe', 0x44d603: '_mu_44d603', 0x44d606: '_mu_44d606',
+    0x44d609: '_mu_44d609', 0x44d614: '_mu_44d614', 0x44d63a: '_mu_44d63a', 0x44d640: '_mu_44d640',
+    0x44d68a: '_mu_44d68a', 0x44d6a3: '_mu_44d6a3', 0x44d6a8: '_mu_44d6a8', 0x44d6f4: '_mu_44d6f4',
+    0x44d73a: '_mu_44d73a', 0x44d740: '_mu_44d740', 0x44d78c: '_mu_44d78c', 0x44d7e3: '_mu_44d7e3',
+    0x44d7e7: '_mu_44d7e7', 0x44d7ec: '_mu_44d7ec', 0x44d840: '_mu_44d840', 0x44d882: '_mu_44d882',
+    0x44d88c: '_mu_44d88c', 0x44d8c8: '_mu_44d8c8', 0x44d8d0: '_mu_44d8d0', 0x44d910: '_mu_44d910',
+    0x44d918: '_mu_44d918', 0x44d950: '_mu_44d950', 0x44d958: '_mu_44d958', 0x44d9c7: '_mu_44d9c7',
+    0x44d9ca: '_mu_44d9ca', 0x44d9d0: '_mu_44d9d0', 0x44da21: '_mu_44da21', 0x44da3d: '_mu_44da3d',
+    0x44da40: '_mu_44da40', 0x44da91: '_mu_44da91', 0x44da98: '_mu_44da98', 0x44dac6: '_mu_44dac6',
+    0x44dad0: '_mu_44dad0', 0x44db0e: '_mu_44db0e', 0x44db21: '_mu_44db21', 0x44db26: '_mu_44db26',
+    0x44db30: '_mu_44db30', 0x44db58: '_mu_44db58', 0x44db7c: '_mu_44db7c', 0x44dba0: '_mu_44dba0',
+    0x44dbcc: '_mu_44dbcc', 0x44dbfc: '_mu_44dbfc', 0x44dc2c: '_mu_44dc2c', 0x44dc54: '_mu_44dc54',
+    0x44dca8: '_mu_44dca8', 0x44dcf8: '_mu_44dcf8', 0x44dd40: '_mu_44dd40', 0x44dd67: '_mu_44dd67',
+    0x44dd80: '_mu_44dd80', 0x44ddc0: '_mu_44ddc0', 0x44de04: '_mu_44de04', 0x44de38: '_mu_44de38',
+    0x44de80: '_mu_44de80',
     # app/image_read (wip/app/image_read.c) and what it calls; names are ours
     0x4136a0: '_fsFind', 0x4138c0: '_getImageLdv', 0x413ad0: '_getImageSmc',
     0x413d30: '_getImageKv', 0x414050: '_getImageMobiles', 0x414300: '_getNetKd',
@@ -720,11 +735,12 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
-    # app/mode_update (mode_update stays asm)
+    # app/mode_update (mode_update is built with a crafted profile, build.sh)
     0x4030b0, 0x4031d0, 0x403460, 0x4034f0,  # getBadBlocks update_usage wantFile parseAddonIdx
     0x403700, 0x403820, 0x403cf0, 0x403d80,  # getAddons getMobileFiles bldrGetKv bldrGetSmc
     0x403e10,                                # getSecurityFiles
     0x404320, 0x404340, 0x404430, 0x404600,  # checkBadBlocks getBootloaders getConsoleFiles updateGetFile
+    0x404770,                                # mode_update
     # app/options (parseButton's ipa-split part at 449640 is gcc's
     # .text.unlikely, which splice.py takes too)
     0x4236f0,                                # baseFileExists.part.0

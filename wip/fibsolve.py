@@ -1,6 +1,6 @@
 """Search bb-reorder's last STC round for keys that give a wanted trace order.
 
-python wip/fibsolve.py <mode_update bbro dump> [rounds]
+python wip/fibsolve.py <mode_update bbro dump> [max K]   (env: FIBD FIBALL FIBFIX)
 
 Replays rounds before the last exactly (wip/fibsim.py) and the last one
 event-driven (as wip/fibwhatif.py). Every key in (-100, 0] that lands in the

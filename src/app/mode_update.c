@@ -221,6 +221,63 @@ extern const char mu_44d55c[];	/* "\n***** ERROR: mounting remote Syste..." */
 extern const char mu_44d590[];	/* "\n***** ERROR: getting bad blocks fa..." */
 extern const char mu_44d5ba[];	/* "failed! received 0 bytes\n" */
 extern const char mu_44d5d4[];	/* "failed! file not found on console\n" */
+extern const char mu_44d5f7[];	/* "update" */
+extern const char mu_44d5fe[];	/* "help" */
+extern const char mu_44d603[];	/* "-?" */
+extern const char mu_44d606[];	/* "/?" */
+extern const char mu_44d609[];	/* "-noenter" */
+extern const char mu_44d614[];	/* "<enter> key on completion suppressed..." */
+extern const char mu_44d63a[];	/* "-ip" */
+extern const char mu_44d640[];	/* "\n\n***** ERROR: option flag -ip on ..." */
+extern const char mu_44d68a[];	/* "setting forced IP to %s\n" */
+extern const char mu_44d6a3[];	/* "-a" */
+extern const char mu_44d6a8[];	/* "\n\n***** ERROR: option flag -a on c..." */
+extern const char mu_44d6f4[];	/* "***** WARNING: exceeded total number..." */
+extern const char mu_44d73a[];	/* "-r" */
+extern const char mu_44d740[];	/* "\n\n***** ERROR: option flag -r on c..." */
+extern const char mu_44d78c[];	/* "***** WARNING: option flag -r %s on ..." */
+extern const char mu_44d7e3[];	/* "_%s" */
+extern const char mu_44d7e7[];	/* "-i" */
+extern const char mu_44d7ec[];	/* "\n\n***** ERROR: data directory flag..." */
+extern const char mu_44d840[];	/* "suffix '%s' added from command line ..." */
+extern const char mu_44d882[];	/* "-nowrite" */
+extern const char mu_44d88c[];	/* "-nowrite: flash image and avatars wi..." */
+extern const char mu_44d8c8[];	/* "-noava" */
+extern const char mu_44d8d0[];	/* "-noava: avatar data, if available, w..." */
+extern const char mu_44d910[];	/* "-noreeb" */
+extern const char mu_44d918[];	/* "-noreeb: console will not reboot aft..." */
+extern const char mu_44d950[];	/* "-clean" */
+extern const char mu_44d958[];	/* "-clean: secdata, extended and statis..." */
+extern const char mu_44d9c7[];	/* "-v" */
+extern const char mu_44d9ca[];	/* "-d" */
+extern const char mu_44d9d0[];	/* "\n\n***** ERROR: dump directory flag..." */
+extern const char mu_44da21[];	/* "dump directory set to '%s'\n" */
+extern const char mu_44da3d[];	/* "-f" */
+extern const char mu_44da40[];	/* "\n\n***** ERROR: data directory flag..." */
+extern const char mu_44da91[];	/* "%s\\" */
+extern const char mu_44da98[];	/* "data directory set from command line..." */
+extern const char mu_44dac6[];	/* "%s\\bin\\" */
+extern const char mu_44dad0[];	/* "\n\n***** ERROR: unknown option '%s'..." */
+extern const char mu_44db0e[];	/* "Dumping disabled!\n" */
+extern const char mu_44db21[];	/* "%s%s" */
+extern const char mu_44db26[];	/* "%s_update" */
+extern const char mu_44db30[];	/* "\n------ dumping console flash -----..." */
+extern const char mu_44db58[];	/* "\n------ flashing console ------\n" */
+extern const char mu_44db7c[];	/* "sending flash data to console...\n" */
+extern const char mu_44dba0[];	/* "flashing console skipped, -nowrite u..." */
+extern const char mu_44dbcc[];	/* "\n------ loading and sending avatar ..." */
+extern const char mu_44dbfc[];	/* "avatar data skipped, -noava or -nowr..." */
+extern const char mu_44dc2c[];	/* "avatar data skipped, no HDD detected..." */
+extern const char mu_44dc54[];	/* "\n***** WARNING: due to previous pos..." */
+extern const char mu_44dca8[];	/* "               it is not recommended..." */
+extern const char mu_44dcf8[];	/* "               until you have determ..." */
+extern const char mu_44dd40[];	/* "\n\n***** ERROR: %i writing to file ..." */
+extern const char mu_44dd67[];	/* "%s image built, info:\n" */
+extern const char mu_44dd80[];	/* "\n\n***** FATAL UPDATE ERROR: %i una..." */
+extern const char mu_44ddc0[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
+extern const char mu_44de04[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
+extern const char mu_44de38[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
+extern const char mu_44de80[];	/* "\n\n***** FATAL UPDATE ERROR: unable..." */
 
 u32 getBadBlocks(void)
 {
@@ -628,4 +685,229 @@ int updateGetFile(const char *name, u8 **data, int *size)
 		return 1;
 	}
 	return on;
+}
+
+static void updateNand(char *dumpDir, int *pret)
+{
+	int ret, r;
+
+	if (getConsoleFiles(dumpDir)) {
+		updating = 1;
+		ret = buildImage();
+		if (!ret) {
+			netUnmount(mu_44d4c5);
+			if (dumpDir) {
+				char nand[1024];
+
+				strcpy(nand, dumpDir);
+				strcat(nand, "nanddump.bin");
+				log_printf(1, mu_44db30);
+				if (!netDumpNand(nand)) {
+					ret = 5;
+					log_printf(0, mu_44d479);
+				}
+			}
+			log_printf(1, mu_44db58);
+			if (!noWrite) {
+				u32 size;
+				u8 *buf = imageGetBuffer(&size);
+
+				log_printf(0, mu_44db7c);
+				netTimerStart();
+				if (!netSendFlash(buf, size))
+					ret = 5;
+			} else
+				log_printf(1, mu_44dba0);
+			log_printf(1, mu_44dbcc);
+			if (hasHdd) {
+				if (noAvatar || noWrite)
+					log_printf(1, mu_44dbfc);
+				else
+					sendAvatarData(xb.dataDir, xb.kernel);
+			} else
+				log_printf(1, mu_44dc2c);
+			if (!noReboot) {
+				if (!ret)
+					netReboot(2);
+				else {
+					log_printf(0, mu_44dc54);
+					log_printf(0, mu_44dca8);
+					log_printf(0, mu_44dcf8);
+				}
+			}
+			if (dumpDir) {
+				r = writeImage(xb.outName);
+				if (r)
+					log_printf(0, mu_44dd40, r, xb.outName);
+				log_printf(0, separator);
+			}
+			log_printf(0, mu_44dd67, xb.outName);
+			*pret = ret;
+		} else {
+			log_printf(0, mu_44dd80, ret);
+			*pret = 3;
+		}
+	} else {
+		log_printf(0, mu_44ddc0);
+		*pret = 5;
+	}
+}
+
+int mode_update(int argc, char **argv)
+{
+	char ini[1024] = ".\\data\\";
+	char dumpBuf[1024] = ".\\";
+	char tmp[1024];
+	char *ip, *dumpDir;
+	int i, ret, code;
+
+	xb.baseDir[0] = 0;
+	log_set_name(mu_44d5f7);
+	ip = NULL;
+	dumpDir = NULL;
+	for (i = 0; i < argc; i++) {
+		if (!strnicmp(argv[i], mu_44d5fe, 2) || !strnicmp(argv[i], mu_44d603, 2)
+		    || !strnicmp(argv[i], mu_44d606, 2))
+			update_usage();
+		if (!strnicmp(argv[i], mu_44d609, 8)) {
+			log_printf(1, mu_44d614);
+			promptEnter = 0;
+		} else if (!strnicmp(argv[i], mu_44d63a, 3)) {
+			i++;
+			ip = argv[i];
+			if (i == argc || !ip || *ip == '-') {
+				log_printf(0, mu_44d640);
+				update_usage();
+			}
+			log_printf(0, mu_44d68a, ip);
+		} else if (!strnicmp(argv[i], mu_44d6a3, 2)) {
+			i++;
+			if (!argv[i] || i == argc || *argv[i] == '-') {
+				log_printf(0, mu_44d6a8, argv[i]);
+				update_usage();
+			}
+			useConsoleAddons = 0;
+			if (xb.numPatches < 16) {
+				strcpy(xb.patches[xb.numPatches], argv[i]);
+				strcat(xb.patches[xb.numPatches], ".bin");
+				xb.numPatches++;
+			} else
+				log_printf(0, mu_44d6f4, argv[i]);
+		} else if (!strnicmp(argv[i], mu_44d73a, 2)) {
+			i++;
+			char *arg = argv[i];
+
+			if (i == argc || !arg || *arg == '-') {
+				log_printf(0, mu_44d740);
+				update_usage();
+			}
+			if (xb.blSuffix[0])
+				log_printf(0, mu_44d78c, argv[i], xb.blSuffix + 1);
+			sprintf(xb.blSuffix, mu_44d7e3, argv[i]);
+		} else if (!strnicmp(argv[i], mu_44d7e7, 2)) {
+			i++;
+			if (!argv[i] || i == argc || *argv[i] == '-') {
+				log_printf(0, mu_44d7ec, argv[i]);
+				update_usage();
+			}
+			strcpy(xb.suffix, "_");
+			strcpy(xb.suffix + 1, argv[i]);
+			log_printf(1, mu_44d840, xb.suffix);
+		} else if (!strnicmp(argv[i], mu_44d882, 8)) {
+			i++;
+			noWrite = 1;
+			noReboot = 1;
+			noAvatar = 1;
+			log_printf(1, mu_44d88c);
+		} else if (!strnicmp(argv[i], mu_44d8c8, 6)) {
+			i++;
+			noAvatar = 1;
+			log_printf(1, mu_44d8d0);
+		} else if (!strnicmp(argv[i], mu_44d910, 6)) {
+			i++;
+			noReboot = 1;
+			log_printf(1, mu_44d918);
+		} else if (!strnicmp(argv[i], mu_44d950, 6)) {
+			i++;
+			clean = 1;
+			log_printf(1, mu_44d958);
+		} else if (!strnicmp(argv[i], mu_44d9c7, 2)) {
+			log_verbose_flag(argv[i][2]);
+		} else if (!strnicmp(argv[i], mu_44d9ca, 2)) {
+			i++;
+			if (!argv[i] || i == argc || *argv[i] == '-') {
+				log_printf(0, mu_44d9d0, argv[i]);
+				update_usage();
+			}
+			strcpy(dumpBuf, argv[i]);
+			strcat(dumpBuf, "\\");
+			log_printf(1, mu_44da21, dumpBuf);
+			dumpDir = dumpBuf;
+		} else if (!strnicmp(argv[i], mu_44da3d, 2)) {
+			i++;
+			if (!argv[i] || i == argc || *argv[i] == '-') {
+				log_printf(0, mu_44da40, argv[i]);
+				update_usage();
+			}
+			sprintf(ini, mu_44da91, argv[i]);
+			log_printf(1, mu_44da98, ini);
+			sprintf(xb.dataDir, mu_44da91, argv[i]);
+			sprintf(xb.binDir, mu_44dac6, argv[i]);
+		} else {
+			log_printf(0, mu_44dad0, argv[i]);
+			update_usage();
+		}
+	}
+	if (dumpDir && !createDir(dumpDir)) {
+		log_printf(0, mu_44db0e);
+		dumpDir = NULL;
+	}
+	if (netConnect(ip)) {
+
+		info = netGetInfo();
+		if (parseConsoleInfo(1, dumpDir, dumpDir, &hasHdd)) {
+			if (xb.type == 1)
+				strcat(ini, "_retail");
+			else if (xb.type == 2)
+				strcat(ini, "_jtag");
+			else if (xb.type == 3) {
+				if (xb.glitch2mfg)
+					strcat(ini, "_glitch2m");
+				else if (xb.glitch2)
+					strcat(ini, "_glitch2");
+				else
+					strcat(ini, "_glitch");
+			} else if (xb.type == 6 || xb.type == 7)
+				strcat(ini, "_devkit");
+			else if (xb.type == 8 || xb.type == 9)
+				strcat(ini, "_testkit");
+			strcat(ini, xb.suffix);
+			strcat(ini, ".ini");
+			if (parseIni(ini)) {
+				if (dumpDir) {
+					sprintf(tmp, mu_44db21, dumpDir, xb.outName);
+					strcpy(xb.outName, tmp);
+					log_set_name(xb.outName);
+				} else {
+					sprintf(tmp, mu_44db26, xb.outName);
+					log_set_name(tmp);
+				}
+				updateNand(dumpDir, &code);
+				ret = code;
+			} else {
+				log_printf(0, mu_44de04, ini);
+				ret = 1;
+			}
+		} else {
+			log_printf(0, mu_44de38);
+			ret = 5;
+		}
+	} else {
+		ret = 5;
+		log_printf(0, mu_44de80);
+	}
+	xb.pub1bl = NULL;
+	xb.pubPirs = NULL;
+	xb.masterPub = NULL;
+	return ret;
 }

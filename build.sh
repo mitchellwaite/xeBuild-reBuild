@@ -6,6 +6,7 @@
 set -e
 TC=tools/toolchain-4745/mingw32/bin
 OBJ=build/obj
+ROOT=$PWD
 # gcc finds cc1/as and their DLLs through PATH
 PATH="$PWD/$TC:$PATH"
 objs=
@@ -73,7 +74,36 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
         "$TC/gcc.exe" -S $cflags -fno-asynchronous-unwind-tables \
           -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
-      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s"
+      fdo=
+      if [ "$f" = app/mode_update ]; then
+        # mode_update's cold blocks are laid out by frequency ties that no
+        # guessed profile we found gives (wip/README.md): re/gcda.py writes the
+        # guessed profile with these edges changed (profile_estimate bb
+        # numbers), and only mode_update is taken from the profile build.
+        # Both compiles use `-o -`: the .gcda name and static functions'
+        # profile ids come from the aux name. pf keeps the profile from
+        # changing inlining and placement (wip/README.md); at the object's
+        # align-threshold=200 the profile build aligns two more labels.
+        p="$OBJ/$f.fdo"
+        mkdir -p "$p"
+        pw=$(cd "$p" && { pwd -W 2>/dev/null || pwd; })
+        pf="-fno-inline-small-functions -fno-partial-inlining -fno-ipa-profile -fno-reorder-functions --param align-threshold=100"
+        (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
+          "$ROOT/$TC/gcc.exe" -S $cflags $pf -fno-asynchronous-unwind-tables -I"$ROOT/src/app" \
+            -fprofile-arcs -ftest-coverage -fdump-tree-profile_estimate-blocks-details \
+            -x c - -o - >/dev/null)
+        python re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
+          mode_update:59\>3=97.9 mode_update:65\>66=16 mode_update:67\>68=16 \
+          mode_update:69\>70=30 mode_update:75\>76=21 mode_update:79\>80=80.5 \
+          mode_update:80\>82=17 updateNand:2\>3=49.5 updateNand:13\>18=27 \
+          updateNand:19\>20=60 updateNand:24\>25=14.5 \
+          --only=mode_update,updateNand --src="src/$f.c" >/dev/null
+        (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
+          "$ROOT/$TC/gcc.exe" -S $cflags $pf -fno-asynchronous-unwind-tables -I"$ROOT/src/app" \
+            -fbranch-probabilities -fprofile-dir="$pw" -x c - -o -) > "$OBJ/$f.fdo.s"
+        fdo="_mode_update=$OBJ/$f.fdo.s"
+      fi
+      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s" $fdo
       "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
     else
       { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |

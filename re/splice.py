@@ -1,6 +1,6 @@
 """Fill a mixed object's `#@C name` markers with gcc's code for those functions.
 
-python re/splice.py <src/obj.s> <gcc -S output> <out.s>
+python re/splice.py <src/obj.s> <gcc -S output> <out.s> [name=<gcc -S output> ...]
 
 The .s (from split.py) holds the object's data, ident, .eh_frame and every
 function not yet in C; the C file is compiled with -S and
@@ -16,6 +16,8 @@ and the code refers to the .s's label.  Likewise a `static const char x[] =
 "..."` naming one of the .s's strings (so gcc can fold strlen of it): its
 .rdata copy is dropped.  So is gcc's copy of a function the .s still has in
 asm, which the C keeps only so that its functions can inline it.
+`name=file` takes that function (and its jump tables) from another compile
+of the same C file instead (one with other flags, e.g. a profile build).
 """
 import re, sys
 
@@ -109,21 +111,59 @@ def drop_rdata(lines, defined):
     return out
 
 
-def main():
-    src, gen, dst = sys.argv[1:4]
-    lines = open(src).read().split('\n')
-    defined = {m.group(1) for m in map(LABEL.match, lines) if m}
-    # gcc numbers the parts in an object; the .s has our names (stripped binary)
-    parts = {m.group(1): m.group(0) for m in (PART.search(l) for l in lines if l.startswith('#@C ')) if m}
+def drop_sections(lines):
+    """Drop every .rdata block (another compile's data, which isn't used)."""
+    out, skip = [], False
+    for l in lines:
+        if SECTION.match(l) or re.match(r'^\s*\.section\b', l):
+            skip = bool(re.match(r'^\s*\.section\s+\.rdata\b', l))
+            if skip:
+                continue
+        if not skip:
+            out.append(l)
+    return out
+
+
+def load(gen, parts, defined, only=None):
+    """gcc -S output -> ({function: lines}, {function: jump tables}).  With
+    `only`, just that function is wanted: other data is ignored, and the
+    function must not refer to gcc's own literals."""
     gen_text = PART.sub(lambda m: parts.get(m.group(1), m.group(0)), open(gen).read())
     tables, gen_lines = jump_tables(gen_text.split('\n'))
-    fns = functions(drop_rdata(gen_lines, defined))
+    if only:
+        fns = functions(drop_sections(gen_lines))
+        if any(re.search(r'\bLC\d+\b', l) for l in fns.get(only, [])):
+            sys.exit('splice.py: %s in %s refers to its own literals' % (only, gen))
+        # its local labels would clash with the main compile's
+        fns = {only: [re.sub(r'(?<![\w$.])L(\d+)\b', r'LF\1', l) for l in fns[only]]} \
+            if only in fns else {}
+    else:
+        fns = functions(drop_rdata(gen_lines, defined))
     for name, body in fns.items():
         for l in body:
             m = LCOMM.match(l)
             if m and m.group(1) not in defined:
                 sys.exit('splice.py: %s defines %s, which the .s does not' % (gen, m.group(1)))
         fns[name] = [l for l in body if not LCOMM.match(l)]
+    return fns, tables
+
+
+def main():
+    src, gen, dst = sys.argv[1:4]
+    lines = open(src).read().split('\n')
+    defined = {m.group(1) for m in map(LABEL.match, lines) if m}
+    # gcc numbers the parts in an object; the .s has our names (stripped binary)
+    parts = {m.group(1): m.group(0) for m in (PART.search(l) for l in lines if l.startswith('#@C ')) if m}
+    fns, tables = load(gen, parts, defined)
+    for a in sys.argv[4:]:
+        name, other = a.split('=', 1)
+        ofns, otables = load(other, parts, defined, name)
+        if name not in ofns:
+            sys.exit('splice.py: %s is not defined in %s' % (name, other))
+        fns[name] = ofns[name]
+        tables.pop(name, None)
+        if name in otables:
+            tables[name] = otables[name]
     out, used, placed = [], set(), set()
     for l in lines:
         m = re.match(r'^#@J (\S+) (\d+) (\d+)$', l)

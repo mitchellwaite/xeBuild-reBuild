@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **577 of 617** (574 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **578 of 617** (575 built from `src/`, 3 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 17 / 25 | 392 / 432 |
+| `app/` | 17 / 25 | 393 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,7 +36,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
+| `app/mode_update` | mixed; every function in C, data and `.eh_frame` still in `src/app/mode_update.s` | 14 / 14 |
 | `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
 | `app/image_write` | mixed; 0 of 7 drafted functions match in `wip/app/image_write.c` | 39 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
@@ -46,7 +46,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
 
 <details>
-<summary><code>app/mode_update</code>: 13 / 14 in C</summary>
+<summary><code>app/mode_update</code>: 14 / 14 in C</summary>
 
 - ✅ `getBadBlocks` (0x4030b0)
 - ✅ `update_usage` (0x4031d0)
@@ -61,7 +61,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `getBootloaders` (0x404340)
 - ✅ `getConsoleFiles` (0x404430)
 - ✅ `updateGetFile` (0x404600)
-- ⬜ `mode_update` (0x404770) (draft in `wip/`, no match yet)
+- ✅ `mode_update` (0x404770)
 
 </details>
 <details>
@@ -892,6 +892,7 @@ src/common_bss.s         COMMON (uninitialized global) block
 re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
 re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
 re/units.py              objects from .eh_frame CIEs; profile of each for naming
+re/gcda.py               crafted .gcda for mode_update's profile build (build.sh)
 re/objcmp.py             section-by-section compare of a .o against the exe
 re/execmp.py             header/section/byte compare of two exes
 re/stamp.py              set PE timestamp and recompute checksum
@@ -1047,6 +1048,17 @@ buffers `extern`). The names (`keysInit`, `cbaEncrypt`,
   (shift and or, no double `shld`).
 - `crlEncrypt` writes the success branch twice (CPU key, then the alternate
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
+
+And `app/mode_update` (all 14 functions in C, data in the `.s`;
+`python wip/mumixed.py <functions>` makes `src/app/mode_update.c` from
+`wip/app/mode_update.c`). `mode_update` itself only matches when built with
+a profile: its cold blocks are placed by bb-reorder's Fibonacci-heap ties,
+and no guessed profile we found gives the original's (wip/README.md has the
+search, `wip/fibsolve.py`). build.sh compiles the file a second time with
+`-fbranch-probabilities` and a `.gcda` from `re/gcda.py` (gcc's guessed
+profile with 11 edges changed) and `re/splice.py ... _mode_update=<that
+output>` takes only `mode_update` from it. The edges are a fit to the
+layout, not the original's profile.
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 

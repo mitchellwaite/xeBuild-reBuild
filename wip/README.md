@@ -629,8 +629,9 @@ Still off:
 
 ## app/mode_update.c
 
-Draft of the whole object, with string literals. 12 of 14 functions are
-built from `src/app/mode_update.c` (mixed), which `python wip/mumixed.py
+Draft of the whole object, with string literals. All 14 functions are
+built from `src/app/mode_update.c` (mixed; `mode_update` from build.sh's
+profile compile, see the 2026-10-22 note below), which `python wip/mumixed.py
 <names>` makes from this file (strings become `mu_<address>` externs, the
 statics become externs for the `.s`'s `.bss`); a new match needs its name
 there, its address in `split.py` `C_FUNCS` and the printed strings in
@@ -711,7 +712,7 @@ Still off:
   `continue` (50%) and `goto` (none) add no usable predictor in gcc 6.
 - Crafted profile (2026-10-20): `sh wip/mufdo.sh <dir> [overrides]` builds
   mode_update with `-fbranch-probabilities` and a `.gcda` from
-  `wip/gcda.py` that reproduces the guessed profile exactly (no overrides:
+  `re/gcda.py` that reproduces the guessed profile exactly (no overrides:
   the same 30-line diff) with counts only for mode_update and updateNand.
   Overrides set single edge probabilities with no source change and leave
   getConsoleFiles' param alone: `mode_update:39>40=62` (the `-noreeb` match)
