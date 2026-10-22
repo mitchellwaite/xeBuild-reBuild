@@ -4,7 +4,8 @@ python re/progress.py [README.md]
 
 Run after `sh build.sh` (it reads build/obj/*.o and build/xeBuild.map for the
 function names).  Functions come from the reference exe's .eh_frame (one FDE
-each, units.py); an object is C if src/<obj>.c exists, and in a mixed object
+each, units.py); an object is C if src/<obj>.c exists (fully C only with no .s and no
+top-level asm in the .c left), and in a mixed object
 (src/<obj>.s too) only the C_FUNCS addresses are C.  Functions a .c defines
 in top-level __asm__ (still assembly) aren't C.  A function still in
 assembly whose SYMBOLS name is defined in a draft wip/<obj>.c counts as C
@@ -89,7 +90,7 @@ def main():
     img = Image(os.path.join(ROOT, 'xeBuild.exe'))
     bases = section_bases()
     objs = collections.OrderedDict()   # obj -> [(va, name, state)]
-    mixed_objs = set()                 # objects that still have a src/<obj>.s
+    asm_left = {}                      # obj -> where its remaining asm is
     for i, (_, fdes) in enumerate(units(img)):
         obj = NAMES[i][0]
         if obj.startswith('runtime/'):
@@ -98,7 +99,10 @@ def main():
         has_c = os.path.exists(os.path.join(ROOT, 'src', obj + '.c'))
         mixed = has_c and os.path.exists(os.path.join(ROOT, 'src', obj + '.s'))
         if mixed:
-            mixed_objs.add(obj)
+            asm_left[obj] = '`src/%s.s`' % obj
+        elif has_c and re.search(r'^__asm__\s*\(', open(os.path.join(ROOT, 'src', obj + '.c'),
+                                                     encoding='utf-8').read(), re.M):
+            asm_left[obj] = 'top-level asm in `src/%s.c`' % obj
         built = {a for a, _ in fdes if has_c and (not mixed or a in C_FUNCS)
                  and a not in asm_funcs(obj, fdes)}
         wip = wip_state(obj, sorted(a for a, _ in fdes if a not in built))
@@ -111,15 +115,15 @@ def main():
     def in_c(fs):
         return n(fs, 'C', 'wip')
 
-    # fully built from C: every function is C and no src/<obj>.s is left
-    # (a mixed object's .s still holds its data, padding and .eh_frame)
+    # fully built from C: every function is C and no asm is left, neither a
+    # src/<obj>.s nor top-level asm in the .c (data, padding, .eh_frame)
     def complete(obj):
-        return obj not in mixed_objs and n(objs[obj], 'C') == len(objs[obj])
+        return obj not in asm_left and n(objs[obj], 'C') == len(objs[obj])
 
     def state(obj, fs):
         s = 'C' if complete(obj) else 'mixed' if n(fs, 'C') else 'asm'
-        if obj in mixed_objs and n(fs, 'C') == len(fs):
-            s += '; every function in C, data and `.eh_frame` still in `src/%s.s`' % obj
+        if obj in asm_left and n(fs, 'C') == len(fs):
+            s += '; every function in C, data and `.eh_frame` still in %s' % asm_left[obj]
         drafted = n(fs, 'wip', 'draft')
         if drafted:
             s += '; %d of %d drafted functions match in `wip/%s.c`' % (n(fs, 'wip'), drafted, obj)
@@ -156,7 +160,7 @@ def main():
     done = [o for o in objs if complete(o)]
     todo = [o for o in objs if o not in done]
     out += ['', '### In progress', '',
-            'Objects with functions or data still in assembly (a `src/<obj>.s`). Per-function status in address order: '
+            'Objects with functions or data still in assembly (a `src/<obj>.s` or top-level asm in the `.c`). Per-function status in address order: '
             '✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. '
             '"Functions in C" counts both ✅ and ☑️.', '',
             '| Object | State | Functions in C |', '|---|---|---|']

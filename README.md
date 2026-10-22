@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 17 of 25 app files build from C, eight more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 16 of 25 app files build from C, nine more are mixed (bootloaders has every function in C but its data and `.eh_frame` are top-level asm); see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,19 +23,20 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **575 of 617** (570 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 58 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **575 of 617** (570 built from `src/`, 5 matching drafts in `wip/` that the build doesn't use yet); 57 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 17 / 25 | 390 / 432 |
+| `app/` | 16 / 25 | 390 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
 
-Objects with functions or data still in assembly (a `src/<obj>.s`). Per-function status in address order: ✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. "Functions in C" counts both ✅ and ☑️.
+Objects with functions or data still in assembly (a `src/<obj>.s` or top-level asm in the `.c`). Per-function status in address order: ✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. "Functions in C" counts both ✅ and ☑️.
 
 | Object | State | Functions in C |
 |---|---|---|
+| `app/bootloaders` | mixed; every function in C, data and `.eh_frame` still in top-level asm in `src/app/bootloaders.c` | 19 / 19 |
 | `app/mode_update` | mixed; 0 of 1 drafted functions match in `wip/app/mode_update.c` | 13 / 14 |
 | `app/mode_client` | mixed; 2 of 4 drafted functions match in `wip/app/mode_client.c` | 14 / 16 |
 | `app/image_write` | mixed; 0 of 8 drafted functions match in `wip/app/image_write.c` | 38 / 46 |
@@ -45,6 +46,30 @@ Objects with functions or data still in assembly (a `src/<obj>.s`). Per-function
 | `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
 | `app/build` | mixed; 1 of 17 drafted functions match in `wip/app/build.c` | 25 / 41 |
 
+<details>
+<summary><code>app/bootloaders</code>: 19 / 19 in C</summary>
+
+- ✅ `verifyExtended` (0x401630)
+- ✅ `unscramble` (0x401730)
+- ✅ `cbGetPairing` (0x4017d0)
+- ✅ `cfGetPairing` (0x401910)
+- ✅ `cfBestPairing` (0x401a00)
+- ✅ `cfDecrypt` (0x401ce0)
+- ✅ `cgDecrypt` (0x401dc0)
+- ✅ `verifySecdata` (0x401e60)
+- ✅ `crlVerifySig` (0x401f80)
+- ✅ `verifyCrl` (0x402020)
+- ✅ `daeDecrypt` (0x402210)
+- ✅ `daeVerifySig` (0x4022f0)
+- ✅ `verifyDae` (0x402410)
+- ✅ `fcrtVerifySig` (0x402610)
+- ✅ `verifyFcrt` (0x402720)
+- ✅ `shaSelfCheck` (0x402a00)
+- ✅ `cbDecrypt` (0x402a70)
+- ✅ `cdDecrypt` (0x402c70)
+- ✅ `ceDecrypt` (0x402ec0)
+
+</details>
 <details>
 <summary><code>app/mode_update</code>: 13 / 14 in C</summary>
 
@@ -341,7 +366,6 @@ Objects built entirely from C, in link order.
 
 | Object | Functions |
 |---|---|
-| `app/bootloaders` | 19 |
 | `app/stfs` | 7 |
 | `app/filelist_ini` | 12 |
 | `app/timeutil` | 7 |
@@ -360,30 +384,6 @@ Objects built entirely from C, in link order.
 | `app/crc32` | 1 |
 | `crypto/*` (41 XeCrypt objects) | 185 |
 
-<details>
-<summary><code>app/bootloaders</code>: 19 functions</summary>
-
-- ✅ `verifyExtended` (0x401630)
-- ✅ `unscramble` (0x401730)
-- ✅ `cbGetPairing` (0x4017d0)
-- ✅ `cfGetPairing` (0x401910)
-- ✅ `cfBestPairing` (0x401a00)
-- ✅ `cfDecrypt` (0x401ce0)
-- ✅ `cgDecrypt` (0x401dc0)
-- ✅ `verifySecdata` (0x401e60)
-- ✅ `crlVerifySig` (0x401f80)
-- ✅ `verifyCrl` (0x402020)
-- ✅ `daeDecrypt` (0x402210)
-- ✅ `daeVerifySig` (0x4022f0)
-- ✅ `verifyDae` (0x402410)
-- ✅ `fcrtVerifySig` (0x402610)
-- ✅ `verifyFcrt` (0x402720)
-- ✅ `shaSelfCheck` (0x402a00)
-- ✅ `cbDecrypt` (0x402a70)
-- ✅ `cdDecrypt` (0x402c70)
-- ✅ `ceDecrypt` (0x402ec0)
-
-</details>
 <details>
 <summary><code>app/stfs</code>: 7 functions</summary>
 
