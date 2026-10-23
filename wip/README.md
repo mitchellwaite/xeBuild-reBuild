@@ -1754,7 +1754,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 39 matching functions build from `src/app/image_write.c`, a mixed
+The 40 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
@@ -1800,6 +1800,15 @@ Findings:
   tests; pageEccOk ends `if (spare[15] != ...) return 0; return 1;` (the
   standalone function compiles the same, the inlined copy branches the
   original way).
+- imgWritePage builds from C (2026-10-23) with empty-asm pins: `"S"(off +
+  0x1000)` before the `x` pin (head registers), `"S"(start + blocks),
+  "a"(start * 512)` before the block loop (start reloaded straight into
+  the IV's ebp), and the end marker as `x = ~xb.fsStart; __asm__("" :
+  "+a"(x)); fsTable[(int)(x + start) + (int)blocks]`. The pin ties the
+  not to the add's output; the signed sum keeps reassoc from pairing
+  `start + blocks` in gimple (DOM would then use the IV's exit value), so
+  RTL CSE finds the spilled loop bound, as in the original. Each pin is
+  needed.
 - imgAddMobile: big block path first, error path duplicated (crossjumped),
   small path `if (imgFits) {...; return ret;}`. Left (18 lines): the
   "mobileOffset already set" block's placement.

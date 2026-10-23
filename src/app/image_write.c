@@ -237,7 +237,6 @@ static const char iw_451f80[] = "\tadding %s at raw offset 0x%x len 0x%x (end 0x
 /* still in image_write.s */
 int imgWriteStart(const void *src, u32 len, u16 next) __attribute__((regparm(3)));
 int imgWriteAt(u32 off, const void *src, u32 len, u16 next) __attribute__((regparm(3)));
-int imgWritePage(u32 off, const void *src, u16 next) __attribute__((regparm(3)));
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
 void writeFsTable(u32 off);
@@ -289,6 +288,41 @@ static int imgWriteHdr(const void *src, u32 len)
 			}
 		}
 	imgEnd = off + len;
+	return 0;
+}
+
+static __attribute__((noclone)) int imgWritePage(u32 off, const void *src, u16 next)
+{
+	u32 blocks, start, b, p, i, x, first;
+
+	if (xb.rawSize < off || xb.rawSize < off + 0x1000)
+		return -1;
+	__asm__("" :: "S"(off + 0x1000));
+	x = off & 0x3fff;
+	__asm__("" : "+c"(x));
+	start = off >> 14;
+	blocks = 1;
+	if (x)
+		blocks = (0x4000 - x >= 0x1000) ? 1 : 2;
+	memcpy(xb.hdr + off, src, 0x1000);
+	__asm__("" :: "S"(start + blocks), "a"(start * 512));
+	for (b = 0; b < blocks; b++)
+		for (p = 0; p < 8; p++)
+			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
+	if (next != 0xf1f1) {
+		for (i = 0; i < blocks; i++) {
+			if (next != 0 && next != 0xffff)
+				fsTable[start - xb.fsStart + i] = SWAP16(next);
+			else
+				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
+		}
+		if (next == 0xffff) {
+			x = ~xb.fsStart;
+			__asm__("" : "+a"(x));
+			fsTable[(int)(x + start) + (int)blocks] = SWAP16(0x1fff);
+		}
+	}
+	imgEnd = off + 0x1000;
 	return 0;
 }
 

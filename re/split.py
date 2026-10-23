@@ -672,6 +672,7 @@ C_FUNCS = {
     0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
     0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
+    0x40ecc0,                                # imgWritePage
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
