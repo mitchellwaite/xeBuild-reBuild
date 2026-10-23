@@ -438,6 +438,9 @@ SYMBOLS = {
     0x45772f: '_net_45772f', 0x457732: '_net_457732', 0x457736: '_net_457736',
     0x457746: '_net_457746', 0x457758: '_net_457758', 0x457784: '_net_457784',
     0x4574b0: '_net_4574b0', 0x4574d0: '_net_4574d0', 0x4574f4: '_net_4574f4',
+    0x4577c4: '_net_4577c4', 0x4577ec: '_net_4577ec', 0x457817: '_net_457817',
+    0x457830: '_net_457830', 0x45784c: '_net_45784c', 0x45787c: '_net_45787c',
+    0x4578b5: '_net_4578b5', 0x4578d4: '_net_4578d4',
     0x457518: '_net_457518', 0x457544: '_net_457544', 0x457652: '_net_457652',
     0x45766a: '_net_45766a',
     # app/image_read (wip/app/image_read.c) and what it calls; names are ours
@@ -649,7 +652,7 @@ C_FUNCS = {
     0x41fc30, 0x41fd60, 0x420140, 0x4205d0,  # netUnmount netGetFile netReadBlocks netFormatSysex
     0x420670, 0x420200, 0x420320, 0x420710,  # netFormatCompat netWriteBlocks netEraseBlock netMkdir
     0x41ffe0, 0x41ea90, 0x41f470, 0x420470,  # netSendFlash netFindBeacon netReadInfo netSendFile
-    0x41ee30,                                # netRecvVerbose
+    0x41ee30, 0x41f700,                      # netRecvVerbose netConnect
     # app/build (wip/app/build.c is the whole draft; wip/mixed.py)
     0x427650, 0x4276a0, 0x4276f0, 0x427950,  # findFileOffset findFileSize findFile readMetaFile
     0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile

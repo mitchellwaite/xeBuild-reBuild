@@ -9,6 +9,7 @@ attribute set (`-` = none, else the text inside `__attribute__((...))`),
 and re/fncmp.py's diff line count is printed.  Environment:
   FLAGS   gcc flags (default -O3)
   SHOW=i,j  print the diff for form i with attribute set j
+  KEEP=1  keep fnvar_t.c (the last form) for dumps
   CMPFN, GCCSYM  compare against the original's CMPFN using gcc's GCCSYM
                  (a clone: CMPFN=netRecv GCCSYM=_netRecvVerbose.constprop.2)
 """
@@ -36,4 +37,5 @@ for i, form in enumerate(forms, 1):
         print('form %d attr %d (%s): %s' % (i, j, a, n), flush=True)
         if os.environ.get('SHOW') == '%d,%d' % (i, j):
             print(o)
-os.remove(out)
+if not os.environ.get('KEEP'):  # KEEP=1 leaves the last form in fnvar_t.c
+    os.remove(out)

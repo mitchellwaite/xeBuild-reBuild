@@ -88,6 +88,14 @@ static const char net_457746[] = "connected to %s";
 static const char net_457758[] = " with updsvr version %d (peek version %d)\n";
 static const char net_457784[] = "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n";
 static const char net_4577bb[] = "failed!\n";
+static const char net_4577c4[] = "started, watching network for xbox...";
+static const char net_4577ec[] = "success, found xbox beacon at %u.%u.%u.%u\n";
+static const char net_457817[] = "attempting to connect...";
+static const char net_457830[] = "failed to find xbox beacon\n";
+static const char net_45784c[] = "attempting forced connection to %u.%u.%u.%u...";
+static const char net_45787c[] = "attempting to convert %s to an address failed, error %d\n";
+static const char net_4578b5[] = "WSAStartup failed, error %d\n";
+static const char net_4578d4[] = "success!\nGetting console info...";
 static const char net_4578f5[] = "\ndisconnecting from server...";
 static const char net_457913[] = "QUIT\n";
 static const char net_457919[] = "OK\n";
@@ -116,7 +124,6 @@ static const char net_457a71[] = "REEB\n";
 
 /* still in net.s; gcc gave it the local calling convention */
 u8 *netRecv(int *len) __attribute__((regparm(1)));
-u32 netConnect(const char *ip);
 int netWritePatches(const u8 *buf, u32 len);
 
 void netFree(void *p)
@@ -387,6 +394,70 @@ int netReadInfo(void)
 	log_printf(1, net_457784,
 		   netInfo->nandSize, netInfo->blockSize,
 		   netInfo->nandSize == 0x3000000 ? net_45772f : net_457732);
+	return 1;
+}
+
+u32 netConnect(const char *ip)
+{
+	WSADATA wsa;
+
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
+		if (ip == NULL) {
+			struct sockaddr_in server;
+			u32 addr;
+
+			log_printf(0, net_4577c4);
+			addr = netFindBeacon();
+			if (addr != 0) {
+				log_printf(0, net_4577ec,
+					   addr & 0xff, (addr >> 8) & 0xff, (addr >> 16) & 0xff, addr >> 24);
+				log_printf(1, net_457817);
+				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+				if (netSock != INVALID_SOCKET) {
+					server.sin_family = AF_INET;
+					server.sin_port = htons(49);
+					server.sin_addr.s_addr = addr;
+					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
+						log_printf(1, net_4578d4);
+						if (netReadInfo())
+							goto ok;
+					} else
+						log_printf(0, net_457712, WSAGetLastError());
+				} else
+					log_printf(0, net_4576e8, WSAGetLastError());
+			} else
+				log_printf(0, net_457830);
+		} else {
+			struct sockaddr_in sa, server;
+			int saLen = sizeof sa;
+			u32 addr;
+
+			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0) {
+				log_printf(0, net_45784c,
+					   sa.sin_addr.S_un.S_un_b.s_b1, sa.sin_addr.S_un.S_un_b.s_b2,
+					   sa.sin_addr.S_un.S_un_b.s_b3, sa.sin_addr.S_un.S_un_b.s_b4);
+				addr = sa.sin_addr.s_addr;
+				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+				if (netSock != INVALID_SOCKET) {
+					server.sin_family = AF_INET;
+					server.sin_port = htons(49);
+					server.sin_addr.s_addr = addr;
+					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
+						log_printf(0, net_45773c);
+						if (netReadInfo())
+							goto ok;
+					} else
+						log_printf(0, net_457712, WSAGetLastError());
+				} else
+					log_printf(0, net_4576e8, WSAGetLastError());
+			} else
+				log_printf(0, net_45787c,
+					   ip, WSAGetLastError());
+		}
+	} else
+		log_printf(0, net_4578b5, WSAGetLastError());
+	return 0;
+ok:
 	return 1;
 }
 

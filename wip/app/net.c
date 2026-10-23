@@ -390,46 +390,72 @@ int netReadInfo(void)
 	return 1;
 }
 
+/* Failures fall through to one return 0.  Each branch has its own sockaddr
+   (the socket code written out, as in netOpenSocket) and its own
+   netReadInfo: the branch's clobber block keeps phiopt off the readinfo
+   test, ce2 speculates the 1 into both copies and jump2 crossjumps them;
+   goto ok keeps the success block from following the test. */
 u32 netConnect(const char *ip)
 {
 	WSADATA wsa;
-	struct sockaddr_in sa;
-	int saLen;
-	u32 addr;
 
-	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
+		if (ip == NULL) {
+			struct sockaddr_in server;
+			u32 addr;
+
+			log_printf(0, "started, watching network for xbox...");
+			addr = netFindBeacon();
+			if (addr != 0) {
+				log_printf(0, "success, found xbox beacon at %u.%u.%u.%u\n",
+					   addr & 0xff, (addr >> 8) & 0xff, (addr >> 16) & 0xff, addr >> 24);
+				log_printf(1, "attempting to connect...");
+				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+				if (netSock != INVALID_SOCKET) {
+					server.sin_family = AF_INET;
+					server.sin_port = htons(49);
+					server.sin_addr.s_addr = addr;
+					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
+						log_printf(1, "success!\nGetting console info...");
+						if (netReadInfo())
+							goto ok;
+					} else
+						log_printf(0, "could not connect, error %d\n", WSAGetLastError());
+				} else
+					log_printf(0, "could not create client socket, error %d\n", WSAGetLastError());
+			} else
+				log_printf(0, "failed to find xbox beacon\n");
+		} else {
+			struct sockaddr_in sa, server;
+			int saLen = sizeof sa;
+			u32 addr;
+
+			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0) {
+				log_printf(0, "attempting forced connection to %u.%u.%u.%u...",
+					   sa.sin_addr.S_un.S_un_b.s_b1, sa.sin_addr.S_un.S_un_b.s_b2,
+					   sa.sin_addr.S_un.S_un_b.s_b3, sa.sin_addr.S_un.S_un_b.s_b4);
+				addr = sa.sin_addr.s_addr;
+				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+				if (netSock != INVALID_SOCKET) {
+					server.sin_family = AF_INET;
+					server.sin_port = htons(49);
+					server.sin_addr.s_addr = addr;
+					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
+						log_printf(0, "success!\n");
+						if (netReadInfo())
+							goto ok;
+					} else
+						log_printf(0, "could not connect, error %d\n", WSAGetLastError());
+				} else
+					log_printf(0, "could not create client socket, error %d\n", WSAGetLastError());
+			} else
+				log_printf(0, "attempting to convert %s to an address failed, error %d\n",
+					   ip, WSAGetLastError());
+		}
+	} else
 		log_printf(0, "WSAStartup failed, error %d\n", WSAGetLastError());
-		return 0;
-	}
-	if (!ip) {
-		log_printf(0, "started, watching network for xbox...");
-		addr = netFindBeacon();
-		if (!addr) {
-			log_printf(0, "failed to find xbox beacon\n");
-			return 0;
-		}
-		log_printf(0, "success, found xbox beacon at %u.%u.%u.%u\n",
-			   addr & 0xff, (addr >> 8) & 0xff, (addr >> 16) & 0xff, addr >> 24);
-		log_printf(1, "attempting to connect...");
-		if (!netOpenSocket(addr))
-			return 0;
-		log_printf(1, "success!\nGetting console info...");
-	} else {
-		saLen = sizeof sa;
-		if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) != 0) {
-			log_printf(0, "attempting to convert %s to an address failed, error %d\n",
-				   ip, WSAGetLastError());
-			return 0;
-		}
-		log_printf(0, "attempting forced connection to %u.%u.%u.%u...",
-			   sa.sin_addr.S_un.S_un_b.s_b1, sa.sin_addr.S_un.S_un_b.s_b2,
-			   sa.sin_addr.S_un.S_un_b.s_b3, sa.sin_addr.S_un.S_un_b.s_b4);
-		if (!netOpenSocket(sa.sin_addr.s_addr))
-			return 0;
-		log_printf(0, "success!\n");
-	}
-	if (!netReadInfo())
-		return 0;
+	return 0;
+ok:
 	return 1;
 }
 

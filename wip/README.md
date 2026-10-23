@@ -1260,13 +1260,14 @@ Still off:
 
 ## app/net.c
 
-Draft of the whole object (all 32 functions, data as statics). 29 match
+Draft of the whole object (all 32 functions, data as statics). 30 match
 and are built from `src/app/net.c` (mixed): netFree, netFindBeacon,
 netTimerStart/End/Elapsed, netSendStr, netSendData, netCheckOk,
 netOpenSocket, netClose, netDisconnect, netGetInfo, netDumpNand,
 netGetBldrs, netGetBadBlocks, netReboot, netMount, netUnmount, netGetFile,
 netReadBlocks, netFormatSysex/Compat, netWriteBlocks, netEraseBlock,
-netMkdir, netSendFlash, netReadInfo, netSendFile, netRecvVerbose. `python wip/netmixed.py <fns>` makes the src file from the
+netMkdir, netSendFlash, netReadInfo, netSendFile, netRecvVerbose,
+netConnect. `python wip/netmixed.py <fns>` makes the src file from the
 draft (it keeps a function's `__attribute__` line); test the draft with
 `FNCMP_LITERALS=1` (net.s's strings are named `net_<address>`). The src
 file gives the strings as `static const char net_X[] = "..."`, not
@@ -1360,6 +1361,25 @@ What got them (this round):
   it in memory the setsockopt/bind/select-error paths, each written as
   `log; closesocket(s); return addr;`, crossjump into one tail and the
   timeout path keeps its own copy.
+- netConnect: nested positive tests (every failure logs and falls through
+  to one `return 0`), the socket code written out in each branch with a
+  branch-local `struct sockaddr_in` (not netOpenSocket), and per branch
+  `log; if (netReadInfo()) goto ok;` with `ok: return 1;` after the final
+  `return 0`. Why each piece: phiopt and ce1 only leave the readinfo test
+  alone if its failure edge goes to a block that isn't an empty forwarder
+  (mergephi splits a shared forwarder for the test's edge), so the edge has
+  to cross the branch scope's clobbers; those clobber blocks also collect
+  every failure, so they reach RTL as the one `xor eax,eax` block. Each
+  branch needs its own scope variable, else the two success edges share a
+  block and ce2's find_if_case_2 (which speculates `eax = 1` above the
+  test, moving readinfo's result to edx) needs a single-predecessor ELSE.
+  With both copies speculated, jump2 crossjumps them (7 insns from the
+  success log call), which is the label in the middle of the ip branch.
+  `goto ok`: `if (x) return 1;` puts the success block right after the
+  test, so the test falls through to it and case 2 doesn't apply; the
+  return's finally copy for a goto lands after the branch. Early-return
+  style (`return 0` per failure) gives uncprop a coalescable 0 (addr when
+  the return is u32, WSAStartup's result when int) and loses the layout.
 
 Open (diff lines from `re/fncmp.py`):
 
@@ -1389,23 +1409,6 @@ Open (diff lines from `re/fncmp.py`):
   248); netFree inlined late gives 81% (265). A late-inlined helper with
   the asm in netFree's else (53%), a netEmpty asm after netFree, and an
   asm in netFree itself (breaks 14 other functions) were worse.
-- netConnect 39: the original ends `mov eax,1; test; jne` with every
-  failure sharing one `xor eax,eax` block. Ours: phiopt1 turns `if
-  (!netReadInfo()) return 0; return 1;` into `setne` (with no-ssa-phiopt,
-  ce1 does), and uncprop makes the beacon-failure return reuse addr, so the
-  PHI lives in ebx and every failure gets `xor ebx,ebx`. The original's
-  readinfo-failure block must be a lone `eax=0` that the `log; eax=0`
-  failure blocks crossjump into (a 1-insn crossjump is allowed when one
-  block matches whole). Block-local `sa`/`saLen`, readinfo in both
-  branches, goto forms and `int` return didn't keep the branch.
-  phiopt's conditional_replacement needs the middle block empty with a
-  single predecessor (the join may have more), and ce1 likewise, so the
-  original must have reached expand with the readinfo-failure `return 0`
-  in a block other failures share. The `mov eax,1` above `test` then is
-  find_if_case_2 speculating the `1` copy (eax dead on the shared path),
-  which is why readinfo's result moves to edx. no-ssa-phiopt +
-  no-if-conversion + no-tree-dominator-opts is 26 lines (the success
-  return gets its own epilogue, failures their own copies).
 - netRecv 58/netRecvVerbose 53: the drafts now write `if (buf !=
   &netEmpty) free(buf); return NULL;` on each failure path (the original
   repeats the check per path) and netRecv ends `if (got == size) { *len =

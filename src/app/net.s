@@ -11,7 +11,6 @@
 #   .text          0041e800-00420a90
 
 .intel_syntax noprefix
-.globl _netConnect
 .globl _netEmpty
 .globl _netInfo
 .globl _netRecv
@@ -44,6 +43,14 @@
 .globl _net_457758
 .globl _net_457784
 .globl _net_4577bb
+.globl _net_4577c4
+.globl _net_4577ec
+.globl _net_457817
+.globl _net_457830
+.globl _net_45784c
+.globl _net_45787c
+.globl _net_4578b5
+.globl _net_4578d4
 .globl _net_4578f5
 .globl _net_457913
 .globl _net_457919
@@ -341,180 +348,7 @@ L_41ea5a:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_netConnect:
-          push EBX
-          sub ESP,488
-          lea EAX,DWORD PTR [ESP+80]
-          mov EBX,DWORD PTR [ESP+496]
-          mov DWORD PTR [ESP],514
-          mov DWORD PTR [ESP+4],EAX
-          call DWORD PTR [__imp__WSAStartup@8]
-          sub ESP,8
-          test EAX,EAX
-          jne L_41f884
-          test EBX,EBX
-          je L_41f8c4
-          lea EAX,DWORD PTR [ESP+44]
-          mov DWORD PTR [ESP+44],16
-          mov DWORD PTR [ESP+8],0
-          mov DWORD PTR [ESP+4],2
-          mov DWORD PTR [ESP],EBX
-          mov DWORD PTR [ESP+16],EAX
-          lea EAX,DWORD PTR [ESP+48]
-          mov DWORD PTR [ESP+12],EAX
-          call DWORD PTR [__imp__WSAStringToAddressA@20]
-          sub ESP,20
-          test EAX,EAX
-          jne L_41f860
-          movzx EAX,BYTE PTR [ESP+55]
-          mov DWORD PTR [ESP+4],OFFSET L_45784c
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+20],EAX
-          movzx EAX,BYTE PTR [ESP+54]
-          mov DWORD PTR [ESP+16],EAX
-          movzx EAX,BYTE PTR [ESP+53]
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,BYTE PTR [ESP+52]
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EBX,DWORD PTR [ESP+52]
-          mov DWORD PTR [ESP+8],6
-          mov DWORD PTR [ESP+4],1
-          mov DWORD PTR [ESP],2
-          call DWORD PTR [__imp__socket@12]
-          sub ESP,12
-          cmp EAX,-1
-          mov DWORD PTR [_netSock],EAX
-          je L_41f9c0
-          mov EAX,2
-          mov DWORD PTR [ESP],49
-          mov WORD PTR [ESP+64],AX
-          call DWORD PTR [__imp__htons@4]
-          sub ESP,4
-          mov WORD PTR [ESP+66],AX
-          lea EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+68],EBX
-          mov DWORD PTR [ESP+8],16
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__connect@12]
-          sub ESP,12
-          test EAX,EAX
-          .byte 0x0f,0x88; .long L_41f8a4-.-4   # js L_41f8a4
-          mov DWORD PTR [ESP+4],OFFSET _net_45773c
-          mov DWORD PTR [ESP],0
-L_41f837:
-          call _log_printf
-          call _netReadInfo
-          mov EDX,EAX
-          mov EAX,1
-          test EDX,EDX
-          jne L_41f852
-          .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
-L_41f850:
-          xor EAX,EAX
-L_41f852:
-          add ESP,488
-          pop EBX
-          ret 
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41f860:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+12],EAX
-          mov DWORD PTR [ESP+4],OFFSET L_45787c
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41f850
-L_41f884:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET L_4578b5
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41f850
-L_41f8a4:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET _net_457712
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41f850
-L_41f8c4:
-          mov DWORD PTR [ESP+4],OFFSET L_4577c4
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          call _netFindBeacon
-          test EAX,EAX
-          mov EBX,EAX
-          je L_41f9e3
-          shr EAX,24
-          mov DWORD PTR [ESP+4],OFFSET L_4577ec
-          mov DWORD PTR [ESP],0
-          mov DWORD PTR [ESP+20],EAX
-          mov EAX,EBX
-          shr EAX,16
-          movzx EAX,AL
-          mov DWORD PTR [ESP+16],EAX
-          movzx EAX,BH
-          mov DWORD PTR [ESP+12],EAX
-          movzx EAX,BL
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_457817
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+8],6
-          mov DWORD PTR [ESP+4],1
-          mov DWORD PTR [ESP],2
-          call DWORD PTR [__imp__socket@12]
-          sub ESP,12
-          cmp EAX,-1
-          mov DWORD PTR [_netSock],EAX
-          je L_41f9c0
-          mov EDX,2
-          mov DWORD PTR [ESP],49
-          mov WORD PTR [ESP+64],DX
-          call DWORD PTR [__imp__htons@4]
-          sub ESP,4
-          mov WORD PTR [ESP+66],AX
-          lea EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [ESP+68],EBX
-          mov DWORD PTR [ESP+8],16
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [_netSock]
-          mov DWORD PTR [ESP],EAX
-          call DWORD PTR [__imp__connect@12]
-          sub ESP,12
-          test EAX,EAX
-          js L_41f8a4
-          mov DWORD PTR [ESP+4],OFFSET L_4578d4
-          mov DWORD PTR [ESP],1
-          jmp L_41f837
-          .byte 0x8d
-          .byte 0xb6
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_41f9c0:
-          call DWORD PTR [__imp__WSAGetLastError@0]
-          mov DWORD PTR [ESP+4],OFFSET _net_4576e8
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41f850
-L_41f9e3:
-          mov DWORD PTR [ESP+4],OFFSET L_457830
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_41f850
+#@C _netConnect
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -880,24 +714,24 @@ _net_457784:
           .string "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n"
 _net_4577bb:
           .string "failed!\n"
-L_4577c4:
+_net_4577c4:
           .string "started, watching network for xbox..."
           .zero 2
-L_4577ec:
+_net_4577ec:
           .string "success, found xbox beacon at %u.%u.%u.%u\n"
-L_457817:
+_net_457817:
           .string "attempting to connect..."
-L_457830:
+_net_457830:
           .string "failed to find xbox beacon\n"
-L_45784c:
+_net_45784c:
           .string "attempting forced connection to %u.%u.%u.%u..."
           .zero 1
-L_45787c:
+_net_45787c:
           .string "attempting to convert %s to an address failed, error %d\n"
-L_4578b5:
+_net_4578b5:
           .string "WSAStartup failed, error %d\n"
           .zero 2
-L_4578d4:
+_net_4578d4:
           .string "success!\nGetting console info..."
 _net_4578f5:
           .string "\ndisconnecting from server..."
