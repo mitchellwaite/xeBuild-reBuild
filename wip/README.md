@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 33 match and are built
+Draft of the whole object (all 41 functions). 34 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1560,7 +1560,7 @@ countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
-patchBlsResign, calcBlAreaSize.
+patchBlsResign, calcBlAreaSize, patchBlsBlmod.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1818,7 +1818,18 @@ only shows in `sh build.sh`.
     returns (early-return predictor 39% on blSign fail; at 50/50 a round-3
     fibheap tie pops success first). `u32 blSign` stops uncprop reusing its
     0 result for the fail return.
-- patchBlsBlmod (~330): same walk as patchBlsResign; try its recipe.
+- patchBlsBlmod (built from C, 2026-10-23): patchBlsResign's walk, with
+  `if (!n) {cbb} else {cd}` (the original jumps to cd; `if (n)`: 223
+  lines). `int size`: `(unsigned)size` gets its own PHI/pseudo (esi) while
+  size spills to `[60]`; as u32 they are one spilled pseudo. `if (blmod &&
+  size) {...}` instead of an early return (the main path must fall through
+  at LRA time for the size reload's EBB). `hdr[0x49] = i >> 8` before
+  `hdr[0x4a] = i`. Last 2 lines, the loop-entry spill store order (cd
+  before pt): IRA emits region-border moves by pseudo regno, partitions
+  numbered by lowest SSA version; the early inliner walks callees last call
+  first, giving pt's findFile the freed VDEF names. `-fno-ipa-pure-const`
+  or `optimize("no-early-inlining")` on the function (used) fix it; ~20
+  spellings didn't.
 - calcBlAreaSize (built from C, 2026-10-23): `x = findFile(N); size =
   findFileOffset(N) + xb.files[x].size` (size load after the offset loop;
   212 -> 95). `u32 x` (int: 123) fixes the type==2 offset register, the xell

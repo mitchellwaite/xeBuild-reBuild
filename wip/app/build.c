@@ -1692,70 +1692,75 @@ int patchBlsResign(void)
 
 /* apply the first two patch sets to the CB_B and the CD (growing them as
    needed) and drop them from the patches, then append blmod.bin to the
-   CB_B (or the CD without one) */
-void patchBlsBlmod(const void *blmod, u32 size)
+   CB_B (or the CD without one). The walk is patchBlsResign's. int size:
+   the clamped size's unsigned copy is its own pseudo (esi) while size
+   spills. no-early-inlining: the findFile calls are inlined at IPA time in
+   call order, so cd's pseudo comes before pt's (loop-entry store order) */
+__attribute__((optimize("no-early-inlining")))
+void patchBlsBlmod(const void *blmod, int size)
 {
 	int cd = findFile(7), cbb = findFile(6), pt = findFile(23);
 	struct fileent *p = &xb.files[pt];
 	u8 *d = p->data;
-	u32 off, addr, len, i, max, end;
+	u32 off, addr, len, i, max, end, t;
 	int n = 0;
 
 	log_printf(1, "Patching BLs...");
 	off = 0;
 	while (off < p->size) {
-		if (n == 2) {
+		if (n != 2) {
+			addr = getBeU32(d + off);
+			t = off + 4;
+			if (addr != 0xffffffff) {
+				len = getBeU32(d + t) * 4;
+				off += 8;
+				if (!n) {
+					if (addr + len > xb.files[cbb].size) {
+						xb.files[cbb].size = (addr + len + 15) & ~15;
+						setBeU32(xb.files[cbb].size, xb.files[cbb].data + 12);
+					}
+					for (i = 0; i < len; i++)
+						xb.files[cbb].data[addr + i] = d[off + i];
+				} else {
+					if (addr + len > xb.files[cd].size) {
+						xb.files[cd].size = (addr + len + 15) & ~15;
+						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
+					}
+					for (i = 0; i < len; i++)
+						xb.files[cd].data[addr + i] = d[off + i];
+				}
+				off += len;
+			} else {
+				n++;
+				off = t;
+			}
+		} else {
 			for (i = 0; i < p->size - off; i++)
 				p->data[i] = p->data[off + i];
 			p->size -= off;
-			break;
+			off = p->size;
 		}
-		addr = getBeU32(d + off);
-		if (addr == 0xffffffff) {
-			n++;
-			off += 4;
-			continue;
-		}
-		len = getBeU32(d + off + 4) * 4;
-		if (n) {
-			if (addr + len > xb.files[cd].size) {
-				xb.files[cd].size = (addr + len + 15) & ~15;
-				setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
-			}
-			for (i = 0; i < len; i++)
-				xb.files[cd].data[addr + i] = d[off + 8 + i];
-		} else {
-			if (addr + len > xb.files[cbb].size) {
-				xb.files[cbb].size = (addr + len + 15) & ~15;
-				setBeU32(xb.files[cbb].size, xb.files[cbb].data + 12);
-			}
-			for (i = 0; i < len; i++)
-				xb.files[cbb].data[addr + i] = d[off + 8 + i];
-		}
-		off += 8 + len;
 	}
-	if (!blmod || !size) {
+	if (blmod && size) {
 		log_printf(1, "Done!\n");
-		return;
+		if (!xb.cbb)
+			cbb = cd;
+		max = xb.cbb ? 0xc000 : 0x10000;
+		off = getBeU32(xb.files[cbb].data + 12);
+		end = (off + size + 15) & ~15;
+		if (end > max) {
+			size -= end - max;
+			log_printf(0, "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n", end - max, max - off);
+		}
+		log_printf(1, "Adding 0x%x bytes blmod.bin data to %s...", size, xb.cbb ? "CBB" : "CD");
+		memcpy(xb.files[cbb].data + off, blmod, size);
+		end = (off + size + 15) & ~15;
+		i = end - xb.files[cbb].size;
+		xb.hdr[0x49] = i >> 8;
+		xb.hdr[0x4a] = i;
+		xb.files[cbb].size = end;
+		setBeU32(end, xb.files[cbb].data + 12);
 	}
-	log_printf(1, "Done!\n");
-	if (!xb.cbb)
-		cbb = cd;
-	max = xb.cbb ? 0xc000 : 0x10000;
-	off = getBeU32(xb.files[cbb].data + 12);
-	end = (off + size + 15) & ~15;
-	if (end > max) {
-		size -= end - max;
-		log_printf(0, "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n", end - max, max - off);
-	}
-	log_printf(1, "Adding 0x%x bytes blmod.bin data to %s...", size, xb.cbb ? "CBB" : "CD");
-	memcpy(xb.files[cbb].data + off, blmod, size);
-	end = (off + size + 15) & ~15;
-	i = end - xb.files[cbb].size;
-	xb.hdr[0x4a] = i;
-	xb.hdr[0x49] = i >> 8;
-	xb.files[cbb].size = end;
-	setBeU32(end, xb.files[cbb].data + 12);
 	log_printf(1, "Done!\n");
 }
 

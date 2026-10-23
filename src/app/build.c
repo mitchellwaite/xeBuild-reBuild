@@ -334,7 +334,11 @@ static const char bd_459ee4[] = "fin :";
 static const char bd_459eea[] = "Patching BLs...";
 static const char bd_459efa[] = "Done!\n";
 static const char bd_459f04[] = "Checking patched CD signature...";
+static const char bd_459f25[] = "CBB";
+static const char bd_459f29[] = "CD";
 static const char bd_459f2a[] = "D";
+static const char bd_459f2c[] = "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n";
+static const char bd_459f7c[] = "Adding 0x%x bytes blmod.bin data to %s...";
 static const char bd_459fa6[] = "Fixing up patch set...";
 static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
 static const char bd_45a0f0[] = "    - console DVD eject button is being used to %s \n";
@@ -378,7 +382,6 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 		  int su, int fs, int common);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
-void patchBlsBlmod(const void *blmod, u32 size);
 void addBlsToImage(void);
 void addUpdateBls(void);
 int encodeBls(u8 *salt, u16 ldv);
@@ -1344,6 +1347,74 @@ int patchBlsResign(void)
 	} else
 		log_printf(1, bd_4597bc, xb.files[cd].name);
 	return ok;
+}
+
+__attribute__((optimize("no-early-inlining")))
+void patchBlsBlmod(const void *blmod, int size)
+{
+	int cd = findFile(7), cbb = findFile(6), pt = findFile(23);
+	struct fileent *p = &xb.files[pt];
+	u8 *d = p->data;
+	u32 off, addr, len, i, max, end, t;
+	int n = 0;
+
+	log_printf(1, bd_459eea);
+	off = 0;
+	while (off < p->size) {
+		if (n != 2) {
+			addr = getBeU32(d + off);
+			t = off + 4;
+			if (addr != 0xffffffff) {
+				len = getBeU32(d + t) * 4;
+				off += 8;
+				if (!n) {
+					if (addr + len > xb.files[cbb].size) {
+						xb.files[cbb].size = (addr + len + 15) & ~15;
+						setBeU32(xb.files[cbb].size, xb.files[cbb].data + 12);
+					}
+					for (i = 0; i < len; i++)
+						xb.files[cbb].data[addr + i] = d[off + i];
+				} else {
+					if (addr + len > xb.files[cd].size) {
+						xb.files[cd].size = (addr + len + 15) & ~15;
+						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
+					}
+					for (i = 0; i < len; i++)
+						xb.files[cd].data[addr + i] = d[off + i];
+				}
+				off += len;
+			} else {
+				n++;
+				off = t;
+			}
+		} else {
+			for (i = 0; i < p->size - off; i++)
+				p->data[i] = p->data[off + i];
+			p->size -= off;
+			off = p->size;
+		}
+	}
+	if (blmod && size) {
+		log_printf(1, bd_459efa);
+		if (!xb.cbb)
+			cbb = cd;
+		max = xb.cbb ? 0xc000 : 0x10000;
+		off = getBeU32(xb.files[cbb].data + 12);
+		end = (off + size + 15) & ~15;
+		if (end > max) {
+			size -= end - max;
+			log_printf(0, bd_459f2c, end - max, max - off);
+		}
+		log_printf(1, bd_459f7c, size, xb.cbb ? bd_459f25 : bd_459f29);
+		memcpy(xb.files[cbb].data + off, blmod, size);
+		end = (off + size + 15) & ~15;
+		i = end - xb.files[cbb].size;
+		xb.hdr[0x49] = i >> 8;
+		xb.hdr[0x4a] = i;
+		xb.files[cbb].size = end;
+		setBeU32(end, xb.files[cbb].data + 12);
+	}
+	log_printf(1, bd_459efa);
 }
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
