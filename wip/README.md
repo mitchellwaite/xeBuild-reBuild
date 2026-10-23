@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 32 match and are built
+Draft of the whole object (all 41 functions). 33 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1560,7 +1560,7 @@ countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
-patchBlsResign.
+patchBlsResign, calcBlAreaSize.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1819,7 +1819,16 @@ only shows in `sh build.sh`.
     fibheap tie pops success first). `u32 blSign` stops uncprop reusing its
     0 result for the fail return.
 - patchBlsBlmod (~330): same walk as patchBlsResign; try its recipe.
-- calcBlAreaSize (212): the original looks up the offset before the size.
+- calcBlAreaSize (built from C, 2026-10-23): `x = findFile(N); size =
+  findFileOffset(N) + xb.files[x].size` (size load after the offset loop;
+  212 -> 95). `u32 x` (int: 123) fixes the type==2 offset register, the xell
+  compare order and the `imul; add OFFSET _xb` pointer: those orders follow
+  PRE temps reusing freed SSA names, and arm reorders or helpers that fix
+  them break the layout. In type > 5 the 12/14 lookups go through x (13
+  direct: 4 lines). The sum stays in esi through the 13 add, then `mov
+  ebx,esi` after `cmp ecx,14`: a `"+b"(size)` pin after `x = findFile(14)`
+  (before it, the flags clobber puts the copy before the cmp). The files[]
+  bound (>= 18) and declaration order don't matter.
 - addBlsToImage (361), addUpdateBls (204), loadBlFiles, loadConsoleBlFiles,
   encodeBls, buildFlash: first drafts from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.

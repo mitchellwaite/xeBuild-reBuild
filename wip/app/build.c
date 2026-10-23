@@ -1978,19 +1978,29 @@ int encodeUpdateBls(int unused, u16 ldv)
    setting the patch slot offset; a multiple of 0x4000 */
 u32 calcBlAreaSize(void)
 {
-	u32 size, xs;
-	int x;
+	u32 size, xs, x;
 
 	if (xb.type == 2) {
-		size = xb.files[findFile(5)].size + findFileOffset(5);
-		size += xb.files[findFile(7)].size;
-		if (xb.f01c)
-			size += xb.files[findFile(14)].size;
+		x = findFile(5);
+		size = findFileOffset(5) + xb.files[x].size;
+		x = findFile(7);
+		size += xb.files[x].size;
+		if (xb.f01c) {
+			x = findFile(14);
+			size += xb.files[x].size;
+		}
 	} else if (xb.type > 5) {
-		size = xb.files[findFile(11)].size + findFileOffset(11);
-		size += xb.files[findFile(12)].size;
-		size += xb.files[findFile(13)].size;
-		size += xb.files[findFile(14)].size;
+		x = findFile(11);
+		size = findFileOffset(11) + xb.files[x].size;
+		x = findFile(12);
+		size += xb.files[x].size;
+		x = findFile(13);
+		size += xb.files[x].size;
+		x = findFile(14);
+		/* the sum so far in ebx (esi up to the 13 lookup), as in the
+		   original: IRA otherwise keeps it in esi */
+		__asm__("" : "+b"(size));
+		size += xb.files[x].size;
 		setPatchSlot(size);
 		size += 2 * imgCfSize();
 	} else {

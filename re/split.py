@@ -611,6 +611,7 @@ SYMBOLS = {
     0x45a728: '_bd_45a728', 0x45a738: '_bd_45a738', 0x45a748: '_bd_45a748',
     0x45a785: '_bd_45a785', 0x45a78c: '_bd_45a78c', 0x45a7c4: '_bd_45a7c4',
     0x45a7f8: '_bd_45a7f8', 0x45a80e: '_bd_45a80e', 0x45a8af: '_bd_45a8af',
+    0x45aa58: '_bd_45aa58',
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -683,6 +684,7 @@ C_FUNCS = {
     0x42c900, 0x427a70, 0x427500, 0x427ab0,  # logPowerButton timestampToFileTime loadBaseFile loadBaseFileMeta
     0x427730, 0x4297d0, 0x429e70, 0x428b10,  # loadFileCrc extractSmcConfig verifyBlSigs appendAddonPatches
     0x4291f0, 0x429b30, 0x42bf70, 0x42b660,  # patchSmcConfig checkBl fixupPatchSet patchBlsResign
+    0x42e160,                                # calcBlAreaSize
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

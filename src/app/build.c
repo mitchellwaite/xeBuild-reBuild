@@ -371,6 +371,7 @@ static const char bd_45a7c4[] = "patching payload.bin to load size 0x%x (0x%x re
 static const char bd_45a7f8[] = "org li %r4, %02x%02x\n";
 static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
 static const char bd_45a8af[] = "encoding %s size 0x%x\n";
+static const char bd_45aa58[] = "***** WARNING: xell is unexpectedly larger than 256KiB!!\n";
 
 /* still in build.s */
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
@@ -380,7 +381,6 @@ int loadConsoleBlFiles(void);
 void patchBlsBlmod(const void *blmod, u32 size);
 void addBlsToImage(void);
 void addUpdateBls(void);
-u32 calcBlAreaSize(void);
 int encodeBls(u8 *salt, u16 ldv);
 int buildFlash(void);
 
@@ -1423,4 +1423,56 @@ int encodeUpdateBls(int unused, u16 ldv)
 		}
 	}
 	return 0;
+}
+
+u32 calcBlAreaSize(void)
+{
+	u32 size, xs, x;
+
+	if (xb.type == 2) {
+		x = findFile(5);
+		size = findFileOffset(5) + xb.files[x].size;
+		x = findFile(7);
+		size += xb.files[x].size;
+		if (xb.f01c) {
+			x = findFile(14);
+			size += xb.files[x].size;
+		}
+	} else if (xb.type > 5) {
+		x = findFile(11);
+		size = findFileOffset(11) + xb.files[x].size;
+		x = findFile(12);
+		size += xb.files[x].size;
+		x = findFile(13);
+		size += xb.files[x].size;
+		x = findFile(14);
+		/* the sum so far in ebx (esi up to the 13 lookup), as in the
+		   original: IRA otherwise keeps it in esi */
+		__asm__("" : "+b"(size));
+		size += xb.files[x].size;
+		setPatchSlot(size);
+		size += 2 * imgCfSize();
+	} else {
+		size = findFileOffset(5) + findFileSize(5);
+		size += findFileSize(6);
+		size += findFileSize(7);
+		size += findFileSize(8);
+		if (xb.type != 1) {
+			x = findFile(25);
+			if (xb.files[x].offset > size) {
+				xs = xb.files[x].size;
+				if (xs > 0x40000)
+					log_printf(0, bd_45aa58);
+				else
+					xs = 0x40000;
+				size = xb.files[x].offset + xs;
+			}
+		}
+		size = (size + 0xffff) & ~0xffff;
+		setPatchSlot(size);
+		size += 2 * imgCfSize();
+	}
+	if (size & 0x3fff)
+		size = (size + 0x3fff) & ~0x3fff;
+	return size;
 }
