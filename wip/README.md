@@ -1829,7 +1829,30 @@ only shows in `sh build.sh`.
   ebx,esi` after `cmp ecx,14`: a `"+b"(size)` pin after `x = findFile(14)`
   (before it, the flags clobber puts the copy before the cmp). The files[]
   bound (>= 18) and declaration order don't matter.
-- addBlsToImage (361), addUpdateBls (204), loadBlFiles, loadConsoleBlFiles,
+- loadBlFiles (78, 2026-10-23; was 668): the switch is a separate static
+  `u32 loadBl(e, i)` (inlined), called under the "none" test (`if
+  (strnicmp(e->name, "none", 4) || e->crc) r = loadBl(e, i); else r =
+  0;`). The guarded call gives P(switch) 0.645 (case blocks under round-1
+  threshold), and ipa-cp, which runs before inlining, sees loadInputFile/
+  checkBl calls per loadBl call (0.03-0.08): no loadInputFile, loadFileCrc
+  or checkBl clones in the full draft, and loadLocalFile matches there.
+  Inline in the loop, every shape tried was >= 254 lines with the clones.
+  `u32 r` (int: uncprop reuses the switch index for `r = 1`); no `goto
+  fail`, errors set r and break; takeFile written out inline (as a call it
+  takes the 29% call heuristic). Case order (5..21, 6, 24, 1, 22, 25, 3, 4,
+  23, 27, 2, default) comes from peephole2's rotating free-register search
+  over the seven `mov reg,[mem]; test` loads (blocks visited in reverse).
+  Case 27 needs `__asm__("" : "+a"(d))` on the data pointer. Left: case 24
+  copy scheduling, case 23's `mov edi,-1` not cross-jumped, the r test
+  duplicated into case 6, cold-block order, and two jump threads: the FSM
+  threader counts the caller/helper `r` PHI merge (a `u32 *pr` out-param
+  fixes that one: build/v/lbf/topr.py, 80 lines), and the type-11 pub1bl
+  path is 8 stmts against the limit of 7. Scratch: build/v/lbf/.
+  Warning: with loadBl/loadBlFiles in C, extractSmcConfig is 8 lines off
+  (both loop compares `cmp ebp,esi; jb`): ipa-split only considers
+  functions with a direct caller in the TU (`-fno-partial-inlining`:
+  MATCH). Its hints were found without that caller and need redoing then.
+- addBlsToImage (361), addUpdateBls (204), loadConsoleBlFiles,
   encodeBls, buildFlash: first drafts from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only

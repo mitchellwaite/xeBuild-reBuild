@@ -1261,232 +1261,220 @@ static int loadBl60(struct fileent *e)
 	return 0;
 }
 
-/* move a file loaded into the scratch entry to e */
-static void takeFile(struct fileent *e, struct fileent *tmp)
+/* load the input file e (xb.files[i]) by its type */
+static u32 loadBl(struct fileent *e, u32 i)
 {
-	if (e->data)
-		free(e->data);
-	e->data = tmp->data;
-	e->size = tmp->size;
-	tmp->data = NULL;
-	tmp->size = 0;
+	u32 r = 0;
+	int type;
+
+	type = e->type;
+	switch (type) {
+	case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
+	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (r && !(type == 9 && suGetCF(&e->data, &e->size)) &&
+		    !(type == 10 && suGetCG(&e->data, &e->size)))
+			break;
+		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
+			/* an SE where the CF goes */
+			e->type = type = 14;
+			xb.cfLdv = 0;
+			xb.f01c = 1;
+		}
+		r = checkBl(e->data, e->size, type, e->crc);
+		if (r)
+			break;
+		if (type == 5 || type == 17 || type == 11) {
+			if (!pub1bl)
+				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
+			else if (cbVerifySig(e->data, pub1bl))
+				log_printf(1, "loaded %s, signature check passed!\n", e->name);
+			else {
+				log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
+				r = -1;
+			}
+		}
+		if (xb.type > 5 && type == 14)
+			setFlashBuild(getBeU16(xb.files[i].data + 2));
+		break;
+	case 6:
+		if (!xb.cbb)
+			break;
+		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (!r)
+			r = checkBl(e->data, e->size, 6, e->crc);
+		break;
+	case 24:
+		if (xb.type == 2 || xb.glitch2mfg)
+			r = loadBl60(e);
+		if (xb.type == 4 || xb.type == 5)
+			r = loadBl60(e);
+		break;
+	case 1:
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
+		e->data = malloc(0x200);
+		if (!e->data) {
+			r = 1;
+			break;
+		}
+		e->size = 0x200;
+		memcpy(e->data, defPayload, 0x200);
+		break;
+	case 22:
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
+		e->data = malloc(0xd40);
+		if (!e->data) {
+			r = 1;
+			break;
+		}
+		e->size = 0xd40;
+		memcpy(e->data, defCore, 0xd40);
+		break;
+	case 25:
+		if (xb.type == 1 || xb.type > 5)
+			break;
+		if (!loadBaseFile(e->name, e))
+			break;
+		log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
+		r = loadLocalFile(e);
+		break;
+	case 3:
+		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
+		    !loadBaseFile("keyvault.bin", &xb.files[xb.nFlashFiles]) ||
+		    !(r = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles]))) {
+			if (e->data)
+				free(e->data);
+			e->data = xb.files[xb.nFlashFiles].data;
+			e->size = xb.files[xb.nFlashFiles].size;
+			xb.files[xb.nFlashFiles].data = NULL;
+			xb.files[xb.nFlashFiles].size = 0;
+		} else if (xb.dumpKv) {
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKv;
+			e->size = xb.dumpKvSize;
+			xb.dumpKv = NULL;
+			xb.dumpKvSize = 0;
+			r = 0;
+		}
+		break;
+	case 4:
+		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
+		    !loadBaseFile("keyvault_alt.bin", &xb.files[xb.nFlashFiles]) ||
+		    !(r = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles]))) {
+			if (e->data)
+				free(e->data);
+			e->data = xb.files[xb.nFlashFiles].data;
+			e->size = xb.files[xb.nFlashFiles].size;
+			xb.files[xb.nFlashFiles].data = NULL;
+			xb.files[xb.nFlashFiles].size = 0;
+		} else if (xb.dumpKvAlt) {
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKvAlt;
+			e->size = xb.dumpKvAltSize;
+			xb.dumpKvAlt = NULL;
+			xb.dumpKvAltSize = 0;
+			r = 0;
+		}
+		break;
+	case 23:
+		if (xb.type == 1)
+			break;
+		r = loadBinFile(e);
+		if (r)
+			break;
+		if (e->size & 3) {
+			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
+			r = -1;
+			break;
+		}
+		appendAddonPatches(e);
+		break;
+	case 27:
+		if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
+		    loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]) &&
+		    (r = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]))) {
+			if (!xb.dumpConfig)
+				break;
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
+			if (xb.files[xb.nFlashFiles].data)
+				free(xb.files[xb.nFlashFiles].data);
+			xb.files[xb.nFlashFiles].data = xb.dumpConfig;
+			xb.dumpConfig = NULL;
+			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
+			xb.dumpConfigSize = 0;
+			r = 0;
+		}
+		{
+			u8 *d = xb.files[xb.nFlashFiles].data;
+
+			__asm__("" : "+a"(d));
+			if (d)
+				r = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
+		}
+		break;
+	case 2:
+		r = loadBaseFile(e->name, &xb.files[xb.nFlashFiles]);
+		if (!r) {
+			if (e->data)
+				free(e->data);
+			e->data = xb.files[xb.nFlashFiles].data;
+			e->size = xb.files[xb.nFlashFiles].size;
+			xb.files[xb.nFlashFiles].data = NULL;
+			xb.files[xb.nFlashFiles].size = 0;
+		} else {
+			if (!xb.dumpSmc)
+				break;
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpSmc;
+			e->size = xb.dumpSmcSize;
+			xb.dumpSmc = NULL;
+			xb.dumpSmcSize = 0;
+			r = 0;
+		}
+		e->offset = smcSetLoad(e->size);
+		if (!e->offset)
+			r = -1;
+		break;
+	default:
+		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+		break;
+	}
+	return r;
 }
 
 /* load every input of the image (by type), falling back to the nand
    dump's copies, the system update or built-in defaults */
 int loadBlFiles(void)
 {
-	struct fileent *e, *tmp;
+	struct fileent *e;
 	u32 i;
-	int r, type;
+	u32 r;
 
 	for (i = 1; i < (u32)xb.nFiles; i++) {
 		e = &xb.files[i];
-		if (!strnicmp(e->name, "none", 4) && !e->crc)
-			continue;
-		type = e->type;
-		tmp = &xb.files[xb.nFlashFiles];
-		switch (type) {
-		case 1:
-			if (!loadBinFile(e))
-				break;
-			log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
-			e->data = malloc(0x200);
-			if (!e->data) {
-				r = 1;
-				goto fail;
-			}
-			e->size = 0x200;
-			memcpy(e->data, defPayload, 0x200);
-			break;
-		case 2:
-			r = loadBaseFile(e->name, tmp);
-			if (!r)
-				takeFile(e, tmp);
-			else {
-				if (!xb.dumpSmc)
-					goto fail;
-				log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
-				if (e->data)
-					free(e->data);
-				e->data = xb.dumpSmc;
-				e->size = xb.dumpSmcSize;
-				xb.dumpSmc = NULL;
-				xb.dumpSmcSize = 0;
-			}
-			e->offset = smcSetLoad(e->size);
-			if (!e->offset) {
-				r = -1;
-				goto fail;
-			}
-			break;
-		case 3:
-			if (!loadBaseFile(e->name, tmp) || !loadBaseFile("keyvault.bin", tmp) ||
-			    !(r = loadBaseFile("KV_dec.bin", tmp)))
-				takeFile(e, tmp);
-			else {
-				if (!xb.dumpKv)
-					goto fail;
-				log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
-				if (e->data)
-					free(e->data);
-				e->data = xb.dumpKv;
-				e->size = xb.dumpKvSize;
-				xb.dumpKv = NULL;
-				xb.dumpKvSize = 0;
-			}
-			break;
-		case 4:
-			if (!loadBaseFile(e->name, tmp) || !loadBaseFile("keyvault_alt.bin", tmp) ||
-			    !(r = loadBaseFile("KV_alt_dec.bin", tmp)))
-				takeFile(e, tmp);
-			else {
-				if (!xb.dumpKvAlt)
-					goto fail;
-				log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
-				if (e->data)
-					free(e->data);
-				e->data = xb.dumpKvAlt;
-				e->size = xb.dumpKvAltSize;
-				xb.dumpKvAlt = NULL;
-				xb.dumpKvAltSize = 0;
-			}
-			break;
-		case 6:
-			if (!xb.cbb)
-				break;
-			r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-			if (r)
-				goto fail;
-			r = checkBl(e->data, e->size, 6, e->crc);
-			if (r)
-				goto fail;
-			break;
-		case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
-		case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
-			r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-			if (r) {
-				if (type == 9) {
-					if (!suGetCF(&e->data, &e->size))
-						goto fail;
-				} else if (type == 10 && suGetCG(&e->data, &e->size)) {
-					r = checkBl(e->data, e->size, 10, e->crc);
-					if (r)
-						goto fail;
-					break;
-				} else
-					goto fail;
-			}
-			if (type == 9) {
-				if (e->data[0] == 'S' && e->data[1] == 'E') {
-					/* an SE where the CF goes */
-					e->type = 14;
-					xb.cfLdv = 0;
-					xb.f01c = 1;
-					r = checkBl(e->data, e->size, 14, e->crc);
-					if (r)
-						goto fail;
-					if (xb.type > 5)
-						setFlashBuild(getBeU16(e->data + 2));
-				} else {
-					r = checkBl(e->data, e->size, 9, e->crc);
-					if (r)
-						goto fail;
-				}
-				break;
-			}
-			r = checkBl(e->data, e->size, type, e->crc);
-			if (r)
-				goto fail;
-			if (type == 5 || type == 17 || type == 11) {
-				if (!pub1bl)
-					log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
-				else if (cbVerifySig(e->data, pub1bl))
-					log_printf(1, "loaded %s, signature check passed!\n", e->name);
-				else {
-					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
-					r = -1;
-					goto fail;
-				}
-			}
-			if (xb.type > 5 && type == 14)
-				setFlashBuild(getBeU16(e->data + 2));
-			break;
-		case 22:
-			if (!loadBinFile(e))
-				break;
-			log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
-			e->data = malloc(0xd40);
-			if (!e->data) {
-				r = 1;
-				goto fail;
-			}
-			e->size = 0xd40;
-			memcpy(e->data, defCore, 0xd40);
-			break;
-		case 23:
-			if (xb.type == 1)
-				break;
-			r = loadBinFile(e);
-			if (r)
-				goto fail;
-			if (e->size & 3) {
-				log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
-				r = -1;
-				goto fail;
-			}
-			appendAddonPatches(e);
-			break;
-		case 24:
+		if (strnicmp(e->name, "none", 4) || e->crc)
+			r = loadBl(e, i);
+		else
 			r = 0;
-			if (xb.type == 2 || xb.glitch2mfg)
-				r = loadBl60(e);
-			if (xb.type == 4 || xb.type == 5)
-				r = loadBl60(e);
-			if (r)
-				goto fail;
-			break;
-		case 25:
-			if (xb.type == 1 || xb.type > 5)
-				break;
-			if (!loadBaseFile(e->name, e))
-				break;
-			log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
-			if (!loadBinFile(e))
-				break;
-			log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
-			r = loadLocalFile(e);
-			if (r)
-				goto fail;
-			break;
-		case 27:
-			if (loadBaseFile(e->name, tmp) && loadBaseFile("config.bin", tmp) &&
-			    (r = loadBaseFile("config_raw.bin", tmp))) {
-				if (!xb.dumpConfig)
-					goto fail;
-				log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
-				if (tmp->data)
-					free(tmp->data);
-				tmp->data = xb.dumpConfig;
-				xb.dumpConfig = NULL;
-				tmp->size = xb.dumpConfigSize;
-				xb.dumpConfigSize = 0;
-			}
-			if (!tmp->data)
-				break;
-			r = extractSmcConfig(e, tmp->data, tmp->size);
-			if (r)
-				goto fail;
-			break;
-		default:
-			log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
-			break;
+		if (r) {
+			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
+			return -1;
 		}
 	}
 	return 0;
-fail:
-	log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
-	return -1;
 }
 
 /* loadBlFiles for a build from a connected console: the SMC, keyvaults
