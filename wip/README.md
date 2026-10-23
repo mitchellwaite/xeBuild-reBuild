@@ -1672,8 +1672,15 @@ only shows in `sh build.sh`.
   - `__builtin_expect(size - i >= 0x400, 1)`: the extract memcpy's shape.
   Left (18 lines): that memcpy's dst gets edx and the first/last-dword temp
   eax (original: dst eax, temp edx), IRA tie (all costs 0). A `"+a"` output
-  pin on a dst local gets 5 lines but leaves a dead spill store; an `"a"`
-  input pin is a scheduling barrier (11). Copy spellings change nothing.
+  pin on a dst local gets 5 lines but leaves a dead spill store (IRA
+  spills the `e->data` copy feeding the asm); an `"a"` input pin is a
+  scheduling barrier (11). Copy spellings, local declaration order and
+  raw/extract branch hints change nothing. The raw loop is the cause:
+  with its source pointer replaced (test only) dst gets eax. Its src IV
+  (eax) is copy-connected through buf to the extract src, but by
+  ira-color.c's cost propagation that update rounds to 0, so the eax
+  penalty's source is still unidentified. The raw branch is success-first
+  (`else if (size - i >= 0x4200)`): .rdata has "raw" before the error.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original. They are separate round-1 traces, ordered by frequency:

@@ -714,14 +714,13 @@ int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 		log_printf(1, "extracting config\n");
 		if (__builtin_expect(size - i >= 0x400, 1))
 			memcpy(e->data, buf + i, 0x400);
-	} else {
-		if (size - i < 0x4200) {
-			log_printf(1, "******* ERROR: extracting config did not work, not enough data to copy!\n");
-			return -2;
-		}
+	} else if (size - i >= 0x4200) {
 		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)
 			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
+	} else {
+		log_printf(1, "******* ERROR: extracting config did not work, not enough data to copy!\n");
+		return -2;
 	}
 	if (i)
 		log_printf(1, "valid SMC config data found at offset 0x%x\n", i);
