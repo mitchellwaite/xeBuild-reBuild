@@ -1977,6 +1977,45 @@ Still off:
   the order of the cold peel exits. Labels, statement order, the `rem`/
   `first` temporaries, `>>`/`/` spellings, loop forms and counter types
   were searched (scratch cv.py coordinate descent) without gains.
+- imgWriteAt and imgWriteStart look like gcc IPA-CP clones of imgAdd
+  (2026-10-23): imgAdd(off, src, len, type 0, next, pad 1), and the same
+  with off 0. With type 0 every type/partial test in imgAdd folds away
+  and `pad == 1` leaves `if (tail) memset`, i.e. imgWriteAt; the original
+  imgAdd's head and FS-table code (vector peel included) are imgWriteAt's.
+  It explains what no standalone spelling could: a clone gets its CFG
+  and edge order from copying (like an inlined body, so the head lays out
+  like the original), but its SSA names are made lazily in statement
+  order (so the range check stays `raw < off`, as in a plain function).
+  With imgWriteAt's calls rewritten to imgAdd(..., 0, next, 1), the
+  clone `_imgAdd.constprop.2` reproduces the original's first 26
+  instructions, registers included, with no pins (wip/app/
+  image_write_clone.c, 68 normalised lines). The pipeline can take it:
+  splice.py already drops gcc's copy of a function the .s keeps in asm,
+  so the C file can carry imgAdd's body only for its clone, and SYMBOLS
+  can name 0x40eef0 `_imgAdd.constprop.N` (cf. `_baseFileExists.part.0`).
+  The off-0 clone (imgWriteStart) appears only with `--param
+  ipa-cp-eval-threshold=100` (then 211/67 from the old imgAdd draft), so
+  imgAdd's real body must make that specialisation worth more.
+  Pieces found for imgAdd: `int b` counter loop over blocks with the LBA
+  `start + b` (the generic imgAdd's ivopts turns it into the original's
+  absolute `[64]`/`[76]` `jne` loop), `int i` for the FS loop, the
+  memset under `pad == 1 && tail`-style threading (the original sets `bl
+  = pad == 1` on tail != 0 paths), the page counts as `npages = len /
+  512; if (len % 512) npages = (len + 512) / 512;` and `pages = len / 512
+  + (len % 512 != 0);` (two cmoves, as in the original).
+  Left in the clone: the original threads `tail` through every path (4
+  memcpy copies), ours merges the x != 0 paths and re-tests tail; the
+  spare loop keeps only the absolute IV (the original clone keeps the
+  0-based counter, as the standalone version does: same IV candidates,
+  found in a different order, so ivopts breaks ties differently); the
+  vector peel (6 tests vs 5) and cold order.
+  Standalone best for comparison (scratch, not in the draft): imgWriteAt
+  as a wrapper around a `static inline` body taking `xb.rawSize` as a
+  parameter (fixes the compare order) with `__asm__("" :: "b"(len),
+  "d"(src))` after the range check: 121 raw / 45 normalised. Its last
+  differences come from VRP: the spare loop's exit assertion grows
+  `blocks`' range one step per visit, so the peel counter's PHI is
+  widened and one `!= 3` test stays `> 3` (`jbe`).
 - imgWriteStart: the same `"g"(next)` reference before imgEnd, 60 -> 58.
   Calling a static inline body copy estimated with off unknown (as
   above) gives the original's head order (len == 0, len <= 0x3fff and
