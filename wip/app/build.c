@@ -547,7 +547,8 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 		xb.kernel = k;
 }
 
-/* checkBl's guarded hint call (PRED_CALL); inlined later, its store goes */
+/* hint call for checkBl and patchSmcConfig (PRED_CALL on the arm it sits
+   in); inlined after the profile is estimated, its store goes */
 static void cb_hint(int *p)
 {
 	*p = 1;
@@ -566,8 +567,11 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 	   size-error block, which needs that edge >= 10% of entry, and not into
 	   the crc failure one, which needs it below. The hot label and cb_hint
 	   (on the other edge) take the size error from 1.7% to 19%, the crc
-	   expects (build.sh's probability 99) keep `bad` under 10%, and the "D"
-	   pin loads type before the first call as the original does. */
+	   expects (build.sh's probability 98) keep `bad` under 10%, and the "D"
+	   pin loads type before the first call as the original does. The
+	   SC/SD `crc == -1` expects send more frequency to `bad` by branch
+	   (crc32 path), so it is aligned as a loop head like the original
+	   (.p2align 4,,10: branch freq > 4 x the B case's fallthru). */
 	__asm__("" : : "D"(type));
 	blsize = getBeU32(bl + 12);
 	if (blsize > size) {
@@ -636,7 +640,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 		if (bl[1] != 'C')
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
-		if (crc == 0xffffffff)
+		if (__builtin_expect(crc == 0xffffffff, 0))
 			break;
 		c = crc32(bl, blsize);
 		if (__builtin_expect(crc != c, 0))
@@ -646,7 +650,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 		if (bl[1] != 'D')
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
-		if (crc == 0xffffffff)
+		if (__builtin_expect(crc == 0xffffffff, 0))
 			break;
 		c = crc32(bl, blsize);
 		if (__builtin_expect(crc != c, 0))
@@ -864,7 +868,7 @@ void appendAddonPatches(struct fileent *e)
 	memcpy(buf, e->data, size);
 	if (xb.nAddons)
 	for (i = 0; i < xb.nAddons; i++) {
-		a = &addons[i];
+		a = &xb.files[19 + i];
 		if (!loadBinFile(a)) {
 			if (!(a->size & 3)) {
 				if (getBeU32(a->data + a->size - 4) == 0xffffffff)
@@ -1066,11 +1070,16 @@ void showSmcConfig(const u8 *smc)
 
 /* apply the ini's smc_config overrides; 1 if anything changed (then the
    checksum is redone). u32, not int: extractSmcConfig's return must not
-   coalesce with this result (uncprop) */
+   coalesce with this result (uncprop). Hints: the cb_hint calls (cpu and
+   gpu ok arms, 0x7f arms) break bb-reorder's fibheap ties so the gpu
+   range-log/warning trace goes before the cpu one and the gpu ok block
+   before the cpu one, as in the original; the gpu warning after the
+   return puts its string last in .rdata (a threading copy there) */
+__attribute__((optimize("no-early-inlining")))
 u32 patchSmcConfig(u8 *smc)
 {
 	u32 patched = 0;
-	int i;
+	int i, dead;
 
 	log_printf(1, "Checking for smc config data patches\n");
 	if (iniRangeOk("cputemp", xb.cpuTemp, 40, 120)) {
@@ -1099,24 +1108,30 @@ u32 patchSmcConfig(u8 *smc)
 	}
 	if (xb.cpuFan != 0xffffffff) {
 		if (iniRangeOk("cpufan", xb.cpuFan, 40, 100)) {
+			cb_hint(&dead);
 			smc[0x11] = xb.cpuFan | 0x80;
 			patched = 1;
 		} else if (xb.cpuFan)
 			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.cpuFan);
 		else if (smc[0x11] != 0x7f) {
+			cb_hint(&dead);
 			smc[0x11] = 0x7f;
 			patched = 1;
 		}
 	}
 	if (xb.gpuFan != 0xffffffff) {
 		if (iniRangeOk("gpufan", xb.gpuFan, 40, 100)) {
+			cb_hint(&dead);
 			smc[0x12] = xb.gpuFan | 0x80;
 			patched = 1;
 		} else if (xb.gpuFan)
-			log_printf(0, "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n");
-		else
+			goto gpuwarn;
+		else {
+			cb_hint(&dead);
 			smc[0x12] = 0x7f;
+		}
 	}
+gpudone:
 	if (xb.avRegion != 0xffffffff) {
 		*(u32 *)(smc + 0x228) = SWAP32(xb.avRegion);
 		patched = 1;
@@ -1150,6 +1165,9 @@ u32 patchSmcConfig(u8 *smc)
 		log_printf(1, "smc config was not patched\n");
 	log_printf(1, "---------------------\n");
 	return patched;
+gpuwarn:
+	log_printf(0, "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n");
+	goto gpudone;
 }
 
 /* check the bootloaders' signatures (CB/SB against the 1BL key, SC/SD

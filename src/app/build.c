@@ -248,6 +248,10 @@ static const char bd_458d1b[] = " (crc32: 0x%08x ini: 0x%08x)\n";
 static const char bd_458d3c[] = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
 static const char bd_458d74[] = "**** using default time!!! ****\n";
 static const char bd_458d98[] = "**** %s metadata found, not using system time *****\n\n";
+static const char bd_458e34[] = "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n";
+static const char bd_458e7c[] = "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n";
+static const char bd_458ed0[] = "\n***** WARNING: could not load addon patch %s%s!\n\n";
+static const char bd_458f04[] = "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n";
 static const char bd_458f80[] = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
 static const char bd_458fb4[] = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
 static const char bd_458fe6[] = "Cpu Fan     : ";
@@ -273,7 +277,22 @@ static const char bd_45913f[] = "DVDRegion   : %d\n";
 static const char bd_459151[] = "resetKey    : ";
 static const char bd_459160[] = "%c";
 static const char bd_459164[] = "Ini value %d for %s is out of range (%d-%d), not using\n";
+static const char bd_45919c[] = "Checking for smc config data patches\n";
+static const char bd_4591c2[] = "cputemp";
+static const char bd_4591ca[] = "gputemp";
+static const char bd_4591d2[] = "edramtemp";
+static const char bd_4591dc[] = "overcputemp";
+static const char bd_4591e8[] = "overgputemp";
+static const char bd_4591f4[] = "overedramtemp";
+static const char bd_459202[] = "cpufan";
+static const char bd_45920c[] = "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n";
+static const char bd_459256[] = "gpufan";
+static const char bd_459260[] = "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n";
+static const char bd_4592d8[] = "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n";
+static const char bd_459340[] = "smc config patched!\n";
+static const char bd_459355[] = "smc config was not patched\n";
 static const char bd_459371[] = "---------------------\n";
+static const char bd_459388[] = "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n";
 static const char bd_4593d7[] = "-------------------\n";
 static const char bd_4593ec[] = "checking smc_config\n";
 static const char bd_459401[] = "extracting config\n";
@@ -284,6 +303,9 @@ static const char bd_4594a4[] = "------------------\n";
 static const char bd_4594b8[] = "SMC config info:\n";
 static const char bd_4594ca[] = "SMC patched info:\n";
 static const char bd_4594e0[] = "******* ERROR: unable to find SMC config data!\n";
+static const char bd_459510[] = "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n";
+static const char bd_459558[] = "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n";
+static const char bd_4595a0[] = "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n";
 static const char bd_45961c[] = "\n***** ERROR: %s failed signature check!\n";
 static const char bd_459646[] = "%s signature is good\n";
 static const char bd_45965c[] = "could not check signature of %s, 1BL RSA key not present!\n";
@@ -309,6 +331,7 @@ static const char bd_459ed2[] = "sum1:";
 static const char bd_459ed8[] = "sum2:";
 static const char bd_459ede[] = "sum3:";
 static const char bd_459ee4[] = "fin :";
+static const char bd_459f2a[] = "D";
 static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
 static const char bd_45a0f0[] = "    - console DVD eject button is being used to %s \n";
 static const char bd_45a128[] = "    - IR remote power button is being used to %s \n";
@@ -348,10 +371,7 @@ static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 /* still in build.s */
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common);
-int checkBl(u8 *bl, u32 size, int type, u32 crc);
-void appendAddonPatches(struct fileent *e);
 void fixupPatchSet(void);
-u32 patchSmcConfig(u8 *smc);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
 int patchBlsResign(void);
@@ -586,6 +606,135 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 		xb.kernel = k;
 }
 
+static void cb_hint(int *p)
+{
+	*p = 1;
+}
+
+__attribute__((optimize("no-early-inlining")))
+int checkBl(u8 *bl, u32 size, int type, u32 crc)
+{
+	u32 blsize, c;
+	int m, dead;
+
+	/* hints (none emit code): the original copies the epilogue into the
+	   size-error block, which needs that edge >= 10% of entry, and not into
+	   the crc failure one, which needs it below. The hot label and cb_hint
+	   (on the other edge) take the size error from 1.7% to 19%, the crc
+	   expects (build.sh's probability 98) keep `bad` under 10%, and the bd_459f2a
+	   pin loads type before the first call as the original does. The
+	   SC/SD `crc == -1` expects send more frequency to `bad` by branch
+	   (crc32 path), so it is aligned as a loop head like the original
+	   (.p2align 4,,10: branch freq > 4 x the B case's fallthru). */
+	__asm__("" : : "D"(type));
+	blsize = getBeU32(bl + 12);
+	if (blsize > size) {
+		size_err: __attribute__((hot));
+		log_printf(0, bd_459558, blsize, size);
+		return -3;
+	}
+	cb_hint(&dead);
+	m = bl[0];
+	__asm__("" :: "a"(m));
+	if ((m & 0x43) != 0x43)
+		goto magic;
+	switch (type) {
+	case 5:
+	case 6:
+	case 11:
+	case 17:
+		if (bl[1] != 'B')
+			goto magic;
+		memset(bl + 0x10, 0, 0x30);
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		break;
+	case 7:
+	case 18:
+		if (bl[1] != 'D')
+			goto magic;
+		memset(bl + 0x10, 0, 0x10);
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		break;
+	case 8:
+	case 19:
+		if (bl[1] != 'E')
+			goto magic;
+		memset(bl + 0x10, 0, 0x10);
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+		break;
+	case 9:
+	case 15:
+	case 20:
+		if (bl[1] != 'F')
+			goto magic;
+		memset(bl + 0x20, 0, 0x210);
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
+		break;
+	case 10:
+	case 16:
+	case 21:
+		if (bl[1] != 'G')
+			goto magic;
+		memset(bl + 0x10, 0, 0x10);
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		break;
+	case 12:
+		if (bl[1] != 'C')
+			goto magic;
+		memset(bl + 0x10, 0, 0x10);
+		if (__builtin_expect(crc == 0xffffffff, 0))
+			break;
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		break;
+	case 13:
+		if (bl[1] != 'D')
+			goto magic;
+		memset(bl + 0x10, 0, 0x10);
+		if (__builtin_expect(crc == 0xffffffff, 0))
+			break;
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		break;
+	case 14:
+		if (bl[1] != 'E')
+			goto magic;
+		memset(bl + 0x10, 0, 0x10);
+		c = crc32(bl, blsize);
+		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+		if (crc == 0xffffffff)
+			break;
+		c = crc32(bl, blsize);
+		if (__builtin_expect(crc != c, 0))
+			goto bad;
+		break;
+	default:
+		c = 0;
+		goto bad;
+	}
+	return 0;
+bad:
+	log_printf(0, bd_459510, c, crc);
+	return -2;
+magic:
+	log_printf(0, bd_4595a0, bl[0], bl[1], type);
+	return -1;
+}
+
 int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 {
 	u32 i, j;
@@ -757,6 +906,48 @@ void patchHeaderOpts(void)
 	xb.hdr[0x4e] = xb.xellAltButton;
 }
 
+void appendAddonPatches(struct fileent *e)
+{
+	u32 size = e->size - 4;
+	u8 *buf = malloc(0x4000);
+	u32 added = 0;
+	struct fileent *a;
+	int i;
+
+	memset(buf, 0xff, 0x4000);
+	memcpy(buf, e->data, size);
+	if (xb.nAddons)
+	for (i = 0; i < xb.nAddons; i++) {
+		a = &xb.files[19 + i];
+		if (!loadBinFile(a)) {
+			if (!(a->size & 3)) {
+				if (getBeU32(a->data + a->size - 4) == 0xffffffff)
+					a->size -= 4;
+				if (size + a->size <= 0x4000) {
+					memcpy(buf + size, a->data, a->size);
+					added += a->size;
+					size += a->size;
+				} else
+					log_printf(0, bd_458e34,
+						   xb.binDir, a->name);
+			} else
+				log_printf(0, bd_458e7c,
+					   xb.binDir, a->name, a->size);
+		} else
+			log_printf(0, bd_458ed0, xb.binDir, a->name);
+	}
+	*(u32 *)(buf + size) = 0xffffffff;
+	setBeU32(added, buf + size + 4);
+	size += 8;
+	if (e->data)
+		free(e->data);
+	e->data = buf;
+	e->size = size;
+	if (xb.nAddons)
+		log_printf(1, bd_458f04,
+			   added, xb.nAddons, size);
+}
+
 int logPowerButton(int reason, const char *use)
 {
 	switch (reason) {
@@ -892,6 +1083,101 @@ void showSmcConfig(const u8 *smc)
 	for (i = 0; i < 4; i++)
 		log_printf(1, bd_459160, smc[0x238 + i]);
 	log_printf(1, bd_458cf9);
+}
+
+__attribute__((optimize("no-early-inlining")))
+u32 patchSmcConfig(u8 *smc)
+{
+	u32 patched = 0;
+	int i, dead;
+
+	log_printf(1, bd_45919c);
+	if (iniRangeOk(bd_4591c2, xb.cpuTemp, 40, 120)) {
+		smc[0x29] = xb.cpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591ca, xb.gpuTemp, 40, 120)) {
+		smc[0x2a] = xb.gpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591d2, xb.edramTemp, 40, 120)) {
+		smc[0x2b] = xb.edramTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591dc, xb.overCpuTemp, 40, 120)) {
+		smc[0x2c] = xb.overCpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591e8, xb.overGpuTemp, 40, 120)) {
+		smc[0x2d] = xb.overGpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591f4, xb.overEdramTemp, 40, 120)) {
+		smc[0x2e] = xb.overEdramTemp;
+		patched = 1;
+	}
+	if (xb.cpuFan != 0xffffffff) {
+		if (iniRangeOk(bd_459202, xb.cpuFan, 40, 100)) {
+			cb_hint(&dead);
+			smc[0x11] = xb.cpuFan | 0x80;
+			patched = 1;
+		} else if (xb.cpuFan)
+			log_printf(0, bd_45920c, xb.cpuFan);
+		else if (smc[0x11] != 0x7f) {
+			cb_hint(&dead);
+			smc[0x11] = 0x7f;
+			patched = 1;
+		}
+	}
+	if (xb.gpuFan != 0xffffffff) {
+		if (iniRangeOk(bd_459256, xb.gpuFan, 40, 100)) {
+			cb_hint(&dead);
+			smc[0x12] = xb.gpuFan | 0x80;
+			patched = 1;
+		} else if (xb.gpuFan)
+			goto gpuwarn;
+		else {
+			cb_hint(&dead);
+			smc[0x12] = 0x7f;
+		}
+	}
+gpudone:
+	if (xb.avRegion != 0xffffffff) {
+		*(u32 *)(smc + 0x228) = SWAP32(xb.avRegion);
+		patched = 1;
+	}
+	if (xb.gameRegion != 0xffffffff && (u16)xb.gameRegion) {
+		*(u16 *)(smc + 0x22c) = __builtin_bswap16(xb.gameRegion);
+		patched = 1;
+	}
+	if (xb.dvdRegion != 0xffffffff) {
+		*(u32 *)(smc + 0x234) = SWAP32(xb.dvdRegion);
+		patched = 1;
+	}
+	if (!*(u32 *)(smc + 0x234)) {
+		log_printf(0, bd_459260);
+		log_printf(0, bd_4592d8);
+		*(u32 *)(smc + 0x234) = 0x1000000;
+		patched = 1;
+	}
+	if (macidSet())
+		for (i = 0; i < 6; i++) {
+			if (smc[0x220 + i] != xb.macid[i])
+				patched = 1;
+			smc[0x220 + i] = xb.macid[i];
+		}
+	if (patched) {
+		u32 sum = calcConfigSum(smc);
+
+		*(u32 *)smc = SWAP32(sum);
+		log_printf(1, bd_459340);
+	} else
+		log_printf(1, bd_459355);
+	log_printf(1, bd_459371);
+	return patched;
+gpuwarn:
+	log_printf(0, bd_459388);
+	goto gpudone;
 }
 
 int verifyBlSigs(void)

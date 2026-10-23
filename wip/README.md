@@ -1552,14 +1552,14 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 27 match and are built
+Draft of the whole object (all 41 functions). 30 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
-verifyBlSigs. Switch tables go through
+verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl. Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -1607,7 +1607,10 @@ only shows in `sh build.sh`.
   chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
   `common & failed` with `and`, and its loadCommonFile tail call is a
   separate return. Two shapes tried (early returns, `r = 0`).
-- checkBl: fncmp MATCH (2026-10-22, probability 98) but the link is 16
+- checkBl (built from C, 2026-10-23): `__builtin_expect(crc == 0xffffffff,
+  0)` in the SC and SD cases (not SE) sends enough branch frequency to
+  `bad` for the loop-head alignment rule. History: fncmp MATCH
+  (2026-10-22, probability 98) but the link was 16
   bytes short: the original aligns the crc-failure (`bad`) block
   (`.p2align 4,,10`, so the next case block's padding goes too). Hints:
   hot label on the size error plus a guarded `cb_hint` call on the other
@@ -1682,7 +1685,11 @@ only shows in `sh build.sh`.
     barrier (2 lines); a `"+a"` dst pin leaves a dead spill store.
   The raw branch is success-first (`else if (size - i >= 0x4200)`): .rdata
   has "raw" before the error.
-- appendAddonPatches (18): positive-condition nesting fixed most of it;
+- appendAddonPatches (built from C, 2026-10-23): `a = &xb.files[19 + i]`
+  instead of `&addons[i]` fixes the lea order: ch2 then reuses free-list
+  names for the renamed loop PHIs, PRE's temp gets a fresh higher name
+  (prephitmp_80 > size_32) and the refold keeps `size + prephitmp`.
+  History (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original. They are separate round-1 traces, ordered by frequency:
   room 1615 (both arms call, 50%), `size -= 4` 905 (`== 0xffffffff`,
@@ -1755,7 +1762,14 @@ only shows in `sh build.sh`.
   order (`ok` declared first). The struct change leaves every other C
   function unchanged; it may also move loadBlFiles/loadConsoleBlFiles
   loop frequencies (the loadInputFile clone).
-- patchSmcConfig (10): two cold blocks (gpu/cpu fan warnings) in the
+- patchSmcConfig (built from C, 2026-10-23): `cb_hint(&dead)` at the start
+  of all four store arms (cpu/gpu ok and 0x7f) breaks both fibheap ties the
+  original's way; a hint in one ok arm only (PRED_CALL) makes its log block
+  hotter but its ok block colder (8 lines). Of hint subsets over six spots
+  only the four-arm one matches; hot/cold labels give fncmp MATCH but miss
+  an alignment (fncmp can't see it: build/v/trio/offcmp.py compares
+  assembled offsets). `optimize("no-early-inlining")` and the gpu warning
+  after the return (string order) are kept. History (10): two cold blocks (gpu/cpu fan warnings) in the
   other order; the gpu warning passes no argument (the cpu one does).
   Its string is after the function's last ones in .rdata, so its block is
   last at expand; a `goto` to a block after the return reproduces the
