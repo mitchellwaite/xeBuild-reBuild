@@ -1213,6 +1213,50 @@ Still off:
     stopped at 273.  Compile from the same path as the instrumented
     compile: otherwise gcc drops the profile (`coverage-mismatch`), with
     no message when the .gcda is just missing.
+  - 56 lines (2026-10-23, the draft; param 50): every block up to the
+    round-4 (coldest) traces matches; only their order differs.  What got it:
+    - Exit layout: gcc's ifcombine keeps the *outer* test's probability for
+      `mode && arg`, and expand splits it (q/2, then (q/2)/(1-q/2) for the
+      arg test).  The original's mode test falls into the arg test and that
+      into the reboot path, so the combined test needs P <= 1/3: plain
+      `mode && arg` (no expect) gets PRED_CALL's 29% (its then-block calls
+      netConnect).  Ties in connect_traces go to the longer trace.
+    - `if (!(mode && arg)) { reboot path } else { switch path }`: the
+      inverted if makes the reboot path the RTL fall-through, which ends
+      LRA's EBB there, so `mode` is reloaded (eax / ecx) instead of being
+      inherited into esi across netConnect.
+    - `fail: __attribute__((cold));` (both connects' shared error) and
+      `rok: __attribute__((cold));` (reboot-path netGetInfo): the reboot
+      test after the switch keeps netDisconnect in its own trace and the
+      reboot-path getinfo/netReboot trace is created after it.  Label
+      attributes are PRED_HOT_LABEL (85%) / PRED_COLD_LABEL predictors.
+    - -bp/-wb `a` in ebp: IRA pushes allocnos by frequency; `a` (3 refs)
+      beat the `(i + 1) * 4` temp (2 refs) and took edx.  Two
+      `__asm__("" :: "r"((unsigned)(i + 1) * 4))` uses before the second
+      argument load raise the temp (code-free).
+    - -wb's `j = i + 1`: its int i+1 needs a second use, or TER folds it
+      into the ifcombined `(j == argc) | !a` and expand emits `cmp edx,esi`.
+      -bp's `j = i + 2; if (j == argc || !b ...)`: fold (at parse time,
+      both operands simple) makes `(argc == j) | (b == 0)` in source order;
+      `i + 2 == argc || !b` isn't simple and ifcombine puts `!b` first.
+  - Round-4 order (left): the cold traces (error log blocks, usage calls,
+    -ip/-r/-w/-e/-c/-i/-p) come out of bb-reorder's fibonacci heap with
+    keys 0..-7, mostly tied, so their order depends on the whole heap
+    history.  Our `client_usage(2, NULL)` (threaded entry edge, key -4)
+    comes before the HDD errors (-2, half of case 4/5's 4), which the
+    original has after them: in a min-heap that needs the HDD errors at
+    <= -4 (cases 4/5 at 8+) or a colder usage(2).  Replaying our heap
+    events (wip/fibsim.py, fibwhatif.py) with changed keys (scratch
+    solvers: best-first, annealing, a realizability-bounded design search)
+    reaches the original's first 21 traces at best, 12 with realizable
+    bounds; no single hint or hint pair from greedy searches (expects on
+    every option, labels on every cold block) improves the 56.  So the
+    original's heap history (round-3 push order or keys) likely differs
+    from ours.  A profile build (mcfdo.py) keeps the hot part matching
+    (clientEraseBlock needs its entry count scaled by its call site, or
+    case 10's inlined blocks get frequency 0), but the standalone
+    clientEraseBlock and clientKeys (NOPROF breaks its dumpKey tie) then
+    differ, so it would need mode_client spliced from a profile compile.
 
 ## app/net.c
 

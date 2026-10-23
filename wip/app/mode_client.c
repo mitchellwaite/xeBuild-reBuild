@@ -569,6 +569,7 @@ char *getArgs(int argc, char **argv, int *pi, int mode, int check, char **arg2, 
 	return argv[first];
 }
 
+#define E(x) __builtin_expect((x), 1)
 int mode_client(int argc, char **argv)
 {
 	char dummy[] = "dummy";
@@ -579,6 +580,7 @@ int mode_client(int argc, char **argv)
 	char *arg = NULL;
 	int mode = 0;
 	char *a, *b;
+	int j;
 
 	log_set_name("client");
 	for (i = 0; i < argc; i++) {
@@ -592,9 +594,33 @@ int mode_client(int argc, char **argv)
 				log_printf(0, "shutdown superseded by reboot, ignoring -s in favor of -reboot\n");
 			log_printf(0, "setting reboot on completion\n");
 			reboot = 2;
-		} else if (!strnicmp(argv[i], "-bp", 3)) {
+		} else if (E(!strnicmp(argv[i], "-bp", 3))) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
+			__asm__("" :: "r"((unsigned)(i + 1) * 4));
+			__asm__("" :: "r"((unsigned)(i + 1) * 4));
+			b = argv[i + 2];
+			j = i + 2;
+			if (j == argc || !b || *b == '-')
+				client_usage(4, argv[i]);
+			start = b;
+			if (mode)
+				client_usage(5, argv[i]);
+			i = j;
+			arg = argv[i - 1];
+			log_printf(0, "setting binary patch file to %s, offset %s\n", arg, start);
+			mode = 11;
+		} else if (!strnicmp(argv[i], "-rb", 3)) {
+			arg = getArgs(argc, argv, &i, mode, 1, &start, &count);
+			log_printf(0, "reading %s blocks to %s, starting block %s\n", count, arg, start);
+			mode = 8;
+		} else if (E(!strnicmp(argv[i], "-wb", 3))) {
+			j = i + 1;
+			a = argv[j];
+			if (j == argc || !a || *a == '-')
+				client_usage(3, argv[i]);
+			__asm__("" :: "r"((unsigned)j * 4));
+			__asm__("" :: "r"((unsigned)j * 4));
 			b = argv[i + 2];
 			if (i + 2 == argc || !b || *b == '-')
 				client_usage(4, argv[i]);
@@ -603,27 +629,9 @@ int mode_client(int argc, char **argv)
 				client_usage(5, argv[i]);
 			i += 2;
 			arg = argv[i - 1];
-			log_printf(0, "setting binary patch file to %s, offset %s\n", arg, start);
-			mode = 11;
-		} else if (!strnicmp(argv[i], "-rb", 3)) {
-			arg = getArgs(argc, argv, &i, mode, 1, &start, &count);
-			log_printf(0, "reading %s blocks to %s, starting block %s\n", count, arg, start);
-			mode = 8;
-		} else if (!strnicmp(argv[i], "-wb", 3)) {
-			a = argv[i + 1];
-			if (i + 1 == argc || !a || *a == '-')
-				client_usage(3, argv[i]);
-			b = argv[i + 2];
-			if (!b || i + 2 == argc || *b == '-')
-				client_usage(4, argv[i]);
-			start = b;
-			if (mode)
-				client_usage(5, argv[i]);
-			i += 2;
-			arg = argv[i - 1];
 			log_printf(0, "writing blocks from %s, starting at block %s\n", arg, start);
 			mode = 9;
-		} else if (!strnicmp(argv[i], "-eb", 3)) {
+		} else if (E(!strnicmp(argv[i], "-eb", 3))) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
@@ -664,7 +672,7 @@ int mode_client(int argc, char **argv)
 			arg = argv[++i];
 			log_printf(0, "setting write filename to %s\n", arg);
 			mode = 2;
-		} else if (!strnicmp(argv[i], "-e", 2)) {
+		} else if (E(!strnicmp(argv[i], "-e", 2))) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
@@ -672,7 +680,7 @@ int mode_client(int argc, char **argv)
 			arg = argv[++i];
 			log_printf(0, "setting avatar/kinect files base path to %s\n", arg);
 			mode = 4;
-		} else if (!strnicmp(argv[i], "-c", 2)) {
+		} else if (E(!strnicmp(argv[i], "-c", 2))) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
@@ -701,7 +709,16 @@ int mode_client(int argc, char **argv)
 		else
 			client_usage(1, argv[i]);
 	}
-	if (mode && arg) {
+	if (!(mode && arg)) {
+		if (reboot) {
+			if (netConnect(ip)) {
+			rok: __attribute__((cold));
+				cinfo = netGetInfo();
+			} else
+				goto fail;
+		} else
+			client_usage(2, NULL);
+	} else {
 		if (netConnect(ip)) {
 			cinfo = netGetInfo();
 			switch (mode) {
@@ -756,20 +773,14 @@ int mode_client(int argc, char **argv)
 				log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
 				break;
 			}
-			if (reboot)
-				netReboot(reboot);
-			netDisconnect();
-			return 0;
-		}
-	} else if (reboot) {
-		if (netConnect(ip)) {
-			cinfo = netGetInfo();
-			netReboot(reboot);
-			netDisconnect();
-			return 0;
-		}
-	} else
-		client_usage(2, NULL);
+		} else
+			goto fail;
+	}
+	if (E(reboot))
+		netReboot(reboot);
+	netDisconnect();
+	return 0;
+fail: __attribute__((cold));
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }
