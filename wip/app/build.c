@@ -712,8 +712,14 @@ int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 	}
 	if (checkZeros(buf + i + 0x20c, 4)) {
 		log_printf(1, "extracting config\n");
-		if (__builtin_expect(size - i >= 0x400, 1))
-			memcpy(e->data, buf + i, 0x400);
+		if (__builtin_expect(size - i >= 0x400, 1)) {
+			u8 *src = buf + i;
+
+			/* buf live past src: no IRA copy buf-src, so the raw
+			   loop's eax doesn't push dst out of eax (wip/README) */
+			__asm__("" : "+r"(src) : "r"(buf));
+			memcpy(e->data, src, 0x400);
+		}
 	} else if (size - i >= 0x4200) {
 		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)

@@ -47,6 +47,17 @@
 .globl _bd_459151
 .globl _bd_459160
 .globl _bd_459164
+.globl _bd_459371
+.globl _bd_4593d7
+.globl _bd_4593ec
+.globl _bd_459401
+.globl _bd_459414
+.globl _bd_45942c
+.globl _bd_459478
+.globl _bd_4594a4
+.globl _bd_4594b8
+.globl _bd_4594ca
+.globl _bd_4594e0
 .globl _bd_459955
 .globl _bd_459e3c
 .globl _bd_459e74
@@ -95,7 +106,6 @@
 .globl _calcBlAreaSize
 .globl _checkBl
 .globl _encodeBls
-.globl _extractSmcConfig
 .globl _fixupPatchSet
 .globl _loadBlFiles
 .globl _loadConsoleBlFiles
@@ -991,7 +1001,7 @@ L_4293c0:
           mov DWORD PTR [ESP],1
           call _log_printf
 L_4293d4:
-          mov DWORD PTR [ESP+4],OFFSET L_459371
+          mov DWORD PTR [ESP+4],OFFSET _bd_459371
           mov DWORD PTR [ESP],1
           call _log_printf
           add ESP,36
@@ -1242,215 +1252,7 @@ L_429770:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-_extractSmcConfig:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,44
-          mov EAX,DWORD PTR [ESP+64]
-          mov EDI,DWORD PTR [ESP+68]
-          mov EBP,DWORD PTR [ESP+72]
-          mov EAX,DWORD PTR [EAX+1036]
-          test EAX,EAX
-          je L_4297f5
-          mov DWORD PTR [ESP],EAX
-          call _free
-L_4297f5:
-          mov EAX,DWORD PTR [ESP+64]
-          mov DWORD PTR [EAX+1040],1024
-          mov DWORD PTR [ESP],1024
-          call _malloc
-          mov EDX,DWORD PTR [ESP+64]
-          test EAX,EAX
-          mov DWORD PTR [EDX+1036],EAX
-          je L_429adb
-          mov DWORD PTR [ESP+4],OFFSET L_4593d7
-          mov DWORD PTR [ESP],1
-          xor EBX,EBX
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_4593ec
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_4593d7
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          xor EAX,EAX
-          jmp L_429865
-L_429863:
-          mov EBX,ESI
-L_429865:
-          lea ESI,DWORD PTR [EBX+512]
-          cmp ESI,EBP
-          ja L_4299b0
-          lea EAX,DWORD PTR [EDI+EBX*1]
-          mov DWORD PTR [ESP],EAX
-          call _smcConfigOk
-          cmp EAX,1
-          jne L_429863
-L_429883:
-          lea EAX,DWORD PTR [EDI+EBX*1+524]
-          mov DWORD PTR [ESP+4],4
-          mov DWORD PTR [ESP],EAX
-          call _checkZeros
-          test EAX,EAX
-          jne L_429a0a
-          sub EBP,EBX
-          cmp EBP,16895
-          jbe L_429ae5
-          mov DWORD PTR [ESP+4],OFFSET L_459414
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          lea EAX,DWORD PTR [EDI+EBX*1]
-          xor EDX,EDX
-          .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_4298d0:
-          mov EDI,DWORD PTR [ESP+64]
-          mov ESI,DWORD PTR [EAX]
-          mov ECX,DWORD PTR [EDI+1036]
-          add ECX,EDX
-          add EDX,512
-          mov DWORD PTR [ECX],ESI
-          lea EDI,DWORD PTR [ECX+4]
-          mov ESI,DWORD PTR [EAX+508]
-          and EDI,4294967292
-          mov DWORD PTR [ECX+508],ESI
-          sub ECX,EDI
-          mov ESI,EAX
-          sub ESI,ECX
-          add ECX,512
-          add EAX,528
-          shr ECX,2
-          cmp EDX,4096
-          rep movsd 
-          jne L_4298d0
-L_429916:
-          test EBX,EBX
-          jne L_429abe
-L_42991e:
-          mov DWORD PTR [ESP+4],OFFSET L_4594a4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_4594b8
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_4594a4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+64]
-          mov EAX,DWORD PTR [EAX+1036]
-          mov DWORD PTR [ESP],EAX
-          call _showSmcConfig
-          mov DWORD PTR [ESP+4],OFFSET L_459371
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+64]
-          mov EAX,DWORD PTR [EAX+1036]
-          mov DWORD PTR [ESP],EAX
-          call _patchSmcConfig
-          mov EDX,EAX
-          xor EAX,EAX
-          test EDX,EDX
-          jne L_429a63
-L_42999e:
-          add ESP,44
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_4299b0:
-          test EAX,EAX
-          jne L_429883
-          xor EBX,EBX
-          jmp L_4299c2
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_4299c0:
-          mov EBX,ESI
-L_4299c2:
-          lea ESI,DWORD PTR [EBX+528]
-          cmp ESI,EBP
-          ja L_4299e1
-          lea EAX,DWORD PTR [EDI+EBX*1]
-          mov DWORD PTR [ESP],EAX
-          call _smcConfigOk
-          cmp EAX,1
-          jne L_4299c0
-          jmp L_429883
-L_4299e1:
-          test EAX,EAX
-          jne L_429883
-          mov DWORD PTR [ESP+4],OFFSET L_4594e0
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          add ESP,44
-          mov EAX,2
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_429a0a:
-          mov DWORD PTR [ESP+4],OFFSET L_459401
-          mov DWORD PTR [ESP],1
-          sub EBP,EBX
-          call _log_printf
-          cmp EBP,1023
-          jbe L_429916
-          mov EAX,DWORD PTR [ESP+64]
-          lea ESI,DWORD PTR [EDI+EBX*1]
-          mov EDX,DWORD PTR [ESI]
-          mov EAX,DWORD PTR [EAX+1036]
-          mov DWORD PTR [EAX],EDX
-          lea EDI,DWORD PTR [EAX+4]
-          mov EDX,DWORD PTR [ESI+1020]
-          and EDI,4294967292
-          mov DWORD PTR [EAX+1020],EDX
-          sub EAX,EDI
-          lea ECX,DWORD PTR [EAX+1024]
-          sub ESI,EAX
-          shr ECX,2
-          rep movsd 
-          jmp L_429916
-L_429a63:
-          mov DWORD PTR [ESP+4],OFFSET L_4594ca
-          mov DWORD PTR [ESP],1
-          mov DWORD PTR [ESP+28],EAX
-          call _log_printf
-          mov DWORD PTR [ESP+4],OFFSET L_4594a4
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+64]
-          mov EDX,DWORD PTR [EAX+1036]
-          mov DWORD PTR [ESP],EDX
-          call _showSmcConfig
-          mov DWORD PTR [ESP+4],OFFSET L_459371
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+28]
-          jmp L_42999e
-L_429abe:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_459478
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_42991e
-L_429adb:
-          mov EAX,4294967294
-          jmp L_42999e
-L_429ae5:
-          mov DWORD PTR [ESP+4],OFFSET L_45942c
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          mov EAX,4294967294
-          jmp L_42999e
+#@C _extractSmcConfig
           .byte 0x8d
           .byte 0xb6
           .byte 0x0
@@ -12310,32 +12112,32 @@ L_459340:
           .string "smc config patched!\n"
 L_459355:
           .string "smc config was not patched\n"
-L_459371:
+_bd_459371:
           .string "---------------------\n"
 L_459388:
           .string "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n"
-L_4593d7:
+_bd_4593d7:
           .string "-------------------\n"
-L_4593ec:
+_bd_4593ec:
           .string "checking smc_config\n"
-L_459401:
+_bd_459401:
           .string "extracting config\n"
-L_459414:
+_bd_459414:
           .string "extracting config raw\n"
           .zero 1
-L_45942c:
+_bd_45942c:
           .string "******* ERROR: extracting config did not work, not enough data to copy!\n"
           .zero 3
-L_459478:
+_bd_459478:
           .string "valid SMC config data found at offset 0x%x\n"
-L_4594a4:
+_bd_4594a4:
           .string "------------------\n"
-L_4594b8:
+_bd_4594b8:
           .string "SMC config info:\n"
-L_4594ca:
+_bd_4594ca:
           .string "SMC patched info:\n"
           .zero 3
-L_4594e0:
+_bd_4594e0:
           .string "******* ERROR: unable to find SMC config data!\n"
 L_459510:
           .string "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n"

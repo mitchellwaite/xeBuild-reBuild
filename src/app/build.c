@@ -205,11 +205,13 @@ extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .
 int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
 int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
-int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
+/* int in xboxrom.c; as u32 here verifyBlSigs' inlined findFile(11) counts
+   from its 0 result instead of a new xor (uncprop) */
+u32 blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen, u8 *hashOut,
 	const void *pubKey, const void *prvKey);
 u32 calcConfigSum(const u8 *buf);
-int patchSmcConfig(u8 *smc);
+u32 patchSmcConfig(u8 *smc);
 u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
 void display_buffer_hex(const u8 *buf, u32 len, u32 level);
 typedef struct { u32 state[24]; } XECRYPT_SHA_STATE;	/* SHA_CTX */
@@ -270,6 +272,17 @@ static const char bd_45913f[] = "DVDRegion   : %d\n";
 static const char bd_459151[] = "resetKey    : ";
 static const char bd_459160[] = "%c";
 static const char bd_459164[] = "Ini value %d for %s is out of range (%d-%d), not using\n";
+static const char bd_459371[] = "---------------------\n";
+static const char bd_4593d7[] = "-------------------\n";
+static const char bd_4593ec[] = "checking smc_config\n";
+static const char bd_459401[] = "extracting config\n";
+static const char bd_459414[] = "extracting config raw\n";
+static const char bd_45942c[] = "******* ERROR: extracting config did not work, not enough data to copy!\n";
+static const char bd_459478[] = "valid SMC config data found at offset 0x%x\n";
+static const char bd_4594a4[] = "------------------\n";
+static const char bd_4594b8[] = "SMC config info:\n";
+static const char bd_4594ca[] = "SMC patched info:\n";
+static const char bd_4594e0[] = "******* ERROR: unable to find SMC config data!\n";
 static const char bd_459955[] = "none";
 static const char bd_459e3c[] = "\tPatching header for slower demon/cygnos UART speed\n";
 static const char bd_459e74[] = "\tPatching header for xell power reason\n";
@@ -319,10 +332,9 @@ static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common);
 int checkBl(u8 *bl, u32 size, int type, u32 crc);
-int extractSmcConfig(struct fileent *e, u8 *buf, u32 size);
 void appendAddonPatches(struct fileent *e);
 void fixupPatchSet(void);
-int patchSmcConfig(u8 *smc);
+u32 patchSmcConfig(u8 *smc);
 int verifyBlSigs(void);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
@@ -556,6 +568,76 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 
 	if (k > xb.kernel)
 		xb.kernel = k;
+}
+
+int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
+{
+	u32 i, j;
+	int found;
+
+	/* hints (wip/README.md): &size makes size SSA late (next <= size in
+	   both loops); the bound expects make found the rotated exit; the pin
+	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
+	   block under bb-reorder's duplication threshold */
+	(void)&size;
+	if (e->data)
+		free(e->data);
+	e->size = 0x400;
+	e->data = malloc(0x400);
+	if (!e->data)
+		return -2;
+	log_printf(1, bd_4593d7);
+	log_printf(1, bd_4593ec);
+	log_printf(1, bd_4593d7);
+	found = 0;
+	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
+		__asm__("" : : "S"(i + 0x200), "D"(buf));
+		if ((found = smcConfigOk(buf + i)) == 1)
+			break;
+	}
+	if (!found) {
+		for (i = 0; __builtin_expect(i + 0x210 <= size, 1); i += 0x210)
+			if ((found = smcConfigOk(buf + i)) == 1)
+				break;
+		if (!found)
+			goto notfound;
+	}
+	if (checkZeros(buf + i + 0x20c, 4)) {
+		log_printf(1, bd_459401);
+		if (__builtin_expect(size - i >= 0x400, 1)) {
+			u8 *src = buf + i;
+
+			/* buf live past src: no IRA copy buf-src, so the raw
+			   loop's eax doesn't push dst out of eax (wip/README) */
+			__asm__("" : "+r"(src) : "r"(buf));
+			memcpy(e->data, src, 0x400);
+		}
+	} else if (size - i >= 0x4200) {
+		log_printf(1, bd_459414);
+		for (j = 0; j < 8; j++)
+			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
+	} else {
+		log_printf(1, bd_45942c);
+		return -2;
+	}
+	if (i)
+		log_printf(1, bd_459478, i);
+	log_printf(1, bd_4594a4);
+	log_printf(1, bd_4594b8);
+	log_printf(1, bd_4594a4);
+	showSmcConfig(e->data);
+	log_printf(1, bd_459371);
+	if (patchSmcConfig(e->data)) {
+		log_printf(1, bd_4594ca);
+		log_printf(1, bd_4594a4);
+		showSmcConfig(e->data);
+		log_printf(1, bd_459371);
+	}
+	return 0;
+notfound: __attribute__((hot));
+notfound2: __attribute__((hot));
+	log_printf(0, bd_4594e0);
+	return 2;
 }
 
 int blmodMissing(struct fileent *e)

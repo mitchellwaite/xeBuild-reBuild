@@ -1552,13 +1552,13 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 25 match and are built
+Draft of the whole object (all 41 functions). 26 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
-loadBaseFile, loadBaseFileMeta, loadFileCrc. Switch tables go through
+loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig. Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -1638,7 +1638,7 @@ only shows in `sh build.sh`.
   but -3 is then too hot (placed after the jump table) and `size` takes a
   register (119 lines). The crc failure can't drop below 10% by
   predictions alone: the switch default (`c = 0; goto bad`) brings ~8%.
-- extractSmcConfig (2026-10-23: 145 -> 18 in the mixed build; compare it
+- extractSmcConfig (matches, built from C; compare it
   in the mixed file, `MIXED_SRC=<draft> MIXED_OUT=<out> python wip/mixed.py`:
   the whole draft has callers, so fnsplit splits it and the inlined-back
   part renumbers SSA names). What each hint fixes:
@@ -1670,17 +1670,17 @@ only shows in `sh build.sh`.
   - `"S"(i + 0x200), "D"(buf)` pin in loop 1: next/size/buf in esi/ebp/edi
     (IRA pops size before next otherwise).
   - `__builtin_expect(size - i >= 0x400, 1)`: the extract memcpy's shape.
-  Left (18 lines): that memcpy's dst gets edx and the first/last-dword temp
-  eax (original: dst eax, temp edx), IRA tie (all costs 0). A `"+a"` output
-  pin on a dst local gets 5 lines but leaves a dead spill store (IRA
-  spills the `e->data` copy feeding the asm); an `"a"` input pin is a
-  scheduling barrier (11). Copy spellings, local declaration order and
-  raw/extract branch hints change nothing. The raw loop is the cause:
-  with its source pointer replaced (test only) dst gets eax. Its src IV
-  (eax) is copy-connected through buf to the extract src, but by
-  ira-color.c's cost propagation that update rounds to 0, so the eax
-  penalty's source is still unidentified. The raw branch is success-first
-  (`else if (size - i >= 0x4200)`): .rdata has "raw" before the error.
+  - The extract memcpy's dst/temp (eax/edx, built from C 2026-10-23):
+    `__asm__("" : "+r"(src) : "r"(buf))` on a `src = buf + i` local. Without
+    it the raw loop's src IV (eax) leaves an (eax, 1) cost record on buf
+    via their shuffle copy; gcc 6.2's `restore_costs_from_copies` calls
+    `update_costs_from_allocno` with decr_p true, so the "restore" replays
+    it, the extract src (in buf's thread) gets eax -2 and dst, which
+    conflicts with it, eax +2 -> edx. buf live past `buf + i` removes the
+    extract src's copy to buf. An input-only pin is volatile, a scheduling
+    barrier (2 lines); a `"+a"` dst pin leaves a dead spill store.
+  The raw branch is success-first (`else if (size - i >= 0x4200)`): .rdata
+  has "raw" before the error.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original. They are separate round-1 traces, ordered by frequency:
