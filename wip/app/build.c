@@ -102,7 +102,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* 1aac the ini's firmware files */
 	u32 firmwareCrc[256];		/* 41aac */
 	u32 nFirmware;			/* 41eac */
-	struct fileent files[35];	/* 41eb0 [19..34]: addon patches */
+	struct fileent files[19];	/* 41eb0 35 of them, 19..34 addon patches; the */
+	u8 padf[(35 - 19) * 0x42c];	/* bound sets the files loops' guessed trip count */
 	u8 pad4b0b4[0x4b0f4 - 0x4b0b4];
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
@@ -1156,9 +1157,9 @@ u32 patchSmcConfig(u8 *smc)
    when it matches; 0 if a resign failed */
 int verifyBlSigs(void)
 {
+	int ok = 1, sb, sd;
 	struct fileent *e;
 	u32 i;
-	int ok = 1, sb, sd;
 	const u8 *salt;
 
 	for (i = 1; i < (u32)xb.nFiles; i++) {

@@ -1552,13 +1552,14 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 26 match and are built
+Draft of the whole object (all 41 functions). 27 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
-loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig. Switch tables go through
+loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
+verifyBlSigs. Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -1737,7 +1738,7 @@ only shows in `sh build.sh`.
   the hold-address pattern and its 9199 replacement are one `u32[4]`;
   `strncmp(kernelStr, "9199", 4)` (inline `repz cmpsb`).
 - encodeUpdateBls: a `switch`, not an if-chain (block order).
-- verifyBlSigs (50): a switch with SC/SD before SE (gcc orders bit-test
+- verifyBlSigs (matches, built from C): a switch with SC/SD before SE (gcc orders bit-test
   clusters by case count, then label number; 12..13 counts as one range).
   The .rdata strings give the nesting (2026-10-22): each case tests the
   positive condition first (`if (pub1bl)`, `if (sb)`, `if (xb.prvKey)`,
@@ -1745,9 +1746,15 @@ only shows in `sh build.sh`.
   ok` (failure strings come first). No early `nFiles <= 1` return: that's
   the loop guard (it stores ok = 1 and joins the common exit). blCheckHash
   declared u32 so the inlined findFile(11) counts from its 0 result.
-  Left: two swaps among the cold log traces (SB-mismatch before SE-good,
-  freqs 103 vs 128; the early exit before not-available, 6 vs 15) and the
-  order of the `i = 1` and `ok = 1` stores.
+  The cold-trace order comes from the loop's guessed trip count, i.e. the
+  `xb.files` bound: `files[19]` plus padding (as in filelist_ini.c) puts
+  the exit at ~5% instead of 2.9% (`files[35]`), raising the entry
+  frequency and so the bb-reorder round thresholds (entry x 500/200/50
+  per mille); only p ~0.05-0.055 works. A pointer IV (no bound) gives 62
+  lines. The `i = 1` / `ok = 1` preheader store order follows declaration
+  order (`ok` declared first). The struct change leaves every other C
+  function unchanged; it may also move loadBlFiles/loadConsoleBlFiles
+  loop frequencies (the loadInputFile clone).
 - patchSmcConfig (10): two cold blocks (gpu/cpu fan warnings) in the
   other order; the gpu warning passes no argument (the cpu one does).
   Its string is after the function's last ones in .rdata, so its block is

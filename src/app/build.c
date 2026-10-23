@@ -108,7 +108,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* 1aac the ini's firmware files */
 	u32 firmwareCrc[256];		/* 41aac */
 	u32 nFirmware;			/* 41eac */
-	struct fileent files[35];	/* 41eb0 [19..34]: addon patches */
+	struct fileent files[19];	/* 41eb0 35 of them, 19..34 addon patches; the */
+	u8 padf[(35 - 19) * 0x42c];	/* bound sets the files loops' guessed trip count */
 	u8 pad4b0b4[0x4b0f4 - 0x4b0b4];
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
@@ -283,6 +284,22 @@ static const char bd_4594a4[] = "------------------\n";
 static const char bd_4594b8[] = "SMC config info:\n";
 static const char bd_4594ca[] = "SMC patched info:\n";
 static const char bd_4594e0[] = "******* ERROR: unable to find SMC config data!\n";
+static const char bd_45961c[] = "\n***** ERROR: %s failed signature check!\n";
+static const char bd_459646[] = "%s signature is good\n";
+static const char bd_45965c[] = "could not check signature of %s, 1BL RSA key not present!\n";
+static const char bd_459698[] = "%s failed signature check, attempting to resign\n";
+static const char bd_4596cc[] = "\n***** ERROR: failed to resign %s!\n";
+static const char bd_4596f0[] = "%s resigned successfully!\n";
+static const char bd_45970c[] = "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n";
+static const char bd_45976c[] = "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n";
+static const char bd_4597bc[] = "could not locate SB data to check %s!\n";
+static const char bd_4597e4[] = "%s failed hash check, attempting to correct SE and resign\n";
+static const char bd_459820[] = "\n***** ERROR: failed to resign SE to correct %s hash!\n";
+static const char bd_459858[] = "SE resigned successfully to correct %s hash!\n";
+static const char bd_459888[] = "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n";
+static const char bd_4598e0[] = "\n***** ERROR: %s failed hash check!\n";
+static const char bd_459905[] = "%s hash from SE is good\n";
+static const char bd_459920[] = "\n***** ERROR: could not locate SD data to check %s!\n";
 static const char bd_459955[] = "none";
 static const char bd_459e3c[] = "\tPatching header for slower demon/cygnos UART speed\n";
 static const char bd_459e74[] = "\tPatching header for xell power reason\n";
@@ -335,7 +352,6 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc);
 void appendAddonPatches(struct fileent *e);
 void fixupPatchSet(void);
 u32 patchSmcConfig(u8 *smc);
-int verifyBlSigs(void);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
 int patchBlsResign(void);
@@ -876,6 +892,76 @@ void showSmcConfig(const u8 *smc)
 	for (i = 0; i < 4; i++)
 		log_printf(1, bd_459160, smc[0x238 + i]);
 	log_printf(1, bd_458cf9);
+}
+
+int verifyBlSigs(void)
+{
+	int ok = 1, sb, sd;
+	struct fileent *e;
+	u32 i;
+	const u8 *salt;
+
+	for (i = 1; i < (u32)xb.nFiles; i++) {
+		e = &xb.files[i];
+		switch (e->type) {
+		case 5:
+		case 11:
+		case 17:
+			if (pub1bl) {
+				if (!cbVerifySig(e->data, pub1bl))
+					log_printf(0, bd_45961c, e->name);
+				else
+					log_printf(1, bd_459646, e->name);
+			} else
+				log_printf(1, bd_45965c, e->name);
+			break;
+		case 12:
+		case 13:
+			sb = findFile(11);
+			if (sb) {
+				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
+				if (blVerifySig(e->data, e->size, xb.files[sb].data + 616, salt))
+					log_printf(1, bd_459646, e->name);
+				else if (xb.prvKey) {
+					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+						log_printf(0, bd_459698, e->name);
+						if (!blSign(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
+							log_printf(0, bd_4596cc, e->name);
+							ok = 0;
+						} else
+							log_printf(1, bd_4596f0, e->name);
+					} else
+						log_printf(0, bd_45970c, e->name);
+				} else
+					log_printf(0, bd_45976c, e->name);
+			} else
+				log_printf(1, bd_4597bc, e->name);
+			break;
+		case 14:
+			sd = findFile(13);
+			if (sd) {
+				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588)) {
+					if (xb.prvKey) {
+						sb = findFile(11);
+						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+							log_printf(0, bd_4597e4, e->name);
+							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
+									   xb.files[sd].data + 588, xb.files[sb].data + 616, xb.prvKey))
+								log_printf(0, bd_459820, e->name);
+							else
+								log_printf(1, bd_459858, e->name);
+						} else
+							log_printf(0, bd_459888, e->name);
+					} else
+						log_printf(0, bd_4598e0, e->name);
+				} else
+					log_printf(1, bd_459905, e->name);
+			} else
+				log_printf(1, bd_459920, e->name);
+			break;
+		}
+	}
+	return ok;
 }
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
