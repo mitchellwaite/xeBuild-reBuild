@@ -141,8 +141,8 @@ def main():
     # `_x[ecx+2+ecx]`: the displacement between the registers
     g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)\+(\d+)\+(\w+)\]', r'\1[\3+\2+\4]', g)
     # `_cpuKey[ebx-1]`: a named global indexed with a negative offset
-    g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)-(\d+)\]', lambda m: m.group(0) if m.group(1) not in addr_of
-               else '%s[%s]' % (at(addr_of[m.group(1)] - int(m.group(3))), m.group(2)), g)
+    g = re.sub(r'(?<![\w.$])(_\w+)\[(\w+)-(\d+)(\+\w+)?\]', lambda m: m.group(0) if m.group(1) not in addr_of
+               else '%s[%s%s]' % (at(addr_of[m.group(1)] - int(m.group(3))), m.group(2), m.group(4) or ''), g)
     g = re.sub(r'(?<![\w.$])(_\w+)(?:\+(\d+)(?![\w])|\[(\d+)\+)',
                lambda m: m.group(0) if m.group(1) not in addr_of else
                at(addr_of[m.group(1)] + int(m.group(2))) if m.group(2) else

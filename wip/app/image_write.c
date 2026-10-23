@@ -249,6 +249,8 @@ static int imgWriteStart(const void *src, u32 len, u16 next)
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
 		}
 	}
+	/* no code: one more reference makes LRA's spill-slot order next, start */
+	__asm__("" :: "g"(next));
 	imgEnd = off + len;
 	return 0;
 }
@@ -302,24 +304,27 @@ static int imgWriteHdr(const void *src, u32 len)
 	return 0;
 }
 
+/* 48 normalised lines (wip/README): the original's tail is the cmovb
+   ternary, which here flips the len <= first layout */
 static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 {
-	u32 first, rem, tail, blocks, start, b, p;
+	u32 first, rem, tail, blocks, start, p, i;
+	int b;
 
-	if (off > xb.rawSize || off + len > xb.rawSize)
+	if (xb.rawSize < off || xb.rawSize < off + len)
 		return -1;
 	start = off >> 14;
-	first = (off & 0x3fff) ? 0x4000 - (off & 0x3fff) : 0;
+	first = (off & 0x3fff) ? 0x4000 - (int)(off & 0x3fff) : 0;
 	if (len <= first) {
 		blocks = 1;
 		tail = len;
 	} else {
 		rem = len - first;
-		tail = rem < 0x4000 ? rem : rem % 0x4000;
 		blocks = rem / 0x4000;
+		tail = rem % 0x4000;
 		if (tail)
 			blocks++;
-		if (first)
+		if (off & 0x3fff)
 			blocks++;
 	}
 	memcpy(xb.hdr + off, src, len);
@@ -328,7 +333,17 @@ static int imgWriteAt(u32 off, const void *src, u32 len, u16 next)
 	for (b = 0; b < blocks; b++)
 		for (p = 0; p < 32; p++)
 			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
-	setFsTable(start, blocks, next);
+	if (next != 0xf1f1) {
+		for (i = 0; i < blocks; i++) {
+			if (next != 0 && next != 0xffff)
+				fsTable[start - xb.fsStart + i] = SWAP16(next);
+			else
+				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
+		}
+		if (next == 0xffff)
+			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
+	}
+	__asm__("" :: "g"(next));
 	imgEnd = off + len;
 	return 0;
 }

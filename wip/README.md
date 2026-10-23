@@ -1834,7 +1834,7 @@ Still off:
   (`__builtin_expect(... , 0)` on the fill test, even at probability 55)
   gives the original's order (234 -> 113), but costs imgWritePage and
   imgWriteAt lines. -fno-thread-jumps / max-fsm-* params change nothing.
-- imgWritePage (17 lines, 7 normalised): `x = off & 0x3fff;
+- imgWritePage (history; it matches now, see above) (17 lines, 7 normalised): `x = off & 0x3fff;
   __asm__("" : "+c"(x));` before `start` gives the original's ecx and
   separate `test`; `__attribute__((noclone))` keeps ipa-cp from cloning
   it for 0x1ffb, and then addSmcConfig/imgAddRaw match in the draft too.
@@ -1864,7 +1864,7 @@ Still off:
   keeps the align block a 1-block trace, so bbro still duplicates it.
   (Earlier tries: hint calls via PRED_CALL get the order but pull the
   align block into a longer trace, losing the copy.)
-- imgWritePage (17): two RA spots. (1) After the memcpy the original
+- imgWritePage (history, 17): two RA spots. (1) After the memcpy the original
   loads start straight into ebp (the block iv) and derives end/pgoff from
   it; ours reloads start into esi and copies to ebp last (the iv's PHI
   copy is emitted after ivtmp*512 and end in the preheader, so LRA
@@ -1949,6 +1949,40 @@ Still off:
   straight into ebp, but dom3 replaces `end` in the tail with the IV's
   exit value (`lea eax,[ebp+ecx]`). Asm outputs on `end` and
   loop forms over `start..start+blocks` (guard) are worse.
+- imgWriteAt (2026-10-23): 249 -> 48 normalised lines (152 raw). What
+  each piece does:
+  - `first = (off & 0x3fff) ? 0x4000 - (int)(off & 0x3fff) : 0`: the int
+    cast keeps uncprop from putting x (known 0 on that edge) in the PHI,
+    so the cmove takes a literal 0 (`mov edi,0`) as in the original.
+  - `if (off & 0x3fff) blocks++` (not `if (first)`): the original tests x.
+  - `int b` (spare loop): ivopts then compares `blocks > b`
+    (`cmp [28],eax; ja`); with u32 b it is `b < blocks`.
+  - `__asm__("" :: "g"(next))` before the imgEnd store: emits nothing,
+    but the extra reference puts next before start in LRA's spill slots
+    ([32]/[36]); LRA orders slots by reference frequency, then regno, and
+    next is a late (parameter) pseudo. `"m"` keeps next in its incoming
+    slot instead; other spots move the RA.
+  - FS loop with its own counter `i`, the range check as `xb.rawSize <
+    off || xb.rawSize < off + len`.
+  Left: the tail. The original has `rem < 0x4000 ? rem : rem % 0x4000`
+  (cmovb), but as a plain function that ternary threads differently and
+  lays out `len <= first` hot; `rem % 0x4000` is what the draft has (no
+  cmovb). The ternary does lay out right when the body is a `static
+  inline` helper that imgWriteAt calls (IPA-inlined, so its CFG/SSA come
+  from the helper; 196/52 with the pieces above), but then the inlined
+  SSA numbering canonicalises the range check to `off > raw` (`ja`).
+  Also left in both: the chain loop's preheader (the original recomputes
+  `start - fs` for the 16-bit chain value), the vector peel's `== 3`
+  (ours: `> 3`, VRP knows blocks >= 1 there; the original doesn't), and
+  the order of the cold peel exits. Labels, statement order, the `rem`/
+  `first` temporaries, `>>`/`/` spellings, loop forms and counter types
+  were searched (scratch cv.py coordinate descent) without gains.
+- imgWriteStart: the same `"g"(next)` reference before imgEnd, 60 -> 58.
+  Calling a static inline body copy estimated with off unknown (as
+  above) gives the original's head order (len == 0, len <= 0x3fff and
+  tail cold) but the range check's `cmp [raw],len` operand order needs
+  imgWriteStart's own SSA numbering (raw loaded before len's default
+  def is created), so the draft keeps its own body.
 - tmp/xeBuild64 decompiles with IDA (idapro on a copy of the ELF):
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
