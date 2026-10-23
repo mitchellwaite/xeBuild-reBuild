@@ -293,6 +293,41 @@ Findings:
     bb-reorder detail that mattered: a block ending in a call always takes
     its fallthru into the trace (find_traces_1_round's ends_in_call), so W
     keeps L after it however cold W is.
+- 2026-10-22, applyIniOptions without a profile (started, paused by the
+  user; nothing in src/ changed).  Goal: build options with gcc's guessed
+  profile only, using dead-edge nudges (the `aio_never` trick works there
+  too: profile_estimate runs while the dead tests still exist) to break the
+  ties the crafted profile's bands break.  The user chose nudges over a
+  natural-source-only search.
+  - Tools: `python wip/aiog.py <cfg.json> <out.c>` turns src/app/options.c
+    into a profile-free variant (pragmas and the crafted design's dead edges
+    removed, options as OPTK with per-option form/expect hints, cfg as in
+    wip/aiosearch.json).  `sh wip/aio/grun.sh <dir>` compiles `<dir>/a.c`
+    without a profile and writes lab.txt/trl.txt/al.txt plus blk, fncmp,
+    label-mismatch and padding counts (aldiag.py works on it too).
+    wip/blk.py reads the original from git (56e988e) now.
+  - Baseline: src as is, guessed: blk 155, fncmp 1404.  aiog with
+    wip/aiosearch.json: blk 72, fncmp 892, lab 246, align-diffs 44.  Its
+    traces match the FDO build's (wip/aio/t, the reference) up to round 2;
+    the strip loop is 4523 there (2535 with the profile), so freq_max and
+    the alignment threshold (45) differ too.  Round 3/4 starts tie between
+    identical options; the FDO design gives each its own frequency
+    (aiodesign.py bands), so a profile-free match needs about one nudge per
+    trace start (roughly 40-60).
+  - Nudge primitives: a dead exit (`if (dead) return;`) in front of a block
+    lowers it and everything after it (the emptied test is removed as a
+    forwarder, the block keeps its count).  A dead entry into a test block
+    that merges into the next block raises that block.  Edge probabilities
+    of real branches stay predictor values, so EDGE_FREQUENCY (priority
+    keys, label alignment) only follows the source block's frequency.
+    Predictor probabilities for the dead test (builtin-expect-probability
+    83, measured): `if (v) return;` 61% (call 71 DS early-return 39), with
+    expect 0: 17%, expect 1: 83%, `v > 0`: 80.9%, `v < 0`: 36.7%,
+    `v == 3`: 37.8%, `if (v) goto out` (no return) 71%.  Products of these
+    give the fractions.
+  - Next: copy the FDO reference's round 3/4 trace-start frequencies
+    (wip/aio/t/trl.txt) as targets, add nudges in source order and rebuild
+    after each, checking the first trace that differs from the reference.
 
 ## app/bootloaders.c
 

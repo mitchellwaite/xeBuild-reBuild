@@ -20,6 +20,9 @@ overrides the compile flags of aiofdo.sh and dumps.sh.
 - `dumps.sh <dir>`: -dA asm (`o.s`), bbro, cprop_hardreg and alignments dumps.
 - `align.sh <dir> <overrides file>`: run.sh, assembles `o.s` and diffs the
   instructions including padding against the original (`<dir>/al.txt`).
+- `grun.sh <dir>`: the same outputs for `<dir>/a.c` without a profile
+  (gcc's guessed one; GFL overrides the flags); see wip/README.md,
+  "applyIniOptions without a profile", and wip/aiog.py.
 - `aldiag.py <dir>`: per label, the alignment pass's freq/fall/branch
   numbers vs alignreq.txt (P padded in the original, N must not be requested,
   F free: 16-aligned or 1..5 mod 16, where `.p2align 4,,10` emits nothing).

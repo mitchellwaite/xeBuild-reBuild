@@ -1,4 +1,4 @@
-"""Block order of one function: original (src/app/options.s) vs gcc -S of a C file.
+"""Block order of one function: original (options.s at 56e988e) vs gcc -S of a C file.
 
 python wip/blk.py <file.c> <name> [gcc flags]
 Each block is summarised by the strings it references and the calls it makes.
@@ -61,7 +61,9 @@ def blocks(lines, fnlab, labre, strs, isend):
     return [' '.join(b) for b in res]
 
 
-orig = open(os.path.join(ROOT, 'src', 'app', 'options.s')).read().split('\n')
+# the original: options.s from before applyIniOptions moved to C
+orig = subprocess.run(['git', '-C', ROOT, 'show', '56e988e:src/app/options.s'],
+                      capture_output=True, text=True, check=True).stdout.split('\n')
 ostr = strings(orig, r'^(L_[0-9a-f]+|_msg_\w+|_str_\w+):', r'^\s*\.(?:string|ascii)\s+"(.*)"')
 ob = blocks(orig, '_' + fn, r'^(L_[0-9a-f]+):', ostr, lambda l: False)
 
@@ -71,7 +73,7 @@ r = subprocess.run([os.path.join(TC, 'gcc.exe'), '-S', '-masm=intel', '-fno-asyn
 if r.returncode:
     sys.exit(r.stderr)
 mine = r.stdout.split('\n')
-mstr = strings(mine, r'^(LC\d+):', r'^\s*\.(?:string|ascii)\s+"(.*)"')
+mstr = strings(mine, r'^(LC\d+|_msg_\w+|_str_\w+):', r'^\s*\.(?:string|ascii)\s+"(.*)"')
 mb = blocks(mine, '_' + fn, r'^(L\d+):', mstr, lambda l: l.startswith('.globl') or l.startswith('.section'))
 for l in difflib.unified_diff(ob, mb, 'original', src, lineterm='', n=100):
     print(l)
