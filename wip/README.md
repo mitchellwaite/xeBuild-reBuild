@@ -2026,18 +2026,32 @@ Still off:
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
   structure only.
-- imgAdd rebuilt (2026-10-23, wip/app/image_write_clone.c): 175 raw /
-  47 normalised lines, and its imgWriteAt clone 11/11. What each piece
+- imgAdd rebuilt (2026-10-23, wip/app/image_write_clone.c): 21 raw /
+  19 normalised lines, and its imgWriteAt clone 11/11. What each piece
   does:
-  - The page counts, `partial`, `sp9`, `left`, `o128` and `end =
-    partial ? npages : 32` are computed inside the block loop (LIM
+  - The page counts, `partial`, `sp9`, `left` and the page count
+    selection are computed inside the block loop (LIM
     hoists them). With them before the loop the `len <= first` path
     shares the memcpy block with the others; inside the loop jump
     threading gives it its own memcpy copy and jumpy `pad == 1`, `len`
     tests (blocks = 1 there decides the loop guard), as in the original.
-    `end = partial ? ...` before p's computation puts the partial test
+    The selection before p's computation puts the partial test
     at the loop head, with the !partial, type-out-of-range path threaded
     to `end = 32, p = 0`.
+  - Variables are reused, which matters through TER: TER won't forward
+    an expression into a statement that redefines the same user
+    variable. `if (!partial) npages = 32;` (then `end = p + npages`)
+    keeps npages' cmov at its definition, right after the `len & 511`
+    test, instead of at its single use; `left = pages; if (left & 3)
+    left = (left + 4) & ~3;` keeps the `(pages + 4) & ~3` arm early
+    while the cmov is forwarded into s[9]'s computation. Both as in the
+    original (and `type` then lands in esi, as in the original).
+  - `off & 0x1ffff` is written at each use (p's computation and the
+    bigBlock s[9]) rather than kept in an `o128` variable, and `sp9 =
+    32 - pages` is computed in the loop body (removing it as dead code,
+    with `32 - pages` inline, changes SSA numbering: 25 -> 222 lines).
+  - `if (len % 512) { npages = (len + 512) / 512; pages = len / 512 + 1;
+    } else { pages = npages = len / 512; }`: npages' PHI first.
   - `first = x ? 0x4000 - x : 0` without the `(int)` cast: with it PRE
     makes a new name for first and the compare becomes `cmp [len],first`.
   - `if (pad == 1) if (tail)` (nested), `if (type != 0x2a && type !=
@@ -2047,10 +2061,13 @@ Still off:
   - `u32 i` for the FS-table loop: the vector peel then matches in
     imgAdd, and the clone keeps only the `== 3` / `> 3` test and its
     exit blocks.
-  Left: the hoisted setup block's order. Our npages cmov is TER'd into
-  its one use (`partial ? npages : 32`), so it is expanded late and ties
-  its output to `len >> 9`; the original computes it right after the
-  `len & 511` test (`cmove edx,eax` into the `(len + 512) >> 9`
-  register). `type - '1'` also comes first in the original. Statement
-  order/form searches (scratch perm.py: hill climb over unit order and
-  choice points) found nothing better.
+  Left in imgAdd: `type - '1'` comes first in the original's setup
+  block (ours is LIM'd after the left arm), the original re-tests `len &
+  511` for pages' cmov (`test ebx,ebx`, ebx then reused for `len >> 8`),
+  and `len >> 8` / `(type - 42) & ~2` come before the left arm.
+  `t1 = type - '1'` anywhere in the loop body changes nothing (forwprop
+  folds it into the compare). Left in the clone: VRP2 evaluates the
+  peel's `> 3` assert chain while `blocks`' range is still growing (the
+  block loop's exit assertion `blocks <= b`), the chain collapses to
+  VARYING and the `== 3` test stays `> 3`; no equivalent spelling of
+  the FS-table or block loop code changed that.

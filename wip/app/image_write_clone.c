@@ -5,7 +5,7 @@
    FNCMP_GCCSYM=_imgAdd.constprop.3 python re/fncmp.py
    wip/app/image_write_clone.c imgWriteAt -O3 --param
    builtin-expect-probability=50 (11 changed lines, 11 with registers
-   normalised; imgAdd itself 175/47).
+   normalised; imgAdd itself 21/19).
    wip/README.md "app/image_write.c" has the reasoning. */
 /* image_write: flash layout (header, CB/CE, SMC config, Mobile*.dat, the
    FS table), spare (LBA, ECD) bytes, writing the image to disk */
@@ -816,7 +816,7 @@ int imgBigBlock(void)
 
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 {
-	u32 x, first, rem, tail, blocks, start, p, end, pages, npages, left, o128;
+	u32 x, first, rem, tail, blocks, start, p, end, pages, npages, left;
 	u8 sp9, *s;
 	int partial, b;
 	u32 i;
@@ -847,21 +847,24 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
 		if (len % 512) {
-			pages = len / 512 + 1;
 			npages = (len + 512) / 512;
-		} else
+			pages = len / 512 + 1;
+		} else {
 			pages = npages = len / 512;
+		}
 		partial = type != 0 && type != '0' && len < 0x4000;
 		sp9 = 32 - pages;
-		left = pages & 3 ? (pages + 4) & ~3 : pages;
-		end = partial ? npages : 32;
-		o128 = off & 0x1ffff;
+		left = pages;
+		if (left & 3)
+			left = (left + 4) & ~3;
+		if (!partial)
+			npages = 32;
 		p = 0;
 		if ((u8)(type - '1') < 15) {
-			p = xb.bigBlock ? o128 : off & 0x3fff;
+			p = xb.bigBlock ? off & 0x1ffff : off & 0x3fff;
 			if (p) p /= 512;
 		}
-		for (end += p; p < end; p++) {
+		for (end = p + npages; p < end; p++) {
 			s = xb.spare + (BLK * 32 + p) * 16;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
@@ -872,7 +875,7 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
 					if (type != 0x2a && type != 0x2c) {
 						s[5] = 1;
-						s[9] = ((o128 ? 256 - o128 / 512 : 256) - left) >> 2;
+						s[9] = (((off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256) - left) >> 2;
 						s[8] = len >> 8;
 						s[7] = len;
 					} else {
@@ -901,6 +904,7 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	}
 #undef BLK
 	if (next != 0xf1f1) {
+		
 		for (i = 0; i < blocks; i++) {
 			if (next != 0 && next != 0xffff) {
 				fsTable[start - xb.fsStart + i] = SWAP16(next);
