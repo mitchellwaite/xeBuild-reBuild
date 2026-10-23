@@ -1552,14 +1552,15 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 30 match and are built
+Draft of the whole object (all 41 functions). 31 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
-verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl. Switch tables go through
+verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet.
+Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
 <fns> > syms.txt` makes the src file from the draft (a generic
@@ -1713,17 +1714,17 @@ only shows in `sh build.sh`.
   string order is gcc's expand order, i.e. source order: cases 0x59, 0x58,
   0x5a, 0x56, 0x57 after 0x55, each `if ((xb.flags & 7) > 4)` first. The
   case order sets the bb-reorder ties of the three outlined arms.
-- fixupPatchSet (71): the original's copy (n == 2) is the loop's hot
-  fallthrough and the record parsing goes after the return. Ours had the
-  loop-exit heuristic on `n == 2` (4.5%). Now (2026-10-22) `if (n != 2)
-  { parse; continue; }` (PRED_CONTINUE bypasses the loop-exit heuristic, 51%)
-  plus a hot label on the copy, and `v = getBeU32(p + off); off += 4;`
-  first (the original computes off + 4 once for both arms): layout matches.
-  Left: registers. Five values live in the loop (p, n, off, e, findFile's
-  index); the original spills off, ours spills n. Pins ("D"(n), "b"(p),
-  "S"(e)), an "m"(off) operand and the index form (`xb.files[f]`) move the
-  spill elsewhere but not to off. -fno-tree-ch isn't it: pass_ch doesn't
-  copy this loop in ours either.
+- fixupPatchSet (built from C, 2026-10-23): the Linux v1.16 build
+  (tmp/xeBuild64, found by its "Fixing up patch set" reference) shows the
+  loop: after the shift it sets `off = e->size` and goes back to the test,
+  no `break`; gcc 6 threads that edge to the exit, so it looks like a break
+  here. With that latch (no hot label, no `continue`) the profile gives the
+  original's allocation: off spills, n stays in a register, and the copy
+  loop's byte temp takes esi, so LRA hands p ebx (`mov ebx,eax`). The off
+  reloads are gcse-after-reload moves into the predecessors. `t = off + 4`
+  as its own name gives the shared off + 4 and the skip from the old off.
+  Earlier (`break` + hot label, 71 lines) the copy loop was 84% and off's
+  cost outweighed n, p and e together: no pin could move the spill to off.
 - blmodMissing matches now that loadBaseFile has its other callers.
 - loadBaseFile is static with gcc's local convention (eax, edx).
 - With the whole object drafted, ipa-cp clones loadFileCrc (verbose=1) and

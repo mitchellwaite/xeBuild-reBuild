@@ -104,6 +104,8 @@
 .globl _bd_459ed8
 .globl _bd_459ede
 .globl _bd_459ee4
+.globl _bd_459efa
+.globl _bd_459fa6
 .globl _bd_45a0bc
 .globl _bd_45a0f0
 .globl _bd_45a128
@@ -142,7 +144,6 @@
 .globl _buildFlash
 .globl _calcBlAreaSize
 .globl _encodeBls
-.globl _fixupPatchSet
 .globl _loadBlFiles
 .globl _loadConsoleBlFiles
 .globl _loadInputFile
@@ -1935,7 +1936,7 @@ L_42b790:
           ja L_42b790
           mov DWORD PTR [ECX+271040],EDX
 L_42b7bd:
-          mov DWORD PTR [ESP+4],OFFSET L_459efa
+          mov DWORD PTR [ESP+4],OFFSET _bd_459efa
           mov DWORD PTR [ESP],1
           call _log_printf
           test EBP,EBP
@@ -2121,7 +2122,7 @@ L_42ba63:
           mov DWORD PTR [ESP+8],EAX
           call _log_printf
 L_42ba84:
-          mov DWORD PTR [ESP+4],OFFSET L_459efa
+          mov DWORD PTR [ESP+4],OFFSET _bd_459efa
           mov DWORD PTR [ESP],1
           mov EBP,1
           call _log_printf
@@ -2288,7 +2289,7 @@ L_42bc7d:
           mov ESI,DWORD PTR [ESP+60]
           test ESI,ESI
           je L_42bd88
-          mov DWORD PTR [ESP+4],OFFSET L_459efa
+          mov DWORD PTR [ESP+4],OFFSET _bd_459efa
           mov DWORD PTR [ESP],1
           call _log_printf
           mov EDX,DWORD PTR [L_479eb8]
@@ -2345,7 +2346,7 @@ L_42bcf1:
           mov DWORD PTR [ESP+4],EDX
           call _setBeU32
 L_42bd88:
-          mov DWORD PTR [ESP+100],OFFSET L_459efa
+          mov DWORD PTR [ESP+100],OFFSET _bd_459efa
           mov DWORD PTR [ESP+96],1
           add ESP,76
           pop EBX
@@ -2495,102 +2496,7 @@ L_42bf5b:
           jmp L_42bb9d
           .byte 0x8d,0xb4,0x26,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-_fixupPatchSet:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,44
-          mov EDX,DWORD PTR [L_4c4f98]
-          test EDX,EDX
-          jle L_42bfa8
-          xor EBP,EBP
-          cmp DWORD PTR [L_4bc150+4],23
-          mov EAX,OFFSET L_4bc580
-          jne L_42bfa1
-          jmp L_42bfa8
-L_42bf93:
-          add EAX,1068
-          cmp DWORD PTR [EAX-1068],23
-          je L_42bfaa
-L_42bfa1:
-          add EBP,1
-          cmp EDX,EBP
-          jne L_42bf93
-L_42bfa8:
-          xor EBP,EBP
-L_42bfaa:
-          imul ESI,EBP,1068
-          xor EDI,EDI
-          add ESI,OFFSET _xb
-          mov EAX,DWORD PTR [ESI+271036]
-          mov DWORD PTR [ESP+4],OFFSET L_459fa6
-          mov DWORD PTR [ESP],1
-          mov EBX,EAX
-          call _log_printf
-          mov DWORD PTR [ESP+28],0
-          mov EAX,DWORD PTR [ESP+28]
-L_42bfe0:
-          cmp EAX,DWORD PTR [ESI+271040]
-          jae L_42c027
-          cmp EDI,2
-          jne L_42c043
-          imul ECX,EBP,1068
-          mov EDI,DWORD PTR [ESP+28]
-          xor EAX,EAX
-          add ECX,OFFSET _xb
-          nop
-L_42c000:
-          mov EDX,DWORD PTR [ECX+271036]
-          lea ESI,DWORD PTR [EDX+EDI*1]
-          movzx ESI,BYTE PTR [ESI+EAX*1]
-          mov EBX,ESI
-          mov BYTE PTR [EDX+EAX*1],BL
-          mov EDX,DWORD PTR [ECX+271040]
-          add EAX,1
-          sub EDX,EDI
-          cmp EDX,EAX
-          ja L_42c000
-          mov DWORD PTR [ECX+271040],EDX
-L_42c027:
-          mov DWORD PTR [ESP+4],OFFSET L_459efa
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          add ESP,44
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_42c043:
-          mov EAX,DWORD PTR [ESP+28]
-          add EAX,EBX
-          mov DWORD PTR [ESP],EAX
-          call _getBeU32
-          mov ECX,DWORD PTR [ESP+28]
-          cmp EAX,-1
-          lea EDX,DWORD PTR [ECX+4]
-          je L_42c080
-          add EDX,EBX
-          mov DWORD PTR [ESP],EDX
-          call _getBeU32
-          mov ECX,DWORD PTR [ESP+28]
-          lea EAX,DWORD PTR [ECX+EAX*4+8]
-          mov DWORD PTR [ESP+28],EAX
-          jmp L_42bfe0
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42c080:
-          add EDI,1
-          mov DWORD PTR [ESP+28],EDX
-          mov EAX,EDX
-          jmp L_42bfe0
+#@C _fixupPatchSet
           .byte 0x66
           .byte 0x90
 _addBlsToImage:
@@ -11275,7 +11181,7 @@ _bd_459ee4:
           .string "fin :"
 L_459eea:
           .string "Patching BLs..."
-L_459efa:
+_bd_459efa:
           .string "Done!\n"
           .zero 3
 L_459f04:
@@ -11289,7 +11195,7 @@ L_459f2c:
           .zero 3
 L_459f7c:
           .string "Adding 0x%x bytes blmod.bin data to %s..."
-L_459fa6:
+_bd_459fa6:
           .string "Fixing up patch set..."
           .zero 3
 L_459fc0:

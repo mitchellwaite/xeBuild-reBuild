@@ -961,31 +961,36 @@ int logPowerButton(int reason, const char *use)
 }
 
 /* drop the first two patch sets (each a list of {addr, count, words}
-   ended by 0xffffffff) from the patches file */
+   ended by 0xffffffff) from the patches file. After the shift `off =
+   e->size` ends the loop (as in the Linux v1.16 build); gcc threads it
+   to the exit. With that latch the profile spills off and keeps n in a
+   register as the original does (a `break` + hot label didn't). `t`
+   gives off + 4 one name for both arms; the skip adds to the old off. */
 void fixupPatchSet(void)
 {
 	struct fileent *e = &xb.files[findFile(23)];
 	u8 *p = e->data;
-	u32 off, i, v;
+	u32 off, i, v, t;
 	int n = 0;
 
 	log_printf(1, "Fixing up patch set...");
 	off = 0;
 	while (off < e->size) {
-		if (n != 2) {
+		if (n == 2) {
+			for (i = 0; i < e->size - off; i++)
+				e->data[i] = e->data[off + i];
+			e->size -= off;
+			off = e->size;
+		} else {
 			v = getBeU32(p + off);
-			off += 4;
+			t = off + 4;
 			if (v != 0xffffffff)
-				off += getBeU32(p + off) * 4 + 4;
-			else
+				off += getBeU32(p + t) * 4 + 8;
+			else {
 				n++;
-			continue;
+				off = t;
+			}
 		}
-		copy: __attribute__((hot));
-		for (i = 0; i < e->size - off; i++)
-			e->data[i] = e->data[off + i];
-		e->size -= off;
-		break;
 	}
 	log_printf(1, "Done!\n");
 }

@@ -331,7 +331,9 @@ static const char bd_459ed2[] = "sum1:";
 static const char bd_459ed8[] = "sum2:";
 static const char bd_459ede[] = "sum3:";
 static const char bd_459ee4[] = "fin :";
+static const char bd_459efa[] = "Done!\n";
 static const char bd_459f2a[] = "D";
+static const char bd_459fa6[] = "Fixing up patch set...";
 static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
 static const char bd_45a0f0[] = "    - console DVD eject button is being used to %s \n";
 static const char bd_45a128[] = "    - IR remote power button is being used to %s \n";
@@ -371,7 +373,6 @@ static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 /* still in build.s */
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common);
-void fixupPatchSet(void);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
 int patchBlsResign(void);
@@ -1006,6 +1007,35 @@ int logPowerButton(int reason, const char *use)
 		return 1;
 	}
 	return 0;
+}
+
+void fixupPatchSet(void)
+{
+	struct fileent *e = &xb.files[findFile(23)];
+	u8 *p = e->data;
+	u32 off, i, v, t;
+	int n = 0;
+
+	log_printf(1, bd_459fa6);
+	off = 0;
+	while (off < e->size) {
+		if (n == 2) {
+			for (i = 0; i < e->size - off; i++)
+				e->data[i] = e->data[off + i];
+			e->size -= off;
+			off = e->size;
+		} else {
+			v = getBeU32(p + off);
+			t = off + 4;
+			if (v != 0xffffffff)
+				off += getBeU32(p + t) * 4 + 8;
+			else {
+				n++;
+				off = t;
+			}
+		}
+	}
+	log_printf(1, bd_459efa);
 }
 
 void showSmcConfig(const u8 *smc)
