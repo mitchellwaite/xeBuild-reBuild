@@ -30,9 +30,6 @@
 .globl L_479f00
 .globl L_479f02
 .globl L_479f03
-.globl L_479f04
-.globl L_479f06
-.globl L_479f07
 .globl L_479f08
 .globl L_479f0c
 .globl L_479f10
@@ -49,7 +46,6 @@
 .globl L_479f38
 .globl L_479f3c
 .globl L_479f40
-.globl L_479f43
 .globl L_479f44
 .globl L_479f45
 .globl L_479f46

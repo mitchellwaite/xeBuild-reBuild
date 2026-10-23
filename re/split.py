@@ -410,6 +410,10 @@ SYMBOLS = {
     0x4587e4: '_msg_opt_macid', 0x458801: '_str_hex02', 0x458806: '_str_colon',
     0x458808: '_msg_macidBadValues', 0x458854: '_msg_macidBadLength', 0x45889a: '_str_dvdkey',
     0x4588a4: '_msg_optUnknownValue', 0x4588f8: '_msg_optIncomplete', 0x458948: '_msg_optBadValue',
+    0x458988: '_msg_iniCfldvTooLarge', 0x4589e0: '_msg_iniMacidBadChars',
+    0x458a10: '_msg_iniMacidDiscard', 0x458a38: '_msg_iniMacidBadLength',
+    0x458a60: '_msg_xellDefault', 0x458aa0: '_msg_xellAltDisabled',
+    0x458ac3: '_msg_dualbootIgnored', 0x458ade: '_str_rev', 0x458ae2: '_str_revSuffix',
     # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
@@ -679,7 +683,7 @@ C_FUNCS = {
     0x424930, 0x424a70, 0x449640,            # optIniBool parseButton parseButton.part.0
     0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
     0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
-    0x425110, 0x4258e0,                      # parseOption parseCmdOptions
+    0x425110, 0x4258e0, 0x4259a0,            # parseOption parseCmdOptions applyIniOptions
     0x427000, 0x4271a0, 0x427260, 0x427340,  # parseRawPatch parseRawPatches addPatch loadAddons
     # app/image_read (the rest are drafted in wip/app/image_read.c)
     0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile

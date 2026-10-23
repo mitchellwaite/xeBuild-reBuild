@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **585 of 617** (581 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 60 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **586 of 617** (582 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 60 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 19 / 25 | 400 / 432 |
+| `app/` | 19 / 25 | 401 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/image_write` | mixed; 0 of 7 drafted functions match in `wip/app/image_write.c` | 39 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/net` | mixed; 0 of 3 drafted functions match in `wip/app/net.c` | 29 / 32 |
-| `app/options` | mixed; 0 of 1 drafted functions match in `wip/app/options.c` | 18 / 19 |
+| `app/options` | mixed; every function in C, data and `.eh_frame` still in `src/app/options.s` | 19 / 19 |
 | `app/build` | mixed; 2 of 16 drafted functions match in `wip/app/build.c` | 27 / 41 |
 
 <details>
@@ -191,7 +191,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/options</code>: 18 / 19 in C</summary>
+<summary><code>app/options</code>: 19 / 19 in C</summary>
 
 - ✅ `baseFileExists.part.0` (0x4236f0)
 - ✅ `baseFileExists` (0x423730)
@@ -206,7 +206,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `setBoolOption` (0x424bb0)
 - ✅ `parseOption` (0x425110)
 - ✅ `parseCmdOptions` (0x4258e0)
-- ⬜ `applyIniOptions` (0x4259a0) (draft in `wip/`, no match yet)
+- ✅ `applyIniOptions` (0x4259a0)
 - ✅ `parseRawPatch` (0x427000)
 - ✅ `parseRawPatches` (0x4271a0)
 - ✅ `addPatch` (0x427260)
@@ -1018,16 +1018,21 @@ strings are `static const` arrays defined before it so that, with
 `-fno-toplevel-reorder`, they keep the original's `.rdata` order; `getIniValue`, with a `findInst`-style
 `findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
-`findInst`. And `app/options` (16 functions; the rest are drafted in
-`wip/app/options.c`):
+`findInst`. And `app/options` (every function in C, the data still in
+`options.s`):
 
 - Its strings are `extern const char str_*/msg_*[]`, named in `SYMBOLS`.
 - `baseFileExists` is ipa-split; its `.part.0` (4236f0) is in `C_FUNCS`
   under gcc's name.
-- `parseButton`'s split part (449640) is gcc's `.text.unlikely`, called
-  from asm. splice.py takes `.text.unlikely` and renames gcc's `.part.N` to
-  the `.s`'s name. gcc only splits a function the object calls directly, so
-  options.c keeps a stand-in `applyIniOptions` (asm; splice drops the copy).
+- `parseButton`'s split part (449640) is gcc's `.text.unlikely`. A profile
+  build doesn't split, so it is written out as a `cold` function in
+  `.text.unlikely` under gcc's name (`_parseButton.part.0`).
+- `applyIniOptions` is built with a crafted profile (`src/app/options.prof`,
+  written by `wip/aiodesign.py`; the other functions keep gcc's guessed
+  one). Its label alignment needs stale block counts, which tests of
+  never-written statics (`aio_never*`) give: IPA folds them after the
+  profile is read and the counts of their dead edges stay behind
+  (wip/README.md, app/options.c).
 - `strcat(xb.outName, "name")` is expanded inline. Short names become
   immediate stores, so the literal stays and no data is emitted. Longer ones
   copy from the string itself; those are written as `OUTCAT(name)`

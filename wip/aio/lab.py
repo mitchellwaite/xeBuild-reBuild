@@ -1,6 +1,7 @@
 """Role labels for applyIniOptions blocks, original vs ours (-dA o.s).
 python lab.py <o.s> [bbro dump] -> two columns of labels (name:role)"""
 import os, difflib, re, sys
+import subprocess
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BITS = {0x20000000: 'nomobile', 0x40000000: 'noremap', 0x80000000: 'noecdremap', 0x10000000: 'nandmu',
@@ -57,7 +58,7 @@ def label(ins, st):
 
 
 def orig_blocks():
-    lines = open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src', 'app', 'options.s')).read().split('\n')
+    lines = subprocess.run(['git', 'show', '56e988e:src/app/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
     st = strings(lines, r'^(\w+):\s*$', r'\s*\.string "(.*)"')
     s = lines.index('_applyIniOptions:')
     out, cur = [], []

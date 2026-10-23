@@ -1,4 +1,5 @@
 import os, re, sys
+import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 're'))
 import fncmp
 
@@ -9,7 +10,7 @@ def norm_gcc(l):
 
 
 def orig_stream():
-    lines = open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src', 'app', 'options.s')).read().split('\n')
+    lines = subprocess.run(['git', 'show', '56e988e:src/app/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
     s = lines.index('_applyIniOptions:')
     out, lab = [], None
     for l in lines[s + 1:]:

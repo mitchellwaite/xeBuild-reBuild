@@ -1,8 +1,9 @@
 /* options: console types (xenon...corona), boot options from the command
    line, options.ini and perbox files, optional patches.  Mixed object: the
    functions here are spliced into options.s (re/splice.py), which still
-   holds the rest and the data, so string literals are extern names for
-   the .s's strings. */
+   holds the data, so string literals are extern names for the .s's
+   strings.  applyIniOptions is built with a crafted profile (build.sh,
+   src/app/options.prof); everything else keeps gcc's guessed one. */
 #include <stdio.h>
 #include <string.h>
 
@@ -18,8 +19,10 @@ struct xebuild {
 	u32 bootFlags;			/* 060 options turned on */
 	u32 bootFlagsOff;		/* 064 options turned off */
 	int xellButton;			/* 068 */
-	int xellAltButton;		/* 06c */
-	int dualButton;			/* 070 */
+	/* u32 (unlike xellButton): applyIniOptions' tests of them don't
+	   get reused for parseButton's 0 */
+	u32 xellAltButton;		/* 06c */
+	u32 dualButton;			/* 070 */
 	u8 pad074;
 	u8 cfLdv;			/* 075 */
 	u8 pad076[0x078 - 0x076];
@@ -204,11 +207,26 @@ extern const char str_dvdkey[];	/* "dvdkey" */
 extern const char msg_optUnknownValue[];	/* "\n\n***** ERROR: unknown option '%s' ..." */
 extern const char msg_optIncomplete[];	/* "\n\n***** ERROR: unknown or incomplet..." */
 extern const char msg_optBadValue[];	/* "\n\n***** ERROR: parsing option '%s',..." */
+extern const char msg_iniCfldvTooLarge[];	/* "***** WARNING: cfldv value %d in opti..." */
+extern const char msg_iniMacidBadChars[];	/* "***** WARNING: invalid characters in ..." */
+extern const char msg_iniMacidDiscard[];	/* "' provided in ini file! Discarding!\n" */
+extern const char msg_iniMacidBadLength[];	/* "***** WARNING: invalid length macid '" */
+extern const char msg_xellDefault[];	/* "default console DVD eject button is b..." */
+extern const char msg_xellAltDisabled[];	/* "alternate xell button is disabled\n" */
+extern const char msg_dualbootIgnored[];	/* "dualboot setting ignored!\n" */
+extern const char str_rev[];	/* "rev" */
+extern const char str_revSuffix[];	/* "_%s" */
 
 /* strcat(xb.outName, "name") as gcc expands it: the short names become
    immediate stores (so they stay literals), the longer ones copy from the
    .s's string, which needs its extern name */
 #define OUTCAT(name) memcpy(xb.outName + strlen(xb.outName), str_##name, sizeof #name)
+
+/* the object is compiled with -fbranch-probabilities and a .gcda that has
+   counts for applyIniOptions only; the rest keep the guessed profile (a
+   function without counts would be compiled as never executed) */
+#pragma GCC push_options
+#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
 
 int baseFileExists(const char *name)
 {
@@ -462,21 +480,17 @@ int optIniInt(const char *name, int def)
 	return getIniU32(name, def);
 }
 
-int parseButton(const char *s)
+/* parseButton after its first four names: gcc's ipa-split part in the
+   original, called from applyIniOptions' copies of the first tests.  A
+   profile build doesn't split (feedback fnsplit refuses every function),
+   so it is written out; cold puts it in .text.unlikely as gcc did */
+static __attribute__((cold, section(".text.unlikely")))
+int parseButtonPart(const char *s) __asm__("_parseButton.part.0");
+static int parseButtonPart(const char *s)
 {
 	int b = 0;
 
-	if (!s)
-		return 0;
-	if (!strnicmp(s, str_power, 5))
-		b = 0x11;
-	else if (!strnicmp(s, str_remopower, 9))
-		b = 0x20;
-	else if (!strnicmp(s, str_remox, 5))
-		b = 0x22;
-	else if (!strnicmp(s, str_winbutton, 9))
-		b = 0x24;
-	else if (!strnicmp(s, str_wirelessx, 9))
+	if (!strnicmp(s, str_wirelessx, 9))
 		b = 0x55;
 	else if (!strnicmp(s, str_wiredx, 6)) {
 		if (!strnicmp(s, str_wiredxb1, 8))
@@ -498,12 +512,260 @@ int parseButton(const char *s)
 	return b;
 }
 
-/* applyIniOptions stays asm (splice.py drops this copy); gcc only splits
-   parseButton (its .part.0) when the object calls it directly */
+int parseButton(const char *s)
+{
+	int b = 0;
+
+	if (!s)
+		return 0;
+	if (!strnicmp(s, str_power, 5))
+		b = 0x11;
+	else if (!strnicmp(s, str_remopower, 9))
+		b = 0x20;
+	else if (!strnicmp(s, str_remox, 5))
+		b = 0x22;
+	/* the part is cold (call predicted never taken), the original's split
+	   call was likely: 36 is hoisted above the je only then */
+	else if (__builtin_expect(!strnicmp(s, str_winbutton, 9), 1))
+		b = 0x24;
+	else
+		b = parseButtonPart(s);
+	return b;
+}
+
+#pragma GCC pop_options
+
+/* applyIniOptions' copies of the functions above: a function with other
+   optimize options can't be inlined into it (always_inline is, early) */
+static inline __attribute__((always_inline)) int optIniIntI(const char *name, int def)
+{
+	char *bad;
+
+	bad = iniU32Invalid(name);
+	if (bad) {
+		log_printf(0, msg_iniInvalid, name, bad);
+		return def;
+	}
+	return getIniU32(name, def);
+}
+
+/* never written: IPA marks them read-only after the profile is read, and
+   the tests on them fold away in ccp2.  The counts the profile gave their
+   dead edges stay on the blocks around them (gcc doesn't update counts
+   when an edge goes), the stale frequencies the original's alignment
+   padding needs (see wip/README.md, app/options.c) */
+static int aio_never, aio_never2, aio_never3, aio_never4;
+
+static inline __attribute__((always_inline)) int parseButtonI(const char *s, int skip)
+{
+	if (!s)
+		return 0;
+	if (!strnicmp(s, str_power, 5) && !skip)
+		return 0x11;
+	if (!strnicmp(s, str_remopower, 9))
+		return 0x20;
+	if (!strnicmp(s, str_remox, 5))
+		return 0x22;
+	if (!strnicmp(s, str_winbutton, 9))
+		return 0x24;
+	return parseButtonPart(s);
+}
+
+static inline __attribute__((always_inline)) int macidSetI(void)
+{
+	int i;
+
+	for (i = 0; i < 6; i++)
+		if (xb.macid[i] != 0xff)
+			return 1;
+	return 0;
+}
+
+static inline __attribute__((always_inline)) void stripColonsI(char *s)
+{
+	int i, j, len;
+
+	len = strlen(s) + 1;
+	for (i = 0, j = 0; i < len; i++)
+		if (s[i] != ':')
+			s[j++] = s[i];
+}
+
+/* optIniBool's body in the caller (the profile gives each copy its own
+   edge counts) */
+#define OPT(name, set, clear) do { \
+		if (xb.bootFlags & (set)) \
+			break; \
+		if (xb.bootFlagsOff & (set)) \
+			break; \
+		if (perboxExists(name)) { \
+			log_printf(1, msg_optPerbox, name); \
+		} else { \
+			s = iniBoolInvalid(name); \
+			if (!s) { \
+				if (!getIniBool(name, 0)) \
+					break; \
+				log_printf(1, msg_optIni, name); \
+			} else { \
+				log_printf(0, msg_iniInvalid, name, s); \
+				break; \
+			} \
+		} \
+		xb.bootFlags &= ~(clear); \
+		xb.bootFlags |= (set); \
+	} while (0)
+
+/* options from perbox files and options.ini that the command line didn't
+   set.  The block layout comes from the profile: src/app/options.prof sets
+   the edges (see wip/README.md for how its frequencies were chosen) */
 void applyIniOptions(void)
 {
-	xb.xellButton = parseButton(getIniValue(str_power));
+	char *s;
+	int i;
+
+	OPT(str_nomobile, 0x20000000, 0);
+	OPT(str_noremap, 0x40000000, 0);
+	OPT(str_noecdremap, 0x80000000, 0);
+	OPT(str_nandmu, 0x10000000, 0);
+	OPT(str_nosecurity, 0x4000000, 0);
+	OPT(str_nosusecurity, 0x1000000, 0);
+	OPT(str_smcnocheck, 0x200000, 0);
+	if (!xb.cfLdv) {
+		xb.cfLdv = optIniIntI(str_cfldv, 0);
+		if (xb.cfLdv > 32) {
+			log_printf(0, msg_iniCfldvTooLarge, xb.cfLdv);
+			xb.cfLdv = 32;
+		}
+	}
+	if (xb.cpuFan == -1)
+		xb.cpuFan = optIniIntI(str_cpufan, -1);
+	if (xb.gpuFan == -1)
+		xb.gpuFan = optIniIntI(str_gpufan, -1);
+	if (xb.cpuTemp == -1)
+		xb.cpuTemp = optIniIntI(str_cputemp, -1);
+	if (xb.gpuTemp == -1)
+		xb.gpuTemp = optIniIntI(str_gputemp, -1);
+	if (xb.edramTemp == -1)
+		xb.edramTemp = optIniIntI(str_edramtemp, -1);
+	if (xb.overCpuTemp == -1)
+		xb.overCpuTemp = optIniIntI(str_overcputemp, -1);
+	if (xb.overGpuTemp == -1)
+		xb.overGpuTemp = optIniIntI(str_overgputemp, -1);
+	if (xb.overEdramTemp == -1)
+		xb.overEdramTemp = optIniIntI(str_overedramtemp, -1);
+	if (xb.avRegion == -1)
+		xb.avRegion = optIniIntI(str_avregion, -1);
+	if (xb.gameRegion == -1)
+		xb.gameRegion = optIniIntI(str_gameregion, -1);
+	if (xb.dvdRegion == -1)
+		xb.dvdRegion = optIniIntI(str_dvdregion, -1);
+	if (!macidSetI()) {
+		s = getIniValue(str_macid);
+		if (s) {
+			stripColonsI(s);
+			if (strlen(s) != 12) {
+				log_printf(0, msg_iniMacidBadLength);
+				showHexPairs(0, s);
+				log_printf(0, msg_iniMacidDiscard, s);
+			} else if (!validateString(s)) {
+				log_printf(0, msg_iniMacidBadChars);
+				showHexPairs(0, s);
+				log_printf(0, msg_iniMacidDiscard, s);
+			} else {
+				/* keeps if-conversion from hoisting i = 0 above the test */
+				__asm__("");
+				for (i = 0; i < 6; i++) {
+					xb.macid[i] = myatox8(s);
+					s += 2;
+				}
+			}
+		}
+	}
+	if (xb.type - 2 <= 3) {
+		OPT(str_cygnos, 1, 0);
+		OPT(str_demon, 8, 0);
+		OPT(str_patchsmc, 0x8000000, 0);
+		if (!xb.xellButton && (xb.bootFlags & 4)) {
+			xb.xellButton = parseButtonI(getIniValue(str_xellbutton), 0);
+			if (!xb.xellButton) {
+				log_printf(1, msg_xellDefault);
+				xb.xellButton = 0x12;
+			}
+		}
+		if (!xb.xellAltButton && (xb.bootFlags & 4)) {
+			/* a dead edge into the remopower test: its block keeps a
+			   count above its edge's */
+			xb.xellAltButton = parseButtonI(getIniValue(str_xellbutton2), aio_never);
+			if (!xb.xellButton)
+				log_printf(1, msg_xellAltDisabled);
+		}
+		OPT(str_smcnoeject, 0x400000, 0);
+		OPT(str_smcnoblink, 0x800000, 0);
+	}
+	/* outside the block above: VRP threads its range test past this one
+	   (a switch it can't), and smcnoblink's paths reload the type */
+	if (xb.type == 2) {
+		OPT(str_nodvd, 2, 4);
+		/* OPT(str_olddvd, 0, 4) with dead edges: Q (olddvd_q) merges into
+		   the iniBoolInvalid block and leaves it its count, olddvd_set
+		   merges into the `and ~4` block */
+		do {
+			if (perboxExists(str_olddvd)) {
+				log_printf(1, msg_optPerbox, str_olddvd);
+			} else {
+olddvd_q:
+				if (aio_never)
+					break;
+				s = iniBoolInvalid(str_olddvd);
+				if (!s) {
+					if (!getIniBool(str_olddvd, 0))
+						break;
+					log_printf(1, msg_optIni, str_olddvd);
+				} else {
+					log_printf(0, msg_iniInvalid, str_olddvd, s);
+					break;
+				}
+			}
+olddvd_set:
+			if (aio_never)
+				break;
+			xb.bootFlags &= ~4;
+		} while (0);
+		if (!xb.dualButton) {
+			xb.dualButton = parseButtonI(getIniValue(str_dualboot), 0);
+			if (xb.xellButton == xb.dualButton) {
+				log_printf(1, msg_dualbootIgnored);
+				xb.dualButton = 0;
+			}
+		}
+	} else if (aio_never) {		/* dead flow for the blocks above */
+		goto olddvd_set;
+	} else if (aio_never2) {
+		goto olddvd_q;
+	} else if (aio_never4) {
+		goto tail;
+	}
+	if (!(xb.bootFlags & 0x2000000)) {
+		s = getIniValue(str_dvdkey);
+		if (s && kvSetDvdKey(s))
+			xb.bootFlags |= 0x2000000;
+	}
+blsuffix:
+	if (!xb.blSuffix[0]) {
+		s = getIniValue(str_rev);
+		if (s)
+			sprintf(xb.blSuffix, str_revSuffix, s);
+	}
+	/* a dead cycle through the blSuffix test (irreducible: the goto tail
+	   above enters it too) leaves that block the count that sets
+	   freq_max, and with it the alignment threshold */
+tail:
+	if (aio_never3)
+		goto blsuffix;
 }
+
+#pragma GCC push_options
+#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
 
 void stripColons(char *s)
 {
@@ -679,7 +941,10 @@ int setBoolOption(const char *name, const char *val)
      but above the macid loop exit, and the incomplete block reaches the
      epilogue-copy threshold.
    The return is u32 (int keeps it in esi); parseCmdOptions calls it
-   through parseOptionInt. */
+   through parseOptionInt.  po_hint gets parseOption's options too, or it
+   can't be inlined there (the pragma above gives both an optimize
+   attribute). */
+__attribute__((optimize("no-early-inlining")))
 static void po_hint(int *p) { *p = 1; }
 
 __attribute__((optimize("no-early-inlining")))

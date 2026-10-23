@@ -1,6 +1,6 @@
 """Write src/app/options.prof: applyIniOptions' crafted profile.
 
-python wip/aiodesign.py <x.c.042t.profile_estimate>  > src/app/options.prof
+python wip/aiodesign.py build/obj/app/options.fdo/-.042t.profile_estimate > src/app/options.prof
 
 The dump comes from the instrumented compile build.sh does for app/options
 (-fdump-tree-profile_estimate-blocks-details).  The original's cold blocks
@@ -13,6 +13,7 @@ the edge into each target block gets the probability that yields it, solved
 to a fixpoint on gcc's guessed profile (re/gcda.py's numbers).
 """
 import os, re, sys
+sys.stdout.reconfigure(newline='\n')   # LF on Windows too
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 're'))
 import gcda
 
@@ -65,7 +66,8 @@ def option(name):
         if x:
             r[k] = x[0]
     if 'P' in r:
-        r['PL'] = [x for x in SUCC[r['P']] if x != r['I']][0]
+        # (olddvd: P -> Q -> I)
+        r['PL'] = [x for x in SUCC[r['P']] if x != r['I'] and x not in PRED[r['I']]][0]
         p = PRED[r['P']]
         if len(p) == 1 and len(SUCC[p[0]]) == 2:
             r['O'] = p[0]
@@ -121,8 +123,18 @@ E(p1, st1, 52)         # power match: edge under round 3's 90, so the header tra
 E(g2, p2, 69.8); E(g3, p3, 69.8)   # (higher loses the xor edx,edx hoist for the NULL path)
 E(g1, p1, 100 - 52 * 100 / 245.0)  # xellbutton's NULL store: between the warnings and getIniU32
 TARGET = {}
-# label alignment threshold: freq_max / 100, and after the macid test loop is
-# unrolled the strip loop is the hottest block: its entry sets the threshold
+ETARGET = {}   # edge flows, for blocks with two preds
+# label alignment threshold: freq_max / 100 must be 56 (between the padded
+# and unpadded cold blocks below).  The strip loop (2535) would be the
+# hottest block after the macid test loop is unrolled; a dead cycle through
+# the blSuffix test (aio_never3, irreducible: aio_never4 enters its other
+# block, so no preheader takes the count when it goes) leaves that test a
+# stale 5650 instead.  Its rev block keeps 707
+j2 = bb(r'aio_never3')
+(bsfx,) = [d for d in SUCC[j2] if d in BODY and 'return' not in BODY[d]]
+E(j2, bsfx, 100 * (1 - 1815 / 5650.0))
+E(bb(r'aio_never4'), j2, 0.01)
+TARGET[bb(r'getIniValue \(%s\)' % s('str_rev'))] = 707
 mloop = bb(r'if \(_\d+ != 255\)')
 if os.environ.get('AIO_MLOOP'):
     E(mloop, succ_with(mloop, r'i_\d+ = i_\d+ \+ 1'), float(os.environ['AIO_MLOOP']))
@@ -163,13 +175,33 @@ b4 = PRED[g1][0]
 TARGET[b4] = 600       # bootFlags & 4: keeps the header on its cold side
 # round 4 (< 90): trace starts high to low, no priority keys
 TARGET[R['olddvd']['PL']] = 74   # (its I and W, the rest of P, stay in round 2: >= 363)
-TARGET[warnc] = 63
-TARGET[r2] = 62        # xellbutton2 header rest (< 45% of its power test)
-TARGET[g3] = 61        # dualboot getIniValue
+# The original pads the dualButton test after olddvd's warning W as a loop
+# label (branch > 4 x fallthru): W must be cold (65, branch 83+) and still be
+# I's fallthru.  aio_never edges (wip/README.md) leave stale counts: I gets the
+# Q test's count (435; I->W 390 >= round 2's 363, I->G 53 <= the threshold
+# 56), and the merged `and ~4` block J a dead 250 that its jump to the test
+# keeps
+od = R['olddvd']
+(odq,) = [x for x in PRED[od['I']]]
+TARGET[od['I']] = 74
+(q5,) = SUCC[od['PL']]
+(odl,) = SUCC[[x for x in SUCC[od['I']] if x != od['G']][0]]
+(z5,) = [x for x in PRED[q5] if x != od['PL'] and od['G'] not in PRED.get(x, [])]
+ETARGET[(z5, q5)] = 250
+ETARGET[(q5, odl)] = 250
+(z3,) = [x for x in PRED[odq] if x != od['P']]
+ETARGET[(z3, odq)] = 1      # (a dead pred keeps Q merged into I, not removed)
+TARGET[warnc] = 67
+# xellbutton2 header rest: 66 for its heap order, but 20 of it on a dead edge
+# so its label isn't aligned (46 <= 56)
+skip2 = [d for d in SUCC[p2] if d != r2][0]
+ETARGET[(p2, r2)] = 46
+ETARGET[(skip2, r2)] = 20
+TARGET[g3] = 65        # dualboot getIniValue
 TARGET[ign] = 40       # dualboot ignored (in its trace)
-TARGET[R['cfldv']['GU']] = 60
-TARGET[alt] = 59       # (2x < the edge past it: no "if (A) B; C" selection)
-for n, i in [('nandmu', 58), ('noremap', 57), ('nomobile', 56), ('nosusecurity', 55), ('smcnocheck', 54), ('nosecurity', 53),
+TARGET[R['cfldv']['GU']] = 64
+TARGET[alt] = 63       # (2x < the edge past it: no "if (A) B; C" selection)
+for n, i in [('nandmu', 62), ('noremap', 61), ('nomobile', 60), ('nosusecurity', 59), ('smcnocheck', 58), ('nosecurity', 57),
              ('cygnos', 40), ('demon', 39), ('smcnoblink', 18), ('patchsmc', 17), ('smcnoeject', 16), ('nodvd', 15)]:
     opt(n, I=i)
 for k, n in enumerate(['gputemp', 'cputemp', 'gameregion', 'avregion', 'overedramtemp', 'overgputemp',
@@ -213,7 +245,13 @@ for it in range(50):
         (p,) = PRED[b]
         worst = max(worst, abs(F[b] - t))
         OVER[(p, b)] = round(min(99.99, max(0.01, t * 100 / F[p])), 4)
+    for (a, b), t in ETARGET.items():
+        worst = max(worst, abs(F[a] * OVER.get((a, b), SUCC[a][b]) / 100 - t))
+        OVER[(a, b)] = round(min(99.99, max(0.01, t * 100 / F[a])), 4)
     if worst < 0.01:
         break
+print("# applyIniOptions' edge probabilities (%) for its crafted profile: re/gcda.py")
+print('# overrides in profile_estimate bb numbers of src/app/options.c.')
+print('# Generated: python wip/aiodesign.py build/obj/app/options.fdo/-.042t.profile_estimate')
 for (a, d), p in sorted(OVER.items()):
     print('%s:%d>%d=%g' % (FN, a, d, p))

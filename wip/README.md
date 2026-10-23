@@ -46,16 +46,13 @@ had that name, so `re/split.py` renames the slot to `__imp___stat`
 
 ## app/options.c
 
-Draft of the whole object, with string literals.  The matching
-functions are built from `src/app/options.c` now, a mixed object that uses
-`extern` names for the strings: baseFileExists (+ its `.part.0`),
-perboxExists, iniConsoleType, setConsoleType, optIniInt, stripColons,
-macidSet, setBoolOption, optIniBool, parseButton (+ its `.part.0`), parseCmdOptions, parseRawPatch,
-parseRawPatches, addPatch, loadAddons.
+Draft of the whole object, with string literals, from before the hints.
+Every function is built from `src/app/options.c` now, a mixed object that
+uses `extern` names for the strings (the data is still in options.s).
 setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
-`__ImageBase` (the bytes match).  When the rest
-matches, move this file over `src/app/options.c` (literals back, data
-from the `.s`) and drop the object from `C_FUNCS`.  Still off:
+`__ImageBase` (the bytes match).  Next: the data into C (literals back or
+`static const` arrays in the original's order, like filelist_ini) and the
+object out of `C_FUNCS`.  Notes from getting there:
 
 - `optIniBool` builds from src now: an empty asm pins the OR result to
   eax (`"+a"`), so sched2 can't hoist `mov eax,1` above the store.  The
@@ -225,21 +222,12 @@ Findings:
   gcc sees before bbro, to work out which profile gives the original
   layout.  The goto form helps there because it fixes block order and the
   CFG shape, so only the profile is left to find.
-- 2026-10-22, crafted profile (like mode_update): `wip/app/options_fdo.c`
-  is the whole mixed-object src/app/options.c with applyIniOptions in C,
-  `wip/app/options_fdo.prof` its edge overrides (re/gcda.py, `@file` now
-  accepted), written by `python wip/aiodesign.py <profile_estimate dump>`.
-  Its code is byte-identical to the original (fncmp only shows ddisasm's
-  `__ImageBase` for 0x400000) and the block layout is exact; what is left is
-  label alignment padding (13 labels, the object is 0x50 bytes larger).
-  To try it: copy both to src/app/options.{c,prof}; build.sh options cflags
-  `-O3 --param builtin-expect-probability=83 -fno-ipa-profile
-  -fno-reorder-functions` and `prof="@src/app/options.prof
-  --only=applyIniOptions"`; split.py: 0x4259a0 in C_FUNCS, SYMBOLS for the
-  .rdata strings it uses (0x458988 cfldv too large, 0x4589e0/0x458a38
-  macid bad chars/length, 0x458a10 "' provided...", 0x458a60 xell
-  default, 0x458aa0 alternate disabled, 0x458ac3 dualboot ignored,
-  0x458ade "rev", 0x458ae2 "_%s"); regenerate.  What it took:
+- 2026-10-22, crafted profile (like mode_update): src/app/options.c
+  builds applyIniOptions with a profile (build.sh), `src/app/options.prof`
+  its edge overrides (re/gcda.py, `@file` accepted), written by
+  `python wip/aiodesign.py <profile_estimate dump>`.  The code matched
+  first, then the block layout, then (below) the label alignment padding.
+  What it took:
   - Counts only for applyIniOptions; the rest are `#pragma GCC optimize
     ("no-branch-probabilities", "no-reorder-functions")`.  A callee with an
     optimize attribute can't be inlined into a caller with other options
@@ -277,11 +265,36 @@ Findings:
     as a loop (branch > 4 x fallthru), and with olddvd's I falling out of P
     that can't hold under a consistent profile (PL + 5G > 4I with I >= PL).
     The original's frequencies there must be stale ones left by jump
-    threading; a profile alone can't give them.  Next: find what source
-    leaves that stale frequency (the IPA-inlined optIniBool with its own
-    guard, as the first drafts had?), or derive the frequencies from the
-    natural guessed profile plus tie-breaking nudges instead of bands.
-    Parked 2026-10-22 (user).  Analysis tools: wip/aio/README.md.
+    threading; a profile alone can't give them.
+  - 2026-10-22 (later), matched (src/app/options.c, analysis tools in
+    wip/aio/README.md).  Stale counts come from dead edges: a test of a
+    never-written static (`aio_never*`) is still there when the profile is
+    read (pass 042t), IPA marks the static read-only and ccp2 folds the
+    test.  gcc doesn't touch the counts when an edge goes, so a block whose
+    dead in/out edge carried flow keeps that count (a block merged into it
+    keeps the first block's count; an emptied forwarder just goes).  Four
+    of them:
+    - freq_max: `--param align-threshold` is per object (gcc 6 params
+      aren't per function) and 45 drops padding in parseOption, so the
+      threshold 56 comes from freq_max 5650: a dead cycle through the
+      blSuffix test.  A natural loop doesn't work (its preheader merges into
+      the header and keeps the real count); a second dead entry from the
+      type != 2 path makes the cycle irreducible, so there is no preheader.
+    - xellbutton2's header rest: `&& !skip` on parseButtonI's power match
+      gives it a dead pred.  Its block keeps 66 (heap order, between the
+      warning and dualboot) while its edge says 46 (not aligned).
+    - L_425c30: olddvd's OPT written out with two dead tests.  Q before
+      iniBoolInvalid merges into that block and leaves it 435 (with a dead
+      pred, else it is removed as a forwarder), so I->W (W 65) is 390, in
+      round 2's trace, and I->G 53, under the threshold.  The dead exit at
+      olddvd_set gives the merged `and ~4` block 250 more, so the branch
+      edges into the test beat 4 x W.
+    - band shift: the round-4 bands above 52 moved up 4 (I's 57..62) so the
+      xellbutton default block's 56 (loop alignment test) stays under the
+      threshold.
+    bb-reorder detail that mattered: a block ending in a call always takes
+    its fallthru into the trace (find_traces_1_round's ends_in_call), so W
+    keeps L after it however cold W is.
 
 ## app/bootloaders.c
 
