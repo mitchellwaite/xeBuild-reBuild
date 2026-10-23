@@ -72,7 +72,8 @@ SIG = re.compile(r'(?:/\*[^\n]*\*/\n)?(.*?\))\n\{', re.S)
 def main():
     obj, want = sys.argv[1], sys.argv[2:]
     cfg = OBJS[obj]
-    src = open('wip/%s.c' % obj).read()
+    # MIXED_SRC / MIXED_OUT: try a variant of the draft without touching src/
+    src = open(os.environ.get('MIXED_SRC', 'wip/%s.c' % obj)).read()
     text = strings(*cfg['rdata'])
     first = FN.search(src)
     head = src[:first.start()]
@@ -128,7 +129,7 @@ def main():
     out = (head.rstrip('\n') + '\n\n/* strings in %s.s */\n' % os.path.basename(obj) + '\n'.join(ext) +
            '\n\n/* still in %s.s */\n' % os.path.basename(obj) + '\n'.join(asm) + '\n\n' +
            '\n\n'.join(body) + '\n')
-    open('src/%s.c' % obj, 'w', newline='\n').write(out)
+    open(os.environ.get('MIXED_OUT', 'src/%s.c' % obj), 'w', newline='\n').write(out)
     print(',\n'.join("0x%x: '_%s'" % (a, n) for a, n in sorted(used.items())))
 
 

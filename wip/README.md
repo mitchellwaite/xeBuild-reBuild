@@ -1638,18 +1638,42 @@ only shows in `sh build.sh`.
   but -3 is then too hot (placed after the jump table) and `size` takes a
   register (119 lines). The crc failure can't drop below 10% by
   predictions alone: the switch default (`c = 0; goto bad`) brings ~8%.
-- extractSmcConfig (145): the original's two search loops aren't header-
-  copied (`xor eax,eax; jmp cond`); `found == 1` (cmp eax,1) is right.
-  bb-reorder rotates each loop so its hottest exit falls through: the
-  original's is `found == 1` (into checkZeros), ours the bound test. Ours
-  rates found at 1.8% (loop exit 4.5% with opcode-nonequal 28%), the bound
-  exit 4.5%. A `continue` skips the loop-exit heuristic for its branch
-  (found 28%), but then the bound test gets copied in front of the loop
-  (157 lines). `while (i + n <= size && (found = ...) != 1)` and a single
-  `ret`/`goto out` exit change nothing. Second clue: the original keeps a
-  0 return value in a pseudo across the "SMC patched info" block (saved to
-  [esp+0x1c], 44-byte frame vs our 28), so at GIMPLE the return value isn't
-  the constant 0 on that path; source shape unknown.
+- extractSmcConfig (2026-10-23: 145 -> 18 in the mixed build; compare it
+  in the mixed file, `MIXED_SRC=<draft> MIXED_OUT=<out> python wip/mixed.py`:
+  the whole draft has callers, so fnsplit splits it and the inlined-back
+  part renumbers SSA names). What each hint fixes:
+  - Return value: with patchSmcConfig returning int, uncprop reuses its
+    result for the no-patch `return 0` (`test eax,eax; je`). patchSmcConfig
+    `u32` (and `u32 patched`, else its own regs change) keeps the PHI
+    constant; ifcvt case 2 then hoists `ret = 0` above the test, as in the
+    original (`mov edx,eax; xor eax,eax; test edx,edx`). That needs the
+    patched block P below 1/3 of T (else bb-reorder's A-B-C rule makes P the
+    fallthrough) and the no-patch edge under 98% (predictable -> no hoist).
+  - The error string is the function's last .rdata string: `goto notfound`
+    to a block after `return 0`. Its hot label makes T colder than the
+    return block, so IRA gives ret eax (LRA saves it across P's calls,
+    44-byte frame) instead of ebx/edx (the patch result's eax copy wins
+    otherwise, with or without calls in P). A second hot label lowers P
+    under the 10% duplication threshold (P ends `jmp`, no epilogue copy)
+    while P still comes before the offset log (both 29% call heuristic).
+  - Loops: bb-reorder's rotate_loop puts the most frequent exit last; the
+    loop-exit heuristic gives both exits 4.5% and the bound exit wins on
+    frequency. `__builtin_expect(i + N <= size, 1)` makes it 2%: the latch
+    then sits before the cond (`jmp cond; latch: mov ebx,esi; cond:`).
+  - `cmp next,size; ja`: forwprop folds every compare with the lower SSA
+    version first. size's default def is made at loop 1's compare, before
+    loop 2's temp, so loop 2 gets `size >= next`. `(void)&size` makes size
+    addressable until update_address_taken, which then gives it a late
+    version. (int/long/u32 combinations, casts, struct-by-value, pointer
+    forms (`buf + i + N <= buf + size`: right order but signed `jg`), a
+    PHI `next` variable and loop2 rewrites all fail.)
+  - `"S"(i + 0x200), "D"(buf)` pin in loop 1: next/size/buf in esi/ebp/edi
+    (IRA pops size before next otherwise).
+  - `__builtin_expect(size - i >= 0x400, 1)`: the extract memcpy's shape.
+  Left (18 lines): that memcpy's dst gets edx and the first/last-dword temp
+  eax (original: dst eax, temp edx), IRA tie (all costs 0). A `"+a"` output
+  pin on a dst local gets 5 lines but leaves a dead spill store; an `"a"`
+  input pin is a scheduling barrier (11). Copy spellings change nothing.
 - appendAddonPatches (18): positive-condition nesting fixed most of it;
   the "not enough room" log and `size -= 4` blocks go after the return in
   the original. They are separate round-1 traces, ordered by frequency:
@@ -1741,7 +1765,12 @@ only shows in `sh build.sh`.
   call in the gpu ok arm (log order right, ok blocks swap: 8 lines), in
   the outer else (100+ lines), `ok = iniRangeOk(); ...` threading forms
   (10-35 lines). With no-early-inlining, iniRangeOk is a call heading both
-  outer arms, so PRED_CALL stays symmetric.
+  outer arms, so PRED_CALL stays symmetric. 2026-10-23: returns u32 now
+  (extractSmcConfig's uncprop, above; still 10). Also no change: the gpu
+  warning in an inlined static helper (inlined blocks don't go to the end
+  of the CFG; the string stays in source order), and cpu outer-test
+  spellings (`+ 1 != 0`, `!(== -1)`, `(int) != -1`, `< 0xffffffff` all
+  fold back to `!= -1`).
 - patchBlsResign/patchBlsBlmod (~330), fixupPatchSet: the patch-set walk
   loop isn't header-copied in the original; `-fno-tree-ch` reproduces
   that shape, so something in the source stops pass_ch.

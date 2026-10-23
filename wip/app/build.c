@@ -205,7 +205,7 @@ u32 blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen, u8 *hashOut,
 	const void *pubKey, const void *prvKey);
 u32 calcConfigSum(const u8 *buf);
-int patchSmcConfig(u8 *smc);
+u32 patchSmcConfig(u8 *smc);
 u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
 void display_buffer_hex(const u8 *buf, u32 len, u32 level);
 typedef struct { u32 state[24]; } XECRYPT_SHA_STATE;	/* SHA_CTX */
@@ -683,6 +683,11 @@ int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 	u32 i, j;
 	int found;
 
+	/* hints (wip/README.md): &size makes size SSA late (next <= size in
+	   both loops); the bound expects make found the rotated exit; the pin
+	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
+	   block under bb-reorder's duplication threshold */
+	(void)&size;
 	if (e->data)
 		free(e->data);
 	e->size = 0x400;
@@ -693,21 +698,21 @@ int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 	log_printf(1, "checking smc_config\n");
 	log_printf(1, "-------------------\n");
 	found = 0;
-	for (i = 0; i + 0x200 <= size; i += 0x200)
+	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
+		__asm__("" : : "S"(i + 0x200), "D"(buf));
 		if ((found = smcConfigOk(buf + i)) == 1)
 			break;
+	}
 	if (!found) {
-		for (i = 0; i + 0x210 <= size; i += 0x210)
+		for (i = 0; __builtin_expect(i + 0x210 <= size, 1); i += 0x210)
 			if ((found = smcConfigOk(buf + i)) == 1)
 				break;
-		if (!found) {
-			log_printf(0, "******* ERROR: unable to find SMC config data!\n");
-			return 2;
-		}
+		if (!found)
+			goto notfound;
 	}
 	if (checkZeros(buf + i + 0x20c, 4)) {
 		log_printf(1, "extracting config\n");
-		if (size - i >= 0x400)
+		if (__builtin_expect(size - i >= 0x400, 1))
 			memcpy(e->data, buf + i, 0x400);
 	} else {
 		if (size - i < 0x4200) {
@@ -732,6 +737,10 @@ int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 		log_printf(1, "---------------------\n");
 	}
 	return 0;
+notfound: __attribute__((hot));
+notfound2: __attribute__((hot));
+	log_printf(0, "******* ERROR: unable to find SMC config data!\n");
+	return 2;
 }
 
 int blmodMissing(struct fileent *e)
@@ -1050,10 +1059,11 @@ void showSmcConfig(const u8 *smc)
 }
 
 /* apply the ini's smc_config overrides; 1 if anything changed (then the
-   checksum is redone) */
-int patchSmcConfig(u8 *smc)
+   checksum is redone). u32, not int: extractSmcConfig's return must not
+   coalesce with this result (uncprop) */
+u32 patchSmcConfig(u8 *smc)
 {
-	int patched = 0;
+	u32 patched = 0;
 	int i;
 
 	log_printf(1, "Checking for smc config data patches\n");
