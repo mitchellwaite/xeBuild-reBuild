@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **588 of 617** (584 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **589 of 617** (585 built from `src/`, 4 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 20 / 25 | 403 / 432 |
+| `app/` | 20 / 25 | 404 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -37,7 +37,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | Object | State | Functions in C |
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
-| `app/image_write` | mixed; 0 of 6 drafted functions match in `wip/app/image_write.c` | 40 / 46 |
+| `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/net` | mixed; 0 of 2 drafted functions match in `wip/app/net.c` | 30 / 32 |
 | `app/build` | mixed; 2 of 16 drafted functions match in `wip/app/build.c` | 27 / 41 |
@@ -64,11 +64,11 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 40 / 46 in C</summary>
+<summary><code>app/image_write</code>: 41 / 46 in C</summary>
 
 - ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
 - ✅ `imgWritePage` (0x40ecc0)
-- ⬜ `imgWriteAt` (0x40eef0) (draft in `wip/`, no match yet)
+- ✅ `imgAdd.constprop.2` (0x40eef0)
 - ✅ `buildImage` (0x40f330)
 - ✅ `imageFree` (0x40fb10)
 - ✅ `calcEcd` (0x40fb60)

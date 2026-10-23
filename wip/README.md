@@ -1754,10 +1754,18 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 40 matching functions build from `src/app/image_write.c`, a mixed
+The 41 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
-externs; the `.s` keeps the data). Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
+externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
+clone of imgAdd for type 0, pad 1, built as `_imgAdd.constprop.2`: the
+src file carries imgAdd's and imgAddFile's bodies (OBJS `inline`; both
+still asm, so splice.py drops gcc's copies) so that their calls and
+writeInitialHeader's netKd calls make the clone, and with the off
+argument varying (imgAddFile) it stays a parameter. The clone needs `u32
+b` for the block loop (with `int b` VRP2 leaves the peel's third test
+`> 3`), but imgAdd itself is 88/78 with `u32 b` and 21/19 with `int b`,
+so the body is still not the original's. Draft of the whole object (IDA pseudocode: `build/decomp_13.txt`, made with
 `build/decomp_unit.py ... 13`). `sh wip/iwst.sh` prints every function's
 fncmp status. The data it uses are xb fields (0x28-0x5c: spare/hdr/raw
 buffers, sizes, FS start/end blocks) and COMMON globals from

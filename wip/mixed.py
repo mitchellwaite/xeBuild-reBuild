@@ -21,8 +21,10 @@ OBJS = {
                       inline=set(),
                       note=' and payloads, encoding the flash */'),
     'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
-                            regparm={'imgWriteStart': 3, 'imgWriteAt': 3, 'imgWritePage': 3},
-                            inline=set(),
+                            regparm={'imgWriteStart': 3, 'imgWritePage': 3},
+                            # asm still, here for their calls: imgWriteAt is
+                            # gcc's ipa-cp clone of imgAdd (type 0, pad 1)
+                            inline={'imgAdd', 'imgAddFile'},
                             note='bytes, writing the image to disk */',
                             # the .s keeps the object's data
                             subs=[('\nchar copyright[0x40] = "\\xa9 2004-2009 Microsoft Corporation. '

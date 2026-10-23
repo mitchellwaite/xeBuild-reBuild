@@ -210,6 +210,7 @@ static const char iw_4517f8[] = "flash header build version set to v.%d\n";
 static const char iw_451820[] = "\n***** ERROR: SMC size 0x%x not supported!!!\n\n";
 static const char iw_451850[] = "reset smc load address to 0x%x size 0x%x\n";
 static const char iw_45187c[] = "patch slot offset reset to: 0x%x\n";
+static const char iw_4518a0[] = "\n******* ERROR: adding %s will exceed available flash space! Skipped!\n\n";
 static const char iw_4518e8[] = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
 static const char iw_451924[] = "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n";
 static const char iw_451978[] = "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n";
@@ -236,9 +237,6 @@ static const char iw_451f80[] = "\tadding %s at raw offset 0x%x len 0x%x (end 0x
 
 /* still in image_write.s */
 int imgWriteStart(const void *src, u32 len, u16 next) __attribute__((regparm(3)));
-int imgWriteAt(u32 off, const void *src, u32 len, u16 next) __attribute__((regparm(3)));
-int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
-void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
 void writeFsTable(u32 off);
 int finalizeImage(void);
 
@@ -744,9 +742,138 @@ int imgBigBlock(void)
 	return xb.bigBlock;
 }
 
+int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
+{
+	u32 x, first, rem, tail, blocks, start, p, end, pages, npages, left;
+	u8 sp9, *s;
+	int partial;
+	u32 b;
+	u32 i;
+
+	if (xb.rawSize < off || xb.rawSize < off + len) {
+		return -1;
+	}
+	x = off & 0x3fff;
+	start = off >> 14;
+	first = x ? 0x4000 - x : 0;
+	if (len <= first) {
+		blocks = 1;
+		tail = len;
+	} else {
+		rem = len - first;
+		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		blocks = rem / 0x4000;
+		if (tail) {
+			blocks++;
+		}
+		if (x) {
+			blocks++;
+		}
+	}
+	memcpy(xb.hdr + off, src, len);
+	if (pad == 1) if (tail)
+		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
+#define BLK (start + b)
+	for (b = 0; b < blocks; b++) {
+		if (len % 512) {
+			npages = (len + 512) / 512;
+			pages = len / 512 + 1;
+		} else {
+			pages = npages = len / 512;
+		}
+		partial = type != 0 && type != '0' && len < 0x4000;
+		sp9 = 32 - pages;
+		left = pages;
+		if (left & 3)
+			left = (left + 4) & ~3;
+		if (!partial)
+			npages = 32;
+		p = 0;
+		if ((u8)(type - '1') < 15) {
+			p = xb.bigBlock ? off & 0x1ffff : off & 0x3fff;
+			if (p) p /= 512;
+		}
+		for (end = p + npages; p < end; p++) {
+			s = xb.spare + (BLK * 32 + p) * 16;
+			memset(s, 0, 16);
+			if (xb.bigBlock) {
+				s[0] = 0xff;
+				s[2] = (s[2] & 0xf0) | ((BLK >> 8) & 0xf);
+				s[1] = BLK;
+				if (type > 1) {
+					s[12] = (s[12] & 0xc0) | (type & 0x3f);
+					if (type != 0x2a && type != 0x2c) {
+						s[5] = 1;
+						s[9] = (((off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256) - left) >> 2;
+						s[8] = len >> 8;
+						s[7] = len;
+					} else {
+						if (type == 0x2c)
+							s[5] = 1;
+						s[9] = xb.spare9;
+						s[8] = xb.spare8;
+						s[7] = xb.spare7;
+					}
+				}
+			} else {
+				s[5] = 0xff;
+				s[1] = (s[1] & 0xf0) | ((BLK >> 8) & 0xf);
+				s[0] = BLK;
+				if (type > 1) {
+					s[2] = 1;
+					s[12] = (s[12] & 0xc0) | (type & 0x3f);
+					s[9] = sp9;
+					if (type != '0') {
+						s[8] = len >> 8;
+						s[7] = len;
+					}
+				}
+			}
+		}
+	}
+#undef BLK
+	if (next != 0xf1f1) {
+		
+		for (i = 0; i < blocks; i++) {
+			if (next != 0 && next != 0xffff) {
+				fsTable[start - xb.fsStart + i] = SWAP16(next);
+			} else {
+				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
+			}
+		}
+		if (next == 0xffff) {
+			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
+		}
+	}
+	imgEnd = off + len;
+	return 0;
+}
+
 int imgFits(u32 off, u32 len)
 {
 	return (xb.fsEnd - 1) * 0x4000 >= off + len;
+}
+
+void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
+{
+	u32 off = imgSizeAligned();
+	u32 start, b, p, pages, npages, first, rem, tail, blocks;
+	u16 blk;
+	u8 *s;
+
+	if (!imgFits(off, len)) {
+		log_printf(0, iw_4518a0, name);
+		return;
+	}
+	fsFiles[nFsFiles].block = SWAP16((u16)((off >> 14) - xb.fsStart));
+	fsFiles[nFsFiles].size = SWAP32(len);
+	strcpy(fsFiles[nFsFiles].name, name);
+	fsFiles[nFsFiles].time = *time;
+	if (!xb.bigBlock)
+		imgAdd(off, data, len, 0, 0xffff, 1);
+	else
+		imgAdd(off, data, len, 0x2a, 0xffff, 1);
+	nFsFiles++;
 }
 
 void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len)
@@ -843,9 +970,9 @@ void writeInitialHeader(void)
 	if (xb.netKd && xb.netKdSize) {
 		log_printf(1, iw_4519f4);
 		if (xb.bigBlock)
-			imgWriteAt(0x80, xb.netKd, xb.netKdSize, 0xf1f1);
+			imgAdd(0x80, xb.netKd, xb.netKdSize, 0, 0xf1f1, 1);
 		else
-			imgWriteAt(0x80, xb.netKd, xb.netKdSize, 0x1ffb);
+			imgAdd(0x80, xb.netKd, xb.netKdSize, 0, 0x1ffb, 1);
 	}
 }
 

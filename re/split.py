@@ -524,7 +524,9 @@ SYMBOLS = {
     # block from fsStart (479efc) to fsEnd (479ef8): the FS table build.s's
     # "Fixing up FS table..." / "Writing FS table to image" logs refer to.
     0x40e950: '_imgWriteStart',     # regparm (src, len, fs type): copy to offset 0
-    0x40eef0: '_imgWriteAt',        # regparm (offset, src, len) + stack fs type
+    # imgWriteAt: regparm (offset, src, len) + stack fs type.  It is gcc's
+    # ipa-cp clone of imgAdd for type 0, pad 1 (the C has imgAdd's body)
+    0x40eef0: '_imgAdd.constprop.2',
     0x4100b0: '_setBlockSpare',     # per-page LBA + ECD for one block
     0x410220: '_imgSizeAligned',    # image size rounded up to 0x4000
     0x4104e0: '_imgSetSize',
@@ -550,7 +552,7 @@ SYMBOLS = {
     # app/image_write's data (COMMON globals in common_bss.s, and its own)
     0x4c9164: '_mmcAnchor', 0x4c97c0: '_fsFiles', 0x4cb7c0: '_fsTable',
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
-    0x46f9c0: '_mobileOffset', 0x46f9e0: '_smcPage',
+    0x46f9c0: '_mobileOffset', 0x46f9c4: '_nFsFiles', 0x46f9e0: '_smcPage',
     # app/image_write's strings that its C functions use (wip/mixed.py)
     0x451760: '_iw_451760', 0x45179c: '_iw_45179c',
     0x4517f8: '_iw_4517f8', 0x451820: '_iw_451820', 0x451850: '_iw_451850',
@@ -563,6 +565,7 @@ SYMBOLS = {
     0x451c38: '_iw_451c38', 0x451c94: '_iw_451c94', 0x451cdd: '_iw_451cdd',
     0x451f80: '_iw_451f80',
     0x451924: '_iw_451924', 0x451978: '_iw_451978', 0x4519f4: '_iw_4519f4',
+    0x4518a0: '_iw_4518a0',
     # app/build's strings that its C functions use (wip/mixed.py)
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
@@ -672,7 +675,7 @@ C_FUNCS = {
     0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
     0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
-    0x40ecc0,                                # imgWritePage
+    0x40ecc0, 0x40eef0,                      # imgWritePage imgWriteAt (imgAdd.constprop.2)
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
