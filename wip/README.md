@@ -2026,3 +2026,31 @@ Still off:
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
   structure only.
+- imgAdd rebuilt (2026-10-23, wip/app/image_write_clone.c): 175 raw /
+  47 normalised lines, and its imgWriteAt clone 11/11. What each piece
+  does:
+  - The page counts, `partial`, `sp9`, `left`, `o128` and `end =
+    partial ? npages : 32` are computed inside the block loop (LIM
+    hoists them). With them before the loop the `len <= first` path
+    shares the memcpy block with the others; inside the loop jump
+    threading gives it its own memcpy copy and jumpy `pad == 1`, `len`
+    tests (blocks = 1 there decides the loop guard), as in the original.
+    `end = partial ? ...` before p's computation puts the partial test
+    at the loop head, with the !partial, type-out-of-range path threaded
+    to `end = 32, p = 0`.
+  - `first = x ? 0x4000 - x : 0` without the `(int)` cast: with it PRE
+    makes a new name for first and the compare becomes `cmp [len],first`.
+  - `if (pad == 1) if (tail)` (nested), `if (type != 0x2a && type !=
+    0x2c)` for the bigBlock spare bytes (the 42/44 arm second), `partial
+    = type != 0 && type != '0' && len < 0x4000`, `pages`/`npages` from
+    one `if (len % 512)`, no labels and no `"g"(next)` asm.
+  - `u32 i` for the FS-table loop: the vector peel then matches in
+    imgAdd, and the clone keeps only the `== 3` / `> 3` test and its
+    exit blocks.
+  Left: the hoisted setup block's order. Our npages cmov is TER'd into
+  its one use (`partial ? npages : 32`), so it is expanded late and ties
+  its output to `len >> 9`; the original computes it right after the
+  `len & 511` test (`cmove edx,eax` into the `(len + 512) >> 9`
+  register). `type - '1'` also comes first in the original. Statement
+  order/form searches (scratch perm.py: hill climb over unit order and
+  choice points) found nothing better.

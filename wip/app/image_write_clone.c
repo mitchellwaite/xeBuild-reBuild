@@ -2,10 +2,10 @@
    Same as image_write.c except imgAdd's body (written for its clone) and
    the imgWriteAt/imgWriteStart calls, which call imgAdd(off, src, len, 0,
    next, 1) (off 0 for imgWriteStart). Compare with:
-   FNCMP_GCCSYM=_imgAdd.constprop.2 python re/fncmp.py
+   FNCMP_GCCSYM=_imgAdd.constprop.3 python re/fncmp.py
    wip/app/image_write_clone.c imgWriteAt -O3 --param
-   builtin-expect-probability=50 (160 changed lines; 68 with registers
-   normalised).
+   builtin-expect-probability=50 (11 changed lines, 11 with registers
+   normalised; imgAdd itself 175/47).
    wip/README.md "app/image_write.c" has the reasoning. */
 /* image_write: flash layout (header, CB/CE, SMC config, Mobile*.dat, the
    FS table), spare (LBA, ECD) bytes, writing the image to disk */
@@ -818,14 +818,15 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 {
 	u32 x, first, rem, tail, blocks, start, p, end, pages, npages, left, o128;
 	u8 sp9, *s;
-	int partial, b, i;
+	int partial, b;
+	u32 i;
 
 	if (xb.rawSize < off || xb.rawSize < off + len) {
 		return -1;
 	}
-	start = off >> 14;
 	x = off & 0x3fff;
-	first = x ? 0x4000 - (int)x : 0;
+	start = off >> 14;
+	first = x ? 0x4000 - x : 0;
 	if (len <= first) {
 		blocks = 1;
 		tail = len;
@@ -837,31 +838,30 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			blocks++;
 		}
 		if (x) {
-			lc5: __attribute__((cold));
 			blocks++;
 		}
 	}
 	memcpy(xb.hdr + off, src, len);
-	if (pad == 1 && tail)
-			memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
-	npages = len / 512;
-	if (len % 512)
-		npages = (len + 512) / 512;
-	pages = len / 512 + (len % 512 != 0);
-	partial = len < 0x4000 && type != 0 && type != '0';
-	sp9 = 32 - pages;
-	o128 = off & 0x1ffff;
-	left = pages;
-	if (left & 3)
-		left = (left + 4) & ~3;
+	if (pad == 1) if (tail)
+		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
+		if (len % 512) {
+			pages = len / 512 + 1;
+			npages = (len + 512) / 512;
+		} else
+			pages = npages = len / 512;
+		partial = type != 0 && type != '0' && len < 0x4000;
+		sp9 = 32 - pages;
+		left = pages & 3 ? (pages + 4) & ~3 : pages;
+		end = partial ? npages : 32;
+		o128 = off & 0x1ffff;
 		p = 0;
 		if ((u8)(type - '1') < 15) {
 			p = xb.bigBlock ? o128 : off & 0x3fff;
 			if (p) p /= 512;
 		}
-		for (end = p + (partial ? npages : 32); p < end; p++) {
+		for (end += p; p < end; p++) {
 			s = xb.spare + (BLK * 32 + p) * 16;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
@@ -870,17 +870,17 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 				s[1] = BLK;
 				if (type > 1) {
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
-					if (type == 0x2a || type == 0x2c) {
+					if (type != 0x2a && type != 0x2c) {
+						s[5] = 1;
+						s[9] = ((o128 ? 256 - o128 / 512 : 256) - left) >> 2;
+						s[8] = len >> 8;
+						s[7] = len;
+					} else {
 						if (type == 0x2c)
 							s[5] = 1;
 						s[9] = xb.spare9;
 						s[8] = xb.spare8;
 						s[7] = xb.spare7;
-					} else {
-						s[5] = 1;
-						s[9] = ((o128 ? 256 - o128 / 512 : 256) - left) >> 2;
-						s[8] = len >> 8;
-						s[7] = len;
 					}
 				}
 			} else {
@@ -901,13 +901,10 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	}
 #undef BLK
 	if (next != 0xf1f1) {
-		lc6: __attribute__((hot));
 		for (i = 0; i < blocks; i++) {
 			if (next != 0 && next != 0xffff) {
-				lc7: __attribute__((cold));
 				fsTable[start - xb.fsStart + i] = SWAP16(next);
 			} else {
-				lc8: __attribute__((cold));
 				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
 			}
 		}
@@ -915,7 +912,6 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
 		}
 	}
-	__asm__("" :: "g"(next));
 	imgEnd = off + len;
 	return 0;
 }
