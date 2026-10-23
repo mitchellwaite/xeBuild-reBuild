@@ -47,12 +47,10 @@ had that name, so `re/split.py` renames the slot to `__imp___stat`
 ## app/options.c
 
 Draft of the whole object, with string literals, from before the hints.
-Every function is built from `src/app/options.c` now, a mixed object that
-uses `extern` names for the strings (the data is still in options.s).
-setBoolOption's 4 fncmp lines are ddisasm writing 0x400000 as
-`__ImageBase` (the bytes match).  Next: the data into C (literals back or
-`static const` arrays in the original's order, like filelist_ini) and the
-object out of `C_FUNCS`.  Notes from getting there:
+The object is built entirely from `src/app/options.c` now (no options.s;
+README has how the strings are emitted).  setBoolOption's 4 fncmp lines
+are ddisasm writing 0x400000 as `__ImageBase` (the bytes match).  Notes
+from getting there:
 
 - `optIniBool` builds from src now: an empty asm pins the OR result to
   eax (`"+a"`), so sched2 can't hoist `mov eax,1` above the store.  The

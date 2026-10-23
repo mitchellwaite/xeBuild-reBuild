@@ -363,57 +363,6 @@ SYMBOLS = {
     0x425110: '_parseOption', 0x427000: '_parseRawPatch', 0x427260: '_addPatch',
     0x40aad0: '_getIniBool', 0x40abf0: '_iniBoolInvalid', 0x40acf0: '_getIniU32',
     0x40ade0: '_iniU32Invalid',
-    # options.s strings the mixed options.c refers to (extern names)
-    0x457e3a: '_str_xenon', 0x457e40: '_msg_ctype_xenon', 0x457e61: '_str_zephyr',
-    0x457e68: '_msg_ctype_zephyr', 0x457e8a: '_str_falcon', 0x457e94: '_msg_ctype_falcon',
-    0x457eb6: '_str_jasper', 0x457ebd: '_str_jasperbc', 0x457ec8: '_msg_ctype_jasper',
-    0x457eea: '_str_jaspersb', 0x457ef4: '_msg_ctype_jaspersb', 0x457f21: '_str_jasperbb',
-    0x457f2c: '_msg_ctype_jasperbb', 0x457f58: '_str_jasper256', 0x457f62: '_str_jasper512',
-    0x457f6c: '_str_trinity', 0x457f74: '_msg_ctype_trinity', 0x457f97: '_str_trinitybb',
-    0x457fa4: '_msg_ctype_trinitybb', 0x457fd1: '_str_trinitybigffs', 0x457fe0: '_msg_ctype_trinitybigffs',
-    0x45801d: '_str_corona', 0x458024: '_msg_ctype_corona', 0x458046: '_str_coronabb',
-    0x458050: '_msg_ctype_coronabb', 0x45807c: '_str_coronabigffs', 0x45808c: '_msg_ctype_coronabigffs',
-    0x4580c8: '_str_corona4g', 0x4580d4: '_msg_ctype_corona4g', 0x4580fa: '_str_winchester',
-    0x458108: '_msg_ctype_winchester', 0x45812e: '_str_winchester4g', 0x45813c: '_msg_ctype_winchester4g',
-    0x458166: '_str_winchesterbb', 0x458174: '_msg_ctype_winchesterbb', 0x4581a4: '_str_winchesterbigffs',
-    0x4581b8: '_msg_ctype_winchesterbigffs', 0x4581f8: '_str_jasperbigffs', 0x458244: '_msg_iniInvalid',
-    0x4582ad: '_str_false', 0x4582b3: '_str_true', 0x4582b8: '_msg_opt_nodvd',
-    0x4582ec: '_msg_opt_olddvd', 0x45831f: '_msg_opt_cygnos', 0x458333: '_msg_opt_demon',
-    0x458346: '_str_nomobile', 0x45834f: '_msg_opt_nomobile', 0x458365: '_str_smcnocheck',
-    0x458370: '_msg_opt_smcnocheck', 0x458388: '_str_noremap', 0x458390: '_msg_opt_noremap',
-    0x4583a5: '_str_noecdremap', 0x4583b0: '_msg_opt_noecdremap', 0x4583c8: '_str_nandmu',
-    0x4583cf: '_msg_opt_nandmu', 0x4583e3: '_str_nosecurity', 0x4583ee: '_msg_opt_nosecurity',
-    0x458406: '_str_nosusecurity', 0x458413: '_str_patchsmc', 0x45841c: '_msg_opt_patchsmc',
-    0x458432: '_str_smcnoeject', 0x45843d: '_msg_opt_smcnoeject', 0x458455: '_str_smcnoblink',
-    0x458460: '_msg_opt_smcnoblink', 0x458478: '_str_nodvd', 0x45847e: '_str_olddvd',
-    0x458485: '_str_cygnos', 0x45848c: '_str_demon', 0x458494: '_msg_optNoValue',
-    0x45828d: '_str_power', 0x458293: '_str_remopower', 0x45829d: '_str_remox',
-    0x4582a3: '_str_winbutton', 0x457df0: '_str_wirelessx', 0x457dfa: '_str_wiredx',
-    0x457e01: '_str_wiredxb1', 0x457e0a: '_str_wiredxb2', 0x457e13: '_str_wiredxb3',
-    0x457e1c: '_str_wiredxf1', 0x457e25: '_str_wiredxf2', 0x457e2e: '_str_eject',
-    0x457e34: '_str_kiosk', 0x458208: '_msg_optPerbox', 0x458227: '_msg_optIni',
-    0x458ae8: '_msg_rawPatchParsed', 0x458b28: '_msg_rawPatchBadOffset', 0x458b80: '_msg_rawPatchSlotsFull',
-    0x458bbc: '_msg_patchParseFailed', 0x458bf5: '_str_binFmt', 0x458bfc: '_msg_patchDuplicate',
-    0x458c54: '_msg_patchTooMany', 0x458c9c: '_str_addon',
-    # parseOption's
-    0x4584de: '_str_nl', 0x4584e0: '_str_cputemp', 0x4584e8: '_msg_opt_cputemp',
-    0x458508: '_str_gputemp', 0x458510: '_msg_opt_gputemp', 0x458530: '_str_edramtemp',
-    0x45853c: '_msg_opt_edramtemp', 0x45855e: '_str_overcputemp', 0x45856c: '_msg_opt_overcputemp',
-    0x458590: '_str_overgputemp', 0x45859c: '_msg_opt_overgputemp', 0x4585c0: '_str_overedramtemp',
-    0x4585d0: '_msg_opt_overedramtemp', 0x4585f6: '_str_cpufan', 0x458600: '_msg_opt_cpufan',
-    0x45861f: '_str_gpufan', 0x458628: '_msg_opt_gpufan', 0x458647: '_str_avregion',
-    0x458650: '_msg_opt_avregion', 0x458673: '_str_gameregion', 0x458680: '_msg_opt_gameregion',
-    0x4586a5: '_str_dvdregion', 0x4586b0: '_msg_opt_dvdregion', 0x4586d4: '_str_xellbutton',
-    0x4586e0: '_msg_opt_xellbutton', 0x458703: '_str_xellbutton2', 0x458710: '_msg_opt_xellbutton2',
-    0x458734: '_str_dualboot', 0x458740: '_msg_opt_dualboot', 0x458761: '_str_cfldv',
-    0x458768: '_msg_cfldvTooLarge', 0x4587c0: '_msg_opt_cfldv', 0x4587de: '_str_macid',
-    0x4587e4: '_msg_opt_macid', 0x458801: '_str_hex02', 0x458806: '_str_colon',
-    0x458808: '_msg_macidBadValues', 0x458854: '_msg_macidBadLength', 0x45889a: '_str_dvdkey',
-    0x4588a4: '_msg_optUnknownValue', 0x4588f8: '_msg_optIncomplete', 0x458948: '_msg_optBadValue',
-    0x458988: '_msg_iniCfldvTooLarge', 0x4589e0: '_msg_iniMacidBadChars',
-    0x458a10: '_msg_iniMacidDiscard', 0x458a38: '_msg_iniMacidBadLength',
-    0x458a60: '_msg_xellDefault', 0x458aa0: '_msg_xellAltDisabled',
-    0x458ac3: '_msg_dualbootIgnored', 0x458ade: '_str_rev', 0x458ae2: '_str_revSuffix',
     # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
@@ -677,14 +626,6 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
-    # app/options (parseButton's ipa-split part at 449640 is gcc's
-    # .text.unlikely, which splice.py takes too)
-    0x4236f0,                                # baseFileExists.part.0
-    0x424930, 0x424a70, 0x449640,            # optIniBool parseButton parseButton.part.0
-    0x423730, 0x423750, 0x423830, 0x424170,  # baseFileExists perboxExists iniConsoleType setConsoleType
-    0x424a10, 0x424b20, 0x424b60, 0x424bb0,  # optIniInt stripColons macidSet setBoolOption
-    0x425110, 0x4258e0, 0x4259a0,            # parseOption parseCmdOptions applyIniOptions
-    0x427000, 0x4271a0, 0x427260, 0x427340,  # parseRawPatch parseRawPatches addPatch loadAddons
     # app/image_read (the rest are drafted in wip/app/image_read.c)
     0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile
     0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset

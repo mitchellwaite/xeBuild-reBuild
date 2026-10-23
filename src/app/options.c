@@ -1,9 +1,10 @@
 /* options: console types (xenon...corona), boot options from the command
-   line, options.ini and perbox files, optional patches.  Mixed object: the
-   functions here are spliced into options.s (re/splice.py), which still
-   holds the data, so string literals are extern names for the .s's
-   strings.  applyIniOptions is built with a crafted profile (build.sh,
-   src/app/options.prof); everything else keeps gcc's guessed one. */
+   line, options.ini and perbox files, optional patches.  The strings are
+   static arrays in the original's .rdata order (literals in the original:
+   several functions are matched with hints that expand their blocks in
+   another order).  applyIniOptions is built with a crafted profile
+   (build.sh, src/app/options.prof); everything else keeps gcc's guessed
+   one. */
 #include <stdio.h>
 #include <string.h>
 
@@ -72,154 +73,168 @@ int parseOptionInt(char *opt) __asm__("_parseOption");
 
 extern struct xebuild xb;
 
-/* strings in options.s */
-extern const char str_xenon[];	/* "xenon" */
-extern const char msg_ctype_xenon[];	/* "Using xenon ctype (perbox file)\n" */
-extern const char str_zephyr[];	/* "zephyr" */
-extern const char msg_ctype_zephyr[];	/* "Using zephyr ctype (perbox file)\n" */
-extern const char str_falcon[];	/* "falcon" */
-extern const char msg_ctype_falcon[];	/* "Using falcon ctype (perbox file)\n" */
-extern const char str_jasper[];	/* "jasper" */
-extern const char str_jasperbc[];	/* "jasperbc" */
-extern const char msg_ctype_jasper[];	/* "Using jasper ctype (perbox file)\n" */
-extern const char str_jaspersb[];	/* "jaspersb" */
-extern const char msg_ctype_jaspersb[];	/* "Using jasper smallblock ctype (perbox..." */
-extern const char str_jasperbb[];	/* "jasperbb" */
-extern const char msg_ctype_jasperbb[];	/* "Using jasper big block ctype (perbox ..." */
-extern const char str_jasper256[];	/* "jasper256" */
-extern const char str_jasper512[];	/* "jasper512" */
-extern const char str_trinity[];	/* "trinity" */
-extern const char msg_ctype_trinity[];	/* "Using trinity ctype (perbox file)\n" */
-extern const char str_trinitybb[];	/* "trinitybb" */
-extern const char msg_ctype_trinitybb[];	/* "Using trinity big block ctype (perbox..." */
-extern const char str_trinitybigffs[];	/* "trinitybigffs" */
-extern const char msg_ctype_trinitybigffs[];	/* "Using trinity big block big file syst..." */
-extern const char str_corona[];	/* "corona" */
-extern const char msg_ctype_corona[];	/* "Using corona ctype (perbox file)\n" */
-extern const char str_coronabb[];	/* "coronabb" */
-extern const char msg_ctype_coronabb[];	/* "Using corona big block ctype (perbox ..." */
-extern const char str_coronabigffs[];	/* "coronabigffs" */
-extern const char msg_ctype_coronabigffs[];	/* "Using corona big block big file syste..." */
-extern const char str_corona4g[];	/* "corona4g" */
-extern const char msg_ctype_corona4g[];	/* "Using corona MMC ctype (perbox file)\n" */
-extern const char str_winchester[];	/* "winchester" */
-extern const char msg_ctype_winchester[];	/* "Using winchester ctype (perbox file)\n" */
-extern const char str_winchester4g[];	/* "winchester4g" */
-extern const char msg_ctype_winchester4g[];	/* "Using winchester MMC ctype (perbox fi..." */
-extern const char str_winchesterbb[];	/* "winchesterbb" */
-extern const char msg_ctype_winchesterbb[];	/* "Using winchester big block ctype (per..." */
-extern const char str_winchesterbigffs[];	/* "winchesterbigffs" */
-extern const char msg_ctype_winchesterbigffs[];	/* "Using winchester big block big file s..." */
-extern const char str_jasperbigffs[];	/* "jasperbigffs" */
-extern const char msg_iniInvalid[];	/* "***** WARNING: options.ini setting '%..." */
-extern const char str_false[];	/* "false" */
-extern const char str_true[];	/* "true" */
-extern const char msg_optPerbox[];	/* "Using %s option (perbox file)\n" */
-extern const char msg_optIni[];	/* "Using %s option (ini file)\n" */
-extern const char str_power[];	/* "power" */
-extern const char str_remopower[];	/* "remopower" */
-extern const char str_remox[];	/* "remox" */
-extern const char str_winbutton[];	/* "winbutton" */
-extern const char str_wirelessx[];	/* "wirelessx" */
-extern const char str_wiredx[];	/* "wiredx" */
-extern const char str_wiredxb1[];	/* "wiredxb1" */
-extern const char str_wiredxb2[];	/* "wiredxb2" */
-extern const char str_wiredxb3[];	/* "wiredxb3" */
-extern const char str_wiredxf1[];	/* "wiredxf1" */
-extern const char str_wiredxf2[];	/* "wiredxf2" */
-extern const char str_eject[];	/* "eject" */
-extern const char str_kiosk[];	/* "kiosk" */
-extern const char msg_opt_nodvd[];	/* "Using NODVD (tray status fully open c..." */
-extern const char msg_opt_olddvd[];	/* "Using OLDDVD (tray status not closed ..." */
-extern const char msg_opt_cygnos[];	/* "Using CYGNOS option" */
-extern const char msg_opt_demon[];	/* "Using DEMON option" */
-extern const char str_nomobile[];	/* "nomobile" */
-extern const char msg_opt_nomobile[];	/* "Using NOMOBILE option" */
-extern const char str_smcnocheck[];	/* "smcnocheck" */
-extern const char msg_opt_smcnocheck[];	/* "Using SMCNOCHECK option" */
-extern const char str_noremap[];	/* "noremap" */
-extern const char msg_opt_noremap[];	/* "Using NOREMAP option" */
-extern const char str_noecdremap[];	/* "noecdremap" */
-extern const char msg_opt_noecdremap[];	/* "Using NOECDREMAP option" */
-extern const char str_nandmu[];	/* "nandmu" */
-extern const char msg_opt_nandmu[];	/* "Using NANDMU option" */
-extern const char str_nosecurity[];	/* "nosecurity" */
-extern const char msg_opt_nosecurity[];	/* "Using NOSECURITY option" */
-extern const char str_nosusecurity[];	/* "nosusecurity" */
-extern const char str_patchsmc[];	/* "patchsmc" */
-extern const char msg_opt_patchsmc[];	/* "Using PATCHSMC option" */
-extern const char str_smcnoeject[];	/* "smcnoeject" */
-extern const char msg_opt_smcnoeject[];	/* "Using SMCNOEJECT option" */
-extern const char str_smcnoblink[];	/* "smcnoblink" */
-extern const char msg_opt_smcnoblink[];	/* "Using SMCNOBLINK option" */
-extern const char str_nodvd[];	/* "nodvd" */
-extern const char str_olddvd[];	/* "olddvd" */
-extern const char str_cygnos[];	/* "cygnos" */
-extern const char str_demon[];	/* "demon" */
-extern const char msg_optNoValue[];	/* "\n\n***** ERROR: option '%s' provided..." */
-extern const char msg_rawPatchParsed[];	/* "parsed [rawpatch] (%d) from command l..." */
-extern const char msg_rawPatchBadOffset[];	/* "***** ERROR: [rawpatch] command optio..." */
-extern const char msg_rawPatchSlotsFull[];	/* "***** ERROR: %d of %d [rawpatch] slot..." */
-extern const char msg_patchParseFailed[];	/* "***** ERROR: parsing optional patch s..." */
-extern const char str_binFmt[];	/* "%s.bin" */
-extern const char msg_patchDuplicate[];	/* "***** WARNING: %s was provided both o..." */
-extern const char str_addon[];	/* "addon" */
-extern const char msg_patchTooMany[];	/* "***** WARNING: exceeded total number ..." */
-extern const char str_nl[];	/* "\n" */
-extern const char str_cputemp[];	/* "cputemp" */
-extern const char msg_opt_cputemp[];	/* "Using CPUTEMP option, value %d\n" */
-extern const char str_gputemp[];	/* "gputemp" */
-extern const char msg_opt_gputemp[];	/* "Using GPUTEMP option, value %d\n" */
-extern const char str_edramtemp[];	/* "edramtemp" */
-extern const char msg_opt_edramtemp[];	/* "Using EDRAMTEMP option, value %d\n" */
-extern const char str_overcputemp[];	/* "overcputemp" */
-extern const char msg_opt_overcputemp[];	/* "Using OVERCPUTEMP option, value %d\n" */
-extern const char str_overgputemp[];	/* "overgputemp" */
-extern const char msg_opt_overgputemp[];	/* "Using OVERGPUTEMP option, value %d\n" */
-extern const char str_overedramtemp[];	/* "overedramtemp" */
-extern const char msg_opt_overedramtemp[];	/* "Using OVEREDRAMTEMP option, value %d\..." */
-extern const char str_cpufan[];	/* "cpufan" */
-extern const char msg_opt_cpufan[];	/* "Using CPUFAN option, value %d\n" */
-extern const char str_gpufan[];	/* "gpufan" */
-extern const char msg_opt_gpufan[];	/* "Using GPUFAN option, value %d\n" */
-extern const char str_avregion[];	/* "avregion" */
-extern const char msg_opt_avregion[];	/* "Using AVREGION option, value 0x%x\n" */
-extern const char str_gameregion[];	/* "gameregion" */
-extern const char msg_opt_gameregion[];	/* "Using GAMEREGION option, value 0x%x\n" */
-extern const char str_dvdregion[];	/* "dvdregion" */
-extern const char msg_opt_dvdregion[];	/* "Using DVDREGION option, value 0x%x\n" */
-extern const char str_xellbutton[];	/* "xellbutton" */
-extern const char msg_opt_xellbutton[];	/* "Using XELLBUTTON option, value %s\n" */
-extern const char str_xellbutton2[];	/* "xellbutton2" */
-extern const char msg_opt_xellbutton2[];	/* "Using XELLBUTTON2 option, value %s\n" */
-extern const char str_dualboot[];	/* "dualboot" */
-extern const char msg_opt_dualboot[];	/* "Using DUALBOOT option, value %s\n" */
-extern const char str_cfldv[];	/* "cfldv" */
-extern const char msg_cfldvTooLarge[];	/* "***** WARNING: cfldv value %d on comm..." */
-extern const char msg_opt_cfldv[];	/* "Using CFLDV option, value %d\n" */
-extern const char str_macid[];	/* "macid" */
-extern const char msg_opt_macid[];	/* "Using MACID option address: " */
-extern const char str_hex02[];	/* "%02x" */
-extern const char str_colon[];	/* ":" */
-extern const char msg_macidBadValues[];	/* "\n\n***** ERROR: invalid values in ma..." */
-extern const char msg_macidBadLength[];	/* "\n\n***** ERROR: invalid length macid..." */
-extern const char str_dvdkey[];	/* "dvdkey" */
-extern const char msg_optUnknownValue[];	/* "\n\n***** ERROR: unknown option '%s' ..." */
-extern const char msg_optIncomplete[];	/* "\n\n***** ERROR: unknown or incomplet..." */
-extern const char msg_optBadValue[];	/* "\n\n***** ERROR: parsing option '%s',..." */
-extern const char msg_iniCfldvTooLarge[];	/* "***** WARNING: cfldv value %d in opti..." */
-extern const char msg_iniMacidBadChars[];	/* "***** WARNING: invalid characters in ..." */
-extern const char msg_iniMacidDiscard[];	/* "' provided in ini file! Discarding!\n" */
-extern const char msg_iniMacidBadLength[];	/* "***** WARNING: invalid length macid '" */
-extern const char msg_xellDefault[];	/* "default console DVD eject button is b..." */
-extern const char msg_xellAltDisabled[];	/* "alternate xell button is disabled\n" */
-extern const char msg_dualbootIgnored[];	/* "dualboot setting ignored!\n" */
-extern const char str_rev[];	/* "rev" */
-extern const char str_revSuffix[];	/* "_%s" */
+/* the strings, in the original's .rdata order: gcc emits static variables
+   in reverse definition order, so they are defined last to first.  Arrays
+   start 4-aligned where the original pads before them */
+static const char str_addon[] __attribute__((aligned(1))) = "addon";
+static const char msg_patchTooMany[] __attribute__((aligned(4))) = "***** WARNING: exceeded total number of optional patches with ini  %s!\n";
+static const char msg_patchDuplicate[] __attribute__((aligned(1))) = "***** WARNING: %s was provided both on command line and in ini, filtered duplicate!\n";
+static const char str_binFmt[] __attribute__((aligned(1))) = "%s.bin";
+static const char msg_patchParseFailed[] __attribute__((aligned(4))) = "***** ERROR: parsing optional patch string '%s' failed!\n";
+static const char msg_rawPatchSlotsFull[] __attribute__((aligned(4))) = "***** ERROR: %d of %d [rawpatch] slots are already full!\n";
+static const char msg_rawPatchBadOffset[] __attribute__((aligned(1))) = "***** ERROR: [rawpatch] command option '%s' does not appear to have sane offset info!\n";
+static const char msg_rawPatchParsed[] __attribute__((aligned(4))) = "parsed [rawpatch] (%d) from command line file '%s' offset 0x%x\n";
+static const char str_revSuffix[] __attribute__((aligned(1))) = "_%s";
+static const char str_rev[] __attribute__((aligned(1))) = "rev";
+static const char msg_dualbootIgnored[] __attribute__((aligned(1))) = "dualboot setting ignored!\n";
+static const char msg_xellAltDisabled[] __attribute__((aligned(4))) = "alternate xell button is disabled\n";
+static const char msg_xellDefault[] __attribute__((aligned(4))) = "default console DVD eject button is being used to start xell\n";
+static const char msg_iniMacidBadLength[] __attribute__((aligned(4))) = "***** WARNING: invalid length macid '";
+static const char msg_iniMacidDiscard[] __attribute__((aligned(4))) = "' provided in ini file! Discarding!\n";
+static const char msg_iniMacidBadChars[] __attribute__((aligned(4))) = "***** WARNING: invalid characters in macid '";
+static const char msg_iniCfldvTooLarge[] __attribute__((aligned(4))) = "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of 32\n";
+static const char msg_optBadValue[] __attribute__((aligned(1))) = "\n\n***** ERROR: parsing option '%s', value '%s' is incorrect!\n";
+static const char msg_optIncomplete[] __attribute__((aligned(4))) = "\n\n***** ERROR: unknown or incomplete option '%s' provided on the command line!\n";
+static const char msg_optUnknownValue[] __attribute__((aligned(4))) = "\n\n***** ERROR: unknown option '%s' with value '%s' provided on the command line!\n";
+static const char str_dvdkey[] __attribute__((aligned(1))) = "dvdkey";
+static const char msg_macidBadLength[] __attribute__((aligned(4))) = "\n\n***** ERROR: invalid length macid %s provided on the command line!\n";
+static const char msg_macidBadValues[] __attribute__((aligned(1))) = "\n\n***** ERROR: invalid values in macid %s provided on the command line!\n";
+static const char str_colon[] __attribute__((aligned(1))) = ":";
+static const char str_hex02[] __attribute__((aligned(1))) = "%02x";
+static const char msg_opt_macid[] __attribute__((aligned(1))) = "Using MACID option address: ";
+static const char str_macid[] __attribute__((aligned(1))) = "macid";
+static const char msg_opt_cfldv[] __attribute__((aligned(1))) = "Using CFLDV option, value %d\n";
+static const char msg_cfldvTooLarge[] __attribute__((aligned(4))) = "***** WARNING: cfldv value %d on command line is too large, setting to max value of 32\n";
+static const char str_cfldv[] __attribute__((aligned(1))) = "cfldv";
+static const char msg_opt_dualboot[] __attribute__((aligned(4))) = "Using DUALBOOT option, value %s\n";
+static const char str_dualboot[] __attribute__((aligned(1))) = "dualboot";
+static const char msg_opt_xellbutton2[] __attribute__((aligned(4))) = "Using XELLBUTTON2 option, value %s\n";
+static const char str_xellbutton2[] __attribute__((aligned(1))) = "xellbutton2";
+static const char msg_opt_xellbutton[] __attribute__((aligned(4))) = "Using XELLBUTTON option, value %s\n";
+static const char str_xellbutton[] __attribute__((aligned(1))) = "xellbutton";
+static const char msg_opt_dvdregion[] __attribute__((aligned(4))) = "Using DVDREGION option, value 0x%x\n";
+static const char str_dvdregion[] __attribute__((aligned(1))) = "dvdregion";
+static const char msg_opt_gameregion[] __attribute__((aligned(4))) = "Using GAMEREGION option, value 0x%x\n";
+static const char str_gameregion[] __attribute__((aligned(1))) = "gameregion";
+static const char msg_opt_avregion[] __attribute__((aligned(1))) = "Using AVREGION option, value 0x%x\n";
+static const char str_avregion[] __attribute__((aligned(1))) = "avregion";
+static const char msg_opt_gpufan[] __attribute__((aligned(4))) = "Using GPUFAN option, value %d\n";
+static const char str_gpufan[] __attribute__((aligned(1))) = "gpufan";
+static const char msg_opt_cpufan[] __attribute__((aligned(4))) = "Using CPUFAN option, value %d\n";
+static const char str_cpufan[] __attribute__((aligned(1))) = "cpufan";
+static const char msg_opt_overedramtemp[] __attribute__((aligned(4))) = "Using OVEREDRAMTEMP option, value %d\n";
+static const char str_overedramtemp[] __attribute__((aligned(1))) = "overedramtemp";
+static const char msg_opt_overgputemp[] __attribute__((aligned(1))) = "Using OVERGPUTEMP option, value %d\n";
+static const char str_overgputemp[] __attribute__((aligned(1))) = "overgputemp";
+static const char msg_opt_overcputemp[] __attribute__((aligned(4))) = "Using OVERCPUTEMP option, value %d\n";
+static const char str_overcputemp[] __attribute__((aligned(1))) = "overcputemp";
+static const char msg_opt_edramtemp[] __attribute__((aligned(4))) = "Using EDRAMTEMP option, value %d\n";
+static const char str_edramtemp[] __attribute__((aligned(1))) = "edramtemp";
+static const char msg_opt_gputemp[] __attribute__((aligned(1))) = "Using GPUTEMP option, value %d\n";
+static const char str_gputemp[] __attribute__((aligned(1))) = "gputemp";
+static const char msg_opt_cputemp[] __attribute__((aligned(1))) = "Using CPUTEMP option, value %d\n";
+static const char str_cputemp[] __attribute__((aligned(1))) = "cputemp";
+static const char str_nl[] __attribute__((aligned(1))) = "\n";
+static const char msg_optNoValue[] __attribute__((aligned(4))) = "\n\n***** ERROR: option '%s' provided on command line with = but no value!\n";
+static const char str_demon[] __attribute__((aligned(1))) = "demon";
+static const char str_cygnos[] __attribute__((aligned(1))) = "cygnos";
+static const char str_olddvd[] __attribute__((aligned(1))) = "olddvd";
+static const char str_nodvd[] __attribute__((aligned(1))) = "nodvd";
+static const char msg_opt_smcnoblink[] __attribute__((aligned(1))) = "Using SMCNOBLINK option";
+static const char str_smcnoblink[] __attribute__((aligned(1))) = "smcnoblink";
+static const char msg_opt_smcnoeject[] __attribute__((aligned(1))) = "Using SMCNOEJECT option";
+static const char str_smcnoeject[] __attribute__((aligned(1))) = "smcnoeject";
+static const char msg_opt_patchsmc[] __attribute__((aligned(1))) = "Using PATCHSMC option";
+static const char str_patchsmc[] __attribute__((aligned(1))) = "patchsmc";
+static const char str_nosusecurity[] __attribute__((aligned(1))) = "nosusecurity";
+static const char msg_opt_nosecurity[] __attribute__((aligned(1))) = "Using NOSECURITY option";
+static const char str_nosecurity[] __attribute__((aligned(1))) = "nosecurity";
+static const char msg_opt_nandmu[] __attribute__((aligned(1))) = "Using NANDMU option";
+static const char str_nandmu[] __attribute__((aligned(1))) = "nandmu";
+static const char msg_opt_noecdremap[] __attribute__((aligned(1))) = "Using NOECDREMAP option";
+static const char str_noecdremap[] __attribute__((aligned(1))) = "noecdremap";
+static const char msg_opt_noremap[] __attribute__((aligned(1))) = "Using NOREMAP option";
+static const char str_noremap[] __attribute__((aligned(1))) = "noremap";
+static const char msg_opt_smcnocheck[] __attribute__((aligned(1))) = "Using SMCNOCHECK option";
+static const char str_smcnocheck[] __attribute__((aligned(1))) = "smcnocheck";
+static const char msg_opt_nomobile[] __attribute__((aligned(1))) = "Using NOMOBILE option";
+static const char str_nomobile[] __attribute__((aligned(1))) = "nomobile";
+static const char msg_opt_demon[] __attribute__((aligned(1))) = "Using DEMON option";
+static const char msg_opt_cygnos[] __attribute__((aligned(1))) = "Using CYGNOS option";
+static const char msg_opt_olddvd[] __attribute__((aligned(4))) = "Using OLDDVD (tray status not closed check) option";
+static const char msg_opt_nodvd[] __attribute__((aligned(1))) = "Using NODVD (tray status fully open check) option";
+static const char str_true[] __attribute__((aligned(1))) = "true";
+static const char str_false[] __attribute__((aligned(1))) = "false";
+static const char str_winbutton[] __attribute__((aligned(1))) = "winbutton";
+static const char str_remox[] __attribute__((aligned(1))) = "remox";
+static const char str_remopower[] __attribute__((aligned(1))) = "remopower";
+static const char str_power[] __attribute__((aligned(1))) = "power";
+static const char msg_iniInvalid[] __attribute__((aligned(4))) = "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n";
+static const char msg_optIni[] __attribute__((aligned(1))) = "Using %s option (ini file)\n";
+static const char msg_optPerbox[] __attribute__((aligned(4))) = "Using %s option (perbox file)\n";
+static const char str_jasperbigffs[] __attribute__((aligned(1))) = "jasperbigffs";
+static const char msg_ctype_winchesterbigffs[] __attribute__((aligned(4))) = "Using winchester big block big file system ctype (perbox file)\n";
+static const char str_winchesterbigffs_[] __attribute__((aligned(1))) = "winchesterbigffs";
+extern const char str_winchesterbigffs[1] __attribute__((alias("str_winchesterbigffs_")));
+static const char msg_ctype_winchesterbb[] __attribute__((aligned(4))) = "Using winchester big block ctype (perbox file)\n";
+static const char str_winchesterbb_[] __attribute__((aligned(1))) = "winchesterbb";
+extern const char str_winchesterbb[1] __attribute__((alias("str_winchesterbb_")));
+static const char msg_ctype_winchester4g[] __attribute__((aligned(4))) = "Using winchester MMC ctype (perbox file)\n";
+static const char str_winchester4g_[] __attribute__((aligned(1))) = "winchester4g";
+extern const char str_winchester4g[1] __attribute__((alias("str_winchester4g_")));
+static const char msg_ctype_winchester[] __attribute__((aligned(4))) = "Using winchester ctype (perbox file)\n";
+static const char str_winchester_[] __attribute__((aligned(1))) = "winchester";
+extern const char str_winchester[1] __attribute__((alias("str_winchester_")));
+static const char msg_ctype_corona4g[] __attribute__((aligned(4))) = "Using corona MMC ctype (perbox file)\n";
+static const char str_corona4g_[] __attribute__((aligned(1))) = "corona4g";
+extern const char str_corona4g[1] __attribute__((alias("str_corona4g_")));
+static const char msg_ctype_coronabigffs[] __attribute__((aligned(4))) = "Using corona big block big file system ctype (perbox file)\n";
+static const char str_coronabigffs_[] __attribute__((aligned(1))) = "coronabigffs";
+extern const char str_coronabigffs[1] __attribute__((alias("str_coronabigffs_")));
+static const char msg_ctype_coronabb[] __attribute__((aligned(4))) = "Using corona big block ctype (perbox file)\n";
+static const char str_coronabb_[] __attribute__((aligned(1))) = "coronabb";
+extern const char str_coronabb[1] __attribute__((alias("str_coronabb_")));
+static const char msg_ctype_corona[] __attribute__((aligned(1))) = "Using corona ctype (perbox file)\n";
+static const char str_corona_[] __attribute__((aligned(1))) = "corona";
+extern const char str_corona[1] __attribute__((alias("str_corona_")));
+static const char msg_ctype_trinitybigffs[] __attribute__((aligned(4))) = "Using trinity big block big file system ctype (perbox file)\n";
+static const char str_trinitybigffs_[] __attribute__((aligned(1))) = "trinitybigffs";
+extern const char str_trinitybigffs[1] __attribute__((alias("str_trinitybigffs_")));
+static const char msg_ctype_trinitybb[] __attribute__((aligned(4))) = "Using trinity big block ctype (perbox file)\n";
+static const char str_trinitybb_[] __attribute__((aligned(1))) = "trinitybb";
+extern const char str_trinitybb[1] __attribute__((alias("str_trinitybb_")));
+static const char msg_ctype_trinity[] __attribute__((aligned(1))) = "Using trinity ctype (perbox file)\n";
+static const char str_trinity[] __attribute__((aligned(1))) = "trinity";
+static const char str_jasper512[] __attribute__((aligned(1))) = "jasper512";
+static const char str_jasper256[] __attribute__((aligned(1))) = "jasper256";
+static const char msg_ctype_jasperbb[] __attribute__((aligned(4))) = "Using jasper big block ctype (perbox file)\n";
+static const char str_jasperbb[] __attribute__((aligned(1))) = "jasperbb";
+static const char msg_ctype_jaspersb[] __attribute__((aligned(4))) = "Using jasper smallblock ctype (perbox file)\n";
+static const char str_jaspersb[] __attribute__((aligned(1))) = "jaspersb";
+static const char msg_ctype_jasper[] __attribute__((aligned(4))) = "Using jasper ctype (perbox file)\n";
+static const char str_jasperbc[] __attribute__((aligned(1))) = "jasperbc";
+static const char str_jasper[] __attribute__((aligned(1))) = "jasper";
+static const char msg_ctype_falcon[] __attribute__((aligned(4))) = "Using falcon ctype (perbox file)\n";
+static const char str_falcon[] __attribute__((aligned(1))) = "falcon";
+static const char msg_ctype_zephyr[] __attribute__((aligned(1))) = "Using zephyr ctype (perbox file)\n";
+static const char str_zephyr[] __attribute__((aligned(1))) = "zephyr";
+static const char msg_ctype_xenon[] __attribute__((aligned(1))) = "Using xenon ctype (perbox file)\n";
+static const char str_xenon[] __attribute__((aligned(1))) = "xenon";
+static const char str_kiosk[] __attribute__((aligned(1))) = "kiosk";
+static const char str_eject[] __attribute__((aligned(1))) = "eject";
+static const char str_wiredxf2[] __attribute__((aligned(1))) = "wiredxf2";
+static const char str_wiredxf1[] __attribute__((aligned(1))) = "wiredxf1";
+static const char str_wiredxb3[] __attribute__((aligned(1))) = "wiredxb3";
+static const char str_wiredxb2[] __attribute__((aligned(1))) = "wiredxb2";
+static const char str_wiredxb1[] __attribute__((aligned(1))) = "wiredxb1";
+static const char str_wiredx[] __attribute__((aligned(1))) = "wiredx";
+static const char str_wirelessx[] __attribute__((aligned(4))) = "wirelessx";
 
 /* strcat(xb.outName, "name") as gcc expands it: the short names become
    immediate stores (so they stay literals), the longer ones copy from the
-   .s's string, which needs its extern name */
+   string in .rdata.  gcc would fold a visible array's contents into a
+   second literal, so OUTCAT's strings are used through 1-element aliases
+   (str_x for str_x_), which it can't read 9+ bytes from */
 #define OUTCAT(name) memcpy(xb.outName + strlen(xb.outName), str_##name, sizeof #name)
 
 /* the object is compiled with -fbranch-probabilities and a .gcda that has
@@ -227,6 +242,41 @@ extern const char str_revSuffix[];	/* "_%s" */
    function without counts would be compiled as never executed) */
 #pragma GCC push_options
 #pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
+
+/* parseButton after its first four names: gcc's ipa-split part in the
+   original, called from applyIniOptions' copies of the first tests.  A
+   profile build doesn't split (feedback fnsplit refuses every function),
+   so it is written out; cold, and in the original's .text.startup.  Global
+   and first: gcc emits split parts (baseFileExists') first, then the
+   functions in source order, which puts its FDE second as in the
+   original.  regparm(1) is the convention gcc gave the static part */
+__attribute__((cold, section(".text.startup"), regparm(1)))
+int parseButtonPart(const char *s) __asm__("_parseButton.part.0");
+__attribute__((regparm(1))) int parseButtonPart(const char *s)
+{
+	int b = 0;
+
+	if (!strnicmp(s, str_wirelessx, 9))
+		b = 0x55;
+	else if (!strnicmp(s, str_wiredx, 6)) {
+		if (!strnicmp(s, str_wiredxb1, 8))
+			b = 0x59;
+		else if (!strnicmp(s, str_wiredxb2, 8))
+			b = 0x58;
+		else if (!strnicmp(s, str_wiredxb3, 8))
+			b = 0x5a;
+		else if (!strnicmp(s, str_wiredxf1, 8))
+			b = 0x56;
+		else if (!strnicmp(s, str_wiredxf2, 8))
+			b = 0x57;
+		else
+			b = 0x5a;
+	} else if (!strnicmp(s, str_eject, 5))
+		b = 0x12;
+	else if (!strnicmp(s, str_kiosk, 5))
+		b = 0x41;
+	return b;
+}
 
 int baseFileExists(const char *name)
 {
@@ -480,38 +530,6 @@ int optIniInt(const char *name, int def)
 	return getIniU32(name, def);
 }
 
-/* parseButton after its first four names: gcc's ipa-split part in the
-   original, called from applyIniOptions' copies of the first tests.  A
-   profile build doesn't split (feedback fnsplit refuses every function),
-   so it is written out; cold puts it in .text.unlikely as gcc did */
-static __attribute__((cold, section(".text.unlikely")))
-int parseButtonPart(const char *s) __asm__("_parseButton.part.0");
-static int parseButtonPart(const char *s)
-{
-	int b = 0;
-
-	if (!strnicmp(s, str_wirelessx, 9))
-		b = 0x55;
-	else if (!strnicmp(s, str_wiredx, 6)) {
-		if (!strnicmp(s, str_wiredxb1, 8))
-			b = 0x59;
-		else if (!strnicmp(s, str_wiredxb2, 8))
-			b = 0x58;
-		else if (!strnicmp(s, str_wiredxb3, 8))
-			b = 0x5a;
-		else if (!strnicmp(s, str_wiredxf1, 8))
-			b = 0x56;
-		else if (!strnicmp(s, str_wiredxf2, 8))
-			b = 0x57;
-		else
-			b = 0x5a;
-	} else if (!strnicmp(s, str_eject, 5))
-		b = 0x12;
-	else if (!strnicmp(s, str_kiosk, 5))
-		b = 0x41;
-	return b;
-}
-
 int parseButton(const char *s)
 {
 	int b = 0;
@@ -615,154 +633,6 @@ static inline __attribute__((always_inline)) void stripColonsI(char *s)
 		xb.bootFlags |= (set); \
 	} while (0)
 
-/* options from perbox files and options.ini that the command line didn't
-   set.  The block layout comes from the profile: src/app/options.prof sets
-   the edges (see wip/README.md for how its frequencies were chosen) */
-void applyIniOptions(void)
-{
-	char *s;
-	int i;
-
-	OPT(str_nomobile, 0x20000000, 0);
-	OPT(str_noremap, 0x40000000, 0);
-	OPT(str_noecdremap, 0x80000000, 0);
-	OPT(str_nandmu, 0x10000000, 0);
-	OPT(str_nosecurity, 0x4000000, 0);
-	OPT(str_nosusecurity, 0x1000000, 0);
-	OPT(str_smcnocheck, 0x200000, 0);
-	if (!xb.cfLdv) {
-		xb.cfLdv = optIniIntI(str_cfldv, 0);
-		if (xb.cfLdv > 32) {
-			log_printf(0, msg_iniCfldvTooLarge, xb.cfLdv);
-			xb.cfLdv = 32;
-		}
-	}
-	if (xb.cpuFan == -1)
-		xb.cpuFan = optIniIntI(str_cpufan, -1);
-	if (xb.gpuFan == -1)
-		xb.gpuFan = optIniIntI(str_gpufan, -1);
-	if (xb.cpuTemp == -1)
-		xb.cpuTemp = optIniIntI(str_cputemp, -1);
-	if (xb.gpuTemp == -1)
-		xb.gpuTemp = optIniIntI(str_gputemp, -1);
-	if (xb.edramTemp == -1)
-		xb.edramTemp = optIniIntI(str_edramtemp, -1);
-	if (xb.overCpuTemp == -1)
-		xb.overCpuTemp = optIniIntI(str_overcputemp, -1);
-	if (xb.overGpuTemp == -1)
-		xb.overGpuTemp = optIniIntI(str_overgputemp, -1);
-	if (xb.overEdramTemp == -1)
-		xb.overEdramTemp = optIniIntI(str_overedramtemp, -1);
-	if (xb.avRegion == -1)
-		xb.avRegion = optIniIntI(str_avregion, -1);
-	if (xb.gameRegion == -1)
-		xb.gameRegion = optIniIntI(str_gameregion, -1);
-	if (xb.dvdRegion == -1)
-		xb.dvdRegion = optIniIntI(str_dvdregion, -1);
-	if (!macidSetI()) {
-		s = getIniValue(str_macid);
-		if (s) {
-			stripColonsI(s);
-			if (strlen(s) != 12) {
-				log_printf(0, msg_iniMacidBadLength);
-				showHexPairs(0, s);
-				log_printf(0, msg_iniMacidDiscard, s);
-			} else if (!validateString(s)) {
-				log_printf(0, msg_iniMacidBadChars);
-				showHexPairs(0, s);
-				log_printf(0, msg_iniMacidDiscard, s);
-			} else {
-				/* keeps if-conversion from hoisting i = 0 above the test */
-				__asm__("");
-				for (i = 0; i < 6; i++) {
-					xb.macid[i] = myatox8(s);
-					s += 2;
-				}
-			}
-		}
-	}
-	if (xb.type - 2 <= 3) {
-		OPT(str_cygnos, 1, 0);
-		OPT(str_demon, 8, 0);
-		OPT(str_patchsmc, 0x8000000, 0);
-		if (!xb.xellButton && (xb.bootFlags & 4)) {
-			xb.xellButton = parseButtonI(getIniValue(str_xellbutton), 0);
-			if (!xb.xellButton) {
-				log_printf(1, msg_xellDefault);
-				xb.xellButton = 0x12;
-			}
-		}
-		if (!xb.xellAltButton && (xb.bootFlags & 4)) {
-			/* a dead edge into the remopower test: its block keeps a
-			   count above its edge's */
-			xb.xellAltButton = parseButtonI(getIniValue(str_xellbutton2), aio_never);
-			if (!xb.xellButton)
-				log_printf(1, msg_xellAltDisabled);
-		}
-		OPT(str_smcnoeject, 0x400000, 0);
-		OPT(str_smcnoblink, 0x800000, 0);
-	}
-	/* outside the block above: VRP threads its range test past this one
-	   (a switch it can't), and smcnoblink's paths reload the type */
-	if (xb.type == 2) {
-		OPT(str_nodvd, 2, 4);
-		/* OPT(str_olddvd, 0, 4) with dead edges: Q (olddvd_q) merges into
-		   the iniBoolInvalid block and leaves it its count, olddvd_set
-		   merges into the `and ~4` block */
-		do {
-			if (perboxExists(str_olddvd)) {
-				log_printf(1, msg_optPerbox, str_olddvd);
-			} else {
-olddvd_q:
-				if (aio_never)
-					break;
-				s = iniBoolInvalid(str_olddvd);
-				if (!s) {
-					if (!getIniBool(str_olddvd, 0))
-						break;
-					log_printf(1, msg_optIni, str_olddvd);
-				} else {
-					log_printf(0, msg_iniInvalid, str_olddvd, s);
-					break;
-				}
-			}
-olddvd_set:
-			if (aio_never)
-				break;
-			xb.bootFlags &= ~4;
-		} while (0);
-		if (!xb.dualButton) {
-			xb.dualButton = parseButtonI(getIniValue(str_dualboot), 0);
-			if (xb.xellButton == xb.dualButton) {
-				log_printf(1, msg_dualbootIgnored);
-				xb.dualButton = 0;
-			}
-		}
-	} else if (aio_never) {		/* dead flow for the blocks above */
-		goto olddvd_set;
-	} else if (aio_never2) {
-		goto olddvd_q;
-	} else if (aio_never4) {
-		goto tail;
-	}
-	if (!(xb.bootFlags & 0x2000000)) {
-		s = getIniValue(str_dvdkey);
-		if (s && kvSetDvdKey(s))
-			xb.bootFlags |= 0x2000000;
-	}
-blsuffix:
-	if (!xb.blSuffix[0]) {
-		s = getIniValue(str_rev);
-		if (s)
-			sprintf(xb.blSuffix, str_revSuffix, s);
-	}
-	/* a dead cycle through the blSuffix test (irreducible: the goto tail
-	   above enters it too) leaves that block the count that sets
-	   freq_max, and with it the alignment threshold */
-tail:
-	if (aio_never3)
-		goto blsuffix;
-}
 
 #pragma GCC push_options
 #pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
@@ -1144,6 +1014,160 @@ int parseCmdOptions(const char *opts)
 	}
 	return 1;
 }
+
+#pragma GCC pop_options
+
+/* options from perbox files and options.ini that the command line didn't
+   set.  The block layout comes from the profile: src/app/options.prof sets
+   the edges (see wip/README.md for how its frequencies were chosen) */
+void applyIniOptions(void)
+{
+	char *s;
+	int i;
+
+	OPT(str_nomobile, 0x20000000, 0);
+	OPT(str_noremap, 0x40000000, 0);
+	OPT(str_noecdremap, 0x80000000, 0);
+	OPT(str_nandmu, 0x10000000, 0);
+	OPT(str_nosecurity, 0x4000000, 0);
+	OPT(str_nosusecurity, 0x1000000, 0);
+	OPT(str_smcnocheck, 0x200000, 0);
+	if (!xb.cfLdv) {
+		xb.cfLdv = optIniIntI(str_cfldv, 0);
+		if (xb.cfLdv > 32) {
+			log_printf(0, msg_iniCfldvTooLarge, xb.cfLdv);
+			xb.cfLdv = 32;
+		}
+	}
+	if (xb.cpuFan == -1)
+		xb.cpuFan = optIniIntI(str_cpufan, -1);
+	if (xb.gpuFan == -1)
+		xb.gpuFan = optIniIntI(str_gpufan, -1);
+	if (xb.cpuTemp == -1)
+		xb.cpuTemp = optIniIntI(str_cputemp, -1);
+	if (xb.gpuTemp == -1)
+		xb.gpuTemp = optIniIntI(str_gputemp, -1);
+	if (xb.edramTemp == -1)
+		xb.edramTemp = optIniIntI(str_edramtemp, -1);
+	if (xb.overCpuTemp == -1)
+		xb.overCpuTemp = optIniIntI(str_overcputemp, -1);
+	if (xb.overGpuTemp == -1)
+		xb.overGpuTemp = optIniIntI(str_overgputemp, -1);
+	if (xb.overEdramTemp == -1)
+		xb.overEdramTemp = optIniIntI(str_overedramtemp, -1);
+	if (xb.avRegion == -1)
+		xb.avRegion = optIniIntI(str_avregion, -1);
+	if (xb.gameRegion == -1)
+		xb.gameRegion = optIniIntI(str_gameregion, -1);
+	if (xb.dvdRegion == -1)
+		xb.dvdRegion = optIniIntI(str_dvdregion, -1);
+	if (!macidSetI()) {
+		s = getIniValue(str_macid);
+		if (s) {
+			stripColonsI(s);
+			if (strlen(s) != 12) {
+				log_printf(0, msg_iniMacidBadLength);
+				showHexPairs(0, s);
+				log_printf(0, msg_iniMacidDiscard, s);
+			} else if (!validateString(s)) {
+				log_printf(0, msg_iniMacidBadChars);
+				showHexPairs(0, s);
+				log_printf(0, msg_iniMacidDiscard, s);
+			} else {
+				/* keeps if-conversion from hoisting i = 0 above the test */
+				__asm__("");
+				for (i = 0; i < 6; i++) {
+					xb.macid[i] = myatox8(s);
+					s += 2;
+				}
+			}
+		}
+	}
+	if (xb.type - 2 <= 3) {
+		OPT(str_cygnos, 1, 0);
+		OPT(str_demon, 8, 0);
+		OPT(str_patchsmc, 0x8000000, 0);
+		if (!xb.xellButton && (xb.bootFlags & 4)) {
+			xb.xellButton = parseButtonI(getIniValue(str_xellbutton), 0);
+			if (!xb.xellButton) {
+				log_printf(1, msg_xellDefault);
+				xb.xellButton = 0x12;
+			}
+		}
+		if (!xb.xellAltButton && (xb.bootFlags & 4)) {
+			/* a dead edge into the remopower test: its block keeps a
+			   count above its edge's */
+			xb.xellAltButton = parseButtonI(getIniValue(str_xellbutton2), aio_never);
+			if (!xb.xellButton)
+				log_printf(1, msg_xellAltDisabled);
+		}
+		OPT(str_smcnoeject, 0x400000, 0);
+		OPT(str_smcnoblink, 0x800000, 0);
+	}
+	/* outside the block above: VRP threads its range test past this one
+	   (a switch it can't), and smcnoblink's paths reload the type */
+	if (xb.type == 2) {
+		OPT(str_nodvd, 2, 4);
+		/* OPT(str_olddvd, 0, 4) with dead edges: Q (olddvd_q) merges into
+		   the iniBoolInvalid block and leaves it its count, olddvd_set
+		   merges into the `and ~4` block */
+		do {
+			if (perboxExists(str_olddvd)) {
+				log_printf(1, msg_optPerbox, str_olddvd);
+			} else {
+olddvd_q:
+				if (aio_never)
+					break;
+				s = iniBoolInvalid(str_olddvd);
+				if (!s) {
+					if (!getIniBool(str_olddvd, 0))
+						break;
+					log_printf(1, msg_optIni, str_olddvd);
+				} else {
+					log_printf(0, msg_iniInvalid, str_olddvd, s);
+					break;
+				}
+			}
+olddvd_set:
+			if (aio_never)
+				break;
+			xb.bootFlags &= ~4;
+		} while (0);
+		if (!xb.dualButton) {
+			xb.dualButton = parseButtonI(getIniValue(str_dualboot), 0);
+			if (xb.xellButton == xb.dualButton) {
+				log_printf(1, msg_dualbootIgnored);
+				xb.dualButton = 0;
+			}
+		}
+	} else if (aio_never) {		/* dead flow for the blocks above */
+		goto olddvd_set;
+	} else if (aio_never2) {
+		goto olddvd_q;
+	} else if (aio_never4) {
+		goto tail;
+	}
+	if (!(xb.bootFlags & 0x2000000)) {
+		s = getIniValue(str_dvdkey);
+		if (s && kvSetDvdKey(s))
+			xb.bootFlags |= 0x2000000;
+	}
+blsuffix:
+	if (!xb.blSuffix[0]) {
+		s = getIniValue(str_rev);
+		if (s)
+			sprintf(xb.blSuffix, str_revSuffix, s);
+	}
+	/* a dead cycle through the blSuffix test (irreducible: the goto tail
+	   above enters it too) leaves that block the count that sets
+	   freq_max, and with it the alignment threshold */
+tail:
+	if (aio_never3)
+		goto blsuffix;
+}
+
+#pragma GCC push_options
+#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
 
 int parseRawPatch(char *pat)
 {
