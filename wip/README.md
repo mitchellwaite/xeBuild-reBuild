@@ -1409,6 +1409,23 @@ Open (diff lines from `re/fncmp.py`):
   248); netFree inlined late gives 81% (265). A late-inlined helper with
   the asm in netFree's else (53%), a netEmpty asm after netFree, and an
   asm in netFree itself (breaks 14 other functions) were worse.
+  2026-10-23: without the attributes netWritePatches is 7 lines (the head
+  merge and the free tail's epilogue copy). jump2's own trace: the head
+  merge happens in iteration 1 at the netEmpty test T, before any
+  crossjump, with both successors clean and single-predecessor. Ruled
+  out: csa/dse2 leaving blocks dirty (csa changes nothing in these
+  functions and calls df_analyze first); a jump block between T and the
+  `eax=1` block (gimple_split_edge puts the split for T->return right
+  after T whenever return's previous block falls into it, which every
+  source order here does); -O2, -Os, -fno-tree-vrp/-dominator-opts,
+  -fno-thread-jumps, -fno-tree-tail-merge/-pre (all worse); netCheckOk
+  forms; block-scoped len/rlen (clobbers change the frame); nested
+  positive tests; 15 tail spellings for netFormatSysex (all 4, the head
+  merge). ce1/ce2 report IF-CASE-2 for T but don't convert it (T0 is
+  converted), in the original too. Untested candidate: a dead insn in one
+  successor in jump2's first try_optimize_cfg run, deleted by run_fast_dce
+  after that run's crossjumps, so the second run sees a dirty successor
+  and stops.
 - netRecv 58/netRecvVerbose 53: the drafts now write `if (buf !=
   &netEmpty) free(buf); return NULL;` on each failure path (the original
   repeats the check per path) and netRecv ends `if (got == size) { *len =
@@ -1521,6 +1538,15 @@ Open (diff lines from `re/fncmp.py`):
     are worse (10/11), a volatile asm too (4/7). A register variable would
     give both functions the same register, but the originals differ (eax
     in netRecvVerbose's fresh load, edx in the clone's copy).
+    2026-10-23: IRA spills len (r111) whole in the clone ("Popping
+    a3(r111) -- spill"), so the entry `dx = ax` is LRA inheritance from
+    the parameter store, not an allocation. If LRA reloaded instead
+    (`dx = [esp+44]` at the store, after the note), postreload could turn
+    it into `dx = ax` only while ax still holds len, i.e. with the store
+    before the netSock load. Moving `*len = 0` first / after tv / after
+    FD_ZERO: clone 7, netRecvVerbose 10. `asm ("" : : "g"(len))` at seven
+    places (short-count, size == 0, success, both early failures, -1,
+    after calloc): clone stays 6 at best.
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 
