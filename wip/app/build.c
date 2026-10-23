@@ -199,7 +199,7 @@ int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
 extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .data */
 int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
-int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
+u32 blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
 /* int in xboxrom.c; as u32 here verifyBlSigs' inlined findFile(11) counts
    from its 0 result instead of a new xor (uncprop) */
 u32 blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
@@ -1642,61 +1642,64 @@ int patchBlsResign(void)
 	int sb = findFile(11), cd = findFile(7), pt = findFile(23);
 	struct fileent *p = &xb.files[pt];
 	u8 *d = p->data;
-	u32 off, addr, len, i;
-	int n = 0;
+	u32 off, addr, len, i, t;
+	int n = 0, ok = 0;
 
 	log_printf(1, "Patching BLs...");
 	off = 0;
 	while (off < p->size) {
-		if (n == 2) {
+		if (n != 2) {
+			addr = getBeU32(d + off);
+			t = off + 4;
+			if (addr != 0xffffffff) {
+				len = getBeU32(d + t) * 4;
+				off += 8;
+				if (n) {
+					if (addr + len > xb.files[cd].size) {
+						xb.files[cd].size = (addr + len + 15) & ~15;
+						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
+					}
+					for (i = 0; i < len; i++)
+						xb.files[cd].data[addr + i] = d[off + i];
+				}
+				off += len;
+			} else {
+				n++;
+				off = t;
+			}
+		} else {
 			for (i = 0; i < p->size - off; i++)
 				p->data[i] = p->data[off + i];
 			p->size -= off;
-			break;
+			off = p->size;
 		}
-		addr = getBeU32(d + off);
-		if (addr == 0xffffffff) {
-			n++;
-			off += 4;
-			continue;
-		}
-		len = getBeU32(d + off + 4) * 4;
-		if (n) {
-			if (addr + len > xb.files[cd].size) {
-				xb.files[cd].size = (addr + len + 15) & ~15;
-				setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
-			}
-			for (i = 0; i < len; i++)
-				xb.files[cd].data[addr + i] = d[off + 8 + i];
-		}
-		off += 8 + len;
 	}
 	log_printf(1, "Done!\n");
-	if (!sb) {
+	if (sb) {
+		log_printf(1, "Checking patched CD signature...");
+		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.files[sb].data + 914)) {
+			if (xb.prvKey) {
+				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+					log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
+					if (!blSign(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
+						log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
+					else {
+						log_printf(1, "%s resigned successfully!\n", xb.files[cd].name);
+						ok = 1;
+					}
+				} else
+					log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", xb.files[cd].name);
+			} else
+				log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", xb.files[cd].name);
+		} else {
+			log_printf(1, "%s signature is good\n", xb.files[cd].name);
+			ok = 1;
+		}
+		if (ok)
+			log_printf(1, "Done!\n");
+	} else
 		log_printf(1, "could not locate SB data to check %s!\n", xb.files[cd].name);
-		return 0;
-	}
-	log_printf(1, "Checking patched CD signature...");
-	if (blVerifySig(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.files[sb].data + 914))
-		log_printf(1, "%s signature is good\n", xb.files[cd].name);
-	else {
-		if (!xb.prvKey) {
-			log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", xb.files[cd].name);
-			return 0;
-		}
-		if (memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
-			log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", xb.files[cd].name);
-			return 0;
-		}
-		log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
-		if (!blSign(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914)) {
-			log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
-			return 0;
-		}
-		log_printf(1, "%s resigned successfully!\n", xb.files[cd].name);
-	}
-	log_printf(1, "Done!\n");
-	return 1;
+	return ok;
 }
 
 /* apply the first two patch sets to the CB_B and the CD (growing them as

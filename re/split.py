@@ -597,20 +597,20 @@ SYMBOLS = {
     0x459905: '_bd_459905', 0x459920: '_bd_459920', 0x459955: '_bd_459955',
     0x459e3c: '_bd_459e3c', 0x459e74: '_bd_459e74', 0x459e9c: '_bd_459e9c',
     0x459ec8: '_bd_459ec8', 0x459ed2: '_bd_459ed2', 0x459ed8: '_bd_459ed8',
-    0x459ede: '_bd_459ede', 0x459ee4: '_bd_459ee4', 0x459efa: '_bd_459efa',
-    0x459f2a: '_bd_459f2a', 0x459fa6: '_bd_459fa6', 0x45a0bc: '_bd_45a0bc',
-    0x45a0f0: '_bd_45a0f0', 0x45a128: '_bd_45a128', 0x45a15c: '_bd_45a15c',
-    0x45a194: '_bd_45a194', 0x45a1cc: '_bd_45a1cc', 0x45a1f8: '_bd_45a1f8',
-    0x45a23c: '_bd_45a23c', 0x45a278: '_bd_45a278', 0x45a2b4: '_bd_45a2b4',
-    0x45a2f4: '_bd_45a2f4', 0x45a334: '_bd_45a334', 0x45a36c: '_bd_45a36c',
-    0x45a3ac: '_bd_45a3ac', 0x45a3e8: '_bd_45a3e8', 0x45a428: '_bd_45a428',
-    0x45a590: '_bd_45a590', 0x45a5cc: '_bd_45a5cc', 0x45a5e0: '_bd_45a5e0',
-    0x45a618: '_bd_45a618', 0x45a664: '_bd_45a664', 0x45a6a4: '_bd_45a6a4',
-    0x45a6b0: '_bd_45a6b0', 0x45a6df: '_bd_45a6df', 0x45a6f8: '_bd_45a6f8',
-    0x45a71e: '_bd_45a71e', 0x45a728: '_bd_45a728', 0x45a738: '_bd_45a738',
-    0x45a748: '_bd_45a748', 0x45a785: '_bd_45a785', 0x45a78c: '_bd_45a78c',
-    0x45a7c4: '_bd_45a7c4', 0x45a7f8: '_bd_45a7f8', 0x45a80e: '_bd_45a80e',
-    0x45a8af: '_bd_45a8af',
+    0x459ede: '_bd_459ede', 0x459ee4: '_bd_459ee4', 0x459eea: '_bd_459eea',
+    0x459efa: '_bd_459efa', 0x459f04: '_bd_459f04', 0x459f2a: '_bd_459f2a',
+    0x459fa6: '_bd_459fa6', 0x45a0bc: '_bd_45a0bc', 0x45a0f0: '_bd_45a0f0',
+    0x45a128: '_bd_45a128', 0x45a15c: '_bd_45a15c', 0x45a194: '_bd_45a194',
+    0x45a1cc: '_bd_45a1cc', 0x45a1f8: '_bd_45a1f8', 0x45a23c: '_bd_45a23c',
+    0x45a278: '_bd_45a278', 0x45a2b4: '_bd_45a2b4', 0x45a2f4: '_bd_45a2f4',
+    0x45a334: '_bd_45a334', 0x45a36c: '_bd_45a36c', 0x45a3ac: '_bd_45a3ac',
+    0x45a3e8: '_bd_45a3e8', 0x45a428: '_bd_45a428', 0x45a590: '_bd_45a590',
+    0x45a5cc: '_bd_45a5cc', 0x45a5e0: '_bd_45a5e0', 0x45a618: '_bd_45a618',
+    0x45a664: '_bd_45a664', 0x45a6a4: '_bd_45a6a4', 0x45a6b0: '_bd_45a6b0',
+    0x45a6df: '_bd_45a6df', 0x45a6f8: '_bd_45a6f8', 0x45a71e: '_bd_45a71e',
+    0x45a728: '_bd_45a728', 0x45a738: '_bd_45a738', 0x45a748: '_bd_45a748',
+    0x45a785: '_bd_45a785', 0x45a78c: '_bd_45a78c', 0x45a7c4: '_bd_45a7c4',
+    0x45a7f8: '_bd_45a7f8', 0x45a80e: '_bd_45a80e', 0x45a8af: '_bd_45a8af',
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -682,7 +682,7 @@ C_FUNCS = {
     0x428d20, 0x42b3d0, 0x42cbb0, 0x42dfb0,  # showSmcConfig blmodMissing patchFreeboot encodeUpdateBls
     0x42c900, 0x427a70, 0x427500, 0x427ab0,  # logPowerButton timestampToFileTime loadBaseFile loadBaseFileMeta
     0x427730, 0x4297d0, 0x429e70, 0x428b10,  # loadFileCrc extractSmcConfig verifyBlSigs appendAddonPatches
-    0x4291f0, 0x429b30, 0x42bf70,            # patchSmcConfig checkBl fixupPatchSet
+    0x4291f0, 0x429b30, 0x42bf70, 0x42b660,  # patchSmcConfig checkBl fixupPatchSet patchBlsResign
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

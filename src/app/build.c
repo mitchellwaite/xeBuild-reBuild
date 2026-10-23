@@ -205,7 +205,7 @@ int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
 extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .data */
 int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
-int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
+u32 blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
 /* int in xboxrom.c; as u32 here verifyBlSigs' inlined findFile(11) counts
    from its 0 result instead of a new xor (uncprop) */
 u32 blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
@@ -331,7 +331,9 @@ static const char bd_459ed2[] = "sum1:";
 static const char bd_459ed8[] = "sum2:";
 static const char bd_459ede[] = "sum3:";
 static const char bd_459ee4[] = "fin :";
+static const char bd_459eea[] = "Patching BLs...";
 static const char bd_459efa[] = "Done!\n";
+static const char bd_459f04[] = "Checking patched CD signature...";
 static const char bd_459f2a[] = "D";
 static const char bd_459fa6[] = "Fixing up patch set...";
 static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
@@ -375,7 +377,6 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 		  int su, int fs, int common);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
-int patchBlsResign(void);
 void patchBlsBlmod(const void *blmod, u32 size);
 void addBlsToImage(void);
 void addUpdateBls(void);
@@ -1277,6 +1278,71 @@ int verifyBlSigs(void)
 			break;
 		}
 	}
+	return ok;
+}
+
+int patchBlsResign(void)
+{
+	int sb = findFile(11), cd = findFile(7), pt = findFile(23);
+	struct fileent *p = &xb.files[pt];
+	u8 *d = p->data;
+	u32 off, addr, len, i, t;
+	int n = 0, ok = 0;
+
+	log_printf(1, bd_459eea);
+	off = 0;
+	while (off < p->size) {
+		if (n != 2) {
+			addr = getBeU32(d + off);
+			t = off + 4;
+			if (addr != 0xffffffff) {
+				len = getBeU32(d + t) * 4;
+				off += 8;
+				if (n) {
+					if (addr + len > xb.files[cd].size) {
+						xb.files[cd].size = (addr + len + 15) & ~15;
+						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
+					}
+					for (i = 0; i < len; i++)
+						xb.files[cd].data[addr + i] = d[off + i];
+				}
+				off += len;
+			} else {
+				n++;
+				off = t;
+			}
+		} else {
+			for (i = 0; i < p->size - off; i++)
+				p->data[i] = p->data[off + i];
+			p->size -= off;
+			off = p->size;
+		}
+	}
+	log_printf(1, bd_459efa);
+	if (sb) {
+		log_printf(1, bd_459f04);
+		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.files[sb].data + 914)) {
+			if (xb.prvKey) {
+				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+					log_printf(0, bd_459698, xb.files[cd].name);
+					if (!blSign(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
+						log_printf(0, bd_4596cc, xb.files[cd].name);
+					else {
+						log_printf(1, bd_4596f0, xb.files[cd].name);
+						ok = 1;
+					}
+				} else
+					log_printf(0, bd_45970c, xb.files[cd].name);
+			} else
+				log_printf(0, bd_45976c, xb.files[cd].name);
+		} else {
+			log_printf(1, bd_459646, xb.files[cd].name);
+			ok = 1;
+		}
+		if (ok)
+			log_printf(1, bd_459efa);
+	} else
+		log_printf(1, bd_4597bc, xb.files[cd].name);
 	return ok;
 }
 

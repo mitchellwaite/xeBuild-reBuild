@@ -1552,14 +1552,15 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 31 match and are built
+Draft of the whole object (all 41 functions). 32 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
-verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet.
+verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
+patchBlsResign.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1800,9 +1801,24 @@ only shows in `sh build.sh`.
   of the CFG; the string stays in source order), and cpu outer-test
   spellings (`+ 1 != 0`, `!(== -1)`, `(int) != -1`, `< 0xffffffff` all
   fold back to `!= -1`).
-- patchBlsResign/patchBlsBlmod (~330), fixupPatchSet: the patch-set walk
-  loop isn't header-copied in the original; `-fno-tree-ch` reproduces
-  that shape, so something in the source stops pass_ch.
+- patchBlsResign (built from C, 2026-10-23; xeBuild64 0x406750 has the
+  same loop as fixupPatchSet). The no-header-copy shape is that latch
+  (`else { copy; off = p->size; }`), not something stopping pass_ch.
+  - `if (n != 2) { body } else { copy }`: with `n == 2` first the body
+    starts with a label at LRA time and LRA's inheritance EBB stops there,
+    so `cmp [n],2` and `test n` don't share a `mov esi,[n]` (348 lines with
+    `n < 2`). `addr != 0xffffffff` first (51/49 tie, prev_bb rule).
+  - `t = off + 4` before the -1 test; `off += 8` before `if (n)`, then
+    `d[off + i]`, `off += len` (else PRE/sink puts off + 8 in each arm).
+  - After the loop, failure arms first (`!blVerifySig`, `if (xb.prvKey)`,
+    `if (!memcmp)`): postreload's reload_combine_recognize_const_pattern
+    moves `reg += xb` past address uses only if reg isn't live at the
+    block's jump target, i.e. the jump must go to the good path.
+  - `if (sb) {...} else ...; return ok;` with `if (ok) Done`, no early
+    returns (early-return predictor 39% on blSign fail; at 50/50 a round-3
+    fibheap tie pops success first). `u32 blSign` stops uncprop reusing its
+    0 result for the fail return.
+- patchBlsBlmod (~330): same walk as patchBlsResign; try its recipe.
 - calcBlAreaSize (212): the original looks up the offset before the size.
 - addBlsToImage (361), addUpdateBls (204), loadBlFiles, loadConsoleBlFiles,
   encodeBls, buildFlash: first drafts from heavily jump-threaded
