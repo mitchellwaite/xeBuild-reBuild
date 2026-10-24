@@ -1260,8 +1260,13 @@ static int loadBl60(struct fileent *e)
 		e->data = malloc(0x60);
 		if (!e->data)
 			return 1;
+		{
+		u8 *p = e->data;
+
+		__asm__("" : "+r"(p));
 		e->size = 0x60;
-		memcpy(e->data, defBl60, 0x60);
+		memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
+		}
 	}
 	return 0;
 }
@@ -1277,9 +1282,16 @@ static u32 loadBl(struct fileent *e, u32 i)
 	case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
 	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
 		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (r && !(type == 9 && suGetCF(&e->data, &e->size)) &&
-		    !(type == 10 && suGetCG(&e->data, &e->size)))
-			break;
+		if (r) {
+			if (type == 9) {
+				if (!suGetCF(&e->data, &e->size))
+					break;
+			} else if (type == 10) {
+				if (!suGetCG(&e->data, &e->size))
+					break;
+			} else
+				break;
+		}
 		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
 			/* an SE where the CF goes */
 			e->type = type = 14;
