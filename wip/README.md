@@ -1909,7 +1909,23 @@ only shows in `sh build.sh`.
   `mov [ebx+4],96` vs `rep movsd` schedule (as loadBlFiles), the r reload
   hoisted above `je` in the suGetCF/CG blocks. In C it also moves
   extractSmcConfig (8 lines, same ipa-split effect as loadBlFiles).
-- encodeBls, buildFlash: first drafts from heavily jump-threaded
+- encodeBls (6, 2026-10-23; was 1048): `if (xb.type == 2) {JTAG} else if
+  (xb.type > 3) {...} else {...}` (`<= 3` is 50/50; tested first, prev_bb
+  pulls it into the hot trace). Type 24 is a guarded log before each switch
+  (`if (type != 24) log;` + `case 23: case 24: case 25: break;`; `<= 3`:
+  `if (type != 24 || xb.glitch2mfg)`), not a `continue` (957 -> 34): VRP
+  threads type==24 past the switch and the profile update empties the
+  switch-to-latch edge, so the latch follows the kvPrepare trace instead
+  of rotating the loop. `j = findFile(N);` before each call (JTAG case 1
+  keeps it inline). `u32 cbb` in struct xebuild (uncprop reused the zero
+  cbb register for a findFile loop's `i = 0`); `u16 cfEncrypt` (as keys.c;
+  `movzx eax,ax`); `int ldv` parameter (`add [esp+100],eax`; buildFlash
+  loses its `movzx esi,si`). f01c tail `e = &xb.files[findFile(14)]`.
+  Left: 3 `cmp i,n` vs `cmp n,i` in inlined findFile loops (16, 13, 9):
+  the original's ch2 preheader copy of nFiles has a lower SSA version (free
+  list) than i; ours are fresh names. ~40 neutral variants don't move it;
+  no-early-inlining breaks the layout (1542).
+- buildFlash: first draft from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
   in the draft so far; give them SYMBOLS names when building it.

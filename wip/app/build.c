@@ -45,7 +45,7 @@ struct xebuild {
 	u32 kernel;			/* 00c */
 	int glitch2;			/* 010 */
 	int glitch2mfg;			/* 014 */
-	int cbb;			/* 018 build with a CB_B */
+	u32 cbb;			/* 018 build with a CB_B */
 	int f01c;			/* 01c set when an SE replaces the CF */
 	int randomKeys;			/* 020 keysInit's argument */
 	int sysTime;			/* 024 use the system time for timestamps */
@@ -166,7 +166,7 @@ void imgWriteFsTable(u32 x);
 void imgCopyAnchor(int n);
 int imgFinalize(void);
 /* keys.c's */
-u32 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
+u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
 void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
 void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
 void cbaEncryptZero(u8 *cb, u8 *key, u32 size);
@@ -2059,7 +2059,7 @@ u32 calcBlAreaSize(void)
 /* encrypt (and for retail/glitch builds zeropair) each bootloader with
    its predecessor's key, prepare the SMC and keyvaults; 1 if the SMC
    could not be prepared */
-int encodeBls(u8 *salt, u16 ldv)
+int encodeBls(u8 *salt, int ldv)
 {
 	struct fileent *e;
 	u32 i;
@@ -2085,34 +2085,41 @@ int encodeBls(u8 *salt, u16 ldv)
 				kvPrepare(e, 0);
 				break;
 			case 5:
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2),
-						  xb.files[findFile(24)].data, xb.f01c);
+				j = findFile(24);
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.f01c);
 				cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				break;
 			case 7:
-				cdEncrypt(e->data, xb.files[findFile(5)].key, e->key, e->size);
+				j = findFile(5);
+				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 9:
-				cfEncrypt(e, xb.files[findFile(10)].size, ldv, 0, imgCfSize());
+				j = findFile(10);
+				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
 			case 10:
-				cgEncrypt(e->data, xb.files[findFile(9)].key, e->key, e->size);
+				j = findFile(9);
+				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 17:
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
 				cbaEncrypt2(salt, e->data, e->key, e->size, 1);
 				break;
 			case 18:
-				cdEncrypt(e->data, xb.files[findFile(17)].key, e->key, e->size);
+				j = findFile(17);
+				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 19:
-				ceEncrypt(e->data, xb.files[findFile(18)].key, e->key, e->size);
+				j = findFile(18);
+				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 20:
-				ldv += cfEncrypt(e, xb.files[findFile(21)].size, ldv, 1, imgCfSize());
+				j = findFile(21);
+				ldv += cfEncrypt(e, xb.files[j].size, ldv, 1, imgCfSize());
 				break;
 			case 21:
-				cgEncrypt(e->data, xb.files[findFile(20)].key, e->key, e->size);
+				j = findFile(20);
+				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 22:
 				if (!memcmp(e->data, defCore, 0xd40))
@@ -2121,13 +2128,86 @@ int encodeBls(u8 *salt, u16 ldv)
 					log_printf(0, "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n");
 				break;
 			}
-		} else if (xb.type <= 3) {
-			if (type == 24) {
-				if (xb.glitch2mfg)
-					log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
-				continue;
+		} else if (xb.type > 3) {
+			if (type != 24)
+				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
+			switch (type) {
+			case 2:
+				if (smcPrepare(e->data, salt, e->size))
+					return 1;
+				break;
+			case 3:
+				kvPrepare(e, 0);
+				break;
+			case 4:
+				kvPrepare(e, 1);
+				break;
+			case 7:
+				j = findFile(12);
+				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				break;
+			case 8:
+				j = findFile(7);
+				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				break;
+			case 9:
+				j = findFile(10);
+				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
+				break;
+			case 10:
+				j = findFile(9);
+				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				break;
+			case 11:
+				if (xb.type == 4 || xb.type == 5) {
+					j = findFile(24);
+					if ((xb.flags & 7) > 4)
+						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.f01c);
+					else
+						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.f01c);
+					log_printf(1, "zeropairing SB\n");
+					setFuseCpuKey(xb.files[j].data);
+					cbaEncryptZero(e->data, e->key, e->size);
+					break;
+				}
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				if (checkZeros(cpuKey, 16)) {
+					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
+					xb.cfLdv = 0;
+					cbaEncryptZero(e->data, e->key, e->size);
+				} else
+					cbaEncrypt(salt, e->data, e->key, e->size, 0);
+				break;
+			case 12:
+				cdEncryptZero(e->data, e->key, e->size);
+				break;
+			case 13:
+				j = findFile(12);
+				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				break;
+			case 14:
+				j = findFile(13);
+				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				break;
+			case 15:
+				j = findFile(16);
+				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
+				break;
+			case 16:
+				j = findFile(15);
+				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				break;
+			case 23:
+			case 24:
+			case 25:
+				break;
+			default:
+				log_printf(1, "****** Unhandled BL typ %d ******\n", type);
+				break;
 			}
-			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
+		} else {
+			if (type != 24 || xb.glitch2mfg)
+				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			switch (type) {
 			case 2:
 				if (smcPrepare(e->data, salt, e->size))
@@ -2164,9 +2244,10 @@ int encodeBls(u8 *salt, u16 ldv)
 				cbbEncrypt(salt, e->data, xb.files[j].key, xb.files[j].data, e->key, e->size, zero);
 				break;
 			case 7:
-				if (xb.cbb)
-					cdEncrypt(e->data, xb.files[findFile(6)].key, e->key, e->size);
-				else {
+				if (xb.cbb) {
+					j = findFile(6);
+					cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
+				} else {
 					j = findFile(5);
 					if (xb.type != 1)
 						cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
@@ -2175,90 +2256,26 @@ int encodeBls(u8 *salt, u16 ldv)
 				}
 				break;
 			case 8:
-				ceEncrypt(e->data, xb.files[findFile(7)].key, e->key, e->size);
+				j = findFile(7);
+				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 9:
-				cfEncrypt(e, xb.files[findFile(10)].size, ldv, 0, imgCfSize());
+				j = findFile(10);
+				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
 			case 10:
-				cgEncrypt(e->data, xb.files[findFile(9)].key, e->key, e->size);
-				break;
-			}
-		} else if (type != 24) {
-			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
-			switch (type) {
-			case 2:
-				if (smcPrepare(e->data, salt, e->size))
-					return 1;
-				break;
-			case 3:
-				kvPrepare(e, 0);
-				break;
-			case 4:
-				kvPrepare(e, 1);
-				break;
-			case 7:
-				cdEncrypt(e->data, xb.files[findFile(12)].key, e->key, e->size);
-				break;
-			case 8:
-				ceEncrypt(e->data, xb.files[findFile(7)].key, e->key, e->size);
-				break;
-			case 9:
-				cfEncrypt(e, xb.files[findFile(10)].size, ldv, 0, imgCfSize());
-				break;
-			case 10:
-				cgEncrypt(e->data, xb.files[findFile(9)].key, e->key, e->size);
-				break;
-			case 11:
-				if (xb.type == 4 || xb.type == 5) {
-					j = findFile(24);
-					if ((xb.flags & 7) <= 4)
-						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.f01c);
-					else
-						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.f01c);
-					log_printf(1, "zeropairing SB\n");
-					setFuseCpuKey(xb.files[j].data);
-					cbaEncryptZero(e->data, e->key, e->size);
-					break;
-				}
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
-				if (checkZeros(cpuKey, 16)) {
-					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
-					xb.cfLdv = 0;
-					cbaEncryptZero(e->data, e->key, e->size);
-				} else
-					cbaEncrypt(salt, e->data, e->key, e->size, 0);
-				break;
-			case 12:
-				cdEncryptZero(e->data, e->key, e->size);
-				break;
-			case 13:
-				cdEncrypt(e->data, xb.files[findFile(12)].key, e->key, e->size);
-				break;
-			case 14:
-				ceEncrypt(e->data, xb.files[findFile(13)].key, e->key, e->size);
-				break;
-			case 15:
-				cfEncrypt(e, xb.files[findFile(16)].size, ldv, 0, imgCfSize());
-				break;
-			case 16:
-				cgEncrypt(e->data, xb.files[findFile(15)].key, e->key, e->size);
-				break;
-			case 23:
-			case 25:
-				break;
-			default:
-				log_printf(1, "****** Unhandled BL typ %d ******\n", type);
+				j = findFile(9);
+				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			}
 		}
 	}
 	if (xb.f01c) {
 		/* the SE that replaced the CF follows the CD */
-		i = findFile(14);
+		e = &xb.files[findFile(14)];
 		j = findFile(7);
-		log_printf(1, "re-encoding %s size 0x%x\n", xb.files[i].name, xb.files[i].size);
-		ceEncrypt(xb.files[i].data, xb.files[j].key, xb.files[i].key, xb.files[i].size);
+		log_printf(1, "re-encoding %s size 0x%x\n", e->name, e->size);
+		ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 	}
 	return 0;
 }

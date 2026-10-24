@@ -51,7 +51,7 @@ struct xebuild {
 	u32 kernel;			/* 00c */
 	int glitch2;			/* 010 */
 	int glitch2mfg;			/* 014 */
-	int cbb;			/* 018 build with a CB_B */
+	u32 cbb;			/* 018 build with a CB_B */
 	int f01c;			/* 01c set when an SE replaces the CF */
 	int randomKeys;			/* 020 keysInit's argument */
 	int sysTime;			/* 024 use the system time for timestamps */
@@ -172,7 +172,7 @@ void imgWriteFsTable(u32 x);
 void imgCopyAnchor(int n);
 int imgFinalize(void);
 /* keys.c's */
-u32 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
+u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
 void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
 void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
 void cbaEncryptZero(u8 *cb, u8 *key, u32 size);
@@ -384,7 +384,7 @@ int loadBlFiles(void);
 int loadConsoleBlFiles(void);
 void addBlsToImage(void);
 void addUpdateBls(void);
-int encodeBls(u8 *salt, u16 ldv);
+int encodeBls(u8 *salt, int ldv);
 int buildFlash(void);
 
 u32 findFileOffset(int type)
