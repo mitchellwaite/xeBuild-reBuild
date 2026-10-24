@@ -1824,7 +1824,7 @@ void addBlsToImage(void)
 				log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
 				continue;
 			}
-		} else if (type == 25 && e->offset < imgSize()) {
+		} else if (type == 25 && __builtin_expect(type != 24, 1) && e->offset < imgSize()) {
 			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}

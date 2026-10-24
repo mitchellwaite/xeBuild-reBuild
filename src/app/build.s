@@ -10,7 +10,6 @@
 #   .text          00427500-00430460
 
 .intel_syntax noprefix
-.globl _addBlsToImage
 .globl _addUpdateBls
 .globl _bd_458ca4
 .globl _bd_458ca8
@@ -112,6 +111,11 @@
 .globl _bd_459f2c
 .globl _bd_459f7c
 .globl _bd_459fa6
+.globl _bd_459fc0
+.globl _bd_45a000
+.globl _bd_45a034
+.globl _bd_45a050
+.globl _bd_45a074
 .globl _bd_45a0bc
 .globl _bd_45a0f0
 .globl _bd_45a128
@@ -1835,394 +1839,7 @@ L_42b2ac:
 #@C _fixupPatchSet
           .byte 0x66
           .byte 0x90
-_addBlsToImage:
-          push EBP
-          push EDI
-          push ESI
-          push EBX
-          sub ESP,60
-          call _imgBigBlock
-          cmp EAX,1
-          sbb EAX,EAX
-          and EAX,4294913546
-          add EAX,61937
-          cmp DWORD PTR [L_4c4f9c],1
-          mov DWORD PTR [ESP+40],EAX
-          jbe L_42c5f1
-          xor EDI,EDI
-          mov EBX,OFFSET L_4bc17c
-          mov ESI,1
-          mov EBP,EDI
-          jmp L_42c15b
-          .byte 0x90
-L_42c0d0:
-          cmp EDI,9
-          je L_42c3f2
-          cmp EDI,23
-          je L_42c440
-          cmp EAX,1
-          je L_42c2c0
-          cmp EAX,5
-          jbe L_42c2cc
-          lea EAX,DWORD PTR [EDI-23]
-          and EAX,4294967293
-          je L_42c420
-L_42c100:
-          cmp EDI,10
-          je L_42c272
-          cmp EDI,16
-          je L_42c272
-          cmp EDI,24
-          jne L_42c2ee
-L_42c11b:
-          mov EDX,DWORD PTR [L_479eb4]
-          test EDX,EDX
-          jne L_42c380
-          mov EAX,DWORD PTR [_g479ea8]
-          sub EAX,4
-          cmp EAX,1
-          jbe L_42c380
-          .byte 0x8d,0xb6,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_42c140:
-          add EBP,DWORD PTR [EBX+1040]
-L_42c146:
-          add ESI,1
-          add EBX,1068
-          cmp DWORD PTR [L_4c4f9c],ESI
-          jbe L_42c493
-L_42c15b:
-          mov EAX,DWORD PTR [EBX+1032]
-          mov EDI,DWORD PTR [EBX+1028]
-          mov DWORD PTR [ESP+8],4
-          mov DWORD PTR [ESP+4],OFFSET _bd_459955
-          mov DWORD PTR [ESP],EBX
-          cmp EAX,-1
-          cmovne EBP,EAX
-          call _strnicmp
-          test EAX,EAX
-          jne L_42c193
-          mov EAX,DWORD PTR [EBX+1024]
-          test EAX,EAX
-          je L_42c146
-L_42c193:
-          mov EAX,DWORD PTR [_g479ea8]
-          cmp EAX,2
-          jne L_42c0d0
-          cmp EDI,14
-          je L_42c140
-          cmp EDI,21
-          je L_42c560
-          cmp EDI,10
-          jne L_42c380
-          mov EDI,DWORD PTR [L_4c4f98]
-          test EDI,EDI
-          jle L_42c1f0
-          xor EAX,EAX
-          cmp DWORD PTR [L_4bc150+4],9
-          mov EDX,OFFSET L_4bc580
-          jne L_42c1e3
-          jmp L_42c1f0
-L_42c1d4:
-          add EDX,1068
-          cmp DWORD PTR [EDX-1068],9
-          je L_42c1f2
-L_42c1e3:
-          add EAX,1
-          cmp EAX,EDI
-          jne L_42c1d4
-          .byte 0x8d,0xb6,0x00,0x00,0x00,0x00   # lea ESI,DWORD PTR [ESI]
-L_42c1f0:
-          xor EAX,EAX
-L_42c1f2:
-          mov ECX,DWORD PTR [EBX+1040]
-          mov DWORD PTR [ESP+12],EBP
-          imul EAX,EAX,1068
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_459fc0
-          mov DWORD PTR [ESP],1
-          lea EDX,DWORD PTR [ECX+EBP*1]
-          mov DWORD PTR [ESP+16],ECX
-          sub EDX,DWORD PTR [EAX+L_4bc174]
-          lea EDI,DWORD PTR [EAX+_xb]
-          mov DWORD PTR [ESP+20],EDX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+16],EAX
-          mov EDX,DWORD PTR [EBX+1040]
-          mov EAX,EDX
-          sub EAX,DWORD PTR [EDI+271060]
-L_42c257:
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [EBX+1036]
-          mov DWORD PTR [ESP],EBP
-          mov DWORD PTR [ESP+4],EAX
-          call _imgAdd
-          jmp L_42c140
-L_42c272:
-          cmp EDI,10
-          jne L_42c31b
-          mov EDI,DWORD PTR [L_4c4f98]
-          test EDI,EDI
-          jle L_42c1f0
-          xor EAX,EAX
-          cmp DWORD PTR [L_4bc150+4],9
-          mov EDX,OFFSET L_4bc580
-          jne L_42c2b3
-          jmp L_42c1f0
-          .byte 0x66
-          .byte 0x90
-L_42c2a0:
-          add EDX,1068
-          cmp DWORD PTR [EDX-1068],9
-          je L_42c1f2
-L_42c2b3:
-          add EAX,1
-          cmp EAX,EDI
-          jne L_42c2a0
-          jmp L_42c1f0
-          .byte 0x90
-L_42c2c0:
-          lea EAX,DWORD PTR [EDI-23]
-          and EAX,4294967293
-          je L_42c360
-L_42c2cc:
-          cmp EDI,25
-          jne L_42c100
-          mov EAX,DWORD PTR [EBX+1032]
-          mov DWORD PTR [ESP+44],EAX
-          call _imgSize
-          cmp DWORD PTR [ESP+44],EAX
-          jb L_42c5c0
-L_42c2ee:
-          mov EAX,DWORD PTR [EBX+1040]
-          mov DWORD PTR [ESP+12],EBP
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_45a000
-          mov DWORD PTR [ESP],1
-          lea EDX,DWORD PTR [EAX+EBP*1]
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+20],EDX
-          call _log_printf
-L_42c31b:
-          cmp EDI,16
-          je L_42c3b0
-          cmp EDI,6
-          je L_42c480
-          cmp EDI,24
-          je L_42c11b
-L_42c336:
-          mov EAX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,DWORD PTR [EBX+1040]
-          jmp L_42c257
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42c360:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_45a034
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_42c146
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_42c380:
-          mov EAX,DWORD PTR [EBX+1040]
-          mov DWORD PTR [ESP+12],EBP
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_45a000
-          mov DWORD PTR [ESP],1
-          lea EDX,DWORD PTR [EAX+EBP*1]
-          mov DWORD PTR [ESP+16],EAX
-          mov DWORD PTR [ESP+20],EDX
-          call _log_printf
-          jmp L_42c336
-          .byte 0x90
-L_42c3b0:
-          mov EDI,DWORD PTR [L_4c4f98]
-          test EDI,EDI
-          jle L_42c1f0
-          xor EAX,EAX
-          cmp DWORD PTR [L_4bc150+4],15
-          mov EDX,OFFSET L_4bc580
-          jne L_42c3e6
-          jmp L_42c1f0
-L_42c3d3:
-          add EDX,1068
-          cmp DWORD PTR [EDX-1068],15
-          je L_42c1f2
-L_42c3e6:
-          add EAX,1
-          cmp EAX,EDI
-          jne L_42c3d3
-          jmp L_42c1f0
-L_42c3f2:
-          call _imgCfOffset
-          mov EBP,EAX
-          mov EAX,DWORD PTR [_g479ea8]
-          cmp EAX,1
-          je L_42c2ee
-          cmp EAX,5
-          jbe L_42c100
-          lea EAX,DWORD PTR [EDI-23]
-          and EAX,4294967293
-          jne L_42c100
-          .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
-L_42c420:
-          mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_45a050
-          mov DWORD PTR [ESP],1
-          call _log_printf
-          jmp L_42c146
-          .byte 0x8d
-          .byte 0x76
-          .byte 0x0
-L_42c440:
-          call _imgCfOffset
-          mov EBP,EAX
-          call _imgCfSize
-          lea EDX,DWORD PTR [EBP+EAX*1]
-          mov EBP,DWORD PTR [L_479eb4]
-          test EBP,EBP
-          je L_42c5a2
-          mov EAX,DWORD PTR [_g479ea8]
-          lea EBP,DWORD PTR [EDX+96]
-L_42c466:
-          cmp EAX,1
-          je L_42c360
-L_42c46f:
-          cmp EAX,5
-          ja L_42c420
-          jmp L_42c100
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42c480:
-          mov ECX,DWORD PTR [L_479eb8]
-          test ECX,ECX
-          je L_42c140
-          jmp L_42c336
-L_42c493:
-          mov EDI,EBP
-L_42c495:
-          mov EAX,DWORD PTR [L_479ebc]
-          test EAX,EAX
-          je L_42c554
-          mov EBX,DWORD PTR [L_4c4f98]
-          test EBX,EBX
-          jle L_42c4da
-          xor EAX,EAX
-          cmp DWORD PTR [L_4bc150+4],14
-          mov EDX,OFFSET L_4bc580
-          jne L_42c4d3
-          jmp L_42c4da
-          .byte 0x66
-          .byte 0x90
-L_42c4c0:
-          add EDX,1068
-          cmp DWORD PTR [EDX-1068],14
-          je L_42c5e0
-L_42c4d3:
-          add EAX,1
-          cmp EBX,EAX
-          jne L_42c4c0
-L_42c4da:
-          mov EDX,270000
-          xor EAX,EAX
-L_42c4e1:
-          imul EAX,EAX,1068
-          mov DWORD PTR [ESP+12],EDI
-          mov DWORD PTR [ESP+4],OFFSET L_45a000
-          mov DWORD PTR [ESP],1
-          lea EBX,DWORD PTR [EAX+_xb]
-          mov EAX,DWORD PTR [EAX+L_4bc150+16]
-          lea ESI,DWORD PTR [EAX+EDI*1]
-          mov DWORD PTR [ESP+16],EAX
-          lea EAX,DWORD PTR [EDX+_xb]
-          mov DWORD PTR [ESP+20],ESI
-          mov DWORD PTR [ESP+8],EAX
-          call _log_printf
-          mov EAX,DWORD PTR [ESP+40]
-          mov DWORD PTR [ESP+20],1
-          mov DWORD PTR [ESP+12],0
-          mov DWORD PTR [ESP+16],EAX
-          mov EAX,DWORD PTR [EBX+271040]
-          mov DWORD PTR [ESP+8],EAX
-          mov EAX,DWORD PTR [EBX+271036]
-          mov DWORD PTR [ESP],EDI
-          mov DWORD PTR [ESP+4],EAX
-          call _imgAdd
-L_42c554:
-          add ESP,60
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-          .byte 0x8d
-          .byte 0x74
-          .byte 0x26
-          .byte 0x0
-L_42c560:
-          mov EDI,DWORD PTR [L_4c4f98]
-          test EDI,EDI
-          jle L_42c1f0
-          xor EAX,EAX
-          cmp DWORD PTR [L_4bc150+4],20
-          mov EDX,OFFSET L_4bc580
-          jne L_42c596
-          jmp L_42c1f0
-L_42c583:
-          add EDX,1068
-          cmp DWORD PTR [EDX-1068],20
-          je L_42c1f2
-L_42c596:
-          add EAX,1
-          cmp EAX,EDI
-          jne L_42c583
-          jmp L_42c1f0
-L_42c5a2:
-          mov EAX,DWORD PTR [_g479ea8]
-          lea EBP,DWORD PTR [EDX+16]
-          lea ECX,DWORD PTR [EAX-4]
-          cmp ECX,1
-          ja L_42c466
-          lea EBP,DWORD PTR [EDX+96]
-          jmp L_42c46f
-          .byte 0x66
-          .byte 0x90
-L_42c5c0:
-          mov DWORD PTR [ESP+4],OFFSET L_45a074
-          mov DWORD PTR [ESP],0
-          call _log_printf
-          jmp L_42c146
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_42c5e0:
-          imul EDX,EAX,1068
-          add EDX,270000
-          jmp L_42c4e1
-L_42c5f1:
-          xor EDI,EDI
-          jmp L_42c495
+#@C _addBlsToImage
           .byte 0x90
           .byte 0x8d
           .byte 0xb4
@@ -2330,7 +1947,7 @@ L_42c72c:
           mov EAX,DWORD PTR [EBX+1040]
           mov DWORD PTR [ESP+12],EBP
           mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_45a000
+          mov DWORD PTR [ESP+4],OFFSET _bd_45a000
           mov DWORD PTR [ESP],1
           lea EDX,DWORD PTR [EAX+EBP*1]
           mov DWORD PTR [ESP+16],EAX
@@ -2378,7 +1995,7 @@ L_42c7d8:
           mov ECX,DWORD PTR [EBX+1040]
           mov DWORD PTR [ESP+12],EBP
           mov DWORD PTR [ESP+8],EBX
-          mov DWORD PTR [ESP+4],OFFSET L_459fc0
+          mov DWORD PTR [ESP+4],OFFSET _bd_459fc0
           mov DWORD PTR [ESP],1
           lea EDX,DWORD PTR [ECX+EBP*1]
           sub EDX,DWORD PTR [EAX+L_4bc174]
@@ -2432,7 +2049,7 @@ L_42c8a0:
           call _imgSize
           cmp ESI,EAX
           jae L_42c72c
-          mov DWORD PTR [ESP+4],OFFSET L_45a074
+          mov DWORD PTR [ESP+4],OFFSET _bd_45a074
           mov DWORD PTR [ESP],0
           call _log_printf
           mov EAX,DWORD PTR [L_4c4f9c]
@@ -10051,17 +9668,17 @@ _bd_459f7c:
 _bd_459fa6:
           .string "Fixing up patch set..."
           .zero 3
-L_459fc0:
+_bd_459fc0:
           .string "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n"
-L_45a000:
+_bd_45a000:
           .string "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n"
-L_45a034:
+_bd_45a034:
           .string "retail image, skipping %s\n"
           .zero 1
-L_45a050:
+_bd_45a050:
           .string "devkit/testkit image, skipping %s\n"
           .zero 1
-L_45a074:
+_bd_45a074:
           .string "***** WARNING: skipping xell, there doesn't appear to be enough room!\n"
           .zero 1
 _bd_45a0bc:

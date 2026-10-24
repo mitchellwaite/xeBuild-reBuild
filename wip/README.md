@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 34 match and are built
+Draft of the whole object (all 41 functions). 35 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1560,7 +1560,7 @@ countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
-patchBlsResign, calcBlAreaSize, patchBlsBlmod.
+patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1863,7 +1863,7 @@ only shows in `sh build.sh`.
   (both loop compares `cmp ebp,esi; jb`): ipa-split only considers
   functions with a direct caller in the TU (`-fno-partial-inlining`:
   MATCH). Its hints were found without that caller and need redoing then.
-- addBlsToImage (8, 2026-10-23; was 347; xeBuild64 0x4071d0 has the
+- addBlsToImage (built from C, 2026-10-23; was 347; xeBuild64 0x4071d0 has the
   layout): log first, dispatch second (`if (type != 10 && type != 16 &&
   type != 24) log;` then a 10/16/6/24/else chain, type 24 logging again
   under the glitch test); threading makes the original's two test chains.
@@ -1871,12 +1871,16 @@ only shows in `sh build.sh`.
   `if (xb.type == 1 && (23||25)) retail; else if (xb.type > 5) { devkit }
   else if (type == 25 && ...) xell` (8 other orders 19-244 lines). Type-23
   offset `if (glitch2mfg) +0x60; else if (4||5) +0x60; else +0x10`. `int
-  off` (u32: the cmov ties off to e->offset, 241 lines). Left: the xell
-  warning block (freq 75) is under the round-2 threshold (84 = entry 421
-  x 0.2), so the f01c found block (114, round 2) goes first. A longer trip
-  count (`files[35]`, expect on the loop test) fixes it but moves the
-  type-2 findFile(20) and glitch-false blocks (48); labels flip branches
-  (8-452); cb_hint needs no-early-inlining (188). Scratch: build/v/abti/.
+  off` (u32: the cmov ties off to e->offset, 241 lines). The last 8 lines
+  (built from C, 2026-10-23): the xell warning block (freq 75) was under
+  the round-2 threshold (84 = entry 421 x 0.2) while the original aligns
+  it (so > freq_max/100 ~91, round 2, popping before the f01c found
+  block). PRED_CALL (29%) fired twice on that path (the `type == 25` edge
+  into the imgSize() block, then the log block). An always-true
+  `__builtin_expect(type != 24, 1)` between `type == 25` and imgSize()
+  gives a call-free block (28% nonequal instead of 13.7%); VRP drops the
+  test. Inside the warning arm instead it matches fncmp but aligns
+  L_42c2ee (only offcmp sees it). Scratch: build/v/abti/, build/v/abti2/.
 - addUpdateBls (95, 2026-10-23; was 204; xeBuild64 0x407870, "skipping
   xell"): like addBlsToImage, the log (`if (type != 10 && type != 16 &&
   type != 24)`) and the 10/16/24/else imgAdd chain are separate

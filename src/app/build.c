@@ -340,6 +340,11 @@ static const char bd_459f2a[] = "D";
 static const char bd_459f2c[] = "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n";
 static const char bd_459f7c[] = "Adding 0x%x bytes blmod.bin data to %s...";
 static const char bd_459fa6[] = "Fixing up patch set...";
+static const char bd_459fc0[] = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n";
+static const char bd_45a000[] = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n";
+static const char bd_45a034[] = "retail image, skipping %s\n";
+static const char bd_45a050[] = "devkit/testkit image, skipping %s\n";
+static const char bd_45a074[] = "***** WARNING: skipping xell, there doesn't appear to be enough room!\n";
 static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
 static const char bd_45a0f0[] = "    - console DVD eject button is being used to %s \n";
 static const char bd_45a128[] = "    - IR remote power button is being used to %s \n";
@@ -382,7 +387,6 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 		  int su, int fs, int common);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
-void addBlsToImage(void);
 void addUpdateBls(void);
 int encodeBls(u8 *salt, int ldv);
 int buildFlash(void);
@@ -1414,6 +1418,100 @@ void patchBlsBlmod(const void *blmod, int size)
 		setBeU32(end, xb.files[cbb].data + 12);
 	}
 	log_printf(1, bd_459efa);
+}
+
+void addBlsToImage(void)
+{
+	struct fileent *e;
+	int ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
+	u32 i;
+	int type, j, off = 0;
+
+	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+		e = &xb.files[i];
+		type = e->type;
+		if (e->offset != 0xffffffff)
+			off = e->offset;
+		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+			continue;
+		if (xb.type == 2) {
+			if (type == 14) {
+				off += e->size;
+				continue;
+			}
+			if (type == 21) {
+				j = findFile(20);
+				log_printf(1, bd_459fc0,
+					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+			} else if (type == 10) {
+				j = findFile(9);
+				log_printf(1, bd_459fc0,
+					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+			} else {
+				log_printf(1, bd_45a000,
+					   e->name, off, e->size, off + e->size);
+				imgAdd(off, e->data, e->size, 0, ecc, 1);
+			}
+			off += e->size;
+			continue;
+		}
+		if (type == 9)
+			off = imgCfOffset();
+		else if (type == 23) {
+			off = imgCfOffset() + imgCfSize();
+			if (xb.glitch2mfg)
+				off += 0x60;
+			else if (xb.type == 4 || xb.type == 5)
+				off += 0x60;
+			else
+				off += 0x10;
+		}
+		if (xb.type == 1 && (type == 23 || type == 25)) {
+			log_printf(1, bd_45a034, e->name);
+			continue;
+		} else if (xb.type > 5) {
+			if (type == 23 || type == 25) {
+				log_printf(1, bd_45a050, e->name);
+				continue;
+			}
+		} else if (type == 25 && __builtin_expect(type != 24, 1) && e->offset < imgSize()) {
+			log_printf(0, bd_45a074);
+			continue;
+		}
+		if (type != 10 && type != 16 && type != 24)
+			log_printf(1, bd_45a000,
+				   e->name, off, e->size, off + e->size);
+		if (type == 10) {
+			j = findFile(9);
+			log_printf(1, bd_459fc0,
+				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+		} else if (type == 16) {
+			j = findFile(15);
+			log_printf(1, bd_459fc0,
+				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+		} else if (type == 6) {
+			if (xb.cbb)
+				imgAdd(off, e->data, e->size, 0, ecc, 1);
+		} else if (type == 24) {
+			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
+				log_printf(1, bd_45a000,
+					   e->name, off, e->size, off + e->size);
+				imgAdd(off, e->data, e->size, 0, ecc, 1);
+			}
+		} else
+			imgAdd(off, e->data, e->size, 0, ecc, 1);
+		off += e->size;
+	}
+	if (xb.f01c) {
+		j = findFile(14);
+		log_printf(1, bd_45a000,
+			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
+		imgAdd(off, xb.files[j].data, xb.files[j].size, 0, ecc, 1);
+	}
 }
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
