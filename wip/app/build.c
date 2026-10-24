@@ -687,12 +687,13 @@ magic:
 
 /* find the SMC config in a nand image (pages with or without their
    0x10-byte spare data) and copy it to e */
-int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
+__attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 {
 	u32 i, j;
 	int found;
 
-	/* hints (wip/README.md): &size makes size SSA late (next <= size in
+	/* hints (wip/README.md): noinline keeps ipa-split off it once it has
+	   C callers (loadConsoleBlFiles); &size makes size SSA late (next <= size in
 	   both loops); the bound expects make found the rotated exit; the pin
 	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
 	   block under bb-reorder's duplication threshold */
@@ -1483,12 +1484,12 @@ int loadBlFiles(void)
 /* load the console build's input e by its type (inlined into
    loadConsoleBlFiles). Case order: .rdata string order (skip, kv, kv alt,
    config, smc; "using" before the error, so if/else) and peephole2's
-   free-register picks. Hints: glitch2mfg expect keeps the case-24 head's
-   trace going into the loop latch (bb-reorder then pops the case traces
-   LIFO, as in the original); type == 9 expect puts the loadInputFile path
-   in a round-1 trace, so the fail block starts its own trace and follows
-   the r test */
-static u32 loadConsoleBl(struct fileent *e)
+   free-register picks. always_inline: the profile is estimated on the
+   inlined body (as if the switch were written in the loop), which gives the
+   original's cold block frequencies (wip/README). Hints: type == 9 expect
+   puts the loadInputFile path in a round-1 trace, so the fail block starts
+   its own trace and follows the r test */
+static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e)
 {
 	u32 r = 0;
 	int type;
@@ -1501,21 +1502,36 @@ static u32 loadConsoleBl(struct fileent *e)
 		break;
 	case 9: case 10: case 15: case 16: case 20: case 21:
 		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (r && !(__builtin_expect(type == 9, 0) && suGetCF(&e->data, &e->size)) &&
-		    !(type == 10 && suGetCG(&e->data, &e->size)))
-			break;
+		if (r) {
+			if (__builtin_expect(type == 9, 0)) {
+				if (suGetCF(&e->data, &e->size))
+					r = 0;
+			} else if (type == 10) {
+				if (suGetCG(&e->data, &e->size))
+					r = 0;
+			}
+			if (r)
+				break;
+		}
 		r = checkBl(e->data, e->size, type, e->crc);
 		break;
 	case 24:
-		if (!__builtin_expect(xb.glitch2mfg, 0) || (!loadBaseFile(e->name, e) && e->size == 0x60))
+		if (!xb.glitch2mfg || (!loadBaseFile(e->name, e) && e->size == 0x60))
 			break;
 		e->data = malloc(0x60);
 		if (!e->data) {
 			r = 1;
 			break;
 		}
-		e->size = 0x60;
-		memcpy(e->data, defBl60, 0x60);
+		{
+			u8 *p = e->data;
+
+			/* p's points-to unknown: the size store may alias the
+			   copy, so sched2 keeps it before the rep movsd setup */
+			__asm__("" : "+r"(p));
+			e->size = 0x60;
+			memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
+		}
 		break;
 	case 25:
 		if (xb.type == 1 || xb.type > 5)
@@ -1583,6 +1599,10 @@ static u32 loadConsoleBl(struct fileent *e)
 		}
 		break;
 	case 2:
+		/* always false (VRP drops it): makes the smc error a bit colder
+		   than the config one, so its trace comes after it */
+		if (__builtin_expect(type != 2, 0))
+			break;
 		if (xb.dumpSmc) {
 			log_printf(1, "using smc binary from console\n");
 			if (e->data)
@@ -1614,6 +1634,10 @@ int loadConsoleBlFiles(void)
 	u32 i;
 	u32 r;
 
+	/* the cold label gives the shrink-wrapped return 0 frequency 0, so
+	   bb-reorder lays it out last */
+	if ((u32)xb.nFiles <= 1)
+		goto none;
 	for (i = 1; i < (u32)xb.nFiles; i++) {
 		e = &xb.files[i];
 		if (strnicmp(e->name, "none", 4) || e->crc)
@@ -1625,6 +1649,8 @@ int loadConsoleBlFiles(void)
 			return -1;
 		}
 	}
+	return 0;
+none: __attribute__((cold));
 	return 0;
 }
 

@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 37 match and are built
+Draft of the whole object (all 41 functions). 38 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1561,7 +1561,7 @@ patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
 patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile,
-addUpdateBls.
+addUpdateBls, loadConsoleBlFiles.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1870,10 +1870,11 @@ only shows in `sh build.sh`.
   threader counts the caller/helper `r` PHI merge (a `u32 *pr` out-param
   fixes that one: build/v/lbf/topr.py, 80 lines), and the type-11 pub1bl
   path is 8 stmts against the limit of 7. Scratch: build/v/lbf/.
-  Warning: with loadBl/loadBlFiles in C, extractSmcConfig is 8 lines off
-  (both loop compares `cmp ebp,esi; jb`): ipa-split only considers
-  functions with a direct caller in the TU (`-fno-partial-inlining`:
-  MATCH). Its hints were found without that caller and need redoing then.
+  With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
+  was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
+  considers functions with a direct caller in the TU. Fixed with
+  `__attribute__((noinline))` on extractSmcConfig (ipa-split skips
+  noinline functions), in the build since loadConsoleBlFiles.
 - addBlsToImage (built from C, 2026-10-23; was 347; xeBuild64 0x4071d0 has the
   layout): log first, dispatch second (`if (type != 10 && type != 16 &&
   type != 24) log;` then a 10/16/6/24/else chain, type 24 logging again
@@ -1906,7 +1907,7 @@ only shows in `sh build.sh`.
   type == 15, 0) || ...` lowers the head edge (isUpdateBl still matches);
   the expect on (16|9) breaks the dispatch (86), on `type == 23` alone
   breaks isUpdateBl. Scratch: build/v/aub/, build/v/aub2/.
-- loadConsoleBlFiles (35, 2026-10-23; was 323): loadBlFiles' recipe, a
+- loadConsoleBlFiles (built from C; was 323): loadBlFiles' recipe, a
   static `u32 loadConsoleBl(e)` helper (inlined; no ipa-cp clones, the
   loadInputFile crc==0 evaluation drops to 190). Cases 3/4/27/2 `if
   (xb.dumpX) { using } else { err; r = -1; }` (.rdata order); case 27
@@ -1918,10 +1919,33 @@ only shows in `sh build.sh`.
   440, P <= 28.6%; build/v/lcb/fib.py replays a bbro dump through gcc 6's
   fibonacci_heap). `__builtin_expect(type == 9, 0)` in the 9-group puts the
   loadInputFile path in a round-1 trace so fail is connected after the r
-  test. Left: the case-24 loadBaseFile/malloc block after ret0, the
-  `mov [ebx+4],96` vs `rep movsd` schedule (as loadBlFiles), the r reload
-  hoisted above `je` in the suGetCF/CG blocks. In C it also moves
-  extractSmcConfig (8 lines, same ipa-split effect as loadBlFiles).
+  test. Built from C (2026-10-23, second pass, scratch build/v/lcb2/):
+  - `static inline __attribute__((always_inline)) loadConsoleBl`: the
+    profile is then estimated after early inlining, as if the switch were
+    in the loop (186 lines without). The glitch2mfg expect goes. Bounds
+    from alignment: a jump target without fallthru is aligned only above
+    freq_max/100 (~95); the original aligns the case-24 tail, appendAddon,
+    the cfg/smc errors and checkBl, not CF or ret0.
+  - 9-group `if (r) { if (expect(type == 9, 0)) { if (suGetCF(..)) r = 0;
+    } else if (type == 10) { if (suGetCG(..)) r = 0; } if (r) break; }`:
+    each suGet failure stays its own fallthrough block until LRA, which
+    puts the r restore there, and jump2 crossjumps the two into one block
+    (the `&&` form lets LRA hoist it above `je`).
+  - Case 24 copy `u8 *p = e->data; __asm__("" : "+r"(p)); e->size = 0x60;
+    memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);`: sched2 breaks
+    the tie by forward dependence count, so the size store comes first only
+    if it depends on the rep movsd; points-to had e {xb.files} and the copy
+    {HEAP}, the asm makes it unknown; assume_aligned keeps `rep movsd`
+    without the unaligned prologue (2 lines without). loadBlFiles' case 24
+    probably takes the same fix.
+  - `if ((u32)xb.nFiles <= 1) goto none;` before the loop, `none:
+    __attribute__((cold)); return 0;` after the return: the shrink-wrapped
+    `xor eax,eax; ret` gets freq 0 and pops last (4).
+  - Case 2 `if (__builtin_expect(type != 2, 0)) break;` (always false, VRP
+    drops it) lowers the smc error (107 -> ~105) under the cfg error, which
+    tie in gcc 6's fibheap otherwise (287 without; build/v/lcb2/rep.py,
+    sweep.py, r3sim.py replay keys).
+  defBl60 is named in split.py's SYMBOLS (0x44a700).
 - encodeBls (6, 2026-10-23; was 1048): `if (xb.type == 2) {JTAG} else if
   (xb.type > 3) {...} else {...}` (`<= 3` is 50/50; tested first, prev_bb
   pulls it into the hot trace). Type 24 is a guarded log before each switch

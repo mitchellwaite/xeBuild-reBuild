@@ -325,6 +325,19 @@ static const char bd_4598e0[] = "\n***** ERROR: %s failed hash check!\n";
 static const char bd_459905[] = "%s hash from SE is good\n";
 static const char bd_459920[] = "\n***** ERROR: could not locate SD data to check %s!\n";
 static const char bd_459955[] = "none";
+static const char bd_459a68[] = "xell not found in perbuild directory, checking firmware /bin folder\n";
+static const char bd_459ab0[] = "xell not found in firmware /bin folder, checking base path\n";
+static const char bd_459b54[] = "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n";
+static const char bd_459ba8[] = "####### unhandled bl load %d %s\n";
+static const char bd_459bcc[] = "\n\n**** could not read %s (%i) ****\n\n";
+static const char bd_459c64[] = "skipping %s%s as it is in glitch bootloader dump\n";
+static const char bd_459c98[] = "using keyvault data from console\n";
+static const char bd_459cbc[] = "\n***** ERROR!: acquiring keyvault data failed!\n";
+static const char bd_459cec[] = "using keyvault alt data from console\n";
+static const char bd_459d14[] = "using smc configuration from console\n";
+static const char bd_459d3c[] = "\n***** ERROR!: acquiring smc configuration data failed!\n";
+static const char bd_459d78[] = "using smc binary from console\n";
+static const char bd_459d98[] = "\n***** ERROR!: acquiring smc binary data failed!\n";
 static const char bd_459e3c[] = "\tPatching header for slower demon/cygnos UART speed\n";
 static const char bd_459e74[] = "\tPatching header for xell power reason\n";
 static const char bd_459e9c[] = "\tPatching header for xell alt power reason\n";
@@ -386,7 +399,6 @@ static const char bd_45aa58[] = "***** WARNING: xell is unexpectedly larger than
 
 /* still in build.s */
 int loadBlFiles(void);
-int loadConsoleBlFiles(void);
 int encodeBls(u8 *salt, int ldv);
 int buildFlash(void);
 
@@ -837,12 +849,13 @@ magic:
 	return -1;
 }
 
-int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
+__attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 {
 	u32 i, j;
 	int found;
 
-	/* hints (wip/README.md): &size makes size SSA late (next <= size in
+	/* hints (wip/README.md): noinline keeps ipa-split off it once it has
+	   C callers (loadConsoleBlFiles); &size makes size SSA late (next <= size in
 	   both loops); the bound expects make found the rotated exit; the pin
 	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
 	   block under bb-reorder's duplication threshold */
@@ -1378,6 +1391,169 @@ int verifyBlSigs(void)
 		}
 	}
 	return ok;
+}
+
+static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e)
+{
+	u32 r = 0;
+	int type;
+
+	type = e->type;
+	switch (type) {
+	case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
+	case 17: case 18: case 19:
+		log_printf(1, bd_459c64, xb.baseDir, e->name);
+		break;
+	case 9: case 10: case 15: case 16: case 20: case 21:
+		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (r) {
+			if (__builtin_expect(type == 9, 0)) {
+				if (suGetCF(&e->data, &e->size))
+					r = 0;
+			} else if (type == 10) {
+				if (suGetCG(&e->data, &e->size))
+					r = 0;
+			}
+			if (r)
+				break;
+		}
+		r = checkBl(e->data, e->size, type, e->crc);
+		break;
+	case 24:
+		if (!xb.glitch2mfg || (!loadBaseFile(e->name, e) && e->size == 0x60))
+			break;
+		e->data = malloc(0x60);
+		if (!e->data) {
+			r = 1;
+			break;
+		}
+		{
+			u8 *p = e->data;
+
+			/* p's points-to unknown: the size store may alias the
+			   copy, so sched2 keeps it before the rep movsd setup */
+			__asm__("" : "+r"(p));
+			e->size = 0x60;
+			memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
+		}
+		break;
+	case 25:
+		if (xb.type == 1 || xb.type > 5)
+			break;
+		if (!loadBaseFile(e->name, e))
+			break;
+		log_printf(1, bd_459a68);
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, bd_459ab0);
+		r = loadLocalFile(e);
+		break;
+	case 3:
+		if (xb.dumpKv) {
+			log_printf(1, bd_459c98);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKv;
+			e->size = xb.dumpKvSize;
+			xb.dumpKv = NULL;
+			xb.dumpKvSize = 0;
+		} else {
+			log_printf(0, bd_459cbc);
+			r = -1;
+		}
+		break;
+	case 4:
+		if (xb.dumpKvAlt) {
+			log_printf(1, bd_459cec);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKvAlt;
+			e->size = xb.dumpKvAltSize;
+			xb.dumpKvAlt = NULL;
+			xb.dumpKvAltSize = 0;
+		} else {
+			log_printf(0, bd_459cbc);
+			r = -1;
+		}
+		break;
+	case 23:
+		r = loadBinFile(e);
+		if (r)
+			break;
+		if (e->size & 3) {
+			log_printf(1, bd_459b54, e->size);
+			r = -1;
+			break;
+		}
+		appendAddonPatches(e);
+		break;
+	case 27:
+		if (xb.dumpConfig) {
+			log_printf(1, bd_459d14);
+			if (xb.files[xb.nFlashFiles].data)
+				free(xb.files[xb.nFlashFiles].data);
+			xb.files[xb.nFlashFiles].data = xb.dumpConfig;
+			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
+			xb.dumpConfig = NULL;
+			xb.dumpConfigSize = 0;
+			r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
+		} else {
+			log_printf(0, bd_459d3c);
+			r = -1;
+		}
+		break;
+	case 2:
+		/* always false (VRP drops it): makes the smc error a bit colder
+		   than the config one, so its trace comes after it */
+		if (__builtin_expect(type != 2, 0))
+			break;
+		if (xb.dumpSmc) {
+			log_printf(1, bd_459d78);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpSmc;
+			e->size = xb.dumpSmcSize;
+			xb.dumpSmc = NULL;
+			xb.dumpSmcSize = 0;
+			e->offset = smcSetLoad(e->size);
+			if (!e->offset)
+				r = -1;
+		} else {
+			log_printf(0, bd_459d98);
+			r = -1;
+		}
+		break;
+	default:
+		log_printf(1, bd_459ba8, type, e->name);
+		break;
+	}
+	return r;
+}
+
+int loadConsoleBlFiles(void)
+{
+	struct fileent *e;
+	u32 i;
+	u32 r;
+
+	/* the cold label gives the shrink-wrapped return 0 frequency 0, so
+	   bb-reorder lays it out last */
+	if ((u32)xb.nFiles <= 1)
+		goto none;
+	for (i = 1; i < (u32)xb.nFiles; i++) {
+		e = &xb.files[i];
+		if (strnicmp(e->name, bd_459955, 4) || e->crc)
+			r = loadConsoleBl(e);
+		else
+			r = 0;
+		if (r) {
+			log_printf(0, bd_459bcc, e->name, r);
+			return -1;
+		}
+	}
+	return 0;
+none: __attribute__((cold));
+	return 0;
 }
 
 int patchBlsResign(void)

@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **599 of 617** (597 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **600 of 617** (598 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 20 / 25 | 414 / 432 |
+| `app/` | 20 / 25 | 415 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/net` | mixed; 0 of 2 drafted functions match in `wip/app/net.c` | 30 / 32 |
-| `app/build` | mixed; 0 of 4 drafted functions match in `wip/app/build.c` | 37 / 41 |
+| `app/build` | mixed; 0 of 3 drafted functions match in `wip/app/build.c` | 38 / 41 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -190,7 +190,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/build</code>: 37 / 41 in C</summary>
+<summary><code>app/build</code>: 38 / 41 in C</summary>
 
 - ✅ `loadBaseFile` (0x427500)
 - ✅ `findFileOffset` (0x427650)
@@ -215,7 +215,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `checkBl` (0x429b30)
 - ✅ `verifyBlSigs` (0x429e70)
 - ⬜ `loadBlFiles` (0x42a370) (draft in `wip/`, no match yet)
-- ⬜ `loadConsoleBlFiles` (0x42adc0) (draft in `wip/`, no match yet)
+- ✅ `loadConsoleBlFiles` (0x42adc0)
 - ✅ `patchHeaderOpts` (0x42b2b0)
 - ✅ `blmodMissing` (0x42b3d0)
 - ✅ `rotSumSha` (0x42b3f0)
