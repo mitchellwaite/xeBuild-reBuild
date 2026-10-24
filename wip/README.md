@@ -1863,7 +1863,21 @@ only shows in `sh build.sh`.
   (both loop compares `cmp ebp,esi; jb`): ipa-split only considers
   functions with a direct caller in the TU (`-fno-partial-inlining`:
   MATCH). Its hints were found without that caller and need redoing then.
-- addBlsToImage (361), addUpdateBls (204), loadConsoleBlFiles,
+- addBlsToImage (8, 2026-10-23; was 347; xeBuild64 0x4071d0 has the
+  layout): log first, dispatch second (`if (type != 10 && type != 16 &&
+  type != 24) log;` then a 10/16/6/24/else chain, type 24 logging again
+  under the glitch test); threading makes the original's two test chains.
+  findFile takes constants (9/15, 20/9), one inlined loop each. Skip order
+  `if (xb.type == 1 && (23||25)) retail; else if (xb.type > 5) { devkit }
+  else if (type == 25 && ...) xell` (8 other orders 19-244 lines). Type-23
+  offset `if (glitch2mfg) +0x60; else if (4||5) +0x60; else +0x10`. `int
+  off` (u32: the cmov ties off to e->offset, 241 lines). Left: the xell
+  warning block (freq 75) is under the round-2 threshold (84 = entry 421
+  x 0.2), so the f01c found block (114, round 2) goes first. A longer trip
+  count (`files[35]`, expect on the loop test) fixes it but moves the
+  type-2 findFile(20) and glitch-false blocks (48); labels flip branches
+  (8-452); cb_hint needs no-early-inlining (188). Scratch: build/v/abti/.
+- addUpdateBls (204), loadConsoleBlFiles,
   encodeBls, buildFlash: first drafts from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
