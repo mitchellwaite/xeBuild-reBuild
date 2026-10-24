@@ -46,7 +46,7 @@ struct xebuild {
 	int glitch2;			/* 010 */
 	int glitch2mfg;			/* 014 */
 	u32 cbb;			/* 018 build with a CB_B */
-	int f01c;			/* 01c set when an SE replaces the CF */
+	u32 f01c;			/* 01c set when an SE replaces the CF */
 	int randomKeys;			/* 020 keysInit's argument */
 	int sysTime;			/* 024 use the system time for timestamps */
 	u8 pad028[0x038 - 0x028];
@@ -2094,6 +2094,18 @@ u32 calcBlAreaSize(void)
 	return size;
 }
 
+/* findFile with nFiles read before the loop: n's SSA name predates ch2's
+   header copy, so the loop compare is `cmp n,i` (encodeBls' 13, 16, JTAG 9) */
+static int findFileN(int type)
+{
+	int i, n = xb.nFiles;
+
+	for (i = 0; i < n; i++)
+		if (xb.files[i].type == type)
+			return i;
+	return 0;
+}
+
 /* encrypt (and for retail/glitch builds zeropair) each bootloader with
    its predecessor's key, prepare the SMC and keyvaults; 1 if the SMC
    could not be prepared */
@@ -2136,7 +2148,7 @@ int encodeBls(u8 *salt, int ldv)
 				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
 			case 10:
-				j = findFile(9);
+				j = findFileN(9);
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 17:
@@ -2224,11 +2236,11 @@ int encodeBls(u8 *salt, int ldv)
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 14:
-				j = findFile(13);
+				j = findFileN(13);
 				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 15:
-				j = findFile(16);
+				j = findFileN(16);
 				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
 			case 16:

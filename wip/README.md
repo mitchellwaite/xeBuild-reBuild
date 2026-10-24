@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 39 match and are built
+Draft of the whole object (all 41 functions). 40 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1561,7 +1561,7 @@ patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
 patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile,
-addUpdateBls, loadConsoleBlFiles, buildFlash.
+addUpdateBls, loadConsoleBlFiles, buildFlash, encodeBls.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1948,7 +1948,7 @@ only shows in `sh build.sh`.
     tie in gcc 6's fibheap otherwise (287 without; build/v/lcb2/rep.py,
     sweep.py, r3sim.py replay keys).
   defBl60 is named in split.py's SYMBOLS (0x44a700).
-- encodeBls (6, 2026-10-23; was 1048): `if (xb.type == 2) {JTAG} else if
+- encodeBls (built from C; was 1048): `if (xb.type == 2) {JTAG} else if
   (xb.type > 3) {...} else {...}` (`<= 3` is 50/50; tested first, prev_bb
   pulls it into the hot trace). Type 24 is a guarded log before each switch
   (`if (type != 24) log;` + `case 23: case 24: case 25: break;`; `<= 3`:
@@ -1975,8 +1975,15 @@ only shows in `sh build.sh`.
   then: a structural difference before VRP. One dead store (`if (i < 1)
   xb.cfLdv = 0;`) moves the one low name onto a single target (4 lines);
   two or more flip the tail loops instead (all 780 pairs of 40 positions
-  tried, >= 2 left). Untried lever: keeping fre3's forwarder removal off
-  the switch case blocks.
+  tried, >= 2 left). Built from C (2026-10-24): a `static int
+  findFileN(type)` helper that reads `n = xb.nFiles` before its loop, used
+  for those three lookups: n gets an early, low SSA version that ch2 never
+  copies, so the compare is `cmp n,i` with otherwise identical code (no
+  free-list games needed; try it for other inlined findFile loops). The
+  link then showed one byte fncmp/offcmp miss: the f01c tail's `je` went
+  past the `xor eax,eax` of `return 0` (uncprop reused the zero f01c for
+  the return); `u32 f01c` in struct xebuild keeps the constant (every other
+  user still matches). defPayload/defCore are named in SYMBOLS.
 - buildFlash (built from C, 2026-10-23; was 2473; hot path offsets match to
   0x12fb, .rdata order exact): image_write prototypes now use the SYMBOLS
   names (`imgAddRaw` must stay void: int costs 20); `int mobile[11].size`
