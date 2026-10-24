@@ -1851,8 +1851,9 @@ only shows in `sh build.sh`.
   ebx,esi` after `cmp ecx,14`: a `"+b"(size)` pin after `x = findFile(14)`
   (before it, the flags clobber puts the copy before the cmp). The files[]
   bound (>= 18) and declaration order don't matter.
-- loadBlFiles (73, 2026-10-23; was 668; case-24 copy and 9-group as in
-  loadConsoleBlFiles, 78 -> 73): the switch is a separate static
+- loadBlFiles (73, 2026-10-23; was 668; loadConsoleBlFiles' case-24 copy
+  and a nested `if (r) { if (type == 9) { if (!suGetCF) break; } ... }`
+  9-group, 78 -> 73): the switch is a separate static
   `u32 loadBl(e, i)` (inlined), called under the "none" test (`if
   (strnicmp(e->name, "none", 4) || e->crc) r = loadBl(e, i); else r =
   0;`). The guarded call gives P(switch) 0.645 (case blocks under round-1
