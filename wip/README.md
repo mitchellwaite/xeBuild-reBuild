@@ -1943,6 +1943,26 @@ only shows in `sh build.sh`.
   0/100 before dom3 (vrp1 joiner threads drain it). Failed: precomputed
   flags (forwprop folds them), 5/17/11 tests on the pre-SE type (117-284),
   `^`/`!=`/`+` forms (96-127), `int *pr` (133-379).
+  Sixth pass (2026-10-24, structural, still 16; scratch build/v/lbf6/,
+  lnx.txt = xeBuild64's loadBlFiles at 0x405280 annotated): v1.16 has the
+  draft's structure (r != 0 -> type 9 suGetCF / 10 suGetCG with its own
+  checkBl; 9 and SE share one checkBl; else generic checkBl, then 17/5/11
+  tests, the signature block, `xb.type <= 5` before `type == 14`; no bit
+  test, no inner switch), as does IDA. b4.c's signature form `if (pub1bl)
+  { if (!cbVerifySig) failed; else if (type) passed; } else nokey;` is
+  supported by .rdata (gcc 6.2 places FSM copies at split_edge_bb_loc(entry),
+  so the nokey copy expands first: nokey < failed < passed) and verifyBlSigs'
+  style; in the whole-object build it gives .rdata and sizes SAME (23
+  lines, the type-11 block after the type-9 checkBl tail). Blocker A is
+  structural under this source: duplicate_thread_path scales the region by
+  (head - entry)/head, FSM paths go before forward ones, and the c11 block
+  can't be empty (`type` live after it). Targets: c11 unprioritised with
+  key -27..-22 (freq ~23-26); type-17 -> pub1bl edge >= 44 (g + c >= 176,
+  g - c in 44..54, c ~68-78, now 49); merged 9/10 checkBl -> r-test edge <
+  88. Dropping the type-10 expect fixes B (edge 44) but c11 stays 0 (25);
+  separate 5/17/11 ifs get ifcombined (81/89; without ifcombine c11
+  survives at 11 but each test is 28%); explicit SE/10 checkBl calls
+  31-272; `type == 5 || type == 17` always folds to a 50% BIT_IOR.
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
