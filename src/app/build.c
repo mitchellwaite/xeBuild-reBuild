@@ -396,11 +396,64 @@ static const char bd_45a7f8[] = "org li %r4, %02x%02x\n";
 static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
 static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 static const char bd_45aa58[] = "***** WARNING: xell is unexpectedly larger than 256KiB!!\n";
+static const char bd_45aa94[] = "Writing initial header to flash image\n";
+static const char bd_45aabc[] = "\n------ Copying bootloader image to flash image ------ \n";
+static const char bd_45aaf8[] = "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n";
+static const char bd_45ab50[] = "\n------ Loading bootloaders and required security files ------\n";
+static const char bd_45ab90[] = "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n";
+static const char bd_45abd8[] = "done!\n";
+static const char bd_45abe0[] = "\n------ Patching BLs and modifying patches ------\n";
+static const char bd_45ac14[] = "\n------ Patching boot reasons and options into flash header ------\n";
+static const char bd_45ac58[] = "\n------ Encrypting and finalizing bootloaders ------\n";
+static const char bd_45ac8e[] = "\nVirtual Fuses set to:";
+static const char bd_45aca8[] = "done!\n\n------ Adding bootloaders to flash image ------\n";
+static const char bd_45ace0[] = "Fixing up FS table...";
+static const char bd_45acf8[] = "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n";
+static const char bd_45ad3c[] = "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...";
+static const char bd_45ad6c[] = "sysupdate.xexp1";
+static const char bd_45ad7c[] = "Writing CG patch slot overflow data to sysupdate.xexp1\n";
+static const char bd_45adb4[] = "Writing target CG patch slot overflow data to sysupdate.xexp2\n";
+static const char bd_45adf3[] = "sysupdate.xexp2";
+static const char bd_45ae04[] = "\n------ adding %d firmware files ------\n";
+static const char bd_45ae30[] = "\n------ adding %d security files ------\n";
+static const char bd_45ae59[] = "sysupdate.xexp";
+static const char bd_45ae68[] = "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n";
+static const char bd_45aebc[] = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
+static const char bd_45aef8[] = "***** could not read file '%s', skipping *****\n";
+static const char bd_45af28[] = "***** could not read file '%s' *****\n";
+static const char bd_45af50[] = "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n";
+static const char bd_45af94[] = "\n------ checking for Mobile*.dat ------\n";
+static const char bd_45afbd[] = "<- Processing %s ->\n";
+static const char bd_45afd4[] = "\tcould not read %s, using data from SUPD...\n";
+static const char bd_45b004[] = "\tcould not read %s, using data from previous parse...\n";
+static const char bd_45b03b[] = "secdata.bin";
+static const char bd_45b047[] = "extended.bin";
+static const char bd_45b054[] = "dae.bin";
+static const char bd_45b05c[] = "crl.bin";
+static const char bd_45b064[] = "fcrt.bin";
+static const char bd_45b06d[] = "odd.bin";
+static const char bd_45b078[] = "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n";
+static const char bd_45b0d4[] = "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n";
+static const char bd_45b13c[] = "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n";
+static const char bd_45b1a0[] = "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n";
+static const char bd_45b1fc[] = "             but should allow the machine to boot normally\n";
+static const char bd_45b238[] = "\t%s not found and not required by keyvault, skipped\n";
+static const char bd_45b270[] = "***** WARNING: %s not found, skipping *****\n";
+static const char bd_45b29d[] = "%s found, adding from file\n";
+static const char bd_45b2bc[] = "%s found, adding from previous parse\n";
+static const char bd_45b2e4[] = "\n------ adding smc_config.bin ------\n";
+static const char bd_45b30c[] = "\n------ cleaning up image ------\n";
+static const char bd_45b330[] = "Fixing up empty FS block entries...";
+static const char bd_45b354[] = "done!\nWriting FS table to image ";
+static const char bd_45b378[] = "\n------ adding [rawpatch] data ------\n";
+static const char bd_45b3a0[] = "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n";
+static const char bd_45b3f4[] = "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n";
+static const char bd_45b44c[] = "***** ERROR: could not load [rawpatch] file '%s'!!\n";
+static const char bd_45b480[] = "\n------ finalizing image ------\n";
 
 /* still in build.s */
 int loadBlFiles(void);
 int encodeBls(u8 *salt, int ldv);
-int buildFlash(void);
 
 u32 findFileOffset(int type)
 {
@@ -571,6 +624,7 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *me
 	return r;
 }
 
+__attribute__((noclone))
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common)
 {
@@ -1966,4 +2020,383 @@ u32 calcBlAreaSize(void)
 	if (size & 0x3fff)
 		size = (size + 0x3fff) & ~0x3fff;
 	return size;
+}
+
+/* no blmod.bin: the console's, if any */
+static void patchConsoleBlmod(void)
+{
+	if (!xb.consoleBlmod || !xb.consoleBlmodSize) {
+		patchBlsBlmod(NULL, 0);
+		return;
+	}
+	patchBlsBlmod(xb.consoleBlmod, xb.consoleBlmodSize);
+	free(xb.consoleBlmod);
+}
+
+int buildFlash(void)
+{
+	u8 salt[16];
+	u32 ts;
+	FILETIME ft;
+	const char *name, *base;
+	u32 area, off, raw, save, a, b, k, crc, len, end;
+	int fuse, blocks, r, cf, cg, region, i;
+	u16 t;
+	char last;
+
+	memset(salt, 0, sizeof(salt));
+	fuse = 1;
+	if (xb.type != 2) {
+		fuse = xb.glitch2mfg != 0;
+		if (__builtin_expect(xb.type == 4 || xb.type == 5, 0))
+			fuse = 1;
+	}
+	if (!xb.fromConsole) {
+		log_printf(1, bd_45aa94);
+		writeInitialHeader();
+	} else {
+		log_printf(1, bd_45aabc);
+		r = checkBootImage(1);
+		if (r) {
+			log_printf(0, bd_45aaf8);
+			return r;
+		}
+	}
+	suLoadDir(xb.dataDir);
+	log_printf(1, bd_45ab50);
+	if (xb.fromConsole)
+		r = loadConsoleBlFiles();
+	else
+		r = loadBlFiles();
+	if (r) {
+		log_printf(0, bd_45ab90);
+		return r;
+	}
+	if (!xb.fromConsole && !verifyBlSigs())
+		return 1;
+	log_printf(1, bd_45abd8);
+	blocks = fsStartBlock();
+	area = calcBlAreaSize();
+	if (!blocks)
+		blocks = area >> 14;
+	else
+		area = blocks << 14;
+	if (xb.type == 3) {
+		log_printf(1, bd_45abe0);
+		if (xb.fromConsole)
+			fixupPatchSet();
+		else {
+			struct fileent f;
+
+			memset(&f, 0, sizeof(f));
+			if (!loadBaseFile(bd_459ec8, &f)) {
+				patchBlsBlmod(f.data, f.size);
+				free(f.data);
+			} else
+				patchConsoleBlmod();
+		}
+	} else if (xb.type == 4 || xb.type == 5) {
+		log_printf(1, bd_45abe0);
+		if (!patchBlsResign())
+			return 1;
+	}
+	if (!xb.fromConsole && !(xb.type == 1 || xb.type > 5)) {
+		log_printf(1, bd_45ac14);
+		patchHeaderOpts();
+	}
+	log_printf(1, bd_45ac58);
+	keysInit(xb.randomKeys);
+	if (fuse) {
+		struct fileent *e = &xb.files[findFile(24)];
+		setFuseCpuKey(e->data);
+		if (xb.type != 2)
+			e->offset = imgCfOffset() + imgCfSize();
+	}
+	if (!xb.fromConsole) {
+		if (encodeBls(salt, blocks))
+			return -4;
+	} else if (encodeUpdateBls((int)salt, blocks))
+		return -4;
+	if (fuse)
+		showFuses(1, bd_45ac8e, xb.files[findFile(24)].data);
+	log_printf(1, bd_45aca8);
+	if (!xb.fromConsole)
+		addBlsToImage();
+	else
+		addUpdateBls();
+	if (!fsStartBlock()) {
+		log_printf(1, bd_45ace0);
+		fixupFsTable(area);
+		imgSetSize(area);
+		log_printf(1, bd_45abd8);
+	}
+	if (fsStartBlock())
+		imgSetSize(fsStartBlock() << 14);
+
+	/* the CG's patch slot overflow goes in the filesystem */
+	if (xb.type != 2) {
+		if (xb.files[findFile(9)].fsSize) {
+			off = imgSize();
+			cf = findFile(9);
+			cg = findFile(10);
+			log_printf(1, bd_45acf8);
+			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			makeTimestamp((u8 *)&ts, NULL);
+			imgAddFile(bd_45ad6c, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
+			log_printf(1, bd_45abd8);
+		}
+	} else {
+		off = imgSize();
+		if (xb.files[findFile(20)].fsSize) {
+			cf = findFile(20);
+			cg = findFile(21);
+			log_printf(1, bd_45ad7c);
+			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			makeTimestamp((u8 *)&ts, NULL);
+			imgAddFile(bd_45ad6c, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
+			log_printf(1, bd_45abd8);
+		}
+		if (xb.files[findFile(9)].fsSize) {
+			cf = findFile(9);
+			cg = findFile(10);
+			log_printf(1, bd_45adb4);
+			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			makeTimestamp((u8 *)&ts, NULL);
+			imgAddFile(bd_45adf3, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
+			log_printf(1, bd_45abd8);
+		}
+	}
+
+	log_printf(1, bd_45ae04, xb.nFirmware);
+	for (i = 0; i < xb.nFirmware; i++) {
+		struct fileent f;
+
+		strcpy(f.name, xb.firmware[i]);
+		last = f.name[strlen(f.name) - 1];
+		if (!strnicmp(bd_45ae59, f.name, 14)) {
+			log_printf(1, bd_45ae68, f.name);
+			continue;
+		}
+		if (!xb.firmwareCrc[i])
+			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, 0, (u8 *)&ts, 0, 1, 0);
+		else {
+			/* a patch (.xexp): the target's comes as .xexp1, a JTAG's as .xexp2 */
+			if (last == 'p') {
+				if (xb.type == 2)
+					strcat(xb.firmware[i], "2");
+				else
+					strcat(xb.firmware[i], "1");
+			}
+			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 1, 1, 1);
+			if (r && last == 'p') {
+				strcat(f.name, "1");
+				r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 0, 1, 1);
+				if (r) {
+					f.name[strlen(f.name) - 1] = '2';
+					r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 0, 1, 1);
+				}
+			}
+		}
+		if (!r) {
+			base = strrchr(xb.firmware[i], '/');
+			if (!base)
+				base = strrchr(xb.firmware[i], '\\');
+			if (base)
+				base++;
+			else
+				base = xb.firmware[i];
+			off = imgSize();
+			len = xb.files[xb.nFlashFiles].size;
+			log_printf(1, bd_45aebc, base, off, len, off + len);
+			imgAddFile(base, xb.files[xb.nFlashFiles].data, &ts, len);
+		} else if (!xb.firmwareCrc[i])
+			log_printf(1, bd_45aef8, xb.firmware[i]);
+		else {
+			log_printf(0, bd_45af28, xb.firmware[i]);
+			log_printf(0, bd_45af50);
+			return r;
+		}
+	}
+
+	log_printf(1, bd_45ae30, xb.nFlashFiles2);
+	for (k = 0; k < xb.nFlashFiles2; k++) {
+		int found = 1;
+
+		memset(&xb.files[xb.nFlashFiles], 0, sizeof(struct fileent));
+		setBeU32(0, (u8 *)&ts);
+		if (k)
+			log_printf(1, bd_458cf9);
+		name = xb.flashFiles[k];
+		log_printf(1, bd_45afbd, name);
+		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (u8 *)&ts)) {
+			found = 0;
+			if (!(xb.bootFlags & 0x1000000)) {
+				if (xb.files[xb.nFlashFiles].data)
+					free(xb.files[xb.nFlashFiles].data);
+				if (suGetFile(name, &xb.files[xb.nFlashFiles].data, &xb.files[xb.nFlashFiles].size)) {
+					log_printf(1, bd_45afd4, name);
+					found = 1;
+				}
+			}
+			if (!found) {
+				if (xb.flashBuf[k]) {
+					if (xb.files[xb.nFlashFiles].data)
+						free(xb.files[xb.nFlashFiles].data);
+					xb.files[xb.nFlashFiles].data = xb.flashBuf[k];
+					xb.files[xb.nFlashFiles].size = xb.flashSize[k];
+					log_printf(1, bd_45b004, name);
+					found = 1;
+				} else if (!strcmp(name, bd_45b03b) || !strcmp(name, bd_45b047)) {
+					xb.files[xb.nFlashFiles].size = 0;
+					found = 1;
+				}
+			}
+		}
+		if (found) {
+			if (!getBeU32((u8 *)&ts))
+				makeTimestamp((u8 *)&ts, &ft);
+			else
+				timestampToFileTime((u16 *)&ts, &ft);
+			if (!strcmp(name, bd_45b03b))
+				secdataPrepare(&xb.files[xb.nFlashFiles], (u8 *)&ft);
+			else if (!strcmp(name, bd_45b047))
+				extendedPrepare(&xb.files[xb.nFlashFiles]);
+			else if (!strcmp(name, bd_45b054))
+				daeEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (u8 *)&ft);
+			else if (!strcmp(name, bd_45b05c))
+				crlEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (u8 *)&ft);
+			else if (!strcmp(name, bd_45b064))
+				fcrtEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
+			else if (!strcmp(name, bd_45b06d)) {
+				if (xb.oddTime[k])
+					setBeU32(xb.oddTime[k], (u8 *)&ts);
+			} else
+				log_printf(0, bd_45b078, xb.baseDir, name);
+			imgAddFileAs(name, xb.files[xb.nFlashFiles].data, &ts, xb.files[xb.nFlashFiles].size);
+		} else if (!strcmp(name, bd_45b064)) {
+			region = kvGetGameRegion();
+			if (region) {
+				log_printf(0, bd_45b0d4, name);
+				if (xb.type != 1 && xb.type <= 5) {
+					if (region == 1)
+						log_printf(0, bd_45b13c);
+					else {
+						log_printf(0, bd_45b1a0);
+						log_printf(0, bd_45b1fc);
+					}
+				}
+			} else
+				log_printf(1, bd_45b238, name);
+		} else
+			log_printf(0, bd_45b270, name);
+		if (xb.files[xb.nFlashFiles].data) {
+			free(xb.files[xb.nFlashFiles].data);
+			xb.files[xb.nFlashFiles].data = NULL;
+		}
+	}
+
+	log_printf(1, bd_45af94);
+	for (k = 0; k < 11; k++) {
+		struct fileent f;
+
+		switch (k) {
+		case 9:
+			strcpy(f.name, "Statistics.settings");
+			raw = statisticsOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
+			break;
+		case 10:
+			strcpy(f.name, "Manufacturing.data");
+			raw = manufacturingOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
+			break;
+		default:
+			strcpy(f.name, "MobileA.dat");
+			f.name[6] = 'B' + k;
+			raw = 0;
+		}
+		if (!loadBaseFile(f.name, &xb.files[xb.nFlashFiles])) {
+			log_printf(1, bd_45b29d, f.name, xb.files[xb.nFlashFiles].size, '1' + k);
+			if (raw) {
+				save = imgSize();
+				imgAddRaw(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
+				imgSetSize(save);
+			} else {
+				t = imgAddMobile(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, '1' + k);
+				if (t && k <= 8) {
+					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
+					setBeU16(xb.files[xb.nFlashFiles].size >= 0x4000 ? 0 : xb.files[xb.nFlashFiles].size, (u8 *)&xb.mobileTab[k].size);
+				}
+			}
+		} else if (xb.mobile[k].data && xb.mobile[k].size) {
+			log_printf(1, bd_45b2bc, f.name);
+			if (raw) {
+				save = imgSize();
+				imgAddRaw(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
+				imgSetSize(save);
+			} else {
+				t = imgAddMobile(xb.mobile[k].data, xb.mobile[k].size, '1' + k);
+				if (t && k <= 8) {
+					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
+					setBeU16(xb.mobile[k].size > 0x3fff ? 0 : xb.mobile[k].size, (u8 *)&xb.mobileTab[k].size);
+				}
+			}
+		}
+	}
+	a = imgSizeAligned();
+	b = imgSizeAligned();
+	log_printf(1, bd_45b2e4);
+	{
+		struct fileent *e = &xb.files[findFile(27)];
+		addSmcConfig(e->data, e->size);
+	}
+	log_printf(1, bd_45b30c);
+	log_printf(1, bd_45b330);
+	fixupEmptyFsBlocks(a);
+	log_printf(1, bd_45b354);
+	writeFsTable(b);
+	log_printf(1, bd_45abd8);
+	if (xb.flags & 0x10000000) {
+		/* MMC: two anchor blocks */
+		xb.anchorNum = 1;
+		shaHeader(xb.anchor);
+		copyAnchorBlock(1);
+		xb.anchorNum = 2;
+		shaHeader(xb.anchor);
+		copyAnchorBlock(2);
+	}
+	for (k = 0; k < 19; k++) {
+		if (xb.files[k].data && xb.files[k].size)
+			free(xb.files[k].data);
+		xb.files[k].size = 0;
+	}
+	if (xb.nRawPatches) {
+		struct fileent f;
+
+		log_printf(1, bd_45b378);
+		f.data = NULL;
+		for (k = 0; k < xb.nRawPatches; k++) {
+			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, (u8 *)&ts, 0, 0, 0);
+			if (!r) {
+				off = xb.rawPatch[k].offset;
+				end = off + f.size;
+				if (end <= xb.userSize) {
+					memcpy(xb.hdr + off, f.data, f.size);
+					log_printf(1, bd_45b3a0,
+						   k + 1, xb.rawPatch[k].name, off, f.size, end);
+					free(f.data);
+					f.data = NULL;
+				} else {
+					log_printf(1, bd_45b3f4,
+						   k + 1, xb.rawPatch[k].name, off, f.size, xb.userSize);
+					free(f.data);
+					return -1;
+				}
+			} else {
+				log_printf(0, bd_45b44c, xb.rawPatch[k].name);
+				return r;
+			}
+		}
+		log_printf(1, bd_45abd8);
+	}
+	log_printf(1, bd_45b480);
+	return finalizeImage();
 }

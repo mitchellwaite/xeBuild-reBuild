@@ -402,6 +402,7 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *me
 
 /* name from the data dir, else from the system update (SUPD), the nand
    dump or the console (USVR), else from the common dir */
+__attribute__((noclone))
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common)
 {
@@ -2305,6 +2306,17 @@ int encodeBls(u8 *salt, int ldv)
 	return 0;
 }
 
+/* no blmod.bin: the console's, if any */
+static void patchConsoleBlmod(void)
+{
+	if (!xb.consoleBlmod || !xb.consoleBlmodSize) {
+		patchBlsBlmod(NULL, 0);
+		return;
+	}
+	patchBlsBlmod(xb.consoleBlmod, xb.consoleBlmodSize);
+	free(xb.consoleBlmod);
+}
+
 /* build the flash image: header, bootloaders (loaded, checked, patched,
    encrypted, laid out), the CG overflow, firmware and security files,
    Mobile*.dat, smc_config, the filesystem, [rawpatch] data */
@@ -2314,8 +2326,8 @@ int buildFlash(void)
 	u32 ts;
 	FILETIME ft;
 	const char *name, *base;
-	u32 area, off, raw, save, a, b, i, k, crc, len, end;
-	int fuse, blocks, r, cf, cg, region;
+	u32 area, off, raw, save, a, b, k, crc, len, end;
+	int fuse, blocks, r, cf, cg, region, i;
 	u16 t;
 	char last;
 
@@ -2367,11 +2379,8 @@ int buildFlash(void)
 			if (!loadBaseFile("blmod.bin", &f)) {
 				patchBlsBlmod(f.data, f.size);
 				free(f.data);
-			} else if (xb.consoleBlmod && xb.consoleBlmodSize) {
-				patchBlsBlmod(xb.consoleBlmod, xb.consoleBlmodSize);
-				free(xb.consoleBlmod);
 			} else
-				patchBlsBlmod(NULL, 0);
+				patchConsoleBlmod();
 		}
 	} else if (xb.type == 4 || xb.type == 5) {
 		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
@@ -2507,26 +2516,29 @@ int buildFlash(void)
 		name = xb.flashFiles[k];
 		log_printf(1, "<- Processing %s ->\n", name);
 		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (u8 *)&ts)) {
+			found = 0;
 			if (!(xb.bootFlags & 0x1000000)) {
 				if (xb.files[xb.nFlashFiles].data)
 					free(xb.files[xb.nFlashFiles].data);
 				if (suGetFile(name, &xb.files[xb.nFlashFiles].data, &xb.files[xb.nFlashFiles].size)) {
 					log_printf(1, "\tcould not read %s, using data from SUPD...\n", name);
-					goto got;
+					found = 1;
 				}
 			}
-			if (xb.flashBuf[k]) {
-				if (xb.files[xb.nFlashFiles].data)
-					free(xb.files[xb.nFlashFiles].data);
-				xb.files[xb.nFlashFiles].data = xb.flashBuf[k];
-				xb.files[xb.nFlashFiles].size = xb.flashSize[k];
-				log_printf(1, "\tcould not read %s, using data from previous parse...\n", name);
-			} else if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin"))
-				xb.files[xb.nFlashFiles].size = 0;
-			else
-				found = 0;
+			if (!found) {
+				if (xb.flashBuf[k]) {
+					if (xb.files[xb.nFlashFiles].data)
+						free(xb.files[xb.nFlashFiles].data);
+					xb.files[xb.nFlashFiles].data = xb.flashBuf[k];
+					xb.files[xb.nFlashFiles].size = xb.flashSize[k];
+					log_printf(1, "\tcould not read %s, using data from previous parse...\n", name);
+					found = 1;
+				} else if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin")) {
+					xb.files[xb.nFlashFiles].size = 0;
+					found = 1;
+				}
+			}
 		}
-got:
 		if (found) {
 			if (!getBeU32((u8 *)&ts))
 				makeTimestamp((u8 *)&ts, &ft);

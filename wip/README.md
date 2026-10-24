@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 38 match and are built
+Draft of the whole object (all 41 functions). 39 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1561,7 +1561,7 @@ patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
 patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile,
-addUpdateBls, loadConsoleBlFiles.
+addUpdateBls, loadConsoleBlFiles, buildFlash.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1975,7 +1975,7 @@ only shows in `sh build.sh`.
   two or more flip the tail loops instead (all 780 pairs of 40 positions
   tried, >= 2 left). Untried lever: keeping fre3's forwarder removal off
   the switch case blocks.
-- buildFlash (158, 2026-10-23; was 2473; hot path offsets match to
+- buildFlash (built from C, 2026-10-23; was 2473; hot path offsets match to
   0x12fb, .rdata order exact): image_write prototypes now use the SYMBOLS
   names (`imgAddRaw` must stay void: int costs 20); `int mobile[11].size`
   (signed cmovg); `u8 anchor[0x1b]` (OFFSET _mmcAnchor, anchorNum at
@@ -1988,13 +1988,30 @@ only shows in `sh build.sh`.
   Security loop `for (k...) { ...; if (k) log("\n"); }` with a found flag.
   Mobile a switch on k. fuse `if (__builtin_expect(type == 4 || type == 5,
   0)) fuse = 1;` is a hint (else setne sinks, 171); `!(xb.type == 1 ||
-  xb.type > 5)` for SSA numbering (166). Left: the security not-found group
-  (~98, round-2 trace at 292, must be far colder), the blmod found path
-  (~48, PRED_CALL 29% vs the original's fallthrough), one findFile(24) cmp
-  order. Warning: in the full plain draft buildFlash pushes ipa-cp over the
-  loadInputFile crc==0 clone threshold (509 > 500; loadBlFiles 78 -> 108,
-  loadConsoleBlFiles 35 -> 61 there); the mixed build doesn't see it while
-  loadBl/loadConsoleBl are asm. Scratch: build/v/bfl/.
+  xb.type > 5)` for SSA numbering (166). Built from C (2026-10-23, second
+  pass, scratch build/v/bfl2/):
+  - Security not-found group: its entry must have frequency in (153, 188)
+    to land in round 3 between patchBlsResign's `return 1` (188) and "could
+    not read file" (153). The SUPD fallback sets `found` with no `goto
+    got`, then `if (!found) { flashBuf ... else secdata/extended ... }`: a
+    test on a PHI of constants gets no prediction (50%), halving the
+    flashBuf block (1945 -> 1137, x 15% pointer heuristic = 170); threading
+    removes the test later.
+  - blmod: `if (!loadBaseFile(...)) {...} else patchConsoleBlmod();`, a
+    static void helper (IPA-inlined: PRED_CALL on both arms, 50/50, found
+    falls through by prev_bb) whose early return after the NULL patch puts
+    the early-return predictor on that arm (console arm 39%, freq 8.6, above
+    the findFile(9) zero-trip block's 7).
+  - `int i` (fuse findFile(24) loop compare) and the void helper
+    (findFile(27)): ch2 copies loop headers in a fixed order taking names
+    LIFO from the free list (copyprop1/phiopt1 frees, VRP1 threading PHIs);
+    type swaps are a cheap search for it (build/v/bfl2/sig.py, names.py).
+  - ipa-cp: with buildFlash and loadConsoleBlFiles in C, loadInputFile's
+    crc==0 clone evaluates 509 > 500 (freq_sum 4101: buildFlash's rawpatch
+    2.17 and firmware 1.71 calls) and loadLocalFile, loadConsoleBlFiles and
+    buildFlash move. No source shape lowered those calls without moving the
+    layout, so loadInputFile is `__attribute__((noclone))` (the original
+    has no clone; noclone only stops the copy).
 
 ## app/image_write.c
 
