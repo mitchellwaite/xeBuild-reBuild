@@ -1938,7 +1938,20 @@ only shows in `sh build.sh`.
   Left: 3 `cmp i,n` vs `cmp n,i` in inlined findFile loops (16, 13, 9):
   the original's ch2 preheader copy of nFiles has a lower SSA version (free
   list) than i; ours are fresh names. ~40 neutral variants don't move it;
-  no-early-inlining breaks the layout (1542).
+  no-early-inlining breaks the layout (1542). Second pass (2026-10-23,
+  scratch build/v/ebl2/: chmap.py prints ch2's new<-old name table):
+  ch2 pops a LIFO free list (names freed after VRP1, then VRP1's
+  ASSERT_EXPR names in reverse bb order, then older names), handling the
+  f01c tail loops first, then the main loop, then the 24 switch loops; n'
+  is each loop's second name. Asserts take the names free at VRP start:
+  ours has one (fre3 frees 26, 24 of them degenerate `i = PHI <0>` in case
+  blocks, but cleanup removes those forwarders and loop_optimizer_init
+  recreates 24 preheaders, using them up). The original needs ~17 free
+  then: a structural difference before VRP. One dead store (`if (i < 1)
+  xb.cfLdv = 0;`) moves the one low name onto a single target (4 lines);
+  two or more flip the tail loops instead (all 780 pairs of 40 positions
+  tried, >= 2 left). Untried lever: keeping fre3's forwarder removal off
+  the switch case blocks.
 - buildFlash: first draft from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
