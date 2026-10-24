@@ -1285,9 +1285,10 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			if (type == 9) {
 				if (!suGetCF(&e->data, &e->size))
 					break;
-			} else if (type == 10) {
+			} else if (__builtin_expect(type == 10, 0)) {
 				if (!suGetCG(&e->data, &e->size))
 					break;
+				goto chk;
 			} else
 				break;
 		}
@@ -1297,6 +1298,7 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			xb.cfLdv = 0;
 			xb.f01c = 1;
 		}
+	chk:
 		*pr = checkBl(e->data, e->size, type, e->crc);
 		if (*pr)
 			break;
@@ -1309,15 +1311,21 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			} else if (type)
 				log_printf(1, "loaded %s, signature check passed!\n", e->name);
 		}
-		if (xb.type > 5 && type == 14)
+		if (xb.type <= 5)
+			break;
+		if (type == 14)
 			setFlashBuild(getBeU16(xb.files[i].data + 2));
 		break;
 	case 6:
 		if (!xb.cbb)
 			break;
 		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (!*pr)
-			*pr = checkBl(e->data, e->size, 6, e->crc);
+		if (!*pr) {
+			u32 r6 = checkBl(e->data, e->size, 6, e->crc);
+
+			__asm__("" : "+r"(r6));
+			*pr = r6;
+		}
 		break;
 	case 24:
 		if (xb.type == 2 || xb.glitch2mfg)

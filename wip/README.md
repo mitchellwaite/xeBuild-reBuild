@@ -1851,7 +1851,7 @@ only shows in `sh build.sh`.
   ebx,esi` after `cmp ecx,14`: a `"+b"(size)` pin after `x = findFile(14)`
   (before it, the flags clobber puts the copy before the cmp). The files[]
   bound (>= 18) and declaration order don't matter.
-- loadBlFiles (25, 2026-10-24; was 668; loadConsoleBlFiles' case-24 copy
+- loadBlFiles (16, 2026-10-24; was 668; loadConsoleBlFiles' case-24 copy
   and a nested `if (r) { if (type == 9) { if (!suGetCF) break; } ... }`
   9-group, 78 -> 73): the switch is a separate static
   `u32 loadBl(e, i)` (inlined), called under the "none" test (`if
@@ -1899,6 +1899,28 @@ only shows in `sh build.sh`.
   keeps one FSM path per entry block per pass, marks visited_bbs before
   rejecting, and prepends redirection lists (joiner copies get preds in
   reverse).
+  Fourth pass (2026-10-24, 25 -> 16, scratch build/v/lbf4/): the type-10
+  checkBl crossjump needs all three of `else if (__builtin_expect(type ==
+  10, 0)) { if (!suGetCG(..)) break; goto chk; }` (chk: before the checkBl
+  call; the copy is then made in vrp1/dom2, before sink's forwarders, so
+  its branch probability matches the type-9 copies'; outgoing_edges_match
+  refuses > 50% apart), case 6 `u32 r6 = checkBl(..., 6, ...); __asm__(""
+  : "+r"(r6)); *pr = r6;` (else it merges with type 10 on 6 insns, >=
+  PARAM_MIN_CROSSJUMP_INSNS 5), and the expect (keeps bbro from copying the
+  r test into the tail). `if (xb.type <= 5) break; if (type == 14)
+  setFlashBuild` fixes the signature-failed `mov edi,-1`. Left (16): the
+  type-11 thread (13): dom2's FSM threads through vrp1's shared checkBl
+  copy and duplicate_thread_path's scaling zeroes the `type == 11` test's
+  frequency, so in bbro it gets the type-17 test's priority and pops early;
+  the original needs it popped between the signature-failed and SE traces
+  (no priority: type-17 -> pub1bl edge >= exec_th 44, ours 43; freq ~25);
+  ~60 variants failed. SE `ja` (2; joiner copy REG_BR_PROB 10000). Case
+  23's -1 (1): appended inside the single-successor log block at expand,
+  so crossjump can match only 1 insn. build/v/lbf4/b4.c (23 lines, also
+  `if (pub1bl) { if (!cbVerifySig) failed; else if (type) passed; } else
+  nokey;`) generates the type-11 block fully, misplaced after the type-9
+  checkBl tail. In the whole-object build loadBlFiles' diff is the same
+  and its strings are already in order (no arrays needed).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
