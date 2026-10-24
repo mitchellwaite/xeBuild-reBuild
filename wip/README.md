@@ -1893,8 +1893,23 @@ only shows in `sh build.sh`.
   registers swapped, end block order. build/v/aub/draft_alt.c is closer in
   the middle (50 lines register-masked, build/v/aub/sdiff.py). The goto/pin
   structure is a hint construct, not recovered source.
-- loadConsoleBlFiles,
-  encodeBls, buildFlash: first drafts from heavily jump-threaded
+- loadConsoleBlFiles (35, 2026-10-23; was 323): loadBlFiles' recipe, a
+  static `u32 loadConsoleBl(e)` helper (inlined; no ipa-cp clones, the
+  loadInputFile crc==0 evaluation drops to 190). Cases 3/4/27/2 `if
+  (xb.dumpX) { using } else { err; r = -1; }` (.rdata order); case 27
+  re-reads `xb.files[xb.nFlashFiles]` after free; case 24 inline, not via
+  loadBl60 (dom3 threading its 0/1 return zeroes the r-test frequency),
+  with `__builtin_expect(xb.glitch2mfg, 0)`: the switch successors have
+  equal fibheap keys and pop in reverse case order only if nothing touches
+  the heap meanwhile, so case 24's trace must run into the latch (edge >=
+  440, P <= 28.6%; build/v/lcb/fib.py replays a bbro dump through gcc 6's
+  fibonacci_heap). `__builtin_expect(type == 9, 0)` in the 9-group puts the
+  loadInputFile path in a round-1 trace so fail is connected after the r
+  test. Left: the case-24 loadBaseFile/malloc block after ret0, the
+  `mov [ebx+4],96` vs `rep movsd` schedule (as loadBlFiles), the r reload
+  hoisted above `je` in the suGetCF/CG blocks. In C it also moves
+  extractSmcConfig (8 lines, same ipa-split effect as loadBlFiles).
+- encodeBls, buildFlash: first drafts from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
   in the draft so far; give them SYMBOLS names when building it.

@@ -1476,26 +1476,110 @@ int loadBlFiles(void)
 	return 0;
 }
 
-/* loadBlFiles for a build from a connected console: the SMC, keyvaults
-   and smc_config come from the console, the CB..SE from the glitch dump */
-int loadConsoleBlFiles(void)
+/* load the console build's input e by its type (inlined into
+   loadConsoleBlFiles). Case order: .rdata string order (skip, kv, kv alt,
+   config, smc; "using" before the error, so if/else) and peephole2's
+   free-register picks. Hints: glitch2mfg expect keeps the case-24 head's
+   trace going into the loop latch (bb-reorder then pops the case traces
+   LIFO, as in the original); type == 9 expect puts the loadInputFile path
+   in a round-1 trace, so the fail block starts its own trace and follows
+   the r test */
+static u32 loadConsoleBl(struct fileent *e)
 {
-	struct fileent *e, *tmp;
-	u32 i;
-	int r, type;
+	u32 r = 0;
+	int type;
 
-	for (i = 1; i < (u32)xb.nFiles; i++) {
-		e = &xb.files[i];
-		if (!strnicmp(e->name, "none", 4) && !e->crc)
-			continue;
-		type = e->type;
-		switch (type) {
-		case 2:
-			if (!xb.dumpSmc) {
-				log_printf(0, "\n***** ERROR!: acquiring smc binary data failed!\n");
-				r = -1;
-				goto fail;
-			}
+	type = e->type;
+	switch (type) {
+	case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
+	case 17: case 18: case 19:
+		log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
+		break;
+	case 9: case 10: case 15: case 16: case 20: case 21:
+		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (r && !(__builtin_expect(type == 9, 0) && suGetCF(&e->data, &e->size)) &&
+		    !(type == 10 && suGetCG(&e->data, &e->size)))
+			break;
+		r = checkBl(e->data, e->size, type, e->crc);
+		break;
+	case 24:
+		if (!__builtin_expect(xb.glitch2mfg, 0) || (!loadBaseFile(e->name, e) && e->size == 0x60))
+			break;
+		e->data = malloc(0x60);
+		if (!e->data) {
+			r = 1;
+			break;
+		}
+		e->size = 0x60;
+		memcpy(e->data, defBl60, 0x60);
+		break;
+	case 25:
+		if (xb.type == 1 || xb.type > 5)
+			break;
+		if (!loadBaseFile(e->name, e))
+			break;
+		log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
+		r = loadLocalFile(e);
+		break;
+	case 3:
+		if (xb.dumpKv) {
+			log_printf(1, "using keyvault data from console\n");
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKv;
+			e->size = xb.dumpKvSize;
+			xb.dumpKv = NULL;
+			xb.dumpKvSize = 0;
+		} else {
+			log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
+			r = -1;
+		}
+		break;
+	case 4:
+		if (xb.dumpKvAlt) {
+			log_printf(1, "using keyvault alt data from console\n");
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKvAlt;
+			e->size = xb.dumpKvAltSize;
+			xb.dumpKvAlt = NULL;
+			xb.dumpKvAltSize = 0;
+		} else {
+			log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
+			r = -1;
+		}
+		break;
+	case 23:
+		r = loadBinFile(e);
+		if (r)
+			break;
+		if (e->size & 3) {
+			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
+			r = -1;
+			break;
+		}
+		appendAddonPatches(e);
+		break;
+	case 27:
+		if (xb.dumpConfig) {
+			log_printf(1, "using smc configuration from console\n");
+			if (xb.files[xb.nFlashFiles].data)
+				free(xb.files[xb.nFlashFiles].data);
+			xb.files[xb.nFlashFiles].data = xb.dumpConfig;
+			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
+			xb.dumpConfig = NULL;
+			xb.dumpConfigSize = 0;
+			r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
+		} else {
+			log_printf(0, "\n***** ERROR!: acquiring smc configuration data failed!\n");
+			r = -1;
+		}
+		break;
+	case 2:
+		if (xb.dumpSmc) {
 			log_printf(1, "using smc binary from console\n");
 			if (e->data)
 				free(e->data);
@@ -1504,121 +1588,40 @@ int loadConsoleBlFiles(void)
 			xb.dumpSmc = NULL;
 			xb.dumpSmcSize = 0;
 			e->offset = smcSetLoad(e->size);
-			if (!e->offset) {
+			if (!e->offset)
 				r = -1;
-				goto fail;
-			}
-			break;
-		case 3:
-			if (!xb.dumpKv) {
-				log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
-				r = -1;
-				goto fail;
-			}
-			log_printf(1, "using keyvault data from console\n");
-			if (e->data)
-				free(e->data);
-			e->data = xb.dumpKv;
-			e->size = xb.dumpKvSize;
-			xb.dumpKv = NULL;
-			xb.dumpKvSize = 0;
-			break;
-		case 4:
-			if (!xb.dumpKvAlt) {
-				log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
-				r = -1;
-				goto fail;
-			}
-			log_printf(1, "using keyvault alt data from console\n");
-			if (e->data)
-				free(e->data);
-			e->data = xb.dumpKvAlt;
-			e->size = xb.dumpKvAltSize;
-			xb.dumpKvAlt = NULL;
-			xb.dumpKvAltSize = 0;
-			break;
-		case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
-		case 17: case 18: case 19:
-			log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
-			break;
-		case 9: case 10: case 15: case 16: case 20: case 21:
-			r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-			if (r) {
-				if (type == 9) {
-					if (!suGetCF(&e->data, &e->size))
-						goto fail;
-				} else if (type == 10) {
-					if (!suGetCG(&e->data, &e->size))
-						goto fail;
-				} else
-					goto fail;
-			}
-			r = checkBl(e->data, e->size, type, e->crc);
-			if (r)
-				goto fail;
-			break;
-		case 23:
-			r = loadBinFile(e);
-			if (r)
-				goto fail;
-			if (e->size & 3) {
-				log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
-				r = -1;
-				goto fail;
-			}
-			appendAddonPatches(e);
-			break;
-		case 24:
-			if (!xb.glitch2mfg || (!loadBaseFile(e->name, e) && e->size == 0x60))
-				break;
-			e->data = malloc(0x60);
-			if (!e->data) {
-				r = 1;
-				goto fail;
-			}
-			e->size = 0x60;
-			memcpy(e->data, defBl60, 0x60);
-			break;
-		case 25:
-			if (xb.type == 1 || xb.type > 5)
-				break;
-			if (!loadBaseFile(e->name, e))
-				break;
-			log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
-			if (!loadBinFile(e))
-				break;
-			log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
-			r = loadLocalFile(e);
-			if (r)
-				goto fail;
-			break;
-		case 27:
-			if (!xb.dumpConfig) {
-				log_printf(0, "\n***** ERROR!: acquiring smc configuration data failed!\n");
-				r = -1;
-				goto fail;
-			}
-			log_printf(1, "using smc configuration from console\n");
-			tmp = &xb.files[xb.nFlashFiles];
-			if (tmp->data)
-				free(tmp->data);
-			tmp->data = xb.dumpConfig;
-			tmp->size = xb.dumpConfigSize;
-			xb.dumpConfig = NULL;
-			xb.dumpConfigSize = 0;
-			r = extractSmcConfig(e, tmp->data, tmp->size);
-			if (r)
-				goto fail;
-			break;
-		default:
-			log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
-			break;
+		} else {
+			log_printf(0, "\n***** ERROR!: acquiring smc binary data failed!\n");
+			r = -1;
+		}
+		break;
+	default:
+		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+		break;
+	}
+	return r;
+}
+
+/* loadBlFiles for a build from a connected console: the SMC, keyvaults
+   and smc_config come from the console, the CB..SE from the glitch dump */
+int loadConsoleBlFiles(void)
+{
+	struct fileent *e;
+	u32 i;
+	u32 r;
+
+	for (i = 1; i < (u32)xb.nFiles; i++) {
+		e = &xb.files[i];
+		if (strnicmp(e->name, "none", 4) || e->crc)
+			r = loadConsoleBl(e);
+		else
+			r = 0;
+		if (r) {
+			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
+			return -1;
 		}
 	}
 	return 0;
-fail:
-	log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
-	return -1;
 }
 
 /* apply the second patch set (the CD's) from the patches to the CD and
