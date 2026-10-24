@@ -248,6 +248,9 @@ static const char bd_458d1b[] = " (crc32: 0x%08x ini: 0x%08x)\n";
 static const char bd_458d3c[] = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
 static const char bd_458d74[] = "**** using default time!!! ****\n";
 static const char bd_458d98[] = "**** %s metadata found, not using system time *****\n\n";
+static const char bd_458dd0[] = "extracted SUPD/%s (0x%x bytes)";
+static const char bd_458df0[] = "extracted nanddump/%s (0x%x bytes)";
+static const char bd_458e14[] = "extracted USVR/%s (0x%x bytes)";
 static const char bd_458e34[] = "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n";
 static const char bd_458e7c[] = "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n";
 static const char bd_458ed0[] = "\n***** WARNING: could not load addon patch %s%s!\n\n";
@@ -383,8 +386,6 @@ static const char bd_45a8af[] = "encoding %s size 0x%x\n";
 static const char bd_45aa58[] = "***** WARNING: xell is unexpectedly larger than 256KiB!!\n";
 
 /* still in build.s */
-int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
-		  int su, int fs, int common);
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
 void addUpdateBls(void);
@@ -557,6 +558,100 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *me
 		else
 			makeTimestamp(meta, NULL);
 	}
+	return r;
+}
+
+int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
+		  int su, int fs, int common)
+{
+	char path[0x400];
+	const char *base;
+	u32 c;
+	u32 r;
+
+	base = strrchr(name, '/');
+	if (!base)
+		base = strrchr(name, '\\');
+	if (base)
+		base++;
+	else
+		base = name;
+	if (strrchr(name, ':'))
+		strcpy(path, name);
+	else {
+		strcpy(path, xb.dataDir);
+		strcat(path, name);
+	}
+	r = loadFileCrc(path, e, 1, pad, crc);
+	if (meta && !r) {
+		strcat(path, ".meta");
+		if (!readMetaFile(path, meta))
+			log_printf(1, bd_458d98, path);
+		else
+			makeTimestamp(meta, NULL);
+	}
+	if (su && r) {
+		if (suGetFile(base, &e->data, &e->size)) {
+			log_printf(1, bd_458dd0, base, e->size);
+			if (crc) {
+				c = crc32(e->data, e->size);
+				log_printf(1, bd_458d1b, c, crc);
+				if (crc != c)
+					log_printf(0, bd_458d3c, base, c, crc);
+				else {
+					if (meta)
+						makeTimestamp(meta, NULL);
+					r = 0;
+				}
+			} else
+				log_printf(1, bd_458cf9);
+		}
+	}
+	if (fs && r) {
+		/* scoped: its clobber keeps the fs-path join a real block, so the r = 0
+		   paths reach the common test at PRE (threaded late, not by vrp1/dom2) */
+		u32 ts;
+
+		if (fsGetFile(base, &e->data, &e->size, &ts)) {
+			log_printf(1, bd_458df0, base, e->size);
+			if (crc) {
+				c = crc32(e->data, e->size);
+				log_printf(1, bd_458d1b, c, crc);
+				if (crc == c) {
+					if (meta)
+						makeTimestamp(meta, NULL);
+					r = 0;
+				} else {
+					free(e->data);
+					e->data = NULL;
+					e->size = 0;
+					log_printf(0, bd_458d3c, base, c, crc);
+				}
+			} else
+				log_printf(1, bd_458cf9);
+		} else if (xb.mode == 2 && updateGetFile(base, &e->data, &e->size)) {
+			log_printf(1, bd_458e14, base, e->size);
+			if (crc) {
+				c = crc32(e->data, e->size);
+				log_printf(1, bd_458d1b, c, crc);
+				if (crc != c) {
+					free(e->data);
+					e->data = NULL;
+					e->size = 0;
+					log_printf(0, bd_458d3c, base, c, crc);
+				} else {
+					if (meta)
+						makeTimestamp(meta, NULL);
+					r = 0;
+				}
+			} else {
+				log_printf(1, bd_458cf9);
+				r = 0;
+			}
+		}
+	}
+	if (common && r)
+		r = loadCommonFile(base, e, pad, crc, meta);
 	return r;
 }
 

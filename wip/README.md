@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 35 match and are built
+Draft of the whole object (all 41 functions). 36 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1560,7 +1560,7 @@ countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
-patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage.
+patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1605,10 +1605,20 @@ only shows in `sh build.sh`.
   the clobber of `path` sits on one path only and the two stay apart.
   loadBaseFile is `noinline, noclone` in the mixed file: blmodMissing is
   its only C caller, so gcc would inline it or make a `.constprop` copy.
-- loadInputFile (~360): the SUPD / nanddump / USVR / common-dir fallback
-  chain; the original keeps `r != 0` as a byte (`setne dl`) and tests
-  `common & failed` with `and`, and its loadCommonFile tail call is a
-  separate return. Two shapes tried (early returns, `r = 0`).
+- loadInputFile (built from C, 2026-10-23): the SUPD / nanddump / USVR /
+  common-dir fallback chain. The `setne; and; test al,al` boolean PHI at
+  the common test comes from PRE, which builds it only if the `r = 0`
+  paths still reach that test, i.e. vrp1/dom2 haven't threaded them (they
+  thread only into blocks ending in a condition): `u32 ts` declared inside
+  the `if (fs && r)` block puts its CLOBBER at the fs join, keeping it a
+  real block (without: ~356 lines). `u32 r` (the `(int)` on return stops
+  coalescing it with the return value: separate `mov eax,esi`; 93). Tail
+  `if (common && r) r = loadCommonFile(...); return r;` (a `return
+  loadCommonFile` gets early-return + call heuristics, 21%, and loses its
+  round-2 key; 263). SUPD and USVR failure arms first (`if (crc != c)
+  warn; else { meta; r = 0; }`; USVR's is a peephole2 register effect via
+  block index order). May need retuning once loadBlFiles is in C (IPA
+  context).
 - checkBl (built from C, 2026-10-23): `__builtin_expect(crc == 0xffffffff,
   0)` in the SC and SD cases (not SE) sends enough branch frequency to
   `bad` for the loop-head alignment rule. History: fncmp MATCH

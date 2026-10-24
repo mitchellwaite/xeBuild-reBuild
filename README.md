@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **597 of 617** (595 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **598 of 617** (596 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 20 / 25 | 412 / 432 |
+| `app/` | 20 / 25 | 413 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/net` | mixed; 0 of 2 drafted functions match in `wip/app/net.c` | 30 / 32 |
-| `app/build` | mixed; 0 of 6 drafted functions match in `wip/app/build.c` | 35 / 41 |
+| `app/build` | mixed; 0 of 5 drafted functions match in `wip/app/build.c` | 36 / 41 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -190,7 +190,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/build</code>: 35 / 41 in C</summary>
+<summary><code>app/build</code>: 36 / 41 in C</summary>
 
 - ✅ `loadBaseFile` (0x427500)
 - ✅ `findFileOffset` (0x427650)
@@ -202,7 +202,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `timestampToFileTime` (0x427a70)
 - ✅ `loadBaseFileMeta` (0x427ab0)
 - ✅ `loadCommonFile` (0x427cc0)
-- ⬜ `loadInputFile` (0x428040) (draft in `wip/`, no match yet)
+- ✅ `loadInputFile` (0x428040)
 - ✅ `loadBinFile` (0x428780)
 - ✅ `loadLocalFile` (0x4288c0)
 - ✅ `setFileData` (0x428ac0)

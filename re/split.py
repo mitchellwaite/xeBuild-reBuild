@@ -570,6 +570,7 @@ SYMBOLS = {
     0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
     0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
     0x458d3c: '_bd_458d3c', 0x458d74: '_bd_458d74', 0x458d98: '_bd_458d98',
+    0x458dd0: '_bd_458dd0', 0x458df0: '_bd_458df0', 0x458e14: '_bd_458e14',
     0x458e34: '_bd_458e34', 0x458e7c: '_bd_458e7c', 0x458ed0: '_bd_458ed0',
     0x458f04: '_bd_458f04', 0x458f80: '_bd_458f80', 0x458fb4: '_bd_458fb4',
     0x458fe6: '_bd_458fe6', 0x458ff5: '_bd_458ff5', 0x45900a: '_bd_45900a',
@@ -687,7 +688,7 @@ C_FUNCS = {
     0x42c900, 0x427a70, 0x427500, 0x427ab0,  # logPowerButton timestampToFileTime loadBaseFile loadBaseFileMeta
     0x427730, 0x4297d0, 0x429e70, 0x428b10,  # loadFileCrc extractSmcConfig verifyBlSigs appendAddonPatches
     0x4291f0, 0x429b30, 0x42bf70, 0x42b660,  # patchSmcConfig checkBl fixupPatchSet patchBlsResign
-    0x42e160, 0x42bb10, 0x42c090,            # calcBlAreaSize patchBlsBlmod addBlsToImage
+    0x42e160, 0x42bb10, 0x42c090, 0x428040,  # calcBlAreaSize patchBlsBlmod addBlsToImage loadInputFile
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

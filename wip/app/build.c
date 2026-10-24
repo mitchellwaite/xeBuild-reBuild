@@ -408,8 +408,8 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 {
 	char path[0x400];
 	const char *base;
-	u32 ts, c;
-	int r;
+	u32 c;
+	u32 r;
 
 	base = strrchr(name, '/');
 	if (!base)
@@ -438,17 +438,22 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 			if (crc) {
 				c = crc32(e->data, e->size);
 				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
-				if (crc == c) {
+				if (crc != c)
+					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
+				else {
 					if (meta)
 						makeTimestamp(meta, NULL);
 					r = 0;
-				} else
-					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
+				}
 			} else
 				log_printf(1, "\n");
 		}
 	}
 	if (fs && r) {
+		/* scoped: its clobber keeps the fs-path join a real block, so the r = 0
+		   paths reach the common test at PRE (threaded late, not by vrp1/dom2) */
+		u32 ts;
+
 		if (fsGetFile(base, &e->data, &e->size, &ts)) {
 			log_printf(1, "extracted nanddump/%s (0x%x bytes)", base, e->size);
 			if (crc) {
@@ -471,15 +476,15 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 			if (crc) {
 				c = crc32(e->data, e->size);
 				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
-				if (crc == c) {
-					if (meta)
-						makeTimestamp(meta, NULL);
-					r = 0;
-				} else {
+				if (crc != c) {
 					free(e->data);
 					e->data = NULL;
 					e->size = 0;
 					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
+				} else {
+					if (meta)
+						makeTimestamp(meta, NULL);
+					r = 0;
 				}
 			} else {
 				log_printf(1, "\n");
@@ -488,7 +493,7 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 		}
 	}
 	if (common && r)
-		return loadCommonFile(base, e, pad, crc, meta);
+		r = loadCommonFile(base, e, pad, crc, meta);
 	return r;
 }
 
