@@ -689,6 +689,7 @@ C_FUNCS = {
     0x427730, 0x4297d0, 0x429e70, 0x428b10,  # loadFileCrc extractSmcConfig verifyBlSigs appendAddonPatches
     0x4291f0, 0x429b30, 0x42bf70, 0x42b660,  # patchSmcConfig checkBl fixupPatchSet patchBlsResign
     0x42e160, 0x42bb10, 0x42c090, 0x428040,  # calcBlAreaSize patchBlsBlmod addBlsToImage loadInputFile
+    0x42c620,                                # addUpdateBls
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

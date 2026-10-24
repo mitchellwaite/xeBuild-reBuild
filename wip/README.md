@@ -1552,7 +1552,7 @@ Open (diff lines from `re/fncmp.py`):
 
 ## app/build.c
 
-Draft of the whole object (all 41 functions). 36 match and are built
+Draft of the whole object (all 41 functions). 37 match and are built
 from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
@@ -1560,7 +1560,8 @@ countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
 patchFreeboot, encodeUpdateBls, logPowerButton, timestampToFileTime,
 loadBaseFile, loadBaseFileMeta, loadFileCrc, extractSmcConfig,
 verifyBlSigs, appendAddonPatches, patchSmcConfig, checkBl, fixupPatchSet,
-patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile.
+patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile,
+addUpdateBls.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
 loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
@@ -1891,22 +1892,20 @@ only shows in `sh build.sh`.
   gives a call-free block (28% nonequal instead of 13.7%); VRP drops the
   test. Inside the warning arm instead it matches fncmp but aligns
   L_42c2ee (only offcmp sees it). Scratch: build/v/abti/, build/v/abti2/.
-- addUpdateBls (95, 2026-10-23; was 204; xeBuild64 0x407870, "skipping
-  xell"): like addBlsToImage, the log (`if (type != 10 && type != 16 &&
-  type != 24)`) and the 10/16/24/else imgAdd chain are separate
-  statements (the only shape giving the dead `16? ff15 : 24? ...` tail);
-  findFile(9)/(15) literals; 9/23/25 an if-chain (a switch expands 23, 25,
-  9). The 23 arm jumps to the un-threaded head while 9 and 25 thread to the
-  log: forwprop turns any `_b != 0` back into `type == 23` and DOM3
-  threads it, so `goto add` for 9/25 plus a `"+S"(type)` pin on the 23 and
-  default paths (an asm inside the 23 arm gets a constant 23). isUpdateBl
-  `(int type)` with 23 first gives the separate `cmp 23; je` before the bit
-  test (DOM2 shares it, reassoc drops 23); it still matches. `off`'s
-  `cmovne` needs the `offset != -1` edge under 50% (expect 0). Left: loop
-  head fallthrough (cmp 23 vs bt), the `cmp 24; jne LOG` 51/49 tie, off/i
-  registers swapped, end block order. build/v/aub/draft_alt.c is closer in
-  the middle (50 lines register-masked, build/v/aub/sdiff.py). The goto/pin
-  structure is a hint construct, not recovered source.
+- addUpdateBls (built from C, 2026-10-23; xeBuild64 0x407870, "skipping
+  xell"): plain addBlsToImage-shaped source (log first, then the
+  10/16/24/else imgAdd chain; findFile(9)/(15) literals; 9/23 if-chain),
+  12 lines as soon as the rest of the tree was right (an earlier goto/pin
+  construct was 95). The last 12 were the loop head: rotate_loop ends the
+  trace at the hottest exit, and the original needs freq(bt -> body) >
+  freq(head -> body). Those come from isUpdateBl's inlined profile: fold
+  pairs the `||` chain into (23|15), (16|9), (10|24), 25 blocks, each with
+  the early-return heuristic (39%, the last 19.9%); reassoc keeps 23 in
+  the first (DOM2 shares `type == 23` with the 23 arm) and the bit test in
+  the second. isUpdateBl(int type) `return __builtin_expect(type == 23 ||
+  type == 15, 0) || ...` lowers the head edge (isUpdateBl still matches);
+  the expect on (16|9) breaks the dispatch (86), on `type == 23` alone
+  breaks isUpdateBl. Scratch: build/v/aub/, build/v/aub2/.
 - loadConsoleBlFiles (35, 2026-10-23; was 323): loadBlFiles' recipe, a
   static `u32 loadConsoleBl(e)` helper (inlined; no ipa-cp clones, the
   loadInputFile crc==0 evaluation drops to 190). Cases 3/4/27/2 `if

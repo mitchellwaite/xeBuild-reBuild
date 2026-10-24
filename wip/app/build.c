@@ -808,7 +808,7 @@ int countBits(u8 v)
 /* the bootloader types an update (xeBuild's -u) replaces */
 int isUpdateBl(int type)
 {
-	return type == 23 || type == 15 || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
+	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
 /* payload.bin's `li r4, reps` (copy loop count in words) */
@@ -1872,53 +1872,48 @@ void addUpdateBls(void)
 {
 	struct fileent *e;
 	int ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
-	u32 i, off = 0;
-	int type, j;
+	u32 i;
+	int type, j, off = 0;
 
 	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
 		type = e->type;
-		if (__builtin_expect(!isUpdateBl(type), 1))
+		if (!isUpdateBl(type))
 			continue;
-		if (__builtin_expect(e->offset != 0xffffffff, 0))
+		if (e->offset != 0xffffffff)
 			off = e->offset;
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
-		if (type == 9) {
+		if (type == 9)
 			off = imgCfOffset();
-			goto add;
-		}
-		if (type == 23) {
+		else if (type == 23) {
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
 				off += 0x60;
 			else
 				off += 0x10;
-		} else if (type == 25) {
-			if (e->offset < imgSize()) {
-				log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
-				continue;
-			}
-			goto add;
 		}
-		__asm__("" : "+S"(type));
-	add:
-		if (__builtin_expect(type != 10 && type != 16 && type != 24, 0))
+		if (type == 25 && e->offset < imgSize()) {
+			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
+			continue;
+		}
+		if (type != 10 && type != 16 && type != 24)
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
 		if (type == 10) {
 			j = findFile(9);
-			goto rest;
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
+				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 16) {
 			j = findFile(15);
-		rest:
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 24) {
 			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
-				   e->name, off, e->size, off + e->size);
+					   e->name, off, e->size, off + e->size);
 				imgAdd(off, e->data, e->size, 0, ecc, 1);
 			}
 		} else

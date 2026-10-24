@@ -387,7 +387,6 @@ static const char bd_45aa58[] = "***** WARNING: xell is unexpectedly larger than
 /* still in build.s */
 int loadBlFiles(void);
 int loadConsoleBlFiles(void);
-void addUpdateBls(void);
 int encodeBls(u8 *salt, int ldv);
 int buildFlash(void);
 
@@ -959,7 +958,7 @@ int countBits(u8 v)
 /* the bootloader types an update (xeBuild's -u) replaces */
 int isUpdateBl(int type)
 {
-	return type == 23 || type == 15 || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
+	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
 /* payload.bin's `li r4, reps` (copy loop count in words) */
@@ -1605,6 +1604,60 @@ void addBlsToImage(void)
 		log_printf(1, bd_45a000,
 			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
 		imgAdd(off, xb.files[j].data, xb.files[j].size, 0, ecc, 1);
+	}
+}
+
+void addUpdateBls(void)
+{
+	struct fileent *e;
+	int ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
+	u32 i;
+	int type, j, off = 0;
+
+	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+		e = &xb.files[i];
+		type = e->type;
+		if (!isUpdateBl(type))
+			continue;
+		if (e->offset != 0xffffffff)
+			off = e->offset;
+		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+			continue;
+		if (type == 9)
+			off = imgCfOffset();
+		else if (type == 23) {
+			off = imgCfOffset() + imgCfSize();
+			if (xb.glitch2mfg)
+				off += 0x60;
+			else
+				off += 0x10;
+		}
+		if (type == 25 && e->offset < imgSize()) {
+			log_printf(0, bd_45a074);
+			continue;
+		}
+		if (type != 10 && type != 16 && type != 24)
+			log_printf(1, bd_45a000,
+				   e->name, off, e->size, off + e->size);
+		if (type == 10) {
+			j = findFile(9);
+			log_printf(1, bd_459fc0,
+				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+		} else if (type == 16) {
+			j = findFile(15);
+			log_printf(1, bd_459fc0,
+				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
+			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+		} else if (type == 24) {
+			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
+				log_printf(1, bd_45a000,
+					   e->name, off, e->size, off + e->size);
+				imgAdd(off, e->data, e->size, 0, ecc, 1);
+			}
+		} else
+			imgAdd(off, e->data, e->size, 0, ecc, 1);
+		off += e->size;
 	}
 }
 
