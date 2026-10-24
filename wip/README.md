@@ -1921,6 +1921,28 @@ only shows in `sh build.sh`.
   nokey;`) generates the type-11 block fully, misplaced after the type-9
   checkBl tail. In the whole-object build loadBlFiles' diff is the same
   and its strings are already in order (no arrays needed).
+  Fifth pass (2026-10-24, still 16, scratch build/v/lbf5/: flt.py replays
+  a bbro dump with one block's key overridden). The type-11 thread has two
+  blockers. A: vrp1 makes one shared checkBl joiner copy (entered from the
+  14/9/9/10 paths) and stops at the type-11 block (it holds the `type !=
+  5`/`!= 17` ASSERT_EXPRs, so thread_around_empty_blocks refuses it); dom2's
+  four FSM threads over {copy, type-11 block} (which also make the per-type
+  checkBl copies) scale the region by the copy's remaining flow: 86 -> 80
+  -> 63 -> 2 -> 0. B: even unzeroed, the type-17 -> pub1bl edge is 122 x
+  0.701 / 2 = 42.8 < exec_th 44, and the block pops between the signature-
+  failed and SE traces only for keys -22..-27 (unzeroed 36.5): it needs
+  loadBl's 50% `type == 5 || type == 17` split (no heuristic) at ~0.556-0.585,
+  or flows with F + c >= 174 and F - c in 44..54 (now F = 122, c = 49).
+  FSM limit (gcc 6.2): n_insns counts every path block but the entry
+  source, PHIs only in blocks with > 1 pred and succ and for other vars,
+  minus 1; rejected at 2n >= 15 (two nested `__builtin_assume_aligned` at
+  chk kill the dom2 threads: type-11 unzeroed but 9/SE share one checkBl,
+  92/99). Crossjump only redirects a fully matched src1 (the non-fallthru
+  pred, else the lower index): case 23's log block is src1 against the
+  high-index split-edge -1 blocks. SE `ja`: the `xb.type <= 5` test is
+  0/100 before dom3 (vrp1 joiner threads drain it). Failed: precomputed
+  flags (forwprop folds them), 5/17/11 tests on the pre-SE type (117-284),
+  `^`/`!=`/`+` forms (96-127), `int *pr` (133-379).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
