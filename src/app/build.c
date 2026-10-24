@@ -859,10 +859,9 @@ int countBits(u8 v)
 }
 
 /* the bootloader types an update (xeBuild's -u) replaces */
-int isUpdateBl(u32 type)
+int isUpdateBl(int type)
 {
-	return type == 9 || type == 10 || type == 15 || type == 16 ||
-	       type == 23 || type == 24 || type == 25;
+	return type == 23 || type == 15 || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
 /* payload.bin's `li r4, reps` (copy loop count in words) */

@@ -1877,7 +1877,23 @@ only shows in `sh build.sh`.
   count (`files[35]`, expect on the loop test) fixes it but moves the
   type-2 findFile(20) and glitch-false blocks (48); labels flip branches
   (8-452); cb_hint needs no-early-inlining (188). Scratch: build/v/abti/.
-- addUpdateBls (204), loadConsoleBlFiles,
+- addUpdateBls (95, 2026-10-23; was 204; xeBuild64 0x407870, "skipping
+  xell"): like addBlsToImage, the log (`if (type != 10 && type != 16 &&
+  type != 24)`) and the 10/16/24/else imgAdd chain are separate
+  statements (the only shape giving the dead `16? ff15 : 24? ...` tail);
+  findFile(9)/(15) literals; 9/23/25 an if-chain (a switch expands 23, 25,
+  9). The 23 arm jumps to the un-threaded head while 9 and 25 thread to the
+  log: forwprop turns any `_b != 0` back into `type == 23` and DOM3
+  threads it, so `goto add` for 9/25 plus a `"+S"(type)` pin on the 23 and
+  default paths (an asm inside the 23 arm gets a constant 23). isUpdateBl
+  `(int type)` with 23 first gives the separate `cmp 23; je` before the bit
+  test (DOM2 shares it, reassoc drops 23); it still matches. `off`'s
+  `cmovne` needs the `offset != -1` edge under 50% (expect 0). Left: loop
+  head fallthrough (cmp 23 vs bt), the `cmp 24; jne LOG` 51/49 tie, off/i
+  registers swapped, end block order. build/v/aub/draft_alt.c is closer in
+  the middle (50 lines register-masked, build/v/aub/sdiff.py). The goto/pin
+  structure is a hint construct, not recovered source.
+- loadConsoleBlFiles,
   encodeBls, buildFlash: first drafts from heavily jump-threaded
   pseudocode; behaviour checked against it, layout not worked on.
 - buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
