@@ -1952,10 +1952,26 @@ only shows in `sh build.sh`.
   two or more flip the tail loops instead (all 780 pairs of 40 positions
   tried, >= 2 left). Untried lever: keeping fre3's forwarder removal off
   the switch case blocks.
-- buildFlash: first draft from heavily jump-threaded
-  pseudocode; behaviour checked against it, layout not worked on.
-- buildFlash names image_write's helpers (`imgAdd*`, `imgFs*`, ...) only
-  in the draft so far; give them SYMBOLS names when building it.
+- buildFlash (158, 2026-10-23; was 2473; hot path offsets match to
+  0x12fb, .rdata order exact): image_write prototypes now use the SYMBOLS
+  names (`imgAddRaw` must stay void: int costs 20); `int mobile[11].size`
+  (signed cmovg); `u8 anchor[0x1b]` (OFFSET _mmcAnchor, anchorNum at
+  +0x1b); `encodeUpdateBls(int, int ldv)` (u16 puts a movzx before the
+  call; still matches). `struct fileent f` scoped per block (shares the
+  inlined SYSTEMTIME's slot: 1180-byte frame); no tmp/name locals
+  (`xb.files[xb.nFlashFiles]`, `xb.firmware[i]` re-read; a name local made
+  a cast pseudo, ~150 lines). Firmware: one shared first load then `if (r
+  && last == 'p')` (the non-p edge loses PRED_CALL, p 28%, cold p-chain).
+  Security loop `for (k...) { ...; if (k) log("\n"); }` with a found flag.
+  Mobile a switch on k. fuse `if (__builtin_expect(type == 4 || type == 5,
+  0)) fuse = 1;` is a hint (else setne sinks, 171); `!(xb.type == 1 ||
+  xb.type > 5)` for SSA numbering (166). Left: the security not-found group
+  (~98, round-2 trace at 292, must be far colder), the blmod found path
+  (~48, PRED_CALL 29% vs the original's fallthrough), one findFile(24) cmp
+  order. Warning: in the full plain draft buildFlash pushes ipa-cp over the
+  loadInputFile crc==0 clone threshold (509 > 500; loadBlFiles 78 -> 108,
+  loadConsoleBlFiles 35 -> 61 there); the mixed build doesn't see it while
+  loadBl/loadConsoleBl are asm. Scratch: build/v/bfl/.
 
 ## app/image_write.c
 

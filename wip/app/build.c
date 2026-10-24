@@ -82,7 +82,7 @@ struct xebuild {
 	int fromConsole;		/* 1e8 bootloaders read from the console */
 	struct {
 		u8 *data;
-		u32 size;
+		int size;
 	} mobile[11];			/* 1ec Mobile*.dat etc. from a dump */
 	u8 *dumpSmc;			/* 244 files from the nand dump */
 	u32 dumpSmcSize;		/* 248 */
@@ -119,8 +119,7 @@ struct xebuild {
 	u32 oddTime[10];		/* 4f270 */
 	u8 pad4f298[0x4f2c0 - 0x4f298];
 	u32 nFlashFiles2;		/* 4f2c0 the security file count */
-	u8 *anchor;			/* 4f2c4 MMC anchor block */
-	u8 pad4f2c8[0x4f2df - 0x4f2c8];
+	u8 anchor[0x1b];		/* 4f2c4 MMC anchor block */
 	u8 anchorNum;			/* 4f2df */
 	u8 pad4f2e0[0x4f2e4 - 0x4f2e0];
 	struct {
@@ -151,20 +150,20 @@ u32 imgCfOffset(void);
 u32 imgCfSize(void);
 u32 imgSize(void);
 void setPatchSlot(u32 off);
-void imgWriteHeader(void);
-int imgFsBlock(void);
-void imgFixFsTable(u32 size);
-void imgSetSize(u32 size);
-u32 imgFsAligned(void);
-void imgAddFsFile(const char *name, const u8 *data, const u8 *ts, u32 len);
-void imgAddSecFile(const char *name, const u8 *data, const u8 *ts, u32 len);
-int imgAddMobile(const u8 *data, u32 len, int n);
-void imgAddRaw(const char *name, const u8 *data, u32 len, u32 off);
-void imgAddSmcConfig(const u8 *cfg);
-void imgFixEmptyFs(u32 x);
-void imgWriteFsTable(u32 x);
-void imgCopyAnchor(int n);
-int imgFinalize(void);
+void writeInitialHeader(void);
+u32 fsStartBlock(void);
+void fixupFsTable(u32 off);
+u32 imgSetSize(u32 size);
+u32 imgSizeAligned(void);
+void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
+void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len);
+u16 imgAddMobile(const void *data, u32 len, u8 type);
+void imgAddRaw(const char *name, const void *data, u32 len, u32 off);
+int addSmcConfig(const u8 *cfg, u32 len);
+void fixupEmptyFsBlocks(u32 off);
+void writeFsTable(u32 off);
+void copyAnchorBlock(int n);
+int finalizeImage(void);
 /* keys.c's */
 u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
 void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
@@ -1981,7 +1980,7 @@ void patchFreeboot(u8 *buf, int len)
 }
 
 /* encodeBls for an update image: only the CF and CG */
-int encodeUpdateBls(int unused, u16 ldv)
+int encodeUpdateBls(int unused, int ldv)
 {
 	struct fileent *e;
 	u32 i;
@@ -2290,30 +2289,32 @@ int encodeBls(u8 *salt, int ldv)
    Mobile*.dat, smc_config, the filesystem, [rawpatch] data */
 int buildFlash(void)
 {
-	struct fileent f;
-	struct fileent *tmp;
 	u8 salt[16];
-	u8 ts[4];
+	u32 ts;
 	FILETIME ft;
 	const char *name, *base;
-	u32 area, off, a, b, raw, save, i, k;
-	int fuse, blocks, r, cf, cg, region, t;
+	u32 area, off, raw, save, a, b, i, k, crc, len, end;
+	int fuse, blocks, r, cf, cg, region;
+	u16 t;
 	char last;
 
 	memset(salt, 0, sizeof(salt));
 	fuse = 1;
-	if (xb.type != 2)
-		fuse = xb.glitch2mfg || xb.type == 4 || xb.type == 5;
-	if (xb.fromConsole) {
+	if (xb.type != 2) {
+		fuse = xb.glitch2mfg != 0;
+		if (__builtin_expect(xb.type == 4 || xb.type == 5, 0))
+			fuse = 1;
+	}
+	if (!xb.fromConsole) {
+		log_printf(1, "Writing initial header to flash image\n");
+		writeInitialHeader();
+	} else {
 		log_printf(1, "\n------ Copying bootloader image to flash image ------ \n");
 		r = checkBootImage(1);
 		if (r) {
 			log_printf(0, "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n");
 			return r;
 		}
-	} else {
-		log_printf(1, "Writing initial header to flash image\n");
-		imgWriteHeader();
 	}
 	suLoadDir(xb.dataDir);
 	log_printf(1, "\n------ Loading bootloaders and required security files ------\n");
@@ -2328,17 +2329,19 @@ int buildFlash(void)
 	if (!xb.fromConsole && !verifyBlSigs())
 		return 1;
 	log_printf(1, "done!\n");
-	blocks = imgFsBlock();
+	blocks = fsStartBlock();
 	area = calcBlAreaSize();
-	if (blocks)
-		area = blocks << 14;
-	else
+	if (!blocks)
 		blocks = area >> 14;
+	else
+		area = blocks << 14;
 	if (xb.type == 3) {
 		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (xb.fromConsole)
 			fixupPatchSet();
 		else {
+			struct fileent f;
+
 			memset(&f, 0, sizeof(f));
 			if (!loadBaseFile("blmod.bin", &f)) {
 				patchBlsBlmod(f.data, f.size);
@@ -2354,17 +2357,17 @@ int buildFlash(void)
 		if (!patchBlsResign())
 			return 1;
 	}
-	if (!xb.fromConsole && xb.type != 1 && xb.type <= 5) {
+	if (!xb.fromConsole && !(xb.type == 1 || xb.type > 5)) {
 		log_printf(1, "\n------ Patching boot reasons and options into flash header ------\n");
 		patchHeaderOpts();
 	}
 	log_printf(1, "\n------ Encrypting and finalizing bootloaders ------\n");
 	keysInit(xb.randomKeys);
 	if (fuse) {
-		tmp = &xb.files[findFile(24)];
-		setFuseCpuKey(tmp->data);
+		struct fileent *e = &xb.files[findFile(24)];
+		setFuseCpuKey(e->data);
 		if (xb.type != 2)
-			tmp->offset = imgCfOffset() + imgCfSize();
+			e->offset = imgCfOffset() + imgCfSize();
 	}
 	if (!xb.fromConsole) {
 		if (encodeBls(salt, blocks))
@@ -2378,14 +2381,14 @@ int buildFlash(void)
 		addBlsToImage();
 	else
 		addUpdateBls();
-	if (!imgFsBlock()) {
+	if (!fsStartBlock()) {
 		log_printf(1, "Fixing up FS table...");
-		imgFixFsTable(area);
+		fixupFsTable(area);
 		imgSetSize(area);
 		log_printf(1, "done!\n");
 	}
-	if (imgFsBlock())
-		imgSetSize(imgFsBlock() << 14);
+	if (fsStartBlock())
+		imgSetSize(fsStartBlock() << 14);
 
 	/* the CG's patch slot overflow goes in the filesystem */
 	if (xb.type != 2) {
@@ -2395,8 +2398,8 @@ int buildFlash(void)
 			cg = findFile(10);
 			log_printf(1, "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n");
 			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
-			makeTimestamp(ts, NULL);
-			imgAddFsFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, ts, xb.files[cf].fsSize);
+			makeTimestamp((u8 *)&ts, NULL);
+			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, "done!\n");
 		}
 	} else {
@@ -2406,8 +2409,8 @@ int buildFlash(void)
 			cg = findFile(21);
 			log_printf(1, "Writing CG patch slot overflow data to sysupdate.xexp1\n");
 			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
-			makeTimestamp(ts, NULL);
-			imgAddFsFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, ts, xb.files[cf].fsSize);
+			makeTimestamp((u8 *)&ts, NULL);
+			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, "done!\n");
 		}
 		if (xb.files[findFile(9)].fsSize) {
@@ -2415,163 +2418,166 @@ int buildFlash(void)
 			cg = findFile(10);
 			log_printf(1, "Writing target CG patch slot overflow data to sysupdate.xexp2\n");
 			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
-			makeTimestamp(ts, NULL);
-			imgAddFsFile("sysupdate.xexp2", xb.files[cg].data + xb.files[cf].fsOffset, ts, xb.files[cf].fsSize);
+			makeTimestamp((u8 *)&ts, NULL);
+			imgAddFile("sysupdate.xexp2", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, "done!\n");
 		}
 	}
 
-	tmp = &xb.files[xb.nFlashFiles];
 	log_printf(1, "\n------ adding %d firmware files ------\n", xb.nFirmware);
 	for (i = 0; i < xb.nFirmware; i++) {
-		name = xb.firmware[i];
-		strcpy(f.name, name);
+		struct fileent f;
+
+		strcpy(f.name, xb.firmware[i]);
 		last = f.name[strlen(f.name) - 1];
 		if (!strnicmp("sysupdate.xexp", f.name, 14)) {
 			log_printf(1, "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n", f.name);
 			continue;
 		}
 		if (!xb.firmwareCrc[i])
-			r = loadInputFile(f.name, tmp, 0, 0, ts, 0, 1, 0);
-		else if (last == 'p') {
+			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, 0, (u8 *)&ts, 0, 1, 0);
+		else {
 			/* a patch (.xexp): the target's comes as .xexp1, a JTAG's as .xexp2 */
-			strcat(xb.firmware[i], xb.type == 2 ? "2" : "1");
-			r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 1, 1, 1);
-			if (r) {
+			if (last == 'p') {
+				if (xb.type == 2)
+					strcat(xb.firmware[i], "2");
+				else
+					strcat(xb.firmware[i], "1");
+			}
+			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 1, 1, 1);
+			if (r && last == 'p') {
 				strcat(f.name, "1");
-				r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 0, 1, 1);
+				r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 0, 1, 1);
 				if (r) {
 					f.name[strlen(f.name) - 1] = '2';
-					r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 0, 1, 1);
+					r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 0, 1, 1);
 				}
 			}
-		} else
-			r = loadInputFile(f.name, tmp, 0, xb.firmwareCrc[i], ts, 1, 1, 1);
-		if (r) {
-			if (xb.firmwareCrc[i]) {
-				log_printf(0, "***** could not read file '%s' *****\n", name);
-				log_printf(0, "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n");
-				return r;
-			}
-			log_printf(1, "***** could not read file '%s', skipping *****\n", name);
-			continue;
 		}
-		base = strrchr(name, '/');
-		if (!base)
-			base = strrchr(name, '\\');
-		if (base)
-			base++;
-		else
-			base = name;
-		off = imgSize();
-		log_printf(1, "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n", base, off, tmp->size, off + tmp->size);
-		imgAddFsFile(base, tmp->data, ts, tmp->size);
+		if (!r) {
+			base = strrchr(xb.firmware[i], '/');
+			if (!base)
+				base = strrchr(xb.firmware[i], '\\');
+			if (base)
+				base++;
+			else
+				base = xb.firmware[i];
+			off = imgSize();
+			len = xb.files[xb.nFlashFiles].size;
+			log_printf(1, "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n", base, off, len, off + len);
+			imgAddFile(base, xb.files[xb.nFlashFiles].data, &ts, len);
+		} else if (!xb.firmwareCrc[i])
+			log_printf(1, "***** could not read file '%s', skipping *****\n", xb.firmware[i]);
+		else {
+			log_printf(0, "***** could not read file '%s' *****\n", xb.firmware[i]);
+			log_printf(0, "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n");
+			return r;
+		}
 	}
 
 	log_printf(1, "\n------ adding %d security files ------\n", xb.nFlashFiles2);
-	if (xb.nFlashFiles2) {
-		memset(tmp, 0, sizeof(*tmp));
-		setBeU32(0, ts);
-		for (k = 0;;) {
-			name = xb.flashFiles[k];
-			log_printf(1, "<- Processing %s ->\n", name);
-			if (!loadBaseFileMeta(name, tmp, ts))
-				goto got;
+	for (k = 0; k < xb.nFlashFiles2; k++) {
+		int found = 1;
+
+		memset(&xb.files[xb.nFlashFiles], 0, sizeof(struct fileent));
+		setBeU32(0, (u8 *)&ts);
+		if (k)
+			log_printf(1, "\n");
+		name = xb.flashFiles[k];
+		log_printf(1, "<- Processing %s ->\n", name);
+		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (u8 *)&ts)) {
 			if (!(xb.bootFlags & 0x1000000)) {
-				if (tmp->data)
-					free(tmp->data);
-				if (suGetFile(name, &tmp->data, &tmp->size)) {
+				if (xb.files[xb.nFlashFiles].data)
+					free(xb.files[xb.nFlashFiles].data);
+				if (suGetFile(name, &xb.files[xb.nFlashFiles].data, &xb.files[xb.nFlashFiles].size)) {
 					log_printf(1, "\tcould not read %s, using data from SUPD...\n", name);
 					goto got;
 				}
 			}
 			if (xb.flashBuf[k]) {
-				if (tmp->data)
-					free(tmp->data);
-				tmp->data = xb.flashBuf[k];
-				tmp->size = xb.flashSize[k];
+				if (xb.files[xb.nFlashFiles].data)
+					free(xb.files[xb.nFlashFiles].data);
+				xb.files[xb.nFlashFiles].data = xb.flashBuf[k];
+				xb.files[xb.nFlashFiles].size = xb.flashSize[k];
 				log_printf(1, "\tcould not read %s, using data from previous parse...\n", name);
-				goto got;
-			}
-			if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin")) {
-				tmp->size = 0;
-				goto got;
-			}
-			if (!strcmp(name, "fcrt.bin")) {
-				region = kvGetGameRegion();
-				if (region) {
-					log_printf(0, "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n", name);
-					if (xb.type != 1 && xb.type <= 5) {
-						if (region == 1)
-							log_printf(0, "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n");
-						else {
-							log_printf(0, "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n");
-							log_printf(0, "             but should allow the machine to boot normally\n");
-						}
-					}
-				} else
-					log_printf(1, "\t%s not found and not required by keyvault, skipped\n", name);
-			} else
-				log_printf(0, "***** WARNING: %s not found, skipping *****\n", name);
-			goto next;
-got:
-			if (getBeU32(ts))
-				timestampToFileTime((u16 *)ts, &ft);
+			} else if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin"))
+				xb.files[xb.nFlashFiles].size = 0;
 			else
-				makeTimestamp(ts, &ft);
+				found = 0;
+		}
+got:
+		if (found) {
+			if (!getBeU32((u8 *)&ts))
+				makeTimestamp((u8 *)&ts, &ft);
+			else
+				timestampToFileTime((u16 *)&ts, &ft);
 			if (!strcmp(name, "secdata.bin"))
-				secdataPrepare(tmp, (u8 *)&ft);
+				secdataPrepare(&xb.files[xb.nFlashFiles], (u8 *)&ft);
 			else if (!strcmp(name, "extended.bin"))
-				extendedPrepare(tmp);
+				extendedPrepare(&xb.files[xb.nFlashFiles]);
 			else if (!strcmp(name, "dae.bin"))
-				daeEncrypt(tmp->data, tmp->size, (u8 *)&ft);
+				daeEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (u8 *)&ft);
 			else if (!strcmp(name, "crl.bin"))
-				crlEncrypt(tmp->data, tmp->size, (u8 *)&ft);
+				crlEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (u8 *)&ft);
 			else if (!strcmp(name, "fcrt.bin"))
-				fcrtEncrypt(tmp->data, tmp->size);
+				fcrtEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
 			else if (!strcmp(name, "odd.bin")) {
 				if (xb.oddTime[k])
-					setBeU32(xb.oddTime[k], ts);
+					setBeU32(xb.oddTime[k], (u8 *)&ts);
 			} else
 				log_printf(0, "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n", xb.baseDir, name);
-			imgAddSecFile(name, tmp->data, ts, tmp->size);
-next:
-			if (tmp->data) {
-				free(tmp->data);
-				tmp->data = NULL;
-			}
-			if (++k >= xb.nFlashFiles2)
-				break;
-			memset(tmp, 0, sizeof(*tmp));
-			setBeU32(0, ts);
-			log_printf(1, "\n");
+			imgAddFileAs(name, xb.files[xb.nFlashFiles].data, &ts, xb.files[xb.nFlashFiles].size);
+		} else if (!strcmp(name, "fcrt.bin")) {
+			region = kvGetGameRegion();
+			if (region) {
+				log_printf(0, "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n", name);
+				if (xb.type != 1 && xb.type <= 5) {
+					if (region == 1)
+						log_printf(0, "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n");
+					else {
+						log_printf(0, "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n");
+						log_printf(0, "             but should allow the machine to boot normally\n");
+					}
+				}
+			} else
+				log_printf(1, "\t%s not found and not required by keyvault, skipped\n", name);
+		} else
+			log_printf(0, "***** WARNING: %s not found, skipping *****\n", name);
+		if (xb.files[xb.nFlashFiles].data) {
+			free(xb.files[xb.nFlashFiles].data);
+			xb.files[xb.nFlashFiles].data = NULL;
 		}
 	}
 
 	log_printf(1, "\n------ checking for Mobile*.dat ------\n");
 	for (k = 0; k < 11; k++) {
-		if (k == 9) {
+		struct fileent f;
+
+		switch (k) {
+		case 9:
 			strcpy(f.name, "Statistics.settings");
 			raw = statisticsOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
-		} else if (k == 10) {
+			break;
+		case 10:
 			strcpy(f.name, "Manufacturing.data");
 			raw = manufacturingOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
-		} else {
+			break;
+		default:
 			strcpy(f.name, "MobileA.dat");
 			f.name[6] = 'B' + k;
 			raw = 0;
 		}
-		if (!loadBaseFile(f.name, tmp)) {
-			log_printf(1, "%s found, adding from file\n", f.name);
+		if (!loadBaseFile(f.name, &xb.files[xb.nFlashFiles])) {
+			log_printf(1, "%s found, adding from file\n", f.name, xb.files[xb.nFlashFiles].size, '1' + k);
 			if (raw) {
 				save = imgSize();
-				imgAddRaw(f.name, tmp->data, tmp->size, raw);
+				imgAddRaw(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
 				imgSetSize(save);
 			} else {
-				t = imgAddMobile(tmp->data, tmp->size, '1' + k);
+				t = imgAddMobile(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, '1' + k);
 				if (t && k <= 8) {
 					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
-					setBeU16(tmp->size >= 0x4000 ? 0 : tmp->size, (u8 *)&xb.mobileTab[k].size);
+					setBeU16(xb.files[xb.nFlashFiles].size >= 0x4000 ? 0 : xb.files[xb.nFlashFiles].size, (u8 *)&xb.mobileTab[k].size);
 				}
 			}
 		} else if (xb.mobile[k].data && xb.mobile[k].size) {
@@ -2589,57 +2595,62 @@ next:
 			}
 		}
 	}
-	a = imgFsAligned();
-	b = imgFsAligned();
+	a = imgSizeAligned();
+	b = imgSizeAligned();
 	log_printf(1, "\n------ adding smc_config.bin ------\n");
-	imgAddSmcConfig(xb.files[findFile(27)].data);
+	{
+		struct fileent *e = &xb.files[findFile(27)];
+		addSmcConfig(e->data, e->size);
+	}
 	log_printf(1, "\n------ cleaning up image ------\n");
 	log_printf(1, "Fixing up empty FS block entries...");
-	imgFixEmptyFs(a);
+	fixupEmptyFsBlocks(a);
 	log_printf(1, "done!\nWriting FS table to image ");
-	imgWriteFsTable(b);
+	writeFsTable(b);
 	log_printf(1, "done!\n");
 	if (xb.flags & 0x10000000) {
 		/* MMC: two anchor blocks */
 		xb.anchorNum = 1;
 		shaHeader(xb.anchor);
-		imgCopyAnchor(1);
+		copyAnchorBlock(1);
 		xb.anchorNum = 2;
 		shaHeader(xb.anchor);
-		imgCopyAnchor(2);
+		copyAnchorBlock(2);
 	}
 	for (k = 0; k < 19; k++) {
-		if (!xb.files[k].data || !xb.files[k].size)
-			xb.files[k].size = 0;
-		else {
+		if (xb.files[k].data && xb.files[k].size)
 			free(xb.files[k].data);
-			xb.files[k].data = NULL;
-		}
+		xb.files[k].size = 0;
 	}
 	if (xb.nRawPatches) {
+		struct fileent f;
+
 		log_printf(1, "\n------ adding [rawpatch] data ------\n");
 		f.data = NULL;
 		for (k = 0; k < xb.nRawPatches; k++) {
-			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, ts, 0, 0, 0);
-			if (r) {
+			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, (u8 *)&ts, 0, 0, 0);
+			if (!r) {
+				off = xb.rawPatch[k].offset;
+				end = off + f.size;
+				if (end <= xb.userSize) {
+					memcpy(xb.hdr + off, f.data, f.size);
+					log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n",
+						   k + 1, xb.rawPatch[k].name, off, f.size, end);
+					free(f.data);
+					f.data = NULL;
+				} else {
+					log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n",
+						   k + 1, xb.rawPatch[k].name, off, f.size, xb.userSize);
+					free(f.data);
+					return -1;
+				}
+			} else {
 				log_printf(0, "***** ERROR: could not load [rawpatch] file '%s'!!\n", xb.rawPatch[k].name);
 				return r;
 			}
-			off = xb.rawPatch[k].offset;
-			if (off + f.size > xb.userSize) {
-				log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n",
-					   k + 1, xb.rawPatch[k].name, off, f.size, xb.userSize);
-				free(f.data);
-				return -1;
-			}
-			memcpy(xb.hdr + off, f.data, f.size);
-			log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n",
-				   k + 1, xb.rawPatch[k].name, off, f.size, off + f.size);
-			free(f.data);
-			f.data = NULL;
 		}
 		log_printf(1, "done!\n");
 	}
 	log_printf(1, "\n------ finalizing image ------\n");
-	return imgFinalize();
+	return finalizeImage();
 }

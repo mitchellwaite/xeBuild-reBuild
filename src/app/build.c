@@ -88,7 +88,7 @@ struct xebuild {
 	int fromConsole;		/* 1e8 bootloaders read from the console */
 	struct {
 		u8 *data;
-		u32 size;
+		int size;
 	} mobile[11];			/* 1ec Mobile*.dat etc. from a dump */
 	u8 *dumpSmc;			/* 244 files from the nand dump */
 	u32 dumpSmcSize;		/* 248 */
@@ -125,8 +125,7 @@ struct xebuild {
 	u32 oddTime[10];		/* 4f270 */
 	u8 pad4f298[0x4f2c0 - 0x4f298];
 	u32 nFlashFiles2;		/* 4f2c0 the security file count */
-	u8 *anchor;			/* 4f2c4 MMC anchor block */
-	u8 pad4f2c8[0x4f2df - 0x4f2c8];
+	u8 anchor[0x1b];		/* 4f2c4 MMC anchor block */
 	u8 anchorNum;			/* 4f2df */
 	u8 pad4f2e0[0x4f2e4 - 0x4f2e0];
 	struct {
@@ -157,20 +156,20 @@ u32 imgCfOffset(void);
 u32 imgCfSize(void);
 u32 imgSize(void);
 void setPatchSlot(u32 off);
-void imgWriteHeader(void);
-int imgFsBlock(void);
-void imgFixFsTable(u32 size);
-void imgSetSize(u32 size);
-u32 imgFsAligned(void);
-void imgAddFsFile(const char *name, const u8 *data, const u8 *ts, u32 len);
-void imgAddSecFile(const char *name, const u8 *data, const u8 *ts, u32 len);
-int imgAddMobile(const u8 *data, u32 len, int n);
-void imgAddRaw(const char *name, const u8 *data, u32 len, u32 off);
-void imgAddSmcConfig(const u8 *cfg);
-void imgFixEmptyFs(u32 x);
-void imgWriteFsTable(u32 x);
-void imgCopyAnchor(int n);
-int imgFinalize(void);
+void writeInitialHeader(void);
+u32 fsStartBlock(void);
+void fixupFsTable(u32 off);
+u32 imgSetSize(u32 size);
+u32 imgSizeAligned(void);
+void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
+void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len);
+u16 imgAddMobile(const void *data, u32 len, u8 type);
+void imgAddRaw(const char *name, const void *data, u32 len, u32 off);
+int addSmcConfig(const u8 *cfg, u32 len);
+void fixupEmptyFsBlocks(u32 off);
+void writeFsTable(u32 off);
+void copyAnchorBlock(int n);
+int finalizeImage(void);
 /* keys.c's */
 u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
 void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
@@ -1662,7 +1661,7 @@ void patchFreeboot(u8 *buf, int len)
 }
 
 /* encodeBls for an update image: only the CF and CG */
-int encodeUpdateBls(int unused, u16 ldv)
+int encodeUpdateBls(int unused, int ldv)
 {
 	struct fileent *e;
 	u32 i;
