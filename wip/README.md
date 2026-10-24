@@ -1851,7 +1851,7 @@ only shows in `sh build.sh`.
   ebx,esi` after `cmp ecx,14`: a `"+b"(size)` pin after `x = findFile(14)`
   (before it, the flags clobber puts the copy before the cmp). The files[]
   bound (>= 18) and declaration order don't matter.
-- loadBlFiles (73, 2026-10-23; was 668; loadConsoleBlFiles' case-24 copy
+- loadBlFiles (25, 2026-10-24; was 668; loadConsoleBlFiles' case-24 copy
   and a nested `if (r) { if (type == 9) { if (!suGetCF) break; } ... }`
   9-group, 78 -> 73): the switch is a separate static
   `u32 loadBl(e, i)` (inlined), called under the "none" test (`if
@@ -1872,6 +1872,33 @@ only shows in `sh build.sh`.
   threader counts the caller/helper `r` PHI merge (a `u32 *pr` out-param
   fixes that one: build/v/lbf/topr.py, 80 lines), and the type-11 pub1bl
   path is 8 stmts against the limit of 7. Scratch: build/v/lbf/.
+  Third pass (2026-10-24, 73 -> 25, scratch build/v/lbf3/: runfiles.py
+  flags, traces3.py + bbro.sh, phim.py PHI order per pass, j2.sh/ce1.sh
+  crossjump/ifcvt logs):
+  - `static void loadBl(e, i, u32 *pr)` writing `*pr` (caller `r = 0; if
+    (...) loadBl(e, i, &r); if (r) ...`): one r, so the FSM threader no
+    longer counts the caller/helper PHI; the sigfail setFlashBuild copy is
+    threaded in dom2, before ivopts (`imul eax,[esp+44],1068`).
+  - Signature check failed arm first (string order nokey < failed <
+    passed; xeBuild64 agrees): `else if (!cbVerifySig(..)) { failed; *pr =
+    -1; } else if (type) passed;` (always-true `type` takes PRED_CALL off
+    the passed edge: 71%). 73 -> 45.
+  - Case 23 `badsize: __attribute__((hot));` first in the `e->size & 3`
+    arm (appendAddonPatches' cold block after the type-9 checkBl; a hot
+    label adds no CFG edges, a guard block reshuffles PHI order). 45 -> 41.
+  - Case 27 `__builtin_expect(type == 27, 1) && loadBaseFile(...)` breaks a
+    freq-149 tie (keyvault_alt before config.bin). 41 -> 25.
+  Left (25): the type-11 pub1bl/nokey thread (13; dom2's FSM reaches A via
+  M's PHI args, the passed route marks A visited and is rejected at 9
+  insns; vrp1's joiner copy reverses M's edge order; `if (pr) *pr = 0;`
+  after the nokey log makes the thread but zeroes the test block's
+  frequency, 32), the type-10 checkBl crossjump (8; vrp2's joiner copy
+  gets REG_BR_PROB 10000 so fixup_reorder_chain doesn't invert it like the
+  type-9 copies), `mov edi,-1` (3; ce1 find_if_case_2 hoists it, jump2
+  head-merges the split block), the SE `ja`/`jbe` polarity (2). gcc 6
+  keeps one FSM path per entry block per pass, marks visited_bbs before
+  rejecting, and prepends redirection lists (joiner copies get preds in
+  reverse).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with

@@ -1272,17 +1272,16 @@ static int loadBl60(struct fileent *e)
 }
 
 /* load the input file e (xb.files[i]) by its type */
-static u32 loadBl(struct fileent *e, u32 i)
+static void loadBl(struct fileent *e, u32 i, u32 *pr)
 {
-	u32 r = 0;
 	int type;
 
 	type = e->type;
 	switch (type) {
 	case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
 	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
-		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (r) {
+		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (*pr) {
 			if (type == 9) {
 				if (!suGetCF(&e->data, &e->size))
 					break;
@@ -1298,18 +1297,17 @@ static u32 loadBl(struct fileent *e, u32 i)
 			xb.cfLdv = 0;
 			xb.f01c = 1;
 		}
-		r = checkBl(e->data, e->size, type, e->crc);
-		if (r)
+		*pr = checkBl(e->data, e->size, type, e->crc);
+		if (*pr)
 			break;
 		if (type == 5 || type == 17 || type == 11) {
 			if (!pub1bl)
 				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
-			else if (cbVerifySig(e->data, pub1bl))
-				log_printf(1, "loaded %s, signature check passed!\n", e->name);
-			else {
+			else if (!cbVerifySig(e->data, pub1bl)) {
 				log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
-				r = -1;
-			}
+				*pr = -1;
+			} else if (type)
+				log_printf(1, "loaded %s, signature check passed!\n", e->name);
 		}
 		if (xb.type > 5 && type == 14)
 			setFlashBuild(getBeU16(xb.files[i].data + 2));
@@ -1317,15 +1315,15 @@ static u32 loadBl(struct fileent *e, u32 i)
 	case 6:
 		if (!xb.cbb)
 			break;
-		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (!r)
-			r = checkBl(e->data, e->size, 6, e->crc);
+		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (!*pr)
+			*pr = checkBl(e->data, e->size, 6, e->crc);
 		break;
 	case 24:
 		if (xb.type == 2 || xb.glitch2mfg)
-			r = loadBl60(e);
+			*pr = loadBl60(e);
 		if (xb.type == 4 || xb.type == 5)
-			r = loadBl60(e);
+			*pr = loadBl60(e);
 		break;
 	case 1:
 		if (!loadBinFile(e))
@@ -1333,7 +1331,7 @@ static u32 loadBl(struct fileent *e, u32 i)
 		log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
 		e->data = malloc(0x200);
 		if (!e->data) {
-			r = 1;
+			*pr = 1;
 			break;
 		}
 		e->size = 0x200;
@@ -1345,7 +1343,7 @@ static u32 loadBl(struct fileent *e, u32 i)
 		log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
 		e->data = malloc(0xd40);
 		if (!e->data) {
-			r = 1;
+			*pr = 1;
 			break;
 		}
 		e->size = 0xd40;
@@ -1360,12 +1358,12 @@ static u32 loadBl(struct fileent *e, u32 i)
 		if (!loadBinFile(e))
 			break;
 		log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
-		r = loadLocalFile(e);
+		*pr = loadLocalFile(e);
 		break;
 	case 3:
 		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
 		    !loadBaseFile("keyvault.bin", &xb.files[xb.nFlashFiles]) ||
-		    !(r = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles]))) {
+		    !(*pr = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles]))) {
 			if (e->data)
 				free(e->data);
 			e->data = xb.files[xb.nFlashFiles].data;
@@ -1380,13 +1378,13 @@ static u32 loadBl(struct fileent *e, u32 i)
 			e->size = xb.dumpKvSize;
 			xb.dumpKv = NULL;
 			xb.dumpKvSize = 0;
-			r = 0;
+			*pr = 0;
 		}
 		break;
 	case 4:
 		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
 		    !loadBaseFile("keyvault_alt.bin", &xb.files[xb.nFlashFiles]) ||
-		    !(r = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles]))) {
+		    !(*pr = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles]))) {
 			if (e->data)
 				free(e->data);
 			e->data = xb.files[xb.nFlashFiles].data;
@@ -1401,26 +1399,27 @@ static u32 loadBl(struct fileent *e, u32 i)
 			e->size = xb.dumpKvAltSize;
 			xb.dumpKvAlt = NULL;
 			xb.dumpKvAltSize = 0;
-			r = 0;
+			*pr = 0;
 		}
 		break;
 	case 23:
 		if (xb.type == 1)
 			break;
-		r = loadBinFile(e);
-		if (r)
+		*pr = loadBinFile(e);
+		if (*pr)
 			break;
 		if (e->size & 3) {
+		badsize: __attribute__((hot));
 			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
-			r = -1;
+			*pr = -1;
 			break;
 		}
 		appendAddonPatches(e);
 		break;
 	case 27:
-		if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
+		if (__builtin_expect(type == 27, 1) && loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
 		    loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]) &&
-		    (r = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]))) {
+		    (*pr = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]))) {
 			if (!xb.dumpConfig)
 				break;
 			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
@@ -1430,19 +1429,19 @@ static u32 loadBl(struct fileent *e, u32 i)
 			xb.dumpConfig = NULL;
 			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
 			xb.dumpConfigSize = 0;
-			r = 0;
+			*pr = 0;
 		}
 		{
 			u8 *d = xb.files[xb.nFlashFiles].data;
 
 			__asm__("" : "+a"(d));
 			if (d)
-				r = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
+				*pr = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
 		}
 		break;
 	case 2:
-		r = loadBaseFile(e->name, &xb.files[xb.nFlashFiles]);
-		if (!r) {
+		*pr = loadBaseFile(e->name, &xb.files[xb.nFlashFiles]);
+		if (!*pr) {
 			if (e->data)
 				free(e->data);
 			e->data = xb.files[xb.nFlashFiles].data;
@@ -1459,17 +1458,16 @@ static u32 loadBl(struct fileent *e, u32 i)
 			e->size = xb.dumpSmcSize;
 			xb.dumpSmc = NULL;
 			xb.dumpSmcSize = 0;
-			r = 0;
+			*pr = 0;
 		}
 		e->offset = smcSetLoad(e->size);
 		if (!e->offset)
-			r = -1;
+			*pr = -1;
 		break;
 	default:
 		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
 		break;
 	}
-	return r;
 }
 
 /* load every input of the image (by type), falling back to the nand
@@ -1482,10 +1480,9 @@ int loadBlFiles(void)
 
 	for (i = 1; i < (u32)xb.nFiles; i++) {
 		e = &xb.files[i];
+		r = 0;
 		if (strnicmp(e->name, "none", 4) || e->crc)
-			r = loadBl(e, i);
-		else
-			r = 0;
+			loadBl(e, i, &r);
 		if (r) {
 			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
 			return -1;
