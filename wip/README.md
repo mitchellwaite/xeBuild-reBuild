@@ -2056,6 +2056,50 @@ only shows in `sh build.sh`.
     below the SE block's), e.g. a NOPROF-regime override that leaves the
     type-14 test's region undrained, or combine the PROFILE_READ regime
     (17, layout right) with a source change that breaks the ivopts tie.
+  Ninth pass (2026-10-26, fncmp MATCH, link 34 bytes off; the setup is
+  wip/app/build_fdo.patch, which now applies to the ninth-pass commit;
+  regenerate with split.py after applying; scratch build/v/lbf10/: rb.sh =
+  build.sh's -DBUILD_FDO compile of any source copy + fncmp + .p2align count,
+  var.py variants, search.py, gcda_runs.py = gcda.py with GCDA_RUNS):
+  - Counts for loadBlFiles+loadBl+loadBl60 (PROFILE_READ regime, 17) plus
+    `#ifdef BUILD_FDO` xb.files[5] (FILES_BOUND): the array bound caps the
+    loop's niter estimate (11 from the counts), ivopts' candidate cost is 6
+    again and the third IV goes. 17 -> 3 (-1 and the SE `ja` left).
+  - Case 23's -1: a shared `fail: __asm__ __volatile__(""); *pr = -1;` at
+    the end of loadBl, reached by `goto fail` from the size log, the SMC
+    failure and the signature failure (`if (xb.type <= 5) { if (*pr) goto
+    fail; break; }`). The asm keeps the block of its own (without it the
+    forwarder is merged away or the -1 lands in the log block), and with
+    all three -1 paths through it there is no split-edge -1 block left for
+    crossjump to refuse. Then overrides `21>22=70 22>90=5` (X and the r
+    test after it) give the SE copy of X the original's probability (the
+    vrp1 joiner copies' TRUE edge was 0% from the counts) and keep the
+    sigfail c14 copy hot (`mov edi,-1` after the cmp, not `or` before it):
+    fncmp MATCH (src/app/build.prof in the patch).
+  - Left: the final nokey log (L_42ada0) must be `.p2align 4,,7`-aligned.
+    In PROFILE_READ compute_alignments skips it (count 0, so
+    optimize_bb_for_size_p), and it is laid out last only because c11, SE
+    and nokey all have bbro key BB_FREQ_MAX (never executed) and fibheap
+    ties pop them c11, SE, nokey. A hot count needs count > runs while
+    never-executed needs count * 20 < runs, so nokey's key drops to -freq
+    and it pops before c11/SE (10 lines; any 15>20 > 0); the alignment rule
+    also needs its freq >= 1 (prev SE block freq 0). Keeping it last then
+    needs c11 and SE keys <= nokey's, i.e. c11 with a count/freq at bbro,
+    which dom2's FSM drain still takes to 0 (c11 has 16384/1 at vrp1). With
+    runs = 0 (GCDA_RUNS=0) nothing is never-executed and the build still
+    matches (keys 0 instead of 10000, same ties), nokey still cold.
+  - Dead ends: an extra statement in the type-14 setFlashBuild block (FSM
+    limit 2n >= 15) makes the forward threader handle it after ivopts
+    (`[ebx]` instead of `imul [esp+44]`); loadBlChk (r test in an inlined
+    helper with counts) 111-566; moving the fail log before the loop
+    (`if (0) { fail: ... }`, crossjump index order) 9; the J block in
+    regime (b) 18-66; a dead `if (never) goto nokey` edge (count without
+    flow) moves nokey the same way as 15>20.
+  - Pitfall: a profile compile with `-o out.s` (aux name `out`) silently
+    finds no .gcda and compiles guessed; keep `-o -` (build/v/lbf10/rb.sh).
+  - Next: un-drain c11 in this regime (its trace must be keyed before SE
+    and nokey once nokey is hot), or a way to make the nokey block hot at
+    compute_alignments without its count (none in gcc 6.2 that I found).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
