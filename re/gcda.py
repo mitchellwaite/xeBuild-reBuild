@@ -18,7 +18,8 @@ inlined called-once body keeps its own counts). An override `fn:src>dst=prob`
 their ratios). --src names the C file when the gcno's (a #line name) isn't
 one. --only writes counts for those functions only (the rest stay
 guessed). build.sh builds mode_update with it (wip/mufdo.sh is the
-experiment driver).
+experiment driver). --consistent writes exactly conserved integer counts
+(needed when overrides make zero flows); --mult=fn:K scales fn's counts.
 """
 import re, struct, sys
 
@@ -251,6 +252,50 @@ def hot_scale(x):
     return THRESHOLD / ((m - 0.5) * xmax / 10000) if m else None
 
 
+CONSISTENT = False
+MULT = {}
+
+
+def integer_flow(arcs, f):
+    """Integer arc counts that conserve flow exactly (--consistent): zero-flow
+    arcs stay 0, the others are rounded except on a max-flow spanning tree
+    (plus a virtual EXIT->ENTRY arc), whose arcs absorb the rounding. Plain
+    per-arc rounding can leave a zero-flow arc gcc solves at -1."""
+    pos = [(s, d) for s, d, fl in arcs if f.get((s, d), 0) > 1e-9]
+    parent = {}
+
+    def find(a):
+        while parent.setdefault(a, a) != a:
+            a = parent[a]
+        return a
+    tree = {(1, 0)}
+    parent[find(1)] = find(0)
+    for k in sorted(pos, key=lambda k: -f[k]):
+        a, b = find(k[0]), find(k[1])
+        if a != b:
+            parent[a] = b
+            tree.add(k)
+    c = {(s, d): (round(f[(s, d)]) if (s, d) in pos else 0) for s, d, fl in arcs}
+    c[(1, 0)] = 0
+    # solve the tree arcs by peeling leaves (conservation: in == out at every block)
+    unknown = set(tree)
+    while unknown:
+        for v in {x for k in unknown for x in k}:
+            inc = [k for k in unknown if v in k]
+            if len(inc) == 1:
+                k = inc[0]
+                unknown.discard(k)
+                e = sum(n for a, n in c.items() if a[1] == v and a not in unknown and a != k) - \
+                    sum(n for a, n in c.items() if a[0] == v and a not in unknown and a != k)
+                c[k] = e if k[0] == v else -e
+                break
+        else:
+            raise SystemExit('integer_flow: tree solve stuck')
+    del c[(1, 0)]
+    assert all(v >= 0 for v in c.values()), [k for k, v in c.items() if v < 0]
+    return c
+
+
 def map_bb(fns, name, bb):
     """A gcno block of function `name` that is (part of) dump block bb."""
     m = [f for f in fns if f['name'] == name][0]['map']
@@ -267,6 +312,16 @@ def main():
     for a in filter(None, args):
         if a.startswith('--only='):
             only = a[7:].split(',')
+            continue
+        if a.startswith('--mult='):
+            # --mult=fn:K: a static function's counts K times its call
+            # sites' (a called-once body is inlined with its own counts)
+            f, k = a[7:].split(':')
+            MULT[f] = float(k)
+            continue
+        if a == '--consistent':
+            global CONSISTENT
+            CONSISTENT = True
             continue
         if a.startswith('--src='):
             srcfile = a[6:]
@@ -312,12 +367,14 @@ def main():
             if name in static and sites[name]:
                 if any(f not in scale for f, g in sites[name]):
                     continue
-                scale[name] = sum(fl[f][1][g] * scale[f] for f, g in sites[name])
+                scale[name] = sum(fl[f][1][g] * scale[f] for f, g in sites[name]) * MULT.get(name, 1)
             else:
-                scale[name] = hot_scale(fl[name][1]) or THRESHOLD / min_flow(name)
+                scale[name] = (hot_scale(fl[name][1]) or THRESHOLD / min_flow(name)) * MULT.get(name, 1)
     words, allc = [], []
     for fn in fns:
         c = {k: round(v * scale[fn['name']]) for k, v in fl[fn['name']][0].items()}
+        if CONSISTENT:
+            c = integer_flow(fn['arcs'], {k: v * scale[fn['name']] for k, v in fl[fn['name']][0].items()})
         ctr = [c.get((s, d), 0) for s, d, f in fn['arcs'] if not f & ON_TREE]
         allc += ctr
         words += [T_FUNCTION, 3, fn['ident'], fn['lck'], fn['cck'], T_COUNTER_ARCS, 2 * len(ctr)]

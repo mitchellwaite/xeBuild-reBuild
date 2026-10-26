@@ -128,9 +128,14 @@ def main():
         ref.append(l)
 
     env = dict(os.environ, PATH=BIN + os.pathsep + os.environ.get('PATH', ''))
-    r = subprocess.run([os.path.join(BIN, 'gcc.exe'), '-S', '-masm=intel',
-                        '-fno-asynchronous-unwind-tables', '-I', os.path.dirname(src)]
-                       + flags + [src, '-o', '-'], env=env, capture_output=True, text=True)
+    if os.environ.get('FNCMP_ASM'):
+        # FNCMP_ASM=<file.s>: compare gcc's Intel-syntax output already made
+        # (a profile build), instead of compiling src
+        r = subprocess.CompletedProcess([], 0, open(os.environ['FNCMP_ASM']).read(), '')
+    else:
+        r = subprocess.run([os.path.join(BIN, 'gcc.exe'), '-S', '-masm=intel',
+                            '-fno-asynchronous-unwind-tables', '-I', os.path.dirname(src)]
+                           + flags + [src, '-o', '-'], env=env, capture_output=True, text=True)
     if r.returncode:
         sys.exit(r.stderr)
     # a named global plus an offset (a struct field, `_xb+8`, `_xb[8+ebx*4]`)

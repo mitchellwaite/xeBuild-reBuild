@@ -2013,6 +2013,49 @@ only shows in `sh build.sh`.
     5/17 (c11 lands in the main trace); 9/10 without own r-tests (flows not
     x0.61, c11 9); int-typed r tests (still threaded); `*pr = 0` after the
     r-test (VRP keeps an unused assert in the split edge block).
+  Eighth pass (2026-10-26, crafted profile, best 15; wip/app/build_fdo.patch
+  applies to the commit that adds it: b4.c's signature form as the draft,
+  NOPROF macro, mixed.py `profiled`, build.sh second compile `fprof`/`ffns`
+  spliced by `splice.py _loadBlFiles=<fdo.s>`, src/app/build.prof with the
+  best overrides; regenerate with split.py after applying):
+  - A profile can't undo the zeroing: duplicate_thread_path scales the
+    region by (X - e)/X in counts or frequencies, so c11 ends at 0 in every
+    regime (zero-count entries keep it, but then the 9/10/SE paths are
+    cold: 190-225). No pass after dom2 rebuilds frequencies (only inlining
+    and versioning do). Counts can't be inconsistent at read (re/gcda.py
+    `--consistent` makes exact integer flows so 0% overrides don't solve
+    to -1).
+  - Counts for loadBlFiles+loadBl (PROFILE_READ): with b4.c and `9>10=0
+    15>20=0 13>14=0.5 16>17=18` (loadBl dump numbers) c11, its pub1bl copy
+    and nokey land right (c11 is never-executed, key 10000, popped last),
+    17 lines; left an ivopts tie (131 = 131, complexity picks a third IV for
+    &e->size, `[40+esp]` for i): with counts the loop estimate is 11
+    iterations (guessed: none, AVG_LOOP_NITER 5), candidate cost 5 not 6.
+    The estimate is latch/preheader counts, tied to the body/entry
+    frequency ratio bbro's thresholds use. `--mult=loadBl:K` (inlined
+    called-once bodies keep their own counts, so K decouples body from
+    caller) with a 4-iteration loop fixes the IVs, but then the caller's
+    loop blocks are colder than the switch and better_edge_p's
+    lower-frequency-destination rule breaks the main trace (106-371).
+  - Counts for loadBl only, loadBlFiles NOPROF (guessed loop, IVs right):
+    the inlined body keeps loadBl's counts in a guessed caller (copy_body
+    scales by callee->count), so threads mix count and frequency updates.
+    Best 15 (build.prof): c11 chain right after sigfail and SE polarity
+    right (fibheap ties among key-0 blocks: build/v/lbf9/r4.py replays round
+    4 with key overrides). Left: the generic type-14 setFlashBuild block
+    (36) is drained like c11 (its type == 14 test's region), so it is
+    absorbed into the SE trace instead of following `cmp esi,14`, and case
+    23's -1. The NOPROF attribute can't go on the other 40 functions in the
+    one compile (callees with their own optimize attribute don't inline into
+    the three no-early-inlining callers: iniRangeOk, raiseKernel, findFile,
+    cb_hint; loadInputFile/loadLocalFile also differ), hence the second
+    compile. Scratch build/v/lbf9/ (fdo.sh, probe.sh, search.py greedy,
+    grid.py, r4.py/r4s*.py heap what-ifs, lbf.sh = fncmp of build.sh's
+    profile compile via re/fncmp.py FNCMP_ASM).
+  - Next: make block 36 hot before the SE trace is built (its key must be
+    below the SE block's), e.g. a NOPROF-regime override that leaves the
+    type-14 test's region undrained, or combine the PROFILE_READ regime
+    (17, layout right) with a source change that breaks the ivopts tie.
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with

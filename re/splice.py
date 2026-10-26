@@ -1,6 +1,6 @@
 """Fill a mixed object's `#@C name` markers with gcc's code for those functions.
 
-python re/splice.py <src/obj.s> <gcc -S output> <out.s>
+python re/splice.py <src/obj.s> <gcc -S output> <out.s> [_name=<other -S output> ...]
 
 The .s (from split.py) holds the object's data, ident, .eh_frame and every
 function not yet in C; the C file is compiled with -S and
@@ -29,7 +29,7 @@ UNLIKELY = re.compile(r'^\s*\.section\s+\.text\.unlikely\b')
 PART = re.compile(r'(_[\w$]+)\.part\.\d+\b')
 
 
-def functions(lines):
+def functions(lines, strict=True):
     """{name: [lines]} for every function gcc defined."""
     starts = []
     for k, l in enumerate(lines):
@@ -41,7 +41,7 @@ def functions(lines):
             starts.append((s, m.group(1)))
     for l in lines:
         m = SECTION.match(l)
-        if m and m.group(1) not in ('.text', '.ident') and not UNLIKELY.match(l):
+        if strict and m and m.group(1) not in (".text", ".ident") and not UNLIKELY.match(l):
             sys.exit('splice.py: gcc put something outside .text (%r); '
                      'mixed objects keep their data in the .s' % l.strip())
     out = {}
@@ -109,21 +109,37 @@ def drop_rdata(lines, defined):
     return out
 
 
-def main():
-    src, gen, dst = sys.argv[1:4]
-    lines = open(src).read().split('\n')
-    defined = {m.group(1) for m in map(LABEL.match, lines) if m}
+def load(gen, lines, defined, strict=True):
+    """({function: body}, {function: jump tables}) of gcc's output gen."""
     # gcc numbers the parts in an object; the .s has our names (stripped binary)
     parts = {m.group(1): m.group(0) for m in (PART.search(l) for l in lines if l.startswith('#@C ')) if m}
     gen_text = PART.sub(lambda m: parts.get(m.group(1), m.group(0)), open(gen).read())
     tables, gen_lines = jump_tables(gen_text.split('\n'))
-    fns = functions(drop_rdata(gen_lines, defined))
+    fns = functions(drop_rdata(gen_lines, defined), strict)
     for name, body in fns.items():
         for l in body:
             m = LCOMM.match(l)
             if m and m.group(1) not in defined:
                 sys.exit('splice.py: %s defines %s, which the .s does not' % (gen, m.group(1)))
         fns[name] = [l for l in body if not LCOMM.match(l)]
+    return fns, tables
+
+
+def main():
+    src, gen, dst = sys.argv[1:4]
+    lines = open(src).read().split('\n')
+    defined = {m.group(1) for m in map(LABEL.match, lines) if m}
+    fns, tables = load(gen, lines, defined)
+    # `_name=other.s`: that function from another compile (a profile build),
+    # its local labels renamed LF* so they can't clash with gen's
+    lf = lambda ls: [re.sub(r'(?<![\w$.])L(\d+)\b', r'LF\1', l) for l in ls]
+    for a in sys.argv[4:]:
+        name, other = a.split('=', 1)
+        ofns, otabs = load(other, lines, defined, False)
+        fns[name] = lf(ofns[name])
+        tables.pop(name, None)
+        if name in otabs:
+            tables[name] = [lf(t) for t in otabs[name]]
     out, used, placed = [], set(), set()
     for l in lines:
         m = re.match(r'^#@J (\S+) (\d+) (\d+)$', l)
