@@ -2112,6 +2112,15 @@ only shows in `sh build.sh`.
     buildFlash move. No source shape lowered those calls without moving the
     layout, so loadInputFile is `__attribute__((noclone))` (the original
     has no clone; noclone only stops the copy).
+- Whole-object conversion in progress (`build_wholec.patch`, saved from
+  the working tree after a crash, 2026-10-26; applies to 2782b67):
+  build.s deleted, its .data and strings in build.c with
+  `-fno-toplevel-reorder` (the filelist_ini recipe), loadBlFiles in C, the
+  `_bd_*` SYMBOLS and app/build C_FUNCS dropped from split.py, gcda.py reads
+  latin1. Not matching: its last build (2026-10-24) had .text 0x20 bytes
+  short (0x48794 vs 0x487b4), 120511 .text, 322 .rdata, 335 .eh_frame and
+  4 .data bytes differing. Resume with `git apply wip/app/build_wholec.patch`,
+  regenerate (split.py), `sh build.sh`.
 
 ## app/image_write.c
 
