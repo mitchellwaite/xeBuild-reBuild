@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 20 of 25 app files build from C, five more are mixed (app/build with every function in C); see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 21 of 25 app files build from C, four more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **603 of 617** (601 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 61 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **603 of 617** (601 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 62 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 20 / 25 | 418 / 432 |
+| `app/` | 21 / 25 | 418 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -40,7 +40,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
 | `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
 | `app/net` | mixed; 0 of 2 drafted functions match in `wip/app/net.c` | 30 / 32 |
-| `app/build` | mixed; every function in C, data and `.eh_frame` still in `src/app/build.s` | 41 / 41 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -189,52 +188,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ⬜ `netWritePatches` (0x420910) (draft in `wip/`, no match yet)
 
 </details>
-<details>
-<summary><code>app/build</code>: 41 / 41 in C</summary>
-
-- ✅ `loadBaseFile` (0x427500)
-- ✅ `findFileOffset` (0x427650)
-- ✅ `findFileSize` (0x4276a0)
-- ✅ `findFile` (0x4276f0)
-- ✅ `loadFileCrc` (0x427730)
-- ✅ `readMetaFile` (0x427950)
-- ✅ `makeTimestamp` (0x4279b0)
-- ✅ `timestampToFileTime` (0x427a70)
-- ✅ `loadBaseFileMeta` (0x427ab0)
-- ✅ `loadCommonFile` (0x427cc0)
-- ✅ `loadInputFile` (0x428040)
-- ✅ `loadBinFile` (0x428780)
-- ✅ `loadLocalFile` (0x4288c0)
-- ✅ `setFileData` (0x428ac0)
-- ✅ `appendAddonPatches` (0x428b10)
-- ✅ `showSmcConfig` (0x428d20)
-- ✅ `iniRangeOk` (0x429180)
-- ✅ `patchSmcConfig` (0x4291f0)
-- ✅ `extractSmcConfig` (0x4297d0)
-- ✅ `raiseKernel` (0x429b10)
-- ✅ `checkBl` (0x429b30)
-- ✅ `verifyBlSigs` (0x429e70)
-- ✅ `loadBlFiles` (0x42a370)
-- ✅ `loadConsoleBlFiles` (0x42adc0)
-- ✅ `patchHeaderOpts` (0x42b2b0)
-- ✅ `blmodMissing` (0x42b3d0)
-- ✅ `rotSumSha` (0x42b3f0)
-- ✅ `countBits` (0x42b610)
-- ✅ `patchBlsResign` (0x42b660)
-- ✅ `patchBlsBlmod` (0x42bb10)
-- ✅ `fixupPatchSet` (0x42bf70)
-- ✅ `addBlsToImage` (0x42c090)
-- ✅ `isUpdateBl` (0x42c600)
-- ✅ `addUpdateBls` (0x42c620)
-- ✅ `logPowerButton` (0x42c900)
-- ✅ `patchFreeboot` (0x42cbb0)
-- ✅ `patchPayloadSize` (0x42cee0)
-- ✅ `encodeBls` (0x42cfa0)
-- ✅ `encodeUpdateBls` (0x42dfb0)
-- ✅ `calcBlAreaSize` (0x42e160)
-- ✅ `buildFlash` (0x42e760)
-
-</details>
 
 ### Completed
 
@@ -258,6 +211,7 @@ Objects built entirely from C, in link order.
 | `app/keys` | 48 |
 | `app/fileutil` | 47 |
 | `app/options` | 19 |
+| `app/build` | 41 |
 | `app/consoleinfo` | 13 |
 | `app/console_hdd` | 14 |
 | `app/log` | 7 |
@@ -571,6 +525,52 @@ Objects built entirely from C, in link order.
 - ✅ `addPatch` (0x427260)
 - ✅ `loadAddons` (0x427340)
 - ✅ `parseButton.part.0` (0x449640)
+
+</details>
+<details>
+<summary><code>app/build</code>: 41 functions</summary>
+
+- ✅ `loadBaseFile` (0x427500)
+- ✅ `findFileOffset` (0x427650)
+- ✅ `findFileSize` (0x4276a0)
+- ✅ `findFile` (0x4276f0)
+- ✅ `loadFileCrc` (0x427730)
+- ✅ `readMetaFile` (0x427950)
+- ✅ `makeTimestamp` (0x4279b0)
+- ✅ `timestampToFileTime` (0x427a70)
+- ✅ `loadBaseFileMeta` (0x427ab0)
+- ✅ `loadCommonFile` (0x427cc0)
+- ✅ `loadInputFile` (0x428040)
+- ✅ `loadBinFile` (0x428780)
+- ✅ `loadLocalFile` (0x4288c0)
+- ✅ `setFileData` (0x428ac0)
+- ✅ `appendAddonPatches` (0x428b10)
+- ✅ `showSmcConfig` (0x428d20)
+- ✅ `iniRangeOk` (0x429180)
+- ✅ `patchSmcConfig` (0x4291f0)
+- ✅ `extractSmcConfig` (0x4297d0)
+- ✅ `raiseKernel` (0x429b10)
+- ✅ `checkBl` (0x429b30)
+- ✅ `verifyBlSigs` (0x429e70)
+- ✅ `loadBlFiles` (0x42a370)
+- ✅ `loadConsoleBlFiles` (0x42adc0)
+- ✅ `patchHeaderOpts` (0x42b2b0)
+- ✅ `blmodMissing` (0x42b3d0)
+- ✅ `rotSumSha` (0x42b3f0)
+- ✅ `countBits` (0x42b610)
+- ✅ `patchBlsResign` (0x42b660)
+- ✅ `patchBlsBlmod` (0x42bb10)
+- ✅ `fixupPatchSet` (0x42bf70)
+- ✅ `addBlsToImage` (0x42c090)
+- ✅ `isUpdateBl` (0x42c600)
+- ✅ `addUpdateBls` (0x42c620)
+- ✅ `logPowerButton` (0x42c900)
+- ✅ `patchFreeboot` (0x42cbb0)
+- ✅ `patchPayloadSize` (0x42cee0)
+- ✅ `encodeBls` (0x42cfa0)
+- ✅ `encodeUpdateBls` (0x42dfb0)
+- ✅ `calcBlAreaSize` (0x42e160)
+- ✅ `buildFlash` (0x42e760)
 
 </details>
 <details>

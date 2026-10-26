@@ -1,6 +1,8 @@
 """Fill a mixed object's `#@C name` markers with gcc's code for those functions.
 
 python re/splice.py <src/obj.s> <gcc -S output> <out.s> [_name=<other -S output> ...]
+python re/splice.py --whole <gcc -S output> <out.s> _name=<other -S output> ...
+(an object all in C, with some functions from a second compile)
 
 The .s (from split.py) holds the object's data, ident, .eh_frame and every
 function not yet in C; the C file is compiled with -S and
@@ -125,7 +127,38 @@ def load(gen, lines, defined, strict=True):
     return fns, tables
 
 
+def chunk(lines, name):
+    """(start, end) of function name in a whole gcc -S output (unwind
+    tables on): its .p2align/.globl/.def lines to its .cfi_endproc, jump
+    tables included"""
+    for k, l in enumerate(lines):
+        m = LABEL.match(l)
+        if m and m.group(1) == name and k and DEF.match(lines[k - 1]):
+            s = k
+            while s and HEAD.match(lines[s - 1]):
+                s -= 1
+            e = next(j for j in range(k, len(lines)) if lines[j].strip() == '.cfi_endproc')
+            return s, e + 1
+    sys.exit('splice.py: no function %s' % name)
+
+
+def whole(gen, dst, subs):
+    """A whole object's gcc output with the functions in subs (`_name=other.s`)
+    replaced by that compile's (and so their jump tables and FDEs)"""
+    lines = open(gen).read().split('\n')
+    for a in subs:
+        name, other = a.split('=', 1)
+        olines = open(other).read().split('\n')
+        s, e = chunk(olines, name)
+        body = [re.sub(r'(?<![\w$.])L(\d+)\b', r'LF\1', l) for l in olines[s:e]]
+        s, e = chunk(lines, name)
+        lines[s:e] = body
+    open(dst, 'w', newline='\n').write('\n'.join(lines))
+
+
 def main():
+    if sys.argv[1] == '--whole':
+        return whole(sys.argv[2], sys.argv[3], sys.argv[4:])
     src, gen, dst = sys.argv[1:4]
     lines = open(src).read().split('\n')
     defined = {m.group(1) for m in map(LABEL.match, lines) if m}

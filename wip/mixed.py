@@ -16,12 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 're'))
 from ddfix import Image
 
 OBJS = {
-    'app/build': dict(prefix='bd', rdata=(0x458ca4, 0x45b4a4),
-                      regparm={'loadBaseFile': 2},
-                      inline=set(),
-                      # build.sh's profile compile (loadBlFiles and its inlined loadBl); NOPROF on the rest
-                      profiled={'loadBlFiles', 'loadBl', 'loadBl60'},
-                      note=' and payloads, encoding the flash */'),
     'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
                             regparm={'imgWriteStart': 3, 'imgWritePage': 3},
                             # asm still, here for their calls: imgWriteAt is

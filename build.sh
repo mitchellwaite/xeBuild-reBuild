@@ -109,9 +109,11 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # (the loop's iteration estimate decides an ivopts tie), hence the
       # warning flag. --consistent: exact zero counts. --runs=0: no block is
       # never executed, so the no-key log (hot for its alignment, through
-      # dead edges) keys 0 in bb-reorder like the zero-count chains it follows
+      # dead edges) keys 0 in bb-reorder like the zero-count chains it follows.
+      # -fno-toplevel-reorder emits the functions, strings and .data in
+      # definition order
       app/build) orig="$f.c"
-             cflags="-O3 --param builtin-expect-probability=98"
+             cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=98"
              fprof="@src/app/build.prof --only=loadBlFiles,loadBl,loadBl60 --consistent --runs=0"
              ffns=_loadBlFiles ;;
       # original path unknown (no assert in the app); timeutil needs -O3
@@ -123,20 +125,26 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
     [ -f "src/$f.s" ] && uw=-fno-asynchronous-unwind-tables
     if [ -n "$prof" ]; then
       fdo "$prof" > "$OBJ/$f.c.s"
-    elif [ -n "$uw" ]; then
+    elif [ -n "$uw$fprof" ]; then
       { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
         "$TC/gcc.exe" -S $cflags $uw -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
     fi
     # a second compile with -DBUILD_FDO and a profile for the functions in $ffns
+    # (-ftoplevel-reorder: with -fno-toplevel-reorder ipa-reference doesn't
+    # see the never-set statics as read-only, so ccp2 keeps their tests)
     fs=
     if [ -n "$fprof" ]; then
-      fdo "$fprof" -DBUILD_FDO -fno-ipa-profile -fno-reorder-functions \
+      fdo "$fprof" -DBUILD_FDO -fno-ipa-profile -fno-reorder-functions -ftoplevel-reorder \
         -Wno-aggressive-loop-optimizations > "$OBJ/$f.fdo.s"
       for n in $ffns; do fs="$fs $n=$OBJ/$f.fdo.s"; done
     fi
     if [ -n "$uw" ]; then
       # mixed object: splice the C functions into the .s (re/splice.py)
       python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s" $fs
+      "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
+    elif [ -n "$fprof" ]; then
+      # whole object: the $ffns functions from the second compile
+      python re/splice.py --whole "$OBJ/$f.c.s" "$OBJ/$f.s" $fs
       "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
     elif [ -n "$prof" ]; then
       "$TC/as.exe" --32 "$OBJ/$f.c.s" -o "$OBJ/$f.o"

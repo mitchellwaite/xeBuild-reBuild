@@ -566,84 +566,6 @@ SYMBOLS = {
     0x451f80: '_iw_451f80',
     0x451924: '_iw_451924', 0x451978: '_iw_451978', 0x4519f4: '_iw_4519f4',
     0x4518a0: '_iw_4518a0',
-    # app/build's strings that its C functions use (wip/mixed.py)
-    0x458ca4: '_bd_458ca4', 0x458ca8: '_bd_458ca8', 0x458ce1: '_bd_458ce1',
-    0x458cf9: '_bd_458cf9', 0x458cfc: '_bd_458cfc', 0x458d1b: '_bd_458d1b',
-    0x458d3c: '_bd_458d3c', 0x458d74: '_bd_458d74', 0x458d98: '_bd_458d98',
-    0x458dd0: '_bd_458dd0', 0x458df0: '_bd_458df0', 0x458e14: '_bd_458e14',
-    0x458e34: '_bd_458e34', 0x458e7c: '_bd_458e7c', 0x458ed0: '_bd_458ed0',
-    0x458f04: '_bd_458f04', 0x458f80: '_bd_458f80', 0x458fb4: '_bd_458fb4',
-    0x458fe6: '_bd_458fe6', 0x458ff5: '_bd_458ff5', 0x45900a: '_bd_45900a',
-    0x459012: '_bd_459012', 0x459021: '_bd_459021', 0x459030: '_bd_459030',
-    0x459050: '_bd_459050', 0x459070: '_bd_459070', 0x459090: '_bd_459090',
-    0x4590b0: '_bd_4590b0', 0x4590d1: '_bd_4590d1', 0x4590e7: '_bd_4590e7',
-    0x4590f2: '_bd_4590f2', 0x4590fe: '_bd_4590fe', 0x45910a: '_bd_45910a',
-    0x459115: '_bd_459115', 0x45911f: '_bd_45911f', 0x45912a: '_bd_45912a',
-    0x459134: '_bd_459134', 0x45913f: '_bd_45913f', 0x459151: '_bd_459151',
-    0x459160: '_bd_459160', 0x459164: '_bd_459164', 0x45919c: '_bd_45919c',
-    0x4591c2: '_bd_4591c2', 0x4591ca: '_bd_4591ca', 0x4591d2: '_bd_4591d2',
-    0x4591dc: '_bd_4591dc', 0x4591e8: '_bd_4591e8', 0x4591f4: '_bd_4591f4',
-    0x459202: '_bd_459202', 0x45920c: '_bd_45920c', 0x459256: '_bd_459256',
-    0x459260: '_bd_459260', 0x4592d8: '_bd_4592d8', 0x459340: '_bd_459340',
-    0x459355: '_bd_459355', 0x459371: '_bd_459371', 0x459388: '_bd_459388',
-    0x4593d7: '_bd_4593d7', 0x4593ec: '_bd_4593ec', 0x459401: '_bd_459401',
-    0x459414: '_bd_459414', 0x45942c: '_bd_45942c', 0x459478: '_bd_459478',
-    0x4594a4: '_bd_4594a4', 0x4594b8: '_bd_4594b8', 0x4594ca: '_bd_4594ca',
-    0x4594e0: '_bd_4594e0', 0x459510: '_bd_459510', 0x459558: '_bd_459558',
-    0x4595a0: '_bd_4595a0', 0x45961c: '_bd_45961c', 0x459646: '_bd_459646',
-    0x45965c: '_bd_45965c', 0x459698: '_bd_459698', 0x4596cc: '_bd_4596cc',
-    0x4596f0: '_bd_4596f0', 0x45970c: '_bd_45970c', 0x45976c: '_bd_45976c',
-    0x4597bc: '_bd_4597bc', 0x4597e4: '_bd_4597e4', 0x459820: '_bd_459820',
-    0x459858: '_bd_459858', 0x459888: '_bd_459888', 0x4598e0: '_bd_4598e0',
-    0x459905: '_bd_459905', 0x459920: '_bd_459920', 0x459955: '_bd_459955',
-    0x45995c: '_bd_45995c', 0x459998: '_bd_459998', 0x4599d0: '_bd_4599d0',
-    0x4599f4: '_bd_4599f4', 0x459a30: '_bd_459a30', 0x459a68: '_bd_459a68',
-    0x459ab0: '_bd_459ab0', 0x459aec: '_bd_459aec', 0x459af9: '_bd_459af9',
-    0x459b04: '_bd_459b04', 0x459b32: '_bd_459b32', 0x459b43: '_bd_459b43',
-    0x459b54: '_bd_459b54', 0x459b8c: '_bd_459b8c', 0x459b97: '_bd_459b97',
-    0x459ba8: '_bd_459ba8', 0x459bcc: '_bd_459bcc', 0x459c64: '_bd_459c64',
-    0x459c98: '_bd_459c98', 0x459cbc: '_bd_459cbc', 0x459cec: '_bd_459cec',
-    0x459d14: '_bd_459d14', 0x459d3c: '_bd_459d3c', 0x459d78: '_bd_459d78',
-    0x459d98: '_bd_459d98', 0x459e3c: '_bd_459e3c', 0x459e74: '_bd_459e74',
-    0x459e9c: '_bd_459e9c', 0x459ec8: '_bd_459ec8', 0x459ed2: '_bd_459ed2',
-    0x459ed8: '_bd_459ed8', 0x459ede: '_bd_459ede', 0x459ee4: '_bd_459ee4',
-    0x459eea: '_bd_459eea', 0x459efa: '_bd_459efa', 0x459f04: '_bd_459f04',
-    0x459f25: '_bd_459f25', 0x459f29: '_bd_459f29', 0x459f2a: '_bd_459f2a',
-    0x459f2c: '_bd_459f2c', 0x459f7c: '_bd_459f7c', 0x459fa6: '_bd_459fa6',
-    0x459fc0: '_bd_459fc0', 0x45a000: '_bd_45a000', 0x45a034: '_bd_45a034',
-    0x45a050: '_bd_45a050', 0x45a074: '_bd_45a074', 0x45a0bc: '_bd_45a0bc',
-    0x45a0f0: '_bd_45a0f0', 0x45a128: '_bd_45a128', 0x45a15c: '_bd_45a15c',
-    0x45a194: '_bd_45a194', 0x45a1cc: '_bd_45a1cc', 0x45a1f8: '_bd_45a1f8',
-    0x45a23c: '_bd_45a23c', 0x45a278: '_bd_45a278', 0x45a2b4: '_bd_45a2b4',
-    0x45a2f4: '_bd_45a2f4', 0x45a334: '_bd_45a334', 0x45a36c: '_bd_45a36c',
-    0x45a3ac: '_bd_45a3ac', 0x45a3e8: '_bd_45a3e8', 0x45a428: '_bd_45a428',
-    0x45a590: '_bd_45a590', 0x45a5cc: '_bd_45a5cc', 0x45a5e0: '_bd_45a5e0',
-    0x45a618: '_bd_45a618', 0x45a664: '_bd_45a664', 0x45a6a4: '_bd_45a6a4',
-    0x45a6b0: '_bd_45a6b0', 0x45a6df: '_bd_45a6df', 0x45a6f8: '_bd_45a6f8',
-    0x45a71e: '_bd_45a71e', 0x45a728: '_bd_45a728', 0x45a738: '_bd_45a738',
-    0x45a748: '_bd_45a748', 0x45a785: '_bd_45a785', 0x45a78c: '_bd_45a78c',
-    0x45a7c4: '_bd_45a7c4', 0x45a7f8: '_bd_45a7f8', 0x45a80e: '_bd_45a80e',
-    0x45a824: '_bd_45a824', 0x45a844: '_bd_45a844', 0x45a8af: '_bd_45a8af',
-    0x45a8c6: '_bd_45a8c6', 0x45a8d8: '_bd_45a8d8', 0x45a900: '_bd_45a900',
-    0x45a924: '_bd_45a924', 0x45a94c: '_bd_45a94c', 0x45aa58: '_bd_45aa58',
-    0x45aa94: '_bd_45aa94', 0x45aabc: '_bd_45aabc', 0x45aaf8: '_bd_45aaf8',
-    0x45ab50: '_bd_45ab50', 0x45ab90: '_bd_45ab90', 0x45abd8: '_bd_45abd8',
-    0x45abe0: '_bd_45abe0', 0x45ac14: '_bd_45ac14', 0x45ac58: '_bd_45ac58',
-    0x45ac8e: '_bd_45ac8e', 0x45aca8: '_bd_45aca8', 0x45ace0: '_bd_45ace0',
-    0x45acf8: '_bd_45acf8', 0x45ad3c: '_bd_45ad3c', 0x45ad6c: '_bd_45ad6c',
-    0x45ad7c: '_bd_45ad7c', 0x45adb4: '_bd_45adb4', 0x45adf3: '_bd_45adf3',
-    0x45ae04: '_bd_45ae04', 0x45ae30: '_bd_45ae30', 0x45ae59: '_bd_45ae59',
-    0x45ae68: '_bd_45ae68', 0x45aebc: '_bd_45aebc', 0x45aef8: '_bd_45aef8',
-    0x45af28: '_bd_45af28', 0x45af50: '_bd_45af50', 0x45af94: '_bd_45af94',
-    0x45afbd: '_bd_45afbd', 0x45afd4: '_bd_45afd4', 0x45b004: '_bd_45b004',
-    0x45b03b: '_bd_45b03b', 0x45b047: '_bd_45b047', 0x45b054: '_bd_45b054',
-    0x45b05c: '_bd_45b05c', 0x45b064: '_bd_45b064', 0x45b06d: '_bd_45b06d',
-    0x45b078: '_bd_45b078', 0x45b0d4: '_bd_45b0d4', 0x45b13c: '_bd_45b13c',
-    0x45b1a0: '_bd_45b1a0', 0x45b1fc: '_bd_45b1fc', 0x45b238: '_bd_45b238',
-    0x45b270: '_bd_45b270', 0x45b29d: '_bd_45b29d', 0x45b2bc: '_bd_45b2bc',
-    0x45b2e4: '_bd_45b2e4', 0x45b30c: '_bd_45b30c', 0x45b330: '_bd_45b330',
-    0x45b354: '_bd_45b354', 0x45b378: '_bd_45b378', 0x45b3a0: '_bd_45b3a0',
-    0x45b3f4: '_bd_45b3f4', 0x45b44c: '_bd_45b44c', 0x45b480: '_bd_45b480',
     0x44a700: '_defBl60',      # app/build .data, loadConsoleBlFiles' case 24
     0x44a760: '_defPayload', 0x44a960: '_defCore',  # app/build .data, encodeBls
     # runtime functions the C code calls
@@ -709,18 +631,6 @@ C_FUNCS = {
     0x420670, 0x420200, 0x420320, 0x420710,  # netFormatCompat netWriteBlocks netEraseBlock netMkdir
     0x41ffe0, 0x41ea90, 0x41f470, 0x420470,  # netSendFlash netFindBeacon netReadInfo netSendFile
     0x41ee30, 0x41f700,                      # netRecvVerbose netConnect
-    # app/build (wip/app/build.c is the whole draft; wip/mixed.py)
-    0x427650, 0x4276a0, 0x4276f0, 0x427950,  # findFileOffset findFileSize findFile readMetaFile
-    0x4279b0, 0x427cc0, 0x428780, 0x4288c0,  # makeTimestamp loadCommonFile loadBinFile loadLocalFile
-    0x428ac0, 0x429180, 0x429b10, 0x42b2b0,  # setFileData iniRangeOk raiseKernel patchHeaderOpts
-    0x42b3f0, 0x42b610, 0x42c600, 0x42cee0,  # rotSumSha countBits isUpdateBl patchPayloadSize
-    0x428d20, 0x42b3d0, 0x42cbb0, 0x42dfb0,  # showSmcConfig blmodMissing patchFreeboot encodeUpdateBls
-    0x42c900, 0x427a70, 0x427500, 0x427ab0,  # logPowerButton timestampToFileTime loadBaseFile loadBaseFileMeta
-    0x427730, 0x4297d0, 0x429e70, 0x428b10,  # loadFileCrc extractSmcConfig verifyBlSigs appendAddonPatches
-    0x4291f0, 0x429b30, 0x42bf70, 0x42b660,  # patchSmcConfig checkBl fixupPatchSet patchBlsResign
-    0x42e160, 0x42bb10, 0x42c090, 0x428040,  # calcBlAreaSize patchBlsBlmod addBlsToImage loadInputFile
-    0x42c620, 0x42adc0, 0x42e760, 0x42cfa0,  # addUpdateBls loadConsoleBlFiles buildFlash encodeBls
-    0x42a370,                                # loadBlFiles
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

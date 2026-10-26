@@ -2272,15 +2272,18 @@ only shows in `sh build.sh`.
     buildFlash move. No source shape lowered those calls without moving the
     layout, so loadInputFile is `__attribute__((noclone))` (the original
     has no clone; noclone only stops the copy).
-- Whole-object conversion in progress (`build_wholec.patch`, saved from
-  the working tree after a crash, 2026-10-26; applies to 2782b67):
-  build.s deleted, its .data and strings in build.c with
-  `-fno-toplevel-reorder` (the filelist_ini recipe), loadBlFiles in C, the
-  `_bd_*` SYMBOLS and app/build C_FUNCS dropped from split.py, gcda.py reads
-  latin1. Not matching: its last build (2026-10-24) had .text 0x20 bytes
-  short (0x48794 vs 0x487b4), 120511 .text, 322 .rdata, 335 .eh_frame and
-  4 .data bytes differing. Resume with `git apply wip/app/build_wholec.patch`,
-  regenerate (split.py), `sh build.sh`.
+- Whole object in C (2026-10-26, no build.s): build.c keeps the mixed
+  file's code; functions in the original order (static helpers before their
+  first user), strings as static arrays in .rdata order before the first
+  function using them, `aligned(4)` from 31 bytes else `aligned(1)`, .data
+  arrays defined in order, all under `-fno-toplevel-reorder`. loadBlFiles
+  still comes from the -DBUILD_FDO compile, spliced in with `re/splice.py
+  --whole` (function chunk to .cfi_endproc, so its jump table and FDE come
+  along). That compile needs `-ftoplevel-reorder`: under
+  -fno-toplevel-reorder the NK_DEAD statics aren't read-only to
+  ipa-reference and ccp2 keeps their tests. The "jmp _patchPayloadSize" at
+  0x42ced1 was gas's long-padding jump, not code. The old patch's .text
+  0x20 deficit was loadBlFiles (unsolved then).
 
 ## app/image_write.c
 

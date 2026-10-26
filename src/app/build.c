@@ -1,11 +1,10 @@
 /* build: reading the image's input files (with crc32 checks against the
    ini), bootloader checks, patches and payloads, encoding the flash.
-   Mixed object: the functions here are spliced into build.s
-   (re/splice.py), which still holds the rest and the data, so strings
-   name the .s's (splice.py drops gcc's copies; static arrays rather
-   than externs so that gcc still folds strlen of them).
-   wip/app/build.c is the whole draft; wip/mixed.py makes this file
-   from it. */
+   Built with -fno-toplevel-reorder: functions, .data and strings come out
+   in definition order. The strings are static arrays (named after their
+   original addresses, defined in the original's .rdata order, before the
+   first function that uses them; jump tables sit between them), aligned
+   as gcc aligns literals (4 from 31 bytes, else 1). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -211,7 +210,347 @@ u32 statisticsOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *sp
 u32 manufacturingOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
 extern u8 cpuKey[16];		/* xb+27c */
 int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
-extern const u8 defBl60[0x60], defPayload[0x200], defCore[0xd40];	/* build.s's .data */
+/* .data, in this order (-fno-toplevel-reorder) */
+u8 defBl60[0x60] = {
+	0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x0f, 0x0f, 0x0f,
+	0x0f, 0x0f, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+u8 defPayload[0x200] = {
+	0x80, 0x13, 0x1d, 0xb0, 0x80, 0x13, 0x03, 0xa0, 0x00, 0x00, 0x00, 0x00,
+	0x02, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x80, 0x13, 0x03, 0x74,
+	0x80, 0x13, 0x03, 0x74, 0x80, 0x13, 0x03, 0x7c, 0x80, 0x13, 0x03, 0x7c,
+	0x80, 0x12, 0x50, 0x20, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0xfd, 0xff, 0xd7, 0xff, 0x38, 0x60, 0x00, 0x10, 0x78, 0x63, 0xc1, 0xc6,
+	0xf8, 0x67, 0x00, 0x00, 0x7c, 0xc8, 0x03, 0xa6, 0x38, 0x80, 0xff, 0xff,
+	0x7c, 0x89, 0x03, 0xa6, 0x81, 0x05, 0x00, 0x00, 0x91, 0x06, 0x00, 0x00,
+	0x7c, 0x00, 0x30, 0x6c, 0x7c, 0x00, 0x37, 0xac, 0x7c, 0x00, 0x04, 0xac,
+	0x4c, 0x00, 0x01, 0x2c, 0x38, 0xc6, 0x00, 0x04, 0x38, 0xa5, 0x00, 0x04,
+	0x42, 0x00, 0xff, 0xe0, 0x38, 0x60, 0x00, 0x11, 0x78, 0x63, 0xc1, 0xc6,
+	0xf8, 0x67, 0x00, 0x00, 0x4e, 0x80, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00,
+	0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x00, 0x00, 0x00, 0x00,
+	0x80, 0x13, 0x03, 0xa0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe0, 0x80, 0x00, 0x00, 0x00,
+	0x00, 0x13, 0x03, 0xa0, 0x80, 0x00, 0x02, 0x00, 0xc8, 0x09, 0x00, 0x00,
+	0x80, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x80, 0x00, 0x02, 0x00,
+	0x00, 0x06, 0x10, 0x10, 0x80, 0x00, 0x02, 0x00, 0xea, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x80, 0x07, 0x01, 0x90, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x07, 0x02, 0x28,
+	0x80, 0x07, 0x02, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90, 0x30,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+u8 defCore[0xd40] = {
+	0x3c, 0x20, 0x80, 0x00, 0x78, 0x21, 0x07, 0xc6, 0x64, 0x21, 0x1e, 0x00,
+	0x7f, 0xdf, 0xfa, 0xa6, 0x7b, 0xc4, 0x83, 0xe4, 0x7c, 0x24, 0x08, 0x50,
+	0x38, 0x21, 0xff, 0x80, 0x7c, 0x71, 0xfa, 0xa6, 0x38, 0x80, 0x00, 0x01,
+	0x78, 0x83, 0x64, 0xce, 0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x71, 0xfb, 0xa6,
+	0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x79, 0xfa, 0xa6, 0x38, 0x80, 0x00, 0x08,
+	0x78, 0x83, 0x64, 0x0e, 0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x79, 0xfb, 0xa6,
+	0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x7e, 0x4a, 0xa6, 0x38, 0x80, 0x00, 0x01,
+	0x78, 0x83, 0x55, 0x6c, 0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x7e, 0x4b, 0xa6,
+	0x4c, 0x00, 0x01, 0x2c, 0x28, 0x3e, 0x00, 0x00, 0x40, 0x82, 0x00, 0x58,
+	0x3d, 0xa0, 0x02, 0x00, 0x7d, 0xa1, 0x01, 0x64, 0x3c, 0x60, 0x80, 0x00,
+	0x78, 0x63, 0x07, 0xc6, 0x64, 0x63, 0x1c, 0x00, 0x60, 0x63, 0x0b, 0x00,
+	0xe8, 0x43, 0x00, 0x08, 0x48, 0x00, 0x03, 0x69, 0x28, 0x03, 0x00, 0x00,
+	0x40, 0x82, 0x00, 0xa8, 0x3f, 0xe0, 0x80, 0x00, 0x7b, 0xff, 0x07, 0xc6,
+	0x63, 0xff, 0x01, 0x00, 0x38, 0x60, 0x00, 0x00, 0x4c, 0x00, 0x01, 0x2c,
+	0x7c, 0x79, 0x4b, 0xa6, 0x7c, 0x70, 0x4b, 0xa6, 0x7c, 0x71, 0x4b, 0xa6,
+	0x4c, 0x00, 0x01, 0x2c, 0x7f, 0xe8, 0x03, 0xa6, 0x4e, 0x80, 0x00, 0x20,
+	0x3c, 0x80, 0x80, 0x00, 0x78, 0x84, 0x07, 0xc6, 0x64, 0x84, 0x1c, 0x00,
+	0x60, 0x84, 0x0a, 0xa8, 0x7c, 0x7f, 0xfa, 0xa6, 0x54, 0x63, 0x10, 0x3a,
+	0x7c, 0x84, 0x1a, 0x14, 0x38, 0xa0, 0x00, 0x01, 0x90, 0xa4, 0x00, 0x00,
+	0x3f, 0x80, 0x80, 0x00, 0x7b, 0x9c, 0x07, 0xc6, 0x67, 0x9c, 0x1c, 0x08,
+	0x63, 0x9c, 0x00, 0x00, 0x3f, 0xa0, 0x80, 0x00, 0x7b, 0xbd, 0x07, 0xc6,
+	0x67, 0xbd, 0x1c, 0x00, 0x63, 0xbd, 0x0a, 0xc8, 0xeb, 0xbd, 0x00, 0x00,
+	0x38, 0x00, 0x00, 0x00, 0xf8, 0x1d, 0x00, 0x00, 0xe8, 0x7d, 0x00, 0x00,
+	0x28, 0x23, 0x00, 0x00, 0x40, 0x82, 0x00, 0x34, 0x80, 0x7c, 0x00, 0x00,
+	0x28, 0x03, 0x00, 0x00, 0x41, 0x82, 0xff, 0xec, 0x3c, 0x60, 0x00, 0x01,
+	0x7c, 0x69, 0x03, 0xa6, 0x60, 0x00, 0x00, 0x00, 0x42, 0x00, 0xff, 0xfc,
+	0x3f, 0xe0, 0x80, 0x00, 0x7b, 0xff, 0x07, 0xc6, 0x67, 0xff, 0x1c, 0x04,
+	0x7f, 0xe8, 0x03, 0xa6, 0x4e, 0x80, 0x00, 0x20, 0x7c, 0x79, 0xfa, 0xa6,
+	0x38, 0x80, 0x00, 0x01, 0x78, 0x83, 0x83, 0xce, 0x38, 0x80, 0x00, 0x08,
+	0x78, 0x83, 0x64, 0x0e, 0x38, 0x80, 0x00, 0x0e, 0x78, 0x83, 0x16, 0x8e,
+	0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x79, 0xfb, 0xa6, 0x7c, 0x00, 0x04, 0xac,
+	0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x7e, 0x4a, 0xa6, 0x38, 0x80, 0x00, 0x01,
+	0x78, 0x83, 0x0f, 0xac, 0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x7e, 0x4b, 0xa6,
+	0x7c, 0x00, 0x04, 0xac, 0x4c, 0x00, 0x01, 0x2c, 0x38, 0x60, 0x03, 0xff,
+	0x78, 0x63, 0x07, 0xc6, 0x7c, 0x20, 0x1a, 0x24, 0x7c, 0x00, 0x04, 0xac,
+	0x7c, 0x74, 0xfa, 0xa6, 0x38, 0x80, 0x00, 0x3f, 0x78, 0x83, 0x44, 0x8e,
+	0x4c, 0x00, 0x01, 0x2c, 0x7c, 0x74, 0xfb, 0xa6, 0x7c, 0x00, 0x04, 0xac,
+	0x4c, 0x00, 0x01, 0x2c, 0x38, 0x60, 0x00, 0x00, 0x7c, 0x70, 0x4b, 0xa6,
+	0x7c, 0x71, 0x4b, 0xa6, 0x7c, 0x71, 0xfa, 0xa6, 0x38, 0x80, 0x00, 0x01,
+	0x78, 0x83, 0xf8, 0x0e, 0x38, 0x80, 0x00, 0x07, 0x78, 0x83, 0xd0, 0xce,
+	0x38, 0x80, 0x00, 0x03, 0x78, 0x83, 0xa2, 0x8e, 0x38, 0x80, 0x00, 0x01,
+	0x78, 0x83, 0x36, 0x4e, 0x38, 0x80, 0x01, 0x00, 0x78, 0x84, 0x07, 0xc6,
+	0x7c, 0xa0, 0x00, 0xa6, 0x38, 0xc0, 0x00, 0x30, 0x7c, 0xa5, 0x30, 0x78,
+	0x7c, 0xbb, 0x03, 0xa6, 0x38, 0xc0, 0x01, 0x00, 0x7c, 0xda, 0x03, 0xa6,
+	0x7c, 0x71, 0xfb, 0xa6, 0x7c, 0x99, 0x4b, 0xa6, 0x4c, 0x00, 0x00, 0x24,
+	0x3c, 0x80, 0x80, 0x00, 0x60, 0x84, 0x02, 0x00, 0x78, 0x84, 0x07, 0xc6,
+	0x64, 0x84, 0xea, 0x00, 0x80, 0xa4, 0x10, 0x18, 0x54, 0xa5, 0x01, 0x8d,
+	0x41, 0x82, 0xff, 0xf8, 0x54, 0x63, 0xc0, 0x0e, 0x90, 0x64, 0x10, 0x14,
+	0x4e, 0x80, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x38, 0xe0, 0x00, 0x10,
+	0x39, 0x21, 0xff, 0xef, 0x39, 0x40, 0x00, 0x00, 0x7c, 0xe9, 0x03, 0xa6,
+	0x9d, 0x49, 0x00, 0x01, 0x42, 0x00, 0xff, 0xfc, 0x39, 0x00, 0x00, 0x10,
+	0x39, 0x21, 0xff, 0xdf, 0x39, 0x40, 0x00, 0x00, 0x7d, 0x09, 0x03, 0xa6,
+	0x9d, 0x49, 0x00, 0x01, 0x42, 0x00, 0xff, 0xfc, 0x3d, 0x00, 0x80, 0x00,
+	0x98, 0x61, 0xff, 0xf0, 0x61, 0x08, 0x02, 0x00, 0x79, 0x08, 0x07, 0xc6,
+	0x65, 0x08, 0xea, 0x00, 0x61, 0x08, 0x10, 0x84, 0x3d, 0x20, 0x80, 0x00,
+	0x81, 0x48, 0x00, 0x00, 0x61, 0x29, 0x02, 0x00, 0x55, 0x4a, 0x01, 0x4a,
+	0x79, 0x29, 0x07, 0xc6, 0x2f, 0x8a, 0x00, 0x00, 0x65, 0x29, 0xea, 0x00,
+	0x61, 0x29, 0x10, 0x84, 0x41, 0x9e, 0xff, 0xe0, 0x3d, 0x40, 0x80, 0x00,
+	0x3d, 0x00, 0x04, 0x00, 0x61, 0x4a, 0x02, 0x00, 0x91, 0x09, 0x00, 0x00,
+	0x3d, 0x00, 0x80, 0x00, 0x79, 0x4a, 0x07, 0xc6, 0x80, 0xe1, 0xff, 0xf0,
+	0x61, 0x08, 0x02, 0x00, 0x65, 0x4a, 0xea, 0x00, 0x79, 0x08, 0x07, 0xc6,
+	0x61, 0x4a, 0x10, 0x80, 0x65, 0x08, 0xea, 0x00, 0x90, 0xea, 0x00, 0x00,
+	0x39, 0x60, 0x00, 0x04, 0x80, 0xe1, 0xff, 0xf4, 0x7d, 0x06, 0x43, 0x78,
+	0x38, 0xa1, 0xff, 0xec, 0x90, 0xea, 0x00, 0x00, 0x61, 0x08, 0x10, 0x94,
+	0x80, 0xe1, 0xff, 0xf8, 0x60, 0xc6, 0x10, 0x90, 0x38, 0x80, 0x00, 0x00,
+	0x90, 0xea, 0x00, 0x00, 0x80, 0xe1, 0xff, 0xfc, 0x90, 0xea, 0x00, 0x00,
+	0x38, 0xe0, 0x00, 0x00, 0x39, 0x40, 0x00, 0x00, 0x90, 0xe9, 0x00, 0x00,
+	0x60, 0x00, 0x00, 0x00, 0x89, 0x21, 0xff, 0xe0, 0x7f, 0x89, 0x18, 0x00,
+	0x41, 0x9e, 0x00, 0x50, 0x38, 0xe0, 0x00, 0x10, 0x39, 0x21, 0xff, 0xdf,
+	0x7c, 0xe9, 0x03, 0xa6, 0x9d, 0x49, 0x00, 0x01, 0x42, 0x00, 0xff, 0xfc,
+	0x81, 0x28, 0x00, 0x00, 0x55, 0x29, 0x01, 0x4a, 0x2f, 0x89, 0x00, 0x00,
+	0x41, 0x9e, 0xff, 0xd4, 0x39, 0x21, 0xff, 0xdc, 0x91, 0x68, 0x00, 0x00,
+	0x80, 0xe6, 0x00, 0x00, 0x94, 0xe9, 0x00, 0x04, 0x7f, 0xa9, 0x28, 0x00,
+	0x40, 0x9e, 0xff, 0xf4, 0x90, 0x88, 0x00, 0x00, 0x89, 0x21, 0xff, 0xe0,
+	0x7f, 0x89, 0x18, 0x00, 0x40, 0x9e, 0xff, 0xb8, 0x88, 0x61, 0xff, 0xe1,
+	0x4e, 0x80, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, 0xfb, 0xe1, 0xff, 0xf8,
+	0x7c, 0x08, 0x02, 0xa6, 0xf8, 0x01, 0x00, 0x10, 0x7c, 0x7f, 0x1b, 0x78,
+	0xf8, 0x21, 0xff, 0x81, 0x88, 0x63, 0x00, 0x00, 0x2f, 0xa3, 0x00, 0x00,
+	0x41, 0x9e, 0x00, 0x18, 0x4b, 0xff, 0xfe, 0x65, 0x60, 0x00, 0x00, 0x00,
+	0x8c, 0x7f, 0x00, 0x01, 0x2f, 0xa3, 0x00, 0x00, 0x40, 0x9e, 0xff, 0xf0,
+	0x38, 0x21, 0x00, 0x80, 0xe8, 0x01, 0x00, 0x10, 0xeb, 0xe1, 0xff, 0xf8,
+	0x7c, 0x08, 0x03, 0xa6, 0x4e, 0x80, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x01, 0x80, 0x01, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00,
+	0x3d, 0x42, 0x00, 0x07, 0x7c, 0x08, 0x02, 0xa6, 0x3d, 0x22, 0x00, 0x07,
+	0xf8, 0x01, 0x00, 0x10, 0xfa, 0xc1, 0xff, 0xb0, 0xfa, 0xe1, 0xff, 0xb8,
+	0xfb, 0x01, 0xff, 0xc0, 0x39, 0x4a, 0x75, 0x34, 0xfb, 0x21, 0xff, 0xc8,
+	0x39, 0x29, 0x75, 0x30, 0x7d, 0x09, 0x50, 0x51, 0xfb, 0x41, 0xff, 0xd0,
+	0xfb, 0x61, 0xff, 0xd8, 0xfb, 0x81, 0xff, 0xe0, 0xfb, 0xa1, 0xff, 0xe8,
+	0xfb, 0xc1, 0xff, 0xf0, 0xfb, 0xe1, 0xff, 0xf8, 0xf8, 0x21, 0xff, 0x41,
+	0x41, 0x82, 0x00, 0x18, 0x39, 0x29, 0xff, 0xff, 0x7d, 0x09, 0x03, 0xa6,
+	0x39, 0x40, 0x00, 0x00, 0x9d, 0x49, 0x00, 0x01, 0x42, 0x00, 0xff, 0xfc,
+	0x3d, 0x22, 0xff, 0xff, 0x60, 0x00, 0x00, 0x00, 0x3f, 0x40, 0x78, 0x63,
+	0x3b, 0x22, 0x80, 0x48, 0x3f, 0x60, 0x7c, 0x68, 0x39, 0x29, 0x75, 0x30,
+	0x3f, 0x80, 0x4e, 0x80, 0x3f, 0xa0, 0x4b, 0xff, 0x79, 0x36, 0x84, 0x20,
+	0x79, 0x37, 0x84, 0x22, 0x79, 0x29, 0x04, 0x20, 0x3b, 0xd9, 0xff, 0xf8,
+	0x66, 0xd6, 0x3c, 0x60, 0x66, 0xf7, 0x64, 0x63, 0x65, 0x38, 0x60, 0x63,
+	0x3b, 0x39, 0x00, 0x98, 0x63, 0x5a, 0x07, 0xc6, 0x63, 0x7b, 0x03, 0xa6,
+	0x63, 0x9c, 0x00, 0x21, 0x63, 0xbd, 0xff, 0xe8, 0xeb, 0xfe, 0x00, 0x09,
+	0x38, 0x80, 0x01, 0x00, 0x38, 0x7f, 0xff, 0x80, 0x48, 0x00, 0x05, 0x6d,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x7f, 0xff, 0xe8, 0x92, 0xdf, 0xff, 0xe8,
+	0x38, 0x80, 0x00, 0x18, 0x93, 0x5f, 0xff, 0xec, 0x92, 0xff, 0xff, 0xf0,
+	0x93, 0x1f, 0xff, 0xf4, 0x93, 0x7f, 0xff, 0xf8, 0x93, 0x9f, 0xff, 0xfc,
+	0x48, 0x00, 0x05, 0x9d, 0x60, 0x00, 0x00, 0x00, 0x7f, 0xe3, 0xfb, 0x78,
+	0x93, 0xbf, 0x00, 0x00, 0x38, 0x80, 0x00, 0x80, 0x48, 0x00, 0x05, 0x89,
+	0x60, 0x00, 0x00, 0x00, 0x7f, 0xbe, 0xc8, 0x00, 0x40, 0x9e, 0xff, 0xac,
+	0x3d, 0x40, 0x80, 0x00, 0x3d, 0x00, 0x00, 0x3e, 0x61, 0x4a, 0x02, 0x00,
+	0x3f, 0xe2, 0xff, 0xff, 0x79, 0x4a, 0x07, 0xc6, 0x61, 0x08, 0x00, 0x78,
+	0x65, 0x4a, 0x00, 0x05, 0x38, 0xc0, 0x00, 0x00, 0x61, 0x4a, 0x20, 0x10,
+	0x39, 0x20, 0x00, 0x00, 0x3b, 0xff, 0x7f, 0xd8, 0xf9, 0x0a, 0x00, 0x00,
+	0x38, 0xa0, 0x00, 0x01, 0x60, 0x00, 0x00, 0x00, 0x79, 0x28, 0x17, 0x64,
+	0x39, 0x49, 0x00, 0x01, 0x7c, 0xa7, 0x48, 0x30, 0x7d, 0x49, 0x07, 0xb4,
+	0x7c, 0xe7, 0x33, 0x78, 0x7d, 0x1f, 0x40, 0x2e, 0x2f, 0x8a, 0x00, 0x06,
+	0x2f, 0x08, 0x00, 0x00, 0x41, 0x9a, 0x00, 0x08, 0x7c, 0xe6, 0x07, 0xb4,
+	0x40, 0x9e, 0xff, 0xd8, 0x2f, 0x86, 0x00, 0x3f, 0x39, 0x20, 0x00, 0x00,
+	0x38, 0xc0, 0x00, 0x00, 0x40, 0x9e, 0xff, 0xc8, 0x3d, 0x40, 0x80, 0x00,
+	0x61, 0x4a, 0x02, 0x00, 0x79, 0x4a, 0x07, 0xc6, 0x65, 0x4a, 0xc8, 0x00,
+	0x7d, 0x49, 0x53, 0x78, 0x61, 0x4a, 0x00, 0x48, 0x61, 0x29, 0x00, 0x4c,
+	0x81, 0x4a, 0x00, 0x00, 0x91, 0x5f, 0x00, 0x18, 0x81, 0x29, 0x00, 0x00,
+	0x55, 0x2a, 0x06, 0x3e, 0x91, 0x3f, 0x00, 0x1c, 0x2f, 0x8a, 0x00, 0x00,
+	0x40, 0x9e, 0x00, 0x0c, 0x39, 0x20, 0x00, 0x12, 0x99, 0x3f, 0x00, 0x1f,
+	0x89, 0x5f, 0x00, 0x1d, 0x55, 0x49, 0x07, 0xfe, 0x2f, 0x89, 0x00, 0x00,
+	0x41, 0x9e, 0x00, 0x20, 0x3d, 0x20, 0x80, 0x00, 0x3d, 0x00, 0xae, 0x01,
+	0x61, 0x29, 0x02, 0x00, 0x79, 0x29, 0x07, 0xc6, 0x65, 0x29, 0xea, 0x00,
+	0x61, 0x29, 0x10, 0x1c, 0x91, 0x09, 0x00, 0x00, 0x55, 0x4a, 0x07, 0x7a,
+	0x55, 0x48, 0x06, 0x3e, 0x2c, 0x08, 0x00, 0x00, 0x41, 0x82, 0x00, 0xc4,
+	0x38, 0x60, 0x00, 0x01, 0x3b, 0xc0, 0x00, 0x01, 0x4b, 0xff, 0xfc, 0x59,
+	0x89, 0x3f, 0x00, 0x1f, 0x7f, 0x89, 0x18, 0x00, 0x41, 0x9e, 0x00, 0x20,
+	0x89, 0x3f, 0x00, 0x1e, 0x3b, 0xc0, 0x00, 0x00, 0x2f, 0xa9, 0x00, 0x00,
+	0x41, 0x9e, 0x00, 0x10, 0x7c, 0x7e, 0x4a, 0x78, 0x7f, 0xde, 0x00, 0x74,
+	0x7b, 0xde, 0xd1, 0x82, 0x89, 0x3f, 0x00, 0x1c, 0x2f, 0xa9, 0x00, 0x00,
+	0x41, 0x9e, 0x00, 0xb0, 0x7f, 0x83, 0x48, 0x40, 0x40, 0x9e, 0x00, 0xa8,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x80, 0xe8, 0x4b, 0xff, 0xfd, 0x61,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x80, 0xf0, 0x4b, 0xff, 0xfd, 0x55,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x81, 0x20, 0x4b, 0xff, 0xfd, 0x49,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x81, 0x50, 0x4b, 0xff, 0xfd, 0x3d,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x81, 0x80, 0x4b, 0xff, 0xfd, 0x31,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x81, 0xb0, 0x4b, 0xff, 0xfd, 0x25,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x81, 0xe0, 0x4b, 0xff, 0xfd, 0x19,
+	0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x82, 0x10, 0x4b, 0xff, 0xfd, 0x0d,
+	0x2f, 0xbe, 0x00, 0x00, 0x40, 0x9e, 0x02, 0x5c, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x82, 0x60, 0x4b, 0xff, 0xfc, 0xf9, 0x48, 0x00, 0x00, 0x98,
+	0x38, 0x60, 0x00, 0x0a, 0x4b, 0xff, 0xfb, 0x9d, 0x89, 0x3f, 0x00, 0x1d,
+	0x55, 0x29, 0x07, 0xbc, 0x55, 0x2a, 0x06, 0x3e, 0x2c, 0x0a, 0x00, 0x00,
+	0x40, 0x82, 0x02, 0x08, 0x68, 0x63, 0x00, 0x62, 0x78, 0x7e, 0x06, 0x20,
+	0x7f, 0xde, 0x00, 0xd0, 0x7b, 0xde, 0x0f, 0xe0, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x80, 0xf0, 0x4b, 0xff, 0xfc, 0xbd, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x81, 0x20, 0x4b, 0xff, 0xfc, 0xb1, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x81, 0x50, 0x4b, 0xff, 0xfc, 0xa5, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x81, 0x80, 0x4b, 0xff, 0xfc, 0x99, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x81, 0xb0, 0x4b, 0xff, 0xfc, 0x8d, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x81, 0xe0, 0x4b, 0xff, 0xfc, 0x81, 0x60, 0x00, 0x00, 0x00,
+	0x38, 0x62, 0x82, 0x10, 0x4b, 0xff, 0xfc, 0x75, 0x2f, 0xbe, 0x00, 0x00,
+	0x40, 0x9e, 0x01, 0xc4, 0x60, 0x00, 0x00, 0x00, 0x38, 0x62, 0x82, 0x30,
+	0x4b, 0xff, 0xfc, 0x61, 0x3d, 0x20, 0x80, 0x00, 0x39, 0x00, 0x00, 0x00,
+	0x61, 0x29, 0x01, 0xff, 0x39, 0x40, 0xff, 0xff, 0x79, 0x29, 0x07, 0xc6,
+	0x61, 0x19, 0x80, 0x00, 0x65, 0x29, 0xff, 0xff, 0x79, 0x4a, 0x00, 0x40,
+	0x7f, 0x29, 0x03, 0xa6, 0x61, 0x29, 0xff, 0xff, 0x60, 0x00, 0x00, 0x00,
+	0x8d, 0x09, 0x00, 0x01, 0x9d, 0x0a, 0x00, 0x01, 0x42, 0x00, 0xff, 0xf8,
+	0x3d, 0x20, 0x80, 0x00, 0x61, 0x29, 0x02, 0x00, 0x79, 0x29, 0x07, 0xc6,
+	0x65, 0x29, 0xc8, 0x09, 0x61, 0x29, 0x10, 0x00, 0x81, 0x49, 0x00, 0x00,
+	0x3d, 0x20, 0x80, 0x00, 0x2f, 0x8a, 0xff, 0xff, 0x41, 0x9e, 0x01, 0x48,
+	0x61, 0x29, 0x02, 0x00, 0x38, 0x80, 0xff, 0xff, 0x79, 0x29, 0x07, 0xc6,
+	0x78, 0x84, 0x00, 0x04, 0x65, 0x29, 0xc8, 0x09, 0x61, 0x29, 0x10, 0x04,
+	0x81, 0x09, 0x00, 0x00, 0x38, 0xc9, 0x00, 0x04, 0x7d, 0x4a, 0x22, 0x14,
+	0x2f, 0xa8, 0x00, 0x00, 0x41, 0x9e, 0x00, 0x34, 0x39, 0x08, 0xff, 0xff,
+	0x39, 0x4a, 0xff, 0xfc, 0x79, 0x05, 0x00, 0x20, 0x78, 0xa7, 0x17, 0x64,
+	0x7c, 0xe6, 0x3a, 0x14, 0x85, 0x09, 0x00, 0x04, 0x7f, 0xa9, 0x38, 0x00,
+	0x95, 0x0a, 0x00, 0x04, 0x40, 0x9e, 0xff, 0xf4, 0x38, 0xa5, 0x00, 0x01,
+	0x78, 0xa5, 0x17, 0x64, 0x7c, 0xc6, 0x2a, 0x14, 0x81, 0x46, 0x00, 0x00,
+	0x39, 0x26, 0x00, 0x04, 0x2f, 0x8a, 0xff, 0xff, 0x40, 0x9e, 0xff, 0xb0,
+	0x3d, 0x40, 0x80, 0x00, 0x39, 0x29, 0xff, 0xfc, 0x79, 0x4a, 0x07, 0xc6,
+	0x38, 0xe0, 0x00, 0x00, 0x65, 0x4a, 0x01, 0x00, 0x7d, 0x46, 0x53, 0x78,
+	0x48, 0x00, 0x00, 0x0c, 0x2b, 0x87, 0x00, 0x02, 0x41, 0x9d, 0x00, 0x30,
+	0x85, 0x09, 0x00, 0x04, 0x2f, 0x88, 0xff, 0xff, 0x91, 0x0a, 0x00, 0x00,
+	0x39, 0x4a, 0x00, 0x04, 0x40, 0x9e, 0xff, 0xe8, 0x38, 0xe7, 0x00, 0x01,
+	0x78, 0xea, 0x60, 0x28, 0x78, 0xe7, 0x00, 0x20, 0x7d, 0x4a, 0x32, 0x14,
+	0x2b, 0x87, 0x00, 0x02, 0x40, 0x9d, 0xff, 0xd8, 0x3d, 0x20, 0x80, 0x00,
+	0x3d, 0x40, 0x80, 0x00, 0x61, 0x29, 0x02, 0x00, 0x79, 0x4a, 0x07, 0xc6,
+	0x79, 0x29, 0x07, 0xc6, 0x65, 0x4a, 0x01, 0x00, 0x65, 0x29, 0xc8, 0x09,
+	0x39, 0x00, 0x00, 0x60, 0x61, 0x4a, 0x2f, 0xff, 0x61, 0x29, 0x4f, 0xff,
+	0x7d, 0x09, 0x03, 0xa6, 0x8d, 0x09, 0x00, 0x01, 0x9d, 0x0a, 0x00, 0x01,
+	0x42, 0x00, 0xff, 0xf8, 0x38, 0x21, 0x00, 0xc0, 0x38, 0x60, 0x00, 0x00,
+	0xe8, 0x01, 0x00, 0x10, 0xea, 0xc1, 0xff, 0xb0, 0xea, 0xe1, 0xff, 0xb8,
+	0x7c, 0x08, 0x03, 0xa6, 0xeb, 0x01, 0xff, 0xc0, 0xeb, 0x21, 0xff, 0xc8,
+	0xeb, 0x41, 0xff, 0xd0, 0xeb, 0x61, 0xff, 0xd8, 0xeb, 0x81, 0xff, 0xe0,
+	0xeb, 0xa1, 0xff, 0xe8, 0xeb, 0xc1, 0xff, 0xf0, 0xeb, 0xe1, 0xff, 0xf8,
+	0x4e, 0x80, 0x00, 0x20, 0x68, 0x7e, 0x00, 0x60, 0x7f, 0xde, 0x00, 0x34,
+	0x57, 0xde, 0xd9, 0x7e, 0x7b, 0xde, 0x00, 0x20, 0x4b, 0xff, 0xfd, 0xfc,
+	0x61, 0x29, 0x02, 0x00, 0x79, 0x29, 0x07, 0xc6, 0x65, 0x29, 0xc8, 0x09,
+	0x61, 0x29, 0x10, 0x04, 0x4b, 0xff, 0xff, 0x18, 0x3f, 0xa0, 0x80, 0x00,
+	0x60, 0x00, 0x00, 0x00, 0x63, 0xbd, 0x02, 0x00, 0x38, 0x62, 0x82, 0x20,
+	0x7b, 0xbd, 0x07, 0xc6, 0x3f, 0x40, 0x02, 0x00, 0x4b, 0xff, 0xfa, 0x91,
+	0x3d, 0x40, 0x80, 0x00, 0x7f, 0xa9, 0xeb, 0x78, 0x67, 0xbd, 0xea, 0x00,
+	0x79, 0x4a, 0x07, 0xc6, 0x7f, 0xbe, 0xeb, 0x78, 0x7f, 0xbf, 0xeb, 0x78,
+	0x7f, 0xab, 0xeb, 0x78, 0x7f, 0xa3, 0xeb, 0x78, 0x7f, 0xa4, 0xeb, 0x78,
+	0x7f, 0xa5, 0xeb, 0x78, 0x7f, 0xa6, 0xeb, 0x78, 0x65, 0x4a, 0x1c, 0x03,
+	0x65, 0x29, 0xc8, 0x09, 0x38, 0x00, 0x00, 0x00, 0x63, 0xa7, 0x30, 0x20,
+	0x63, 0xa8, 0x50, 0x20, 0x3b, 0x60, 0x08, 0x00, 0x3f, 0x80, 0xff, 0xff,
+	0x63, 0xbd, 0x30, 0x28, 0x63, 0xde, 0x50, 0x28, 0x63, 0xff, 0x30, 0x60,
+	0x90, 0x1d, 0x00, 0x00, 0x61, 0x6b, 0x50, 0x60, 0x90, 0x1e, 0x00, 0x00,
+	0x60, 0x63, 0x30, 0x2c, 0x93, 0x47, 0x00, 0x00, 0x60, 0x84, 0x50, 0x2c,
+	0x93, 0x48, 0x00, 0x00, 0x60, 0xa5, 0x30, 0x24, 0x93, 0x67, 0x00, 0x00,
+	0x60, 0xc6, 0x50, 0x24, 0x93, 0x68, 0x00, 0x00, 0x3f, 0x20, 0x00, 0x01,
+	0x90, 0x1f, 0x00, 0x00, 0x61, 0x4a, 0xff, 0xfc, 0x90, 0x0b, 0x00, 0x00,
+	0x61, 0x29, 0x50, 0x5c, 0x90, 0x03, 0x00, 0x00, 0x7f, 0x29, 0x03, 0xa6,
+	0x90, 0x04, 0x00, 0x00, 0x93, 0x85, 0x00, 0x00, 0x93, 0x86, 0x00, 0x00,
+	0x60, 0x00, 0x00, 0x00, 0x85, 0x09, 0x00, 0x04, 0x95, 0x0a, 0x00, 0x04,
+	0x42, 0x00, 0xff, 0xf8, 0x38, 0x21, 0x00, 0xc0, 0x3d, 0x22, 0x00, 0x07,
+	0x38, 0x60, 0x00, 0x01, 0x39, 0x40, 0x00, 0x01, 0xe8, 0x01, 0x00, 0x10,
+	0x91, 0x49, 0x75, 0x30, 0xea, 0xc1, 0xff, 0xb0, 0xea, 0xe1, 0xff, 0xb8,
+	0x7c, 0x08, 0x03, 0xa6, 0xeb, 0x01, 0xff, 0xc0, 0xeb, 0x21, 0xff, 0xc8,
+	0xeb, 0x41, 0xff, 0xd0, 0xeb, 0x61, 0xff, 0xd8, 0xeb, 0x81, 0xff, 0xe0,
+	0xeb, 0xa1, 0xff, 0xe8, 0xeb, 0xc1, 0xff, 0xf0, 0xeb, 0xe1, 0xff, 0xf8,
+	0x4e, 0x80, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+	0x80, 0x0a, 0x00, 0x00, 0x3c, 0xa0, 0xff, 0xff, 0x60, 0xa5, 0xff, 0xf1,
+	0x7c, 0xa5, 0x18, 0x38, 0x7c, 0x65, 0x18, 0x50, 0x7c, 0x84, 0x1a, 0x14,
+	0x7c, 0x00, 0x28, 0x6c, 0x30, 0xa5, 0x00, 0x80, 0x34, 0x84, 0xff, 0x80,
+	0x40, 0x80, 0xff, 0xf4, 0x4c, 0x00, 0x01, 0x2c, 0x4e, 0x80, 0x00, 0x20,
+	0x3c, 0xa0, 0xff, 0xff, 0x60, 0xa5, 0xff, 0xf1, 0x7c, 0xa5, 0x18, 0x38,
+	0x7c, 0x65, 0x18, 0x50, 0x7c, 0x84, 0x1a, 0x14, 0x7c, 0x00, 0x28, 0xac,
+	0x30, 0xa5, 0x00, 0x80, 0x34, 0x84, 0xff, 0x80, 0x40, 0x80, 0xff, 0xf4,
+	0x4c, 0x00, 0x01, 0x2c, 0x4e, 0x80, 0x00, 0x20, 0x3c, 0xa0, 0xff, 0xff,
+	0x60, 0xa5, 0xff, 0xf1, 0x7c, 0xa5, 0x18, 0x38, 0x7c, 0x65, 0x18, 0x50,
+	0x7c, 0x84, 0x1a, 0x14, 0x7c, 0x00, 0x28, 0x6c, 0x7c, 0x00, 0x04, 0xac,
+	0x7c, 0x00, 0x2f, 0xac, 0x30, 0xa5, 0x00, 0x80, 0x34, 0x84, 0xff, 0x80,
+	0x40, 0x80, 0xff, 0xec, 0x7c, 0x00, 0x04, 0xac, 0x4c, 0x00, 0x01, 0x2c,
+	0x4e, 0x80, 0x00, 0x20, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x05, 0x41, 0x12,
+	0x80, 0x00, 0x00, 0x00, 0x01, 0x00, 0x30, 0x78, 0x80, 0x00, 0x00, 0x00,
+	0x1c, 0x00, 0x02, 0x48, 0x80, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x8a, 0xd0,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
+	0x1c, 0x00, 0x03, 0x98, 0x80, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x8a, 0xd0,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
+	0x1c, 0x00, 0x03, 0xf0, 0x80, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x8a, 0xd0,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x03, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x80, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x80, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x0f, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x13, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00,
+	0x21, 0x53, 0x57, 0x49, 0x54, 0x43, 0x48, 0x00, 0x0a, 0x20, 0x20, 0x5f,
+	0x5f, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+	0x20, 0x20, 0x20, 0x20, 0x5f, 0x5f, 0x5f, 0x5f, 0x20, 0x20, 0x20, 0x5f,
+	0x5f, 0x5f, 0x20, 0x20, 0x20, 0x5f, 0x5f, 0x5f, 0x20, 0x5f, 0x5f, 0x5f,
+	0x5f, 0x5f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x20, 0x2f, 0x20,
+	0x5f, 0x7c, 0x5f, 0x20, 0x5f, 0x5f, 0x20, 0x5f, 0x5f, 0x5f, 0x20, 0x20,
+	0x5f, 0x5f, 0x5f, 0x7c, 0x20, 0x5f, 0x5f, 0x20, 0x29, 0x20, 0x2f, 0x20,
+	0x5f, 0x20, 0x5c, 0x20, 0x2f, 0x20, 0x5f, 0x20, 0x5c, 0x5f, 0x20, 0x20,
+	0x20, 0x5f, 0x7c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x7c, 0x20, 0x7c,
+	0x5f, 0x7c, 0x20, 0x27, 0x5f, 0x5f, 0x2f, 0x20, 0x5f, 0x20, 0x5c, 0x2f,
+	0x20, 0x5f, 0x20, 0x5c, 0x20, 0x20, 0x5f, 0x20, 0x5c, 0x7c, 0x20, 0x7c,
+	0x20, 0x7c, 0x20, 0x7c, 0x20, 0x7c, 0x20, 0x7c, 0x20, 0x7c, 0x7c, 0x20,
+	0x7c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x7c, 0x20, 0x20,
+	0x5f, 0x7c, 0x20, 0x7c, 0x20, 0x7c, 0x20, 0x20, 0x5f, 0x5f, 0x2f, 0x20,
+	0x20, 0x5f, 0x5f, 0x2f, 0x20, 0x7c, 0x5f, 0x29, 0x20, 0x7c, 0x20, 0x7c,
+	0x5f, 0x7c, 0x20, 0x7c, 0x20, 0x7c, 0x5f, 0x7c, 0x20, 0x7c, 0x7c, 0x20,
+	0x7c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x7c, 0x5f, 0x7c,
+	0x20, 0x7c, 0x5f, 0x7c, 0x20, 0x20, 0x5c, 0x5f, 0x5f, 0x5f, 0x7c, 0x5c,
+	0x5f, 0x5f, 0x5f, 0x7c, 0x5f, 0x5f, 0x5f, 0x5f, 0x2f, 0x20, 0x5c, 0x5f,
+	0x5f, 0x5f, 0x2f, 0x20, 0x5c, 0x5f, 0x5f, 0x5f, 0x2f, 0x20, 0x7c, 0x5f,
+	0x7c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x20, 0x20, 0x20,
+	0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x5b, 0x76,
+	0x30, 0x2e, 0x31, 0x30, 0x20, 0x2d, 0x20, 0x69, 0x6e, 0x73, 0x70, 0x69,
+	0x72, 0x65, 0x64, 0x20, 0x62, 0x79, 0x20, 0x69, 0x6b, 0x61, 0x72, 0x69,
+	0x5d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x62, 0x6f, 0x6f,
+	0x74, 0x69, 0x6e, 0x67, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x78, 0x65, 0x6c, 0x6c, 0x2e, 0x2e, 0x2e, 0x2e, 0x0a, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x66, 0x69, 0x72, 0x6d, 0x77, 0x61, 0x72, 0x65,
+	0x20, 0x76, 0x2e, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58,
+	0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58,
+	0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x61, 0x6c, 0x74, 0x20, 0x66, 0x69, 0x72, 0x6d,
+	0x77, 0x61, 0x72, 0x65, 0x00, 0x00, 0x00, 0x00,
+};
 int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
 u32 blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
@@ -222,6 +561,7 @@ int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen, u8 *
 	const void *pubKey, const void *prvKey);
 u32 calcConfigSum(const u8 *buf);
 u32 patchSmcConfig(u8 *smc);
+int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 crc);
 u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
 void display_buffer_hex(const u8 *buf, u32 len, u32 level);
 typedef struct { u32 state[24]; } XECRYPT_SHA_STATE;	/* SHA_CTX */
@@ -238,8 +578,9 @@ void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
    crafted profile for loadBlFiles and the loadBl it inlines (dom2's FSM
    threader zeroes loadBlFiles' type-11 block, which no guessed profile places
    right: wip/README.md) and the guessed one for everything else
-   (wip/mixed.py puts NOPROF on them; a function without counts would compile
-   as never executed). Only loadBlFiles is taken from the second compile */
+   (NOPROF on them; a function without counts would compile as never
+   executed). Only loadBlFiles is taken from the second compile
+   (re/splice.py --whole) */
 #ifdef BUILD_FDO
 #define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
 #else
@@ -271,241 +612,90 @@ int suGetFile(const char *name, u8 **data, u32 *len);
 int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
 int updateGetFile(const char *name, u8 **data, u32 *size);
 
-/* strings in build.s */
-static const char bd_458ca4[] = "rb";
-static const char bd_458ca8[] = "\n******WARNING: '%s' is a 0 byte file, loading skipped!\n";
-static const char bd_458ce1[] = "reading %s (0x%x bytes)";
-static const char bd_458cf9[] = "\n";
-static const char bd_458cfc[] = "reading %s (0x%x b pad 0x%x b)";
-static const char bd_458d1b[] = " (crc32: 0x%08x ini: 0x%08x)\n";
-static const char bd_458d3c[] = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
-static const char bd_458d74[] = "**** using default time!!! ****\n";
-static const char bd_458d98[] = "**** %s metadata found, not using system time *****\n\n";
-static const char bd_458dd0[] = "extracted SUPD/%s (0x%x bytes)";
-static const char bd_458df0[] = "extracted nanddump/%s (0x%x bytes)";
-static const char bd_458e14[] = "extracted USVR/%s (0x%x bytes)";
-static const char bd_458e34[] = "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n";
-static const char bd_458e7c[] = "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n";
-static const char bd_458ed0[] = "\n***** WARNING: could not load addon patch %s%s!\n\n";
-static const char bd_458f04[] = "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n";
-static const char bd_458f80[] = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
-static const char bd_458fb4[] = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
-static const char bd_458fe6[] = "Cpu Fan     : ";
-static const char bd_458ff5[] = "%d%%%% (overridden)\n";
-static const char bd_45900a[] = "(auto)\n";
-static const char bd_459012[] = "Gpu Fan     : ";
-static const char bd_459021[] = "MAC Address : ";
-static const char bd_459030[] = "\nAVRegion    : 0x%08x (NTSC-M)\n";
-static const char bd_459050[] = "\nAVRegion    : 0x%08x (NTSC-J)\n";
-static const char bd_459070[] = "\nAVRegion    : 0x%08x (PAL50)\n";
-static const char bd_459090[] = "\nAVRegion    : 0x%08x (PAL60)\n";
-static const char bd_4590b0[] = "\nAVRegion    : 0x%08x (Unknown)\n";
-static const char bd_4590d1[] = "GameRegion  : 0x%04x ";
-static const char bd_4590e7[] = "(NTSC/US)\n";
-static const char bd_4590f2[] = "(NTSC/JAP)\n";
-static const char bd_4590fe[] = "(NTSC/KOR)\n";
-static const char bd_45910a[] = "(NTSC/HK)\n";
-static const char bd_459115[] = "(PAL/EU)\n";
-static const char bd_45911f[] = "(PAL/AUS)\n";
-static const char bd_45912a[] = "(DEVKIT)\n";
-static const char bd_459134[] = "(Unknown)\n";
-static const char bd_45913f[] = "DVDRegion   : %d\n";
-static const char bd_459151[] = "resetKey    : ";
-static const char bd_459160[] = "%c";
-static const char bd_459164[] = "Ini value %d for %s is out of range (%d-%d), not using\n";
-static const char bd_45919c[] = "Checking for smc config data patches\n";
-static const char bd_4591c2[] = "cputemp";
-static const char bd_4591ca[] = "gputemp";
-static const char bd_4591d2[] = "edramtemp";
-static const char bd_4591dc[] = "overcputemp";
-static const char bd_4591e8[] = "overgputemp";
-static const char bd_4591f4[] = "overedramtemp";
-static const char bd_459202[] = "cpufan";
-static const char bd_45920c[] = "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n";
-static const char bd_459256[] = "gpufan";
-static const char bd_459260[] = "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n";
-static const char bd_4592d8[] = "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n";
-static const char bd_459340[] = "smc config patched!\n";
-static const char bd_459355[] = "smc config was not patched\n";
-static const char bd_459371[] = "---------------------\n";
-static const char bd_459388[] = "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n";
-static const char bd_4593d7[] = "-------------------\n";
-static const char bd_4593ec[] = "checking smc_config\n";
-static const char bd_459401[] = "extracting config\n";
-static const char bd_459414[] = "extracting config raw\n";
-static const char bd_45942c[] = "******* ERROR: extracting config did not work, not enough data to copy!\n";
-static const char bd_459478[] = "valid SMC config data found at offset 0x%x\n";
-static const char bd_4594a4[] = "------------------\n";
-static const char bd_4594b8[] = "SMC config info:\n";
-static const char bd_4594ca[] = "SMC patched info:\n";
-static const char bd_4594e0[] = "******* ERROR: unable to find SMC config data!\n";
-static const char bd_459510[] = "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n";
-static const char bd_459558[] = "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n";
-static const char bd_4595a0[] = "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n";
-static const char bd_45961c[] = "\n***** ERROR: %s failed signature check!\n";
-static const char bd_459646[] = "%s signature is good\n";
-static const char bd_45965c[] = "could not check signature of %s, 1BL RSA key not present!\n";
-static const char bd_459698[] = "%s failed signature check, attempting to resign\n";
-static const char bd_4596cc[] = "\n***** ERROR: failed to resign %s!\n";
-static const char bd_4596f0[] = "%s resigned successfully!\n";
-static const char bd_45970c[] = "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n";
-static const char bd_45976c[] = "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n";
-static const char bd_4597bc[] = "could not locate SB data to check %s!\n";
-static const char bd_4597e4[] = "%s failed hash check, attempting to correct SE and resign\n";
-static const char bd_459820[] = "\n***** ERROR: failed to resign SE to correct %s hash!\n";
-static const char bd_459858[] = "SE resigned successfully to correct %s hash!\n";
-static const char bd_459888[] = "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n";
-static const char bd_4598e0[] = "\n***** ERROR: %s failed hash check!\n";
-static const char bd_459905[] = "%s hash from SE is good\n";
-static const char bd_459920[] = "\n***** ERROR: could not locate SD data to check %s!\n";
-static const char bd_459955[] = "none";
-static const char bd_45995c[] = "loaded %s, could not check signature rsa key not present!\n";
-static const char bd_459998[] = "\n***** ERROR: loaded %s, but signature check failed!\n";
-static const char bd_4599d0[] = "loaded %s, signature check passed!\n";
-static const char bd_4599f4[] = "could not read %s%s, using built in payload (0x%x bytes)\n";
-static const char bd_459a30[] = "could not read %s%s, using built in core (0x%x bytes)\n";
-static const char bd_459a68[] = "xell not found in perbuild directory, checking firmware /bin folder\n";
-static const char bd_459ab0[] = "xell not found in firmware /bin folder, checking base path\n";
-static const char bd_459aec[] = "keyvault.bin";
-static const char bd_459af9[] = "KV_dec.bin";
-static const char bd_459b04[] = "reading %s%s failed, using %s from nand dump\n";
-static const char bd_459b32[] = "keyvault_alt.bin";
-static const char bd_459b43[] = "KV_alt_dec.bin";
-static const char bd_459b54[] = "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n";
-static const char bd_459b8c[] = "config.bin";
-static const char bd_459b97[] = "config_raw.bin";
-static const char bd_459ba8[] = "####### unhandled bl load %d %s\n";
-static const char bd_459bcc[] = "\n\n**** could not read %s (%i) ****\n\n";
-static const char bd_459c64[] = "skipping %s%s as it is in glitch bootloader dump\n";
-static const char bd_459c98[] = "using keyvault data from console\n";
-static const char bd_459cbc[] = "\n***** ERROR!: acquiring keyvault data failed!\n";
-static const char bd_459cec[] = "using keyvault alt data from console\n";
-static const char bd_459d14[] = "using smc configuration from console\n";
-static const char bd_459d3c[] = "\n***** ERROR!: acquiring smc configuration data failed!\n";
-static const char bd_459d78[] = "using smc binary from console\n";
-static const char bd_459d98[] = "\n***** ERROR!: acquiring smc binary data failed!\n";
-static const char bd_459e3c[] = "\tPatching header for slower demon/cygnos UART speed\n";
-static const char bd_459e74[] = "\tPatching header for xell power reason\n";
-static const char bd_459e9c[] = "\tPatching header for xell alt power reason\n";
-static const char bd_459ec8[] = "blmod.bin";
-static const char bd_459ed2[] = "sum1:";
-static const char bd_459ed8[] = "sum2:";
-static const char bd_459ede[] = "sum3:";
-static const char bd_459ee4[] = "fin :";
-static const char bd_459eea[] = "Patching BLs...";
-static const char bd_459efa[] = "Done!\n";
-static const char bd_459f04[] = "Checking patched CD signature...";
-static const char bd_459f25[] = "CBB";
-static const char bd_459f29[] = "CD";
-static const char bd_459f2a[] = "D";
-static const char bd_459f2c[] = "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n";
-static const char bd_459f7c[] = "Adding 0x%x bytes blmod.bin data to %s...";
-static const char bd_459fa6[] = "Fixing up patch set...";
-static const char bd_459fc0[] = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n";
-static const char bd_45a000[] = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n";
-static const char bd_45a034[] = "retail image, skipping %s\n";
-static const char bd_45a050[] = "devkit/testkit image, skipping %s\n";
-static const char bd_45a074[] = "***** WARNING: skipping xell, there doesn't appear to be enough room!\n";
-static const char bd_45a0bc[] = "    - console power button is being used to %s \n";
-static const char bd_45a0f0[] = "    - console DVD eject button is being used to %s \n";
-static const char bd_45a128[] = "    - IR remote power button is being used to %s \n";
-static const char bd_45a15c[] = "    - IR remote guide/X button is being used to %s \n";
-static const char bd_45a194[] = "    - IR remote windows button is being used to %s \n";
-static const char bd_45a1cc[] = "    - KIOSK debug pin is being used to %s \n";
-static const char bd_45a1f8[] = "    - wireless controller powering on console is being used to %s \n";
-static const char bd_45a23c[] = "wired controller (rear top usb port) is being used to %s \n";
-static const char bd_45a278[] = "wired controller (INVALID FOR FATS!!) is being used to %s \n";
-static const char bd_45a2b4[] = "wired controller (rear middle usb port) is being used to %s \n";
-static const char bd_45a2f4[] = "wired controller (rear bottom usb port) is being used to %s \n";
-static const char bd_45a334[] = "wired controller (rear usb port) is being used to %s \n";
-static const char bd_45a36c[] = "wired controller (front left usb port) is being used to %s \n";
-static const char bd_45a3ac[] = "wired controller (front top usb port) is being used to %s \n";
-static const char bd_45a3e8[] = "wired controller (front right usb port) is being used to %s \n";
-static const char bd_45a428[] = "wired controller (front bottom usb port) is being used to %s \n";
-static const char bd_45a590[] = "patching freeboot.bin with with kernel version string '%s'\n";
-static const char bd_45a5cc[] = "Boot options set:\n";
-static const char bd_45a5e0[] = "    - Set debug UART speed to cygnos/demon compatible\n";
-static const char bd_45a618[] = "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n";
-static const char bd_45a664[] = "    - When powered on, if tray is not fully closed Xell starts\n";
-static const char bd_45a6a4[] = "start xell";
-static const char bd_45a6b0[] = "    - UKNOWN POWER REASON, using eject button\n";
-static const char bd_45a6df[] = "alternately start xell";
-static const char bd_45a6f8[] = "    - alternate xell button disabled\n";
-static const char bd_45a71e[] = "dual boot";
-static const char bd_45a728[] = "org version %s\n";
-static const char bd_45a738[] = "fin version %s\n";
-static const char bd_45a748[] = "**** ERROR PATCHING FREEBOOT.BIN for kernel version string!\n";
-static const char bd_45a785[] = "9199";
-static const char bd_45a78c[] = "9199 ini string detected, patching to old hold address\n";
-static const char bd_45a7c4[] = "patching payload.bin to load size 0x%x (0x%x reps)\n";
-static const char bd_45a7f8[] = "org li %r4, %02x%02x\n";
-static const char bd_45a80e[] = "fin li %r4, %02x%02x\n";
-static const char bd_45a824[] = "encoding %s size 0x%x (JTAG)\n";
-static const char bd_45a844[] = "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n";
-static const char bd_45a8af[] = "encoding %s size 0x%x\n";
-static const char bd_45a8c6[] = "zeropairing SB\n";
-static const char bd_45a8d8[] = "CPU key is all zeros, zeropairing SB\n";
-static const char bd_45a900[] = "****** Unhandled BL typ %d ******\n";
-static const char bd_45a924[] = "CPU key is all zeros, zeropairing CB_B\n";
-static const char bd_45a94c[] = "re-encoding %s size 0x%x\n";
-static const char bd_45aa58[] = "***** WARNING: xell is unexpectedly larger than 256KiB!!\n";
-static const char bd_45aa94[] = "Writing initial header to flash image\n";
-static const char bd_45aabc[] = "\n------ Copying bootloader image to flash image ------ \n";
-static const char bd_45aaf8[] = "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n";
-static const char bd_45ab50[] = "\n------ Loading bootloaders and required security files ------\n";
-static const char bd_45ab90[] = "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n";
-static const char bd_45abd8[] = "done!\n";
-static const char bd_45abe0[] = "\n------ Patching BLs and modifying patches ------\n";
-static const char bd_45ac14[] = "\n------ Patching boot reasons and options into flash header ------\n";
-static const char bd_45ac58[] = "\n------ Encrypting and finalizing bootloaders ------\n";
-static const char bd_45ac8e[] = "\nVirtual Fuses set to:";
-static const char bd_45aca8[] = "done!\n\n------ Adding bootloaders to flash image ------\n";
-static const char bd_45ace0[] = "Fixing up FS table...";
-static const char bd_45acf8[] = "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n";
-static const char bd_45ad3c[] = "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...";
-static const char bd_45ad6c[] = "sysupdate.xexp1";
-static const char bd_45ad7c[] = "Writing CG patch slot overflow data to sysupdate.xexp1\n";
-static const char bd_45adb4[] = "Writing target CG patch slot overflow data to sysupdate.xexp2\n";
-static const char bd_45adf3[] = "sysupdate.xexp2";
-static const char bd_45ae04[] = "\n------ adding %d firmware files ------\n";
-static const char bd_45ae30[] = "\n------ adding %d security files ------\n";
-static const char bd_45ae59[] = "sysupdate.xexp";
-static const char bd_45ae68[] = "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n";
-static const char bd_45aebc[] = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
-static const char bd_45aef8[] = "***** could not read file '%s', skipping *****\n";
-static const char bd_45af28[] = "***** could not read file '%s' *****\n";
-static const char bd_45af50[] = "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n";
-static const char bd_45af94[] = "\n------ checking for Mobile*.dat ------\n";
-static const char bd_45afbd[] = "<- Processing %s ->\n";
-static const char bd_45afd4[] = "\tcould not read %s, using data from SUPD...\n";
-static const char bd_45b004[] = "\tcould not read %s, using data from previous parse...\n";
-static const char bd_45b03b[] = "secdata.bin";
-static const char bd_45b047[] = "extended.bin";
-static const char bd_45b054[] = "dae.bin";
-static const char bd_45b05c[] = "crl.bin";
-static const char bd_45b064[] = "fcrt.bin";
-static const char bd_45b06d[] = "odd.bin";
-static const char bd_45b078[] = "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n";
-static const char bd_45b0d4[] = "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n";
-static const char bd_45b13c[] = "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n";
-static const char bd_45b1a0[] = "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n";
-static const char bd_45b1fc[] = "             but should allow the machine to boot normally\n";
-static const char bd_45b238[] = "\t%s not found and not required by keyvault, skipped\n";
-static const char bd_45b270[] = "***** WARNING: %s not found, skipping *****\n";
-static const char bd_45b29d[] = "%s found, adding from file\n";
-static const char bd_45b2bc[] = "%s found, adding from previous parse\n";
-static const char bd_45b2e4[] = "\n------ adding smc_config.bin ------\n";
-static const char bd_45b30c[] = "\n------ cleaning up image ------\n";
-static const char bd_45b330[] = "Fixing up empty FS block entries...";
-static const char bd_45b354[] = "done!\nWriting FS table to image ";
-static const char bd_45b378[] = "\n------ adding [rawpatch] data ------\n";
-static const char bd_45b3a0[] = "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n";
-static const char bd_45b3f4[] = "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n";
-static const char bd_45b44c[] = "***** ERROR: could not load [rawpatch] file '%s'!!\n";
-static const char bd_45b480[] = "\n------ finalizing image ------\n";
+static const char bd_458ca4[] __attribute__((aligned(1))) = "rb";
+static const char bd_458ca8[] __attribute__((aligned(4))) = "\n******WARNING: '%s' is a 0 byte file, loading skipped!\n";
+static const char bd_458ce1[] __attribute__((aligned(1))) = "reading %s (0x%x bytes)";
+static const char bd_458cf9[] __attribute__((aligned(1))) = "\n";
+static const char bd_458cfc[] __attribute__((aligned(4))) = "reading %s (0x%x b pad 0x%x b)";
+static const char bd_458d1b[] __attribute__((aligned(1))) = " (crc32: 0x%08x ini: 0x%08x)\n";
+static const char bd_458d3c[] __attribute__((aligned(4))) = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
+static const char bd_458d74[] __attribute__((aligned(4))) = "**** using default time!!! ****\n";
+static const char bd_458d98[] __attribute__((aligned(4))) = "**** %s metadata found, not using system time *****\n\n";
+static const char bd_458dd0[] __attribute__((aligned(4))) = "extracted SUPD/%s (0x%x bytes)";
+static const char bd_458df0[] __attribute__((aligned(4))) = "extracted nanddump/%s (0x%x bytes)";
+static const char bd_458e14[] __attribute__((aligned(4))) = "extracted USVR/%s (0x%x bytes)";
+static const char bd_458e34[] __attribute__((aligned(4))) = "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n";
+static const char bd_458e7c[] __attribute__((aligned(4))) = "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n";
+static const char bd_458ed0[] __attribute__((aligned(4))) = "\n***** WARNING: could not load addon patch %s%s!\n\n";
+static const char bd_458f04[] __attribute__((aligned(4))) = "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n";
+static const char bd_458f80[] __attribute__((aligned(4))) = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
+static const char bd_458fb4[] __attribute__((aligned(4))) = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
+static const char bd_458fe6[] __attribute__((aligned(1))) = "Cpu Fan     : ";
+static const char bd_458ff5[] __attribute__((aligned(1))) = "%d%%%% (overridden)\n";
+static const char bd_45900a[] __attribute__((aligned(1))) = "(auto)\n";
+static const char bd_459012[] __attribute__((aligned(1))) = "Gpu Fan     : ";
+static const char bd_459021[] __attribute__((aligned(1))) = "MAC Address : ";
+static const char bd_459030[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (NTSC-M)\n";
+static const char bd_459050[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (NTSC-J)\n";
+static const char bd_459070[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (PAL50)\n";
+static const char bd_459090[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (PAL60)\n";
+static const char bd_4590b0[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (Unknown)\n";
+static const char bd_4590d1[] __attribute__((aligned(1))) = "GameRegion  : 0x%04x ";
+static const char bd_4590e7[] __attribute__((aligned(1))) = "(NTSC/US)\n";
+static const char bd_4590f2[] __attribute__((aligned(1))) = "(NTSC/JAP)\n";
+static const char bd_4590fe[] __attribute__((aligned(1))) = "(NTSC/KOR)\n";
+static const char bd_45910a[] __attribute__((aligned(1))) = "(NTSC/HK)\n";
+static const char bd_459115[] __attribute__((aligned(1))) = "(PAL/EU)\n";
+static const char bd_45911f[] __attribute__((aligned(1))) = "(PAL/AUS)\n";
+static const char bd_45912a[] __attribute__((aligned(1))) = "(DEVKIT)\n";
+static const char bd_459134[] __attribute__((aligned(1))) = "(Unknown)\n";
+static const char bd_45913f[] __attribute__((aligned(1))) = "DVDRegion   : %d\n";
+static const char bd_459151[] __attribute__((aligned(1))) = "resetKey    : ";
+static const char bd_459160[] __attribute__((aligned(1))) = "%c";
+static const char bd_459164[] __attribute__((aligned(4))) = "Ini value %d for %s is out of range (%d-%d), not using\n";
+static const char bd_45919c[] __attribute__((aligned(4))) = "Checking for smc config data patches\n";
+static const char bd_4591c2[] __attribute__((aligned(1))) = "cputemp";
+static const char bd_4591ca[] __attribute__((aligned(1))) = "gputemp";
+static const char bd_4591d2[] __attribute__((aligned(1))) = "edramtemp";
+static const char bd_4591dc[] __attribute__((aligned(1))) = "overcputemp";
+static const char bd_4591e8[] __attribute__((aligned(1))) = "overgputemp";
+static const char bd_4591f4[] __attribute__((aligned(1))) = "overedramtemp";
+static const char bd_459202[] __attribute__((aligned(1))) = "cpufan";
+static const char bd_45920c[] __attribute__((aligned(4))) = "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n";
+static const char bd_459256[] __attribute__((aligned(1))) = "gpufan";
+static const char bd_459260[] __attribute__((aligned(4))) = "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n";
+static const char bd_4592d8[] __attribute__((aligned(4))) = "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n";
+static const char bd_459340[] __attribute__((aligned(1))) = "smc config patched!\n";
+static const char bd_459355[] __attribute__((aligned(1))) = "smc config was not patched\n";
+static const char bd_459371[] __attribute__((aligned(1))) = "---------------------\n";
+static const char bd_459388[] __attribute__((aligned(4))) = "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n";
+static const char bd_4593d7[] __attribute__((aligned(1))) = "-------------------\n";
+static const char bd_4593ec[] __attribute__((aligned(1))) = "checking smc_config\n";
+static const char bd_459401[] __attribute__((aligned(1))) = "extracting config\n";
+static const char bd_459414[] __attribute__((aligned(1))) = "extracting config raw\n";
+static const char bd_45942c[] __attribute__((aligned(4))) = "******* ERROR: extracting config did not work, not enough data to copy!\n";
+static const char bd_459478[] __attribute__((aligned(4))) = "valid SMC config data found at offset 0x%x\n";
+static const char bd_4594a4[] __attribute__((aligned(1))) = "------------------\n";
+static const char bd_4594b8[] __attribute__((aligned(1))) = "SMC config info:\n";
+static const char bd_4594ca[] __attribute__((aligned(1))) = "SMC patched info:\n";
+static const char bd_4594e0[] __attribute__((aligned(4))) = "******* ERROR: unable to find SMC config data!\n";
+static const char bd_459510[] __attribute__((aligned(4))) = "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n";
+static const char bd_459558[] __attribute__((aligned(4))) = "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n";
+static const char bd_4595a0[] __attribute__((aligned(4))) = "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n";
 
-/* still in build.s */
+/* read baseDir/name into e */
+NOPROF
+static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
+{
+	if (xb.baseDir[0]) {
+		char path[0x400];
 
+		strcpy(path, xb.baseDir);
+		strcat(path, name);
+		return loadFileCrc(path, e, 1, 0, 0);
+	}
+	return -1;
+}
 
 NOPROF
 u32 findFileOffset(int type)
@@ -630,20 +820,6 @@ NOPROF
 int timestampToFileTime(const u16 *ts, FILETIME *ft)
 {
 	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
-}
-
-/* read baseDir/name into e */
-NOPROF
-static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
-{
-	if (xb.baseDir[0]) {
-		char path[0x400];
-
-		strcpy(path, xb.baseDir);
-		strcat(path, name);
-		return loadFileCrc(path, e, 1, 0, 0);
-	}
-	return -1;
 }
 
 /* the same with its timestamp from name.meta if there is one */
@@ -818,6 +994,127 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 	return 0;
 }
 
+NOPROF
+void appendAddonPatches(struct fileent *e)
+{
+	u32 size = e->size - 4;
+	u8 *buf = malloc(0x4000);
+	u32 added = 0;
+	struct fileent *a;
+	int i;
+
+	memset(buf, 0xff, 0x4000);
+	memcpy(buf, e->data, size);
+	if (xb.nAddons)
+	for (i = 0; i < xb.nAddons; i++) {
+		a = &xb.files[19 + i];
+		if (!loadBinFile(a)) {
+			if (!(a->size & 3)) {
+				if (getBeU32(a->data + a->size - 4) == 0xffffffff)
+					a->size -= 4;
+				if (size + a->size <= 0x4000) {
+					memcpy(buf + size, a->data, a->size);
+					added += a->size;
+					size += a->size;
+				} else
+					log_printf(0, bd_458e34,
+						   xb.binDir, a->name);
+			} else
+				log_printf(0, bd_458e7c,
+					   xb.binDir, a->name, a->size);
+		} else
+			log_printf(0, bd_458ed0, xb.binDir, a->name);
+	}
+	*(u32 *)(buf + size) = 0xffffffff;
+	setBeU32(added, buf + size + 4);
+	size += 8;
+	if (e->data)
+		free(e->data);
+	e->data = buf;
+	e->size = size;
+	if (xb.nAddons)
+		log_printf(1, bd_458f04,
+			   added, xb.nAddons, size);
+}
+
+NOPROF
+void showSmcConfig(const u8 *smc)
+{
+	u32 av;
+	u16 game;
+	int i;
+
+	log_printf(1, bd_458f80, smc[0x29], smc[0x2a], smc[0x2b]);
+	log_printf(1, bd_458fb4, smc[0x2c], smc[0x2d], smc[0x2e]);
+	log_printf(1, bd_458fe6);
+	if (((struct fan *)(smc + 0x11))->override)
+		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x11))->speed);
+	else
+		log_printf(1, bd_45900a);
+	log_printf(1, bd_459012, smc[0x12] & 0x7f);
+	if (((struct fan *)(smc + 0x12))->override)
+		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x12))->speed);
+	else
+		log_printf(1, bd_45900a);
+	log_printf(1, bd_459021);
+	showMac(1, smc + 0x220);
+	av = *(u32 *)(smc + 0x228);
+	av = SWAP32(av);
+	switch (av) {
+	case 0x100:
+		log_printf(1, bd_459030, av);
+		break;
+	case 0x200:
+		log_printf(1, bd_459050, av);
+		break;
+	case 0x300:
+		log_printf(1, bd_459070, av);
+		break;
+	case 0x400:
+		log_printf(1, bd_459090, av);
+		break;
+	default:
+		log_printf(1, bd_4590b0, av);
+		break;
+	}
+	game = __builtin_bswap16(*(u16 *)(smc + 0x22c));
+	log_printf(1, bd_4590d1, game);
+	switch (game) {
+	case 0xff:
+		log_printf(1, bd_4590e7);
+		break;
+	case 0x1fe:
+		log_printf(1, bd_4590f2);
+		break;
+	case 0x1ff:
+		log_printf(1, bd_4590f2);
+		break;
+	case 0x1fc:
+		log_printf(1, bd_4590fe);
+		break;
+	case 0x101:
+		log_printf(1, bd_45910a);
+		break;
+	case 0x2fe:
+		log_printf(1, bd_459115);
+		break;
+	case 0x201:
+		log_printf(1, bd_45911f);
+		break;
+	case 0x7fff:
+		log_printf(1, bd_45912a);
+		break;
+	default:
+		log_printf(1, bd_459134);
+		break;
+	}
+	log_printf(1, bd_45913f, SWAP32(*(u32 *)(smc + 0x234)));
+	log_printf(1, bd_459151);
+	for (i = 0; i < 4; i++)
+		log_printf(1, bd_459160, smc[0x238 + i]);
+	log_printf(1, bd_458cf9);
+}
+
 /* an ini value is used if it is in range; 0 and -1 mean unset */
 NOPROF
 int iniRangeOk(const char *name, u32 v, u32 lo, u32 hi)
@@ -832,6 +1129,180 @@ int iniRangeOk(const char *name, u32 v, u32 lo, u32 hi)
 	return ok;
 }
 
+NOPROF
+static void cb_hint(int *p)
+{
+	*p = 1;
+}
+
+NOPROF
+__attribute__((optimize("no-early-inlining")))
+u32 patchSmcConfig(u8 *smc)
+{
+	u32 patched = 0;
+	int i, dead;
+
+	log_printf(1, bd_45919c);
+	if (iniRangeOk(bd_4591c2, xb.cpuTemp, 40, 120)) {
+		smc[0x29] = xb.cpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591ca, xb.gpuTemp, 40, 120)) {
+		smc[0x2a] = xb.gpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591d2, xb.edramTemp, 40, 120)) {
+		smc[0x2b] = xb.edramTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591dc, xb.overCpuTemp, 40, 120)) {
+		smc[0x2c] = xb.overCpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591e8, xb.overGpuTemp, 40, 120)) {
+		smc[0x2d] = xb.overGpuTemp;
+		patched = 1;
+	}
+	if (iniRangeOk(bd_4591f4, xb.overEdramTemp, 40, 120)) {
+		smc[0x2e] = xb.overEdramTemp;
+		patched = 1;
+	}
+	if (xb.cpuFan != 0xffffffff) {
+		if (iniRangeOk(bd_459202, xb.cpuFan, 40, 100)) {
+			cb_hint(&dead);
+			smc[0x11] = xb.cpuFan | 0x80;
+			patched = 1;
+		} else if (xb.cpuFan)
+			log_printf(0, bd_45920c, xb.cpuFan);
+		else if (smc[0x11] != 0x7f) {
+			cb_hint(&dead);
+			smc[0x11] = 0x7f;
+			patched = 1;
+		}
+	}
+	if (xb.gpuFan != 0xffffffff) {
+		if (iniRangeOk(bd_459256, xb.gpuFan, 40, 100)) {
+			cb_hint(&dead);
+			smc[0x12] = xb.gpuFan | 0x80;
+			patched = 1;
+		} else if (xb.gpuFan)
+			goto gpuwarn;
+		else {
+			cb_hint(&dead);
+			smc[0x12] = 0x7f;
+		}
+	}
+gpudone:
+	if (xb.avRegion != 0xffffffff) {
+		*(u32 *)(smc + 0x228) = SWAP32(xb.avRegion);
+		patched = 1;
+	}
+	if (xb.gameRegion != 0xffffffff && (u16)xb.gameRegion) {
+		*(u16 *)(smc + 0x22c) = __builtin_bswap16(xb.gameRegion);
+		patched = 1;
+	}
+	if (xb.dvdRegion != 0xffffffff) {
+		*(u32 *)(smc + 0x234) = SWAP32(xb.dvdRegion);
+		patched = 1;
+	}
+	if (!*(u32 *)(smc + 0x234)) {
+		log_printf(0, bd_459260);
+		log_printf(0, bd_4592d8);
+		*(u32 *)(smc + 0x234) = 0x1000000;
+		patched = 1;
+	}
+	if (macidSet())
+		for (i = 0; i < 6; i++) {
+			if (smc[0x220 + i] != xb.macid[i])
+				patched = 1;
+			smc[0x220 + i] = xb.macid[i];
+		}
+	if (patched) {
+		u32 sum = calcConfigSum(smc);
+
+		*(u32 *)smc = SWAP32(sum);
+		log_printf(1, bd_459340);
+	} else
+		log_printf(1, bd_459355);
+	log_printf(1, bd_459371);
+	return patched;
+gpuwarn:
+	log_printf(0, bd_459388);
+	goto gpudone;
+}
+
+NOPROF
+__attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
+{
+	u32 i, j;
+	int found;
+
+	/* hints (wip/README.md): noinline keeps ipa-split off it once it has
+	   C callers (loadConsoleBlFiles); &size makes size SSA late (next <= size in
+	   both loops); the bound expects make found the rotated exit; the pin
+	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
+	   block under bb-reorder's duplication threshold */
+	(void)&size;
+	if (e->data)
+		free(e->data);
+	e->size = 0x400;
+	e->data = malloc(0x400);
+	if (!e->data)
+		return -2;
+	log_printf(1, bd_4593d7);
+	log_printf(1, bd_4593ec);
+	log_printf(1, bd_4593d7);
+	found = 0;
+	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
+		__asm__("" : : "S"(i + 0x200), "D"(buf));
+		if ((found = smcConfigOk(buf + i)) == 1)
+			break;
+	}
+	if (!found) {
+		for (i = 0; __builtin_expect(i + 0x210 <= size, 1); i += 0x210)
+			if ((found = smcConfigOk(buf + i)) == 1)
+				break;
+		if (!found)
+			goto notfound;
+	}
+	if (checkZeros(buf + i + 0x20c, 4)) {
+		log_printf(1, bd_459401);
+		if (__builtin_expect(size - i >= 0x400, 1)) {
+			u8 *src = buf + i;
+
+			/* buf live past src: no IRA copy buf-src, so the raw
+			   loop's eax doesn't push dst out of eax (wip/README) */
+			__asm__("" : "+r"(src) : "r"(buf));
+			memcpy(e->data, src, 0x400);
+		}
+	} else if (size - i >= 0x4200) {
+		log_printf(1, bd_459414);
+		for (j = 0; j < 8; j++)
+			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
+	} else {
+		log_printf(1, bd_45942c);
+		return -2;
+	}
+	if (i)
+		log_printf(1, bd_459478, i);
+	log_printf(1, bd_4594a4);
+	log_printf(1, bd_4594b8);
+	log_printf(1, bd_4594a4);
+	showSmcConfig(e->data);
+	log_printf(1, bd_459371);
+	if (patchSmcConfig(e->data)) {
+		log_printf(1, bd_4594ca);
+		log_printf(1, bd_4594a4);
+		showSmcConfig(e->data);
+		log_printf(1, bd_459371);
+	}
+	return 0;
+notfound: __attribute__((hot));
+notfound2: __attribute__((hot));
+	log_printf(0, bd_4594e0);
+	return 2;
+}
+
 /* the build's kernel version is the highest of its bootloaders' */
 NOPROF
 void raiseKernel(u16 magic, u16 build, u16 qfe)
@@ -840,12 +1311,6 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 
 	if (k > xb.kernel)
 		xb.kernel = k;
-}
-
-NOPROF
-static void cb_hint(int *p)
-{
-	*p = 1;
 }
 
 NOPROF
@@ -859,7 +1324,7 @@ int checkBl(u8 *bl, u32 size, int type, u32 crc)
 	   size-error block, which needs that edge >= 10% of entry, and not into
 	   the crc failure one, which needs it below. The hot label and cb_hint
 	   (on the other edge) take the size error from 1.7% to 19%, the crc
-	   expects (build.sh's probability 98) keep `bad` under 10%, and the bd_459f2a
+	   expects (build.sh's probability 98) keep `bad` under 10%, and the "D"
 	   pin loads type before the first call as the original does. The
 	   SC/SD `crc == -1` expects send more frequency to `bad` by branch
 	   (crc32 path), so it is aligned as a loop head like the original
@@ -973,491 +1438,40 @@ magic:
 	return -1;
 }
 
-NOPROF
-__attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
-{
-	u32 i, j;
-	int found;
-
-	/* hints (wip/README.md): noinline keeps ipa-split off it once it has
-	   C callers (loadConsoleBlFiles); &size makes size SSA late (next <= size in
-	   both loops); the bound expects make found the rotated exit; the pin
-	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
-	   block under bb-reorder's duplication threshold */
-	(void)&size;
-	if (e->data)
-		free(e->data);
-	e->size = 0x400;
-	e->data = malloc(0x400);
-	if (!e->data)
-		return -2;
-	log_printf(1, bd_4593d7);
-	log_printf(1, bd_4593ec);
-	log_printf(1, bd_4593d7);
-	found = 0;
-	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
-		__asm__("" : : "S"(i + 0x200), "D"(buf));
-		if ((found = smcConfigOk(buf + i)) == 1)
-			break;
-	}
-	if (!found) {
-		for (i = 0; __builtin_expect(i + 0x210 <= size, 1); i += 0x210)
-			if ((found = smcConfigOk(buf + i)) == 1)
-				break;
-		if (!found)
-			goto notfound;
-	}
-	if (checkZeros(buf + i + 0x20c, 4)) {
-		log_printf(1, bd_459401);
-		if (__builtin_expect(size - i >= 0x400, 1)) {
-			u8 *src = buf + i;
-
-			/* buf live past src: no IRA copy buf-src, so the raw
-			   loop's eax doesn't push dst out of eax (wip/README) */
-			__asm__("" : "+r"(src) : "r"(buf));
-			memcpy(e->data, src, 0x400);
-		}
-	} else if (size - i >= 0x4200) {
-		log_printf(1, bd_459414);
-		for (j = 0; j < 8; j++)
-			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
-	} else {
-		log_printf(1, bd_45942c);
-		return -2;
-	}
-	if (i)
-		log_printf(1, bd_459478, i);
-	log_printf(1, bd_4594a4);
-	log_printf(1, bd_4594b8);
-	log_printf(1, bd_4594a4);
-	showSmcConfig(e->data);
-	log_printf(1, bd_459371);
-	if (patchSmcConfig(e->data)) {
-		log_printf(1, bd_4594ca);
-		log_printf(1, bd_4594a4);
-		showSmcConfig(e->data);
-		log_printf(1, bd_459371);
-	}
-	return 0;
-notfound: __attribute__((hot));
-notfound2: __attribute__((hot));
-	log_printf(0, bd_4594e0);
-	return 2;
-}
-
-NOPROF
-int blmodMissing(struct fileent *e)
-{
-	return loadBaseFile(bd_459ec8, e) != 0;
-}
-
-/* XeCryptRotSumSha, showing the sums */
-NOPROF
-void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen)
-{
-	u8 sum[32];
-	XECRYPT_SHA_STATE sha;
-	u32 i;
-
-	for (i = 0; i < 32; i++)
-		sum[i] = 0;
-	XeCryptRotSum(sum, a, alen >> 3);
-	log_printf(1, bd_459ed2);
-	display_buffer_hex(sum, 32, 1);
-	XeCryptRotSum(sum, b, blen >> 3);
-	log_printf(1, bd_459ed8);
-	display_buffer_hex(sum, 32, 1);
-	XeCryptShaInit(&sha);
-	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaUpdate(&sha, a, alen);
-	XeCryptShaUpdate(&sha, b, blen);
-	for (i = 0; i < 32; i++)
-		sum[i] = ~sum[i];
-	log_printf(1, bd_459ede);
-	display_buffer_hex(sum, 32, 1);
-	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaFinal(&sha, out, outlen);
-	log_printf(1, bd_459ee4);
-	display_buffer_hex(out, outlen, 1);
-}
-
-NOPROF
-int countBits(u8 v)
-{
-	int i, n = 0;
-
-	for (i = 0; i < 8; i++) {
-		if (v & 1)
-			n++;
-		v >>= 1;
-	}
-	return n;
-}
-
-/* the bootloader types an update (xeBuild's -u) replaces */
-NOPROF
-int isUpdateBl(int type)
-{
-	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
-}
-
-/* payload.bin's `li r4, reps` (copy loop count in words) */
-NOPROF
-void patchPayloadSize(u8 *buf, int len, int size)
-{
-	int pat = 0xffff8038;	/* li r4, (any) */
-	u8 *p;
-	u32 reps = (size + 3) >> 2;
-
-	log_printf(1, bd_45a7c4, size, reps);
-	p = findInst(buf, len, (u8 *)&pat, 4);
-	if (!p)
-		return;
-	log_printf(2, bd_45a7f8, p[2], p[3]);
-	p[3] = reps;
-	p[2] = reps >> 8;
-	log_printf(2, bd_45a80e, p[2], p[3]);
-}
-
-/* the header bytes freeboot/xell read: UART speed, power-on reasons */
-NOPROF
-void patchHeaderOpts(void)
-{
-	u8 opts = 0;
-
-	xb.hdr[0x4b] = 1;
-	if (xb.bootFlags & 9) {
-		log_printf(1, bd_459e3c);
-		opts = 1;
-	}
-	if (xb.type == 2) {
-		opts |= xb.bootFlags & 7;
-		if (xb.bootFlags & 8)
-			opts |= 1;
-		if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton)
-			xb.dualButton = 0;
-	} else
-		xb.dualButton = 0;
-	xb.hdr[0x4c] = xb.dualButton;
-	xb.hdr[0x4d] = opts;
-	log_printf(1, bd_459e74);
-	if (xb.xellButton == xb.xellAltButton)
-		xb.xellAltButton = 0;
-	xb.hdr[0x4f] = xb.xellButton;
-	if (xb.xellAltButton)
-		log_printf(1, bd_459e9c);
-	xb.hdr[0x4e] = xb.xellAltButton;
-}
-
-NOPROF
-void appendAddonPatches(struct fileent *e)
-{
-	u32 size = e->size - 4;
-	u8 *buf = malloc(0x4000);
-	u32 added = 0;
-	struct fileent *a;
-	int i;
-
-	memset(buf, 0xff, 0x4000);
-	memcpy(buf, e->data, size);
-	if (xb.nAddons)
-	for (i = 0; i < xb.nAddons; i++) {
-		a = &xb.files[19 + i];
-		if (!loadBinFile(a)) {
-			if (!(a->size & 3)) {
-				if (getBeU32(a->data + a->size - 4) == 0xffffffff)
-					a->size -= 4;
-				if (size + a->size <= 0x4000) {
-					memcpy(buf + size, a->data, a->size);
-					added += a->size;
-					size += a->size;
-				} else
-					log_printf(0, bd_458e34,
-						   xb.binDir, a->name);
-			} else
-				log_printf(0, bd_458e7c,
-					   xb.binDir, a->name, a->size);
-		} else
-			log_printf(0, bd_458ed0, xb.binDir, a->name);
-	}
-	*(u32 *)(buf + size) = 0xffffffff;
-	setBeU32(added, buf + size + 4);
-	size += 8;
-	if (e->data)
-		free(e->data);
-	e->data = buf;
-	e->size = size;
-	if (xb.nAddons)
-		log_printf(1, bd_458f04,
-			   added, xb.nAddons, size);
-}
-
-NOPROF
-int logPowerButton(int reason, const char *use)
-{
-	switch (reason) {
-	case 0x11:
-		log_printf(1, bd_45a0bc, use);
-		break;
-	case 0x12:
-		log_printf(1, bd_45a0f0, use);
-		break;
-	case 0x20:
-		log_printf(1, bd_45a128, use);
-		break;
-	case 0x22:
-		log_printf(1, bd_45a15c, use);
-		break;
-	case 0x24:
-		log_printf(1, bd_45a194, use);
-		break;
-	case 0x41:
-		log_printf(1, bd_45a1cc, use);
-		break;
-	case 0x55:
-		log_printf(1, bd_45a1f8, use);
-		break;
-	case 0x59:
-		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a23c, use);
-		else
-			log_printf(1, bd_45a278, use);
-		break;
-	case 0x58:
-		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a2b4, use);
-		else
-			log_printf(1, bd_45a278, use);
-		break;
-	case 0x5a:
-		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a2f4, use);
-		else
-			log_printf(1, bd_45a334, use);
-		break;
-	case 0x56:
-		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a36c, use);
-		else
-			log_printf(1, bd_45a3ac, use);
-		break;
-	case 0x57:
-		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a3e8, use);
-		else
-			log_printf(1, bd_45a428, use);
-		break;
-	default:
-		return 1;
-	}
-	return 0;
-}
-
-NOPROF
-void fixupPatchSet(void)
-{
-	struct fileent *e = &xb.files[findFile(23)];
-	u8 *p = e->data;
-	u32 off, i, v, t;
-	int n = 0;
-
-	log_printf(1, bd_459fa6);
-	off = 0;
-	while (off < e->size) {
-		if (n == 2) {
-			for (i = 0; i < e->size - off; i++)
-				e->data[i] = e->data[off + i];
-			e->size -= off;
-			off = e->size;
-		} else {
-			v = getBeU32(p + off);
-			t = off + 4;
-			if (v != 0xffffffff)
-				off += getBeU32(p + t) * 4 + 8;
-			else {
-				n++;
-				off = t;
-			}
-		}
-	}
-	log_printf(1, bd_459efa);
-}
-
-NOPROF
-void showSmcConfig(const u8 *smc)
-{
-	u32 av;
-	u16 game;
-	int i;
-
-	log_printf(1, bd_458f80, smc[0x29], smc[0x2a], smc[0x2b]);
-	log_printf(1, bd_458fb4, smc[0x2c], smc[0x2d], smc[0x2e]);
-	log_printf(1, bd_458fe6);
-	if (((struct fan *)(smc + 0x11))->override)
-		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x11))->speed);
-	else
-		log_printf(1, bd_45900a);
-	log_printf(1, bd_459012, smc[0x12] & 0x7f);
-	if (((struct fan *)(smc + 0x12))->override)
-		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x12))->speed);
-	else
-		log_printf(1, bd_45900a);
-	log_printf(1, bd_459021);
-	showMac(1, smc + 0x220);
-	av = *(u32 *)(smc + 0x228);
-	av = SWAP32(av);
-	switch (av) {
-	case 0x100:
-		log_printf(1, bd_459030, av);
-		break;
-	case 0x200:
-		log_printf(1, bd_459050, av);
-		break;
-	case 0x300:
-		log_printf(1, bd_459070, av);
-		break;
-	case 0x400:
-		log_printf(1, bd_459090, av);
-		break;
-	default:
-		log_printf(1, bd_4590b0, av);
-		break;
-	}
-	game = __builtin_bswap16(*(u16 *)(smc + 0x22c));
-	log_printf(1, bd_4590d1, game);
-	switch (game) {
-	case 0xff:
-		log_printf(1, bd_4590e7);
-		break;
-	case 0x1fe:
-		log_printf(1, bd_4590f2);
-		break;
-	case 0x1ff:
-		log_printf(1, bd_4590f2);
-		break;
-	case 0x1fc:
-		log_printf(1, bd_4590fe);
-		break;
-	case 0x101:
-		log_printf(1, bd_45910a);
-		break;
-	case 0x2fe:
-		log_printf(1, bd_459115);
-		break;
-	case 0x201:
-		log_printf(1, bd_45911f);
-		break;
-	case 0x7fff:
-		log_printf(1, bd_45912a);
-		break;
-	default:
-		log_printf(1, bd_459134);
-		break;
-	}
-	log_printf(1, bd_45913f, SWAP32(*(u32 *)(smc + 0x234)));
-	log_printf(1, bd_459151);
-	for (i = 0; i < 4; i++)
-		log_printf(1, bd_459160, smc[0x238 + i]);
-	log_printf(1, bd_458cf9);
-}
-
-NOPROF
-__attribute__((optimize("no-early-inlining")))
-u32 patchSmcConfig(u8 *smc)
-{
-	u32 patched = 0;
-	int i, dead;
-
-	log_printf(1, bd_45919c);
-	if (iniRangeOk(bd_4591c2, xb.cpuTemp, 40, 120)) {
-		smc[0x29] = xb.cpuTemp;
-		patched = 1;
-	}
-	if (iniRangeOk(bd_4591ca, xb.gpuTemp, 40, 120)) {
-		smc[0x2a] = xb.gpuTemp;
-		patched = 1;
-	}
-	if (iniRangeOk(bd_4591d2, xb.edramTemp, 40, 120)) {
-		smc[0x2b] = xb.edramTemp;
-		patched = 1;
-	}
-	if (iniRangeOk(bd_4591dc, xb.overCpuTemp, 40, 120)) {
-		smc[0x2c] = xb.overCpuTemp;
-		patched = 1;
-	}
-	if (iniRangeOk(bd_4591e8, xb.overGpuTemp, 40, 120)) {
-		smc[0x2d] = xb.overGpuTemp;
-		patched = 1;
-	}
-	if (iniRangeOk(bd_4591f4, xb.overEdramTemp, 40, 120)) {
-		smc[0x2e] = xb.overEdramTemp;
-		patched = 1;
-	}
-	if (xb.cpuFan != 0xffffffff) {
-		if (iniRangeOk(bd_459202, xb.cpuFan, 40, 100)) {
-			cb_hint(&dead);
-			smc[0x11] = xb.cpuFan | 0x80;
-			patched = 1;
-		} else if (xb.cpuFan)
-			log_printf(0, bd_45920c, xb.cpuFan);
-		else if (smc[0x11] != 0x7f) {
-			cb_hint(&dead);
-			smc[0x11] = 0x7f;
-			patched = 1;
-		}
-	}
-	if (xb.gpuFan != 0xffffffff) {
-		if (iniRangeOk(bd_459256, xb.gpuFan, 40, 100)) {
-			cb_hint(&dead);
-			smc[0x12] = xb.gpuFan | 0x80;
-			patched = 1;
-		} else if (xb.gpuFan)
-			goto gpuwarn;
-		else {
-			cb_hint(&dead);
-			smc[0x12] = 0x7f;
-		}
-	}
-gpudone:
-	if (xb.avRegion != 0xffffffff) {
-		*(u32 *)(smc + 0x228) = SWAP32(xb.avRegion);
-		patched = 1;
-	}
-	if (xb.gameRegion != 0xffffffff && (u16)xb.gameRegion) {
-		*(u16 *)(smc + 0x22c) = __builtin_bswap16(xb.gameRegion);
-		patched = 1;
-	}
-	if (xb.dvdRegion != 0xffffffff) {
-		*(u32 *)(smc + 0x234) = SWAP32(xb.dvdRegion);
-		patched = 1;
-	}
-	if (!*(u32 *)(smc + 0x234)) {
-		log_printf(0, bd_459260);
-		log_printf(0, bd_4592d8);
-		*(u32 *)(smc + 0x234) = 0x1000000;
-		patched = 1;
-	}
-	if (macidSet())
-		for (i = 0; i < 6; i++) {
-			if (smc[0x220 + i] != xb.macid[i])
-				patched = 1;
-			smc[0x220 + i] = xb.macid[i];
-		}
-	if (patched) {
-		u32 sum = calcConfigSum(smc);
-
-		*(u32 *)smc = SWAP32(sum);
-		log_printf(1, bd_459340);
-	} else
-		log_printf(1, bd_459355);
-	log_printf(1, bd_459371);
-	return patched;
-gpuwarn:
-	log_printf(0, bd_459388);
-	goto gpudone;
-}
+static const char bd_45961c[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed signature check!\n";
+static const char bd_459646[] __attribute__((aligned(1))) = "%s signature is good\n";
+static const char bd_45965c[] __attribute__((aligned(4))) = "could not check signature of %s, 1BL RSA key not present!\n";
+static const char bd_459698[] __attribute__((aligned(4))) = "%s failed signature check, attempting to resign\n";
+static const char bd_4596cc[] __attribute__((aligned(4))) = "\n***** ERROR: failed to resign %s!\n";
+static const char bd_4596f0[] __attribute__((aligned(1))) = "%s resigned successfully!\n";
+static const char bd_45970c[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n";
+static const char bd_45976c[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n";
+static const char bd_4597bc[] __attribute__((aligned(4))) = "could not locate SB data to check %s!\n";
+static const char bd_4597e4[] __attribute__((aligned(4))) = "%s failed hash check, attempting to correct SE and resign\n";
+static const char bd_459820[] __attribute__((aligned(4))) = "\n***** ERROR: failed to resign SE to correct %s hash!\n";
+static const char bd_459858[] __attribute__((aligned(4))) = "SE resigned successfully to correct %s hash!\n";
+static const char bd_459888[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n";
+static const char bd_4598e0[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed hash check!\n";
+static const char bd_459905[] __attribute__((aligned(1))) = "%s hash from SE is good\n";
+static const char bd_459920[] __attribute__((aligned(4))) = "\n***** ERROR: could not locate SD data to check %s!\n";
+static const char bd_459955[] __attribute__((aligned(1))) = "none";
+static const char bd_45995c[] __attribute__((aligned(4))) = "loaded %s, could not check signature rsa key not present!\n";
+static const char bd_459998[] __attribute__((aligned(4))) = "\n***** ERROR: loaded %s, but signature check failed!\n";
+static const char bd_4599d0[] __attribute__((aligned(4))) = "loaded %s, signature check passed!\n";
+static const char bd_4599f4[] __attribute__((aligned(4))) = "could not read %s%s, using built in payload (0x%x bytes)\n";
+static const char bd_459a30[] __attribute__((aligned(4))) = "could not read %s%s, using built in core (0x%x bytes)\n";
+static const char bd_459a68[] __attribute__((aligned(4))) = "xell not found in perbuild directory, checking firmware /bin folder\n";
+static const char bd_459ab0[] __attribute__((aligned(4))) = "xell not found in firmware /bin folder, checking base path\n";
+static const char bd_459aec[] __attribute__((aligned(1))) = "keyvault.bin";
+static const char bd_459af9[] __attribute__((aligned(1))) = "KV_dec.bin";
+static const char bd_459b04[] __attribute__((aligned(4))) = "reading %s%s failed, using %s from nand dump\n";
+static const char bd_459b32[] __attribute__((aligned(1))) = "keyvault_alt.bin";
+static const char bd_459b43[] __attribute__((aligned(1))) = "KV_alt_dec.bin";
+static const char bd_459b54[] __attribute__((aligned(4))) = "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n";
+static const char bd_459b8c[] __attribute__((aligned(1))) = "config.bin";
+static const char bd_459b97[] __attribute__((aligned(1))) = "config_raw.bin";
+static const char bd_459ba8[] __attribute__((aligned(4))) = "####### unhandled bl load %d %s\n";
+static const char bd_459bcc[] __attribute__((aligned(4))) = "\n\n**** could not read %s (%i) ****\n\n";
 
 NOPROF
 int verifyBlSigs(void)
@@ -1790,6 +1804,15 @@ int loadBlFiles(void)
 	return 0;
 }
 
+static const char bd_459c64[] __attribute__((aligned(4))) = "skipping %s%s as it is in glitch bootloader dump\n";
+static const char bd_459c98[] __attribute__((aligned(4))) = "using keyvault data from console\n";
+static const char bd_459cbc[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring keyvault data failed!\n";
+static const char bd_459cec[] __attribute__((aligned(4))) = "using keyvault alt data from console\n";
+static const char bd_459d14[] __attribute__((aligned(4))) = "using smc configuration from console\n";
+static const char bd_459d3c[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring smc configuration data failed!\n";
+static const char bd_459d78[] __attribute__((aligned(4))) = "using smc binary from console\n";
+static const char bd_459d98[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring smc binary data failed!\n";
+
 NOPROF
 static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e)
 {
@@ -1955,6 +1978,125 @@ none: __attribute__((cold));
 	return 0;
 }
 
+static const char bd_459e3c[] __attribute__((aligned(4))) = "\tPatching header for slower demon/cygnos UART speed\n";
+static const char bd_459e74[] __attribute__((aligned(4))) = "\tPatching header for xell power reason\n";
+static const char bd_459e9c[] __attribute__((aligned(4))) = "\tPatching header for xell alt power reason\n";
+static const char bd_459ec8[] __attribute__((aligned(1))) = "blmod.bin";
+static const char bd_459ed2[] __attribute__((aligned(1))) = "sum1:";
+static const char bd_459ed8[] __attribute__((aligned(1))) = "sum2:";
+static const char bd_459ede[] __attribute__((aligned(1))) = "sum3:";
+static const char bd_459ee4[] __attribute__((aligned(1))) = "fin :";
+static const char bd_459eea[] __attribute__((aligned(1))) = "Patching BLs...";
+static const char bd_459efa[] __attribute__((aligned(1))) = "Done!\n";
+static const char bd_459f04[] __attribute__((aligned(4))) = "Checking patched CD signature...";
+static const char bd_459f25[] __attribute__((aligned(1))) = "CBB";
+static const char bd_459f29[] __attribute__((aligned(1))) = "CD";
+static const char bd_459f2c[] __attribute__((aligned(4))) = "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n";
+static const char bd_459f7c[] __attribute__((aligned(4))) = "Adding 0x%x bytes blmod.bin data to %s...";
+static const char bd_459fa6[] __attribute__((aligned(1))) = "Fixing up patch set...";
+static const char bd_459fc0[] __attribute__((aligned(4))) = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n";
+static const char bd_45a000[] __attribute__((aligned(4))) = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n";
+static const char bd_45a034[] __attribute__((aligned(1))) = "retail image, skipping %s\n";
+static const char bd_45a050[] __attribute__((aligned(4))) = "devkit/testkit image, skipping %s\n";
+static const char bd_45a074[] __attribute__((aligned(4))) = "***** WARNING: skipping xell, there doesn't appear to be enough room!\n";
+static const char bd_45a0bc[] __attribute__((aligned(4))) = "    - console power button is being used to %s \n";
+static const char bd_45a0f0[] __attribute__((aligned(4))) = "    - console DVD eject button is being used to %s \n";
+static const char bd_45a128[] __attribute__((aligned(4))) = "    - IR remote power button is being used to %s \n";
+static const char bd_45a15c[] __attribute__((aligned(4))) = "    - IR remote guide/X button is being used to %s \n";
+static const char bd_45a194[] __attribute__((aligned(4))) = "    - IR remote windows button is being used to %s \n";
+static const char bd_45a1cc[] __attribute__((aligned(4))) = "    - KIOSK debug pin is being used to %s \n";
+static const char bd_45a1f8[] __attribute__((aligned(4))) = "    - wireless controller powering on console is being used to %s \n";
+static const char bd_45a23c[] __attribute__((aligned(4))) = "wired controller (rear top usb port) is being used to %s \n";
+static const char bd_45a278[] __attribute__((aligned(4))) = "wired controller (INVALID FOR FATS!!) is being used to %s \n";
+static const char bd_45a2b4[] __attribute__((aligned(4))) = "wired controller (rear middle usb port) is being used to %s \n";
+static const char bd_45a2f4[] __attribute__((aligned(4))) = "wired controller (rear bottom usb port) is being used to %s \n";
+static const char bd_45a334[] __attribute__((aligned(4))) = "wired controller (rear usb port) is being used to %s \n";
+static const char bd_45a36c[] __attribute__((aligned(4))) = "wired controller (front left usb port) is being used to %s \n";
+static const char bd_45a3ac[] __attribute__((aligned(4))) = "wired controller (front top usb port) is being used to %s \n";
+static const char bd_45a3e8[] __attribute__((aligned(4))) = "wired controller (front right usb port) is being used to %s \n";
+static const char bd_45a428[] __attribute__((aligned(4))) = "wired controller (front bottom usb port) is being used to %s \n";
+
+/* the header bytes freeboot/xell read: UART speed, power-on reasons */
+NOPROF
+void patchHeaderOpts(void)
+{
+	u8 opts = 0;
+
+	xb.hdr[0x4b] = 1;
+	if (xb.bootFlags & 9) {
+		log_printf(1, bd_459e3c);
+		opts = 1;
+	}
+	if (xb.type == 2) {
+		opts |= xb.bootFlags & 7;
+		if (xb.bootFlags & 8)
+			opts |= 1;
+		if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton)
+			xb.dualButton = 0;
+	} else
+		xb.dualButton = 0;
+	xb.hdr[0x4c] = xb.dualButton;
+	xb.hdr[0x4d] = opts;
+	log_printf(1, bd_459e74);
+	if (xb.xellButton == xb.xellAltButton)
+		xb.xellAltButton = 0;
+	xb.hdr[0x4f] = xb.xellButton;
+	if (xb.xellAltButton)
+		log_printf(1, bd_459e9c);
+	xb.hdr[0x4e] = xb.xellAltButton;
+}
+
+NOPROF
+int blmodMissing(struct fileent *e)
+{
+	return loadBaseFile(bd_459ec8, e) != 0;
+}
+
+/* XeCryptRotSumSha, showing the sums */
+NOPROF
+void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen)
+{
+	u8 sum[32];
+	XECRYPT_SHA_STATE sha;
+	u32 i;
+
+	for (i = 0; i < 32; i++)
+		sum[i] = 0;
+	XeCryptRotSum(sum, a, alen >> 3);
+	log_printf(1, bd_459ed2);
+	display_buffer_hex(sum, 32, 1);
+	XeCryptRotSum(sum, b, blen >> 3);
+	log_printf(1, bd_459ed8);
+	display_buffer_hex(sum, 32, 1);
+	XeCryptShaInit(&sha);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaUpdate(&sha, a, alen);
+	XeCryptShaUpdate(&sha, b, blen);
+	for (i = 0; i < 32; i++)
+		sum[i] = ~sum[i];
+	log_printf(1, bd_459ede);
+	display_buffer_hex(sum, 32, 1);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaUpdate(&sha, sum, 32);
+	XeCryptShaFinal(&sha, out, outlen);
+	log_printf(1, bd_459ee4);
+	display_buffer_hex(out, outlen, 1);
+}
+
+NOPROF
+int countBits(u8 v)
+{
+	int i, n = 0;
+
+	for (i = 0; i < 8; i++) {
+		if (v & 1)
+			n++;
+		v >>= 1;
+	}
+	return n;
+}
+
 NOPROF
 int patchBlsResign(void)
 {
@@ -2091,6 +2233,36 @@ void patchBlsBlmod(const void *blmod, int size)
 }
 
 NOPROF
+void fixupPatchSet(void)
+{
+	struct fileent *e = &xb.files[findFile(23)];
+	u8 *p = e->data;
+	u32 off, i, v, t;
+	int n = 0;
+
+	log_printf(1, bd_459fa6);
+	off = 0;
+	while (off < e->size) {
+		if (n == 2) {
+			for (i = 0; i < e->size - off; i++)
+				e->data[i] = e->data[off + i];
+			e->size -= off;
+			off = e->size;
+		} else {
+			v = getBeU32(p + off);
+			t = off + 4;
+			if (v != 0xffffffff)
+				off += getBeU32(p + t) * 4 + 8;
+			else {
+				n++;
+				off = t;
+			}
+		}
+	}
+	log_printf(1, bd_459efa);
+}
+
+NOPROF
 void addBlsToImage(void)
 {
 	struct fileent *e;
@@ -2185,6 +2357,13 @@ void addBlsToImage(void)
 	}
 }
 
+/* the bootloader types an update (xeBuild's -u) replaces */
+NOPROF
+int isUpdateBl(int type)
+{
+	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
+}
+
 NOPROF
 void addUpdateBls(void)
 {
@@ -2240,6 +2419,94 @@ void addUpdateBls(void)
 	}
 }
 
+NOPROF
+int logPowerButton(int reason, const char *use)
+{
+	switch (reason) {
+	case 0x11:
+		log_printf(1, bd_45a0bc, use);
+		break;
+	case 0x12:
+		log_printf(1, bd_45a0f0, use);
+		break;
+	case 0x20:
+		log_printf(1, bd_45a128, use);
+		break;
+	case 0x22:
+		log_printf(1, bd_45a15c, use);
+		break;
+	case 0x24:
+		log_printf(1, bd_45a194, use);
+		break;
+	case 0x41:
+		log_printf(1, bd_45a1cc, use);
+		break;
+	case 0x55:
+		log_printf(1, bd_45a1f8, use);
+		break;
+	case 0x59:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a23c, use);
+		else
+			log_printf(1, bd_45a278, use);
+		break;
+	case 0x58:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a2b4, use);
+		else
+			log_printf(1, bd_45a278, use);
+		break;
+	case 0x5a:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a2f4, use);
+		else
+			log_printf(1, bd_45a334, use);
+		break;
+	case 0x56:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a36c, use);
+		else
+			log_printf(1, bd_45a3ac, use);
+		break;
+	case 0x57:
+		if ((xb.flags & 7) > 4)
+			log_printf(1, bd_45a3e8, use);
+		else
+			log_printf(1, bd_45a428, use);
+		break;
+	default:
+		return 1;
+	}
+	return 0;
+}
+
+static const char bd_45a590[] __attribute__((aligned(4))) = "patching freeboot.bin with with kernel version string '%s'\n";
+static const char bd_45a5cc[] __attribute__((aligned(1))) = "Boot options set:\n";
+static const char bd_45a5e0[] __attribute__((aligned(4))) = "    - Set debug UART speed to cygnos/demon compatible\n";
+static const char bd_45a618[] __attribute__((aligned(4))) = "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n";
+static const char bd_45a664[] __attribute__((aligned(4))) = "    - When powered on, if tray is not fully closed Xell starts\n";
+static const char bd_45a6a4[] __attribute__((aligned(1))) = "start xell";
+static const char bd_45a6b0[] __attribute__((aligned(4))) = "    - UKNOWN POWER REASON, using eject button\n";
+static const char bd_45a6df[] __attribute__((aligned(1))) = "alternately start xell";
+static const char bd_45a6f8[] __attribute__((aligned(4))) = "    - alternate xell button disabled\n";
+static const char bd_45a71e[] __attribute__((aligned(1))) = "dual boot";
+static const char bd_45a728[] __attribute__((aligned(1))) = "org version %s\n";
+static const char bd_45a738[] __attribute__((aligned(1))) = "fin version %s\n";
+static const char bd_45a748[] __attribute__((aligned(4))) = "**** ERROR PATCHING FREEBOOT.BIN for kernel version string!\n";
+static const char bd_45a785[] __attribute__((aligned(1))) = "9199";
+static const char bd_45a78c[] __attribute__((aligned(4))) = "9199 ini string detected, patching to old hold address\n";
+static const char bd_45a7c4[] __attribute__((aligned(4))) = "patching payload.bin to load size 0x%x (0x%x reps)\n";
+static const char bd_45a7f8[] __attribute__((aligned(1))) = "org li %r4, %02x%02x\n";
+static const char bd_45a80e[] __attribute__((aligned(1))) = "fin li %r4, %02x%02x\n";
+static const char bd_45a824[] __attribute__((aligned(1))) = "encoding %s size 0x%x (JTAG)\n";
+static const char bd_45a844[] __attribute__((aligned(4))) = "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n";
+static const char bd_45a8af[] __attribute__((aligned(1))) = "encoding %s size 0x%x\n";
+static const char bd_45a8c6[] __attribute__((aligned(1))) = "zeropairing SB\n";
+static const char bd_45a8d8[] __attribute__((aligned(4))) = "CPU key is all zeros, zeropairing SB\n";
+static const char bd_45a900[] __attribute__((aligned(4))) = "****** Unhandled BL typ %d ******\n";
+static const char bd_45a924[] __attribute__((aligned(4))) = "CPU key is all zeros, zeropairing CB_B\n";
+static const char bd_45a94c[] __attribute__((aligned(1))) = "re-encoding %s size 0x%x\n";
+
 /* freeboot.bin: the kernel version string, boot options and buttons */
 NOPROF
 void patchFreeboot(u8 *buf, int len)
@@ -2293,85 +2560,22 @@ void patchFreeboot(u8 *buf, int len)
 	}
 }
 
-/* encodeBls for an update image: only the CF and CG */
+/* payload.bin's `li r4, reps` (copy loop count in words) */
 NOPROF
-int encodeUpdateBls(int unused, int ldv)
+void patchPayloadSize(u8 *buf, int len, int size)
 {
-	struct fileent *e;
-	u32 i;
-	int j;
+	int pat = 0xffff8038;	/* li r4, (any) */
+	u8 *p;
+	u32 reps = (size + 3) >> 2;
 
-	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
-		e = &xb.files[i];
-		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
-			continue;
-		switch (e->type) {
-		case 9:
-			log_printf(1, bd_45a8af, e->name, e->size);
-			j = findFile(10);
-			cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
-			break;
-		case 10:
-			log_printf(1, bd_45a8af, e->name, e->size);
-			j = findFile(9);
-			cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
-			break;
-		}
-	}
-	return 0;
-}
-
-NOPROF
-u32 calcBlAreaSize(void)
-{
-	u32 size, xs, x;
-
-	if (xb.type == 2) {
-		x = findFile(5);
-		size = findFileOffset(5) + xb.files[x].size;
-		x = findFile(7);
-		size += xb.files[x].size;
-		if (xb.f01c) {
-			x = findFile(14);
-			size += xb.files[x].size;
-		}
-	} else if (xb.type > 5) {
-		x = findFile(11);
-		size = findFileOffset(11) + xb.files[x].size;
-		x = findFile(12);
-		size += xb.files[x].size;
-		x = findFile(13);
-		size += xb.files[x].size;
-		x = findFile(14);
-		/* the sum so far in ebx (esi up to the 13 lookup), as in the
-		   original: IRA otherwise keeps it in esi */
-		__asm__("" : "+b"(size));
-		size += xb.files[x].size;
-		setPatchSlot(size);
-		size += 2 * imgCfSize();
-	} else {
-		size = findFileOffset(5) + findFileSize(5);
-		size += findFileSize(6);
-		size += findFileSize(7);
-		size += findFileSize(8);
-		if (xb.type != 1) {
-			x = findFile(25);
-			if (xb.files[x].offset > size) {
-				xs = xb.files[x].size;
-				if (xs > 0x40000)
-					log_printf(0, bd_45aa58);
-				else
-					xs = 0x40000;
-				size = xb.files[x].offset + xs;
-			}
-		}
-		size = (size + 0xffff) & ~0xffff;
-		setPatchSlot(size);
-		size += 2 * imgCfSize();
-	}
-	if (size & 0x3fff)
-		size = (size + 0x3fff) & ~0x3fff;
-	return size;
+	log_printf(1, bd_45a7c4, size, reps);
+	p = findInst(buf, len, (u8 *)&pat, 4);
+	if (!p)
+		return;
+	log_printf(2, bd_45a7f8, p[2], p[3]);
+	p[3] = reps;
+	p[2] = reps >> 8;
+	log_printf(2, bd_45a80e, p[2], p[3]);
 }
 
 NOPROF
@@ -2605,6 +2809,143 @@ int encodeBls(u8 *salt, int ldv)
 		ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 	}
 	return 0;
+}
+
+static const char bd_45aa58[] __attribute__((aligned(4))) = "***** WARNING: xell is unexpectedly larger than 256KiB!!\n";
+static const char bd_45aa94[] __attribute__((aligned(4))) = "Writing initial header to flash image\n";
+static const char bd_45aabc[] __attribute__((aligned(4))) = "\n------ Copying bootloader image to flash image ------ \n";
+static const char bd_45aaf8[] __attribute__((aligned(4))) = "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n";
+static const char bd_45ab50[] __attribute__((aligned(4))) = "\n------ Loading bootloaders and required security files ------\n";
+static const char bd_45ab90[] __attribute__((aligned(4))) = "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n";
+static const char bd_45abd8[] __attribute__((aligned(1))) = "done!\n";
+static const char bd_45abe0[] __attribute__((aligned(4))) = "\n------ Patching BLs and modifying patches ------\n";
+static const char bd_45ac14[] __attribute__((aligned(4))) = "\n------ Patching boot reasons and options into flash header ------\n";
+static const char bd_45ac58[] __attribute__((aligned(4))) = "\n------ Encrypting and finalizing bootloaders ------\n";
+static const char bd_45ac8e[] __attribute__((aligned(1))) = "\nVirtual Fuses set to:";
+static const char bd_45aca8[] __attribute__((aligned(4))) = "done!\n\n------ Adding bootloaders to flash image ------\n";
+static const char bd_45ace0[] __attribute__((aligned(1))) = "Fixing up FS table...";
+static const char bd_45acf8[] __attribute__((aligned(4))) = "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n";
+static const char bd_45ad3c[] __attribute__((aligned(4))) = "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...";
+static const char bd_45ad6c[] __attribute__((aligned(1))) = "sysupdate.xexp1";
+static const char bd_45ad7c[] __attribute__((aligned(4))) = "Writing CG patch slot overflow data to sysupdate.xexp1\n";
+static const char bd_45adb4[] __attribute__((aligned(4))) = "Writing target CG patch slot overflow data to sysupdate.xexp2\n";
+static const char bd_45adf3[] __attribute__((aligned(1))) = "sysupdate.xexp2";
+static const char bd_45ae04[] __attribute__((aligned(4))) = "\n------ adding %d firmware files ------\n";
+static const char bd_45ae30[] __attribute__((aligned(4))) = "\n------ adding %d security files ------\n";
+static const char bd_45ae59[] __attribute__((aligned(1))) = "sysupdate.xexp";
+static const char bd_45ae68[] __attribute__((aligned(4))) = "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n";
+static const char bd_45aebc[] __attribute__((aligned(4))) = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
+static const char bd_45aef8[] __attribute__((aligned(4))) = "***** could not read file '%s', skipping *****\n";
+static const char bd_45af28[] __attribute__((aligned(4))) = "***** could not read file '%s' *****\n";
+static const char bd_45af50[] __attribute__((aligned(4))) = "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n";
+static const char bd_45af94[] __attribute__((aligned(4))) = "\n------ checking for Mobile*.dat ------\n";
+static const char bd_45afbd[] __attribute__((aligned(1))) = "<- Processing %s ->\n";
+static const char bd_45afd4[] __attribute__((aligned(4))) = "\tcould not read %s, using data from SUPD...\n";
+static const char bd_45b004[] __attribute__((aligned(4))) = "\tcould not read %s, using data from previous parse...\n";
+static const char bd_45b03b[] __attribute__((aligned(1))) = "secdata.bin";
+static const char bd_45b047[] __attribute__((aligned(1))) = "extended.bin";
+static const char bd_45b054[] __attribute__((aligned(1))) = "dae.bin";
+static const char bd_45b05c[] __attribute__((aligned(1))) = "crl.bin";
+static const char bd_45b064[] __attribute__((aligned(1))) = "fcrt.bin";
+static const char bd_45b06d[] __attribute__((aligned(1))) = "odd.bin";
+static const char bd_45b078[] __attribute__((aligned(4))) = "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n";
+static const char bd_45b0d4[] __attribute__((aligned(4))) = "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n";
+static const char bd_45b13c[] __attribute__((aligned(4))) = "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n";
+static const char bd_45b1a0[] __attribute__((aligned(4))) = "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n";
+static const char bd_45b1fc[] __attribute__((aligned(4))) = "             but should allow the machine to boot normally\n";
+static const char bd_45b238[] __attribute__((aligned(4))) = "\t%s not found and not required by keyvault, skipped\n";
+static const char bd_45b270[] __attribute__((aligned(4))) = "***** WARNING: %s not found, skipping *****\n";
+static const char bd_45b29d[] __attribute__((aligned(1))) = "%s found, adding from file\n";
+static const char bd_45b2bc[] __attribute__((aligned(4))) = "%s found, adding from previous parse\n";
+static const char bd_45b2e4[] __attribute__((aligned(4))) = "\n------ adding smc_config.bin ------\n";
+static const char bd_45b30c[] __attribute__((aligned(4))) = "\n------ cleaning up image ------\n";
+static const char bd_45b330[] __attribute__((aligned(4))) = "Fixing up empty FS block entries...";
+static const char bd_45b354[] __attribute__((aligned(4))) = "done!\nWriting FS table to image ";
+static const char bd_45b378[] __attribute__((aligned(4))) = "\n------ adding [rawpatch] data ------\n";
+static const char bd_45b3a0[] __attribute__((aligned(4))) = "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n";
+static const char bd_45b3f4[] __attribute__((aligned(4))) = "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n";
+static const char bd_45b44c[] __attribute__((aligned(4))) = "***** ERROR: could not load [rawpatch] file '%s'!!\n";
+static const char bd_45b480[] __attribute__((aligned(4))) = "\n------ finalizing image ------\n";
+
+/* encodeBls for an update image: only the CF and CG */
+NOPROF
+int encodeUpdateBls(int unused, int ldv)
+{
+	struct fileent *e;
+	u32 i;
+	int j;
+
+	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+		e = &xb.files[i];
+		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+			continue;
+		switch (e->type) {
+		case 9:
+			log_printf(1, bd_45a8af, e->name, e->size);
+			j = findFile(10);
+			cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
+			break;
+		case 10:
+			log_printf(1, bd_45a8af, e->name, e->size);
+			j = findFile(9);
+			cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
+			break;
+		}
+	}
+	return 0;
+}
+
+NOPROF
+u32 calcBlAreaSize(void)
+{
+	u32 size, xs, x;
+
+	if (xb.type == 2) {
+		x = findFile(5);
+		size = findFileOffset(5) + xb.files[x].size;
+		x = findFile(7);
+		size += xb.files[x].size;
+		if (xb.f01c) {
+			x = findFile(14);
+			size += xb.files[x].size;
+		}
+	} else if (xb.type > 5) {
+		x = findFile(11);
+		size = findFileOffset(11) + xb.files[x].size;
+		x = findFile(12);
+		size += xb.files[x].size;
+		x = findFile(13);
+		size += xb.files[x].size;
+		x = findFile(14);
+		/* the sum so far in ebx (esi up to the 13 lookup), as in the
+		   original: IRA otherwise keeps it in esi */
+		__asm__("" : "+b"(size));
+		size += xb.files[x].size;
+		setPatchSlot(size);
+		size += 2 * imgCfSize();
+	} else {
+		size = findFileOffset(5) + findFileSize(5);
+		size += findFileSize(6);
+		size += findFileSize(7);
+		size += findFileSize(8);
+		if (xb.type != 1) {
+			x = findFile(25);
+			if (xb.files[x].offset > size) {
+				xs = xb.files[x].size;
+				if (xs > 0x40000)
+					log_printf(0, bd_45aa58);
+				else
+					xs = 0x40000;
+				size = xb.files[x].offset + xs;
+			}
+		}
+		size = (size + 0xffff) & ~0xffff;
+		setPatchSlot(size);
+		size += 2 * imgCfSize();
+	}
+	if (size & 0x3fff)
+		size = (size + 0x3fff) & ~0x3fff;
+	return size;
 }
 
 /* no blmod.bin: the console's, if any */
