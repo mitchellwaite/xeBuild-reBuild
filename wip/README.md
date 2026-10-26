@@ -1963,6 +1963,56 @@ only shows in `sh build.sh`.
   separate 5/17/11 ifs get ifcombined (81/89; without ifcombine c11
   survives at 11 but each test is 28%); explicit SE/10 checkBl calls
   31-272; `type == 5 || type == 17` always folds to a 50% BIT_IOR.
+  Seventh pass (2026-10-26, still 16; scratch build/v/lbf8/: mv.py
+  variants, ev.sh = lines + c11/sigfail/SE trace keys, tr.py = bbro traces
+  mapped by freq alignment, pp.py/fl.py/cb.py = per-pass block freqs,
+  rb.py = RTL block listing; gcc 6.2 threader sources fetched to the
+  session scratchpad, identical across 6.1-6.5):
+  - Zeroing, exactly: dom2 registers FSM paths [c11, X] for X's literal
+    PHI args (vrp1 joiner copy, 9/9/14/10); duplicate_thread_path scales
+    the whole region {X, c11} by (freq(X) - entry)/freq(X), so c11 (and
+    its generic flow) ends at 0. Only a region {c11} (entry edge straight
+    into c11 with a literal PHI arg, i.e. single-valued copies) or forward
+    threads (update_profile subtracts) keep c11. FSM is called from
+    thread_across_edge whenever the forward search fails, on any edge into
+    c11, and only looks at literal INTEGER_CST PHI args.
+  - Arithmetic: without the type-10 expect (19.9% type == 10, 61%
+    suGetCG) all-forward subtraction gives c11 = 29 and 17 -> pub1bl = 46:
+    c11 then pops right after sigfail (tie broken correctly), SE after
+    (build/v/lbf8 noexp_aa2: assume_aligned x2 at chk makes dom2 reject
+    the FSM paths, but then 9/SE/10 share one copy with `mov esi,9/14`,
+    as in v1.16). c11 = 0.305 (g - c'), edge = 0.1525 (g + c'): all
+    copy flows must pass the 5|17 block and be subtracted from c11.
+  - Per-type constant copies (9, 10, SE) must still exist, and the 9/10
+    tails fold into the post-switch r-test R by RTL crossjump in jump2:
+    crossjump only redirects a fully matched 'from' block, and 'from' is
+    the edge source with the lower bb index. Copies made by threading get
+    high indices (base: copies 121-125, R 113, R is 'from'); source-level
+    explicit calls get low ones, so their `cmp di,0; je latch` tails never
+    fold into R (the `test edi,edi; je l` hunks).
+  - Best new structure (64 lines, s20a_b4/s21g_b4/s23b_b4/s25ar_b4): SE and
+    10 explicit (own checkBl + r-test + `goto sig`), 9 through chk with
+    `if (type != 9) { __asm__("" : "+r"(type)); if (!type)
+    __builtin_unreachable(); }` (PHI for vrp1, no PRED_CALL on the edge;
+    the unreachable keeps `else if (type)` foldable), a `} else
+    __asm__ __volatile__("");` block funnelling both 9 entries (blocks the
+    dom3 forward joiner that otherwise subtracts the 9 flow a second time
+    on top of the FSM [c11] thread), and `__builtin_expect(i != 0, 1)`
+    guards before the SE/10 calls (a guarded call block gets PRED_CALL;
+    `type == 10` guards are folded before profile_estimate, `i != 0` is
+    not). c11 = 29 and lands between sigfail and SE. Left: case 25's xell
+    tail placement, the R dup into the type-6 tail, 9/10 tails not folded
+    into R (N9 merges into the 9 copy: low index), sigfail setFlashBuild
+    via [ebx] instead of i, plus the old -1 and ja. A volatile asm inside
+    c11 (`({ __asm__ __volatile__(""); type == 11; })`) also blocks
+    ifcombine/reassoc and the forward double, but its copy sits on the
+    copies' latch path and blocks the R crossjump.
+  - Dead ends: params (fsm-scale-path-stmts, max-jump-thread-duplication-
+    stmts, max-fsm-*: none better than 18); switch inline in the loop and
+    always_inline loadBl (c11 zeroed the same way); a 2-case switch for
+    5/17 (c11 lands in the main trace); 9/10 without own r-tests (flows not
+    x0.61, c11 9); int-typed r tests (still threaded); `*pr = 0` after the
+    r-test (VRP keeps an unused assert in the split edge block).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
