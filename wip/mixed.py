@@ -19,6 +19,8 @@ OBJS = {
     'app/build': dict(prefix='bd', rdata=(0x458ca4, 0x45b4a4),
                       regparm={'loadBaseFile': 2},
                       inline=set(),
+                      # build.sh's profile compile (loadBlFiles and its inlined loadBl); NOPROF on the rest
+                      profiled={'loadBlFiles', 'loadBl', 'loadBl60'},
                       note=' and payloads, encoding the flash */'),
     'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
                             regparm={'imgWriteStart': 3, 'imgWritePage': 3},
@@ -94,6 +96,15 @@ def main():
         lits[a] = body
         return pre + used[a]
     body = []
+    # objects with a crafted profile for some functions (OBJS' `profiled`):
+    # the others get the draft's NOPROF macro (the guessed profile in the
+    # profile compile, where a function without counts would compile as
+    # never executed)
+    for name in list(fns):
+        if 'profiled' in cfg and name not in cfg['profiled'] and name in want:
+            f = fns[name]
+            c = f.index('\n') + 1 if f.startswith('/*') else 0
+            fns[name] = f[:c] + 'NOPROF\n' + f[c:]
     for name in fns:
         if name in want or name in cfg['inline']:
             # asm templates and constraints and attribute arguments aren't

@@ -14,11 +14,26 @@ ccp() {
   (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
     "$ROOT/$TC/gcc.exe" -S "$@" -I"$ROOT/src/$(dirname "$f")" -x c - -o -)
 }
+# fdo <gcda.py args> <gcc flags>: profile build of src/$f.c, assembly to stdout.
+# An instrumented compile gives the .gcno and the guessed profile, re/gcda.py
+# the .gcda. All compiles run in $p with `-o -`: the .gcda name and static
+# functions' profile ids come from the aux name
+fdo() {
+  p="$OBJ/$f.fdo"
+  mkdir -p "$p"
+  pw=$(cd "$p" && { pwd -W 2>/dev/null || pwd; })
+  pa=$1; shift
+  ccp $cflags $uw "$@" -fprofile-arcs -ftest-coverage \
+    -fdump-tree-profile_estimate-blocks-details >/dev/null
+  python re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
+    $pa --src="src/$f.c" >/dev/null
+  ccp $cflags $uw "$@" -fbranch-probabilities -fprofile-dir="$pw"
+}
 objs=
 for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
   mkdir -p "$OBJ/$(dirname "$f")"
   if [ -f "src/$f.c" ]; then
-    prof=
+    prof= fprof= ffns=
     case "$f" in
       # original build path, for __FILE__ in assert(); fed through stdin so
       # the #line can name it (gcc 6 has no -ffile-prefix-map)
@@ -85,9 +100,20 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # netSendFile's !name hint (55-65), netRecvVerbose's verbose hint (65)
       app/net) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=65" ;;
-      # loadFileCrc's verbose hint (92-99); 98 for wip/'s checkBl draft
+      # loadFileCrc's verbose hint (92-99); 98 for wip/'s checkBl draft.
+      # loadBlFiles' type-11 block is laid out by frequencies no guessed
+      # profile gives (dom2's FSM threader zeroes it; wip/README.md): it comes
+      # from a second compile (fprof) with -DBUILD_FDO and a crafted profile
+      # for it and the static loadBl it inlines (and loadBl60); NOPROF keeps
+      # the guessed one for the rest. -DBUILD_FDO also shrinks xb.files' bound
+      # (the loop's iteration estimate decides an ivopts tie), hence the
+      # warning flag. --consistent: exact zero counts. --runs=0: no block is
+      # never executed, so the no-key log (hot for its alignment, through
+      # dead edges) keys 0 in bb-reorder like the zero-count chains it follows
       app/build) orig="$f.c"
-             cflags="-O3 --param builtin-expect-probability=98" ;;
+             cflags="-O3 --param builtin-expect-probability=98"
+             fprof="@src/app/build.prof --only=loadBlFiles,loadBl,loadBl60 --consistent --runs=0"
+             ffns=_loadBlFiles ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;
@@ -96,24 +122,21 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
     uw=
     [ -f "src/$f.s" ] && uw=-fno-asynchronous-unwind-tables
     if [ -n "$prof" ]; then
-      # profile build: an instrumented compile gives the .gcno and the guessed
-      # profile, re/gcda.py the .gcda. All compiles run in $p with `-o -`: the
-      # .gcda name and static functions' profile ids come from the aux name
-      p="$OBJ/$f.fdo"
-      mkdir -p "$p"
-      pw=$(cd "$p" && { pwd -W 2>/dev/null || pwd; })
-      ccp $cflags $uw -fprofile-arcs -ftest-coverage \
-        -fdump-tree-profile_estimate-blocks-details >/dev/null
-      python re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
-        $prof --src="src/$f.c" >/dev/null
-      ccp $cflags $uw -fbranch-probabilities -fprofile-dir="$pw" > "$OBJ/$f.c.s"
+      fdo "$prof" > "$OBJ/$f.c.s"
     elif [ -n "$uw" ]; then
       { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
         "$TC/gcc.exe" -S $cflags $uw -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
     fi
+    # a second compile with -DBUILD_FDO and a profile for the functions in $ffns
+    fs=
+    if [ -n "$fprof" ]; then
+      fdo "$fprof" -DBUILD_FDO -fno-ipa-profile -fno-reorder-functions \
+        -Wno-aggressive-loop-optimizations > "$OBJ/$f.fdo.s"
+      for n in $ffns; do fs="$fs $n=$OBJ/$f.fdo.s"; done
+    fi
     if [ -n "$uw" ]; then
       # mixed object: splice the C functions into the .s (re/splice.py)
-      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s"
+      python re/splice.py "src/$f.s" "$OBJ/$f.c.s" "$OBJ/$f.s" $fs
       "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
     elif [ -n "$prof" ]; then
       "$TC/as.exe" --32 "$OBJ/$f.c.s" -o "$OBJ/$f.o"

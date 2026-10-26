@@ -10,7 +10,6 @@
 .globl L_479eb0
 .globl L_479eb4
 .globl L_479eb8
-.globl L_479ebc
 .globl L_479ec0
 .globl L_479ec4
 .globl L_479ec8
@@ -19,7 +18,6 @@
 .globl L_479ece
 .globl L_479ed0
 .globl L_479ed8
-.globl L_479edc
 .globl L_479ee0
 .globl L_479ee4
 .globl L_479ee8
@@ -125,16 +123,10 @@
 .globl L_4bbd4c
 .globl L_4bbd50
 .globl L_4bc150
-.globl L_4bc174
-.globl L_4bc17c
-.globl L_4bc580
-.globl L_4bc588
-.globl L_4bc590
 .globl L_4bce00
 .globl L_4c0000
 .globl L_4c0020
 .globl L_4c0c94
-.globl L_4c10a4
 .globl L_4c4f54
 .globl L_4c4f55
 .globl L_4c4f94
@@ -161,7 +153,6 @@
 .globl L_4c907e
 .globl L_4c9094
 .globl L_4c90aa
-.globl L_4c90c0
 .globl L_4c90e8
 .globl L_4c90ec
 .globl L_4c90f0
@@ -183,11 +174,8 @@
 .globl L_4c9130
 .globl L_4c9134
 .globl L_4c9138
-.globl L_4c917f
 .globl L_4c9180
 .globl L_4c9182
-.globl L_4c9184
-.globl L_4c9186
 .globl L_4c9364
 .globl L_4c93a8
 .globl L_4c97a8

@@ -2100,6 +2100,29 @@ only shows in `sh build.sh`.
   - Next: un-drain c11 in this regime (its trace must be keyed before SE
     and nokey once nokey is hot), or a way to make the nokey block hot at
     compute_alignments without its count (none in gcc 6.2 that I found).
+  Tenth pass (2026-10-26, built from C; the ninth-pass setup is now in the
+  tree, build_fdo.patch is gone; scratch build/v/lbf11/):
+  - The predicates: final's compute_alignments skips a block unless
+    maybe_hot (count > runs and >= the summary's hot threshold), then a
+    jump-only target is aligned if its incoming EDGE_FREQUENCY sum >
+    freq_max / align-threshold, or freq > 10 x prev's. bbro keys
+    BB_FREQ_MAX if probably-never-executed (count * 20 < runs), else -freq.
+    So nokey can't be never-executed and hot; with `--runs=0` (gcda.py
+    option, the summary's run count) nothing is never-executed, c11/SE/nokey
+    all key 0, same ties, still matching. Then nokey needs a hot count with
+    frequency 0 and an incoming edge frequency > 100.
+  - Dead-edge circulation (`NK_DEAD`/`NK_LABEL`, -DBUILD_FDO only): S `if
+    (nk_never2) goto nk_b;` before the pub1bl test Q (`nk_q:`), C `if
+    (nk_never3) goto nk_b;` before cbVerifySig, B `nk_b: if (nk_never1) goto
+    nk_q;` before the log. {Q, C, B} is irreducible (entries at Q and B), so
+    no preheader takes Q's count. Overrides 16>22=9.5 17>22=82.8 22>16=99.999
+    15>22=0: Q's count ~6x its real flow, the log's flow the smallest
+    (gcda.py scales it to the hot threshold; frequency rounds to 0). ccp2
+    folds the tests, B and C become forwarders, Q->log keeps 9.5% of Q
+    (edge frequency ~104 > 100). The log edge's probability must stay under
+    bb-reorder's round-3 branch threshold (10%): at 40% (v1, the B-loop only)
+    nokey went to that round's heap, was re-pushed later and the fibheap tie
+    popped it before SE and c11.
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with

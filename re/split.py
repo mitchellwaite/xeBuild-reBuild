@@ -596,7 +596,11 @@ SYMBOLS = {
     0x4597bc: '_bd_4597bc', 0x4597e4: '_bd_4597e4', 0x459820: '_bd_459820',
     0x459858: '_bd_459858', 0x459888: '_bd_459888', 0x4598e0: '_bd_4598e0',
     0x459905: '_bd_459905', 0x459920: '_bd_459920', 0x459955: '_bd_459955',
-    0x459a68: '_bd_459a68', 0x459ab0: '_bd_459ab0', 0x459b54: '_bd_459b54',
+    0x45995c: '_bd_45995c', 0x459998: '_bd_459998', 0x4599d0: '_bd_4599d0',
+    0x4599f4: '_bd_4599f4', 0x459a30: '_bd_459a30', 0x459a68: '_bd_459a68',
+    0x459ab0: '_bd_459ab0', 0x459aec: '_bd_459aec', 0x459af9: '_bd_459af9',
+    0x459b04: '_bd_459b04', 0x459b32: '_bd_459b32', 0x459b43: '_bd_459b43',
+    0x459b54: '_bd_459b54', 0x459b8c: '_bd_459b8c', 0x459b97: '_bd_459b97',
     0x459ba8: '_bd_459ba8', 0x459bcc: '_bd_459bcc', 0x459c64: '_bd_459c64',
     0x459c98: '_bd_459c98', 0x459cbc: '_bd_459cbc', 0x459cec: '_bd_459cec',
     0x459d14: '_bd_459d14', 0x459d3c: '_bd_459d3c', 0x459d78: '_bd_459d78',
@@ -716,6 +720,7 @@ C_FUNCS = {
     0x4291f0, 0x429b30, 0x42bf70, 0x42b660,  # patchSmcConfig checkBl fixupPatchSet patchBlsResign
     0x42e160, 0x42bb10, 0x42c090, 0x428040,  # calcBlAreaSize patchBlsBlmod addBlsToImage loadInputFile
     0x42c620, 0x42adc0, 0x42e760, 0x42cfa0,  # addUpdateBls loadConsoleBlFiles buildFlash encodeBls
+    0x42a370,                                # loadBlFiles
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

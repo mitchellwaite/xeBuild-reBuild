@@ -254,6 +254,7 @@ def hot_scale(x):
 
 CONSISTENT = False
 MULT = {}
+RUNS = 1
 
 
 def integer_flow(arcs, f):
@@ -319,6 +320,12 @@ def main():
             f, k = a[7:].split(':')
             MULT[f] = float(k)
             continue
+        if a.startswith('--runs='):
+            # the summary's run count: 0 makes no block probably-never-executed
+            # (count * fraction >= runs), so count-0 blocks key -freq in bb-reorder
+            global RUNS
+            RUNS = int(a[7:])
+            continue
         if a == '--consistent':
             global CONSISTENT
             CONSISTENT = True
@@ -380,7 +387,7 @@ def main():
         words += [T_FUNCTION, 3, fn['ident'], fn['lck'], fn['cck'], T_COUNTER_ARCS, 2 * len(ctr)]
         for v in ctr:
             words += [v & 0xffffffff, v >> 32]
-    # program summary: runs 1, one histogram bucket whose min is the hot threshold
+    # program summary: RUNS runs, one histogram bucket whose min is the hot threshold
     tot, mx = sum(allc), max(allc)
     lo = lambda v: [v & 0xffffffff, v >> 32]
     bucket = 0
@@ -388,7 +395,7 @@ def main():
         bucket += 4
     bv = [0] * 8
     bv[bucket // 32] |= 1 << (bucket % 32)
-    summ = [0, len(allc), 1] + lo(tot) + lo(mx) + lo(mx) + bv + [len(allc)] + lo(THRESHOLD) + lo(tot)
+    summ = [0, len(allc), RUNS] + lo(tot) + lo(mx) + lo(mx) + bv + [len(allc)] + lo(THRESHOLD) + lo(tot)
     # read_counts_file gives each counter record the summary read before it
     words = [T_PROGRAM_SUMMARY, len(summ)] + summ + words
     open(out, 'wb').write(struct.pack('<3I', 0x67636461, version, stamp) + struct.pack('<%dI' % len(words), *words))

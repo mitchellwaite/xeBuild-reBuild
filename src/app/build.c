@@ -30,6 +30,16 @@ int FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime);
 int DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME *ft);
 void GetSystemTime(SYSTEMTIME *systime);
 
+/* xb.files' declared bound sets the files loops' trip count estimate. In
+   build.sh's profile compile (-DBUILD_FDO) loadBlFiles' loop gets it from the
+   crafted counts (11 iterations), which ivopts' cost model turns into a third
+   IV; 5 caps it as the guessed profile's 5 does */
+#ifdef BUILD_FDO
+#define FILES_BOUND 5
+#else
+#define FILES_BOUND 19
+#endif
+
 /* an input file of the image */
 struct fileent {
 	char name[0x400];
@@ -108,8 +118,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* 1aac the ini's firmware files */
 	u32 firmwareCrc[256];		/* 41aac */
 	u32 nFirmware;			/* 41eac */
-	struct fileent files[19];	/* 41eb0 35 of them, 19..34 addon patches; the */
-	u8 padf[(35 - 19) * 0x42c];	/* bound sets the files loops' guessed trip count */
+	struct fileent files[FILES_BOUND];	/* 41eb0 35 of them, 19..34 addon patches; the */
+	u8 padf[(35 - FILES_BOUND) * 0x42c];	/* bound sets the files loops' guessed trip count */
 	u8 pad4b0b4[0x4b0f4 - 0x4b0b4];
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
@@ -224,6 +234,30 @@ void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
    call argument it is computed at its store */
 #define SWAP16(x) ((u16)(((u32)(x) << 8) | ((u32)(x) >> 8)))
+/* build.sh compiles src/app/build.c twice: plainly, and with -DBUILD_FDO, a
+   crafted profile for loadBlFiles and the loadBl it inlines (dom2's FSM
+   threader zeroes loadBlFiles' type-11 block, which no guessed profile places
+   right: wip/README.md) and the guessed one for everything else
+   (wip/mixed.py puts NOPROF on them; a function without counts would compile
+   as never executed). Only loadBlFiles is taken from the second compile */
+#ifdef BUILD_FDO
+#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
+#else
+#define NOPROF
+#endif
+/* -DBUILD_FDO: loadBl's dead edges (never-set statics, folded by ccp2 after
+   the profile is read; blocks keep the removed edges' counts) give its no-key
+   log a hot count, frequency 0 and an incoming edge frequency above the
+   alignment threshold, so final aligns it while bb-reorder keys it 0 like the
+   type-11 and SE chains it must follow (wip/README.md, tenth pass) */
+#ifdef BUILD_FDO
+static int nk_never1, nk_never2, nk_never3;
+#define NK_DEAD(v, l) if (v) goto l
+#define NK_LABEL(l) l:
+#else
+#define NK_DEAD(v, l)
+#define NK_LABEL(l)
+#endif
 /* an SMC config fan byte */
 struct fan {
 	u8 speed:7, override:1;
@@ -325,9 +359,21 @@ static const char bd_4598e0[] = "\n***** ERROR: %s failed hash check!\n";
 static const char bd_459905[] = "%s hash from SE is good\n";
 static const char bd_459920[] = "\n***** ERROR: could not locate SD data to check %s!\n";
 static const char bd_459955[] = "none";
+static const char bd_45995c[] = "loaded %s, could not check signature rsa key not present!\n";
+static const char bd_459998[] = "\n***** ERROR: loaded %s, but signature check failed!\n";
+static const char bd_4599d0[] = "loaded %s, signature check passed!\n";
+static const char bd_4599f4[] = "could not read %s%s, using built in payload (0x%x bytes)\n";
+static const char bd_459a30[] = "could not read %s%s, using built in core (0x%x bytes)\n";
 static const char bd_459a68[] = "xell not found in perbuild directory, checking firmware /bin folder\n";
 static const char bd_459ab0[] = "xell not found in firmware /bin folder, checking base path\n";
+static const char bd_459aec[] = "keyvault.bin";
+static const char bd_459af9[] = "KV_dec.bin";
+static const char bd_459b04[] = "reading %s%s failed, using %s from nand dump\n";
+static const char bd_459b32[] = "keyvault_alt.bin";
+static const char bd_459b43[] = "KV_alt_dec.bin";
 static const char bd_459b54[] = "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n";
+static const char bd_459b8c[] = "config.bin";
+static const char bd_459b97[] = "config_raw.bin";
 static const char bd_459ba8[] = "####### unhandled bl load %d %s\n";
 static const char bd_459bcc[] = "\n\n**** could not read %s (%i) ****\n\n";
 static const char bd_459c64[] = "skipping %s%s as it is in glitch bootloader dump\n";
@@ -459,8 +505,9 @@ static const char bd_45b44c[] = "***** ERROR: could not load [rawpatch] file '%s
 static const char bd_45b480[] = "\n------ finalizing image ------\n";
 
 /* still in build.s */
-int loadBlFiles(void);
 
+
+NOPROF
 u32 findFileOffset(int type)
 {
 	int i;
@@ -471,6 +518,7 @@ u32 findFileOffset(int type)
 	return 0;
 }
 
+NOPROF
 u32 findFileSize(int type)
 {
 	int i;
@@ -481,6 +529,7 @@ u32 findFileSize(int type)
 	return 0;
 }
 
+NOPROF
 int findFile(int type)
 {
 	int i;
@@ -491,6 +540,7 @@ int findFile(int type)
 	return 0;
 }
 
+NOPROF
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 crc)
 {
 	FILE *f;
@@ -538,6 +588,7 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 c
 	return 0;
 }
 
+NOPROF
 int readMetaFile(const char *name, u8 *meta)
 {
 	FILE *f;
@@ -551,6 +602,7 @@ int readMetaFile(const char *name, u8 *meta)
 }
 
 /* the build time as a big-endian FAT date and time */
+NOPROF
 void makeTimestamp(u8 *out, FILETIME *ft)
 {
 	SYSTEMTIME st;
@@ -574,12 +626,14 @@ void makeTimestamp(u8 *out, FILETIME *ft)
 	out[3] = time;
 }
 
+NOPROF
 int timestampToFileTime(const u16 *ts, FILETIME *ft)
 {
 	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
 }
 
 /* read baseDir/name into e */
+NOPROF
 static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
 {
 	if (xb.baseDir[0]) {
@@ -593,6 +647,7 @@ static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, str
 }
 
 /* the same with its timestamp from name.meta if there is one */
+NOPROF
 int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta)
 {
 	if (xb.baseDir[0]) {
@@ -612,6 +667,7 @@ int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta)
 	return -1;
 }
 
+NOPROF
 int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta)
 {
 	char path[0x400];
@@ -630,6 +686,7 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *me
 	return r;
 }
 
+NOPROF
 __attribute__((noclone))
 int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
 		  int su, int fs, int common)
@@ -726,6 +783,7 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 }
 
 /* an addon patch from the bin dir */
+NOPROF
 int loadBinFile(struct fileent *e)
 {
 	char path[0x400];
@@ -736,6 +794,7 @@ int loadBinFile(struct fileent *e)
 }
 
 /* e->name as given, else from ./ */
+NOPROF
 int loadLocalFile(struct fileent *e)
 {
 	char path[0x400];
@@ -748,6 +807,7 @@ int loadLocalFile(struct fileent *e)
 	return loadFileCrc(path, e, 1, 0, 0);
 }
 
+NOPROF
 int setFileData(struct fileent *e, const void *data, size_t size)
 {
 	e->data = calloc(size, 1);
@@ -759,6 +819,7 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 }
 
 /* an ini value is used if it is in range; 0 and -1 mean unset */
+NOPROF
 int iniRangeOk(const char *name, u32 v, u32 lo, u32 hi)
 {
 	int ok = 1;
@@ -772,6 +833,7 @@ int iniRangeOk(const char *name, u32 v, u32 lo, u32 hi)
 }
 
 /* the build's kernel version is the highest of its bootloaders' */
+NOPROF
 void raiseKernel(u16 magic, u16 build, u16 qfe)
 {
 	u32 k = 0x20000000 | build << 8;
@@ -780,11 +842,13 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 		xb.kernel = k;
 }
 
+NOPROF
 static void cb_hint(int *p)
 {
 	*p = 1;
 }
 
+NOPROF
 __attribute__((optimize("no-early-inlining")))
 int checkBl(u8 *bl, u32 size, int type, u32 crc)
 {
@@ -909,6 +973,7 @@ magic:
 	return -1;
 }
 
+NOPROF
 __attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
 {
 	u32 i, j;
@@ -980,12 +1045,14 @@ notfound2: __attribute__((hot));
 	return 2;
 }
 
+NOPROF
 int blmodMissing(struct fileent *e)
 {
 	return loadBaseFile(bd_459ec8, e) != 0;
 }
 
 /* XeCryptRotSumSha, showing the sums */
+NOPROF
 void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen)
 {
 	u8 sum[32];
@@ -1016,6 +1083,7 @@ void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen
 	display_buffer_hex(out, outlen, 1);
 }
 
+NOPROF
 int countBits(u8 v)
 {
 	int i, n = 0;
@@ -1029,12 +1097,14 @@ int countBits(u8 v)
 }
 
 /* the bootloader types an update (xeBuild's -u) replaces */
+NOPROF
 int isUpdateBl(int type)
 {
 	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
 /* payload.bin's `li r4, reps` (copy loop count in words) */
+NOPROF
 void patchPayloadSize(u8 *buf, int len, int size)
 {
 	int pat = 0xffff8038;	/* li r4, (any) */
@@ -1052,6 +1122,7 @@ void patchPayloadSize(u8 *buf, int len, int size)
 }
 
 /* the header bytes freeboot/xell read: UART speed, power-on reasons */
+NOPROF
 void patchHeaderOpts(void)
 {
 	u8 opts = 0;
@@ -1080,6 +1151,7 @@ void patchHeaderOpts(void)
 	xb.hdr[0x4e] = xb.xellAltButton;
 }
 
+NOPROF
 void appendAddonPatches(struct fileent *e)
 {
 	u32 size = e->size - 4;
@@ -1122,6 +1194,7 @@ void appendAddonPatches(struct fileent *e)
 			   added, xb.nAddons, size);
 }
 
+NOPROF
 int logPowerButton(int reason, const char *use)
 {
 	switch (reason) {
@@ -1182,6 +1255,7 @@ int logPowerButton(int reason, const char *use)
 	return 0;
 }
 
+NOPROF
 void fixupPatchSet(void)
 {
 	struct fileent *e = &xb.files[findFile(23)];
@@ -1211,6 +1285,7 @@ void fixupPatchSet(void)
 	log_printf(1, bd_459efa);
 }
 
+NOPROF
 void showSmcConfig(const u8 *smc)
 {
 	u32 av;
@@ -1288,6 +1363,7 @@ void showSmcConfig(const u8 *smc)
 	log_printf(1, bd_458cf9);
 }
 
+NOPROF
 __attribute__((optimize("no-early-inlining")))
 u32 patchSmcConfig(u8 *smc)
 {
@@ -1383,6 +1459,7 @@ gpuwarn:
 	goto gpudone;
 }
 
+NOPROF
 int verifyBlSigs(void)
 {
 	int ok = 1, sb, sd;
@@ -1453,6 +1530,267 @@ int verifyBlSigs(void)
 	return ok;
 }
 
+/* the 0x60-byte bootloader (type 24) from the base dir, else the default */
+static int loadBl60(struct fileent *e)
+{
+	if (loadBaseFile(e->name, e) || e->size != 0x60) {
+		e->data = malloc(0x60);
+		if (!e->data)
+			return 1;
+		{
+		u8 *p = e->data;
+
+		__asm__("" : "+r"(p));
+		e->size = 0x60;
+		memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
+		}
+	}
+	return 0;
+}
+
+/* load the input file e (xb.files[i]) by its type */
+static void loadBl(struct fileent *e, u32 i, u32 *pr)
+{
+	int type;
+
+	type = e->type;
+	switch (type) {
+	case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
+	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (*pr) {
+			if (type == 9) {
+				if (!suGetCF(&e->data, &e->size))
+					break;
+			} else if (__builtin_expect(type == 10, 0)) {
+				if (!suGetCG(&e->data, &e->size))
+					break;
+				goto chk;
+			} else
+				break;
+		}
+		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
+			/* an SE where the CF goes */
+			e->type = type = 14;
+			xb.cfLdv = 0;
+			xb.f01c = 1;
+		}
+	chk:
+		*pr = checkBl(e->data, e->size, type, e->crc);
+		if (*pr)
+			break;
+		if (type == 5 || type == 17 || type == 11) {
+			NK_DEAD(nk_never2, nk_b);
+			NK_LABEL(nk_q)
+			if (pub1bl) {
+				NK_DEAD(nk_never3, nk_b);
+				if (!cbVerifySig(e->data, pub1bl)) {
+					log_printf(0, bd_459998, e->name);
+					*pr = -1;
+				} else if (type)
+					log_printf(1, bd_4599d0, e->name);
+			} else {
+				NK_LABEL(nk_b)
+				NK_DEAD(nk_never1, nk_q);
+				log_printf(1, bd_45995c, e->name);
+			}
+		}
+		if (xb.type <= 5) {
+			if (*pr)
+				goto fail;
+			break;
+		}
+		if (type == 14)
+			setFlashBuild(getBeU16(xb.files[i].data + 2));
+		break;
+	case 6:
+		if (!xb.cbb)
+			break;
+		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+		if (!*pr) {
+			u32 r6 = checkBl(e->data, e->size, 6, e->crc);
+
+			__asm__("" : "+r"(r6));
+			*pr = r6;
+		}
+		break;
+	case 24:
+		if (xb.type == 2 || xb.glitch2mfg)
+			*pr = loadBl60(e);
+		if (xb.type == 4 || xb.type == 5)
+			*pr = loadBl60(e);
+		break;
+	case 1:
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, bd_4599f4, xb.binDir, e->name, 0x200);
+		e->data = malloc(0x200);
+		if (!e->data) {
+			*pr = 1;
+			break;
+		}
+		e->size = 0x200;
+		memcpy(e->data, defPayload, 0x200);
+		break;
+	case 22:
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, bd_459a30, xb.binDir, e->name, 0xd40);
+		e->data = malloc(0xd40);
+		if (!e->data) {
+			*pr = 1;
+			break;
+		}
+		e->size = 0xd40;
+		memcpy(e->data, defCore, 0xd40);
+		break;
+	case 25:
+		if (xb.type == 1 || xb.type > 5)
+			break;
+		if (!loadBaseFile(e->name, e))
+			break;
+		log_printf(1, bd_459a68);
+		if (!loadBinFile(e))
+			break;
+		log_printf(1, bd_459ab0);
+		*pr = loadLocalFile(e);
+		break;
+	case 3:
+		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
+		    !loadBaseFile(bd_459aec, &xb.files[xb.nFlashFiles]) ||
+		    !(*pr = loadBaseFile(bd_459af9, &xb.files[xb.nFlashFiles]))) {
+			if (e->data)
+				free(e->data);
+			e->data = xb.files[xb.nFlashFiles].data;
+			e->size = xb.files[xb.nFlashFiles].size;
+			xb.files[xb.nFlashFiles].data = NULL;
+			xb.files[xb.nFlashFiles].size = 0;
+		} else if (xb.dumpKv) {
+			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKv;
+			e->size = xb.dumpKvSize;
+			xb.dumpKv = NULL;
+			xb.dumpKvSize = 0;
+			*pr = 0;
+		}
+		break;
+	case 4:
+		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
+		    !loadBaseFile(bd_459b32, &xb.files[xb.nFlashFiles]) ||
+		    !(*pr = loadBaseFile(bd_459b43, &xb.files[xb.nFlashFiles]))) {
+			if (e->data)
+				free(e->data);
+			e->data = xb.files[xb.nFlashFiles].data;
+			e->size = xb.files[xb.nFlashFiles].size;
+			xb.files[xb.nFlashFiles].data = NULL;
+			xb.files[xb.nFlashFiles].size = 0;
+		} else if (xb.dumpKvAlt) {
+			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpKvAlt;
+			e->size = xb.dumpKvAltSize;
+			xb.dumpKvAlt = NULL;
+			xb.dumpKvAltSize = 0;
+			*pr = 0;
+		}
+		break;
+	case 23:
+		if (xb.type == 1)
+			break;
+		*pr = loadBinFile(e);
+		if (*pr)
+			break;
+		if (e->size & 3) {
+		badsize: __attribute__((hot));
+			log_printf(1, bd_459b54, e->size);
+			goto fail;
+		}
+		appendAddonPatches(e);
+		break;
+	case 27:
+		if (__builtin_expect(type == 27, 1) && loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
+		    loadBaseFile(bd_459b8c, &xb.files[xb.nFlashFiles]) &&
+		    (*pr = loadBaseFile(bd_459b97, &xb.files[xb.nFlashFiles]))) {
+			if (!xb.dumpConfig)
+				break;
+			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			if (xb.files[xb.nFlashFiles].data)
+				free(xb.files[xb.nFlashFiles].data);
+			xb.files[xb.nFlashFiles].data = xb.dumpConfig;
+			xb.dumpConfig = NULL;
+			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
+			xb.dumpConfigSize = 0;
+			*pr = 0;
+		}
+		{
+			u8 *d = xb.files[xb.nFlashFiles].data;
+
+			__asm__("" : "+a"(d));
+			if (d)
+				*pr = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
+		}
+		break;
+	case 2:
+		*pr = loadBaseFile(e->name, &xb.files[xb.nFlashFiles]);
+		if (!*pr) {
+			if (e->data)
+				free(e->data);
+			e->data = xb.files[xb.nFlashFiles].data;
+			e->size = xb.files[xb.nFlashFiles].size;
+			xb.files[xb.nFlashFiles].data = NULL;
+			xb.files[xb.nFlashFiles].size = 0;
+		} else {
+			if (!xb.dumpSmc)
+				break;
+			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			if (e->data)
+				free(e->data);
+			e->data = xb.dumpSmc;
+			e->size = xb.dumpSmcSize;
+			xb.dumpSmc = NULL;
+			xb.dumpSmcSize = 0;
+			*pr = 0;
+		}
+		e->offset = smcSetLoad(e->size);
+		if (!e->offset)
+			goto fail;
+		break;
+	default:
+		log_printf(1, bd_459ba8, type, e->name);
+		break;
+	}
+	return;
+	/* one -1 block for the patch size, SMC and (xb.type <= 5) signature
+	   failures: the asm keeps it a block of its own (else the -1 is appended
+	   to the size log, which crossjump can't then share) */
+fail:
+	__asm__ __volatile__("");
+	*pr = -1;
+}
+
+int loadBlFiles(void)
+{
+	struct fileent *e;
+	u32 i;
+	u32 r;
+
+	for (i = 1; i < (u32)xb.nFiles; i++) {
+		e = &xb.files[i];
+		r = 0;
+		if (strnicmp(e->name, bd_459955, 4) || e->crc)
+			loadBl(e, i, &r);
+		if (r) {
+			log_printf(0, bd_459bcc, e->name, r);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+NOPROF
 static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e)
 {
 	u32 r = 0;
@@ -1590,6 +1928,7 @@ static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e
 	return r;
 }
 
+NOPROF
 int loadConsoleBlFiles(void)
 {
 	struct fileent *e;
@@ -1616,6 +1955,7 @@ none: __attribute__((cold));
 	return 0;
 }
 
+NOPROF
 int patchBlsResign(void)
 {
 	int sb = findFile(11), cd = findFile(7), pt = findFile(23);
@@ -1681,6 +2021,7 @@ int patchBlsResign(void)
 	return ok;
 }
 
+NOPROF
 __attribute__((optimize("no-early-inlining")))
 void patchBlsBlmod(const void *blmod, int size)
 {
@@ -1749,6 +2090,7 @@ void patchBlsBlmod(const void *blmod, int size)
 	log_printf(1, bd_459efa);
 }
 
+NOPROF
 void addBlsToImage(void)
 {
 	struct fileent *e;
@@ -1843,6 +2185,7 @@ void addBlsToImage(void)
 	}
 }
 
+NOPROF
 void addUpdateBls(void)
 {
 	struct fileent *e;
@@ -1898,6 +2241,7 @@ void addUpdateBls(void)
 }
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
+NOPROF
 void patchFreeboot(u8 *buf, int len)
 {
 	u32 opts = xb.bootFlags & 0xf;
@@ -1950,6 +2294,7 @@ void patchFreeboot(u8 *buf, int len)
 }
 
 /* encodeBls for an update image: only the CF and CG */
+NOPROF
 int encodeUpdateBls(int unused, int ldv)
 {
 	struct fileent *e;
@@ -1976,6 +2321,7 @@ int encodeUpdateBls(int unused, int ldv)
 	return 0;
 }
 
+NOPROF
 u32 calcBlAreaSize(void)
 {
 	u32 size, xs, x;
@@ -2028,6 +2374,7 @@ u32 calcBlAreaSize(void)
 	return size;
 }
 
+NOPROF
 static int findFileN(int type)
 {
 	int i, n = xb.nFiles;
@@ -2038,6 +2385,7 @@ static int findFileN(int type)
 	return 0;
 }
 
+NOPROF
 int encodeBls(u8 *salt, int ldv)
 {
 	struct fileent *e;
@@ -2260,6 +2608,7 @@ int encodeBls(u8 *salt, int ldv)
 }
 
 /* no blmod.bin: the console's, if any */
+NOPROF
 static void patchConsoleBlmod(void)
 {
 	if (!xb.consoleBlmod || !xb.consoleBlmodSize) {
@@ -2270,6 +2619,7 @@ static void patchConsoleBlmod(void)
 	free(xb.consoleBlmod);
 }
 
+NOPROF
 int buildFlash(void)
 {
 	u8 salt[16];

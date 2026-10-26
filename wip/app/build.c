@@ -24,6 +24,16 @@ int FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime);
 int DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME *ft);
 void GetSystemTime(SYSTEMTIME *systime);
 
+/* xb.files' declared bound sets the files loops' trip count estimate. In
+   build.sh's profile compile (-DBUILD_FDO) loadBlFiles' loop gets it from the
+   crafted counts (11 iterations), which ivopts' cost model turns into a third
+   IV; 5 caps it as the guessed profile's 5 does */
+#ifdef BUILD_FDO
+#define FILES_BOUND 5
+#else
+#define FILES_BOUND 19
+#endif
+
 /* an input file of the image */
 struct fileent {
 	char name[0x400];
@@ -102,8 +112,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* 1aac the ini's firmware files */
 	u32 firmwareCrc[256];		/* 41aac */
 	u32 nFirmware;			/* 41eac */
-	struct fileent files[19];	/* 41eb0 35 of them, 19..34 addon patches; the */
-	u8 padf[(35 - 19) * 0x42c];	/* bound sets the files loops' guessed trip count */
+	struct fileent files[FILES_BOUND];	/* 41eb0 35 of them, 19..34 addon patches; the */
+	u8 padf[(35 - FILES_BOUND) * 0x42c];	/* bound sets the files loops' guessed trip count */
 	u8 pad4b0b4[0x4b0f4 - 0x4b0b4];
 	int nAddons;			/* 4b0f4 */
 	int nFiles;			/* 4b0f8 */
@@ -218,6 +228,30 @@ void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
    call argument it is computed at its store */
 #define SWAP16(x) ((u16)(((u32)(x) << 8) | ((u32)(x) >> 8)))
+/* build.sh compiles src/app/build.c twice: plainly, and with -DBUILD_FDO, a
+   crafted profile for loadBlFiles and the loadBl it inlines (dom2's FSM
+   threader zeroes loadBlFiles' type-11 block, which no guessed profile places
+   right: wip/README.md) and the guessed one for everything else
+   (wip/mixed.py puts NOPROF on them; a function without counts would compile
+   as never executed). Only loadBlFiles is taken from the second compile */
+#ifdef BUILD_FDO
+#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
+#else
+#define NOPROF
+#endif
+/* -DBUILD_FDO: loadBl's dead edges (never-set statics, folded by ccp2 after
+   the profile is read; blocks keep the removed edges' counts) give its no-key
+   log a hot count, frequency 0 and an incoming edge frequency above the
+   alignment threshold, so final aligns it while bb-reorder keys it 0 like the
+   type-11 and SE chains it must follow (wip/README.md, tenth pass) */
+#ifdef BUILD_FDO
+static int nk_never1, nk_never2, nk_never3;
+#define NK_DEAD(v, l) if (v) goto l
+#define NK_LABEL(l) l:
+#else
+#define NK_DEAD(v, l)
+#define NK_LABEL(l)
+#endif
 /* an SMC config fan byte */
 struct fan {
 	u8 speed:7, override:1;
@@ -1303,16 +1337,26 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 		if (*pr)
 			break;
 		if (type == 5 || type == 17 || type == 11) {
-			if (!pub1bl)
+			NK_DEAD(nk_never2, nk_b);
+			NK_LABEL(nk_q)
+			if (pub1bl) {
+				NK_DEAD(nk_never3, nk_b);
+				if (!cbVerifySig(e->data, pub1bl)) {
+					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
+					*pr = -1;
+				} else if (type)
+					log_printf(1, "loaded %s, signature check passed!\n", e->name);
+			} else {
+				NK_LABEL(nk_b)
+				NK_DEAD(nk_never1, nk_q);
 				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
-			else if (!cbVerifySig(e->data, pub1bl)) {
-				log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
-				*pr = -1;
-			} else if (type)
-				log_printf(1, "loaded %s, signature check passed!\n", e->name);
+			}
 		}
-		if (xb.type <= 5)
+		if (xb.type <= 5) {
+			if (*pr)
+				goto fail;
 			break;
+		}
 		if (type == 14)
 			setFlashBuild(getBeU16(xb.files[i].data + 2));
 		break;
@@ -1419,8 +1463,7 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 		if (e->size & 3) {
 		badsize: __attribute__((hot));
 			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
-			*pr = -1;
-			break;
+			goto fail;
 		}
 		appendAddonPatches(e);
 		break;
@@ -1470,12 +1513,19 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 		}
 		e->offset = smcSetLoad(e->size);
 		if (!e->offset)
-			*pr = -1;
+			goto fail;
 		break;
 	default:
 		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
 		break;
 	}
+	return;
+	/* one -1 block for the patch size, SMC and (xb.type <= 5) signature
+	   failures: the asm keeps it a block of its own (else the -1 is appended
+	   to the size log, which crossjump can't then share) */
+fail:
+	__asm__ __volatile__("");
+	*pr = -1;
 }
 
 /* load every input of the image (by type), falling back to the nand
