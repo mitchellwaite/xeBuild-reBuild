@@ -158,9 +158,9 @@ int addRemap(u32 block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
 void remapBadBlocks(int numBlocks);
 int notZeropair(void);
-int spareLbaOk(int pages);
+u32 spareLbaOk(int pages);
 u32 copyMmcImage(u8 *raw);
-int parseDump(u8 *raw);
+u32 parseDump(u8 *raw);
 u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
@@ -972,7 +972,7 @@ int notZeropair(void)
 	return memcmp(zeropair, xb.image + 16, 14) != 0;
 }
 
-int spareLbaOk(int pages)
+u32 spareLbaOk(int pages)
 {
 	int i;
 
@@ -993,7 +993,7 @@ __attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
 	return 0;
 }
 
-int parseDump(u8 *raw)
+u32 parseDump(u8 *raw)
 {
 	int ppb = xb.bigBlock ? 256 : 32;
 	int blocks = xb.numPages / ppb;
@@ -1002,7 +1002,9 @@ int parseDump(u8 *raw)
 	int i;
 	u8 *src;
 
-	if (xb.numPages % ppb) {
+	int rr = xb.numPages % ppb;
+
+	if (rr) {
 		log_printf(0, "UNEXPECTED DUMP PARSE ERROR: %d pages cannot divide by %d!\n", xb.numPages, ppb);
 		return 0;
 	}
@@ -1013,8 +1015,12 @@ int parseDump(u8 *raw)
 		dst = checkBlock(src, blk, blocks);
 		if (dst == -2)
 			continue;
-		if (dst == -1)
-			goto bad;
+		if (dst == -1) {
+			log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
+			if (!addRemap(blk, dst, blocks))
+				return 0;
+			goto next;
+		}
 		if (dst == -3) {
 			log_printf(0, "***** WARNING: nanddump.bin has a bad LBA at block 0x%x (raw offset 0x%x), block LBA ignored\n", blk, src - raw);
 			continue;
@@ -1025,17 +1031,22 @@ int parseDump(u8 *raw)
 			continue;
 		}
 		if (dst == -4) {
-			log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
-			if (!addRemap(blk, -1, blocks))
-				return 0;
+			if (blk < blocks) {
+				log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
+				if (!addRemap(blk, -1, blocks))
+					return 0;
+			}
 			dst = blk;
-		} else if (dst != blk) {
-			if (blk >= blocks - 32)
-				log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
-			else {
-				log_printf(0, "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n", blk, dst);
-				log_printf(0, "               this dump may have some bad data!\n", blk, dst);
-				dst = blk;
+		} else {
+rem: __attribute__((hot));
+			if (dst != blk) {
+				if (blk >= blocks - 32)
+					log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
+				else {
+					log_printf(0, "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n", blk, dst);
+					log_printf(0, "               this dump may have some bad data!\n", blk, dst);
+					dst = blk;
+				}
 			}
 		}
 		if (blk == 0) {
@@ -1056,11 +1067,6 @@ int parseDump(u8 *raw)
 		if (blk >= blocks)
 			__builtin_unreachable();
 		if (dst != blk && !addRemap(dst, blk, blocks))
-			return 0;
-		continue;
-bad:
-		log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
-		if (!addRemap(blk, dst, blocks))
 			return 0;
 next:
 		;

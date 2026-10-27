@@ -1042,8 +1042,9 @@ to run in parallel):
   arm adds 15%, with the call heuristic 71% -> 52.6%. Independent of
   builtin-expect-probability.
 
-Still off (fncmp lines; both paused 2026-10-26, agents' scratch tools are
-not in the repo):
+Still off (fncmp lines; both paused 2026-10-26 after a second round; the
+agents' variants, notes and tools are in `tmp/image_read_agents/`, which
+is untracked, without the compiler dumps):
 
 - `getImageSmc` (5, was 117), with no `__builtin_expect`, so the same at
   any builtin-expect-probability (an earlier version with expects needed
@@ -1067,17 +1068,45 @@ not in the repo):
   attribute gives 10). Each hint is needed (removing one gives 9-69).
   Left: (1) `mov edi,ebx` belongs before the 0x800/0x1000 test;
   prepare_shrink_wrap slides ours into the valid path because edi is dead
-  on the bad path (RTL cprop1 rewrites the bad log's argument to the
-  unsigned copy before RA; `-fno-shrink-wrap` leaves it in the entry
-  block). (2) The zero path should jump into the middle of the bad log
-  block (a 3-insn crossjump; with `--param min-crossjump-insns=3` only (1)
-  is left), so at the default 5 the zero and bad paths each need their own
-  copy of the size-test block; VRP1 threads both through one shared copy (a
-  z-flag ternary splits the zero thread but moves the bad path's threading
-  later: 97-122). Tried: `||` (no constant-0 print), separate ifs,
-  switch, nested size ifs, u32/int types, int-arithmetic addr, -ftracer,
-  input-only asm uses of addr.
-- `parseDump` (101, was 366). Shape: an if-chain on `-2, -1, -3, -6, -4`
+  on the bad path (`-fno-shrink-wrap` leaves it in the entry block). The
+  bad log's argument is chosen by RTL cse1, not cprop1: on the EBB path
+  entry -> B1 -> bad block, the copy A=U keeps U canonical unless A is
+  live out of the path's last block. With else-if the zero and bad paths
+  share one size-test copy, the path stops at the bad block and the log
+  reads U; if the bad path has its own size-ok forwarder, A wins and the
+  copy stays in B1. (2) The zero path should jump into the middle of the
+  bad log block (a 3-insn crossjump; with `--param min-crossjump-insns=3`
+  only (1) is left), so at the default 5 the zero and bad paths each need
+  their own copy of the size-test block; VRP1 threads both through one
+  shared copy (a z-flag ternary splits the zero thread but moves the bad
+  path's threading later: 97-122). Sequential ifs (`if (!addr) {...} if
+  (addr != 0x800 && addr != 0x1000) {...}`, as in getImageKv) give
+  separate copies from VRP1 and DOM2 and the 7-insn crossjump with no hint,
+  but PRE's tail merge merges their forwarders and brings (1) back; adding
+  `"no-tree-tail-merge"` to the optimize attribute fixes both, but RA then
+  swaps ebx/esi and the prologue and a `cmp` order differ (55-62 over 864
+  hint variants; the else-if hint set doesn't carry over, since profile
+  estimation sees the zero path still going through the second test).
+  Leads: a shape where one of the two threads happens after PRE (DOM3 or
+  VRP2), or where the bad path keeps its own size-ok forwarder; or
+  sequential ifs + no-tree-tail-merge with the RA re-tuned (the ebx/esi
+  swap is the IRA pop order; the `cmp` order is whether PRE's prephitmp
+  reuses a freed SSA version below `_43`). Tried: `||` (45, one shared log
+  printing ebx as in the Linux build), nested ifs (107), goto (79), a `bad`
+  flag (9), do-while, temporaries, unsigned zero tests (5), the size
+  computation after the address checks (59-63), switch, nested size ifs,
+  u32/int types, int-arithmetic addr, -ftracer, input-only asm uses of
+  addr.
+- `parseDump` (74, was 366). `parseDump` and `spareLbaOk` return `u32`
+  (addRemap, checkBlock, spareLbaOk and loadDump still match), and the
+  partial-block test is `int rr = xb.numPages % ppb; if (rr)`. The
+  ZEROPAIR return's `xor eax,eax` is uncprop reusing spareLbaOk's 0 (the
+  latest `x == 0` value of a type compatible with the return type), which
+  needs a u32 return and no other u32 zero value in scope at that test;
+  that fights the `u32 n` counter (forwprop folds `(int)n == 0` to `n ==
+  0`, so the return coalesces with n), while `int blk` as the loop
+  variable flips the `dst != blk` and `blk < blocks-32` compare orders.
+  Shape: an if-chain on `-2, -1, -3, -6, -4`
   (a switch makes a jump table); loop over `u32 n` with `int blk = n;` at
   the top (ch2 renames the loop PHI; the copy keeps blk's SSA version old,
   which fixes `dst != blk`, `blk < blocks - 32` and the `dst == blk` PHI,
@@ -1088,16 +1117,28 @@ not in the repo):
   bad;` with `bad:` after the loop body's `continue;` (a no-op continue or
   goto changes the predictors and the whole cold layout); copy source `raw
   + (blk*ppb + p)*528` (two pointer IVs); summary loop `int i`. Left: (1)
-  the three inlined addRemap loop guards: the original has `i = 0, found =
-  0` before `test; jne body; jmp zero` (probably RTL if-conversion hoisting
-  the preheader, which needs the preheader not to be the guard's
-  fallthrough; the zero-trip edge is threaded by something besides
-  dom2/dom3/vrp2); (2) the dst-case inline compare wants `cmp [mem],ebp`;
-  (3) cold block order (~57 lines): MAX REMAPS before -4 needs -4 predicted
-  under ~10.5% (an expect does it at 90 but breaks RA); (4) the summary end
-  has its own epilogue copy in the original (edge freq >= 10%); (5) the -5
-  summary latch compare (recycled SSA versions); (6) the ZEROPAIR return is
-  `xor eax,eax` in the original, ours keeps memcmp's 0 (uncprop).
+  the three inlined addRemap loop guards (~35 lines): the original has `i
+  = 0, found = 0` before `test; jne body; jmp zero`, which needs RTL
+  if-conversion to fold the preheader into the guard, and that happens
+  only if the guard's next GIMPLE block is not the preheader and its TRUE
+  edge goes to it. ch2 always puts the guard right before the body and
+  DOM2 puts the preheader right after it (its zero-trip FSM copy lands
+  before the exit block, past the simple-latch forwarder);
+  `-fno-tree-dominator-opts` gives the original guard but loses the
+  constant-1 zero-trip blocks, which need DOM2's thread before PRE.
+  Caller-side shapes, asm probes at every statement and addRemap rewrites
+  that still match standalone don't change it (`mini/` in the agent's
+  folder is a fast reproducer). (2) cold block order: bbro starts round-1
+  traces by block frequency, and MAX REMAPS has 12.6% of the three inlined
+  addRemap call blocks' summed frequency: 64 against -4's 81 with natural
+  predictions, so -4 must be predicted under ~10.8% or the dst-remap path
+  made hotter (a hot label there does it), but every hint that fixes the
+  order puts the return value in esi (~15 lines, IRA); closest lead
+  without hot labels: `if (blk >= blocks) __builtin_unreachable();` inside
+  the `dst != blk` branch (drops the call heuristic there) gives MAX 56
+  against 58. (3) the summary end has its own epilogue copy in the
+  original (edge freq >= 10%); (4) the -5 summary latch compare (recycled
+  SSA versions); (5) the dst-case inline compare wants `cmp [mem],ebp`.
 
 listFlashFiles: load order `b16 = e->block; size = e->size; block =
 SWAP16(b16); time = e->time;` keeps e in ebp (the other orders of the
