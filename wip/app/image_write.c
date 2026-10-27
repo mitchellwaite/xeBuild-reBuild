@@ -1,5 +1,8 @@
 /* image_write: flash layout (header, CB/CE, SMC config, Mobile*.dat, the
-   FS table), spare (LBA, ECD) bytes, writing the image to disk */
+   FS table), spare (LBA, ECD) bytes, writing the image to disk.
+   Built as one C object (no .s): gcc's default top-level order emits
+   the functions as the original (imgAdd's ipa-cp clones first), and the
+   string literals and jump table in .rdata in its order */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,6 +131,7 @@ int findFile(int type);
 u32 findFileOffset(int type);
 int buildFlash(void);
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
+int pageErased(const u8 *data, const u8 *spare);
 u32 copyMuData(FILE *out, void *sha);
 int isErased(const u8 *p, u32 len);
 void writeSha1File(char *out, const char *src, const unsigned char *sha);
@@ -148,10 +152,14 @@ extern u16 fsTable[0x1000];
 extern struct flashhdr hdrTemplate;
 extern u32 imgEnd;
 
-char copyright[0x40] = "\xa9 2004-2009 Microsoft Corporation. All rights reserved.";
+/* the year's last digit is a NUL in the image: buildImage sets it per
+   console type */
+char copyright[0x40] = "\xa9 2004-200\0 Microsoft Corporation. All rights reserved.";
 
-u32 mobileOffset;
-int nFsFiles;
+/* initialised, so .bss rather than COMMON; gcc emits them in reverse
+   order of definition */
+int nFsFiles = 0;
+u32 mobileOffset = 0;
 static u8 smcPage[0x1000];
 
 #define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
@@ -248,45 +256,6 @@ static int imgWriteHdr(const void *src, u32 len)
 			}
 		}
 	imgEnd = off + len;
-	return 0;
-}
-
-/* one 4K page.  The empty asms pin registers (the original's RA); the
-   end marker's index is ~fsStart in eax plus the loop bound, and its
-   int sum keeps reassoc from pairing start + blocks (DOM then swaps in
-   the block IV) */
-static __attribute__((noclone)) int imgWritePage(u32 off, const void *src, u16 next)
-{
-	u32 blocks, start, b, p, i, x, first;
-
-	if (xb.rawSize < off || xb.rawSize < off + 0x1000)
-		return -1;
-	__asm__("" :: "S"(off + 0x1000));
-	x = off & 0x3fff;
-	__asm__("" : "+c"(x));
-	start = off >> 14;
-	blocks = 1;
-	if (x)
-		blocks = (0x4000 - x >= 0x1000) ? 1 : 2;
-	memcpy(xb.hdr + off, src, 0x1000);
-	__asm__("" :: "S"(start + blocks), "a"(start * 512));
-	for (b = 0; b < blocks; b++)
-		for (p = 0; p < 8; p++)
-			setSpareLba((struct sp *)(xb.spare + ((start + b) * 32 + p) * 16), start + b);
-	if (next != 0xf1f1) {
-		for (i = 0; i < blocks; i++) {
-			if (next != 0 && next != 0xffff)
-				fsTable[start - xb.fsStart + i] = SWAP16(next);
-			else
-				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
-		}
-		if (next == 0xffff) {
-			x = ~xb.fsStart;
-			__asm__("" : "+a"(x));
-			fsTable[(int)(x + start) + (int)blocks] = SWAP16(0x1fff);
-		}
-	}
-	imgEnd = off + 0x1000;
 	return 0;
 }
 
@@ -532,19 +501,6 @@ int pageEccOk(u8 *datc, u8 *spare)
 	return 1;
 }
 
-int pageErased(const u8 *data, const u8 *spare)
-{
-	int i;
-
-	for (i = 0; i < 512; i++)
-		if (data[i] != 0xff)
-			return 0;
-	for (i = 0; i < 16; i++)
-		if (spare[i] != 0xff)
-			return 0;
-	return 1;
-}
-
 /* a raw block (data and spare interleaved) */
 int blockEccOk(u8 *blk, int bigBlock)
 {
@@ -557,6 +513,19 @@ int blockEccOk(u8 *blk, int bigBlock)
 			continue;
 		return 0;
 	}
+	return 1;
+}
+
+int pageErased(const u8 *data, const u8 *spare)
+{
+	int i;
+
+	for (i = 0; i < 512; i++)
+		if (data[i] != 0xff)
+			return 0;
+	for (i = 0; i < 16; i++)
+		if (spare[i] != 0xff)
+			return 0;
 	return 1;
 }
 
@@ -708,6 +677,12 @@ int imgBigBlock(void)
 	return xb.bigBlock;
 }
 
+/* copy len bytes to the image at off and set the spare bytes of its pages
+   (LBA; per type the page count, length, ...) and the FS table chain.
+   gcc's ipa-cp clones of it are the image's imgWriteStart (off 0, type 0,
+   pad 1: imgAdd.constprop.1), imgWritePage (len 0x1000, type 1, pad 0:
+   .constprop.2) and imgWriteAt (type 0, pad 1: .constprop.4), emitted
+   in that order; imgAddFile's and writeFsTable's calls inline clones */
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 {
 	u32 x, first, rem, tail, blocks, start, p, end, npages, pages;
@@ -718,7 +693,6 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	int partial;
 	u32 b;
 	u32 i;
-	int dmy;	/* unused: SSA/decl numbering */
 
 	if (xb.rawSize < off || xb.rawSize < off + len) {
 		return -1;
@@ -744,21 +718,23 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 		}
 	}
 	if (x > first + 0x4000)
-		blocks++;
+		blocks += 2;
 	memcpy(xb.hdr + off, src, len);
 	if (pad == 1) if (tail)
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
 		/* dead (VRP1 removes them): they raise the off-0 ipa-cp value (imgWriteStart
-		   clone; `first + ...` is computed in the loop) and renumber SSA names (the
-		   clones' operand order); so do the ones before memcpy and imgEnd */
+		   clone; `first + ...` is computed in the loop) and set which SSA names get
+		   recycled (compare operand orders in the clones and inlined copies); so
+		   do the ones before memcpy, in the FS loop and before imgEnd.  None may
+		   modify len or off: ipa-cp then can't specialise on them */
+		if (x > first + 0x4000)
+			__asm__("");
+		if (x + 0x4000 < first)
+			blocks++;
 		if ((len & 0x3fff) > 0x3fff)
-			len++;
-		if (x + 0x4000 < first)
-			blocks++;
-		if (x + 0x4000 < first)
-			blocks++;
+			__asm__("");
 		t = type - '1';
 		partial = type != 0 && type != '0' && len < 0x4000;
 		if (len % 512)
@@ -828,18 +804,22 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	if (next != 0xf1f1) {
 		
 		for (i = 0; i < blocks; i++) {
+			if (x > first + 0x4000)
+				blocks++;
 			if (next != 0 && next != 0xffff) {
 				fsTable[start - xb.fsStart + i] = SWAP16(next);
 			} else {
 				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
 			}
 		}
+		if (x + 0x4000 < first)
+			start++;
 		if (next == 0xffff) {
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
 		}
 	}
-	if (x > first + 0x4000)
-		blocks++;
+	if ((len & 0x3fff) > 0x3fff)
+		blocks += 2;
 	imgEnd = off + len;
 	return 0;
 }
@@ -855,16 +835,27 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	u32 start, b, p, pages, npages, first, rem, tail, blocks;
 	u16 blk;
 	u8 *s;
+	/* imgFits by hand, its limit and end before the dead len++: VRP1's
+	   threading of the two dead tests copies the block after len++ (which
+	   gives the original's head registers), so names defined there are
+	   renumbered high.  lim (one use, expanded at the test) and end (kept
+	   by the code-free asm; DOM2 makes the inlined imgAdd's off + len this
+	   one) keep low numbers: `lim < end` and the range test's `end > raw`
+	   then come out in the original's operand order */
+	u32 lim = (xb.fsEnd - 1) * 0x4000;
+	u32 end = off + len;
 
-	if ((len & 0x3fff) > 0x3fff)
-		time++;
+	__asm__("" :: "g"(end));
 	if ((len & 0x3fff) > 0x3fff)
 		len++;
-	if (__builtin_expect(imgFits(off, len), 1)) {
-		/* dead: VRP1 rebuilds this block last, so peephole2's scratch
-		   registers (bigBlock test, end marker) come out as the original's */
-		if ((len & 0x3fff) > 0x3fff)
-			time++;
+	if (__builtin_expect(lim >= off + len, 1)) {
+		/* dead; cold, so the threading that removes it doesn't leave the
+		   error edge at 75% (the error block is then laid out after the
+		   big-block path) */
+		if ((len & 0x3fff) > 0x3fff) {
+			c1: __attribute__((cold));
+			name++;
+		}
 		fsFiles[nFsFiles].block = SWAP16((u16)(off >> 14) - xb.fsStart);
 		fsFiles[nFsFiles].size = SWAP32(len);
 		strcpy(fsFiles[nFsFiles].name, name);
@@ -960,8 +951,8 @@ int addSmcConfig(const u8 *cfg, u32 len)
 	memcpy(smcPage, cfg, 0x400);
 	log_printf(1, "adding smc config to offset 0x%08x, len 0x%x\n", xb.smcConfigOffset, len);
 	if (xb.bigBlock)
-		return imgWritePage(xb.smcConfigOffset, smcPage, 0xf1f1);
-	return imgWritePage(xb.smcConfigOffset, smcPage, 0x1ffb);
+		return imgAdd(xb.smcConfigOffset, smcPage, 0x1000, 1, 0xf1f1, 0);
+	return imgAdd(xb.smcConfigOffset, smcPage, 0x1000, 1, 0x1ffb, 0);
 }
 
 void writeInitialHeader(void)
@@ -1228,10 +1219,10 @@ int finalizeImage(void)
 		log_printf(1, "done!\n");
 	}
 	if (xb.nRemap - 1 < 32) {
-		if (xb.bigBlock != xb.dumpBigBlock && xb.mode != 2)
-			log_printf(1, "\n\n***** ERROR: if you had given the same small/big block style NAND donor image I'd be remapping %d bad blocks now...\n",
-				xb.nRemap);
-		else {
+		/* the arms in this order (and the error last below): gcc emits the
+		   string literals in statement order, which is the image's .rdata
+		   order; the code is the same either way */
+		if (xb.bigBlock == xb.dumpBigBlock || xb.mode == 2) {
 			log_printf(1, "remapping %d blocks\n", xb.nRemap);
 			if (xb.bigBlock) {
 				size = 0x21000;
@@ -1255,17 +1246,20 @@ int finalizeImage(void)
 						setBlockSpare(xb.raw + dst, xb.remapFrom[i], xb.bigBlock);
 					}
 					log_printf(1, "done!\n");
-				} else if (xb.remapTo[i] == 0xfffffffb) {
+				} else if (xb.remapTo[i] != 0xfffffffb)
+					log_printf(1, "\n\n***** ERROR: Remapping block 0x%x to block 0x%x is not sane on a NAND with 0x%x blocks!\n",
+						from, xb.remapTo[i], blocks);
+				else {
 					u32 off = size * from;
 
 					log_printf(1, "    Remapping block 0x%x is not required, zerofilling...", from);
 					memset(xb.raw + off, 0, size);
 					log_printf(1, "done!\n");
-				} else
-					log_printf(1, "\n\n***** ERROR: Remapping block 0x%x to block 0x%x is not sane on a NAND with 0x%x blocks!\n",
-						from, xb.remapTo[i], blocks);
+				}
 			}
-		}
+		} else
+			log_printf(1, "\n\n***** ERROR: if you had given the same small/big block style NAND donor image I'd be remapping %d bad blocks now...\n",
+				xb.nRemap);
 	}
 	log_printf(1, "done remapping!\n");
 	return 0;
@@ -1380,6 +1374,6 @@ int imgAddRaw(const char *name, const void *data, u32 len, u32 off)
 {
 	log_printf(1, "\tadding %s at raw offset 0x%x len 0x%x (end 0x%x)\n", name, off, len, off + len);
 	if (xb.bigBlock)
-		return imgWritePage(off, data, 0xf1f1);
-	return imgWritePage(off, data, 0x1ffb);
+		return imgAdd(off, data, 0x1000, 1, 0xf1f1, 0);
+	return imgAdd(off, data, 0x1000, 1, 0x1ffb, 0);
 }

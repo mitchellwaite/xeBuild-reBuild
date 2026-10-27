@@ -276,7 +276,7 @@ L_46355c:
 L_463568:
           .string "M"
           .string "i"
-          .long L_47006e
+          .long 0x47006e
           .string "W"
           .string " "
           .string "R"

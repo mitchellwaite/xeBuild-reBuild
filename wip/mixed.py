@@ -16,18 +16,8 @@ import os, re, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 're'))
 from ddfix import Image
 
+# per-object setup; app/image_write (the last user) is whole C now
 OBJS = {
-    'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
-                            regparm={'imgWritePage': 3},
-                            # here even when asm, for their calls: imgWriteStart
-                            # and imgWriteAt are gcc's ipa-cp clones of imgAdd
-                            inline={'imgAdd', 'imgAddFile'},
-                            note='bytes, writing the image to disk */',
-                            # the .s keeps the object's data
-                            subs=[('\nchar copyright[0x40] = "\\xa9 2004-2009 Microsoft Corporation. '
-                                   'All rights reserved.";\n', '\nextern char copyright[0x40];\n'),
-                                  ('\nu32 mobileOffset;\n', '\nextern u32 mobileOffset;\n'),
-                                  ('\nint nFsFiles;\n', '\nextern int nFsFiles;\n')]),
 }
 
 

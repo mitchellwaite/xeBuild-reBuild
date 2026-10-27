@@ -2278,8 +2278,55 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 45 matching functions build from `src/app/image_write.c`, a mixed
-object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
+**Done (2026-10-27): whole object in C, no `.s`.** `src/app/image_write.c`
+is the draft itself (`wip/app/image_write.c`, the same file), built with
+`-O3 --param builtin-expect-probability=50` in gcc's default top-level
+order. What the last step needed (README has the summary):
+
+- imgWritePage is not a function of the source: it is imgAdd's ipa-cp
+  clone for len 0x1000, type 1, pad 0 (addSmcConfig's and imgAddRaw's
+  calls are `imgAdd(off, src, 0x1000, 1, next, 0)`). Type 1, not 0: the
+  partial page count gives the 8 pages per block. Evidence: with gcc's
+  clone the three clones come out in the original's `.text` order
+  (ipa-cp makes off 0, then len 0x1000, then type 0; ipa_reverse_postorder
+  visits local nodes newest first, so expansion emits them oldest first);
+  the hand-written function (static) was always emitted first. The clone
+  was 55 lines from the original with type 0 and 4 with type 1 before
+  any pin work. The old dead `len++` pin at the top of imgAdd's block loop
+  had hidden len from ipa-cp (a modified parameter gets no predicates):
+  len 0x1000's evaluation 9 -> ~5900 without it.
+- New clone names: imgWriteStart `.constprop.1`, imgWritePage `.2`,
+  imgWriteAt `.4` (type 42's clone, inlined into imgAddFile, is `.3`).
+- imgAdd's dead pins were re-laid out by a randomized search
+  (tmp/image_write_agents/fin4: `score.py` = one compile + fncmp of all
+  46 + opcmp + ipa-cp evaluations; `anneal.py`/`fcd.py` over `<<<a@@b>>>`
+  templates made by `mk3.py`). The winning set: `x > first + 0x4000`
+  `blocks += 2` before the memcpy, three in the block loop (`__asm__("")`
+  bodies and one `blocks++`), one in the FS loop, one before the end
+  marker test (`start++`) and `blocks += 2` before `imgEnd =`; no
+  `int dmy`.
+- imgAddFile's range test (the inlined imgAdd's `raw < off || raw < off +
+  len`, combined by ifcombine): the original tests `off + len > raw`
+  first. Two things: the operands' order is SSA version order (forwprop
+  canonicalises), and VRP1's jump threading of the two dead `len & 0x3fff`
+  tests copies the block after the head `len++` pin, so anything computed
+  there (imgFits' sum and limit) is renumbered above the inlined rawSize
+  load. So imgAddFile computes `lim` and `end = off + len` before the pin,
+  end kept alive by `__asm__("" :: "g"(end))` (DOM2 later replaces the
+  inline's own off + len by it). The order of the two tests is the order
+  of the two SSA names ifcombine pops from the free list: copyprop1
+  releases its dead PHIs in reverse dominator order, so the names come
+  from the inlined imgAdd's dead-pin PHIs (imgAdd's pin layout decides).
+- imgAddFile's error block: the dead test in the fits body is threaded
+  away by VRP1, which multiplied the fits edge by the dead test's 50%
+  (error edge 75%, so bbro made the error block the head's fallthrough).
+  A `cold` label in the dead arm keeps the fits edge likely.
+- finalizeImage's literals come out in statement order (not layout
+  order): the donor block-style mismatch error is the outer if's else, and the
+  remap loop's "not sane" error comes before the "not required" arm.
+
+Before (mixed object): the 45 matching functions built from
+`src/app/image_write.c`, a mixed object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
 clone of imgAdd for type 0, pad 1, built as `_imgAdd.constprop.3`, and

@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 23 of 25 app files build from C, two more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 24 of 25 app files build from C, one more (mode_client) is mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **615 of 617** (613 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 64 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **616 of 617** (614 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 65 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 23 / 25 | 430 / 432 |
+| `app/` | 24 / 25 | 431 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -37,7 +37,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | Object | State | Functions in C |
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
-| `app/image_write` | mixed; 0 of 1 drafted functions match in `wip/app/image_write.c` | 45 / 46 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -60,57 +59,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ⬜ `mode_client` (0x408260) (draft in `wip/`, no match yet)
 
 </details>
-<details>
-<summary><code>app/image_write</code>: 45 / 46 in C</summary>
-
-- ✅ `imgAdd.constprop.1` (0x40e950)
-- ✅ `imgWritePage` (0x40ecc0)
-- ✅ `imgAdd.constprop.3` (0x40eef0)
-- ✅ `buildImage` (0x40f330)
-- ✅ `imageFree` (0x40fb10)
-- ✅ `calcEcd` (0x40fb60)
-- ✅ `calcPageEcc` (0x40fbb0)
-- ✅ `pageEccOk` (0x40fc30)
-- ✅ `blockEccOk` (0x40fcc0)
-- ✅ `pageErased` (0x40feb0)
-- ✅ `blockErased` (0x40ff40)
-- ✅ `blockPagesErased` (0x40ff80)
-- ✅ `blockIsFF` (0x410040)
-- ✅ `isErased` (0x410070)
-- ✅ `setBlockSpare` (0x4100b0)
-- ✅ `imgSizeAligned` (0x410220)
-- ✅ `setFlashBuild` (0x410240)
-- ✅ `smcSetLoad` (0x410290)
-- ✅ `imgSmcOffset` (0x410350)
-- ✅ `setPatchSlot` (0x410360)
-- ✅ `imgCfOffset` (0x410460)
-- ✅ `imgCfSize` (0x410490)
-- ✅ `imgSize` (0x4104d0)
-- ✅ `imgSetSize` (0x4104e0)
-- ✅ `imgBigBlock` (0x4104f0)
-- ✅ `imgAdd` (0x410500)
-- ✅ `imgFits` (0x410b90)
-- ⬜ `imgAddFile` (0x410bb0) (draft in `wip/`, no match yet)
-- ✅ `imgAddFileAs` (0x411030)
-- ✅ `imgAddMobile` (0x4110b0)
-- ✅ `fixupFsTable` (0x4112b0)
-- ✅ `fixupEmptyFsBlocks` (0x4112f0)
-- ✅ `addSmcConfig` (0x411600)
-- ✅ `writeInitialHeader` (0x411680)
-- ✅ `checkBootImage` (0x411800)
-- ✅ `writeFsTable` (0x411bd0)
-- ✅ `copyAnchorBlock` (0x412110)
-- ✅ `spareUsed` (0x4121b0)
-- ✅ `imageGetBuffer` (0x412230)
-- ✅ `writeImage` (0x412260)
-- ✅ `finalizeImage` (0x4125a0)
-- ✅ `fsStartBlock` (0x412dd0)
-- ✅ `reservedAreaOffset` (0x412de0)
-- ✅ `statisticsOffset` (0x412e90)
-- ✅ `manufacturingOffset` (0x412f60)
-- ✅ `imgAddRaw` (0x413030)
-
-</details>
 
 ### Completed
 
@@ -128,6 +76,7 @@ Objects built entirely from C, in link order.
 | `app/main` | 8 |
 | `app/mode_extract` | 2 |
 | `app/xboxrom` | 7 |
+| `app/image_write` | 46 |
 | `app/keyvault` | 12 |
 | `app/image_read` | 33 |
 | `app/mode_ini` | 6 |
@@ -283,6 +232,57 @@ Objects built entirely from C, in link order.
 - ✅ `blCheckHash` (0x40e7b0)
 - ✅ `blUpdateHash` (0x40e810)
 - ✅ `blHashAndSign` (0x40e8a0)
+
+</details>
+<details>
+<summary><code>app/image_write</code>: 46 functions</summary>
+
+- ✅ `imgAdd.constprop.1` (0x40e950)
+- ✅ `imgAdd.constprop.2` (0x40ecc0)
+- ✅ `imgAdd.constprop.4` (0x40eef0)
+- ✅ `buildImage` (0x40f330)
+- ✅ `imageFree` (0x40fb10)
+- ✅ `calcEcd` (0x40fb60)
+- ✅ `calcPageEcc` (0x40fbb0)
+- ✅ `pageEccOk` (0x40fc30)
+- ✅ `blockEccOk` (0x40fcc0)
+- ✅ `pageErased` (0x40feb0)
+- ✅ `blockErased` (0x40ff40)
+- ✅ `blockPagesErased` (0x40ff80)
+- ✅ `blockIsFF` (0x410040)
+- ✅ `isErased` (0x410070)
+- ✅ `setBlockSpare` (0x4100b0)
+- ✅ `imgSizeAligned` (0x410220)
+- ✅ `setFlashBuild` (0x410240)
+- ✅ `smcSetLoad` (0x410290)
+- ✅ `imgSmcOffset` (0x410350)
+- ✅ `setPatchSlot` (0x410360)
+- ✅ `imgCfOffset` (0x410460)
+- ✅ `imgCfSize` (0x410490)
+- ✅ `imgSize` (0x4104d0)
+- ✅ `imgSetSize` (0x4104e0)
+- ✅ `imgBigBlock` (0x4104f0)
+- ✅ `imgAdd` (0x410500)
+- ✅ `imgFits` (0x410b90)
+- ✅ `imgAddFile` (0x410bb0)
+- ✅ `imgAddFileAs` (0x411030)
+- ✅ `imgAddMobile` (0x4110b0)
+- ✅ `fixupFsTable` (0x4112b0)
+- ✅ `fixupEmptyFsBlocks` (0x4112f0)
+- ✅ `addSmcConfig` (0x411600)
+- ✅ `writeInitialHeader` (0x411680)
+- ✅ `checkBootImage` (0x411800)
+- ✅ `writeFsTable` (0x411bd0)
+- ✅ `copyAnchorBlock` (0x412110)
+- ✅ `spareUsed` (0x4121b0)
+- ✅ `imageGetBuffer` (0x412230)
+- ✅ `writeImage` (0x412260)
+- ✅ `finalizeImage` (0x4125a0)
+- ✅ `fsStartBlock` (0x412dd0)
+- ✅ `reservedAreaOffset` (0x412de0)
+- ✅ `statisticsOffset` (0x412e90)
+- ✅ `manufacturingOffset` (0x412f60)
+- ✅ `imgAddRaw` (0x413030)
 
 </details>
 <details>
@@ -1086,6 +1086,34 @@ emits in the original's `.rdata` order; in seven functions the first few
 aren't, so those are static arrays defined right before the function. The
 variables are zero-initialized globals in `.bss` order. Both rely on
 `-fno-toplevel-reorder` (the filelist_ini recipe).
+
+And `app/image_write` (whole object in C, no `.s`; `-O3 --param
+builtin-expect-probability=50`, default top-level order).
+
+- `imgAdd` (copy to the image, set the spare bytes, chain the FS table) is
+  the only writer: the image's imgWriteStart, imgWritePage and imgWriteAt
+  are gcc's ipa-cp clones of it (off 0, type 0, pad 1; len 0x1000, type 1,
+  pad 0 for addSmcConfig's and imgAddRaw's calls; type 0, pad 1), named
+  `_imgAdd.constprop.1/.2/.4` in `SYMBOLS`. ipa-cp makes them in that
+  order, and gcc's reverse-postorder expansion emits these local nodes
+  first, oldest first: the original's `.text` order. (Written by hand,
+  imgWritePage came out ahead of all three.) len 0x1000 is only worth a clone while no dead
+  pin modifies `len` (ipa-cp can't specialise a modified parameter).
+- Dead `if (...) blocks++;`-style tests in imgAdd keep the off-0 clone's
+  ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
+  recycled, i.e. the compare operand orders in the clones and inlined
+  copies; their layout was found by a search (wip/README.md).
+- imgAddFile computes imgFits' limit and end itself before a dead `len++`
+  (the end kept by a code-free asm), and the dead test in its body is
+  `cold`, so VRP1's jump threading neither renumbers those values nor
+  leaves the error edge at 75%.
+- String literals are emitted in statement order with each function, and
+  the buildImage jump table after its strings, which is the `.rdata`
+  order; finalizeImage's arms are written in the order that gives it.
+  copyright's year digit is a NUL in the data (buildImage sets it), and the
+  two globals are initialised (`.bss`, not COMMON) and defined in reverse.
+- ddisasm read 4 bytes of wassert's UTF-16 "MinGW" as a pointer into
+  smcPage; `split.py`'s `NOT_POINTERS` writes it back as a number.
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 

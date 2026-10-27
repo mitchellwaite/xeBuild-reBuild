@@ -468,7 +468,7 @@ SYMBOLS = {
     0x40e950: '_imgAdd.constprop.1',
     # imgWriteAt: regparm (offset, src, len) + stack fs type.  It is gcc's
     # ipa-cp clone of imgAdd for type 0, pad 1 (the C has imgAdd's body)
-    0x40eef0: '_imgAdd.constprop.3',
+    0x40eef0: '_imgAdd.constprop.4',
     0x4100b0: '_setBlockSpare',     # per-page LBA + ECD for one block
     0x410220: '_imgSizeAligned',    # image size rounded up to 0x4000
     0x4104e0: '_imgSetSize',
@@ -482,7 +482,10 @@ SYMBOLS = {
     0x4125a0: '_finalizeImage',     # "------ finalizing image ------"
     0x412dd0: '_fsStartBlock', 0x413030: '_imgAddRaw',  # "adding %s at raw offset"
     # never called (only .eh_frame refers to them) except imgWritePage
-    0x40ecc0: '_imgWritePage',      # regparm (offset, src, fs type), 0x1000 bytes
+    # imgWritePage: regparm (offset, src, fs type).  gcc's ipa-cp clone of
+    # imgAdd for len 0x1000, type 1, pad 0 (addSmcConfig's and imgAddRaw's
+    # calls).  ipa-cp makes it second, so gcc emits it between the other two
+    0x40ecc0: '_imgAdd.constprop.2',
     0x40fb60: '_calcEcd',           # page ECD over separate data/spare pointers
     0x40feb0: '_pageErased',        # 512 data + 16 spare bytes all 0xff
     0x40ff80: '_blockPagesErased',  # same for each page of a block
@@ -495,24 +498,6 @@ SYMBOLS = {
     0x4c9164: '_mmcAnchor', 0x4c97c0: '_fsFiles', 0x4cb7c0: '_fsTable',
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
     0x46f9c0: '_mobileOffset', 0x46f9c4: '_nFsFiles', 0x46f9e0: '_smcPage',
-    # app/image_write's strings that its C functions use (wip/mixed.py)
-    0x451760: '_iw_451760', 0x45179c: '_iw_45179c',
-    0x4517f8: '_iw_4517f8', 0x451820: '_iw_451820', 0x451850: '_iw_451850',
-    0x45187c: '_iw_45187c', 0x4518e8: '_iw_4518e8',
-    0x4519c4: '_iw_4519c4', 0x451a20: '_iw_451a20', 0x451a44: '_iw_451a44',
-    0x451a6c: '_iw_451a6c', 0x451a94: '_iw_451a94', 0x451ab8: '_iw_451ab8',
-    0x451adc: '_iw_451adc', 0x451b2c: '_iw_451b2c', 0x451b54: '_iw_451b54',
-    0x451b7a: '_iw_451b7a', 0x451b7d: '_iw_451b7d', 0x451b9a: '_iw_451b9a',
-    0x451ba4: '_iw_451ba4', 0x451be4: '_iw_451be4', 0x451c18: '_iw_451c18',
-    0x451c38: '_iw_451c38', 0x451c94: '_iw_451c94', 0x451cdd: '_iw_451cdd',
-    0x451f80: '_iw_451f80',
-    0x451924: '_iw_451924', 0x451978: '_iw_451978', 0x4519f4: '_iw_4519f4',
-    0x4518a0: '_iw_4518a0',
-    0x451ce4: '_iw_451ce4', 0x451d10: '_iw_451d10', 0x451d54: '_iw_451d54',
-    0x451d88: '_iw_451d88', 0x451dca: '_iw_451dca', 0x451de0: '_iw_451de0',
-    0x451e14: '_iw_451e14', 0x451e28: '_iw_451e28', 0x451e84: '_iw_451e84',
-    0x451ec0: '_iw_451ec0', 0x451f37: '_iw_451f37', 0x451f48: '_iw_451f48',
-    0x451b04: '_iw_451b04',
     0x44a700: '_defBl60',      # app/build .data, loadConsoleBlFiles' case 24
     0x44a760: '_defPayload', 0x44a960: '_defCore',  # app/build .data, encodeBls
     # runtime functions the C code calls
@@ -559,19 +544,6 @@ C_FUNCS = {
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches
     0x4076b0, 0x407850, 0x407a00, 0x408080,  # clientReadBlocks clientWriteBlocks patchNand clientEraseBlock
     0x408160, 0x406e50, 0x407bf0,            # getArgs checkPatches clientBinPatch
-    # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
-    0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
-    0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF
-    0x410070, 0x4100b0, 0x410220, 0x410240,  # isErased setBlockSpare imgSizeAligned setFlashBuild
-    0x40fcc0, 0x410290, 0x40f330,            # blockEccOk smcSetLoad buildImage
-    0x410350, 0x410360, 0x410460, 0x410490,  # imgSmcOffset setPatchSlot imgCfOffset imgCfSize
-    0x4104d0, 0x4104e0, 0x4104f0, 0x410b90,  # imgSize imgSetSize imgBigBlock imgFits
-    0x411030, 0x4112b0, 0x4112f0, 0x411600,  # imgAddFileAs fixupFsTable fixupEmptyFsBlocks addSmcConfig
-    0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
-    0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
-    0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
-    0x40ecc0, 0x40eef0, 0x4125a0, 0x411bd0,  # imgWritePage imgWriteAt (imgAdd.constprop.3) finalizeImage writeFsTable
-    0x40e950, 0x410500,                      # imgWriteStart (imgAdd.constprop.1) imgAdd
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
@@ -589,6 +561,12 @@ DATA_OWNERS = [
 END_POINTERS = {
     # console_hdd loops over the 4-pointer table at 45c644; 45c654 starts log's strings
     0x431cc5: (0x45c654, 'L_45c644+16'),
+}
+# Data words ddisasm symbolized that aren't pointers: address -> the word.
+NOT_POINTERS = {
+    # "nG" of wassert's UTF-16 "MinGW Runtime Assertion"; 0x47006e lies in
+    # app/image_write's smcPage, a static of its C
+    0x46356c: 0x47006e,
 }
 COMMON = (0x479e84,'common_bss', 'COMMON globals, laid out by ld in hash order')
 WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import libraries)'),
@@ -626,6 +604,9 @@ def main():
         if a in END_POINTERS:
             t, expr = END_POINTERS[a]
             L[i], n = re.subn(r'(?<![\w.$])L_%x(?![\w$+])' % t, expr, L[i])
+            assert n == 1, (hex(a), L[i])
+        if a in NOT_POINTERS:
+            L[i], n = re.subn(r'\.long\s+L_[0-9a-f]+\s*$', '.long %#x' % NOT_POINTERS[a], L[i])
             assert n == 1, (hex(a), L[i])
     sec = {n: (va, va + max(vsz, rsz) if n == '.bss' else va + vsz) for n, va, vsz, _, rsz in img.secs}
     sec['.bss'] = (sec['.bss'][0], img.sec('.bss')[1] + img.sec('.bss')[2])
