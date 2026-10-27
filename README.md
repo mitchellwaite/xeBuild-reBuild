@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **612 of 617** (610 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 64 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **613 of 617** (611 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 64 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 23 / 25 | 427 / 432 |
+| `app/` | 23 / 25 | 428 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -37,7 +37,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | Object | State | Functions in C |
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
-| `app/image_write` | mixed; 0 of 4 drafted functions match in `wip/app/image_write.c` | 42 / 46 |
+| `app/image_write` | mixed; 0 of 3 drafted functions match in `wip/app/image_write.c` | 43 / 46 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -61,7 +61,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 42 / 46 in C</summary>
+<summary><code>app/image_write</code>: 43 / 46 in C</summary>
 
 - ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
 - ✅ `imgWritePage` (0x40ecc0)
@@ -98,7 +98,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `addSmcConfig` (0x411600)
 - ✅ `writeInitialHeader` (0x411680)
 - ✅ `checkBootImage` (0x411800)
-- ⬜ `writeFsTable` (0x411bd0) (draft in `wip/`, no match yet)
+- ✅ `writeFsTable` (0x411bd0)
 - ✅ `copyAnchorBlock` (0x412110)
 - ✅ `spareUsed` (0x4121b0)
 - ✅ `imageGetBuffer` (0x412230)

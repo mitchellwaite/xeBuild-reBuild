@@ -510,6 +510,7 @@ SYMBOLS = {
     0x451d88: '_iw_451d88', 0x451dca: '_iw_451dca', 0x451de0: '_iw_451de0',
     0x451e14: '_iw_451e14', 0x451e28: '_iw_451e28', 0x451e84: '_iw_451e84',
     0x451ec0: '_iw_451ec0', 0x451f37: '_iw_451f37', 0x451f48: '_iw_451f48',
+    0x451b04: '_iw_451b04',
     0x44a700: '_defBl60',      # app/build .data, loadConsoleBlFiles' case 24
     0x44a760: '_defPayload', 0x44a960: '_defCore',  # app/build .data, encodeBls
     # runtime functions the C code calls
@@ -567,7 +568,7 @@ C_FUNCS = {
     0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
     0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
-    0x40ecc0, 0x40eef0, 0x4125a0,            # imgWritePage imgWriteAt (imgAdd.constprop.2) finalizeImage
+    0x40ecc0, 0x40eef0, 0x4125a0, 0x411bd0,  # imgWritePage imgWriteAt (imgAdd.constprop.2) finalizeImage writeFsTable
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

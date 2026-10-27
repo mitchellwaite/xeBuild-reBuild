@@ -182,8 +182,6 @@
 .globl L_4c9134
 .globl L_4c9138
 .globl L_4c917f
-.globl L_4c9180
-.globl L_4c9182
 .globl L_4c9184
 .globl L_4c9186
 .globl L_4c9364

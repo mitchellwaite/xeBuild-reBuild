@@ -776,14 +776,23 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 		return -1;
 	}
 	x = off & 0x3fff;
-	start = off >> 14;
+	start = (off - x) >> 14;
 	first = x ? 0x4000 - x : 0;
+	if (x > 0x3fff)
+		start++;
+	if (x > 0x3fff)
+		start++;
+	if (x > 0x3fff)
+		start++;
 	if (len <= first) {
 		blocks = 1;
 		tail = len;
 	} else {
 		rem = len - first;
-		tail = rem < 0x4000 ? rem : rem % 0x4000;
+		if (rem < 0x4000)
+			tail = rem;
+		else
+			tail = rem % 0x4000;
 		blocks = rem / 0x4000;
 		if (tail) {
 			blocks++;
@@ -819,14 +828,14 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			s = xb.spare + (BLK * 32 + p) * 16;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
-				s[0] = 0xff;
-				s[2] = (s[2] & 0xf0) | ((BLK >> 8) & 0xf);
+				((struct sp *)s)->b2lo = BLK >> 8;
+				((struct sp *)s)->b0 = 0xff;
 				s[1] = BLK;
 				if (type > 1) {
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
 					if (type != 0x2a && type != 0x2c) {
-						s[5] = 1;
 						s[9] = (((off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256) - left) >> 2;
+						s[5] = 1;
 						s[8] = len >> 8;
 						s[7] = len;
 					} else {
@@ -838,13 +847,13 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 					}
 				}
 			} else {
-				s[5] = 0xff;
-				s[1] = (s[1] & 0xf0) | ((BLK >> 8) & 0xf);
+				((struct sp *)s)->b1lo = BLK >> 8;
+				((struct sp *)s)->b5 = 0xff;
 				s[0] = BLK;
 				if (type > 1) {
-					s[2] = 1;
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
 					s[9] = sp9;
+					s[2] = 1;
 					if (type != '0') {
 						s[8] = len >> 8;
 						s[7] = len;
@@ -1060,7 +1069,7 @@ long checkBootImage(int write)
 	return 0;
 }
 
-void writeFsTable(u32 off)
+__attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
 {
 	u8 *buf, *p;
 	u32 blk;
@@ -1080,12 +1089,17 @@ void writeFsTable(u32 off)
 		memcpy(p, (u8 *)fsFiles + i * 0x200, 0x200);
 		p += 0x200;
 	}
+	if (i != 16)
+		off++;
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
-	if (xb.bigBlock)
-		imgAdd(off, buf, 0x4000, 0x2c, 0x1ffe, 0);
-	else
-		imgAdd(off, buf, 0x4000, 0x30, 0x1ffd, 0);
-	setBeU16(off >> 14, (u8 *)mmcAnchor + 0x1c);
+	if (!xb.bigBlock)
+		goto small;
+	imgAdd(off, buf, i * 0x400, 0x2c, 0x1ffe, 0);
+	goto done;
+small:
+	imgAdd(off, buf, i * 0x400, 0x30, 0x1ffd, 0);
+done:
+	setBeU16(blk, (u8 *)mmcAnchor + 0x1c);
 	setBeU16(0, (u8 *)mmcAnchor + 0x1e);
 	free(buf);
 }

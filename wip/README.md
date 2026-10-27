@@ -2278,7 +2278,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 42 matching functions build from `src/app/image_write.c`, a mixed
+The 43 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
@@ -2429,6 +2429,32 @@ Still off:
   printf (otherwise LRA saves `from` across the call). One pin, `__asm__(""
   :: "a"(xb.hdr));` before the memcpys, settles the ECD loop's register
   ties.
+- writeFsTable built (2026-10-27; notes and a jump-target comparer in
+  `tmp/image_write_agents/writeFsTable/`). `setBeU16(blk, ...)` with blk
+  from the realign (PRE would merge imgAdd's `start` into a shared `off >>
+  14`, the original recomputes it); the call's len is `i * 0x400` after
+  the 16-iteration copy loop, known only at VRP1 (a constant len lets FRE3
+  merge imgAdd's `off + len` with the log's `off + 0x4000`, and ifcombine
+  joins the two range tests); the two imgAdd calls as `if (!xb.bigBlock)
+  goto small; <big call>; goto done; small: <small call>; done:` (same
+  blocks, but VRP1 visits the paths the other way, so the small path's
+  `blocks` isn't widened to VARYING and the vectorizer leaves that FS loop
+  alone); `optimize("no-tree-scev-cprop")` on writeFsTable; and a
+  never-taken `if (i != 16) off++;` before the log, a numbering pin (VRP1
+  deletes it; it makes ivopts give the big path's inner counter a recycled
+  SSA version above its bound, so forwprop4 orders the compare as the
+  original). The count of such pins is tuned together with three dead
+  `if (x > 0x3fff) start++;` right after `first = ...` in imgAdd (x is
+  `off & 0x3fff`), which shift the free SSA list so the clone's chain-loop
+  bound is `ivtmp + blocks` (`lea ebx,[eax+esi]`; fncmp doesn't see that
+  operand order, `tmp/image_write_agents/opcmp.py` and the build do; two
+  imgAdd pins with four writeFsTable pins also work). Shared imgAdd body
+  changes that came with it (the clone still matches): `start = (off - x) >> 14`
+  (x gets a second use: combine keeps `and eax,16383; test`), the tail as
+  if/else, the LBA stores through `struct sp` bitfields (`b2lo`/`b0`,
+  `b1lo`/`b5`) plus `s[1]`/`s[0]`, `s[9]` before `s[5] = 1` in the
+  bigBlock arm and `s[12]; s[9] = sp9; s[2] = 1;` in the small arm (sched2
+  breaks ties by source order).
 - imgAdd/imgAddFile/writeFsTable: imgAddFile's big-block path is
   `imgAdd(off, data, len, 0x2a, 0xffff, 1)`; that call and writeFsTable's
   two inline as ipa-cp clones called once (imgAdd must not be `inline`,
