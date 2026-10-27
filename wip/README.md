@@ -1140,213 +1140,58 @@ written the other way round the order is right but the blocks move.
 
 ## app/mode_client.c
 
-Draft of the whole object, with string literals.  14 of 16 functions
-match (`FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_client.c <fn>`).
-12 are built from `src/app/mode_client.c`, made by `python wip/mcmixed.py
-<names>` (strings -> `mc_<addr>` externs, `cinfo` extern; SYMBOLS has all
-of the object's string names).  Two matching functions stay asm in the
-mixed build:
+Draft of the whole object, with string literals.  Compare a function with
+`FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_client.c <fn> -O3 --param
+builtin-expect-probability=50`.  (The long notes on how the other 15
+functions and the hot part of `mode_client` were matched are in this file at
+commit 6e3d2db.)
 
-- `client_usage`: its switch table is data, which a mixed object's C
-  can't emit.  It matches with the real string names too.
-- `clientKeys`: ipa-inline inlines one of the four `dumpKey` calls, and
-  all four have the same badness.  Which one wins is a fibheap tie that
-  depends on every edge in the TU: the full draft inlines the first (as
-  the original), the mixed file the second.  It comes back when the whole
-  object is C.
+`mode_client` (2026-10-27): 56 fncmp lines; every block's content matches
+and only the order of the ~25 cold traces of bb-reorder's last round
+differs.  What that order says, with our RTL bb numbers (wip/mc/mcvar.py
+identifies the blocks by content): the original extracts
+`-ip, HDD-error x2, usage(2), -r, "Block outside", "Failed", -w, usage(4,cx),
+usage(3,cx), -e, "Invalid", patches(NULL), info(NULL), usage(5,cx),
+usage(5,dx), usage(3,dx), usage(3,ax), usage(5,ax), -c, -i, -p, ...`; ours
+`-ip, usage(2), HDD x2, -r, Block, Invalid, -w, info, patches, Failed,
+u4cx, u3cx, u3dx, -e, u5ax, u5cx, u5dx, u3ax, -c, ...`.  The last round
+extracts a min-heap keyed by -frequency, so in the original the HDD errors
+were at least as frequent as usage(2).  usage(2) gets 4: the copied loop
+header's exit edge is 2% of the entry (214); 2% is gcc's floor for a loop
+with >= 5 exits (every noreturn usage call is an exit), and the entry is
+>= the 200 units of post-loop flow, so usage(2) >= 4 whatever the source.
+The HDD errors are 50% of a switch case (both arms call) and a case is
+1/13 of the dispatch; the dispatch is the switch path's share of the 200
+post-loop units, and it must be <= 1/3 or the arg test falls into the
+switch path (expand splits `(mode==0)|(arg==0)` into q/2 and
+(q/2)/(1-q/2); connect_traces follows the higher probability; checked with
+FDO at 40-46% and with `E()` on the test: the layout breaks exactly there).
+So HDD <= 3 < 4 under every mechanism I could model, and the original must
+have a tail or loop structure that makes usage(2) colder or the cases
+hotter (not an `if (argc < 1)` check: that makes usage(2) key 0, far too
+late; not nested `if (mode) if (arg)`: ifcombine's merged test still
+splits the same way).
 
-Style that matched: nested positive `if`s with the error in the `else`
-(clientEraseBlock, clientReadBlocks, updatePatches), early returns only
-for the first two checks in clientWriteBlocks; `same = 0; if (len == cur
-&& !memcmp) same = 1; if (!same) send` in updatePatches; a `type = 0`
-chain then `if (type) ... else error` in clientPatches; increments last
-in patchNand's loops (`off -= 512` after the pointers).  Operand order of
-a compare follows SSA versions: `start + count <= info / bs` written
-without a temporary, and dumpKey's `u32 want = sum;` at entry (the
-parameter's default def must be older than the sumBytes result).
-clientInfo keeps `out` (NULL unless createDir worked) apart from `dir`
-and copies `dir`.  `client_usage` needs `noreturn` on its prototype so
-the mixed file (where it is extern) compiles getArgs the same.
-
-`checkPatches` matched (built): `off = 0; if (type == 2) off = 16;` (gcc
-then threads the copy loop and the memset on `off`; the `?:` gave a
-sete/shl and no threading), `if (off) memset(buf, 0xff, off)`, and nested
-positive ifs with a single `return 0` after the countInst error's `else`.
-Early `return 0`s for the two findInst results matched fncmp but jumped
-to the JTAG path's tail-merged `return 0`: fncmp compares every label as
-`l`, so it can't see a jump going to the wrong block.  Only the full
-build showed it (`.text` 0x10 longer); compare jump targets before
-building: `python wip/jcmp.py wip/app/mode_client.c <fn>` diffs `objdump`
-offsets and internal jump targets of a `gcc -c` object against the exe.
-
-`clientBinPatch` matched (built): `const u8 *data` (the caller's `u8 *`
-vs inlined patchNand's `const u8 *` kept them apart in out-of-SSA, so data
-was copied into a second stack slot) and the memcpy/patchNand choice as
-`switch (cinfo->nandSize) { default: patchNand; break; case 0x3000000:
-memcpy; }` (the original's layout needs a 50% branch; `==` predicts 28%)
-fix registers, slots and layout.  The last register (after patchNand's
-512-byte loop LRA reloads `len - 512` into esi, gcc picked edi) is a tie in
-LRA's `find_hard_regno_for_1`: no cost or preference separates esi and
-edi, so it takes esi only if `lra_hard_reg_usage[esi] <= [edi]`.  Usage
-counts hard-register references too, so before "Done!" two
-`{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }`
-add four edi refs at that block's frequency (code-free; one pair is too
-little, three refs flip a tail-copy reload instead).  That also flips the
-earlier start/count reload pair (tfreq 372 each, start's thread first by
-regno), which decides on the same esi-vs-edi comparison; an extra
-`__asm__("" :: "r"(count))` before netWriteBlocks raises count's thread
-frequency so it is assigned first and takes esi.  Read the order and
-assignments in `-fdump-rtl-reload-details` ("Assigning to ... tfreq").
-Expect sweeps (pairs over all 11 conditions, 55-95) never got below 8 lines.
-
-Still off:
-
-- `mode_client` (about 410): only `-rb` calls getArgs; the other options
-  check their arguments inline with different `||` orders and loads
-  hoisted above the argc test in some (see the asm).  The `-bp`/`-wb`
-  stores follow getArgs' order (`start = b` before the mode check, then
-  `i += 2` and a reload of `argv[i - 1]`).  "unable to connect" is the
-  last string, so its log is at the end of the source.
-  - The tail has two netConnect calls but one netReboot and one
-    netDisconnect: `if (mode && arg) { if (netConnect) { info; switch }
-    else goto fail; } else if (reboot) { if (netConnect) info; else goto
-    fail; } else usage(2); if (reboot) netReboot; netDisconnect; return
-    0; fail: log` gives the original's blocks (only their layout
-    differs).  One connect with `if (mode && arg)` retested after it
-    computes the condition with setne/and instead.
-  - Hypothesis: every option calls getArgs and all but `-rb` were
-    inlined.  With all options as getArgs calls, ipa-cp clones
-    getArgs.constprop for the `(mode, 1, NULL, NULL)` calls and inlines
-    only 4 of 6 (unit growth), so the clone stays; `static inline`
-    inlines `-rb` too.  Hand-written checks (as in the draft) are closer
-    so far.  `-keys` stores mode before `arg = dummy` in the original,
-    and `-i`/`-p` store the mode before `arg = dummy`.
-  - fncmp's line count mostly measures block layout here; a chunk
-    multiset compare (split after each jump) separated content from
-    layout diffs.
-  - Locals declared `reboot, ip, arg, mode` give the original's loop
-    entry stores and PHI copy order (mode before `arg = dummy` in
-    `-keys`/`-i`/`-p`); `a = argv[i + 1]` before the test in `-r`/`-w`
-    gives the hoisted load.  Both are in the draft.
-  - `-bp`/`-wb`: the original keeps the first argument in ebp (arg's
-    register), ours in eax; no spelling or check order of those two
-    blocks changes it.  A uniform spelling at every site doesn't give the
-    original's mixed `||` orders, so the per-site orders are in the
-    source.  getArgs at `-wb` alone stays a call (size 52 > the
-    max-inline-insns-auto limit; einline growth 43); `inline` on getArgs
-    breaks everything.
-  - Tail: the `goto fail` shape above changes no chunk content and only
-    layout; the switch's case order in the source doesn't matter.  After
-    the loop all frequencies are 0-1 so layout is tie-broken;
-    `__builtin_expect(mode && arg, 1)` gets closer (465 -> 366 lines), so
-    the original's post-loop frequencies differ from ours, probably from
-    something in the loop.
-  - Found the loop's frequency difference: gcc's call heuristic only
-    looks at the first block of each edge's destination.  With the checks
-    written inline, an option's taken edge has no call (the next
-    strnicmp test has one), so every option is predicted 71% taken and
-    the chain decays fast.  In the original the arg-taking options' taken
-    edges also had a call at profile_estimate time (50/50).  Diagnostics
-    that reproduce it: a guarded `hint()` call (fileutil's rf_hint) at the
-    start of `-bp`/`-wb`/... bodies, or `__builtin_expect(!strnicmp(...),
-    1)` with `--param builtin-expect-probability=50` on `-bp, -wb, -eb,
-    -ip, -e, -c` (greedy search's best set): 412 -> 182 lines, chunk diffs
-    17/20 -> 11/11.  The hint call adds call edges that flip clientKeys'
-    dumpKey tie (the hint with `optimize` on the hint itself leaves a
-    `rep ret` function); the expect version keeps clientKeys.  Neither is
-    in the draft yet because what's left doesn't match either:
-    - `-bp`/`-wb`: IRA pops `a` (cost 848) before the `(i + 1) * 4`
-      temp (564), so `a` gets edx/eax; the original has `a` in ebp (arg's
-      register).  An inlined getArgs (a `static inline` copy of getArgs
-      called at `-wb`) gives `a` in ebp but rotates i / i + 1 / the
-      scaled index through ecx/eax/edx differently.  getArgs-shaped
-      spellings by hand (shared `a`, `first`/`j`) change nothing.
-    - The `||` orders differ per site in the original ((!a, ==) at -bp,
-      -eb, -ip, -e, -c; (==, !a) at -wb, -r, -w), while one inlined helper
-      gives the same order everywhere, so if getArgs was inlined it was
-      only at some sites.
-    - The tail still lays out the reboot-only path's getinfo/reboot/
-      disconnect as one fall-through trace.
-  - Inline limits: getArgs at `-wb` has growth 43 (> max-inline-insns-auto
-    40), `-rb` 62.  Any per-file `max-inline-insns-auto` other than 40
-    breaks clientKeys (dumpKey inlining), so a limit param is out.
-  - Parked by the user (2026-10-22): mode_client stays mixed, 15 of 16.
-  - Whole object (2026-10-22): every other function matches when the draft
-    is compiled as one file (client_usage and clientKeys included), and its
-    `.rdata` string order is the original's except "failed!\n"
-    (clientInfo) and "Unable to read file %s!" (filelist_ini's ordered
-    string arrays fix those).  mode_client is the only blocker.
-  - Best so far, 138 lines: the `goto fail` tail above plus 50% expects
-    (param 50) on -bp, -wb, -eb, -e, -c, `mode && arg`, the switch-path
-    `netConnect` and the trailing `if (reboot)`; found by a greedy search
-    over every condition seeded with the notes' set.  Left: the `mode &&
-    arg` false path should fall through (orig) but the switch path does,
-    -bp/-wb's `a` register, one duplicated netDisconnect, and the cold
-    block order at the end.  Other tail spellings (one netConnect, `goto
-    done`, if/else flips) are 164-270.
-  - Not getArgs at every option: the original's -bp reloads `argv[i + 1]`
-    after storing i, which hand-written checks give and an inlined getArgs
-    (a `static inline` copy) can't (after inlining `start` is a local
-    argv can't point to).  The copy at -bp/-wb/-eb/-ip is 269 unhinted but
-    worse than the hand-written form once hinted (needs -fno-ipa-icf: ICF
-    folds getArgs into the copy and inlines -rb too).  A `pure` strnicmp
-    (no PRED_CALL on the next-option edges) is 1072.
-  - Crafted profile (`wip/mcfdo.py`, `wip/mcfdo_search.py`, re/gcda.py
-    `--threshold`): mode_client's entry is < 1/1000 of the loop, so every
-    block must be hot and the default threshold overflows the counts (ICE
-    in create_edge); `--threshold=64` works.  NOPROF on clientEraseBlock
-    stops its inlining into mode_client's case 10 (+63 lines), so it gets
-    counts too.  With no overrides the profile build is 208 lines for the
-    138-line hinted source: profile mode orders the cold switch cases and
-    error blocks differently (not a count-resolution issue, thresholds
-    64-8000 agree).  The greedy override search from the plain draft
-    stopped at 273.  Compile from the same path as the instrumented
-    compile: otherwise gcc drops the profile (`coverage-mismatch`), with
-    no message when the .gcda is just missing.
-  - 56 lines (2026-10-23, the draft; param 50): every block up to the
-    round-4 (coldest) traces matches; only their order differs.  What got it:
-    - Exit layout: gcc's ifcombine keeps the *outer* test's probability for
-      `mode && arg`, and expand splits it (q/2, then (q/2)/(1-q/2) for the
-      arg test).  The original's mode test falls into the arg test and that
-      into the reboot path, so the combined test needs P <= 1/3: plain
-      `mode && arg` (no expect) gets PRED_CALL's 29% (its then-block calls
-      netConnect).  Ties in connect_traces go to the longer trace.
-    - `if (!(mode && arg)) { reboot path } else { switch path }`: the
-      inverted if makes the reboot path the RTL fall-through, which ends
-      LRA's EBB there, so `mode` is reloaded (eax / ecx) instead of being
-      inherited into esi across netConnect.
-    - `fail: __attribute__((cold));` (both connects' shared error) and
-      `rok: __attribute__((cold));` (reboot-path netGetInfo): the reboot
-      test after the switch keeps netDisconnect in its own trace and the
-      reboot-path getinfo/netReboot trace is created after it.  Label
-      attributes are PRED_HOT_LABEL (85%) / PRED_COLD_LABEL predictors.
-    - -bp/-wb `a` in ebp: IRA pushes allocnos by frequency; `a` (3 refs)
-      beat the `(i + 1) * 4` temp (2 refs) and took edx.  Two
-      `__asm__("" :: "r"((unsigned)(i + 1) * 4))` uses before the second
-      argument load raise the temp (code-free).
-    - -wb's `j = i + 1`: its int i+1 needs a second use, or TER folds it
-      into the ifcombined `(j == argc) | !a` and expand emits `cmp edx,esi`.
-      -bp's `j = i + 2; if (j == argc || !b ...)`: fold (at parse time,
-      both operands simple) makes `(argc == j) | (b == 0)` in source order;
-      `i + 2 == argc || !b` isn't simple and ifcombine puts `!b` first.
-  - Round-4 order (left): the cold traces (error log blocks, usage calls,
-    -ip/-r/-w/-e/-c/-i/-p) come out of bb-reorder's fibonacci heap with
-    keys 0..-7, mostly tied, so their order depends on the whole heap
-    history.  Our `client_usage(2, NULL)` (threaded entry edge, key -4)
-    comes before the HDD errors (-2, half of case 4/5's 4), which the
-    original has after them: in a min-heap that needs the HDD errors at
-    <= -4 (cases 4/5 at 8+) or a colder usage(2).  Replaying our heap
-    events (wip/fibsim.py, fibwhatif.py) with changed keys (scratch
-    solvers: best-first, annealing, a realizability-bounded design search)
-    reaches the original's first 21 traces at best, 12 with realizable
-    bounds; no single hint or hint pair from greedy searches (expects on
-    every option, labels on every cold block) improves the 56.  So the
-    original's heap history (round-3 push order or keys) likely differs
-    from ours.  A profile build (mcfdo.py) keeps the hot part matching
-    (clientEraseBlock needs its entry count scaled by its call site, or
-    case 10's inlined blocks get frequency 0), but the standalone
-    clientEraseBlock and clientKeys (NOPROF breaks its dumpKey tie) then
-    differ, so it would need mode_client spliced from a profile compile.
+Searched and excluded (tools in `wip/mc/`): keys alone can't do it
+(`mcsim2.py` replays the heap with frequency overrides, incl. the
+"Changing key" priority form; bounded searches `mcfsearch.py`/`mcstage.py`
+plateau at 3 inversions, always usage(2) before the HDD errors); then/else
+polarity of every cold `if` changes nothing (gcc canonicalizes; `mcgen.py`
+toggles); `E()` on each of the 50 cold conditions and every combination of
+the six toggles that do move blocks (hdd, erase2, noereboot, tail, norok,
+nofail; `mcexp.py`, `mccombo.py`) never put the HDD errors first without
+breaking the hot part; a crafted profile (`fdorun.py` turns a frequency
+design into gcda.py overrides, run from the same path as the instrumented
+compile) can raise the cases but distinct case probabilities also change
+which case trace connect_traces puts after the dispatch (all case edges
+tie at 1/13 and the 4-block erase trace wins by length), the round-3
+threshold (10) builds cases >= 10 early, and the inlined clientEraseBlock
+needs `--mult`.  re/gcda.py now applies several overrides on one source
+block as a group (needed for switch edges).  Score a variant with
+`python wip/mc/mcvar.py <file.c>` (inversions and matching prefix of the
+cold order, FNCMP=1 adds the fncmp count); `wip/mc/bbsum.py` lists a
+bbro dump's traces with each block's calls, `wip/mc/mcblk.py` diffs the
+block order against the original's .s.
 
 ## app/net.c
 

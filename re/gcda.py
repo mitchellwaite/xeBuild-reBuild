@@ -229,12 +229,19 @@ def flows(fn, est, over):
         else:
             probs[(s, d)] = est[t][1][m[d]]
     fn['map'] = m
-    for (ts, td), p in over.items():    # dump numbering
+    # dump numbering; several overrides on one source block set those edges
+    # and share what is left among the block's other edges in their ratios
+    groups = {}
+    for (ts, td), p in over.items():
         s, d = [k for k in probs if m[k[0]] == ts and m[k[1]] == td and ts != td][0]
-        rest = sum(v for (a, b), v in probs.items() if a == s and b != d)
-        for k in [k for k in probs if k[0] == s and k[1] != d]:
-            probs[k] = probs[k] * (100 - p) / rest if rest else (100 - p)
-        probs[(s, d)] = p
+        groups.setdefault(s, {})[d] = p
+    for s, ds in groups.items():
+        rest = sum(v for (a, b), v in probs.items() if a == s and b not in ds)
+        left = 100 - sum(ds.values())
+        for k in [k for k in probs if k[0] == s and k[1] not in ds]:
+            probs[k] = probs[k] * left / rest if rest else left
+        for d, p in ds.items():
+            probs[(s, d)] = p
     x, flow = solve(arcs, probs)
     real = {s for s, d, f in arcs if not f & FAKE}
     for s, d, f in arcs:
