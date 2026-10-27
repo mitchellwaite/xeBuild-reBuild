@@ -97,7 +97,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # -fno-toplevel-reorder keeps
       app/bootloaders) orig="$f.c"
              cflags="-O3 -fno-toplevel-reorder" ;;
-      # netSendFile's !name hint (55-65), netRecvVerbose's verbose hint (65)
+      # netSendFile's !name hint (55-65), netRecvVerbose's verbose hint (65).
+      # No -fno-toplevel-reorder: netRecv is netRecvVerbose's IPA-CP clone,
+      # which only the default order emits first (as the original)
       app/net) orig="$f.c"
              cflags="-O3 --param builtin-expect-probability=65" ;;
       # loadFileCrc's verbose hint (92-99); 98 for wip/'s checkBl draft.

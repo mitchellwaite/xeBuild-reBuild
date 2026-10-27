@@ -1,11 +1,5 @@
 /* net: talking to the console's updsvr over winsock (TCP port 49 after a
-   UDP beacon on port 48): commands, data transfers, console info.
-   Mixed object: the functions here are spliced into net.s
-   (re/splice.py), which still holds the rest and the data, so strings
-   name the .s's (splice.py drops gcc's copies; static arrays rather
-   than externs so that gcc still folds strlen of them).
-   wip/app/net.c is the whole draft; wip/netmixed.py makes this file
-   from it. */
+   UDP beacon on port 48): commands, data transfers, console info */
 #include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,77 +48,78 @@ u32 getLeU32(const u8 *p);
 void setBeU32(u32 v, u8 *p);
 int writeFile(const char *name, const void *buf, size_t size);
 
-/* net.s's data */
-static SOCKET netSock;
-static struct consoleinfo *netInfo;
+/* not static: as a public variable *len may alias it, so sched2 keeps
+   netRecv's `*len = 0` after the netSock load (anti-dependence) */
+SOCKET netSock = INVALID_SOCKET;
+/* gcc emits the statics in reverse: netInfo ends up first in .bss */
 static u32 netEmpty;		/* returned for a zero-length reply */
-extern time_t netStartTime;
+static struct consoleinfo *netInfo;
+time_t netStartTime;
 
-/* strings in net.s */
-static const char net_4574b0[] = "timeout waiting for data, %d\n";
-static const char net_4574d0[] = "unable to fetch first 4 bytes, %d\n";
-static const char net_4574f4[] = "timeout waiting for data, error %d\n";
-static const char net_457518[] = "could not receive data on socket, error %d\n";
-static const char net_457544[] = "received only %x of %x bytes! fail\n";
-static const char net_457568[] = "unable to open socket, error %d\n";
-static const char net_45758c[] = "unable to set bcast socket option, error %d\n";
-static const char net_4575bc[] = "unable to set bind socket, error %d\n";
-static const char net_4575e1[] = "Socket error! %d\n";
-static const char net_4575f3[] = "UDP wait timeout!\n";
-static const char net_457608[] = "Beacon received, but the beacon magic %X was not %X!\n";
-static const char net_45763e[] = "Completed in %.0fs\n";
-static const char net_457652[] = "waiting for 0x%x bytes\n";
-static const char net_45766a[] = "received 0x%08x of 0x%08x\r";
-static const char net_457688[] = "socket error sending data size, %d\n";
-static const char net_4576ac[] = "socket error sending data (1), %d\n";
-static const char net_4576cf[] = "sent 0x%08x of 0x%08x\r";
-static const char net_4576e8[] = "could not create client socket, error %d\n";
-static const char net_457712[] = "could not connect, error %d\n";
-static const char net_45772f[] = "No";
-static const char net_457732[] = "Yes";
-static const char net_457736[] = "GTIN\n";
-static const char net_45773c[] = "success!\n";
-static const char net_457746[] = "connected to %s";
-static const char net_457758[] = " with updsvr version %d (peek version %d)\n";
-static const char net_457784[] = "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n";
-static const char net_4577bb[] = "failed!\n";
-static const char net_4577c4[] = "started, watching network for xbox...";
-static const char net_4577ec[] = "success, found xbox beacon at %u.%u.%u.%u\n";
-static const char net_457817[] = "attempting to connect...";
-static const char net_457830[] = "failed to find xbox beacon\n";
-static const char net_45784c[] = "attempting forced connection to %u.%u.%u.%u...";
-static const char net_45787c[] = "attempting to convert %s to an address failed, error %d\n";
-static const char net_4578b5[] = "WSAStartup failed, error %d\n";
-static const char net_4578d4[] = "success!\nGetting console info...";
-static const char net_4578f5[] = "\ndisconnecting from server...";
-static const char net_457913[] = "QUIT\n";
-static const char net_457919[] = "OK\n";
-static const char net_45791d[] = "failed\n";
-static const char net_457925[] = "MTPT%s: %s\n";
-static const char net_457931[] = "mounting %s to %s:...";
-static const char net_457947[] = "UMPT%s:\n";
-static const char net_457950[] = "unmounting %s:...";
-static const char net_457962[] = "GETF%s\n";
-static const char net_45796c[] = "reading flash image from console...";
-static const char net_457990[] = "GTFL\n";
-static const char net_457998[] = "received 0x%x bytes data OK, writing to file %s...";
-static const char net_4579cb[] = "GTBL\n";
-static const char net_4579d1[] = "WRFL\n";
-static const char net_4579d8[] = "file sent OK, awaiting result...";
-static const char net_4579f9[] = "RBLK%04x%04x\n";
-static const char net_457a07[] = "WBLK%04x%04x\n";
-static const char net_457a15[] = "ERBL%04x%04x\n";
-static const char net_457a23[] = "GTBB\n";
-static const char net_457a29[] = "FMEX\n";
-static const char net_457a2f[] = "FMCM\n";
-static const char net_457a35[] = "sending shutdown command...";
-static const char net_457a51[] = "SHDN\n";
-static const char net_457a57[] = "sending reboot command...";
-static const char net_457a71[] = "REEB\n";
-
-/* still in net.s; gcc gave it the local calling convention */
-u8 *netRecv(int *len) __attribute__((regparm(1)));
-int netWritePatches(const u8 *buf, u32 len);
+/* the strings, as static arrays: gcc emits variables in reverse order of
+   definition, so these are defined from the last .rdata string to the
+   first; aligned as gcc aligns a literal (4 from 31 bytes) */
+static const char net_457a77[] __attribute__((aligned(1))) = "WBPT\n";
+static const char net_457a71[] __attribute__((aligned(1))) = "REEB\n";
+static const char net_457a57[] __attribute__((aligned(1))) = "sending reboot command...";
+static const char net_457a51[] __attribute__((aligned(1))) = "SHDN\n";
+static const char net_457a35[] __attribute__((aligned(1))) = "sending shutdown command...";
+static const char net_457a2f[] __attribute__((aligned(1))) = "FMCM\n";
+static const char net_457a29[] __attribute__((aligned(1))) = "FMEX\n";
+static const char net_457a23[] __attribute__((aligned(1))) = "GTBB\n";
+static const char net_457a15[] __attribute__((aligned(1))) = "ERBL%04x%04x\n";
+static const char net_457a07[] __attribute__((aligned(1))) = "WBLK%04x%04x\n";
+static const char net_4579f9[] __attribute__((aligned(1))) = "RBLK%04x%04x\n";
+static const char net_4579d8[] __attribute__((aligned(4))) = "file sent OK, awaiting result...";
+static const char net_4579d1[] __attribute__((aligned(1))) = "WRFL\n";
+static const char net_4579cb[] __attribute__((aligned(1))) = "GTBL\n";
+static const char net_457998[] __attribute__((aligned(4))) = "received 0x%x bytes data OK, writing to file %s...";
+static const char net_457990[] __attribute__((aligned(1))) = "GTFL\n";
+static const char net_45796c[] __attribute__((aligned(4))) = "reading flash image from console...";
+static const char net_457962[] __attribute__((aligned(1))) = "GETF%s\n";
+static const char net_457950[] __attribute__((aligned(1))) = "unmounting %s:...";
+static const char net_457947[] __attribute__((aligned(1))) = "UMPT%s:\n";
+static const char net_457931[] __attribute__((aligned(1))) = "mounting %s to %s:...";
+static const char net_457925[] __attribute__((aligned(1))) = "MTPT%s: %s\n";
+static const char net_45791d[] __attribute__((aligned(1))) = "failed\n";
+static const char net_457919[] __attribute__((aligned(1))) = "OK\n";
+static const char net_457913[] __attribute__((aligned(1))) = "QUIT\n";
+static const char net_4578f5[] __attribute__((aligned(1))) = "\ndisconnecting from server...";
+static const char net_4578d4[] __attribute__((aligned(4))) = "success!\nGetting console info...";
+static const char net_4578b5[] __attribute__((aligned(1))) = "WSAStartup failed, error %d\n";
+static const char net_45787c[] __attribute__((aligned(4))) = "attempting to convert %s to an address failed, error %d\n";
+static const char net_45784c[] __attribute__((aligned(4))) = "attempting forced connection to %u.%u.%u.%u...";
+static const char net_457830[] __attribute__((aligned(1))) = "failed to find xbox beacon\n";
+static const char net_457817[] __attribute__((aligned(1))) = "attempting to connect...";
+static const char net_4577ec[] __attribute__((aligned(4))) = "success, found xbox beacon at %u.%u.%u.%u\n";
+static const char net_4577c4[] __attribute__((aligned(4))) = "started, watching network for xbox...";
+static const char net_4577bb[] __attribute__((aligned(1))) = "failed!\n";
+static const char net_457784[] __attribute__((aligned(4))) = "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n";
+static const char net_457758[] __attribute__((aligned(4))) = " with updsvr version %d (peek version %d)\n";
+static const char net_457746[] __attribute__((aligned(1))) = "connected to %s";
+static const char net_45773c[] __attribute__((aligned(1))) = "success!\n";
+static const char net_457736[] __attribute__((aligned(1))) = "GTIN\n";
+static const char net_457732[] __attribute__((aligned(1))) = "Yes";
+static const char net_45772f[] __attribute__((aligned(1))) = "No";
+static const char net_457712[] __attribute__((aligned(1))) = "could not connect, error %d\n";
+static const char net_4576e8[] __attribute__((aligned(4))) = "could not create client socket, error %d\n";
+static const char net_4576cf[] __attribute__((aligned(1))) = "sent 0x%08x of 0x%08x\r";
+static const char net_4576ac[] __attribute__((aligned(4))) = "socket error sending data (1), %d\n";
+static const char net_457688[] __attribute__((aligned(4))) = "socket error sending data size, %d\n";
+static const char net_45766a[] __attribute__((aligned(1))) = "received 0x%08x of 0x%08x\r";
+static const char net_457652[] __attribute__((aligned(1))) = "waiting for 0x%x bytes\n";
+static const char net_45763e[] __attribute__((aligned(1))) = "Completed in %.0fs\n";
+static const char net_457608[] __attribute__((aligned(4))) = "Beacon received, but the beacon magic %X was not %X!\n";
+static const char net_4575f3[] __attribute__((aligned(1))) = "UDP wait timeout!\n";
+static const char net_4575e1[] __attribute__((aligned(1))) = "Socket error! %d\n";
+static const char net_4575bc[] __attribute__((aligned(4))) = "unable to set bind socket, error %d\n";
+static const char net_45758c[] __attribute__((aligned(4))) = "unable to set bcast socket option, error %d\n";
+static const char net_457568[] __attribute__((aligned(4))) = "unable to open socket, error %d\n";
+static const char net_457544[] __attribute__((aligned(4))) = "received only %x of %x bytes! fail\n";
+static const char net_457518[] __attribute__((aligned(4))) = "could not receive data on socket, error %d\n";
+static const char net_4574f4[] __attribute__((aligned(4))) = "timeout waiting for data, error %d\n";
+static const char net_4574d0[] __attribute__((aligned(4))) = "unable to fetch first 4 bytes, %d\n";
+static const char net_4574b0[] __attribute__((aligned(1))) = "timeout waiting for data, %d\n";
 
 void netFree(void *p)
 {
@@ -225,6 +220,15 @@ int netSendStr(const char *s)
 	return 1;
 }
 
+/* receive a length-prefixed reply, with progress output if verbose;
+   netRecv is its IPA-CP clone for verbose 0.  verbose is unsigned: as an
+   int, uncprop reuses it for got's 0 and keeps it in a register.  The
+   expect hint (with builtin-expect-probability
+   65; 60 aligns the verbose size <= 0 exit) starts the verbose loop's trace
+   before the shared recv-failure block.  Hinting every test also matches,
+   but then IPA-CP doesn't clone.  The asm (a use of got on the short-count
+   path) puts got over IRA's caller-save threshold in the clone, which
+   then allocates size/buf/got to ebx/esi/edi. */
 u8 *netRecvVerbose(int *len, u32 verbose)
 {
 	fd_set fds;
@@ -288,11 +292,14 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 	}
 	if (verbose)
 		putchar('\n');
+	__asm__ ("" : : "g"(got));
 	log_printf(0, net_457544, got, size);
 	if (buf != (u8 *)&netEmpty)
 		free(buf);
 	return NULL;
 }
+
+#define netRecv(len) netRecvVerbose(len, 0)
 
 /* send a length-prefixed block */
 int netSendData(const u8 *buf, u32 len, int verbose)
@@ -397,6 +404,11 @@ int netReadInfo(void)
 	return 1;
 }
 
+/* Failures fall through to one return 0.  Each branch has its own sockaddr
+   (the socket code written out, as in netOpenSocket) and its own
+   netReadInfo: the branch's clobber block keeps phiopt off the readinfo
+   test, ce2 speculates the 1 into both copies and jump2 crossjumps them;
+   goto ok keeps the success block from following the test. */
 u32 netConnect(const char *ip)
 {
 	WSADATA wsa;
@@ -611,23 +623,24 @@ int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netEraseBlock(u16 block, u16 count)
 {
-	int rlen, ret;
+	int ret;
 	u8 *r;
 	char cmd[32];
 
 	sprintf(cmd, net_457a15, block, count);
-	if (!netSendStr(cmd))
-		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int rlen;
+
+		if (!netSendStr(cmd))
+			return 0;
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
@@ -674,41 +687,43 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netFormatSysex(void)
 {
-	int len, ret;
+	int ret;
 	u8 *r;
 
-	if (!netSendStr(net_457a29))
-		return 0;
-	r = netRecv(&len);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (len == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int len;
+
+		if (!netSendStr(net_457a29))
+			return 0;
+		r = netRecv(&len);
+		if (!r)
+			return 0;
+		ret = len == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netFormatCompat(void)
 {
-	int len, ret;
+	int ret;
 	u8 *r;
 
-	if (!netSendStr(net_457a2f))
-		return 0;
-	r = netRecv(&len);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (len == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int len;
+
+		if (!netSendStr(net_457a2f))
+			return 0;
+		r = netRecv(&len);
+		if (!r)
+			return 0;
+		ret = len == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
@@ -757,4 +772,23 @@ int netReboot(int how)
 			log_printf(0, net_45791d);
 	}
 	return 1;
+}
+
+__attribute__((optimize("no-early-inlining")))
+int netWritePatches(const u8 *buf, u32 len)
+{
+	int ret;
+	u8 *r;
+
+	{
+		int rlen;
+
+		if (!netSendStr(net_457a77) || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
+			return 0;
+		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
+	if (ret)
+		return 1;
+	return 0;
 }

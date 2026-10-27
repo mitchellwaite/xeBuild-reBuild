@@ -421,28 +421,6 @@ SYMBOLS = {
     0x41f330: '_netCheckOk', 0x41f390: '_netOpenSocket', 0x41f470: '_netReadInfo',
     0x41fa00: '_netClose', 0x44a6c0: '_netSock', 0x479574: '_netInfo',
     0x479578: '_netEmpty', 0x4cd844: '_netStartTime', 0x448190: '__difftime32',
-    # net.s strings the mixed net.c refers to
-    0x45763e: '_net_45763e', 0x457688: '_net_457688', 0x4576ac: '_net_4576ac',
-    0x4576cf: '_net_4576cf', 0x4576e8: '_net_4576e8', 0x457712: '_net_457712',
-    0x45773c: '_net_45773c', 0x4577bb: '_net_4577bb', 0x4578f5: '_net_4578f5',
-    0x457913: '_net_457913', 0x457919: '_net_457919', 0x45791d: '_net_45791d',
-    0x457925: '_net_457925', 0x457931: '_net_457931', 0x457947: '_net_457947',
-    0x457950: '_net_457950', 0x457962: '_net_457962', 0x45796c: '_net_45796c',
-    0x457990: '_net_457990', 0x457998: '_net_457998', 0x4579cb: '_net_4579cb',
-    0x4579d1: '_net_4579d1', 0x4579d8: '_net_4579d8', 0x4579f9: '_net_4579f9',
-    0x457a07: '_net_457a07', 0x457a15: '_net_457a15', 0x457a23: '_net_457a23',
-    0x457a29: '_net_457a29', 0x457a2f: '_net_457a2f', 0x457a35: '_net_457a35',
-    0x457a51: '_net_457a51', 0x457a57: '_net_457a57', 0x457a71: '_net_457a71',
-    0x457568: '_net_457568', 0x45758c: '_net_45758c', 0x4575bc: '_net_4575bc',
-    0x4575e1: '_net_4575e1', 0x4575f3: '_net_4575f3', 0x457608: '_net_457608',
-    0x45772f: '_net_45772f', 0x457732: '_net_457732', 0x457736: '_net_457736',
-    0x457746: '_net_457746', 0x457758: '_net_457758', 0x457784: '_net_457784',
-    0x4574b0: '_net_4574b0', 0x4574d0: '_net_4574d0', 0x4574f4: '_net_4574f4',
-    0x4577c4: '_net_4577c4', 0x4577ec: '_net_4577ec', 0x457817: '_net_457817',
-    0x457830: '_net_457830', 0x45784c: '_net_45784c', 0x45787c: '_net_45787c',
-    0x4578b5: '_net_4578b5', 0x4578d4: '_net_4578d4',
-    0x457518: '_net_457518', 0x457544: '_net_457544', 0x457652: '_net_457652',
-    0x45766a: '_net_45766a',
     # app/image_read (wip/app/image_read.c) and what it calls; names are ours
     0x4136a0: '_fsFind', 0x4138c0: '_getImageLdv', 0x413ad0: '_getImageSmc',
     0x413d30: '_getImageKv', 0x414050: '_getImageMobiles', 0x414300: '_getNetKd',
@@ -623,15 +601,6 @@ C_FUNCS = {
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches
     0x4076b0, 0x407850, 0x407a00, 0x408080,  # clientReadBlocks clientWriteBlocks patchNand clientEraseBlock
     0x408160, 0x406e50, 0x407bf0,            # getArgs checkPatches clientBinPatch
-    # app/net (the rest are drafted in wip/app/net.c)
-    0x41ea70, 0x41ed50, 0x41ed70, 0x41edb0,  # netFree netTimerStart netTimerEnd netTimerElapsed
-    0x41ede0, 0x41f1a0, 0x41f330, 0x41f390,  # netSendStr netSendData netCheckOk netOpenSocket
-    0x41fa00, 0x41fa40, 0x41fe10, 0x41fe20,  # netClose netDisconnect netGetInfo netDumpNand
-    0x41ff90, 0x420420, 0x420840, 0x41faf0,  # netGetBldrs netGetBadBlocks netReboot netMount
-    0x41fc30, 0x41fd60, 0x420140, 0x4205d0,  # netUnmount netGetFile netReadBlocks netFormatSysex
-    0x420670, 0x420200, 0x420320, 0x420710,  # netFormatCompat netWriteBlocks netEraseBlock netMkdir
-    0x41ffe0, 0x41ea90, 0x41f470, 0x420470,  # netSendFlash netFindBeacon netReadInfo netSendFile
-    0x41ee30, 0x41f700,                      # netRecvVerbose netConnect
     # app/image_write (wip/app/image_write.c is the whole draft; wip/mixed.py)
     0x40fb10, 0x40fb60, 0x40fbb0, 0x40fc30,  # imageFree calcEcd calcPageEcc pageEccOk
     0x40feb0, 0x40ff40, 0x40ff80, 0x410040,  # pageErased blockErased blockPagesErased blockIsFF

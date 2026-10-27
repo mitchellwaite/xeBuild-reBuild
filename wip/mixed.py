@@ -2,7 +2,8 @@
 
 python wip/mixed.py <obj> fn1 fn2 ...   (the functions that match)
 
-Generic version of netmixed.py, set up per object in OBJS.  String literals
+Generic version of the old netmixed.py (app/net, now whole C), set up per
+object in OBJS.  String literals
 passed to functions become static arrays named after the .s's strings
 (`<prefix>_<address>`; static arrays rather than externs so gcc still folds
 strlen of them, and splice.py drops gcc's .rdata copies).  Functions not

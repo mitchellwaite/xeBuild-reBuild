@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 21 of 25 app files build from C, four more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 22 of 25 app files build from C, three more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **607 of 617** (605 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 62 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **609 of 617** (607 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 63 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 21 / 25 | 422 / 432 |
+| `app/` | 22 / 25 | 424 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -39,7 +39,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
 | `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
 | `app/image_read` | mixed; 0 of 2 drafted functions match in `wip/app/image_read.c` | 31 / 33 |
-| `app/net` | mixed; 0 of 2 drafted functions match in `wip/app/net.c` | 30 / 32 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -151,43 +150,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `loadDump` (0x417680)
 
 </details>
-<details>
-<summary><code>app/net</code>: 30 / 32 in C</summary>
-
-- ⬜ `netRecv` (0x41e800) (draft in `wip/`, no match yet)
-- ✅ `netFree` (0x41ea70)
-- ✅ `netFindBeacon` (0x41ea90)
-- ✅ `netTimerStart` (0x41ed50)
-- ✅ `netTimerEnd` (0x41ed70)
-- ✅ `netTimerElapsed` (0x41edb0)
-- ✅ `netSendStr` (0x41ede0)
-- ✅ `netRecvVerbose` (0x41ee30)
-- ✅ `netSendData` (0x41f1a0)
-- ✅ `netCheckOk` (0x41f330)
-- ✅ `netOpenSocket` (0x41f390)
-- ✅ `netReadInfo` (0x41f470)
-- ✅ `netConnect` (0x41f700)
-- ✅ `netClose` (0x41fa00)
-- ✅ `netDisconnect` (0x41fa40)
-- ✅ `netMount` (0x41faf0)
-- ✅ `netUnmount` (0x41fc30)
-- ✅ `netGetFile` (0x41fd60)
-- ✅ `netGetInfo` (0x41fe10)
-- ✅ `netDumpNand` (0x41fe20)
-- ✅ `netGetBldrs` (0x41ff90)
-- ✅ `netSendFlash` (0x41ffe0)
-- ✅ `netReadBlocks` (0x420140)
-- ✅ `netWriteBlocks` (0x420200)
-- ✅ `netEraseBlock` (0x420320)
-- ✅ `netGetBadBlocks` (0x420420)
-- ✅ `netSendFile` (0x420470)
-- ✅ `netFormatSysex` (0x4205d0)
-- ✅ `netFormatCompat` (0x420670)
-- ✅ `netMkdir` (0x420710)
-- ✅ `netReboot` (0x420840)
-- ⬜ `netWritePatches` (0x420910) (draft in `wip/`, no match yet)
-
-</details>
 
 ### Completed
 
@@ -209,6 +171,7 @@ Objects built entirely from C, in link order.
 | `app/mode_ini` | 6 |
 | `app/mode_build` | 5 |
 | `app/keys` | 48 |
+| `app/net` | 32 |
 | `app/fileutil` | 47 |
 | `app/options` | 19 |
 | `app/build` | 41 |
@@ -449,6 +412,43 @@ Objects built entirely from C, in link order.
 - ✅ `daeEncrypt` (0x41e180)
 - ✅ `fcrtEncrypt` (0x41e620)
 - ✅ `shaHeader` (0x41e7b0)
+
+</details>
+<details>
+<summary><code>app/net</code>: 32 functions</summary>
+
+- ✅ `netRecvVerbose.constprop.1` (0x41e800)
+- ✅ `netFree` (0x41ea70)
+- ✅ `netFindBeacon` (0x41ea90)
+- ✅ `netTimerStart` (0x41ed50)
+- ✅ `netTimerEnd` (0x41ed70)
+- ✅ `netTimerElapsed` (0x41edb0)
+- ✅ `netSendStr` (0x41ede0)
+- ✅ `netRecvVerbose` (0x41ee30)
+- ✅ `netSendData` (0x41f1a0)
+- ✅ `netCheckOk` (0x41f330)
+- ✅ `netOpenSocket` (0x41f390)
+- ✅ `netReadInfo` (0x41f470)
+- ✅ `netConnect` (0x41f700)
+- ✅ `netClose` (0x41fa00)
+- ✅ `netDisconnect` (0x41fa40)
+- ✅ `netMount` (0x41faf0)
+- ✅ `netUnmount` (0x41fc30)
+- ✅ `netGetFile` (0x41fd60)
+- ✅ `netGetInfo` (0x41fe10)
+- ✅ `netDumpNand` (0x41fe20)
+- ✅ `netGetBldrs` (0x41ff90)
+- ✅ `netSendFlash` (0x41ffe0)
+- ✅ `netReadBlocks` (0x420140)
+- ✅ `netWriteBlocks` (0x420200)
+- ✅ `netEraseBlock` (0x420320)
+- ✅ `netGetBadBlocks` (0x420420)
+- ✅ `netSendFile` (0x420470)
+- ✅ `netFormatSysex` (0x4205d0)
+- ✅ `netFormatCompat` (0x420670)
+- ✅ `netMkdir` (0x420710)
+- ✅ `netReboot` (0x420840)
+- ✅ `netWritePatches` (0x420910)
 
 </details>
 <details>

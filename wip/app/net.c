@@ -48,70 +48,13 @@ u32 getLeU32(const u8 *p);
 void setBeU32(u32 v, u8 *p);
 int writeFile(const char *name, const void *buf, size_t size);
 
-static SOCKET netSock = INVALID_SOCKET;
-static struct consoleinfo *netInfo;
+/* not static: as a public variable *len may alias it, so sched2 keeps
+   netRecv's `*len = 0` after the netSock load (anti-dependence) */
+SOCKET netSock = INVALID_SOCKET;
+/* gcc emits the statics in reverse: netInfo ends up first in .bss */
 static u32 netEmpty;		/* returned for a zero-length reply */
+static struct consoleinfo *netInfo;
 time_t netStartTime;
-
-/* receive a length-prefixed reply */
-static u8 *netRecv(int *len)
-{
-	fd_set fds;
-	struct timeval tv;
-	u8 hdr[4];
-	u8 *buf;
-	int size, got, r;
-
-	tv.tv_sec = 15;
-	tv.tv_usec = 0;
-	FD_ZERO(&fds);
-	FD_SET(netSock, &fds);
-	*len = 0;
-	r = select(0, &fds, NULL, NULL, &tv);
-	if (r == SOCKET_ERROR || r == 0) {
-		log_printf(0, "timeout waiting for data, %d\n", WSAGetLastError());
-		return NULL;
-	}
-	r = recv(netSock, (char *)hdr, 4, 0);
-	if (r == SOCKET_ERROR || r == 0) {
-		log_printf(0, "unable to fetch first 4 bytes, %d\n", WSAGetLastError());
-		return NULL;
-	}
-	size = getBeU32(hdr);
-	if (size == -1)
-		return NULL;
-	if (size == 0) {
-		*len = 0;
-		return (u8 *)&netEmpty;
-	}
-	buf = calloc(size, 1);
-	got = 0;
-	while (got < size) {
-		r = select(0, &fds, NULL, NULL, &tv);
-		if (r == SOCKET_ERROR || r == 0) {
-			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
-			if (buf != (u8 *)&netEmpty)
-				free(buf);
-			return NULL;
-		}
-		r = recv(netSock, (char *)buf + got, size - got, 0);
-		if (r == SOCKET_ERROR) {
-			log_printf(0, "could not receive data on socket, error %d\n", WSAGetLastError());
-			if (buf != (u8 *)&netEmpty)
-				free(buf);
-			return NULL;
-		}
-		got += r;
-	}
-	if (got == size) {
-		*len = size;
-		return buf;
-	}
-	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
-	if (buf != (u8 *)&netEmpty)
-		free(buf);
-	return NULL;
-}
 
 void netFree(void *p)
 {
@@ -212,12 +155,15 @@ int netSendStr(const char *s)
 	return 1;
 }
 
-/* netRecv with progress output; netRecv is probably its constprop clone
-   (verbose 0).  verbose is unsigned: as an int, uncprop reuses it for got's
-   0 and keeps it in a register.  The hint (with builtin-expect-probability
+/* receive a length-prefixed reply, with progress output if verbose;
+   netRecv is its IPA-CP clone for verbose 0.  verbose is unsigned: as an
+   int, uncprop reuses it for got's 0 and keeps it in a register.  The
+   expect hint (with builtin-expect-probability
    65; 60 aligns the verbose size <= 0 exit) starts the verbose loop's trace
    before the shared recv-failure block.  Hinting every test also matches,
-   but then IPA-CP doesn't clone. */
+   but then IPA-CP doesn't clone.  The asm (a use of got on the short-count
+   path) puts got over IRA's caller-save threshold in the clone, which
+   then allocates size/buf/got to ebx/esi/edi. */
 u8 *netRecvVerbose(int *len, u32 verbose)
 {
 	fd_set fds;
@@ -281,11 +227,14 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 	}
 	if (verbose)
 		putchar('\n');
+	__asm__ ("" : : "g"(got));
 	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 	if (buf != (u8 *)&netEmpty)
 		free(buf);
 	return NULL;
 }
+
+#define netRecv(len) netRecvVerbose(len, 0)
 
 /* send a length-prefixed block */
 int netSendData(const u8 *buf, u32 len, int verbose)
@@ -609,23 +558,24 @@ int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netEraseBlock(u16 block, u16 count)
 {
-	int rlen, ret;
+	int ret;
 	u8 *r;
 	char cmd[32];
 
 	sprintf(cmd, "ERBL%04x%04x\n", block, count);
-	if (!netSendStr(cmd))
-		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int rlen;
+
+		if (!netSendStr(cmd))
+			return 0;
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
@@ -672,41 +622,43 @@ int netSendFile(const char *name, const u8 *buf, u32 len)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netFormatSysex(void)
 {
-	int len, ret;
+	int ret;
 	u8 *r;
 
-	if (!netSendStr("FMEX\n"))
-		return 0;
-	r = netRecv(&len);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (len == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int len;
+
+		if (!netSendStr("FMEX\n"))
+			return 0;
+		r = netRecv(&len);
+		if (!r)
+			return 0;
+		ret = len == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netFormatCompat(void)
 {
-	int len, ret;
+	int ret;
 	u8 *r;
 
-	if (!netSendStr("FMCM\n"))
-		return 0;
-	r = netRecv(&len);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (len == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int len;
+
+		if (!netSendStr("FMCM\n"))
+			return 0;
+		r = netRecv(&len);
+		if (!r)
+			return 0;
+		ret = len == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
@@ -757,22 +709,20 @@ int netReboot(int how)
 	return 1;
 }
 
-__attribute__((optimize("no-crossjumping", "no-early-inlining")))
+__attribute__((optimize("no-early-inlining")))
 int netWritePatches(const u8 *buf, u32 len)
 {
-	int rlen, ret;
+	int ret;
 	u8 *r;
-	if (!netSendStr("WBPT\n"))
-		return 0;
-	if (!netSendData(buf, len, 0))
-		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+
+	{
+		int rlen;
+
+		if (!netSendStr("WBPT\n") || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
+			return 0;
+		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;

@@ -1385,31 +1385,25 @@ Still off:
 
 ## app/net.c
 
-Draft of the whole object (all 32 functions, data as statics). 30 match
-and are built from `src/app/net.c` (mixed): netFree, netFindBeacon,
-netTimerStart/End/Elapsed, netSendStr, netSendData, netCheckOk,
-netOpenSocket, netClose, netDisconnect, netGetInfo, netDumpNand,
-netGetBldrs, netGetBadBlocks, netReboot, netMount, netUnmount, netGetFile,
-netReadBlocks, netFormatSysex/Compat, netWriteBlocks, netEraseBlock,
-netMkdir, netSendFlash, netReadInfo, netSendFile, netRecvVerbose,
-netConnect. `python wip/netmixed.py <fns>` makes the src file from the
-draft (it keeps a function's `__attribute__` line); test the draft with
-`FNCMP_LITERALS=1` (net.s's strings are named `net_<address>`). The src
-file gives the strings as `static const char net_X[] = "..."`, not
-externs, so gcc still folds `strlen` of a command in an inlined
-netSendStr; splice.py drops gcc's .rdata copies. netRecv stays asm and is
-declared `regparm(1)` (gcc's local convention for it). The names for the
+Built entirely from `src/app/net.c` (no .s) since 2026-10-27; this draft
+is the same code with plain string literals. The src file gives every
+string as a `static const char net_<address>[]`: gcc emits variables in
+reverse definition order (net is built without -fno-toplevel-reorder,
+which would emit the netRecv clone last), so the arrays are defined from
+the last .rdata string to the first, aligned as gcc aligns a literal
+(`aligned(4)` from 31 bytes, else 1). With literals, netReadInfo's and
+netConnect's strings come out in a different order from the original's;
+the rest already matched. `.bss` order is the reverse of the statics'
+definitions too (netEmpty is defined before netInfo). The names for the
 unexported functions and data (`netRecv`, `netFindBeacon`, `netSock`,
 `netEmpty`, `netStartTime`, ...) are in `split.py` SYMBOLS, and the ws2_32
 IAT slots are renamed to winsock2.h's `__imp__send@16` spelling
 (`IAT_NAMES`; `.string` lines are skipped so "bind"/"connect" in messages
 survive).
 
-Tools: `python wip/netmixed.py <fns>` lists the string SYMBOLS it uses (add
-missing ones to split.py, and the function to C_FUNCS, then regenerate);
-`sh wip/mixedcmp.sh app/net src/app/net.c good.o --param
-builtin-expect-probability=65` compares the spliced object with a good
-build's net.o including alignment (fncmp doesn't); `python wip/fnvar.py
+Test the draft with `FNCMP_LITERALS=1 python re/fncmp.py wip/app/net.c
+<fn> -O3 --param builtin-expect-probability=65` (netRecv:
+`FNCMP_GCCSYM=_netRecvVerbose.constprop.1`); `python wip/fnvar.py
 wip/app/net.c <fn> <forms file> [attrs]` scores body variants (FLAGS for
 the probability, CMPFN/GCCSYM for the netRecvVerbose clone).
 
@@ -1506,172 +1500,79 @@ What got them (this round):
   style (`return 0` per failure) gives uncprop a coalescable 0 (addr when
   the return is u32, WSAStartup's result when int) and loses the layout.
 
-Open (diff lines from `re/fncmp.py`):
+The last two (2026-10-27):
 
-- netWritePatches 9 (4 without no-crossjumping/no-early-inlining, where
-  only jump2's head merge of the two `mov eax,1` differs). With
-  no-crossjumping the inlined netSendData's two failures reach the return
-  through a block holding hdr's clobber, a different PHI edge from the
-  send failure's, so they get their own `xor`. hdr shares rlen's stack slot
-  in the original, so it really is the inlined netSendData. The head merge
-  is try_head_merge_bb (needs single-pred successors that aren't df-dirty);
-  an empty asm in the netEmpty branch stops it but breaks the threading.
-  2026-10-21 (gcc 6.2 cfgcleanup.c, bb-reorder.c): the same unmerged pair
-  of `mov eax,1` after `cmp r,netEmpty` is in all seven of netWriteBlocks,
-  netEraseBlock, netSendFile, netFormatSysex/Compat, netMkdir and
-  netWritePatches, and nowhere else in the exe, and our six matches all
-  lean on no-crossjumping, so the original avoids the merge some common
-  way. No tail form does (netFormatSysex: `return ret`, `ret = cond`,
-  `if (!ret)`, explicit `r != &netEmpty`, nested ifs, free per path: 4-23
-  lines with crossjumping on). One candidate mechanism: a dirty successor
-  makes try_head_merge_bb return false and sets only block_was_dirty, not
-  `changed`, so if no later iteration runs the merge is lost; csa (just
-  before jump2) leaves the blocks it touches dirty. Not reproduced.
-  Writing the free out as `if (r != &netEmpty) free(r); else if (ret)
-  __asm__("");` stops the merge and leaves 7 lines: the free block's
-  epilogue copy, because the written-out test gives the free path 62% of
-  the failure block (204), under bbro's copy threshold (entry 2486 / 10 =
-  248); netFree inlined late gives 81% (265). A late-inlined helper with
-  the asm in netFree's else (53%), a netEmpty asm after netFree, and an
-  asm in netFree itself (breaks 14 other functions) were worse.
-  2026-10-23: without the attributes netWritePatches is 7 lines (the head
-  merge and the free tail's epilogue copy). jump2's own trace: the head
-  merge happens in iteration 1 at the netEmpty test T, before any
-  crossjump, with both successors clean and single-predecessor. Ruled
-  out: csa/dse2 leaving blocks dirty (csa changes nothing in these
-  functions and calls df_analyze first); a jump block between T and the
-  `eax=1` block (gimple_split_edge puts the split for T->return right
-  after T whenever return's previous block falls into it, which every
-  source order here does); -O2, -Os, -fno-tree-vrp/-dominator-opts,
-  -fno-thread-jumps, -fno-tree-tail-merge/-pre (all worse); netCheckOk
-  forms; block-scoped len/rlen (clobbers change the frame); nested
-  positive tests; 15 tail spellings for netFormatSysex (all 4, the head
-  merge). ce1/ce2 report IF-CASE-2 for T but don't convert it (T0 is
-  converted), in the original too. Untested candidate: a dead insn in one
-  successor in jump2's first try_optimize_cfg run, deleted by run_fast_dce
-  after that run's crossjumps, so the second run sees a dirty successor
-  and stops.
-- netRecv 58/netRecvVerbose 53: the drafts now write `if (buf !=
-  &netEmpty) free(buf); return NULL;` on each failure path (the original
-  repeats the check per path) and netRecv ends `if (got == size) { *len =
-  size; return buf; }` then the short-count failure, which puts the success
-  block last as in the original. What's left in netRecv is registers (size
-  ebx, got edi, buf esi in the original; ours esi/ebx/edi), which come
-  from dom: with `optimize("no-tree-dominator-opts")` it is 13 lines (the
-  `*len = 0` store scheduled first, a recomputed `cmp` before the `je` to
-  the success block, block order). dom rewrites `*len = size` to `*len =
-  got` from the `got == size` equivalence and leaves a degenerate
-  `got = PHI <0>` preheader; moving `*len = 0` or swapping the comparison
-  didn't change it.
-  2026-10-22, what the 13 lines are:
-  - `*len = size` and the recomputed `cmp`: no-dom also turns off
-    phi-only cprop, so a loop-closed `got_3 = PHI <got_44>` survives to
-    RTL; cse's jump equivalence on `got_3 == size` then stores got, and
-    the exit compare isn't the latch's. With dom on both are right (dom
-    makes it `*len = got_44`, and cse's equivalence on the latch's own
-    compare turns it back into size, `je` reusing the `jle` flags). So dom
-    has to stay on; the problem is only the register rotation.
-  - The rotation is IRA order, which follows pseudo numbers, which follow
-    SSA versions. Into-SSA gives the loop PHI `got_1`; ch's header copy
-    replaces it with a recycled name (`got_74`, freed by vrp1's asserts),
-    so got's pseudo (r107) comes after size's (r98), got is one unsplit
-    allocno colored first, and it takes ebx. With the loop's PHI kept
-    (`got = 0; if (got < size) do { ... } while (got < size);`) got is
-    r87, IRA splits it at the loop, and size/buf/got get ebx/esi/edi as in
-    the original, with `*len = size` and the flag reuse right (28 lines).
-    What's left there is layout: that explicit guard is predicted 73%
-    (the header copy of a `while` gets the loop's 97%), and when dom
-    threads its false path straight to the short-count log, the `got ==
-    size` edge goes to 81%, so the tail flips; with the success test inside
-    the guard (30 lines) the sense is right but the log block (freq 358 vs
-    the while form's 186) starts its own trace before recv-fail's.
-    `while (got < size) { do ... while (got < size); }` with
-    `optimize("no-tree-ch")` also gets the registers (28: guard `cmp
-    got,size`, tail at the end). Declaration order and FD_SET spellings
-    change nothing. `__builtin_expect` can't help: the object's 65% is
-    fixed by netSendFile.
-  - `*len = 0`: sched2 issues `mov [edx],0` alone at t=3 (it waits only on
-    the frame allocation's memory clobber; the stack stores wait a cycle
-    for sp). The original issues it in insn order after `[60]=1` and
-    before `[64]=sock`, as if it depended on the `[esp+44]` spill store
-    only, i.e. RTL alias didn't know edx was the incoming pointer. Ours
-    knows: `dx = ax` is the parameter set-up insn, before
-    NOTE_INSN_FUNCTION_BEG, where find_base_value still takes an argument
-    register's base. In the original the len pseudo was probably spilled
-    whole and `mov edx,eax` is an LRA reload copy after the note (base
-    unknown). So it is the same IRA difference again.
-  - netRecv may be IPA-CP's `netRecvVerbose.constprop` (verbose 0): the
-    local calling convention, the function order (the clone is emitted
-    first, netRecvVerbose after netSendStr) and the 13 calls + 2 tail
-    jumps to it all fit. Replacing netRecv with `#define netRecv(len)
-    netRecvVerbose(len, 0)` makes gcc clone it, but the clone has the same
-    rotation (54 lines); `FNCMP_GCCSYM=_netRecvVerbose.constprop.2`
-    compares a clone. netRecvVerbose's own original keeps verbose in its
-    stack slot and tv's address in ebp, unlike ours.
-  - netRecvVerbose (built): `u32 verbose` (as an int, uncprop gives the
-    non-verbose loop's `got = 0` the value of verbose, known 0 there, which
-    keeps verbose in ebx; uncprop needs the two to be coalescable, i.e. the
-    same type) and `__builtin_expect(verbose, 0)` on the "waiting for"
-    printf with the object's probability at 65 (verbose path 29% -> 35%,
-    so its loop's trace starts before the shared recv-failure block's).
-    At 52-62 the hint matches fncmp but aligns the verbose `size <= 0`
-    exit; hinting all five tests matches at 55-65 too, but then IPA-CP
-    finds no benefit in cloning for verbose 0, so the single hint is the
-    one consistent with netRecv being the clone. The original's loop is
-    unswitched on verbose, as ours.
-  - The clone (`#define netRecv(len) netRecvVerbose(len, 0)`, compare with
-    `FNCMP_GCCSYM=_netRecvVerbose.constprop.2`) is netRecv except for the
-    register rotation and the `*len = 0` slot (54 lines). The rotation is
-    not pseudo order but a caller-save cost threshold: an allocno crossing
-    calls keeps edx/ecx (and then gets colored late, leaving ebx to size)
-    only while class cost + call freq x 8 stays under its memory cost
-    (ira-costs.c, the ALLOCNO_CALL_FREQ adjustment; "N avail. regs" in the
-    IRA dump: 1-6 below the threshold, 3-6 above). got sits right at it:
-    the do-while form was 1984 vs ~1970, the clone 1904 vs ~1970. One more
-    use of got on the short-count failure path (an empty `asm ("" : :
-    "g"(got))` before its log) puts the clone over and leaves
-    netRecvVerbose matching: the clone is then 6 lines, only the
-    `*len = 0` slot. Uses in the loop (or at the success return, or after
-    `got = 0`) also move netRecvVerbose's got, which sits just under the
-    same threshold the other way; hints on the loop's error tests wreck
-    it. What the original had there instead of the asm is unknown.
-  - `*len = 0` slot: our `dx = ax` is LRA's inheritance rewrite of the
-    parameter move (insn 2, before NOTE_INSN_FUNCTION_BEG), so alias
-    analysis knows edx is the incoming pointer and sched2 issues the store
-    at t=3 alone. Hiding len behind `asm ("" : "+r"(len))` makes the store
-    wait (it then aliases only the alias-set-0 spill slot: points-to says
-    *len can't be fds, and tv is long), which is the original's order, but
-    loses the edx copy. So the original's `mov edx,eax` was probably a
-    reload of the spilled len, not inherited, after the note, turned into a
-    copy by postreload. bb2 is one EBB and nothing in it blocks
-    inheritance in ours; the LRA/sched params tried don't change it.
-    2026-10-22, the mechanism in gcc 6.2: init_alias_analysis seeds eax,
-    edx and ecx with the argument base (FUNCTION_ARG_REGNO_P) and marks
-    them seen; `edx = eax` keeps that base only while copying_arguments,
-    i.e. before NOTE_INSN_FUNCTION_BEG in insn order (find_base_value
-    returns 0 for a non-fixed hard reg after it, and record_set then drops
-    edx's base). So the original's copy came after the note. LRA undoes an
-    inheritance only if the inheritance pseudo is spilled (r156 got edx
-    here), and in one block it always inherits, so the original reached
-    LRA with something else: a block boundary between the parameter move
-    and the store, or a separate pointer for the store. Entry-block
-    spellings (explicit fd stores, winsock.h FD_SET, store orders,
-    `len[0]`) change nothing. An asm-laundered copy just for the store
-    (`int *l = len; asm ("" : "+r"(l)); *l = 0;`, or `"=r" : "0"`) puts
-    the store in the original's slot, but leaves `mov eax,edx` in the clone
-    (3 lines) and moves netRecvVerbose's `lea ebp` (2); earlier positions
-    are worse (10/11), a volatile asm too (4/7). A register variable would
-    give both functions the same register, but the originals differ (eax
-    in netRecvVerbose's fresh load, edx in the clone's copy).
-    2026-10-23: IRA spills len (r111) whole in the clone ("Popping
-    a3(r111) -- spill"), so the entry `dx = ax` is LRA inheritance from
-    the parameter store, not an allocation. If LRA reloaded instead
-    (`dx = [esp+44]` at the store, after the note), postreload could turn
-    it into `dx = ax` only while ax still holds len, i.e. with the store
-    before the netSock load. Moving `*len = 0` first / after tv / after
-    FD_ZERO: clone 7, netRecvVerbose 10. `asm ("" : : "g"(len))` at seven
-    places (short-count, size == 0, success, both early failures, -1,
-    after calloc): clone stays 6 at best.
+- netRecv is IPA-CP's `netRecvVerbose.constprop` for verbose 0:
+  `#define netRecv(len) netRecvVerbose(len, 0)` after netRecvVerbose (the
+  local calling convention, the function order and the 13 calls + 2 tail
+  jumps all fit). Two things made the clone match:
+  - Registers (size/buf/got in ebx/esi/edi): got sits right at IRA's
+    caller-save cost threshold (ira-costs.c, the ALLOCNO_CALL_FREQ
+    adjustment: an allocno crossing calls keeps edx/ecx only while class
+    cost + call freq x 8 stays under its memory cost). An empty `asm ("" :
+    : "g"(got))` before the short-count log puts the clone's got over it
+    and leaves netRecvVerbose matching. Uses of got elsewhere move
+    netRecvVerbose's got too. What the original had instead of the asm is
+    unknown.
+  - The `*len = 0` slot was alias analysis, not LRA. netSock is public, not
+    `static`: a public global may be aliased by a pointer store, so sched2
+    keeps `*len = 0` after the `netSock` load (anti-dependence) and issues
+    it between the fd_count and fd_array stores, as the original. With
+    netSock static and its address never taken, points-to separates them
+    and the store issues at t=3 alone. (The earlier theory, that the
+    original's `mov edx,eax` was a reload after NOTE_INSN_FUNCTION_BEG, was
+    the wrong lead: the edx copy is the same either way.) In general, a
+    store or load whose slot moves in sched2 can mean that a global's
+    linkage (static or public, address taken or not) differs from the
+    original, which the exe shows only through codegen like this.
+  Ruled out on the way: `*len = 0` first, u32 casts on the log arguments,
+  split or reordered declarations of got, the asm after the log (48 lines
+  each); IRA/LRA/sched params; the do-while and no-tree-ch forms (28).
+- netWritePatches and the other netEmpty functions: the unmerged
+  `mov eax,1` pair after `cmp r,netEmpty` comes from a scope clobber. The
+  reply length lives in a block that ends after `netFree(r)`, and the
+  `if (ret) return 1; return 0;` is outside it:
+  `{ int rlen; if (!netSendStr(..) || !netSendData(..) || !(r =
+  netRecv(&rlen))) return 0; ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+  netFree(r); } if (ret) return 1; return 0;`. After threading, T's
+  `r == &netEmpty` edge (ret known 1) leaves the scope on its own path,
+  through its own gimple block (`rlen ={v} {CLOBBER}; goto <return>`) where
+  the `retval = 1` PHI copy lands. At expand T's false edge gets a
+  jump-only block, which into_cfglayout removes, so in cfglayout order T is
+  followed by neither successor; fixup_reorder_chain gives T a jump block
+  for its fall-through, and at jump2 T's successors are {jump block,
+  `eax=1` block}. flow_find_head_matching_sequence stops at the jump, so
+  try_head_merge_bb has nothing to merge; a jump block reached by
+  fall-through can't be forwarded in rtl mode and merge_blocks_move needs
+  CLEANUP_EXPENSIVE, so it survives jump2, and bbro removes it later. So
+  the `no-crossjumping` attributes were only standing in for the scope:
+  netFormatSysex/Compat and netEraseBlock now match without any
+  attribute. Details:
+  - The block must hold the sends too (a block starting at netRecv: 36-45
+    lines in netFormatSysex); every `return 0` path has to leave through
+    the same clobber copy.
+  - `ret = rlen == 2 && ...` (or `ret = 1; if (... fails) ret = 0;`) gives
+    the branch sense at T; `ret = 0; if (...) ret = 1;` stops the merge
+    but flips `je`/`jne`.
+  - netWritePatches keeps `no-early-inlining` (without it the free block
+    shares the epilogue, bbro's duplication threshold) and needs the three
+    tests folded into one `||`: separate `if (!x) return 0;` tests leave 2
+    lines (`mov [esp],ebx` instead of eax before getBeU16). vrp1 threads
+    the inlined netSendData's `hdr` clobber block and creates the copies in
+    redirection-hash order (keyed on the target block's index,
+    tree-ssa-threadupdate.c); with the rlen clobber the failure copy lands
+    between `len != 0` and the netRecv block, crited1 puts the loop-exit
+    split before netRecv, netRecv ends up last in the chain, and
+    cprop_hardreg (chain order, inheriting only from an already visited
+    single predecessor) doesn't see `ebx = eax` at the getBeU16 block.
+  - netWriteBlocks, netSendFile and netMkdir keep their attributes. In the
+    scoped `||` shape they differ only in the branch sense at T (2, 4 and
+    2 lines); the next step there would be T's edge probabilities.
+  Ruled out: netEmpty public, volatile, const, extern, or as `u8[4]`, `u8`,
+  `u64`, `void *` (no effect); about 35 global flags; global
+  `-fno-crossjumping` (breaks seven matched functions, so the original
+  crossjumped); `ret` as u8/_Bool/char/u16/u32; netFree spellings testing
+  netEmpty first.
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 
