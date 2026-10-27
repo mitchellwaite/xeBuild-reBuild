@@ -141,6 +141,9 @@ void XeCryptShaUpdate(XECRYPT_SHA_STATE *sha, const void *buf, u32 len);
 void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
 void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
 	const u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
+/* the malloc call without the builtin: same call, but CCP doesn't assume
+   MALLOC_ABI_ALIGNMENT for the result (the ECD memcpy aligns its destination) */
+void *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));
 
 extern struct xebuild xb;
 extern u32 mmcAnchor[0x80];
@@ -233,12 +236,23 @@ static const char iw_451c18[] = "done!\nwriting SHA-1 to file...";
 static const char iw_451c38[] = "done!\nchecking and copying > 64M NAND data from dump file if present and updating SHA-1...\n";
 static const char iw_451c94[] = "done!\nchecking and copying > 64M NAND data from dump file if present...\n";
 static const char iw_451cdd[] = "done!\n";
+static const char iw_451ce4[] = "fixing up big block LBA numbers in spare...";
+static const char iw_451d10[] = "fixing up big block controller on small block NAND LBA numbers...";
+static const char iw_451d54[] = "calculating ECD bytes and assembling raw image...";
+static const char iw_451d88[] = "attempting to restore NAND MU data to big block unit from dump...";
+static const char iw_451dca[] = "remapping %d blocks\n";
+static const char iw_451de0[] = "    copying 0x%x bytes of LBA 0x%x to block 0x%x...";
+static const char iw_451e14[] = "zero fill origin...";
+static const char iw_451e28[] = "\n\n***** ERROR: Remapping block 0x%x to block 0x%x is not sane on a NAND with 0x%x blocks!\n";
+static const char iw_451e84[] = "    Remapping block 0x%x is not required, zerofilling...";
+static const char iw_451ec0[] = "\n\n***** ERROR: if you had given the same small/big block style NAND donor image I'd be remapping %d bad blocks now...\n";
+static const char iw_451f37[] = "done remapping!\n";
+static const char iw_451f48[] = "\n        dest block is empty, fixing up LBA and ECD...";
 static const char iw_451f80[] = "\tadding %s at raw offset 0x%x len 0x%x (end 0x%x)\n";
 
 /* still in image_write.s */
 int imgWriteStart(const void *src, u32 len, u16 next) __attribute__((regparm(3)));
 void writeFsTable(u32 off);
-int finalizeImage(void);
 
 /* imgWriteStart for big-block NAND (no FS table) */
 static int imgWriteHdr(const void *src, u32 len)
@@ -1125,6 +1139,113 @@ int writeImage(char *name)
 	}
 	log_printf(1, iw_451cdd);
 	fclose(f);
+	return 0;
+}
+
+int finalizeImage(void)
+{
+	u32 b, p, i, n;
+	int size;
+	int blocks;
+	u8 *raw, *s, *spare;
+	void *mem;
+
+	if (xb.flags & 0x10000000)
+		return 0;
+	xb.raw = (u8 *)(mem = xmalloc(xb.rawSize));
+	if (!mem)
+		return -1;
+	if (xb.bigBlock) {
+		log_printf(1, iw_451ce4);
+		n = xb.blocks / 8;
+		spare = xb.spare;
+		for (b = 0; b < n; b++)
+			for (p = 0; p < 256; p++) {
+				s = spare + b * 0x1000 + p * 16;
+				if (((struct sp *)s)->b2lo == 0xf && s[1] == 0xff)
+					continue;
+				s[1] = b;
+				((struct sp *)s)->b2lo = b >> 8;
+			}
+		log_printf(1, iw_451cdd);
+	} else if (xb.bbController) {
+		log_printf(1, iw_451d10);
+		for (i = 0; i < xb.blocks * 32; i++) {
+			u8 t;
+
+			if (!spareUsed(xb.spare + i * 16))
+				continue;
+			t = xb.spare[i * 16];
+			xb.spare[i * 16] = xb.spare[i * 16 + 2];
+			xb.spare[i * 16 + 2] = xb.spare[i * 16 + 1];
+			xb.spare[i * 16 + 1] = t;
+		}
+		log_printf(1, iw_451cdd);
+	}
+	log_printf(1, iw_451d54);
+	raw = (u8 *)mem;
+	for (b = 0; b < xb.blocks; b++)
+		for (p = 0; p < 32; p++) {
+			if (!pageErased(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16))
+				calcPageEcc(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16);
+			__asm__("" :: "a"(xb.hdr));
+			memcpy(raw, xb.hdr + (b * 32 + p) * 512, 512);
+			memcpy(raw + 512, xb.spare + (b * 32 + p) * 16, 16);
+			raw += 528;
+		}
+	log_printf(1, iw_451cdd);
+	if (xb.nandMu && (xb.bootFlags & 0x10000000)) {
+		log_printf(1, iw_451d88);
+		raw = xb.raw + xb.spare7 * 0x21000;
+		for (b = xb.spare7; b < xb.muBlocks; b++)
+			for (p = 0; p < 256; p++) {
+				memcpy(raw, xb.dump + b * 0x20000 + p * 512, 512);
+				memcpy(raw + 512, xb.dumpSpare + b * 0x1000 + p * 16, 16);
+				raw += 528;
+			}
+		log_printf(1, iw_451cdd);
+	}
+	if (xb.nRemap - 1 < 32) {
+		if (xb.bigBlock != xb.dumpBigBlock && xb.mode != 2)
+			log_printf(1, iw_451ec0,
+				xb.nRemap);
+		else {
+			log_printf(1, iw_451dca, xb.nRemap);
+			if (xb.bigBlock) {
+				size = 0x21000;
+				blocks = 0x200;
+			} else {
+				size = 0x4200;
+				blocks = xb.type == 6 || xb.type == 8 ? 0x1000 : 0x400;
+			}
+			for (i = 0; i < xb.nRemap; i++) {
+				u32 from = xb.remapFrom[i];
+
+				if (from < blocks && xb.remapTo[i] < blocks) {
+					u32 src = size * from, dst = size * xb.remapTo[i];
+
+					log_printf(1, iw_451de0, size, from, xb.remapTo[i]);
+					memcpy(xb.raw + dst, xb.raw + src, size);
+					log_printf(1, iw_451e14);
+					memset(xb.raw + src, 0, size);
+					if (blockErased(xb.raw + dst, xb.bigBlock)) {
+						log_printf(1, iw_451f48);
+						setBlockSpare(xb.raw + dst, xb.remapFrom[i], xb.bigBlock);
+					}
+					log_printf(1, iw_451cdd);
+				} else if (xb.remapTo[i] == 0xfffffffb) {
+					u32 off = size * from;
+
+					log_printf(1, iw_451e84, from);
+					memset(xb.raw + off, 0, size);
+					log_printf(1, iw_451cdd);
+				} else
+					log_printf(1, iw_451e28,
+						from, xb.remapTo[i], blocks);
+			}
+		}
+	}
+	log_printf(1, iw_451f37);
 	return 0;
 }
 

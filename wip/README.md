@@ -2287,7 +2287,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 41 matching functions build from `src/app/image_write.c`, a mixed
+The 42 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
@@ -2417,16 +2417,27 @@ Still off:
   types/order, ~60 optimize attributes, setFsTable as a function, guarded
   dead uses of start+blocks. Best: `__asm__("" :: "a"(start + blocks));`
   before the loop, 11 lines (fixes (1)'s ebp, tail becomes lea).
-- finalizeImage (132 normalised): the ECD loop names `xb.hdr + ...` /
-  `xb.spare + ...` in each use (PRE then keeps both in registers and
-  reloads them after the ECC write, like the original); `int blocks`
-  stops forwprop folding the remap bounds test into a MAX; the
-  bbController swap indexes `xb.spare[i * 16 + k]`; the big-block LBA loop
-  is `n = xb.blocks / 8; s = xb.spare;` with a running pointer and
-  `((struct sp *)s)->b2lo = b >> 8`. Left: the ECD memcpy (the original
-  doesn't know the destination's alignment, but an asm on `raw` also
-  loses its points-to and xb.hdr gets reloaded), registers and layout in
-  the remap loop.
+- finalizeImage built (2026-10-27; agent notes and offs.py, an
+  instruction-offset check against the original, in
+  `tmp/image_write_agents/finalizeImage/`). The ECD loop names `xb.hdr +
+  ...` / `xb.spare + ...` at each use; the big-block LBA loop is `spare =
+  xb.spare; s = spare + b * 0x1000 + p * 16` (end-pointer outer IV). The
+  ECD memcpy's unknown-alignment prologue: malloc goes through `void
+  *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));` (same
+  call and points-to, but CCP gives MALLOC_ABI_ALIGNMENT only to calls
+  gimple_call_builtin_p accepts, and ivopts keeps alignment on new IVs,
+  so no loop form loses it). Its result goes to `void *mem` and the loop
+  pointer is `raw = (u8 *)mem`: the types differ, so out-of-SSA doesn't
+  coalesce them (own pseudo, spilled to [40+esp]) and the 4-insn
+  preheader is too costly for ce1 to hoist the hdr/spare loads above the
+  `xb.blocks` guard. `int size` (printf takes the int PHI, the multiplies
+  the u32 one: size and blocks each live in two places). Remap loop: only
+  `from` is a local and the test reads `xb.remapTo[i]` (two locals fold
+  `&&` to `&`, one branch at 29% and a rotated loop); the products are
+  computed before the copy printf and `u32 off` before the zero-fill
+  printf (otherwise LRA saves `from` across the call). One pin, `__asm__(""
+  :: "a"(xb.hdr));` before the memcpys, settles the ECD loop's register
+  ties.
 - imgAdd/imgAddFile/writeFsTable: imgAddFile's big-block path is
   `imgAdd(off, data, len, 0x2a, 0xffff, 1)`; that call and writeFsTable's
   two inline as ipa-cp clones called once (imgAdd must not be `inline`,

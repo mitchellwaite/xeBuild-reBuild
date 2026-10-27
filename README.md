@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **610 of 617** (608 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 63 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **611 of 617** (609 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 63 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 22 / 25 | 425 / 432 |
+| `app/` | 22 / 25 | 426 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -37,7 +37,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 | Object | State | Functions in C |
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
-| `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
+| `app/image_write` | mixed; 0 of 4 drafted functions match in `wip/app/image_write.c` | 42 / 46 |
 | `app/image_read` | mixed; 0 of 1 drafted functions match in `wip/app/image_read.c` | 32 / 33 |
 
 <details>
@@ -62,7 +62,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 41 / 46 in C</summary>
+<summary><code>app/image_write</code>: 42 / 46 in C</summary>
 
 - ⬜ `imgWriteStart` (0x40e950) (draft in `wip/`, no match yet)
 - ✅ `imgWritePage` (0x40ecc0)
@@ -104,7 +104,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `spareUsed` (0x4121b0)
 - ✅ `imageGetBuffer` (0x412230)
 - ✅ `writeImage` (0x412260)
-- ⬜ `finalizeImage` (0x4125a0) (draft in `wip/`, no match yet)
+- ✅ `finalizeImage` (0x4125a0)
 - ✅ `fsStartBlock` (0x412dd0)
 - ✅ `reservedAreaOffset` (0x412de0)
 - ✅ `statisticsOffset` (0x412e90)

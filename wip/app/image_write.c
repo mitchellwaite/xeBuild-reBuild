@@ -135,6 +135,9 @@ void XeCryptShaUpdate(XECRYPT_SHA_STATE *sha, const void *buf, u32 len);
 void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
 void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
 	const u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
+/* the malloc call without the builtin: same call, but CCP doesn't assume
+   MALLOC_ABI_ALIGNMENT for the result (the ECD memcpy aligns its destination) */
+void *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));
 
 extern struct xebuild xb;
 extern u32 mmcAnchor[0x80];
@@ -1179,21 +1182,24 @@ int writeImage(char *name)
 
 int finalizeImage(void)
 {
-	u32 b, p, i, n, size;
+	u32 b, p, i, n;
+	int size;
 	int blocks;
 	u8 *raw, *s, *spare;
+	void *mem;
 
 	if (xb.flags & 0x10000000)
 		return 0;
-	xb.raw = raw = malloc(xb.rawSize);
-	if (!raw)
+	xb.raw = (u8 *)(mem = xmalloc(xb.rawSize));
+	if (!mem)
 		return -1;
 	if (xb.bigBlock) {
 		log_printf(1, "fixing up big block LBA numbers in spare...");
 		n = xb.blocks / 8;
-		s = xb.spare;
+		spare = xb.spare;
 		for (b = 0; b < n; b++)
-			for (p = 0; p < 256; p++, s += 16) {
+			for (p = 0; p < 256; p++) {
+				s = spare + b * 0x1000 + p * 16;
 				if (((struct sp *)s)->b2lo == 0xf && s[1] == 0xff)
 					continue;
 				s[1] = b;
@@ -1215,10 +1221,12 @@ int finalizeImage(void)
 		log_printf(1, "done!\n");
 	}
 	log_printf(1, "calculating ECD bytes and assembling raw image...");
+	raw = (u8 *)mem;
 	for (b = 0; b < xb.blocks; b++)
 		for (p = 0; p < 32; p++) {
 			if (!pageErased(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16))
 				calcPageEcc(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16);
+			__asm__("" :: "a"(xb.hdr));
 			memcpy(raw, xb.hdr + (b * 32 + p) * 512, 512);
 			memcpy(raw + 512, xb.spare + (b * 32 + p) * 16, 16);
 			raw += 528;
@@ -1249,25 +1257,29 @@ int finalizeImage(void)
 				blocks = xb.type == 6 || xb.type == 8 ? 0x1000 : 0x400;
 			}
 			for (i = 0; i < xb.nRemap; i++) {
-				u32 from = xb.remapFrom[i], to = xb.remapTo[i];
+				u32 from = xb.remapFrom[i];
 
-				if (from < blocks && to < blocks) {
-					log_printf(1, "    copying 0x%x bytes of LBA 0x%x to block 0x%x...", size, from, to);
-					memcpy(xb.raw + size * to, xb.raw + size * from, size);
+				if (from < blocks && xb.remapTo[i] < blocks) {
+					u32 src = size * from, dst = size * xb.remapTo[i];
+
+					log_printf(1, "    copying 0x%x bytes of LBA 0x%x to block 0x%x...", size, from, xb.remapTo[i]);
+					memcpy(xb.raw + dst, xb.raw + src, size);
 					log_printf(1, "zero fill origin...");
-					memset(xb.raw + size * from, 0, size);
-					if (blockErased(xb.raw + size * to, xb.bigBlock)) {
+					memset(xb.raw + src, 0, size);
+					if (blockErased(xb.raw + dst, xb.bigBlock)) {
 						log_printf(1, "\n        dest block is empty, fixing up LBA and ECD...");
-						setBlockSpare(xb.raw + size * to, from, xb.bigBlock);
+						setBlockSpare(xb.raw + dst, xb.remapFrom[i], xb.bigBlock);
 					}
 					log_printf(1, "done!\n");
-				} else if (to == 0xfffffffb) {
+				} else if (xb.remapTo[i] == 0xfffffffb) {
+					u32 off = size * from;
+
 					log_printf(1, "    Remapping block 0x%x is not required, zerofilling...", from);
-					memset(xb.raw + size * from, 0, size);
+					memset(xb.raw + off, 0, size);
 					log_printf(1, "done!\n");
 				} else
 					log_printf(1, "\n\n***** ERROR: Remapping block 0x%x to block 0x%x is not sane on a NAND with 0x%x blocks!\n",
-						from, to, blocks);
+						from, xb.remapTo[i], blocks);
 			}
 		}
 	}
