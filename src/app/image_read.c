@@ -1,8 +1,4 @@
-/* image_read: parsing an existing NAND image (nanddump.bin): sectors, pairing, LDV, smc.bin.
-   Mixed object: the functions here are spliced into image_read.s
-   (re/splice.py), which still holds the rest and the data, so strings
-   and variables are the .s's.  wip/app/image_read.c is the whole
-   draft; wip/irmixed.py makes this file from it. */
+/* image_read: parsing an existing NAND image (nanddump.bin): sectors, pairing, LDV, smc.bin */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -162,164 +158,27 @@ int addRemap(u32 block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
 void remapBadBlocks(int numBlocks);
 int notZeropair(void);
-u32 spareLbaOk(int pages);
+unsigned long spareLbaOk(int pages);
 u32 copyMmcImage(u8 *raw);
-u32 parseDump(u8 *raw);
+unsigned long parseDump(u8 *raw);
 u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
 void getNonces(void);
 u32 loadDump(const char *path);
 
-/* image_read.s's data */
-static struct fsroot fsBuf;
-extern struct fsroot *fs;
-extern char mobileName[];
-extern char zeropair[16];
-
-extern int dumpSize;
-static int fsValid;
-static u32 fsOffset;
-static u8 anchor[0x200];
+/* .bss and .data in the original's order */
 static struct mobile mobiles[10];
+static u8 anchor[0x200];
+static u32 fsOffset;
+static int fsValid;
+static struct fsroot fsBuf;
+static int dumpSize;
+char zeropair[16] = "zeropair image";
+char mobileName[] = "MobileA";
+struct fsroot *fs = &fsBuf;
 
-/* strings in image_read.s */
-extern const char ir_4521b8[];	/* "%s found in sector 0x%x size 0x%x..." */
-extern const char ir_4521e0[];	/* "Did not find a LDV value to use, set..." */
-extern const char ir_452220[];	/* "Did not find a LDV value to use, set..." */
-extern const char ir_452260[];	/* "***** WARNING: could not find a non-..." */
-extern const char ir_4522c4[];	/* "setting LDV from image to %d\n" */
-extern const char ir_4522e4[];	/* "setting pairing data from image to 0..." */
-extern const char ir_45230f[];	/* "LDV was already set to %d\n" */
-extern const char ir_45232c[];	/* "smc.bin should not be at 0x%x, tryin..." */
-extern const char ir_45235c[];	/* "smc.bin should not be 0x%x bytes, us..." */
-extern const char ir_45238c[];	/* "smc.bin should not be 0x%x bytes, us..." */
-extern const char ir_4523bc[];	/* "decrypting SMC at address 0x%x of si..." */
-extern const char ir_4523ec[];	/* "SMC decrypted OK, will use if no ext..." */
-extern const char ir_45242c[];	/* "SMC did not decrypt, discarding it\n" */
-extern const char ir_452450[];	/* "Wasn't able to alloc 0x%x bytes memo..." */
-extern const char ir_452494[];	/* "SMC at 0x%x of size 0x%x is not sane..." */
-extern const char ir_4524dc[];	/* "KeyVault cannot be at 0x0, trying 0x..." */
-extern const char ir_452508[];	/* "KeyVault cannot be 0x%x bytes, using..." */
-extern const char ir_452538[];	/* "decrypting KeyVault at address 0x%x ..." */
-extern const char ir_45256c[];	/* "keyvault decrypted OK, will use if n..." */
-extern const char ir_4525a8[];	/* "keyvault decrypt failed, discarding\..." */
-extern const char ir_4525d0[];	/* "Wasn't able to alloc 0x4000 bytes me..." */
-extern const char ir_45261c[];	/* "KeyVault at address 0x%x of size 0x4..." */
-extern const char ir_452674[];	/* "decrypting alt KeyVault at address 0..." */
-extern const char ir_4526ac[];	/* "alt KeyVault decrypted OK, will use ..." */
-extern const char ir_4526f0[];	/* "alt KeyVault decrypt failed, discard..." */
-extern const char ir_45271c[];	/* "Wasn't able to alloc 0x4000 bytes me..." */
-extern const char ir_45276c[];	/* "Unable to allocate memory for %s 0x%..." */
-extern const char ir_452799[];	/* "%s.dat" */
-extern const char ir_4527a0[];	/* "extracting %s from page 0x%x (offset..." */
-extern const char ir_4527e4[];	/* "Statistics.settings found at offset ..." */
-extern const char ir_452824[];	/* "Unable to allocate memory for Statis..." */
-extern const char ir_452864[];	/* "Manufacturing.data found at offset 0..." */
-extern const char ir_4528a4[];	/* "Unable to allocate memory for Manufa..." */
-extern const char ir_4528e1[];	/* "netKd info found, size 0x%x\n" */
-extern const char ir_4528fe[];	/* "    version : 0x%x\n" */
-extern const char ir_452912[];	/* "    xbox IP : %d.%d.%d.%d\n" */
-extern const char ir_452930[];	/* "    xbox MAC: %02x:%02x:%02x:%02x:%0..." */
-extern const char ir_452958[];	/* "    port    : %d\n" */
-extern const char ir_45296a[];	/* "    host IP : %d.%d.%d.%d\n" */
-extern const char ir_452988[];	/* "sector: 0x%04x offset: 0x%08x size: ..." */
-extern const char ir_4529d0[];	/* "attempting to find valid anchor bloc..." */
-extern const char ir_4529f8[];	/* "anchor block v %d at 0x2fe8000 is va..." */
-extern const char ir_452a24[];	/* "anchor block at 0x2fe8000 is invalid..." */
-extern const char ir_452a4c[];	/* "anchor block v %d at 0x2fec000 is va..." */
-extern const char ir_452a78[];	/* "anchor block v %d at 0x2fec000 is se..." */
-extern const char ir_452aa4[];	/* "anchor block at 0x2fec000 is invalid..." */
-extern const char ir_452acc[];	/* "anchor block v %d at 0x2fe8000 is se..." */
-extern const char ir_452af8[];	/* "Showing all pages with mobile info:\..." */
-extern const char ir_452b20[];	/* "starting mobile scan at page 0x%x (o..." */
-extern const char ir_452b6c[];	/* "mobile%c.dat ver %02d offset 0x%08x ..." */
-extern const char ir_452bc3[];	/* "%02x " */
-extern const char ir_452bc9[];	/* "(DELETE)\n" */
-extern const char ir_452bd3[];	/* "\n" */
-extern const char ir_452bd8[];	/* "bigblock file system offset set to 0..." */
-extern const char ir_452c20[];	/* "Scanning for mobile data and fsroot...." */
-extern const char ir_452c47[];	/* "done! fsroot found ok!" */
-extern const char ir_452c5e[];	/* "Mobiles found:\n" */
-extern const char ir_452c70[];	/* "    fsroot      version %02d found a..." */
-extern const char ir_452cbc[];	/* "    mobile%c.dat version %02d found ..." */
-extern const char ir_452d0c[];	/* "\n\n***** ERROR! Could not find fsro..." */
-extern const char ir_452d33[];	/* "seeking security files...\n" */
-extern const char ir_452d4e[];	/* "done!\n" */
-extern const char ir_452d55[];	/* "seeking smc config in dump..." */
-extern const char ir_452d74[];	/* "found at offset 0x%x! Using if no sm..." */
-extern const char ir_452db0[];	/* "found at offset 0x%x! Unable to allo..." */
-extern const char ir_452e09[];	/* "not found!\n" */
-extern const char ir_452e18[];	/* "\n\n****************  WARNING  *****..." */
-extern const char ir_452e50[];	/* "  nanddump.bin has NAND memory unit ..." */
-extern const char ir_452e80[];	/* "  sure you back up any important dat..." */
-extern const char ir_452eb0[];	/* "  internal MU before flashing a new ..." */
-extern const char ir_452edc[];	/* "\n  xeBuild will attempt to keep thi..." */
-extern const char ir_452f0c[];	/* "  many things could cause it to be i..." */
-extern const char ir_452f44[];	/* "************************************..." */
-extern const char ir_452f7c[];	/* "block 0x%x was remapped to block 0x%..." */
-extern const char ir_452fb8[];	/* "block 0x%x was remapped to block 0x%..." */
-extern const char ir_452ffc[];	/* "MAX REMAPS of 32 exceeded, remapping..." */
-extern const char ir_453049[];	/* "cleaning up stray remaps\n" */
-extern const char ir_453064[];	/* "block 0x%x had no remap, assigning r..." */
-extern const char ir_45309c[];	/* "block 0x%x had no remap, and I could..." */
-extern const char ir_4530d4[];	/* "block 0x%x had no need of remap, it'..." */
-extern const char ir_45310c[];	/* "\n\n***** ERROR: nanddump.bin is a Z..." */
-extern const char ir_45355c[];	/* "size is not a multiple of %d bytes, ..." */
-extern const char ir_453594[];	/* "no data to copy..\n" */
-extern const char ir_4535a7[];	/* "rb" */
-extern const char ir_4535ac[];	/* "could not re-open '%s' for reading, ..." */
-extern const char ir_4535e4[];	/* "could not seek to 0x%x, not copying ..." */
-extern const char ir_453610[];	/* "could not allocate 0x%x byte buffer,..." */
-extern const char ir_453649[];	/* "reading nanddump.bin...\n" */
-extern const char ir_453664[];	/* "writing nanddump.bin MU area to outp..." */
-extern const char ir_453694[];	/* "\tNAND dump is from a mmc machine\n" */
-extern const char ir_4536b8[];	/* "\tNAND dump uses big block controlle..." */
-extern const char ir_4536e0[];	/* "\tNAND dump is from a big block mach..." */
-extern const char ir_453708[];	/* "***** WARNING: NAND dump too small t..." */
-extern const char ir_453760[];	/* "\tNAND dump is from a small block ma..." */
-extern const char ir_45378c[];	/* "\tNAND dump uses small block control..." */
-extern const char ir_4537b4[];	/* "***** WARNING: NAND dump does not ap..." */
-extern const char ir_453810[];	/* "%s file size: 0x%llx\n" */
-extern const char ir_453828[];	/* "******* ERROR loading '%s', file siz..." */
-extern const char ir_45386c[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_4538ac[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_4538ec[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453928[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_45396c[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_4539b4[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453a0c[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453a68[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453aac[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453af4[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453b48[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453b98[];	/* "******* ERROR loading '%s', flash he..." */
-extern const char ir_453bdc[];	/* "FATX magic found, truncating load si..." */
-extern const char ir_453c28[];	/* "First page does not contain a valid ..." */
-extern const char ir_453c9c[];	/* "First page contains a valid ECC, ass..." */
-extern const char ir_453d18[];	/* "nanddump header checks passed OK!\n" */
-extern const char ir_453d3c[];	/* "**** Warning: error getting CB/CBA N..." */
-extern const char ir_453d78[];	/* "**** Warning: error getting CB/CBA N..." */
-extern const char ir_453db0[];	/* "**** Warning: error getting CBB Nonc..." */
-extern const char ir_453dec[];	/* "**** Warning: error getting CBB Nonc..." */
-extern const char ir_453e2c[];	/* "**** Warning: error getting CD Nonce..." */
-extern const char ir_453e64[];	/* "**** Warning: error getting CD Nonce..." */
-extern const char ir_453ea4[];	/* "**** Warning: error getting CE Nonce..." */
-extern const char ir_453edc[];	/* "**** Warning: error getting CE Nonce..." */
-extern const char ir_453f1c[];	/* "**** Warning: error getting CF Nonce..." */
-extern const char ir_453f54[];	/* "**** Warning: error getting CF Nonce..." */
-extern const char ir_453f94[];	/* "**** Warning: error getting CG Nonce..." */
-extern const char ir_453fcc[];	/* "**** Warning: error getting CG Nonce..." */
-extern const char ir_454009[];	/* "\n------ Checking %s ------\n" */
-extern const char ir_454025[];	/* "NAND dump not found at '%s'\n" */
-extern const char ir_454044[];	/* "NAND dump '%s' is not a correct raw ..." */
-extern const char ir_454098[];	/* "NAND dump '%s' is not a correct dump..." */
-extern const char ir_4540dc[];	/* "******* ERROR loading '%s', unable t..." */
-extern const char ir_454114[];	/* "Loading NAND dump (0x%x bytes)..." */
-extern const char ir_454138[];	/* "******* ERROR loading '%s', unable t..." */
-extern const char ir_45417c[];	/* "Detecting NAND controller type from ..." */
-extern const char ir_4541b0[];	/* "******* ERROR loading '%s', unable t..." */
-
+static const char ir_4521b8[] __attribute__((aligned(4))) = "%s found in sector 0x%x size 0x%x...";
 static int fsFind(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 {
 	int i;
@@ -364,6 +223,12 @@ void buildCleanup(void)
 		free(xb.netkd.data);
 }
 
+static const char ir_4521e0[] __attribute__((aligned(4))) = "Did not find a LDV value to use, setting it to 0 for devkit!\n";
+static const char ir_452220[] __attribute__((aligned(4))) = "Did not find a LDV value to use, setting it to 0 for testkit!\n";
+static const char ir_452260[] __attribute__((aligned(4))) = "***** WARNING: could not find a non-zero CF LDV to use, setting it to 1 but that may be incorrect!\n";
+static const char ir_4522c4[] __attribute__((aligned(1))) = "setting LDV from image to %d\n";
+static const char ir_4522e4[] __attribute__((aligned(4))) = "setting pairing data from image to 0x%06x\n";
+static const char ir_45230f[] __attribute__((aligned(1))) = "LDV was already set to %d\n";
 void getImageLdv(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
@@ -400,6 +265,14 @@ void getImageLdv(void)
 		xb.cfLdv = ldv;
 }
 
+static const char ir_45232c[] __attribute__((aligned(4))) = "smc.bin should not be at 0x%x, trying 0x1000\n";
+static const char ir_45235c[] __attribute__((aligned(4))) = "smc.bin should not be 0x%x bytes, using 0x3800\n";
+static const char ir_45238c[] __attribute__((aligned(4))) = "smc.bin should not be 0x%x bytes, using 0x3000\n";
+static const char ir_4523bc[] __attribute__((aligned(4))) = "decrypting SMC at address 0x%x of size 0x%x\n";
+static const char ir_4523ec[] __attribute__((aligned(4))) = "SMC decrypted OK, will use if no external smc.bin is provided\n";
+static const char ir_45242c[] __attribute__((aligned(4))) = "SMC did not decrypt, discarding it\n";
+static const char ir_452450[] __attribute__((aligned(4))) = "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n";
+static const char ir_452494[] __attribute__((aligned(4))) = "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n";
 __attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-merge"))) void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
@@ -461,6 +334,17 @@ bad:
 	}
 }
 
+static const char ir_4524dc[] __attribute__((aligned(4))) = "KeyVault cannot be at 0x0, trying 0x4000\n";
+static const char ir_452508[] __attribute__((aligned(4))) = "KeyVault cannot be 0x%x bytes, using 0x4000\n";
+static const char ir_452538[] __attribute__((aligned(4))) = "decrypting KeyVault at address 0x%x of size 0x%x\n";
+static const char ir_45256c[] __attribute__((aligned(4))) = "keyvault decrypted OK, will use if no kv.bin is provided\n";
+static const char ir_4525a8[] __attribute__((aligned(4))) = "keyvault decrypt failed, discarding\n";
+static const char ir_4525d0[] __attribute__((aligned(4))) = "Wasn't able to alloc 0x4000 bytes memory for KeyVault bin, not using...\n";
+static const char ir_45261c[] __attribute__((aligned(4))) = "KeyVault at address 0x%x of size 0x4000 is not sane, skipping KeyVault in NAND image\n";
+static const char ir_452674[] __attribute__((aligned(4))) = "decrypting alt KeyVault at address 0x%x of size 0x%x\n";
+static const char ir_4526ac[] __attribute__((aligned(4))) = "alt KeyVault decrypted OK, will use if no kv_alt.bin is provided\n";
+static const char ir_4526f0[] __attribute__((aligned(4))) = "alt KeyVault decrypt failed, discarding\n";
+static const char ir_45271c[] __attribute__((aligned(4))) = "Wasn't able to alloc 0x4000 bytes memory for alt KeyVault bin, not using...\n";
 void getImageKv(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
@@ -517,6 +401,13 @@ void getImageKv(void)
 	}
 }
 
+static const char ir_45276c[] __attribute__((aligned(4))) = "Unable to allocate memory for %s 0x%x bytes\n";
+static const char ir_452799[] __attribute__((aligned(1))) = "%s.dat";
+static const char ir_4527a0[] __attribute__((aligned(4))) = "extracting %s from page 0x%x (offset 0x%x), size %d (0x%x) bytes\n";
+static const char ir_4527e4[] __attribute__((aligned(4))) = "Statistics.settings found at offset 0x%x, size %d (0x%x) bytes\n";
+static const char ir_452824[] __attribute__((aligned(4))) = "Unable to allocate memory for Statistics.settings 0x%x bytes\n";
+static const char ir_452864[] __attribute__((aligned(4))) = "Manufacturing.data found at offset 0x%x, size %d (0x%x) bytes\n";
+static const char ir_4528a4[] __attribute__((aligned(4))) = "Unable to allocate memory for Manufacturing.data 0x%x bytes\n";
 void getImageMobiles(void)
 {
 	int i;
@@ -563,6 +454,12 @@ void getImageMobiles(void)
 	}
 }
 
+static const char ir_4528e1[] __attribute__((aligned(1))) = "netKd info found, size 0x%x\n";
+static const char ir_4528fe[] __attribute__((aligned(1))) = "    version : 0x%x\n";
+static const char ir_452912[] __attribute__((aligned(1))) = "    xbox IP : %d.%d.%d.%d\n";
+static const char ir_452930[] __attribute__((aligned(4))) = "    xbox MAC: %02x:%02x:%02x:%02x:%02x\n";
+static const char ir_452958[] __attribute__((aligned(1))) = "    port    : %d\n";
+static const char ir_45296a[] __attribute__((aligned(1))) = "    host IP : %d.%d.%d.%d\n";
 void getNetKd(void)
 {
 	u8 *img, *p;
@@ -614,6 +511,7 @@ int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 	return 0;
 }
 
+static const char ir_452988[] __attribute__((aligned(4))) = "sector: 0x%04x offset: 0x%08x size: 0x%08x timestamp: 0x%08x name: %s\n";
 void listFlashFiles(void)
 {
 	int i;
@@ -668,6 +566,13 @@ int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time)
 	return 1;
 }
 
+static const char ir_4529d0[] __attribute__((aligned(4))) = "attempting to find valid anchor block\n";
+static const char ir_4529f8[] __attribute__((aligned(4))) = "anchor block v %d at 0x2fe8000 is valid\n";
+static const char ir_452a24[] __attribute__((aligned(4))) = "anchor block at 0x2fe8000 is invalid\n";
+static const char ir_452a4c[] __attribute__((aligned(4))) = "anchor block v %d at 0x2fec000 is valid\n";
+static const char ir_452a78[] __attribute__((aligned(4))) = "anchor block v %d at 0x2fec000 is selected\n";
+static const char ir_452aa4[] __attribute__((aligned(4))) = "anchor block at 0x2fec000 is invalid\n";
+static const char ir_452acc[] __attribute__((aligned(4))) = "anchor block v %d at 0x2fe8000 is selected\n";
 int findAnchor(void)
 {
 	u32 v0, v1;
@@ -740,6 +645,14 @@ u32 spareVersion(u8 *s)
 	return (s[3] << 8) | (s[4] << 16) | (s[6] << 24) | lo;
 }
 
+static const char ir_452af8[] __attribute__((aligned(4))) = "Showing all pages with mobile info:\n";
+static const char ir_452b20[] __attribute__((aligned(4))) = "starting mobile scan at page 0x%x (offset 0x%x) of 0x%x pages (0x%x total)\n";
+static const char ir_452b6c[] __attribute__((aligned(4))) = "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ";
+static const char ir_452bc3[] __attribute__((aligned(1))) = "%02x ";
+static const char ir_452bc9[] __attribute__((aligned(1))) = "(DELETE)\n";
+static const char ir_452bd3[] __attribute__((aligned(1))) = "\n";
+/* (u32)letter: PRE hoists the cast into both arms, so letter's PHI dies with
+   len's and ivopts' names give the inner loop's `cmp ebx,esi` (wip/README.md) */
 void showMobilePages(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
@@ -875,6 +788,7 @@ next:
 	return mobiles[0].found;
 }
 
+static const char ir_452bd8[] __attribute__((aligned(4))) = "bigblock file system offset set to 0x%x fsb: %x meta: %x lbaend: %x\n";
 void setFsOffset(void)
 {
 	u32 meta;
@@ -888,6 +802,12 @@ void setFsOffset(void)
 		   fsOffset, 3808 - meta, meta, 3808);
 }
 
+static const char ir_452c20[] __attribute__((aligned(4))) = "Scanning for mobile data and fsroot...";
+static const char ir_452c47[] __attribute__((aligned(1))) = "done! fsroot found ok!";
+static const char ir_452c5e[] __attribute__((aligned(1))) = "Mobiles found:\n";
+static const char ir_452c70[] __attribute__((aligned(4))) = "    fsroot      version %02d found at offset 0x%08x len 0x%04x page 0x%08x\n";
+static const char ir_452cbc[] __attribute__((aligned(4))) = "    mobile%c.dat version %02d found at offset 0x%08x len 0x%04x page 0x%08x\n";
+static const char ir_452d0c[] __attribute__((aligned(4))) = "\n\n***** ERROR! Could not find fsroot!\n";
 int findFsRoot(void)
 {
 	int found, i;
@@ -923,6 +843,8 @@ int findFsRoot(void)
 	return found;
 }
 
+static const char ir_452d33[] __attribute__((aligned(1))) = "seeking security files...\n";
+static const char ir_452d4e[] __attribute__((aligned(1))) = "done!\n";
 inline void imgGetSecurityFiles(void)
 {
 	u32 i, block;
@@ -934,6 +856,10 @@ inline void imgGetSecurityFiles(void)
 	log_printf(1, ir_452d4e);
 }
 
+static const char ir_452d55[] __attribute__((aligned(1))) = "seeking smc config in dump...";
+static const char ir_452d74[] __attribute__((aligned(4))) = "found at offset 0x%x! Using if no smc config is provided.\n";
+static const char ir_452db0[] __attribute__((aligned(4))) = "found at offset 0x%x! Unable to allocate 0x400 bytes of memory for smc config, skipping\n";
+static const char ir_452e09[] __attribute__((aligned(1))) = "not found!\n";
 void findSmcConfig(void)
 {
 	u32 off, end;
@@ -972,6 +898,18 @@ void findSmcConfig(void)
 		log_printf(1, ir_452e09, off);
 }
 
+static const char ir_452e18[] __attribute__((aligned(4))) = "\n\n****************  WARNING  *************************\n";
+static const char ir_452e50[] __attribute__((aligned(4))) = "  nanddump.bin has NAND memory unit data, make\n";
+static const char ir_452e80[] __attribute__((aligned(4))) = "  sure you back up any important data off the\n";
+static const char ir_452eb0[] __attribute__((aligned(4))) = "  internal MU before flashing a new image!\n";
+static const char ir_452edc[] __attribute__((aligned(4))) = "\n  xeBuild will attempt to keep this data, but\n";
+static const char ir_452f0c[] __attribute__((aligned(4))) = "  many things could cause it to be invalid/corrupt.\n";
+static const char ir_452f44[] __attribute__((aligned(4))) = "****************************************************\n\n";
+/* -1 (bad block) is the initial value and the only one that skips the ECC
+   check, so the bad-block exits reach the return through `lba != -1` and
+   aren't predicted as negative returns (ce1 hoists the -1 above the tests);
+   -6 goes through `lba != -6` (VRP then can't fold the small block's lba to
+   0 on the `lba > 0` exit, as it does the big block's) */
 int checkBlock(u8 *b, int block, int numBlocks)
 {
 	int lba, lba0, lba1;
@@ -1040,6 +978,9 @@ int checkBlock(u8 *b, int block, int numBlocks)
 	return lba;
 }
 
+static const char ir_452f7c[] __attribute__((aligned(4))) = "block 0x%x was remapped to block 0x%x at remap instance %d\n";
+static const char ir_452fb8[] __attribute__((aligned(4))) = "block 0x%x was remapped to block 0x%x, entering remap instance %d\n";
+static const char ir_452ffc[] __attribute__((aligned(4))) = "MAX REMAPS of 32 exceeded, remapping disabled and image rejected as faulty!\n";
 int addRemap(u32 block, int dest, int numBlocks)
 {
 	u32 i;
@@ -1085,6 +1026,10 @@ int findFreeRemap(int numBlocks)
 	return 0;
 }
 
+static const char ir_453049[] __attribute__((aligned(1))) = "cleaning up stray remaps\n";
+static const char ir_453064[] __attribute__((aligned(4))) = "block 0x%x had no remap, assigning remap block 0x%x\n";
+static const char ir_45309c[] __attribute__((aligned(4))) = "block 0x%x had no remap, and I could not assign one!\n";
+static const char ir_4530d4[] __attribute__((aligned(4))) = "block 0x%x had no need of remap, it's in the wear area\n";
 void remapBadBlocks(int numBlocks)
 {
 	u32 i;
@@ -1116,7 +1061,7 @@ int notZeropair(void)
 	return memcmp(zeropair, xb.image + 16, 14) != 0;
 }
 
-u32 spareLbaOk(int pages)
+unsigned long spareLbaOk(int pages)
 {
 	int i;
 
@@ -1126,6 +1071,8 @@ u32 spareLbaOk(int pages)
 	return 1;
 }
 
+static const char ir_45310c[] __attribute__((aligned(4))) = "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n";
+/* ce1 would hoist ret = 1 above the branch (edge predicted 61%) */
 __attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
 {
 	xb.numBad = 0;
@@ -1136,6 +1083,168 @@ __attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
 	return 0;
 }
 
+static int addRemapP(int block, int ablock, int cb, int dest, int numBlocks)
+{
+	int i;
+	int found = 0;
+
+	i = 0;
+	goto test;
+tail:
+	if (xb.numBad >= 32) {
+		log_printf(1, ir_452ffc);
+		return 0;
+	}
+	if (dest != -1)
+		log_printf(1, ir_452fb8, ablock, dest, xb.numBad + 1);
+	xb.badBlocks[xb.numBad] = ablock;
+	xb.badRemap[xb.numBad] = dest;
+	xb.numBad++;
+	return 1;
+body:
+	__asm__("" : : "ri"(cb), "ri"(cb), "ri"(cb), "ri"(cb));
+	if (xb.badBlocks[i] == block && xb.badRemap[i] == -1 && dest < numBlocks) {
+		log_printf(1, ir_452f7c, block, dest, i);
+		xb.badRemap[i] = dest;
+		found = 1;
+	}
+	i++;
+test:
+	if (i < xb.numBad)
+		goto body;
+	if (found)
+		return 1;
+	goto tail;
+}
+
+static const char ir_453150[] __attribute__((aligned(4))) = "UNEXPECTED DUMP PARSE ERROR: %d pages cannot divide by %d!\n";
+static const char ir_45318c[] __attribute__((aligned(4))) = "parsing dump into user and spare...\n";
+static const char ir_4531b4[] __attribute__((aligned(4))) = "bad block at 0x%x (raw offset 0x%x), block ignored\n";
+static const char ir_4531e8[] __attribute__((aligned(4))) = "***** WARNING: nanddump.bin has a bad LBA at block 0x%x (raw offset 0x%x), block LBA ignored\n";
+static const char ir_453248[] __attribute__((aligned(4))) = "***** WARNING: nanddump.bin has a mixed controller LBA at block 0x%x (raw offset 0x%x), block ignored\n";
+static const char ir_4532b0[] __attribute__((aligned(4))) = "               this is likely caused by previously using jaspersb on a jasper type console!\n";
+static const char ir_453310[] __attribute__((aligned(4))) = "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n";
+static const char ir_453354[] __attribute__((aligned(4))) = "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n";
+static const char ir_4533a8[] __attribute__((aligned(4))) = "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n";
+static const char ir_4533ec[] __attribute__((aligned(4))) = "               this dump may have some bad data!\n";
+static const char ir_453420[] __attribute__((aligned(4))) = "\n\n***** ERROR: nanddump.bin has mixed LBA in the same block which usually occurs\n";
+static const char ir_453474[] __attribute__((aligned(4))) = "             due to an improper nandpro write method, discarding\n";
+static const char ir_4534b8[] __attribute__((aligned(4))) = "Discarding remap data as NOREMAP was specified!\n";
+static const char ir_4534e9[] __attribute__((aligned(1))) = "--remap summary--\n";
+static const char ir_4534fc[] __attribute__((aligned(1))) = "-----------------\n";
+static const char ir_453510[] __attribute__((aligned(4))) = "%d: source: 0x%04x dest: (NONE/BAD)\n";
+static const char ir_453538[] __attribute__((aligned(4))) = "%d: source: 0x%04x dest: 0x%04x\n";
+unsigned long parseDump(u8 *raw)
+{
+	int ppb = xb.bigBlock ? 256 : 32;
+	int blocks = xb.numPages / ppb;
+	int blk, dst, p, b2;
+	u32 n;
+	int i;
+	u8 *src;
+
+	int rr = xb.numPages % ppb;
+
+	if (rr) {
+		log_printf(0, ir_453150, xb.numPages, ppb);
+		return 0;
+	}
+	log_printf(1, ir_45318c);
+	for (n = 0; n < blocks; n++) {
+		blk = n;
+		src = raw + blk * 528 * ppb;
+		dst = checkBlock(src, blk, blocks);
+		if (dst == -2)
+			continue;
+		if (dst == -1) {
+			log_printf(1, ir_4531b4, blk, src - raw);
+			b2 = blk;
+			__asm__("" : "+r"(b2));
+			if (!addRemapP(b2, blk, 0, dst, blocks))
+				return 0;
+			goto next;
+		}
+		if (dst == -3) {
+			log_printf(0, ir_4531e8, blk, src - raw);
+			continue;
+		}
+		if (dst == -6) {
+			log_printf(0, ir_453248, blk, src - raw);
+			log_printf(0, ir_4532b0, blk, src - raw);
+			continue;
+		}
+		if (dst == -4) {
+			if (blk >= blocks)
+				__builtin_unreachable();
+			if (blk < blocks) {
+				log_printf(1, ir_453310, blk, src - raw);
+				if (!addRemapP(blk, blk, blk, -1, blocks))
+					return 0;
+			}
+			__asm__("");
+			dst = blk;
+		} else {
+rem: __attribute__((hot));
+			if (dst != blk) {
+				if (blk >= blocks - 32)
+					log_printf(1, ir_453354, blk, dst);
+				else {
+					log_printf(0, ir_4533a8, blk, dst);
+					log_printf(0, ir_4533ec, blk, dst);
+					dst = blk;
+				}
+			}
+		}
+		if (blk == 0) {
+			if (!notZeropair()) {
+				log_printf(0, ir_45310c);
+				return 0;
+			}
+			if (!spareLbaOk(ppb)) {
+				log_printf(0, ir_453420);
+				log_printf(0, ir_453474);
+				return 0;
+			}
+		}
+		for (p = 0; p < ppb; p++) {
+			memcpy(xb.image + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
+			memcpy(xb.spare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
+		}
+		if (blk >= blocks)
+			__builtin_unreachable();
+		if (dst != blk && !addRemapP(dst, dst, 0, blk, blocks))
+			return 0;
+next:
+		;
+	}
+	log_printf(1, ir_452d4e);
+	if (xb.bootFlags & 0x40000000) {
+		if (xb.numBad) {
+			log_printf(1, ir_4534b8);
+			xb.numBad = 0;
+		}
+	} else if (xb.numBad) {
+		remapBadBlocks(blocks);
+		log_printf(1, ir_4534e9);
+		for (i = 0; i < xb.numBad; i++) {
+			if (xb.badRemap[i] == -5)
+				log_printf(1, ir_453510, i, xb.badBlocks[i]);
+			else
+				log_printf(1, ir_453538, i, xb.badBlocks[i], xb.badRemap[i]);
+		}
+		log_printf(1, ir_4534fc);
+	}
+	return 1;
+}
+
+static const char ir_45355c[] __attribute__((aligned(4))) = "size is not a multiple of %d bytes, not copying data..\n";
+static const char ir_453594[] __attribute__((aligned(1))) = "no data to copy..\n";
+static const char ir_4535a7[] __attribute__((aligned(1))) = "rb";
+static const char ir_4535ac[] __attribute__((aligned(4))) = "could not re-open '%s' for reading, not copying data..\n";
+static const char ir_4535e4[] __attribute__((aligned(4))) = "could not seek to 0x%x, not copying data..\n";
+static const char ir_453610[] __attribute__((aligned(4))) = "could not allocate 0x%x byte buffer, not copying data..\n";
+static const char ir_453649[] __attribute__((aligned(1))) = "reading nanddump.bin...\n";
+static const char ir_453664[] __attribute__((aligned(4))) = "writing nanddump.bin MU area to output file...";
 u32 copyMuData(FILE *out, void *sha)
 {
 	char name[0x400];
@@ -1181,6 +1290,13 @@ u32 copyMuData(FILE *out, void *sha)
 	return 1;
 }
 
+static const char ir_453694[] __attribute__((aligned(4))) = "\tNAND dump is from a mmc machine\n";
+static const char ir_4536b8[] __attribute__((aligned(4))) = "\tNAND dump uses big block controller\n";
+static const char ir_4536e0[] __attribute__((aligned(4))) = "\tNAND dump is from a big block machine\n";
+static const char ir_453708[] __attribute__((aligned(4))) = "***** WARNING: NAND dump too small to be from a big block machine, discarding dump!\n";
+static const char ir_453760[] __attribute__((aligned(4))) = "\tNAND dump is from a small block machine\n";
+static const char ir_45378c[] __attribute__((aligned(4))) = "\tNAND dump uses small block controller\n";
+static const char ir_4537b4[] __attribute__((aligned(4))) = "***** WARNING: NAND dump does not appear to have a good block at block 0, discarding dump!\n";
 int detectController(u8 *raw, int size)
 {
 	int i, n;
@@ -1252,6 +1368,24 @@ int detectController(u8 *raw, int size)
 	return found;
 }
 
+static const char ir_453810[] __attribute__((aligned(1))) = "%s file size: 0x%llx\n";
+static const char ir_453828[] __attribute__((aligned(4))) = "******* ERROR loading '%s', file size 0x%llx is not large enough\n";
+static const char ir_45386c[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header magic is incorrect\n";
+static const char ir_4538ac[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header Entry is too large\n";
+static const char ir_4538ec[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header Size is too large\n";
+static const char ir_453928[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header KeyVaultSize is too large\n";
+static const char ir_45396c[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header SysUpdateAddr is malformed\n";
+static const char ir_4539b4[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header SysUpdateCount is not 2, continuing anyway\n";
+static const char ir_453a0c[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header KeyVaultVersion is not 0x0712, continuing anyway\n";
+static const char ir_453a68[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header KeyVaultAddr is too large\n";
+static const char ir_453aac[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header FileSystemAddr is too large\n";
+static const char ir_453af4[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header SmcConfigAddr is not 0, continuing anyway\n";
+static const char ir_453b48[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header SmcBootSize is not 0x3000 or 0x3800\n";
+static const char ir_453b98[] __attribute__((aligned(4))) = "******* ERROR loading '%s', flash header SmcBootAddr is too large\n";
+static const char ir_453bdc[] __attribute__((aligned(4))) = "FATX magic found, truncating load size to 0x3000000 bytes for mmc consoles\n";
+static const char ir_453c28[] __attribute__((aligned(4))) = "First page does not contain a valid ECC, assuming this is an mmc dump and truncating load size to 0x3000000 bytes!\n";
+static const char ir_453c9c[] __attribute__((aligned(4))) = "First page contains a valid ECC, assuming this is a big block flash overdump and truncating load size to 0x4200000 bytes\n";
+static const char ir_453d18[] __attribute__((aligned(4))) = "nanddump header checks passed OK!\n";
 int checkHeader(const char *name, FILE *fp)
 {
 	struct flashhdr hdr;
@@ -1339,6 +1473,18 @@ badSysUpdate:
 	return size;
 }
 
+static const char ir_453d3c[] __attribute__((aligned(4))) = "**** Warning: error getting CB/CBA Nonce offset, aborting!\n";
+static const char ir_453d78[] __attribute__((aligned(4))) = "**** Warning: error getting CB/CBA Nonce, aborting!\n";
+static const char ir_453db0[] __attribute__((aligned(4))) = "**** Warning: error getting CBB Nonce offset, aborting!\n";
+static const char ir_453dec[] __attribute__((aligned(4))) = "**** Warning: error getting CBB Nonce, offset 0x%x aborting!\n";
+static const char ir_453e2c[] __attribute__((aligned(4))) = "**** Warning: error getting CD Nonce offset, aborting!\n";
+static const char ir_453e64[] __attribute__((aligned(4))) = "**** Warning: error getting CD Nonce, offset 0x%x aborting!\n";
+static const char ir_453ea4[] __attribute__((aligned(4))) = "**** Warning: error getting CE Nonce offset, aborting!\n";
+static const char ir_453edc[] __attribute__((aligned(4))) = "**** Warning: error getting CE Nonce, offset 0x%x aborting!\n";
+static const char ir_453f1c[] __attribute__((aligned(4))) = "**** Warning: error getting CF Nonce offset, aborting!\n";
+static const char ir_453f54[] __attribute__((aligned(4))) = "**** Warning: error getting CF Nonce, offset 0x%x aborting!\n";
+static const char ir_453f94[] __attribute__((aligned(4))) = "**** Warning: error getting CG Nonce offset, aborting!\n";
+static const char ir_453fcc[] __attribute__((aligned(4))) = "**** Warning: error getting CG Nonce, offset 0x%x aborting!\n";
 void getNonces(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
@@ -1413,6 +1559,15 @@ void getNonces(void)
 	xb.f020 = 0;
 }
 
+static const char ir_454009[] __attribute__((aligned(1))) = "\n------ Checking %s ------\n";
+static const char ir_454025[] __attribute__((aligned(1))) = "NAND dump not found at '%s'\n";
+static const char ir_454044[] __attribute__((aligned(4))) = "NAND dump '%s' is not a correct raw (with ecc) dump size (0x%x bytes), ignoring\n";
+static const char ir_454098[] __attribute__((aligned(4))) = "NAND dump '%s' is not a correct dump size (0x%x bytes), ignoring\n";
+static const char ir_4540dc[] __attribute__((aligned(4))) = "******* ERROR loading '%s', unable to allocate memory\n";
+static const char ir_454114[] __attribute__((aligned(4))) = "Loading NAND dump (0x%x bytes)...";
+static const char ir_454138[] __attribute__((aligned(4))) = "******* ERROR loading '%s', unable to allocate user/spare memory\n";
+static const char ir_45417c[] __attribute__((aligned(4))) = "Detecting NAND controller type from dump data...\n";
+static const char ir_4541b0[] __attribute__((aligned(4))) = "******* ERROR loading '%s', unable to determine NAND controller type!\n";
 u32 loadDump(const char *path)
 {
 	char name[0x400];

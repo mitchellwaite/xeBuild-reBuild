@@ -434,47 +434,9 @@ SYMBOLS = {
     0x416cd0: '_checkHeader', 0x4172c0: '_getNonces',
     0x40fc30: '_pageEccOk', 0x40fcc0: '_blockEccOk', 0x40ff40: '_blockErased',
     0x410070: '_isErased', 0x412e90: '_statisticsOffset', 0x412f60: '_manufacturingOffset',
-    # image_read.s strings and variables the mixed image_read.c refers to
+    # image_read's variables (names are ours)
     0x44a5c0: '_zeropair', 0x44a5d0: '_mobileName', 0x44a5d8: '_fs', 0x474a20: '_mobiles', 0x474b20: '_anchor',
     0x474d20: '_fsOffset', 0x474d24: '_fsValid', 0x474d40: '_fsBuf', 0x478d40: '_dumpSize',
-    0x4521b8: '_ir_4521b8', 0x4521e0: '_ir_4521e0', 0x452220: '_ir_452220', 0x452260: '_ir_452260',
-    0x4522c4: '_ir_4522c4', 0x4522e4: '_ir_4522e4', 0x45230f: '_ir_45230f', 0x45232c: '_ir_45232c',
-    0x45235c: '_ir_45235c', 0x45238c: '_ir_45238c', 0x4523bc: '_ir_4523bc', 0x4523ec: '_ir_4523ec',
-    0x45242c: '_ir_45242c', 0x452450: '_ir_452450', 0x452494: '_ir_452494', 0x4524dc: '_ir_4524dc',
-    0x452508: '_ir_452508', 0x452538: '_ir_452538', 0x45256c: '_ir_45256c', 0x4525a8: '_ir_4525a8',
-    0x4525d0: '_ir_4525d0', 0x45261c: '_ir_45261c', 0x452674: '_ir_452674', 0x4526ac: '_ir_4526ac',
-    0x4526f0: '_ir_4526f0', 0x45271c: '_ir_45271c', 0x45276c: '_ir_45276c', 0x452799: '_ir_452799',
-    0x4527a0: '_ir_4527a0', 0x4527e4: '_ir_4527e4', 0x452824: '_ir_452824', 0x452864: '_ir_452864',
-    0x4528a4: '_ir_4528a4', 0x4528e1: '_ir_4528e1', 0x4528fe: '_ir_4528fe', 0x452912: '_ir_452912',
-    0x452930: '_ir_452930', 0x452958: '_ir_452958', 0x45296a: '_ir_45296a', 0x452988: '_ir_452988',
-    0x4529d0: '_ir_4529d0', 0x4529f8: '_ir_4529f8', 0x452a24: '_ir_452a24', 0x452a4c: '_ir_452a4c',
-    0x452a78: '_ir_452a78', 0x452aa4: '_ir_452aa4', 0x452acc: '_ir_452acc', 0x452af8: '_ir_452af8',
-    0x452b20: '_ir_452b20', 0x452b6c: '_ir_452b6c', 0x452bc3: '_ir_452bc3', 0x452bc9: '_ir_452bc9',
-    0x452bd3: '_ir_452bd3', 0x452bd8: '_ir_452bd8', 0x452c20: '_ir_452c20', 0x452c47: '_ir_452c47',
-    0x452c5e: '_ir_452c5e', 0x452c70: '_ir_452c70', 0x452cbc: '_ir_452cbc', 0x452d0c: '_ir_452d0c',
-    0x452d33: '_ir_452d33', 0x452d4e: '_ir_452d4e', 0x452d55: '_ir_452d55', 0x452d74: '_ir_452d74',
-    0x452db0: '_ir_452db0', 0x452e09: '_ir_452e09', 0x452e18: '_ir_452e18', 0x452e50: '_ir_452e50',
-    0x452e80: '_ir_452e80', 0x452eb0: '_ir_452eb0', 0x452edc: '_ir_452edc', 0x452f0c: '_ir_452f0c',
-    0x452f44: '_ir_452f44', 0x452f7c: '_ir_452f7c', 0x452fb8: '_ir_452fb8', 0x452ffc: '_ir_452ffc',
-    0x453049: '_ir_453049', 0x453064: '_ir_453064', 0x45309c: '_ir_45309c', 0x4530d4: '_ir_4530d4',
-    0x45310c: '_ir_45310c', 0x453150: '_ir_453150', 0x45318c: '_ir_45318c', 0x4531b4: '_ir_4531b4',
-    0x4531e8: '_ir_4531e8', 0x453248: '_ir_453248', 0x4532b0: '_ir_4532b0', 0x453310: '_ir_453310',
-    0x453354: '_ir_453354', 0x4533a8: '_ir_4533a8', 0x4533ec: '_ir_4533ec', 0x453420: '_ir_453420',
-    0x453474: '_ir_453474', 0x4534b8: '_ir_4534b8', 0x4534e9: '_ir_4534e9', 0x4534fc: '_ir_4534fc',
-    0x453510: '_ir_453510', 0x453538: '_ir_453538', 0x45355c: '_ir_45355c', 0x453594: '_ir_453594',
-    0x4535a7: '_ir_4535a7', 0x4535ac: '_ir_4535ac', 0x4535e4: '_ir_4535e4', 0x453610: '_ir_453610',
-    0x453649: '_ir_453649', 0x453664: '_ir_453664', 0x453694: '_ir_453694', 0x4536b8: '_ir_4536b8',
-    0x4536e0: '_ir_4536e0', 0x453708: '_ir_453708', 0x453760: '_ir_453760', 0x45378c: '_ir_45378c',
-    0x4537b4: '_ir_4537b4', 0x453810: '_ir_453810', 0x453828: '_ir_453828', 0x45386c: '_ir_45386c',
-    0x4538ac: '_ir_4538ac', 0x4538ec: '_ir_4538ec', 0x453928: '_ir_453928', 0x45396c: '_ir_45396c',
-    0x4539b4: '_ir_4539b4', 0x453a0c: '_ir_453a0c', 0x453a68: '_ir_453a68', 0x453aac: '_ir_453aac',
-    0x453af4: '_ir_453af4', 0x453b48: '_ir_453b48', 0x453b98: '_ir_453b98', 0x453bdc: '_ir_453bdc',
-    0x453c28: '_ir_453c28', 0x453c9c: '_ir_453c9c', 0x453d18: '_ir_453d18', 0x453d3c: '_ir_453d3c',
-    0x453d78: '_ir_453d78', 0x453db0: '_ir_453db0', 0x453dec: '_ir_453dec', 0x453e2c: '_ir_453e2c',
-    0x453e64: '_ir_453e64', 0x453ea4: '_ir_453ea4', 0x453edc: '_ir_453edc', 0x453f1c: '_ir_453f1c',
-    0x453f54: '_ir_453f54', 0x453f94: '_ir_453f94', 0x453fcc: '_ir_453fcc', 0x454009: '_ir_454009',
-    0x454025: '_ir_454025', 0x454044: '_ir_454044', 0x454098: '_ir_454098', 0x4540dc: '_ir_4540dc',
-    0x454114: '_ir_454114', 0x454138: '_ir_454138', 0x45417c: '_ir_45417c', 0x4541b0: '_ir_4541b0',
     # app/build; names are ours.  Its file table entry is {name[0x400], crc,
     # type, offset, data, size, ...}, 0x42c bytes.  findFile is named above.
     0x427500: '_loadBaseFile',          # baseDir+name; regparm (eax, edx)
@@ -589,17 +551,6 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
 # build.sh fills from `gcc -S` of src/<obj>.c (re/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = {
-    # app/image_read (the rest are drafted in wip/app/image_read.c)
-    0x4136a0, 0x414050, 0x414300, 0x4144e0,  # fsFind getImageMobiles getNetKd loadFlashFile
-    0x414610, 0x414af0, 0x414b90, 0x4151c0,  # fsFindFile mmcFindMobiles spareVersion setFsOffset
-    0x415230, 0x415970, 0x415d90, 0x415e90,  # findFsRoot findSmcConfig addRemap findFreeRemap
-    0x416040, 0x416070, 0x416840,            # notZeropair spareLbaOk copyMuData
-    0x4154d0, 0x4172c0,                      # imgGetSecurityFiles getNonces
-    0x4137f0, 0x4138c0, 0x416cd0,            # buildCleanup getImageLdv checkHeader
-    0x414960, 0x415ef0, 0x4160d0,            # findAnchor remapBadBlocks copyMmcImage
-    0x414650, 0x414e90, 0x414760,            # listFlashFiles scanMobiles fsGetFile
-    0x416aa0, 0x413d30, 0x414be0, 0x415b00,  # detectController getImageKv showMobilePages checkBlock
-    0x417680, 0x413ad0,                      # loadDump getImageSmc
     # app/mode_client (client_usage: switch table; clientKeys, mode_client stay asm)
     0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches

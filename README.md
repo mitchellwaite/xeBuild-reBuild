@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 22 of 25 app files build from C, three more are mixed; see Progress** |
+| Move functions to C | **In progress: all 41 XeCrypt files and 23 of 25 app files build from C, two more are mixed; see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **611 of 617** (609 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 63 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **612 of 617** (610 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 64 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 22 / 25 | 426 / 432 |
+| `app/` | 23 / 25 | 427 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -38,7 +38,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
 | `app/image_write` | mixed; 0 of 4 drafted functions match in `wip/app/image_write.c` | 42 / 46 |
-| `app/image_read` | mixed; 0 of 1 drafted functions match in `wip/app/image_read.c` | 32 / 33 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -112,44 +111,6 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `imgAddRaw` (0x413030)
 
 </details>
-<details>
-<summary><code>app/image_read</code>: 32 / 33 in C</summary>
-
-- ✅ `fsFind` (0x4136a0)
-- ✅ `buildCleanup` (0x4137f0)
-- ✅ `getImageLdv` (0x4138c0)
-- ✅ `getImageSmc` (0x413ad0)
-- ✅ `getImageKv` (0x413d30)
-- ✅ `getImageMobiles` (0x414050)
-- ✅ `getNetKd` (0x414300)
-- ✅ `loadFlashFile` (0x4144e0)
-- ✅ `fsFindFile` (0x414610)
-- ✅ `listFlashFiles` (0x414650)
-- ✅ `fsGetFile` (0x414760)
-- ✅ `findAnchor` (0x414960)
-- ✅ `mmcFindMobiles` (0x414af0)
-- ✅ `spareVersion` (0x414b90)
-- ✅ `showMobilePages` (0x414be0)
-- ✅ `scanMobiles` (0x414e90)
-- ✅ `setFsOffset` (0x4151c0)
-- ✅ `findFsRoot` (0x415230)
-- ✅ `imgGetSecurityFiles` (0x4154d0)
-- ✅ `findSmcConfig` (0x415970)
-- ✅ `checkBlock` (0x415b00)
-- ✅ `addRemap` (0x415d90)
-- ✅ `findFreeRemap` (0x415e90)
-- ✅ `remapBadBlocks` (0x415ef0)
-- ✅ `notZeropair` (0x416040)
-- ✅ `spareLbaOk` (0x416070)
-- ✅ `copyMmcImage` (0x4160d0)
-- ⬜ `parseDump` (0x416150) (draft in `wip/`, no match yet)
-- ✅ `copyMuData` (0x416840)
-- ✅ `detectController` (0x416aa0)
-- ✅ `checkHeader` (0x416cd0)
-- ✅ `getNonces` (0x4172c0)
-- ✅ `loadDump` (0x417680)
-
-</details>
 
 ### Completed
 
@@ -168,6 +129,7 @@ Objects built entirely from C, in link order.
 | `app/mode_extract` | 2 |
 | `app/xboxrom` | 7 |
 | `app/keyvault` | 12 |
+| `app/image_read` | 33 |
 | `app/mode_ini` | 6 |
 | `app/mode_build` | 5 |
 | `app/keys` | 48 |
@@ -338,6 +300,44 @@ Objects built entirely from C, in link order.
 - ✅ `kvGetMfgDate` (0x413510)
 - ✅ `kvHashIsOk` (0x413590)
 - ✅ `kvSetDvdKey` (0x4135a0)
+
+</details>
+<details>
+<summary><code>app/image_read</code>: 33 functions</summary>
+
+- ✅ `fsFind` (0x4136a0)
+- ✅ `buildCleanup` (0x4137f0)
+- ✅ `getImageLdv` (0x4138c0)
+- ✅ `getImageSmc` (0x413ad0)
+- ✅ `getImageKv` (0x413d30)
+- ✅ `getImageMobiles` (0x414050)
+- ✅ `getNetKd` (0x414300)
+- ✅ `loadFlashFile` (0x4144e0)
+- ✅ `fsFindFile` (0x414610)
+- ✅ `listFlashFiles` (0x414650)
+- ✅ `fsGetFile` (0x414760)
+- ✅ `findAnchor` (0x414960)
+- ✅ `mmcFindMobiles` (0x414af0)
+- ✅ `spareVersion` (0x414b90)
+- ✅ `showMobilePages` (0x414be0)
+- ✅ `scanMobiles` (0x414e90)
+- ✅ `setFsOffset` (0x4151c0)
+- ✅ `findFsRoot` (0x415230)
+- ✅ `imgGetSecurityFiles` (0x4154d0)
+- ✅ `findSmcConfig` (0x415970)
+- ✅ `checkBlock` (0x415b00)
+- ✅ `addRemap` (0x415d90)
+- ✅ `findFreeRemap` (0x415e90)
+- ✅ `remapBadBlocks` (0x415ef0)
+- ✅ `notZeropair` (0x416040)
+- ✅ `spareLbaOk` (0x416070)
+- ✅ `copyMmcImage` (0x4160d0)
+- ✅ `parseDump` (0x416150)
+- ✅ `copyMuData` (0x416840)
+- ✅ `detectController` (0x416aa0)
+- ✅ `checkHeader` (0x416cd0)
+- ✅ `getNonces` (0x4172c0)
+- ✅ `loadDump` (0x417680)
 
 </details>
 <details>

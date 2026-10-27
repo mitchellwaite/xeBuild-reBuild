@@ -929,12 +929,15 @@ Still off:
 
 ## app/image_read.c
 
-Draft of the whole object, with string literals. 31 of 33 functions are
-built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
-<names>` makes from this file; a new match needs its name there and its
-address in `split.py` `C_FUNCS` (all of image_read's strings are in
-`SYMBOLS` as `ir_<address>`). Compare with the strings as those names, not
-with `FNCMP_LITERALS=1`: two cold blocks that differ only in their string
+Draft of the whole object, with string literals. All 33 functions match;
+`src/app/image_read.c` is the whole object (no `.s`), made from this file
+by `python wip/irwhole.py` and built with `-fno-toplevel-reorder`: the
+strings become `static const char ir_<address>[]` arrays, each defined
+before the first function whose part of .rdata it lies in, and the
+variables go in the original's .data/.bss order. The history below is
+from when the object was mixed (`wip/irmixed.py`, removed). Compare with
+the strings as those names (`wip/ircmp.py` does), not with
+`FNCMP_LITERALS=1`: two cold blocks that differ only in their string
 look the same to the literal mode (getImageMobiles "matched" that way with
 its two allocation-failure blocks swapped). `wip/irlit.py`'s `externize()`
 turns the draft into that form.
@@ -1042,9 +1045,9 @@ to run in parallel):
   arm adds 15%, with the call heuristic 71% -> 52.6%. Independent of
   builtin-expect-probability.
 
-Still off (fncmp lines; paused 2026-10-26 after a second round; the
-agents' variants, notes and tools are in `tmp/image_read_agents/`, which
-is untracked, without the compiler dumps):
+The last two, matched 2026-10-27 by a third round of agents after two
+earlier rounds (their variants, notes and tools are in
+`tmp/image_read_agents/`, untracked, without the compiler dumps):
 
 - `getImageSmc` built (2026-10-27, third round; agent notes and tools in
   `tmp/image_read_agents/getImageSmc3/`). Sequential tests reached by
@@ -1071,48 +1074,36 @@ is untracked, without the compiler dumps):
   the size-bad hot label stay; the not-sane hot label and the
   `unscramble() != (h == 0)` hint are gone. Each hint is needed (2-81
   lines without one).
-- `parseDump` (74, was 366). `parseDump` and `spareLbaOk` return `u32`
-  (addRemap, checkBlock, spareLbaOk and loadDump still match), and the
-  partial-block test is `int rr = xb.numPages % ppb; if (rr)`. The
-  ZEROPAIR return's `xor eax,eax` is uncprop reusing spareLbaOk's 0 (the
-  latest `x == 0` value of a type compatible with the return type), which
-  needs a u32 return and no other u32 zero value in scope at that test;
-  that fights the `u32 n` counter (forwprop folds `(int)n == 0` to `n ==
-  0`, so the return coalesces with n), while `int blk` as the loop
-  variable flips the `dst != blk` and `blk < blocks-32` compare orders.
-  Shape: an if-chain on `-2, -1, -3, -6, -4`
-  (a switch makes a jump table); loop over `u32 n` with `int blk = n;` at
-  the top (ch2 renames the loop PHI; the copy keeps blk's SSA version old,
-  which fixes `dst != blk`, `blk < blocks - 32` and the `dst == blk` PHI,
-  and makes the inlined addRemap compares `cmp [mem],reg`); `if (blk >=
-  blocks) __builtin_unreachable();` before the final addRemap; the -1 case
-  passes `dst` (== -1) as dest (the constant is known only after DOM2, so
-  PRE doesn't build a constant `numBad+1` PHI); the -1 handler as `goto
-  bad;` with `bad:` after the loop body's `continue;` (a no-op continue or
-  goto changes the predictors and the whole cold layout); copy source `raw
-  + (blk*ppb + p)*528` (two pointer IVs); summary loop `int i`. Left: (1)
-  the three inlined addRemap loop guards (~35 lines): the original has `i
-  = 0, found = 0` before `test; jne body; jmp zero`, which needs RTL
-  if-conversion to fold the preheader into the guard, and that happens
-  only if the guard's next GIMPLE block is not the preheader and its TRUE
-  edge goes to it. ch2 always puts the guard right before the body and
-  DOM2 puts the preheader right after it (its zero-trip FSM copy lands
-  before the exit block, past the simple-latch forwarder);
-  `-fno-tree-dominator-opts` gives the original guard but loses the
-  constant-1 zero-trip blocks, which need DOM2's thread before PRE.
-  Caller-side shapes, asm probes at every statement and addRemap rewrites
-  that still match standalone don't change it (`mini/` in the agent's
-  folder is a fast reproducer). (2) cold block order: bbro starts round-1
-  traces by block frequency, and MAX REMAPS has 12.6% of the three inlined
-  addRemap call blocks' summed frequency: 64 against -4's 81 with natural
-  predictions, so -4 must be predicted under ~10.8% or the dst-remap path
-  made hotter (a hot label there does it), but every hint that fixes the
-  order puts the return value in esi (~15 lines, IRA); closest lead
-  without hot labels: `if (blk >= blocks) __builtin_unreachable();` inside
-  the `dst != blk` branch (drops the call heuristic there) gives MAX 56
-  against 58. (3) the summary end has its own epilogue copy in the
-  original (edge freq >= 10%); (4) the -5 summary latch compare (recycled
-  SSA versions); (5) the dst-case inline compare wants `cmp [mem],ebp`.
+- `parseDump` built (2026-10-27, third round; notes and tools in
+  `tmp/image_read_agents/parseDump3/`). `parseDump` and `spareLbaOk`
+  return `unsigned long`: uncprop reuses a zero for the ZEROPAIR `return
+  0` only if its type is compatible with the return type, so neither the
+  u32 counter's zero nor memcmp's int zero is taken, but spareLbaOk's
+  `unsigned long` one is. Shape: an if-chain on `-2, -1, -3, -6, -4` (a
+  switch makes a jump table); loop over `u32 n` with `int blk = n;` at
+  the top; partial-block test `int rr = xb.numPages % ppb; if (rr)`. The
+  three remap calls go to `addRemapP`, a static tail-first copy of
+  addRemap written with gotos (MAX/append tail before the loop body): the
+  original's inlined guards are `xor; xor; test; jne body; jmp zero`,
+  which ce1's find_if_case_2 makes only when the guard's next GIMPLE block
+  is not the preheader, and with a for loop cddce2 always puts the
+  preheader there; the standalone addRemap keeps the plain form, so it
+  stays separate. `if (blk >= blocks) __builtin_unreachable();` before the
+  -4 handler's `if (blk < blocks)` (VRP deletes the test after the branch
+  estimate) and before the final remap; `__asm__("")` before the -4
+  handler's `dst = blk` (one merge block, so postreload CSE doesn't rewrite
+  one `mov ebp,[44]` copy); `int block` / `int i` in addRemapP for the
+  `cmp [mem],reg` orders. -1 case: `b2 = blk; __asm__("" : "+r"(b2));`
+  after the log call drives the inlined loop (LRA puts the argument load
+  in esi), the second parameter `ablock = blk` keeps the append reloading
+  [44]. The counter init `xor ebp,ebp` is IRA: n's pre-loop allocno gets
+  ebp only if its cost beats the ebp holder's spill cost (5559); addRemapP
+  takes a 5th parameter `cb` used as `__asm__("" : : "ri"(cb), "ri"(cb),
+  "ri"(cb), "ri"(cb));` after `body:`, with blk passed in the -4 call and 0
+  in the others (the "i" alternative, no code): four register uses per -4
+  iteration raise n's cost to 5603 (3 uses: 5119, too few). Per-function
+  optimize attributes for IRA (regions, algorithm, pressure, slots) didn't
+  help.
 
 listFlashFiles: load order `b16 = e->block; size = e->size; block =
 SWAP16(b16); time = e->time;` keeps e in ebp (the other orders of the

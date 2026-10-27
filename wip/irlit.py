@@ -3,7 +3,7 @@
 externize(src) returns the C text with each literal passed to a function
 replaced by `ir_<address>` (the .s's string with that text) and extern
 declarations for them after the struct definitions; literals gcc folds into
-immediate stores (strcpy, strcat) stay.  Used by wip/irmixed.py, and to
+immediate stores (strcpy, strcat) stay.  Used by wip/irwhole.py, and to
 compare a draft with re/fncmp.py without FNCMP_LITERALS (which can't tell
 two blocks apart that differ only in their strings).
 """

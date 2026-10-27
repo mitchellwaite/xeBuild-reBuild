@@ -158,9 +158,9 @@ int addRemap(u32 block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
 void remapBadBlocks(int numBlocks);
 int notZeropair(void);
-u32 spareLbaOk(int pages);
+unsigned long spareLbaOk(int pages);
 u32 copyMmcImage(u8 *raw);
-u32 parseDump(u8 *raw);
+unsigned long parseDump(u8 *raw);
 u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
@@ -982,7 +982,7 @@ int notZeropair(void)
 	return memcmp(zeropair, xb.image + 16, 14) != 0;
 }
 
-u32 spareLbaOk(int pages)
+unsigned long spareLbaOk(int pages)
 {
 	int i;
 
@@ -1003,11 +1003,45 @@ __attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
 	return 0;
 }
 
-u32 parseDump(u8 *raw)
+static int addRemapP(int block, int ablock, int cb, int dest, int numBlocks)
+{
+	int i;
+	int found = 0;
+
+	i = 0;
+	goto test;
+tail:
+	if (xb.numBad >= 32) {
+		log_printf(1, "MAX REMAPS of 32 exceeded, remapping disabled and image rejected as faulty!\n");
+		return 0;
+	}
+	if (dest != -1)
+		log_printf(1, "block 0x%x was remapped to block 0x%x, entering remap instance %d\n", ablock, dest, xb.numBad + 1);
+	xb.badBlocks[xb.numBad] = ablock;
+	xb.badRemap[xb.numBad] = dest;
+	xb.numBad++;
+	return 1;
+body:
+	__asm__("" : : "ri"(cb), "ri"(cb), "ri"(cb), "ri"(cb));
+	if (xb.badBlocks[i] == block && xb.badRemap[i] == -1 && dest < numBlocks) {
+		log_printf(1, "block 0x%x was remapped to block 0x%x at remap instance %d\n", block, dest, i);
+		xb.badRemap[i] = dest;
+		found = 1;
+	}
+	i++;
+test:
+	if (i < xb.numBad)
+		goto body;
+	if (found)
+		return 1;
+	goto tail;
+}
+
+unsigned long parseDump(u8 *raw)
 {
 	int ppb = xb.bigBlock ? 256 : 32;
 	int blocks = xb.numPages / ppb;
-	int blk, dst, p;
+	int blk, dst, p, b2;
 	u32 n;
 	int i;
 	u8 *src;
@@ -1027,7 +1061,9 @@ u32 parseDump(u8 *raw)
 			continue;
 		if (dst == -1) {
 			log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
-			if (!addRemap(blk, dst, blocks))
+			b2 = blk;
+			__asm__("" : "+r"(b2));
+			if (!addRemapP(b2, blk, 0, dst, blocks))
 				return 0;
 			goto next;
 		}
@@ -1041,11 +1077,14 @@ u32 parseDump(u8 *raw)
 			continue;
 		}
 		if (dst == -4) {
+			if (blk >= blocks)
+				__builtin_unreachable();
 			if (blk < blocks) {
 				log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
-				if (!addRemap(blk, -1, blocks))
+				if (!addRemapP(blk, blk, blk, -1, blocks))
 					return 0;
 			}
+			__asm__("");
 			dst = blk;
 		} else {
 rem: __attribute__((hot));
@@ -1076,7 +1115,7 @@ rem: __attribute__((hot));
 		}
 		if (blk >= blocks)
 			__builtin_unreachable();
-		if (dst != blk && !addRemap(dst, blk, blocks))
+		if (dst != blk && !addRemapP(dst, dst, 0, blk, blocks))
 			return 0;
 next:
 		;
