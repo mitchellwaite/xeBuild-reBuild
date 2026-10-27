@@ -2384,6 +2384,22 @@ Findings:
   loop with the two `x + 0x4000 < first` ones, and imgAddFile's pin is
   `len++` (evaluations 559 / 235). imgAddFile is then 30 lines: the
   pages cmov form is fixed by the inner-loop pages.
+- imgAddFile draft (2026-10-27, 24 lines, `addpair2/FINAL.c`): fits-first
+  `if (__builtin_expect(imgFits(off, len), 1)) {...} else log_printf(...)`
+  with dead `time++` pins in the head and at the top of the fits body.
+  peephole2 picks scratch registers with a static search offset that
+  carries across insns and functions (blocks walked in reverse layout
+  order); the body pin makes VRP1 rebuild the strcpy/bigBlock-test block
+  last in the layout, which gives the original's edx (bigBlock test) and
+  ecx (end marker), so function order matters for the whole-C build.
+  Left: the ERR block lands right after the head (the original has it
+  after the end-marker block, before the small-block call; 18 lines) and
+  the range test checks `off` first (original `off + len`: ifcombine
+  builds `a | b` from recycled SSA names, forwprop sorts by version).
+  Every form found trades the ERR placement against the registers:
+  with a body pin registers are right and ERR wrong, without one the
+  reverse; fits-first without the expect, or hot/cold labels on the
+  bigBlock arms, place ERR right but shift the head's RA.
 - checkBootImage returns `long`: as `int`, uncprop reuses the tested
   `xb.bigBlock` (0) register for `return 0`. `u32 bigBlock` fixes it too
   but breaks fixupEmptyFsBlocks.

@@ -907,20 +907,26 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	u8 *s;
 
 	if ((len & 0x3fff) > 0x3fff)
+		time++;
+	if ((len & 0x3fff) > 0x3fff)
 		len++;
-	if (!imgFits(off, len)) {
+	if (__builtin_expect(imgFits(off, len), 1)) {
+		/* dead: VRP1 rebuilds this block last, so peephole2's scratch
+		   registers (bigBlock test, end marker) come out as the original's */
+		if ((len & 0x3fff) > 0x3fff)
+			time++;
+		fsFiles[nFsFiles].block = SWAP16((u16)(off >> 14) - xb.fsStart);
+		fsFiles[nFsFiles].size = SWAP32(len);
+		strcpy(fsFiles[nFsFiles].name, name);
+		fsFiles[nFsFiles].time = *time;
+		if (!xb.bigBlock)
+			imgAdd(off, data, len, 0, 0xffff, 1);
+		else
+			imgAdd(off, data, len, 0x2a, 0xffff, 1);
+		nFsFiles++;
+	} else {
 		log_printf(0, iw_4518a0, name);
-		return;
 	}
-	fsFiles[nFsFiles].block = SWAP16((u16)(off >> 14) - xb.fsStart);
-	fsFiles[nFsFiles].size = SWAP32(len);
-	strcpy(fsFiles[nFsFiles].name, name);
-	fsFiles[nFsFiles].time = *time;
-	if (!xb.bigBlock)
-		imgAdd(off, data, len, 0, 0xffff, 1);
-	else
-		imgAdd(off, data, len, 0x2a, 0xffff, 1);
-	nFsFiles++;
 }
 
 void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len)
