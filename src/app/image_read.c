@@ -169,7 +169,7 @@ u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
 void getNonces(void);
-int loadDump(const char *path);
+u32 loadDump(const char *path);
 
 /* image_read.s's data */
 static struct fsroot fsBuf;
@@ -191,6 +191,17 @@ extern const char ir_452260[];	/* "***** WARNING: could not find a non-..." */
 extern const char ir_4522c4[];	/* "setting LDV from image to %d\n" */
 extern const char ir_4522e4[];	/* "setting pairing data from image to 0..." */
 extern const char ir_45230f[];	/* "LDV was already set to %d\n" */
+extern const char ir_4524dc[];	/* "KeyVault cannot be at 0x0, trying 0x..." */
+extern const char ir_452508[];	/* "KeyVault cannot be 0x%x bytes, using..." */
+extern const char ir_452538[];	/* "decrypting KeyVault at address 0x%x ..." */
+extern const char ir_45256c[];	/* "keyvault decrypted OK, will use if n..." */
+extern const char ir_4525a8[];	/* "keyvault decrypt failed, discarding\..." */
+extern const char ir_4525d0[];	/* "Wasn't able to alloc 0x4000 bytes me..." */
+extern const char ir_45261c[];	/* "KeyVault at address 0x%x of size 0x4..." */
+extern const char ir_452674[];	/* "decrypting alt KeyVault at address 0..." */
+extern const char ir_4526ac[];	/* "alt KeyVault decrypted OK, will use ..." */
+extern const char ir_4526f0[];	/* "alt KeyVault decrypt failed, discard..." */
+extern const char ir_45271c[];	/* "Wasn't able to alloc 0x4000 bytes me..." */
 extern const char ir_45276c[];	/* "Unable to allocate memory for %s 0x%..." */
 extern const char ir_452799[];	/* "%s.dat" */
 extern const char ir_4527a0[];	/* "extracting %s from page 0x%x (offset..." */
@@ -212,6 +223,8 @@ extern const char ir_452a4c[];	/* "anchor block v %d at 0x2fec000 is va..." */
 extern const char ir_452a78[];	/* "anchor block v %d at 0x2fec000 is se..." */
 extern const char ir_452aa4[];	/* "anchor block at 0x2fec000 is invalid..." */
 extern const char ir_452acc[];	/* "anchor block v %d at 0x2fe8000 is se..." */
+extern const char ir_452af8[];	/* "Showing all pages with mobile info:\..." */
+extern const char ir_452b20[];	/* "starting mobile scan at page 0x%x (o..." */
 extern const char ir_452b6c[];	/* "mobile%c.dat ver %02d offset 0x%08x ..." */
 extern const char ir_452bc3[];	/* "%02x " */
 extern const char ir_452bc9[];	/* "(DELETE)\n" */
@@ -229,6 +242,13 @@ extern const char ir_452d55[];	/* "seeking smc config in dump..." */
 extern const char ir_452d74[];	/* "found at offset 0x%x! Using if no sm..." */
 extern const char ir_452db0[];	/* "found at offset 0x%x! Unable to allo..." */
 extern const char ir_452e09[];	/* "not found!\n" */
+extern const char ir_452e18[];	/* "\n\n****************  WARNING  *****..." */
+extern const char ir_452e50[];	/* "  nanddump.bin has NAND memory unit ..." */
+extern const char ir_452e80[];	/* "  sure you back up any important dat..." */
+extern const char ir_452eb0[];	/* "  internal MU before flashing a new ..." */
+extern const char ir_452edc[];	/* "\n  xeBuild will attempt to keep thi..." */
+extern const char ir_452f0c[];	/* "  many things could cause it to be i..." */
+extern const char ir_452f44[];	/* "************************************..." */
 extern const char ir_452f7c[];	/* "block 0x%x was remapped to block 0x%..." */
 extern const char ir_452fb8[];	/* "block 0x%x was remapped to block 0x%..." */
 extern const char ir_452ffc[];	/* "MAX REMAPS of 32 exceeded, remapping..." */
@@ -282,6 +302,15 @@ extern const char ir_453f1c[];	/* "**** Warning: error getting CF Nonce..." */
 extern const char ir_453f54[];	/* "**** Warning: error getting CF Nonce..." */
 extern const char ir_453f94[];	/* "**** Warning: error getting CG Nonce..." */
 extern const char ir_453fcc[];	/* "**** Warning: error getting CG Nonce..." */
+extern const char ir_454009[];	/* "\n------ Checking %s ------\n" */
+extern const char ir_454025[];	/* "NAND dump not found at '%s'\n" */
+extern const char ir_454044[];	/* "NAND dump '%s' is not a correct raw ..." */
+extern const char ir_454098[];	/* "NAND dump '%s' is not a correct dump..." */
+extern const char ir_4540dc[];	/* "******* ERROR loading '%s', unable t..." */
+extern const char ir_454114[];	/* "Loading NAND dump (0x%x bytes)..." */
+extern const char ir_454138[];	/* "******* ERROR loading '%s', unable t..." */
+extern const char ir_45417c[];	/* "Detecting NAND controller type from ..." */
+extern const char ir_4541b0[];	/* "******* ERROR loading '%s', unable t..." */
 
 static int fsFind(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
 {
@@ -315,12 +344,9 @@ void buildCleanup(void)
 	xb.spare = 0;
 	xb.nandMu = 0;
 	xb.muChecked = 0;
-	{
-		struct netfile *m;
-		for (m = xb.mobile; m != &xb.smc; m++)
-			if (m->data)
-				free(m->data);
-	}
+	for (i = 0; i < sizeof(xb.mobile) / sizeof(xb.mobile[0]); i++)
+		if (xb.mobile[i].data)
+			free(xb.mobile[i].data);
 	for (i = 0; i < 4; i++) {
 		if ((&xb.smc)[i].data)
 			free((&xb.smc)[i].data);
@@ -364,6 +390,62 @@ void getImageLdv(void)
 		xb.cfLdv = 32;
 	else
 		xb.cfLdv = ldv;
+}
+
+void getImageKv(void)
+{
+	struct flashhdr *h = (struct flashhdr *)xb.image;
+	int addr = SWAP32(h->kvAddr);
+	int size = SWAP32(h->kvSize);
+	int ok = 0;
+
+	if (!addr) {
+		log_printf(1, ir_4524dc, addr);
+		addr = 0x4000;
+	}
+	if (size != 0x4000 && size != 0x8000) {
+		log_printf(1, ir_452508, size);
+		size = 0x4000;
+	}
+	if (addr + size < 528 * xb.numPages) {
+		xb.kv.data = malloc(0x4000);
+		if (xb.kv.data) {
+			log_printf(1, ir_452538, addr, 0x4000);
+			xb.kv.size = 0x4000;
+			memcpy(xb.kv.data, xb.image + addr, 0x4000);
+			ok = verifyExtended(xb.kv.data, xb.kv.size);
+			if (ok) {
+				log_printf(1, ir_45256c);
+				setKvSalt(xb.kv.data + 16);
+			} else {
+				log_printf(1, ir_4525a8);
+				free(xb.kv.data);
+				xb.kv.data = 0;
+				xb.kv.size = 0;
+			}
+		} else
+			log_printf(1, ir_4525d0);
+	} else
+		log_printf(1, ir_45261c, addr);
+	if (ok && size == 0x8000) {
+		addr += 0x4000;
+		xb.kvAlt.data = malloc(0x4000);
+		if (xb.kvAlt.data) {
+			log_printf(1, ir_452674, addr, 0x4000);
+			xb.kvAlt.size = 0x4000;
+			memcpy(xb.kvAlt.data, xb.image + addr, 0x4000);
+			if (verifyExtended(xb.kvAlt.data, xb.kvAlt.size)) {
+				log_printf(1, ir_4526ac);
+				setKvAltSalt(xb.kvAlt.data + 16);
+			} else {
+				log_printf(1, ir_4526f0);
+				free(xb.kvAlt.data);
+				xb.kvAlt.data = 0;
+				xb.kvAlt.size = 0;
+			}
+		} else
+			log_printf(1, ir_45271c);
+	}
 }
 
 void getImageMobiles(void)
@@ -589,6 +671,57 @@ u32 spareVersion(u8 *s)
 	return (s[3] << 8) | (s[4] << 16) | (s[6] << 24) | lo;
 }
 
+void showMobilePages(void)
+{
+	struct flashhdr *h = (struct flashhdr *)xb.image;
+	u32 page, end;
+	u32 off;
+	u8 fsType;
+
+	if (!xb.bigBlock) {
+		end = xb.numPages - 1152;
+		fsType = 48;
+	} else {
+		end = xb.numPages - 9216;
+		fsType = 44;
+	}
+	log_printf(2, separator);
+	log_printf(2, ir_452af8);
+	log_printf(2, separator);
+	page = SWAP32(h->sysUpdateAddr) >> 9;
+	if (page & 0x1f)
+		page = (page & ~0x1f) + 32;
+	off = page * 512;
+	log_printf(2, ir_452b20,
+		   page, off, end, xb.numPages);
+	for (; page < end; page++) {
+		u8 *s = xb.spare + page * 16;
+		u8 t = s[12] & 0x3f;
+		int letter, i;
+		u32 ver;
+		u16 len;
+
+		if (t == fsType) {
+			letter = 'A';
+			len = 0x4000;
+		} else if (t >= 0x31 && t <= 0x39) {
+			letter = t + 17;
+			len = s[7] + (s[8] << 8);
+		} else
+			continue;
+		ver = spareVersion(s);
+		log_printf(2, ir_452b6c,
+			   (u32)letter, ver, page << 9, page * 528, s[9], len, page);
+		for (i = 0; i < 16; i++)
+			log_printf(2, ir_452bc3, xb.spare[page * 16 + i]);
+		if (len & 0x8000)
+			log_printf(2, ir_452bc9);
+		else
+			log_printf(2, ir_452bd3);
+	}
+	log_printf(2, separator);
+}
+
 int scanMobiles(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
@@ -768,6 +901,74 @@ void findSmcConfig(void)
 	}
 	if (!xb.smcConfig.data)
 		log_printf(1, ir_452e09, off);
+}
+
+int checkBlock(u8 *b, int block, int numBlocks)
+{
+	int lba, lba0, lba1;
+
+	if (blockErased(b, xb.bigBlock))
+		return -2;
+	lba = -1;
+	if (xb.bigBlock) {
+		if (b[512] == 0xff && b[68096] == 0xff) {
+			lba = b[513] + (b[514] & 0xf) * 256;
+			if (lba >= numBlocks - 1)
+				lba = -3;
+			else if (!xb.muChecked) {
+				u8 m = b[524] & 0x3f;
+				int t = m;
+
+				/* opaque int copy: the <= 0x29 test stays an int
+				   compare and isn't merged with the zero test */
+				__asm__("" : "+d"(t));
+				if (t <= 0x29 && m) {
+					log_printf(0, ir_452e18);
+					log_printf(0, ir_452e50);
+					log_printf(0, ir_452e80);
+					log_printf(0, ir_452eb0);
+					if (xb.bootFlags & 0x10000000) {
+						log_printf(0, ir_452edc);
+						log_printf(0, ir_452f0c);
+					}
+					log_printf(0, ir_452f44);
+					xb.muChecked = 1;
+					xb.nandMu = 1;
+				}
+			} else {
+				if (lba > 0 && block < numBlocks - 34 && lba != block)
+					lba = -3;
+			}
+		}
+	} else {
+		if (b[517] == 0xff && b[8965] == 0xff) {
+			lba1 = b[513] + (b[514] & 0xf) * 256;
+			/* volatile: b[513] loaded again, as in the original */
+			lba0 = b[512] + (((volatile u8 *)b)[513] & 0xf) * 256;
+			if (xb.bbController) {
+				if (block && block == lba0)
+					lba = -6;
+				else
+					lba = lba1;
+			} else {
+				if (block && block == lba1)
+					lba = -6;
+				else
+					lba = lba0;
+			}
+			if (lba != -6) {
+				if (lba >= numBlocks - 1)
+					lba = -3;
+				else if (lba > 0 && block < numBlocks - 34 && block != lba)
+					lba = -3;
+			}
+		}
+	}
+	if (lba != -1) {
+		if (!(xb.bootFlags & 0x80000000) && !blockEccOk(b, xb.bigBlock))
+			lba = -4;
+	}
+	return lba;
 }
 
 int addRemap(u32 block, int dest, int numBlocks)
@@ -1141,4 +1342,121 @@ void getNonces(void)
 	}
 	setInfoKey5(xb.image + off + 16);
 	xb.f020 = 0;
+}
+
+u32 loadDump(const char *path)
+{
+	char name[0x400];
+	FILE *fp;
+	int size;
+	u32 ret;
+	u32 pages, rawSize;
+	u8 *raw;
+
+	if (path)
+		strcpy(name, path);
+	else {
+		strcpy(name, xb.baseDir);
+		strcat(name, "nanddump.bin");
+	}
+	buildCleanup();
+	log_printf(1, ir_454009, name);
+	fp = fopen(name, ir_4535a7);
+	if (!fp) {
+		log_printf(1, ir_454025, name);
+		return 0;
+	}
+	size = checkHeader(name, fp);
+	if (!size) {
+		buildCleanup();
+		return 0;
+	}
+	dumpSize = size;
+	if (size == 0x3000000) {
+		xb.numPages = 0x18000;
+		rawSize = 0x3000000;
+	} else if (size % 528) {
+		log_printf(1, ir_454098, name, size);
+		fclose(fp);
+		return 0;
+	} else {
+		if (size >= 0x4200000) {
+			rawSize = 0x4200000;
+			pages = 0x20000;
+			size = 0x4200000;
+		} else {
+			rawSize = 0x1080000;
+			pages = 0x8000;
+			if (size != 0x1080000) {
+				log_printf(1, ir_454044, name, size);
+				fclose(fp);
+				return 0;
+			}
+		}
+		xb.numPages = pages;
+	}
+	raw = malloc(rawSize);
+	if (!raw) {
+		log_printf(0, ir_4540dc, name);
+		fclose(fp);
+		return 0;
+	}
+	log_printf(1, ir_454114, size);
+	fread(raw, rawSize, 1, fp);
+	fclose(fp);
+	log_printf(1, ir_452d4e, name);
+	xb.imageSize = xb.numPages << 9;
+	xb.spareSize = xb.numPages * 16;
+	xb.image = malloc(xb.numPages << 9);
+	xb.spare = malloc(xb.numPages * 16);
+	if (!xb.image || !xb.spare) {
+		log_printf(0, ir_454138, name);
+		buildCleanup();
+		free(raw);
+		return 0;
+	}
+	memset(xb.image, 0xff, xb.imageSize);
+	memset(xb.spare, 0xff, xb.spareSize);
+	log_printf(1, ir_45417c);
+	if (detectController(raw, size)) {
+		/* copyMmcImage's body, written out: its optimize attribute keeps it
+		   from being inlined here.  The test must be predicted 50-52.6%
+		   (ce1 hoists ret = 1 only above 50%, the mmc trace takes the log
+		   block only within 10% of even): call 71% x hot label 15% x opcode
+		   nonequal 72% (the != against size == 0, folded by VRP) = 52.6% */
+		if (xb.mmc) {
+			xb.numBad = 0;
+			memcpy(xb.image, raw, xb.imageSize);
+			if (notZeropair() != (size == 0))
+				ret = 1;
+			else {
+mmcbad: __attribute__((hot));
+				log_printf(0, ir_45310c);
+				ret = 0;
+			}
+		} else
+			ret = parseDump(raw);
+		if (!ret)
+			buildCleanup();
+		else {
+			getImageKv();
+			getImageSmc();
+			findSmcConfig();
+			getImageLdv();
+			if (findFsRoot()) {
+				if (!(xb.bootFlags & 0x20000000)) {
+					getNetKd();
+					getImageMobiles();
+				}
+				if (!(xb.bootFlags & 0x4000000))
+					imgGetSecurityFiles();
+			}
+			getNonces();
+		}
+	} else {
+		log_printf(0, ir_4541b0, name);
+		ret = 0;
+	}
+	free(raw);
+	return ret;
 }

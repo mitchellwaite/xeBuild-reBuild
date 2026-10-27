@@ -19,7 +19,8 @@ src, fn = sys.argv[1:3]
 flags = sys.argv[3:] or ['-O3']
 addr = next(a for a, s in SYMBOLS.items() if s == '_' + fn)
 size = dict(f for _, fs in units(Image(os.path.join(ROOT, 'xeBuild.exe'))) for f in fs)[addr]
-tmp = os.path.join(ROOT, 'build', 'jcmp.o')
+# one .o per process, so parallel runs don't overwrite each other's
+tmp = os.path.join(ROOT, 'build', 'jcmp.%d.o' % os.getpid())
 r = subprocess.run([os.path.join(BIN, 'gcc.exe'), '-c', '-fno-asynchronous-unwind-tables', '-I', os.path.dirname(src)] + flags + [src, '-o', tmp], env=env, capture_output=True, text=True)
 if r.returncode:
     sys.exit(r.stderr)
@@ -66,6 +67,7 @@ def dis(path, start=None, stop=None, sym=None):
 
 a = dis(os.path.join(ROOT, 'xeBuild.exe'), addr, addr + size)
 b = dis(tmp, sym=fn)
+os.remove(tmp)
 # trim trailing padding
 def trim(x):
     while x and re.search(r' (nop|lea\s+e[sd]i,\[e[sd]i|xchg|mov\s+esi,esi|mov\s+edi,edi|lea\s+esi,\[esi|lea\s+edi,\[edi|\(bad\)|add\s+BYTE PTR \[eax\],al)', x[-1]):

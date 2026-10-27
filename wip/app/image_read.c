@@ -165,7 +165,7 @@ u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
 void getNonces(void);
-int loadDump(const char *path);
+u32 loadDump(const char *path);
 
 /* gcc emits these in reverse */
 static struct fsroot fsBuf;
@@ -211,12 +211,9 @@ void buildCleanup(void)
 	xb.spare = 0;
 	xb.nandMu = 0;
 	xb.muChecked = 0;
-	{
-		struct netfile *m;
-		for (m = xb.mobile; m != &xb.smc; m++)
-			if (m->data)
-				free(m->data);
-	}
+	for (i = 0; i < sizeof(xb.mobile) / sizeof(xb.mobile[0]); i++)
+		if (xb.mobile[i].data)
+			free(xb.mobile[i].data);
 	for (i = 0; i < 4; i++) {
 		if ((&xb.smc)[i].data)
 			free((&xb.smc)[i].data);
@@ -268,11 +265,14 @@ void getImageSmc(void)
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
 
-	if (!addr || (addr != 0x800 && addr != 0x1000)) {
+	if (!addr) {
+		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+		addr = 0x1000;
+	} else if (__builtin_expect(addr != 0x800 && addr != 0x1000, 1)) {
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 		addr = 0x1000;
 	}
-	if (size != 0x3000 && size != 0x3800) {
+	if (__builtin_expect(size != 0x3000 && size != 0x3800, 1)) {
 		if (addr == 0x800) {
 			size = 0x3800;
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
@@ -280,27 +280,28 @@ void getImageSmc(void)
 			size = 0x3000;
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3000\n", size);
 		}
-	}
-	if (addr >= 528 * xb.numPages) {
-		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
-		return;
-	}
-	xb.smc.data = malloc(size);
-	if (!xb.smc.data) {
-		log_printf(1, "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n", size);
-		return;
-	}
-	xb.smc.size = size;
-	memcpy(xb.smc.data, xb.image + addr, size);
-	log_printf(1, "decrypting SMC at address 0x%x of size 0x%x\n", addr, size);
-	if (unscramble(xb.smc.data, xb.smc.size)) {
-		log_printf(1, "SMC decrypted OK, will use if no external smc.bin is provided\n");
-		setSmcKey(xb.smc.data);
+	} else
+		__asm__("" : "+D"(addr));
+	if (addr < 528 * xb.numPages) {
+		xb.smc.data = malloc(size);
+		if (xb.smc.data) {
+			xb.smc.size = size;
+			memcpy(xb.smc.data, xb.image + addr, size);
+			log_printf(1, "decrypting SMC at address 0x%x of size 0x%x\n", addr, size);
+			if (unscramble(xb.smc.data, xb.smc.size)) {
+				log_printf(1, "SMC decrypted OK, will use if no external smc.bin is provided\n");
+				setSmcKey(xb.smc.data);
+			} else {
+				log_printf(1, "SMC did not decrypt, discarding it\n");
+				free(xb.smc.data);
+				xb.smc.data = 0;
+				xb.smc.size = 0;
+			}
+		} else
+			log_printf(1, "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n", size);
 	} else {
-		log_printf(1, "SMC did not decrypt, discarding it\n");
-		free(xb.smc.data);
-		xb.smc.data = 0;
-		xb.smc.size = 0;
+		nhot: __attribute__((hot));
+		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	}
 }
 
@@ -309,6 +310,7 @@ void getImageKv(void)
 	struct flashhdr *h = (struct flashhdr *)xb.image;
 	int addr = SWAP32(h->kvAddr);
 	int size = SWAP32(h->kvSize);
+	int ok = 0;
 
 	if (!addr) {
 		log_printf(1, "KeyVault cannot be at 0x0, trying 0x4000\n", addr);
@@ -318,34 +320,16 @@ void getImageKv(void)
 		log_printf(1, "KeyVault cannot be 0x%x bytes, using 0x4000\n", size);
 		size = 0x4000;
 	}
-	if (__builtin_expect(addr + size < 528 * xb.numPages, 1)) {
+	if (addr + size < 528 * xb.numPages) {
 		xb.kv.data = malloc(0x4000);
 		if (xb.kv.data) {
 			log_printf(1, "decrypting KeyVault at address 0x%x of size 0x%x\n", addr, 0x4000);
 			xb.kv.size = 0x4000;
 			memcpy(xb.kv.data, xb.image + addr, 0x4000);
-			if (__builtin_expect(verifyExtended(xb.kv.data, xb.kv.size), 1)) {
+			ok = verifyExtended(xb.kv.data, xb.kv.size);
+			if (ok) {
 				log_printf(1, "keyvault decrypted OK, will use if no kv.bin is provided\n");
 				setKvSalt(xb.kv.data + 16);
-				if (__builtin_expect(size == 0x8000, 1)) {
-					addr += 0x4000;
-					xb.kvAlt.data = malloc(0x4000);
-					if (xb.kvAlt.data) {
-						log_printf(1, "decrypting alt KeyVault at address 0x%x of size 0x%x\n", addr, 0x4000);
-						xb.kvAlt.size = 0x4000;
-						memcpy(xb.kvAlt.data, xb.image + addr, 0x4000);
-						if (verifyExtended(xb.kvAlt.data, xb.kvAlt.size)) {
-							log_printf(1, "alt KeyVault decrypted OK, will use if no kv_alt.bin is provided\n");
-							setKvAltSalt(xb.kvAlt.data + 16);
-						} else {
-							log_printf(1, "alt KeyVault decrypt failed, discarding\n");
-							free(xb.kvAlt.data);
-							xb.kvAlt.data = 0;
-							xb.kvAlt.size = 0;
-						}
-					} else
-						log_printf(1, "Wasn't able to alloc 0x4000 bytes memory for alt KeyVault bin, not using...\n");
-				}
 			} else {
 				log_printf(1, "keyvault decrypt failed, discarding\n");
 				free(xb.kv.data);
@@ -356,6 +340,25 @@ void getImageKv(void)
 			log_printf(1, "Wasn't able to alloc 0x4000 bytes memory for KeyVault bin, not using...\n");
 	} else
 		log_printf(1, "KeyVault at address 0x%x of size 0x4000 is not sane, skipping KeyVault in NAND image\n", addr);
+	if (ok && size == 0x8000) {
+		addr += 0x4000;
+		xb.kvAlt.data = malloc(0x4000);
+		if (xb.kvAlt.data) {
+			log_printf(1, "decrypting alt KeyVault at address 0x%x of size 0x%x\n", addr, 0x4000);
+			xb.kvAlt.size = 0x4000;
+			memcpy(xb.kvAlt.data, xb.image + addr, 0x4000);
+			if (verifyExtended(xb.kvAlt.data, xb.kvAlt.size)) {
+				log_printf(1, "alt KeyVault decrypted OK, will use if no kv_alt.bin is provided\n");
+				setKvAltSalt(xb.kvAlt.data + 16);
+			} else {
+				log_printf(1, "alt KeyVault decrypt failed, discarding\n");
+				free(xb.kvAlt.data);
+				xb.kvAlt.data = 0;
+				xb.kvAlt.size = 0;
+			}
+		} else
+			log_printf(1, "Wasn't able to alloc 0x4000 bytes memory for alt KeyVault bin, not using...\n");
+	}
 }
 
 void getImageMobiles(void)
@@ -581,8 +584,9 @@ u32 spareVersion(u8 *s)
 	return (s[3] << 8) | (s[4] << 16) | (s[6] << 24) | lo;
 }
 
-/* not matched yet (wip/README.md): register allocation before the loop */
-__attribute__((optimize("no-tree-loop-ivcanon"))) void showMobilePages(void)
+/* (u32)letter: PRE hoists the cast into both arms, so letter's PHI dies with
+   len's and ivopts' names give the inner loop's `cmp ebx,esi` (wip/README.md) */
+void showMobilePages(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
 	u32 page, end;
@@ -610,27 +614,22 @@ __attribute__((optimize("no-tree-loop-ivcanon"))) void showMobilePages(void)
 		u8 t = s[12] & 0x3f;
 		int letter, i;
 		u32 ver;
-		short len;
+		u16 len;
 
 		if (t == fsType) {
 			letter = 'A';
 			len = 0x4000;
 		} else if (t >= 0x31 && t <= 0x39) {
-			int hi = s[8] << 8, lo = s[7];
-
 			letter = t + 17;
-			__asm__("" : "+r"(lo));
-			len = lo + hi;
-			__asm__("" : : "r"(lo));
+			len = s[7] + (s[8] << 8);
 		} else
 			continue;
-		__asm__("" : : "a"(letter));
 		ver = spareVersion(s);
 		log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
-			   letter, ver, page << 9, page * 528, s[9], (u16)len, page);
+			   (u32)letter, ver, page << 9, page * 528, s[9], len, page);
 		for (i = 0; i < 16; i++)
 			log_printf(2, "%02x ", xb.spare[page * 16 + i]);
-		if (len < 0)
+		if (len & 0x8000)
 			log_printf(2, "(DELETE)\n");
 		else
 			log_printf(2, "\n");
@@ -819,62 +818,76 @@ void findSmcConfig(void)
 		log_printf(1, "not found!\n", off);
 }
 
+/* -1 (bad block) is the initial value and the only one that skips the ECC
+   check, so the bad-block exits reach the return through `lba != -1` and
+   aren't predicted as negative returns (ce1 hoists the -1 above the tests);
+   -6 goes through `lba != -6` (VRP then can't fold the small block's lba to
+   0 on the `lba > 0` exit, as it does the big block's) */
 int checkBlock(u8 *b, int block, int numBlocks)
 {
-	int lba;
+	int lba, lba0, lba1;
 
 	if (blockErased(b, xb.bigBlock))
 		return -2;
-	if (!xb.bigBlock) {
-		if (b[517] != 0xff || b[8965] != 0xff)
-			return -1;
-		if (xb.bbController) {
-			if (block && block == b[512] + (b[513] & 0xf) * 256) {
-				lba = -6;
-				goto out;
-			}
+	lba = -1;
+	if (xb.bigBlock) {
+		if (b[512] == 0xff && b[68096] == 0xff) {
 			lba = b[513] + (b[514] & 0xf) * 256;
-		} else {
-			lba = b[512] + (b[513] & 0xf) * 256;
-			if (block && block == b[513] + (b[514] & 0xf) * 256) {
-				lba = -6;
-				goto out;
+			if (lba >= numBlocks - 1)
+				lba = -3;
+			else if (!xb.muChecked) {
+				u8 m = b[524] & 0x3f;
+				int t = m;
+
+				/* opaque int copy: the <= 0x29 test stays an int
+				   compare and isn't merged with the zero test */
+				__asm__("" : "+d"(t));
+				if (t <= 0x29 && m) {
+					log_printf(0, "\n\n****************  WARNING  *************************\n");
+					log_printf(0, "  nanddump.bin has NAND memory unit data, make\n");
+					log_printf(0, "  sure you back up any important data off the\n");
+					log_printf(0, "  internal MU before flashing a new image!\n");
+					if (xb.bootFlags & 0x10000000) {
+						log_printf(0, "\n  xeBuild will attempt to keep this data, but\n");
+						log_printf(0, "  many things could cause it to be invalid/corrupt.\n");
+					}
+					log_printf(0, "****************************************************\n\n");
+					xb.muChecked = 1;
+					xb.nandMu = 1;
+				}
+			} else {
+				if (lba > 0 && block < numBlocks - 34 && lba != block)
+					lba = -3;
 			}
 		}
-		if (lba >= numBlocks - 1)
-			lba = -3;
-		else if (lba > 0 && block < numBlocks - 34 && block != lba)
-			lba = -3;
 	} else {
-		if (b[512] != 0xff || b[68096] != 0xff)
-			return -1;
-		lba = b[513] + (b[514] & 0xf) * 256;
-		if (lba >= numBlocks - 1)
-			lba = -3;
-		else if (xb.muChecked) {
-			if (lba && block < numBlocks - 34 && lba != block)
-				lba = -3;
-		} else {
-			u8 t = b[524] & 0x3f;
-
-			if (t && t <= 0x29) {
-				log_printf(0, "\n\n****************  WARNING  *************************\n");
-				log_printf(0, "  nanddump.bin has NAND memory unit data, make\n");
-				log_printf(0, "  sure you back up any important data off the\n");
-				log_printf(0, "  internal MU before flashing a new image!\n");
-				if (xb.bootFlags & 0x10000000) {
-					log_printf(0, "\n  xeBuild will attempt to keep this data, but\n");
-					log_printf(0, "  many things could cause it to be invalid/corrupt.\n");
-				}
-				log_printf(0, "****************************************************\n\n");
-				xb.muChecked = 1;
-				xb.nandMu = 1;
+		if (b[517] == 0xff && b[8965] == 0xff) {
+			lba1 = b[513] + (b[514] & 0xf) * 256;
+			/* volatile: b[513] loaded again, as in the original */
+			lba0 = b[512] + (((volatile u8 *)b)[513] & 0xf) * 256;
+			if (xb.bbController) {
+				if (block && block == lba0)
+					lba = -6;
+				else
+					lba = lba1;
+			} else {
+				if (block && block == lba1)
+					lba = -6;
+				else
+					lba = lba0;
+			}
+			if (lba != -6) {
+				if (lba >= numBlocks - 1)
+					lba = -3;
+				else if (lba > 0 && block < numBlocks - 34 && block != lba)
+					lba = -3;
 			}
 		}
 	}
-out:
-	if (!(xb.bootFlags & 0x80000000) && !blockEccOk(b, xb.bigBlock))
-		return -4;
+	if (lba != -1) {
+		if (!(xb.bootFlags & 0x80000000) && !blockEccOk(b, xb.bigBlock))
+			lba = -4;
+	}
 	return lba;
 }
 
@@ -980,7 +993,8 @@ int parseDump(u8 *raw)
 	int ppb = xb.bigBlock ? 256 : 32;
 	int blocks = xb.numPages / ppb;
 	int blk, dst, p;
-	u32 i;
+	u32 n;
+	int i;
 	u8 *src;
 
 	if (xb.numPages % ppb) {
@@ -988,38 +1002,35 @@ int parseDump(u8 *raw)
 		return 0;
 	}
 	log_printf(1, "parsing dump into user and spare...\n");
-	for (blk = 0; blk < blocks; blk++) {
+	for (n = 0; n < blocks; n++) {
+		blk = n;
 		src = raw + blk * 528 * ppb;
 		dst = checkBlock(src, blk, blocks);
-		switch (dst) {
-		case -2:
+		if (dst == -2)
 			continue;
-		case -1:
-			log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
-			if (!addRemap(blk, -1, blocks))
-				return 0;
-			continue;
-		case -3:
+		if (dst == -1)
+			goto bad;
+		if (dst == -3) {
 			log_printf(0, "***** WARNING: nanddump.bin has a bad LBA at block 0x%x (raw offset 0x%x), block LBA ignored\n", blk, src - raw);
 			continue;
-		case -6:
+		}
+		if (dst == -6) {
 			log_printf(0, "***** WARNING: nanddump.bin has a mixed controller LBA at block 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
 			log_printf(0, "               this is likely caused by previously using jaspersb on a jasper type console!\n", blk, src - raw);
 			continue;
-		case -4:
+		}
+		if (dst == -4) {
 			log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
 			if (!addRemap(blk, -1, blocks))
 				return 0;
 			dst = blk;
-			break;
-		default:
-			if (dst != blk) {
-				if (blk < blocks - 32) {
-					log_printf(0, "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n", blk, dst);
-					log_printf(0, "               this dump may have some bad data!\n", blk, dst);
-					dst = blk;
-				} else
-					log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
+		} else if (dst != blk) {
+			if (blk >= blocks - 32)
+				log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
+			else {
+				log_printf(0, "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n", blk, dst);
+				log_printf(0, "               this dump may have some bad data!\n", blk, dst);
+				dst = blk;
 			}
 		}
 		if (blk == 0) {
@@ -1034,11 +1045,20 @@ int parseDump(u8 *raw)
 			}
 		}
 		for (p = 0; p < ppb; p++) {
-			memcpy(xb.image + (dst * ppb + p) * 512, src + p * 528, 512);
-			memcpy(xb.spare + (dst * ppb + p) * 16, src + p * 528 + 512, 16);
+			memcpy(xb.image + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
+			memcpy(xb.spare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
 		}
+		if (blk >= blocks)
+			__builtin_unreachable();
 		if (dst != blk && !addRemap(dst, blk, blocks))
 			return 0;
+		continue;
+bad:
+		log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
+		if (!addRemap(blk, dst, blocks))
+			return 0;
+next:
+		;
 	}
 	log_printf(1, "done!\n");
 	if (xb.bootFlags & 0x40000000) {
@@ -1337,12 +1357,13 @@ void getNonces(void)
 	xb.f020 = 0;
 }
 
-int loadDump(const char *path)
+u32 loadDump(const char *path)
 {
 	char name[0x400];
 	FILE *fp;
-	int size, ret;
-	u32 rawSize, pages;
+	int size;
+	u32 ret;
+	u32 pages, rawSize;
 	u8 *raw;
 
 	if (path)
@@ -1367,7 +1388,7 @@ int loadDump(const char *path)
 	if (size == 0x3000000) {
 		xb.numPages = 0x18000;
 		rawSize = 0x3000000;
-	} else if (size != size / 528 * 528) {
+	} else if (size % 528) {
 		log_printf(1, "NAND dump '%s' is not a correct dump size (0x%x bytes), ignoring\n", name, size);
 		fclose(fp);
 		return 0;
@@ -1410,13 +1431,23 @@ int loadDump(const char *path)
 	memset(xb.image, 0xff, xb.imageSize);
 	memset(xb.spare, 0xff, xb.spareSize);
 	log_printf(1, "Detecting NAND controller type from dump data...\n");
-	if (!detectController(raw, size)) {
-		log_printf(0, "******* ERROR loading '%s', unable to determine NAND controller type!\n", name);
-		ret = 0;
-	} else {
-		if (xb.mmc)
-			ret = copyMmcImage(raw);
-		else
+	if (detectController(raw, size)) {
+		/* copyMmcImage's body, written out: its optimize attribute keeps it
+		   from being inlined here.  The test must be predicted 50-52.6%
+		   (ce1 hoists ret = 1 only above 50%, the mmc trace takes the log
+		   block only within 10% of even): call 71% x hot label 15% x opcode
+		   nonequal 72% (the != against size == 0, folded by VRP) = 52.6% */
+		if (xb.mmc) {
+			xb.numBad = 0;
+			memcpy(xb.image, raw, xb.imageSize);
+			if (notZeropair() != (size == 0))
+				ret = 1;
+			else {
+mmcbad: __attribute__((hot));
+				log_printf(0, "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n");
+				ret = 0;
+			}
+		} else
 			ret = parseDump(raw);
 		if (!ret)
 			buildCleanup();
@@ -1435,6 +1466,9 @@ int loadDump(const char *path)
 			}
 			getNonces();
 		}
+	} else {
+		log_printf(0, "******* ERROR loading '%s', unable to determine NAND controller type!\n", name);
+		ret = 0;
 	}
 	free(raw);
 	return ret;

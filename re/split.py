@@ -616,7 +616,8 @@ C_FUNCS = {
     0x4137f0, 0x4138c0, 0x416cd0,            # buildCleanup getImageLdv checkHeader
     0x414960, 0x415ef0, 0x4160d0,            # findAnchor remapBadBlocks copyMmcImage
     0x414650, 0x414e90, 0x414760,            # listFlashFiles scanMobiles fsGetFile
-    0x416aa0,                                # detectController
+    0x416aa0, 0x413d30, 0x414be0, 0x415b00,  # detectController getImageKv showMobilePages checkBlock
+    0x417680,                                # loadDump
     # app/mode_client (client_usage: switch table; clientKeys, mode_client stay asm)
     0x406740, 0x406980, 0x406aa0,            # clientInfo clientWrite clientManifest
     0x406b60, 0x407160, 0x407320,            # dumpKey updatePatches clientPatches

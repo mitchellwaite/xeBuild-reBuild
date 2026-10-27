@@ -929,7 +929,7 @@ Still off:
 
 ## app/image_read.c
 
-Draft of the whole object, with string literals. 27 of 33 functions are
+Draft of the whole object, with string literals. 31 of 33 functions are
 built from `src/app/image_read.c` (mixed), which `python wip/irmixed.py
 <names>` makes from this file; a new match needs its name there and its
 address in `split.py` `C_FUNCS` (all of image_read's strings are in
@@ -942,9 +942,18 @@ turns the draft into that form.
 The statics that a C function writes (fsBuf, fsValid, fsOffset, anchor,
 mobiles) stay `static` in the mixed file and `re/splice.py` drops their
 `.lcomm`, so the alias analysis is the original's (as externs, memcpy
-clobbers fsOffset and loadFlashFile reloads it). dumpSize is only written
-by the .s's code, so it stays extern (as a static gcc would think it is
-always 0).
+clobbers fsOffset and loadFlashFile reloads it). dumpSize stays extern
+(it used to be written only by the .s's code, and as a static gcc would
+think it is always 0; loadDump, which writes it, matches with it extern).
+
+When all 33 match, `python wip/irwhole.py` makes the whole-object
+`src/app/image_read.c` (no .s, `-fno-toplevel-reorder`): each string becomes
+a `static const char ir_<addr>[]` array before the first function that uses
+it (aligned 4 from 31 bytes, else 1), and the variables go in the
+original's order; it checks every string's address. Tested on the 27 built
+functions: .rdata strings and .bss come out at the original's offsets and
+all 27 still match. Not yet checked: .data is 0x1c bytes against the .s's
+0x20 (maybe only padding before the next object).
 
 Matching notes: findFsRoot's list loop is not unrolled only as `if
 (found) { if (i) mobile else fsroot }` (with `if (i == 0)` first cunroll
@@ -971,49 +980,117 @@ only full match; others leave the cold `!ok0 && ok1` copy unaligned).
 `wip/jcmp.py` now treats an exe address against any .o addend as equal, so
 it prints JMATCH for a real match.
 
-Still off (fncmp lines):
+Matched 2026-10-26 (four parallel agents; `python wip/ircmp.py <draft>
+<name> [flags]` runs fncmp and jcmp with the strings externized, and is safe
+to run in parallel):
 
-- `getImageKv`: fncmp MATCHes with `__builtin_expect(…, 1)` on `size ==
-  0x8000`, the first verifyExtended and the sanity test, at
-  builtin-expect-probability 67-70 (no natural predictor gets the alt-KV
-  success edge to 10% of entry). But jcmp shows the `size != 0x8000` exit
-  jumps to the alt-success epilogue instead of the shared one after the
-  "not sane" log, so the build differs by 4 bytes; not built yet. Without
-  hints: 26. `python wip/kvsweep.py` sweeps hint subsets x probabilities
-  with jcmp; a 3-hint sweep (56-94) was stopped before finishing. At the
-  default probability (90, which findAnchor's hints need, and the param is
-  object-wide) no subset of up to 4 hints matches; best is 12 lines
-  (`size == 0x8000` and the alt verifyExtended, both 1). With jcmp fixed,
-  a full 66-72 x up-to-3-hint sweep has no JMATCH; only the 3-hint set at
-  67-70 fncmp-matches, and no fourth hint helps. bbro (P=68): STC round 2
-  makes the return block (bb 18) its own trace before the "not sane" log
-  (17), so connect_traces chains alt-success -> return and 17 gets the
-  copy; the original has it the other way. Early-return shapes are worse.
-- `getImageSmc` (117, was 163): `int addr`, `int size` and `!addr || (addr
-  != 0x800 && addr != 0x1000)` give the two address registers (int for the
-  logs, its unsigned twin for the checks and memcpy) and the layout. Left:
-  the original's addr == 0 path prints a constant 0 (a phi copy on that
-  edge, tails cross-jumped), and the bad-address path keeps its 0x1000
-  copies on the size-test edges where ours are head-merged above the call
-  (cfgcleanup try_head_merge_bb, after RA). if/else-if and separate `if
-  (!addr)` forms, casts and types were worse.
-- `showMobilePages` (45 fncmp lines, was 163). What got it there:
-  `u32 page, end;` with the if-form align (page's PHI gets the lower SSA
-  version, so the entry test is `cmp page,end`); `page << 9` in the loop's
-  printf instead of an `off` IV (off goes to memory, page*528 to ebp);
-  `optimize("no-tree-loop-ivcanon")` (ivcanon's counter changes the SSA
-  names ivopts recycles, which flips the inner loop's `cmp ebx,esi`);
-  `"a"(letter)`; and an opaque `lo` for len kept live past the add (sum in
-  hi's esi). Left: the block before the loop. The original's cmov result
-  is eax (`cmove eax,edi`), copied to edx, ebx and edi; the edx copy is
-  split into edi around the log call (IRA gave a call-crossing page a
-  call-clobbered reg), and page*528 is computed in edi then moved to ebp.
-  Ours keeps one page in edi. Pins ("a"/"d"/"b"/"D" on page and off),
-  expects, IRA/sched option attributes and other loop forms didn't get
-  closer. Also the len spill store comes before `movzx edx,si` in ours.
-- `loadDump` (~780): in progress; numPages is stored once from a `pages`
-  variable; the name buffer and spill slots differ.
-- `checkBlock` (200), `parseDump` (366): block layout not worked on yet.
+- `getImageKv`, no hints: the alt-KV part comes after the whole first-KV
+  if/else as `if (ok && size == 0x8000)`, with `ok` (0 at entry) the first
+  verifyExtended result. Branch probabilities are guessed (profile_estimate)
+  before jump threading, while that join still exists: the kv-fail and
+  alloc-fail blocks fall into the `ok` test, not into the return, so the
+  early-return heuristic doesn't fire on their edges, and the sanity test
+  comes out at exactly 50/50 (both arms call). STC round 1 then builds
+  [not-sane log, return] first, the return block belongs to that trace, and
+  connect_traces gives the alt-success, kv-fail and alt-fail ends their own
+  epilogue copies, as in the original. VRP/DOM thread the `ok` tests away
+  later (ok is 0 on every failure path), so the final CFG is the nested one
+  with the original's frequencies. No expect-hint set on the nested shape
+  can do this. A block before the return that needs exactly 50% is a cue
+  for this kind of shape (natural prediction only).
+- `checkBlock`: -1 is lba's initial value and the ECC check is guarded by
+  `if (lba != -1)`, so the bad-block exits don't reach the return as
+  negative constants (the negative-return predictor would make them 4%);
+  they get the opcode heuristic (72%) and DOM/VRP thread them past the
+  guard, and ce1 (find_if_case_2) hoists `esi = -1` above each pad test
+  (head-merged into one copy before the bigBlock test). -6 is assigned in
+  each bbController arm (`if (block && block == other) lba = -6; else lba
+  = ...`) with the range checks under `if (lba != -6)`: -6 in the small
+  block's lba PHI stops VRP folding `lba > 0`'s false edge to 0 (the big
+  block's lba is >= 0, so there the 0 is a real singleton, `xor esi,esi`;
+  needs `lba > 0`, not `lba &&`). Order `if (xb.bigBlock)` first, then
+  `else if (!xb.muChecked) {warning} else {...}`. The original loads b[513]
+  twice: a plain second read is CSE'd by FRE, a `volatile` (or u16) read
+  isn't. The MU-type test is a signed int compare of the byte: an opaque
+  `__asm__("" : "+d"(t))` copy stops reassoc merging it with the zero test
+  into `(u8)(t-1) <= 40`.
+- `showMobilePages`, no hints or attributes (the old pins and
+  no-tree-loop-ivcanon were compensating for wrong source): `u16 len`
+  (`len = s[7] + (s[8] << 8)`, printed as len, tested `len & 0x8000`) and
+  `(u32)letter` in the printf. The pre-loop copies were never an IRA tie.
+  With u16 len PRE inserts `(int)len` then `(short)len`, so the `[60]`
+  store is that value's own move after the zero-extend. The `(u32)letter`
+  no-op cast is hoisted into both arms by PRE, letter's PHI dies, dce4
+  frees it with len's, and ivcanon/ivopts reuse those versions, which gives
+  the inner loop's `cmp ebx,esi` (forwprop4 puts the lower SSA version
+  first).
+- `loadDump`: return type `u32`, `int size`, `u32 ret` (with an int return
+  uncprop turns `return 0` on the `!size` path into `size` and coalesces
+  them); `pages` declared before `rawSize`; `size % 528`; the positive
+  `if (detectController(...)) {...} else {log}`. buildCleanup (inlined four
+  times) must keep `&xb.mobile` in ebx and `&xb` in esi across all copies:
+  its first loop is `for (i = 0; i < sizeof(xb.mobile) /
+  sizeof(xb.mobile[0]); i++)` (both loop bases ivopts IVs, which dom3
+  shares; `i < 11` holds the end in esi, the pointer loop's base is only
+  shared by RTL PRE and cse_local undoes it). copyMmcImage's body is
+  written out in loadDump (its no-if-conversion attribute stops inlining,
+  and loadDump needs ce1 to hoist `ret = 1` and the 0x1080000 constants).
+  The mmc test must be predicted in (50%, 52.6%] (ce1 hoists only above
+  50%; better_edge_p lets the mmc trace take the log block only within
+  10%): `notZeropair() != (size == 0)` adds the 72% opcode-nonequal
+  prediction (VRP folds it to `!= 0` later) and a `hot` label in the log
+  arm adds 15%, with the call heuristic 71% -> 52.6%. Independent of
+  builtin-expect-probability.
+
+Still off (fncmp lines; both paused 2026-10-26, agents' scratch tools are
+not in the repo):
+
+- `getImageSmc` (5 in the agent's copy at builtin-expect-probability 68 or
+  70, 10 in this draft at 68, 83 at 90; was 117). Needs the object at 67-70,
+  but this draft's findAnchor hints match only at 90 (20 lines at 68):
+  one of the two has to move. Shape: nested sane/malloc/unscramble ifs
+  (also the .rdata order: alloc-fail and not-sane strings come after the
+  decrypt strings); `if (!addr) {log; addr = 0x1000;} else if
+  (__builtin_expect(bad, 1)) {same}` (gives the zero path's constant-0
+  print); `if (__builtin_expect(size bad, 1)) {...} else __asm__("" :
+  "+D"(addr));` (the pin makes the size-ok merge a real block holding
+  `(unsigned)addr`, as in the original and the Linux build, puts size in
+  one register and fixes the prologue); a `hot` label in the not-sane arm
+  (keeps the malloc path's edges under bbro's 10% epilogue-copy threshold);
+  `optimize("no-if-conversion", "no-if-conversion2")` (ce1/ce3 hoist the
+  0x1000 edge copies otherwise). Left: (1) `mov edi,ebx` belongs before the
+  0x800/0x1000 test; prepare_shrink_wrap slides ours into the valid path
+  because edi is dead on the bad path (RTL cprop1 rewrites the bad log's
+  argument to the unsigned copy before RA). (2) The zero path should jump
+  into the middle of the bad log block (a 3-insn crossjump; with
+  `--param min-crossjump-insns=3` only (1) is left), so at the default 5
+  the zero and bad paths each need their own copy of the size-test block;
+  VRP1 threads both through one shared copy. Tried: `||` (no constant-0
+  print), separate ifs, switch, nested size ifs, u32/int types, -ftracer,
+  input-only asm uses of addr. Leads: separate thread paths for zero and
+  bad (a goto version written with the Write tool), keeping edi live into
+  the bad log until after pro_and_epilogue.
+- `parseDump` (101, was 366). Shape: an if-chain on `-2, -1, -3, -6, -4`
+  (a switch makes a jump table); loop over `u32 n` with `int blk = n;` at
+  the top (ch2 renames the loop PHI; the copy keeps blk's SSA version old,
+  which fixes `dst != blk`, `blk < blocks - 32` and the `dst == blk` PHI,
+  and makes the inlined addRemap compares `cmp [mem],reg`); `if (blk >=
+  blocks) __builtin_unreachable();` before the final addRemap; the -1 case
+  passes `dst` (== -1) as dest (the constant is known only after DOM2, so
+  PRE doesn't build a constant `numBad+1` PHI); the -1 handler as `goto
+  bad;` with `bad:` after the loop body's `continue;` (a no-op continue or
+  goto changes the predictors and the whole cold layout); copy source `raw
+  + (blk*ppb + p)*528` (two pointer IVs); summary loop `int i`. Left: (1)
+  the three inlined addRemap loop guards: the original has `i = 0, found =
+  0` before `test; jne body; jmp zero` (probably RTL if-conversion hoisting
+  the preheader, which needs the preheader not to be the guard's
+  fallthrough; the zero-trip edge is threaded by something besides
+  dom2/dom3/vrp2); (2) the dst-case inline compare wants `cmp [mem],ebp`;
+  (3) cold block order (~57 lines): MAX REMAPS before -4 needs -4 predicted
+  under ~10.5% (an expect does it at 90 but breaks RA); (4) the summary end
+  has its own epilogue copy in the original (edge freq >= 10%); (5) the -5
+  summary latch compare (recycled SSA versions); (6) the ZEROPAIR return is
+  `xor eax,eax` in the original, ours keeps memcmp's 0 (uncprop).
 
 listFlashFiles: load order `b16 = e->block; size = e->size; block =
 SWAP16(b16); time = e->time;` keeps e in ebp (the other orders of the

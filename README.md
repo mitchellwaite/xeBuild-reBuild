@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **603 of 617** (601 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 62 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **607 of 617** (605 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 62 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 21 / 25 | 418 / 432 |
+| `app/` | 21 / 25 | 422 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -38,7 +38,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
 | `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
-| `app/image_read` | mixed; 0 of 6 drafted functions match in `wip/app/image_read.c` | 27 / 33 |
+| `app/image_read` | mixed; 0 of 2 drafted functions match in `wip/app/image_read.c` | 31 / 33 |
 | `app/net` | mixed; 0 of 2 drafted functions match in `wip/app/net.c` | 30 / 32 |
 
 <details>
@@ -114,13 +114,13 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/image_read</code>: 27 / 33 in C</summary>
+<summary><code>app/image_read</code>: 31 / 33 in C</summary>
 
 - ✅ `fsFind` (0x4136a0)
 - ✅ `buildCleanup` (0x4137f0)
 - ✅ `getImageLdv` (0x4138c0)
 - ⬜ `getImageSmc` (0x413ad0) (draft in `wip/`, no match yet)
-- ⬜ `getImageKv` (0x413d30) (draft in `wip/`, no match yet)
+- ✅ `getImageKv` (0x413d30)
 - ✅ `getImageMobiles` (0x414050)
 - ✅ `getNetKd` (0x414300)
 - ✅ `loadFlashFile` (0x4144e0)
@@ -130,13 +130,13 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `findAnchor` (0x414960)
 - ✅ `mmcFindMobiles` (0x414af0)
 - ✅ `spareVersion` (0x414b90)
-- ⬜ `showMobilePages` (0x414be0) (draft in `wip/`, no match yet)
+- ✅ `showMobilePages` (0x414be0)
 - ✅ `scanMobiles` (0x414e90)
 - ✅ `setFsOffset` (0x4151c0)
 - ✅ `findFsRoot` (0x415230)
 - ✅ `imgGetSecurityFiles` (0x4154d0)
 - ✅ `findSmcConfig` (0x415970)
-- ⬜ `checkBlock` (0x415b00) (draft in `wip/`, no match yet)
+- ✅ `checkBlock` (0x415b00)
 - ✅ `addRemap` (0x415d90)
 - ✅ `findFreeRemap` (0x415e90)
 - ✅ `remapBadBlocks` (0x415ef0)
@@ -148,7 +148,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 - ✅ `detectController` (0x416aa0)
 - ✅ `checkHeader` (0x416cd0)
 - ✅ `getNonces` (0x4172c0)
-- ⬜ `loadDump` (0x417680) (draft in `wip/`, no match yet)
+- ✅ `loadDump` (0x417680)
 
 </details>
 <details>
