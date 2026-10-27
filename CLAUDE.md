@@ -48,6 +48,11 @@ Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pi
 - Only use the pinned toolchain in `tools/toolchain-4745/` (gcc 6.2.0, binutils
   2.27, crt 4745). Newer binutils encode differently. gcc needs its `bin/` on
   PATH (cc1 and as load DLLs from there); otherwise it fails silently.
+- Don't search the machine for GCC sources or use copies left under `tmp/`.
+  Try gcc's dumps (`-fdump-rtl-*`, `-fdump-tree-*`) and the notes first; only
+  if a question really needs the source, read that one file from the official
+  GCC repository at tag `releases/gcc-6.2.0`, e.g.
+  `https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/bb-reorder.c;hb=refs/tags/releases/gcc-6.2.0`.
 
 ## Environment gotchas (Windows 11)
 

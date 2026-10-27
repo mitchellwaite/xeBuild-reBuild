@@ -91,8 +91,8 @@ from getting there:
     noecdremap's).
   - Also off: the xellbutton registers (ebx vs edx) and the dualboot /
     type reload (`mov edx,[type]` kept for `cmp edx,2`).
-  - 2026-10-20, checked against gcc 6.2's bb-reorder.c (fetch it from
-    gcc-mirror `releases/gcc-6.2.0`).  The perbox test is exactly 50/50
+  - 2026-10-20, checked against gcc 6.2's bb-reorder.c (official GCC
+    repo, tag `releases/gcc-6.2.0`; see CLAUDE.md).  The perbox test is exactly 50/50
     (call heuristic on both arms).  When the edges are hot enough to stay
     in a trace (round 3: edge freq >= 5% of entry), better_edge_p picks
     the next_bb arm.  When they are colder, connect_traces picks the higher
