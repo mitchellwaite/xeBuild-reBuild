@@ -26,7 +26,8 @@ OBJS = {
                             # the .s keeps the object's data
                             subs=[('\nchar copyright[0x40] = "\\xa9 2004-2009 Microsoft Corporation. '
                                    'All rights reserved.";\n', '\nextern char copyright[0x40];\n'),
-                                  ('\nu32 mobileOffset;\n', '\nextern u32 mobileOffset;\n')]),
+                                  ('\nu32 mobileOffset;\n', '\nextern u32 mobileOffset;\n'),
+                                  ('\nint nFsFiles;\n', '\nextern int nFsFiles;\n')]),
 }
 
 

@@ -114,6 +114,8 @@ struct fsent {
 	u32 time;			/* 1c */
 };
 
+struct spb { u8 b0; u8 b1; u8 b2lo:4, b2hi:4; u8 b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
+struct sps { u8 b0; u8 b1lo:4, b1hi:4; u8 b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
 struct sp { u8 b0; u8 b1lo:4, b1hi:4; u8 b2lo:4, b2hi:4; u8 b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
 struct spare {
 	u8 b[16];
@@ -149,7 +151,7 @@ extern u32 imgEnd;
 char copyright[0x40] = "\xa9 2004-2009 Microsoft Corporation. All rights reserved.";
 
 u32 mobileOffset;
-static int nFsFiles;
+int nFsFiles;
 static u8 smcPage[0x1000];
 
 #define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
@@ -708,11 +710,15 @@ int imgBigBlock(void)
 
 int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 {
-	u32 x, first, rem, tail, blocks, start, p, end, pages, npages, left;
+	u32 x, first, rem, tail, blocks, start, p, end, npages, pages;
+	int left;
+	u8 t;
+	u32 pg;
 	u8 sp9, *s;
 	int partial;
 	u32 b;
 	u32 i;
+	int dmy;	/* unused: SSA/decl numbering */
 
 	if (xb.rawSize < off || xb.rawSize < off + len) {
 		return -1;
@@ -737,32 +743,45 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			blocks++;
 		}
 	}
+	if (first > 0x4000)
+		blocks++;
 	memcpy(xb.hdr + off, src, len);
 	if (pad == 1) if (tail)
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
-		/* dead (x < 0x4000): they raise the off-0 ipa-cp value (imgWriteStart
-		   clone) and renumber SSA names (the clones' operand order) */
-		if (x > 0x3fff)
+		/* dead (VRP1 removes them): they raise the off-0 ipa-cp value (imgWriteStart
+		   clone; `first + ...` is computed in the loop) and renumber SSA names (the
+		   clones' operand order); so do the ones before memcpy and imgEnd */
+		if (x + 0x4000 < first)
 			blocks++;
-		if (x > 0x3fff)
+		if (x + 0x4000 < first)
+			blocks++;
+		if ((len & 0x3fff) > 0x3fff)
 			start++;
+		t = type - '1';
+		partial = type != 0 && type != '0' && len < 0x4000;
 		if (len % 512) {
 			npages = (len + 512) / 512;
-			pages = len / 512 + 1;
+			pg = len / 512 + 1;
+			pages = pg;
 		} else {
 			pages = npages = len / 512;
 		}
-		partial = type != 0 && type != '0' && len < 0x4000;
 		sp9 = 32 - pages;
 		left = pages;
 		if (left & 3)
 			left = (left + 4) & ~3;
 		if (!partial)
 			npages = 32;
+		else {
+			/* imgAddFile's clone: keeps DOM2's threading from zeroing the npages guard edge */
+			lnp2: __attribute__((hot));
+		}
 		p = 0;
-		if ((u8)(type - '1') < 15) {
+		if (t < 15) {
+			/* no code: the slot order of t and partial (dead in every clone) */
+			__asm__("" :: "g"(t));
 			p = xb.bigBlock ? off & 0x1ffff : off & 0x3fff;
 			if (p) p /= 512;
 		}
@@ -770,8 +789,8 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			s = xb.spare + (BLK * 32 + p) * 16;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
-				((struct sp *)s)->b2lo = BLK >> 8;
-				((struct sp *)s)->b0 = 0xff;
+				((struct spb *)s)->b2lo = BLK >> 8;
+				((struct spb *)s)->b0 = 0xff;
 				s[1] = BLK;
 				if (type > 1) {
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
@@ -789,8 +808,8 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 					}
 				}
 			} else {
-				((struct sp *)s)->b1lo = BLK >> 8;
-				((struct sp *)s)->b5 = 0xff;
+				((struct sps *)s)->b1lo = BLK >> 8;
+				((struct sps *)s)->b5 = 0xff;
 				s[0] = BLK;
 				if (type > 1) {
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
@@ -808,8 +827,6 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	if (next != 0xf1f1) {
 		
 		for (i = 0; i < blocks; i++) {
-			if (x > 0x3fff)
-				start++;
 			if (next != 0 && next != 0xffff) {
 				fsTable[start - xb.fsStart + i] = SWAP16(next);
 			} else {
@@ -820,6 +837,8 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
 		}
 	}
+	if (x + 0x4000 < first)
+		blocks++;
 	imgEnd = off + len;
 	return 0;
 }
@@ -836,11 +855,13 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	u16 blk;
 	u8 *s;
 
+	if ((len & 0x3fff) > 0x3fff)
+		off++;
 	if (!imgFits(off, len)) {
 		log_printf(0, "\n******* ERROR: adding %s will exceed available flash space! Skipped!\n\n", name);
 		return;
 	}
-	fsFiles[nFsFiles].block = SWAP16((u16)((off >> 14) - xb.fsStart));
+	fsFiles[nFsFiles].block = SWAP16((u16)(off >> 14) - xb.fsStart);
 	fsFiles[nFsFiles].size = SWAP32(len);
 	strcpy(fsFiles[nFsFiles].name, name);
 	fsFiles[nFsFiles].time = *time;
@@ -1033,12 +1054,6 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
 		memcpy(p, (u8 *)fsFiles + i * 0x200, 0x200);
 		p += 0x200;
 	}
-	if (i != 16)
-		off++;
-	if (i != 16)
-		off++;
-	if (i != 16)
-		off++;
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
 	if (!xb.bigBlock)
 		goto small;

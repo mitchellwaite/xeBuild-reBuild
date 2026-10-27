@@ -2329,6 +2329,44 @@ Findings:
   both clones and writeFsTable. The off-0 clone is made first, so
   imgWriteAt became `.constprop.3`. A route with `--param
   ipa-cp-eval-threshold=300` (155..365) also works, not used.
+- Draft base after that (2026-10-27, one agent for both imgAdd and
+  imgAddFile; log and tools in `tmp/image_write_agents/addpair/`):
+  standalone imgAdd 93 -> 12 lines, imgAddFile 256 -> 45, everything
+  built still matching (off 0 / off 128 evaluations 563 / 237). What
+  changed:
+  - Spare stores through per-layout structs (`struct spb` big block,
+    `struct sps` small): in `struct sp` b1lo..b2hi share one bitfield
+    representative, so the b2lo store had no MEM_EXPR and sched2 couldn't
+    move `cmp type,1` above it.
+  - Dead pins: `if (x + 0x4000 < first) blocks++;` (twice) and `if ((len
+    & 0x3fff) > 0x3fff) start++;` at the top of the block loop, `if
+    (first > 0x4000) blocks++;` before the memcpy and one more `x + 0x4000
+    < first` before `imgEnd =`. Pins computing `first + 0x4000` in the loop
+    add ~120 to the off 0 evaluation each; `x > 0x7fff`, `(x >> 14) != 0`
+    and `x == 0x4000` fold away early. The FS-loop pin and writeFsTable's
+    `if (i != 16) off++;` pins are gone.
+  - imgAdd setup: `t = type - '1'` and `partial` first in the loop body,
+    `pg = len / 512 + 1; pages = pg;`, `int left`, `npages, pages`
+    declaration order, an unused `int dmy;`, and `__asm__("" ::
+    "g"(t))` first in the `t < 15` block (dead in every clone; t/partial
+    slot order in the standalone).
+  - A hot label on the `else` of `if (!partial) npages = 32;` (imgAddFile
+    137 -> 45: DOM2's threading no longer zeroes the npages guard edge,
+    so the block loop isn't rotated).
+  - imgAddFile: `int nFsFiles` is a global (mixed.py OBJS subs makes it
+    extern; the original reloads it after the clone's calls), the block
+    number `SWAP16((u16)(off >> 14) - xb.fsStart)` (16-bit subs, no rol),
+    one dead `if ((len & 0x3fff) > 0x3fff) off++;` before the imgFits
+    test.
+  Left in imgAdd: `left = (pages + 4) & -4` is expanded before `len >> 8`
+  and the `type - 42` test (lim2 hoists the diamond's then-block right
+  after the setup; the original hoists it after ivopts), so len >> 8 gets
+  eax, not ebx. Every spelling of the rounding, other types for left and
+  setup temporaries were tried (`addpair/tiny/` is a small repro). Left
+  in imgAddFile (ties): the bigBlock test's peephole2 scratch (edi, the
+  original edx), the range test order, the npages/pages cmov form
+  (`lea edx,[edi+512]; cmovne`), the end marker's register and the ERR
+  block before the small-block call.
 - checkBootImage returns `long`: as `int`, uncprop reuses the tested
   `xb.bigBlock` (0) register for `return 0`. `u32 bigBlock` fixes it too
   but breaks fixupEmptyFsBlocks.
