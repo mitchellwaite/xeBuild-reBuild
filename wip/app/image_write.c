@@ -743,7 +743,7 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			blocks++;
 		}
 	}
-	if (first > 0x4000)
+	if (x > first + 0x4000)
 		blocks++;
 	memcpy(xb.hdr + off, src, len);
 	if (pad == 1) if (tail)
@@ -753,25 +753,18 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 		/* dead (VRP1 removes them): they raise the off-0 ipa-cp value (imgWriteStart
 		   clone; `first + ...` is computed in the loop) and renumber SSA names (the
 		   clones' operand order); so do the ones before memcpy and imgEnd */
-		if (x + 0x4000 < first)
-			blocks++;
-		if (x + 0x4000 < first)
-			blocks++;
 		if ((len & 0x3fff) > 0x3fff)
-			start++;
+			len++;
+		if (x + 0x4000 < first)
+			blocks++;
+		if (x + 0x4000 < first)
+			blocks++;
 		t = type - '1';
 		partial = type != 0 && type != '0' && len < 0x4000;
-		if (len % 512) {
+		if (len % 512)
 			npages = (len + 512) / 512;
-			pg = len / 512 + 1;
-			pages = pg;
-		} else {
-			pages = npages = len / 512;
-		}
-		sp9 = 32 - pages;
-		left = pages;
-		if (left & 3)
-			left = (left + 4) & ~3;
+		else
+			npages = len / 512;
 		if (!partial)
 			npages = 32;
 		else {
@@ -787,6 +780,11 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 		}
 		for (end = p + npages; p < end; p++) {
 			s = xb.spare + (BLK * 32 + p) * 16;
+			/* pages here and left in the big arm: lim2 then hoists left
+			   after len >> 8 and the type tests, as in the original */
+			pages = len / 512;
+			if (len % 512)
+				pages++;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
 				((struct spb *)s)->b2lo = BLK >> 8;
@@ -795,6 +793,9 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 				if (type > 1) {
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
 					if (type != 0x2a && type != 0x2c) {
+						left = pages;
+						if (left & 3)
+							left = (left + 4) & ~3;
 						s[9] = (((off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256) - left) >> 2;
 						s[5] = 1;
 						s[8] = len >> 8;
@@ -813,7 +814,7 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 				s[0] = BLK;
 				if (type > 1) {
 					s[12] = (s[12] & 0xc0) | (type & 0x3f);
-					s[9] = sp9;
+					s[9] = 32 - pages;
 					s[2] = 1;
 					if (type != '0') {
 						s[8] = len >> 8;
@@ -837,7 +838,7 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
 		}
 	}
-	if (x + 0x4000 < first)
+	if (x > first + 0x4000)
 		blocks++;
 	imgEnd = off + len;
 	return 0;
@@ -856,7 +857,7 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	u8 *s;
 
 	if ((len & 0x3fff) > 0x3fff)
-		off++;
+		len++;
 	if (!imgFits(off, len)) {
 		log_printf(0, "\n******* ERROR: adding %s will exceed available flash space! Skipped!\n\n", name);
 		return;

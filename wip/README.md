@@ -2278,7 +2278,7 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 44 matching functions build from `src/app/image_write.c`, a mixed
+The 45 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
@@ -2367,6 +2367,23 @@ Findings:
   original edx), the range test order, the npages/pages cmov form
   (`lea edx,[edi+512]; cmovne`), the end marker's register and the ERR
   block before the small-block call.
+- imgAdd builds from C (2026-10-27, `tmp/image_write_agents/addpair2/`).
+  lim2 walks a loop's blocks in inverted postorder with siblings sorted
+  so that a then-block whose only successor is the join comes first, so
+  the `left` diamond's then-block was hoisted before every inner-loop
+  invariant. Its PHI is left for lim4 (after ivopts) only while it is
+  expensive (determine_max_movement: costs of dependencies in the same
+  loop accumulate). The fix: the outer body computes only npages
+  (`if (len % 512) npages = (len + 512) / 512; else npages = len /
+  512;`), the inner loop computes `pages = len / 512; if (len % 512)
+  pages++;` after `s = ...`, the small arm stores `32 - pages`, and
+  `left = pages; if (left & 3) left = (left + 4) & ~3;` opens the big
+  arm's `type != 0x2a && type != 0x2c` block. The pins were retuned:
+  `if (x > first + 0x4000) blocks++;` before the memcpy and before
+  imgEnd, `if ((len & 0x3fff) > 0x3fff) len++;` at the top of the block
+  loop with the two `x + 0x4000 < first` ones, and imgAddFile's pin is
+  `len++` (evaluations 559 / 235). imgAddFile is then 30 lines: the
+  pages cmov form is fixed by the inner-loop pages.
 - checkBootImage returns `long`: as `int`, uncprop reuses the tested
   `xb.bigBlock` (0) register for `return 0`. `u32 bigBlock` fixes it too
   but breaks fixupEmptyFsBlocks.

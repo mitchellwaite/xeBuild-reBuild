@@ -571,7 +571,7 @@ C_FUNCS = {
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
     0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
     0x40ecc0, 0x40eef0, 0x4125a0, 0x411bd0,  # imgWritePage imgWriteAt (imgAdd.constprop.3) finalizeImage writeFsTable
-    0x40e950,                                # imgWriteStart (imgAdd.constprop.1)
+    0x40e950, 0x410500,                      # imgWriteStart (imgAdd.constprop.1) imgAdd
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

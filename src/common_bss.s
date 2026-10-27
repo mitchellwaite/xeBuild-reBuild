@@ -190,11 +190,6 @@
 .globl L_4c97d6
 .globl L_4c97d8
 .globl L_4cb7be
-.globl L_4cb7c2
-.globl L_4cb7c4
-.globl L_4cb7c6
-.globl L_4cb7c8
-.globl L_4cb7ca
 .globl L_4cdc64
 .globl L_4ce064
 .globl L_4ce068
