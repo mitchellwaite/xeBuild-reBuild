@@ -259,7 +259,7 @@ void getImageLdv(void)
 		xb.cfLdv = ldv;
 }
 
-void getImageSmc(void)
+__attribute__((optimize("no-if-conversion", "no-if-conversion2"))) void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
 	int addr = SWAP32(h->smcBootAddr);
@@ -268,11 +268,16 @@ void getImageSmc(void)
 	if (!addr) {
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 		addr = 0x1000;
-	} else if (__builtin_expect(addr != 0x800 && addr != 0x1000, 1)) {
-		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-		addr = 0x1000;
+	} else {
+		vhot: __attribute__((hot));
+		if (addr != 0x800 && addr != 0x1000) {
+			bhot: __attribute__((hot));
+			log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+			addr = 0x1000;
+		}
 	}
-	if (__builtin_expect(size != 0x3000 && size != 0x3800, 1)) {
+	if (size != 0x3000 && size != 0x3800) {
+		shot: __attribute__((hot));
 		if (addr == 0x800) {
 			size = 0x3800;
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
@@ -288,7 +293,7 @@ void getImageSmc(void)
 			xb.smc.size = size;
 			memcpy(xb.smc.data, xb.image + addr, size);
 			log_printf(1, "decrypting SMC at address 0x%x of size 0x%x\n", addr, size);
-			if (unscramble(xb.smc.data, xb.smc.size)) {
+			if (unscramble(xb.smc.data, xb.smc.size) != (h == 0)) {
 				log_printf(1, "SMC decrypted OK, will use if no external smc.bin is provided\n");
 				setSmcKey(xb.smc.data);
 			} else {

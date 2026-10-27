@@ -1045,31 +1045,38 @@ to run in parallel):
 Still off (fncmp lines; both paused 2026-10-26, agents' scratch tools are
 not in the repo):
 
-- `getImageSmc` (5 in the agent's copy at builtin-expect-probability 68 or
-  70, 10 in this draft at 68, 83 at 90; was 117). Needs the object at 67-70,
-  but this draft's findAnchor hints match only at 90 (20 lines at 68):
-  one of the two has to move. Shape: nested sane/malloc/unscramble ifs
-  (also the .rdata order: alloc-fail and not-sane strings come after the
-  decrypt strings); `if (!addr) {log; addr = 0x1000;} else if
-  (__builtin_expect(bad, 1)) {same}` (gives the zero path's constant-0
-  print); `if (__builtin_expect(size bad, 1)) {...} else __asm__("" :
-  "+D"(addr));` (the pin makes the size-ok merge a real block holding
-  `(unsigned)addr`, as in the original and the Linux build, puts size in
-  one register and fixes the prologue); a `hot` label in the not-sane arm
-  (keeps the malloc path's edges under bbro's 10% epilogue-copy threshold);
-  `optimize("no-if-conversion", "no-if-conversion2")` (ce1/ce3 hoist the
-  0x1000 edge copies otherwise). Left: (1) `mov edi,ebx` belongs before the
-  0x800/0x1000 test; prepare_shrink_wrap slides ours into the valid path
-  because edi is dead on the bad path (RTL cprop1 rewrites the bad log's
-  argument to the unsigned copy before RA). (2) The zero path should jump
-  into the middle of the bad log block (a 3-insn crossjump; with
-  `--param min-crossjump-insns=3` only (1) is left), so at the default 5
-  the zero and bad paths each need their own copy of the size-test block;
-  VRP1 threads both through one shared copy. Tried: `||` (no constant-0
-  print), separate ifs, switch, nested size ifs, u32/int types, -ftracer,
-  input-only asm uses of addr. Leads: separate thread paths for zero and
-  bad (a goto version written with the Write tool), keeping edi live into
-  the bad log until after pro_and_epilogue.
+- `getImageSmc` (5, was 117), with no `__builtin_expect`, so the same at
+  any builtin-expect-probability (an earlier version with expects needed
+  68-70, which findAnchor's hints don't allow). Shape: nested
+  sane/malloc/unscramble ifs (also the .rdata order: alloc-fail and
+  not-sane strings come after the decrypt strings); `if (!addr) {log; addr
+  = 0x1000;} else { vhot: hot; if (addr != 0x800 && addr != 0x1000) {
+  bhot: hot; log; addr = 0x1000; } }` (the else-if gives the zero path's
+  constant-0 print; the bad arm's hot label x the call heuristic = 69.8%,
+  so the bad log falls through; the enclosing else's hot label brings the
+  zero path to 6.7%, under bbro's 10% copy threshold); a hot label in the
+  size-bad arm; `if (<size bad>) {...} else __asm__("" : "+D"(addr));`
+  (the pin makes the size-ok merge a real block holding `(unsigned)addr`,
+  as in the original and the Linux build, puts size in one register and
+  fixes the prologue); a hot label in the not-sane arm (keeps the malloc
+  path at 15%, so no epilogue copies there); `unscramble(...) != (h == 0)`
+  (opcode-nonequal 72%, folded by VRP since h is dereferenced earlier; puts
+  the fail block after the zero block in bbro's trace order); and
+  `optimize("no-if-conversion", "no-if-conversion2")` on the definition
+  line (ce1/ce3 hoist the 0x1000 edge copies otherwise; dropping the
+  attribute gives 10). Each hint is needed (removing one gives 9-69).
+  Left: (1) `mov edi,ebx` belongs before the 0x800/0x1000 test;
+  prepare_shrink_wrap slides ours into the valid path because edi is dead
+  on the bad path (RTL cprop1 rewrites the bad log's argument to the
+  unsigned copy before RA; `-fno-shrink-wrap` leaves it in the entry
+  block). (2) The zero path should jump into the middle of the bad log
+  block (a 3-insn crossjump; with `--param min-crossjump-insns=3` only (1)
+  is left), so at the default 5 the zero and bad paths each need their own
+  copy of the size-test block; VRP1 threads both through one shared copy (a
+  z-flag ternary splits the zero thread but moves the bad path's threading
+  later: 97-122). Tried: `||` (no constant-0 print), separate ifs,
+  switch, nested size ifs, u32/int types, int-arithmetic addr, -ftracer,
+  input-only asm uses of addr.
 - `parseDump` (101, was 366). Shape: an if-chain on `-2, -1, -3, -6, -4`
   (a switch makes a jump table); loop over `u32 n` with `int blk = n;` at
   the top (ch2 renames the loop PHI; the copy keeps blk's SSA version old,
