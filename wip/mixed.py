@@ -18,9 +18,9 @@ from ddfix import Image
 
 OBJS = {
     'app/image_write': dict(prefix='iw', rdata=(0x451760, 0x451fb4),
-                            regparm={'imgWriteStart': 3, 'imgWritePage': 3},
-                            # asm still, here for their calls: imgWriteAt is
-                            # gcc's ipa-cp clone of imgAdd (type 0, pad 1)
+                            regparm={'imgWritePage': 3},
+                            # asm still, here for their calls: imgWriteStart and
+                            # imgWriteAt are gcc's ipa-cp clones of imgAdd
                             inline={'imgAdd', 'imgAddFile'},
                             note='bytes, writing the image to disk */',
                             # the .s keeps the object's data

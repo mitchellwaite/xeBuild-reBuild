@@ -252,7 +252,7 @@ static const char iw_451f48[] = "\n        dest block is empty, fixing up LBA an
 static const char iw_451f80[] = "\tadding %s at raw offset 0x%x len 0x%x (end 0x%x)\n";
 
 /* still in image_write.s */
-int imgWriteStart(const void *src, u32 len, u16 next) __attribute__((regparm(3)));
+
 
 /* imgWriteStart for big-block NAND (no FS table) */
 static int imgWriteHdr(const void *src, u32 len)
@@ -770,12 +770,6 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	x = off & 0x3fff;
 	start = (off - x) >> 14;
 	first = x ? 0x4000 - x : 0;
-	if (x > 0x3fff)
-		start++;
-	if (x > 0x3fff)
-		start++;
-	if (x > 0x3fff)
-		start++;
 	if (len <= first) {
 		blocks = 1;
 		tail = len;
@@ -798,6 +792,12 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
+		/* dead (x < 0x4000): they raise the off-0 ipa-cp value (imgWriteStart
+		   clone) and renumber SSA names (the clones' operand order) */
+		if (x > 0x3fff)
+			blocks++;
+		if (x > 0x3fff)
+			start++;
 		if (len % 512) {
 			npages = (len + 512) / 512;
 			pages = len / 512 + 1;
@@ -858,6 +858,8 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	if (next != 0xf1f1) {
 		
 		for (i = 0; i < blocks; i++) {
+			if (x > 0x3fff)
+				start++;
 			if (next != 0 && next != 0xffff) {
 				fsTable[start - xb.fsStart + i] = SWAP16(next);
 			} else {
@@ -989,7 +991,7 @@ void writeInitialHeader(void)
 	if (xb.bigBlock)
 		imgWriteHdr(&hdrTemplate, sizeof(hdrTemplate));
 	else
-		imgWriteStart(&hdrTemplate, sizeof(hdrTemplate), 0x1ffb);
+		imgAdd(0, &hdrTemplate, sizeof(hdrTemplate), 0, 0x1ffb, 1);
 	if (xb.netKd && xb.netKdSize) {
 		log_printf(1, iw_4519f4);
 		if (xb.bigBlock)
@@ -1054,9 +1056,9 @@ long checkBootImage(int write)
 	log_printf(1, iw_451adc, xb.blSize);
 	if (write) {
 		if (xb.bigBlock)
-			imgWriteStart(xb.bl, xb.blSize, 0xf1f1);
+			imgAdd(0, xb.bl, xb.blSize, 0, 0xf1f1, 1);
 		else
-			imgWriteStart(xb.bl, xb.blSize, 0x1ffb);
+			imgAdd(0, xb.bl, xb.blSize, 0, 0x1ffb, 1);
 	}
 	return 0;
 }
@@ -1081,6 +1083,10 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
 		memcpy(p, (u8 *)fsFiles + i * 0x200, 0x200);
 		p += 0x200;
 	}
+	if (i != 16)
+		off++;
+	if (i != 16)
+		off++;
 	if (i != 16)
 		off++;
 	log_printf(1, iw_451b04, off, off + 0x4000);

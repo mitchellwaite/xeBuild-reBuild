@@ -463,10 +463,12 @@ SYMBOLS = {
     # the rest of app/image_write (names are ours).  0x4cb7c0 is a u16 per
     # block from fsStart (479efc) to fsEnd (479ef8): the FS table build.s's
     # "Fixing up FS table..." / "Writing FS table to image" logs refer to.
-    0x40e950: '_imgWriteStart',     # regparm (src, len, fs type): copy to offset 0
+    # imgWriteStart: regparm (src, len, fs type), copy to offset 0.  gcc's
+    # ipa-cp clone of imgAdd for off 0, type 0, pad 1
+    0x40e950: '_imgAdd.constprop.1',
     # imgWriteAt: regparm (offset, src, len) + stack fs type.  It is gcc's
     # ipa-cp clone of imgAdd for type 0, pad 1 (the C has imgAdd's body)
-    0x40eef0: '_imgAdd.constprop.2',
+    0x40eef0: '_imgAdd.constprop.3',
     0x4100b0: '_setBlockSpare',     # per-page LBA + ECD for one block
     0x410220: '_imgSizeAligned',    # image size rounded up to 0x4000
     0x4104e0: '_imgSetSize',
@@ -568,7 +570,8 @@ C_FUNCS = {
     0x411800, 0x412110, 0x4121b0, 0x412230,  # checkBootImage copyAnchorBlock spareUsed imageGetBuffer
     0x412260, 0x412dd0, 0x412de0, 0x412e90,  # writeImage fsStartBlock reservedAreaOffset statisticsOffset
     0x412f60, 0x413030, 0x4110b0, 0x411680,  # manufacturingOffset imgAddRaw imgAddMobile writeInitialHeader
-    0x40ecc0, 0x40eef0, 0x4125a0, 0x411bd0,  # imgWritePage imgWriteAt (imgAdd.constprop.2) finalizeImage writeFsTable
+    0x40ecc0, 0x40eef0, 0x4125a0, 0x411bd0,  # imgWritePage imgWriteAt (imgAdd.constprop.3) finalizeImage writeFsTable
+    0x40e950,                                # imgWriteStart (imgAdd.constprop.1)
 }
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')

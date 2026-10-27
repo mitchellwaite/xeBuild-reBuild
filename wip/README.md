@@ -2278,11 +2278,13 @@ only shows in `sh build.sh`.
 
 ## app/image_write.c
 
-The 43 matching functions build from `src/app/image_write.c`, a mixed
+The 44 matching functions build from `src/app/image_write.c`, a mixed
 object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
-clone of imgAdd for type 0, pad 1, built as `_imgAdd.constprop.2`: the
+clone of imgAdd for type 0, pad 1, built as `_imgAdd.constprop.3`, and
+imgWriteStart (0x40e950) the clone for off 0 as well,
+`_imgAdd.constprop.1` (see the findings): the
 src file carries imgAdd's and imgAddFile's bodies (OBJS `inline`; both
 still asm, so splice.py drops gcc's copies) so that their calls and
 writeInitialHeader's netKd calls make the clone, and with the off
@@ -2310,8 +2312,23 @@ Findings:
   return f(.., 0x1ffb);`) that crossjumping merges into a branch.
 - The spare LBA writes are bitfield stores (`struct sp`), in the order
   LBA high nibble, bad-block byte, LBA low byte.
-- imgWriteStart (regparm src, len, next) is its own function, not an
-  ipa-cp clone of imgWriteAt (gcc doesn't clone it).
+- imgWriteStart (regparm src, len, next) is imgAdd's ipa-cp clone for off
+  0, type 0, pad 1 (built 2026-10-27; agent log and tools in
+  `tmp/image_write_agents/imgWriteStart/`). Its three callers
+  (writeInitialHeader's 0x1ffb call, checkBootImage's two) call
+  `imgAdd(0, ..., 0, next, 1)`; writeInitialHeader's big-block call
+  stays imgWriteHdr (the original inlines that one). ipa-cp clones the
+  off 0 value only at an evaluation >= 500 (the default
+  ipa-cp-eval-threshold), and off 128 (netKd's calls) must stay below.
+  The old body gave 395/166; two dead `if (x > 0x3fff) blocks++; /
+  start++;` at the top of the block loop add ~19 time each (585/246),
+  pins in the page loop would add ~188 each (off 128 cloned too). With
+  a third dead `start++` at the top of the FS loop and three dead `if (i
+  != 16) off++;` in writeFsTable (the old three head pins in imgAdd
+  removed), SSA numbering gives the original compare operand order in
+  both clones and writeFsTable. The off-0 clone is made first, so
+  imgWriteAt became `.constprop.3`. A route with `--param
+  ipa-cp-eval-threshold=300` (155..365) also works, not used.
 - checkBootImage returns `long`: as `int`, uncprop reuses the tested
   `xb.bigBlock` (0) register for `return 0`. `u32 bigBlock` fixes it too
   but breaks fixupEmptyFsBlocks.

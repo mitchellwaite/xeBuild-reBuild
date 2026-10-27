@@ -16,7 +16,6 @@
 .globl _copyright
 .globl _imgAdd
 .globl _imgAddFile
-.globl _imgWriteStart
 .globl _iw_451760
 .globl _iw_45179c
 .globl _iw_4517f8
@@ -66,267 +65,7 @@
 
 .text
 .p2align 4
-_imgWriteStart:
-          cmp DWORD PTR [L_479ee8],EDX
-          jb L_40ec84
-          push EBP
-          push EDI
-          mov EDI,EDX
-          push ESI
-          push EBX
-          sub ESP,60
-          test EDX,EDX
-          mov DWORD PTR [ESP+36],ECX
-          mov DWORD PTR [ESP+32],EDX
-          je L_40eaab
-          cmp EDX,16383
-          jbe L_40ec26
-          shr EDI,14
-          mov DWORD PTR [ESP+28],EDI
-          mov EDI,EDX
-          and EDI,16383
-          jne L_40ec22
-L_40e996:
-          mov EDI,DWORD PTR [ESP+32]
-          mov DWORD PTR [ESP+4],EAX
-          mov EAX,DWORD PTR [L_479ed8]
-          mov DWORD PTR [ESP+8],EDI
-          mov DWORD PTR [ESP],EAX
-          call _memcpy
-L_40e9af:
-          mov ESI,512
-          xor EBP,EBP
-          .byte 0x8d,0x76,0x00   # lea ESI,DWORD PTR [ESI]
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_40e9c0:
-          mov EBX,EBP
-          mov EDX,EBP
-          mov EDI,EBP
-          shr EBX,8
-          shl EDX,9
-          and EBX,15
-          nop
-L_40e9d0:
-          mov EAX,DWORD PTR [L_479ed0]
-          add EAX,EDX
-          mov DWORD PTR [EAX],0
-          mov DWORD PTR [EAX+4],0
-          mov DWORD PTR [EAX+8],0
-          mov DWORD PTR [EAX+12],0
-          mov ECX,DWORD PTR [L_479ef0]
-          test ECX,ECX
-          je L_40eac0
-          movzx ECX,BYTE PTR [EAX+2]
-          add EDX,16
-          mov BYTE PTR [EAX],255
-          and ECX,4294967280
-          or ECX,EBX
-          cmp EDX,ESI
-          mov BYTE PTR [EAX+2],CL
-          mov ECX,EDI
-          mov BYTE PTR [EAX+1],CL
-          jne L_40e9d0
-          add EBP,1
-          add ESI,512
-          cmp EBP,DWORD PTR [ESP+28]
-          jne L_40e9c0
-L_40ea2a:
-          mov EAX,DWORD PTR [ESP+36]
-          cmp AX,61937
-          je L_40ea98
-          mov EDI,EAX
-          sub EAX,1
-          mov EBX,DWORD PTR [L_479efc]
-          rol DI,8
-          cmp AX,-3
-          jbe L_40eaf7
-          mov EDI,DWORD PTR [ESP+28]
-          mov EAX,1
-          mov ECX,EBX
-          sub EAX,EBX
-          neg ECX
-          shl ECX,8
-          lea ESI,DWORD PTR [EAX+EDI*1]
-          add CX,256
-          mov ESI,ESI
-          .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
-L_40ea70:
-          mov EDX,EAX
-          shr DX,8
-          add EDX,ECX
-          add CX,256
-          mov WORD PTR [EAX+EAX*1+L_4cb7be],DX
-          add EAX,1
-          cmp EAX,ESI
-          jne L_40ea70
-L_40ea8c:
-          cmp WORD PTR [ESP+36],-1
-          je L_40ec08
-L_40ea98:
-          mov EAX,DWORD PTR [ESP+32]
-          mov DWORD PTR [_imgEnd],EAX
-          add ESP,60
-          xor EAX,EAX
-          pop EBX
-          pop ESI
-          pop EDI
-          pop EBP
-          ret 
-L_40eaab:
-          mov DWORD PTR [ESP+28],1
-          jmp L_40e996
-          .byte 0x90
-          .byte 0x8d
-          .byte 0xb4
-          .byte 0x26
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-L_40eac0:
-          movzx ECX,BYTE PTR [EAX+1]
-          add EDX,16
-          mov BYTE PTR [EAX+5],255
-          and ECX,4294967280
-          or ECX,EBX
-          cmp EDX,ESI
-          mov BYTE PTR [EAX+1],CL
-          mov ECX,EDI
-          mov BYTE PTR [EAX],CL
-          jne L_40e9d0
-          add EBP,1
-          add ESI,512
-          cmp EBP,DWORD PTR [ESP+28]
-          jne L_40e9c0
-          jmp L_40ea2a
-L_40eaf7:
-          mov EAX,EBX
-          neg EAX
-          lea EAX,DWORD PTR [EAX+EAX*1+_fsTable]
-          shr EAX,1
-          and EAX,1
-          cmp EBP,6
-          mov ESI,EAX
-          ja L_40ec75
-          mov ESI,EBP
-L_40eb14:
-          mov EAX,EBX
-          neg EAX
-          cmp ESI,1
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-          je L_40ec94
-          mov EAX,1
-          sub EAX,EBX
-          cmp ESI,2
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-          je L_40ec9e
-          mov EAX,2
-          sub EAX,EBX
-          cmp ESI,3
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-          je L_40eca8
-          mov EAX,3
-          sub EAX,EBX
-          cmp ESI,4
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-          je L_40ecb2
-          mov EAX,4
-          sub EAX,EBX
-          cmp ESI,5
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-          je L_40ec8a
-          mov EAX,5
-          mov ECX,6
-          sub EAX,EBX
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-L_40eb9d:
-          cmp EBP,ESI
-          je L_40ea8c
-L_40eba5:
-          sub EBP,ESI
-          lea EDX,DWORD PTR [EBP-2]
-          mov DWORD PTR [ESP+44],EBP
-          shr EDX,1
-          add EDX,1
-          cmp EBP,1
-          lea EAX,DWORD PTR [EDX+EDX*1]
-          mov DWORD PTR [ESP+40],EAX
-          je L_40ebf0
-          mov EAX,EDI
-          movzx EBP,DI
-          shl EAX,16
-          or EBP,EAX
-          mov EAX,ESI
-          sub EAX,EBX
-          lea ESI,DWORD PTR [EAX+EAX*1+_fsTable]
-          xor EAX,EAX
-L_40ebd6:
-          mov DWORD PTR [ESI+EAX*4],EBP
-          add EAX,1
-          cmp EDX,EAX
-          ja L_40ebd6
-          mov EAX,DWORD PTR [ESP+40]
-          add ECX,EAX
-          cmp EAX,DWORD PTR [ESP+44]
-          je L_40ea8c
-L_40ebf0:
-          mov EAX,ECX
-          sub EAX,EBX
-          cmp WORD PTR [ESP+36],-1
-          mov WORD PTR [EAX+EAX*1+_fsTable],DI
-          jne L_40ea98
-L_40ec08:
-          mov EAX,EBX
-          mov EDX,4294967071
-          not EAX
-          add EAX,DWORD PTR [ESP+28]
-          mov WORD PTR [EAX+EAX*1+_fsTable],DX
-          jmp L_40ea98
-L_40ec22:
-          mov EDI,DWORD PTR [ESP+32]
-L_40ec26:
-          mov DWORD PTR [ESP+4],EAX
-          mov EDX,EDI
-          mov EAX,DWORD PTR [L_479ed8]
-          shr EDX,14
-          mov DWORD PTR [ESP+8],EDI
-          lea ESI,DWORD PTR [EDX+1]
-          mov DWORD PTR [ESP],EAX
-          mov DWORD PTR [ESP+28],ESI
-          call _memcpy
-          mov EDX,EDI
-          lea EAX,DWORD PTR [EDI+16383]
-          add EDX,DWORD PTR [L_479ed8]
-          mov DWORD PTR [ESP+4],0
-          and EAX,4294950912
-          sub EAX,EDI
-          mov DWORD PTR [ESP+8],EAX
-          mov DWORD PTR [ESP],EDX
-          call _memset
-          jmp L_40e9af
-L_40ec75:
-          test EAX,EAX
-          jne L_40eb14
-          xor ECX,ECX
-          jmp L_40eba5
-L_40ec84:
-          mov EAX,4294967295
-          ret 
-L_40ec8a:
-          mov ECX,5
-          jmp L_40eb9d
-L_40ec94:
-          mov ECX,1
-          jmp L_40eb9d
-L_40ec9e:
-          mov ECX,2
-          jmp L_40eb9d
-L_40eca8:
-          mov ECX,3
-          jmp L_40eb9d
-L_40ecb2:
-          mov ECX,4
-          jmp L_40eb9d
+#@C _imgAdd.constprop.1
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -346,7 +85,7 @@ L_40ecb2:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-#@C _imgAdd.constprop.2
+#@C _imgAdd.constprop.3
           .byte 0x8d
           .byte 0x74
           .byte 0x26
@@ -1213,7 +952,7 @@ L_410eb0:
           mov EDX,DWORD PTR [ESP+32]
           mov EAX,EBX
           mov DWORD PTR [ESP],65535
-          call _imgAdd.constprop.2
+          call _imgAdd.constprop.3
           mov EBP,DWORD PTR [_nFsFiles]
 L_410ecc:
           add EBP,1
@@ -1685,7 +1424,7 @@ _iw_451f80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long _imgWriteStart - .
+          .long _imgAdd.constprop.1 - .
           .byte 0x6c
           .byte 0x3
           .byte 0x0
@@ -1827,7 +1566,7 @@ _iw_451f80:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long _imgAdd.constprop.2 - .
+          .long _imgAdd.constprop.3 - .
           .byte 0x35
           .byte 0x4
           .byte 0x0
