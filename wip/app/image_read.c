@@ -259,23 +259,21 @@ void getImageLdv(void)
 		xb.cfLdv = ldv;
 }
 
-__attribute__((optimize("no-if-conversion", "no-if-conversion2"))) void getImageSmc(void)
+__attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-merge"))) void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.image;
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
 
-	if (!addr) {
-		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-		addr = 0x1000;
-	} else {
+	if (!addr)
+		goto zero;
+	else {
 		vhot: __attribute__((hot));
-		if (addr != 0x800 && addr != 0x1000) {
-			bhot: __attribute__((hot));
-			log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-			addr = 0x1000;
-		}
 	}
+zback:
+	if (addr != 0x800 && addr != 0x1000)
+		goto bad;
+bback:
 	if (size != 0x3000 && size != 0x3800) {
 		shot: __attribute__((hot));
 		if (addr == 0x800) {
@@ -283,17 +281,19 @@ __attribute__((optimize("no-if-conversion", "no-if-conversion2"))) void getImage
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
 		} else {
 			size = 0x3000;
+			if (!h)
+				__builtin_unreachable();
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3000\n", size);
 		}
 	} else
 		__asm__("" : "+D"(addr));
-	if (addr < 528 * xb.numPages) {
+	if (__builtin_expect(addr < 528 * xb.numPages, 0)) {
 		xb.smc.data = malloc(size);
 		if (xb.smc.data) {
 			xb.smc.size = size;
 			memcpy(xb.smc.data, xb.image + addr, size);
 			log_printf(1, "decrypting SMC at address 0x%x of size 0x%x\n", addr, size);
-			if (unscramble(xb.smc.data, xb.smc.size) != (h == 0)) {
+			if (unscramble(xb.smc.data, xb.smc.size)) {
 				log_printf(1, "SMC decrypted OK, will use if no external smc.bin is provided\n");
 				setSmcKey(xb.smc.data);
 			} else {
@@ -305,8 +305,18 @@ __attribute__((optimize("no-if-conversion", "no-if-conversion2"))) void getImage
 		} else
 			log_printf(1, "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n", size);
 	} else {
-		nhot: __attribute__((hot));
 		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
+	}
+	if (0) {
+zero:
+		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+		addr = 0x1000;
+		goto zback;
+bad:
+		bhot: __attribute__((hot));
+		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+		addr = 0x1000;
+		goto bback;
 	}
 }
 

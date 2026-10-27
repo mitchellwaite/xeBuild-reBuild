@@ -162,9 +162,9 @@ int addRemap(u32 block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
 void remapBadBlocks(int numBlocks);
 int notZeropair(void);
-int spareLbaOk(int pages);
+u32 spareLbaOk(int pages);
 u32 copyMmcImage(u8 *raw);
-int parseDump(u8 *raw);
+u32 parseDump(u8 *raw);
 u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
@@ -191,6 +191,14 @@ extern const char ir_452260[];	/* "***** WARNING: could not find a non-..." */
 extern const char ir_4522c4[];	/* "setting LDV from image to %d\n" */
 extern const char ir_4522e4[];	/* "setting pairing data from image to 0..." */
 extern const char ir_45230f[];	/* "LDV was already set to %d\n" */
+extern const char ir_45232c[];	/* "smc.bin should not be at 0x%x, tryin..." */
+extern const char ir_45235c[];	/* "smc.bin should not be 0x%x bytes, us..." */
+extern const char ir_45238c[];	/* "smc.bin should not be 0x%x bytes, us..." */
+extern const char ir_4523bc[];	/* "decrypting SMC at address 0x%x of si..." */
+extern const char ir_4523ec[];	/* "SMC decrypted OK, will use if no ext..." */
+extern const char ir_45242c[];	/* "SMC did not decrypt, discarding it\n" */
+extern const char ir_452450[];	/* "Wasn't able to alloc 0x%x bytes memo..." */
+extern const char ir_452494[];	/* "SMC at 0x%x of size 0x%x is not sane..." */
 extern const char ir_4524dc[];	/* "KeyVault cannot be at 0x0, trying 0x..." */
 extern const char ir_452508[];	/* "KeyVault cannot be 0x%x bytes, using..." */
 extern const char ir_452538[];	/* "decrypting KeyVault at address 0x%x ..." */
@@ -390,6 +398,67 @@ void getImageLdv(void)
 		xb.cfLdv = 32;
 	else
 		xb.cfLdv = ldv;
+}
+
+__attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-merge"))) void getImageSmc(void)
+{
+	struct flashhdr *h = (struct flashhdr *)xb.image;
+	int addr = SWAP32(h->smcBootAddr);
+	int size = SWAP32(h->smcBootSize);
+
+	if (!addr)
+		goto zero;
+	else {
+		vhot: __attribute__((hot));
+	}
+zback:
+	if (addr != 0x800 && addr != 0x1000)
+		goto bad;
+bback:
+	if (size != 0x3000 && size != 0x3800) {
+		shot: __attribute__((hot));
+		if (addr == 0x800) {
+			size = 0x3800;
+			log_printf(1, ir_45235c, size);
+		} else {
+			size = 0x3000;
+			if (!h)
+				__builtin_unreachable();
+			log_printf(1, ir_45238c, size);
+		}
+	} else
+		__asm__("" : "+D"(addr));
+	if (__builtin_expect(addr < 528 * xb.numPages, 0)) {
+		xb.smc.data = malloc(size);
+		if (xb.smc.data) {
+			xb.smc.size = size;
+			memcpy(xb.smc.data, xb.image + addr, size);
+			log_printf(1, ir_4523bc, addr, size);
+			if (unscramble(xb.smc.data, xb.smc.size)) {
+				log_printf(1, ir_4523ec);
+				setSmcKey(xb.smc.data);
+			} else {
+				log_printf(1, ir_45242c);
+				free(xb.smc.data);
+				xb.smc.data = 0;
+				xb.smc.size = 0;
+			}
+		} else
+			log_printf(1, ir_452450, size);
+	} else {
+		log_printf(1, ir_452494, addr, size);
+	}
+	if (0) {
+zero:
+		log_printf(1, ir_45232c, addr);
+		addr = 0x1000;
+		goto zback;
+bad:
+		bhot: __attribute__((hot));
+		log_printf(1, ir_45232c, addr);
+		addr = 0x1000;
+		goto bback;
+	}
 }
 
 void getImageKv(void)
@@ -1047,7 +1116,7 @@ int notZeropair(void)
 	return memcmp(zeropair, xb.image + 16, 14) != 0;
 }
 
-int spareLbaOk(int pages)
+u32 spareLbaOk(int pages)
 {
 	int i;
 

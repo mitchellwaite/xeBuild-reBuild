@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **609 of 617** (607 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 63 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **610 of 617** (608 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 63 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 22 / 25 | 424 / 432 |
+| `app/` | 22 / 25 | 425 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -38,7 +38,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 |---|---|---|
 | `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
 | `app/image_write` | mixed; 0 of 5 drafted functions match in `wip/app/image_write.c` | 41 / 46 |
-| `app/image_read` | mixed; 0 of 2 drafted functions match in `wip/app/image_read.c` | 31 / 33 |
+| `app/image_read` | mixed; 0 of 1 drafted functions match in `wip/app/image_read.c` | 32 / 33 |
 
 <details>
 <summary><code>app/mode_client</code>: 15 / 16 in C</summary>
@@ -113,12 +113,12 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 </details>
 <details>
-<summary><code>app/image_read</code>: 31 / 33 in C</summary>
+<summary><code>app/image_read</code>: 32 / 33 in C</summary>
 
 - ✅ `fsFind` (0x4136a0)
 - ✅ `buildCleanup` (0x4137f0)
 - ✅ `getImageLdv` (0x4138c0)
-- ⬜ `getImageSmc` (0x413ad0) (draft in `wip/`, no match yet)
+- ✅ `getImageSmc` (0x413ad0)
 - ✅ `getImageKv` (0x413d30)
 - ✅ `getImageMobiles` (0x414050)
 - ✅ `getNetKd` (0x414300)

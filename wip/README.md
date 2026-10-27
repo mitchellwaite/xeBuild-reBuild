@@ -1042,61 +1042,35 @@ to run in parallel):
   arm adds 15%, with the call heuristic 71% -> 52.6%. Independent of
   builtin-expect-probability.
 
-Still off (fncmp lines; both paused 2026-10-26 after a second round; the
+Still off (fncmp lines; paused 2026-10-26 after a second round; the
 agents' variants, notes and tools are in `tmp/image_read_agents/`, which
 is untracked, without the compiler dumps):
 
-- `getImageSmc` (5, was 117), with no `__builtin_expect`, so the same at
-  any builtin-expect-probability (an earlier version with expects needed
-  68-70, which findAnchor's hints don't allow). Shape: nested
-  sane/malloc/unscramble ifs (also the .rdata order: alloc-fail and
-  not-sane strings come after the decrypt strings); `if (!addr) {log; addr
-  = 0x1000;} else { vhot: hot; if (addr != 0x800 && addr != 0x1000) {
-  bhot: hot; log; addr = 0x1000; } }` (the else-if gives the zero path's
-  constant-0 print; the bad arm's hot label x the call heuristic = 69.8%,
-  so the bad log falls through; the enclosing else's hot label brings the
-  zero path to 6.7%, under bbro's 10% copy threshold); a hot label in the
-  size-bad arm; `if (<size bad>) {...} else __asm__("" : "+D"(addr));`
-  (the pin makes the size-ok merge a real block holding `(unsigned)addr`,
-  as in the original and the Linux build, puts size in one register and
-  fixes the prologue); a hot label in the not-sane arm (keeps the malloc
-  path at 15%, so no epilogue copies there); `unscramble(...) != (h == 0)`
-  (opcode-nonequal 72%, folded by VRP since h is dereferenced earlier; puts
-  the fail block after the zero block in bbro's trace order); and
-  `optimize("no-if-conversion", "no-if-conversion2")` on the definition
-  line (ce1/ce3 hoist the 0x1000 edge copies otherwise; dropping the
-  attribute gives 10). Each hint is needed (removing one gives 9-69).
-  Left: (1) `mov edi,ebx` belongs before the 0x800/0x1000 test;
-  prepare_shrink_wrap slides ours into the valid path because edi is dead
-  on the bad path (`-fno-shrink-wrap` leaves it in the entry block). The
-  bad log's argument is chosen by RTL cse1, not cprop1: on the EBB path
-  entry -> B1 -> bad block, the copy A=U keeps U canonical unless A is
-  live out of the path's last block. With else-if the zero and bad paths
-  share one size-test copy, the path stops at the bad block and the log
-  reads U; if the bad path has its own size-ok forwarder, A wins and the
-  copy stays in B1. (2) The zero path should jump into the middle of the
-  bad log block (a 3-insn crossjump; with `--param min-crossjump-insns=3`
-  only (1) is left), so at the default 5 the zero and bad paths each need
-  their own copy of the size-test block; VRP1 threads both through one
-  shared copy (a z-flag ternary splits the zero thread but moves the bad
-  path's threading later: 97-122). Sequential ifs (`if (!addr) {...} if
-  (addr != 0x800 && addr != 0x1000) {...}`, as in getImageKv) give
-  separate copies from VRP1 and DOM2 and the 7-insn crossjump with no hint,
-  but PRE's tail merge merges their forwarders and brings (1) back; adding
-  `"no-tree-tail-merge"` to the optimize attribute fixes both, but RA then
-  swaps ebx/esi and the prologue and a `cmp` order differ (55-62 over 864
-  hint variants; the else-if hint set doesn't carry over, since profile
-  estimation sees the zero path still going through the second test).
-  Leads: a shape where one of the two threads happens after PRE (DOM3 or
-  VRP2), or where the bad path keeps its own size-ok forwarder; or
-  sequential ifs + no-tree-tail-merge with the RA re-tuned (the ebx/esi
-  swap is the IRA pop order; the `cmp` order is whether PRE's prephitmp
-  reuses a freed SSA version below `_43`). Tried: `||` (45, one shared log
-  printing ebx as in the Linux build), nested ifs (107), goto (79), a `bad`
-  flag (9), do-while, temporaries, unsigned zero tests (5), the size
-  computation after the address checks (59-63), switch, nested size ifs,
-  u32/int types, int-arithmetic addr, -ftracer, input-only asm uses of
-  addr.
+- `getImageSmc` built (2026-10-27, third round; agent notes and tools in
+  `tmp/image_read_agents/getImageSmc3/`). Sequential tests reached by
+  gotos: `if (!addr) goto zero; else { vhot: hot; } zback: if (addr !=
+  0x800 && addr != 0x1000) goto bad; bback: <size test>`, with both log
+  arms (`zero:` and `bad:`, the latter with a hot label) at the end of the
+  function inside `if (0) { ... }`. VRP1 and DOM2 then give the zero and
+  bad paths their own size-test copies and jump2 crossjumps their 7-insn
+  tails (the zero path becomes `[esp+8]=0; jmp` into the bad log);
+  `"no-tree-tail-merge"` in the optimize attribute (with no-if-conversion
+  and no-if-conversion2) stops PRE merging the two copies' forwarders.
+  The goto layout fixes `mov edi,ebx`: RTL cse1 walks paths branch edge
+  first and a block shared by paths keeps the last path's choice; with
+  the arms at the end the paths run zero, bad, valid, so the bad log reads
+  edi and the entry test ebx. The same order gives the original
+  ebx/esi/edi and `cmp ebx,eax`. Frequencies: the else's hot label puts
+  the zero path at 6.7%; `if (!h) __builtin_unreachable();` before the
+  0x3000 log moves the call out of the arm's first block, so only the
+  0x3800 edge gets the call prediction (p(0x3000) 86.3%: keeps the zero
+  copy within crossjump's 50% and the 0x3800 path at 11.6%, between bbro's
+  10% copy and 20% align thresholds); `__builtin_expect(sane, 0)` cancels
+  the early-return heuristic the end arms add (else the success path gets
+  its own epilogue copy). The size-ok `__asm__("" : "+D"(addr))` pin and
+  the size-bad hot label stay; the not-sane hot label and the
+  `unscramble() != (h == 0)` hint are gone. Each hint is needed (2-81
+  lines without one).
 - `parseDump` (74, was 366). `parseDump` and `spareLbaOk` return `u32`
   (addRemap, checkBlock, spareLbaOk and loadDump still match), and the
   partial-block test is `int rr = xb.numPages % ppb; if (rr)`. The
