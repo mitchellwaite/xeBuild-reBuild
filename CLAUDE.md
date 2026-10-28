@@ -15,20 +15,14 @@ NOTES.md has the findings, layout and the pipeline.
   evidence). `re/split.py` still writes a `.s` from `build/xeBuild.lines.json`
   (`re/ddfix.py`) for any object without a `.c`, but nothing builds it.
 - `src/**/*.c` are hand-maintained: XeCrypt's sources under `src/crypto` (see
-  NOTES.md) and the app's reconstructed C under `src/app`. An object with a `.c` gets no `.s` from `split.py`; `build.sh` compiles it with
-  the per-directory flags and original `__FILE__` path set there. When moving
-  an object to C, put names for the functions it shares with `.s` files in
-  `split.py`'s `SYMBOLS` and regenerate. Keep third-party licence notices intact.
+  NOTES.md) and the app's reconstructed C under `src/app`. `build.sh`
+  compiles each with the per-object flags and original `__FILE__` path set
+  there. Keep third-party licence notices intact.
 - Shared app types live in `src/app/xebuild.h` and each object's exported
   prototypes in `src/app/<obj>.h` (NOTES.md, App headers); don't redeclare them
   in a .c. If a file's code needs another typing to match, use a cast or an
   asm-label declaration (`T fnU32(...) __asm__("_fn")`) marked
   `TODO(xebuild.h cast)` / `TODO(prototype cast)`.
-- Move big objects to C one function at a time (mixed objects, NOTES.md): add
-  the function's address to `split.py`'s `C_FUNCS` and its name to `SYMBOLS`,
-  write it in `src/<obj>.c`, regenerate. Leave hard functions in asm and come
-  back to them later. C functions in a mixed object can't emit data (string
-  literals, switch tables); use `extern` names for the `.s`'s data.
 - Keep NOTES.md's Progress section current: after converting an object or
   function (or parking one in `wip/`), run `sh build.sh` then
   `python re/progress.py`, and commit NOTES.md with the change. Functions
@@ -38,9 +32,9 @@ NOTES.md has the findings, layout and the pipeline.
   `progress:begin/end` markers. Update the
   "Move functions to C" row in NOTES.md's Status by hand when the totals move.
 - To match a function before a full build: `python re/fncmp.py src/<obj>.c
-  <name> [flags]` (MATCH or a diff against the original). For a whole C
-  file, compare its `.text` against `build/obj/<obj>.o` from the asm build
-  (objdump without addresses). Then run the full build.
+  <name> [flags]` (MATCH or a diff against the original). For a whole file,
+  compare its `.text` against `build/obj/<obj>.o` from the last matching
+  build (objdump without addresses). Then run the full build.
 - File names and boundaries live in `re/split.py` (`NAMES`, with the evidence
   for each). Data boundaries are inferred; keep 4-byte alignment of every
   section piece (gas pads sections to 4).
@@ -51,7 +45,7 @@ NOTES.md has the findings, layout and the pipeline.
 - Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
   pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `re/stamp.py` (timestamp + checksum);
-  every other difference must be fixed in the source, split.py or ddfix (the link uses
+  every other difference must be fixed in the source or build.sh (the link uses
   the gcc driver with the toolchain's own runtime and ld's default script).
 - Only use the pinned toolchain in `tools/toolchain-4745/` (gcc 6.2.0, binutils
   2.27, crt 4745 with kernel32/msvcrt import libraries rebuilt from mingw-w64
