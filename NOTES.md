@@ -1,0 +1,1324 @@
+# xeBuild rebuild: technical notes
+
+The working notes behind the rebuild: what the binary is, how it was taken
+apart, how each object was matched in C, and the checks that the pipeline
+holds. README.md has the overview.
+
+## Status
+
+| Stage | State |
+|---|---|
+| Identify toolchain | Done: MSYS2 gcc 6.2.0 Rev2, binutils 2.27, mingw-w64 crt-git 5.0.0.4745 |
+| Disassemble to re-assemblable GNU `as` source | Done |
+| Link to a byte-identical exe | Done |
+| Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
+| Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
+| Move functions to C | **Done: all 41 XeCrypt files and all 25 app files build from C (617 of 617 functions), and so do the COMMON globals; see Progress below** |
+| Fix bugs | Next |
+
+## What the binary is
+
+- 32-bit PE, linked November 2019, stripped, built at `-O3` (`main` is in
+  `.text.startup`; XeCrypt's Makefile and the app's timeutil both need -O3). 104 objects compiled by
+  `GCC: (Rev2, Built by MSYS2 project) 6.2.0` (one `GCC:` ident each), DWARF-2
+  exception handling. Linked with the default libraries plus `-lws2_32`.
+- The program is 66 objects with code: 25 application files, 15 crypto files
+  and 26 files of BigDigits (David Ireland's bignum library, as extended by Dang
+  Nguyen Duc), which leaked its
+  build path through `assert()`
+  (`H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/bign/mpAdd.c` etc.).
+
+## Layout
+
+```
+xeBuild.exe              reference binary (do not modify)
+build.sh                 compile/assemble src/ + link + stamp + verify -> build/xeBuild.exe
+src/objects.txt          link order
+src/link.ld              link script (default i386pe order for the sections used)
+src/app/                 the application (25 files) and its headers: xebuild.h
+                         (shared types, struct xebuild), <obj>.h (each object's
+                         functions and data that others use)
+src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCrypt
+                         API, aes/ (Gladman), rc4/ sha/ (OpenSSL), md5/, des/, and
+                         bign/ (BigDigits bignum library + PKCS#1 RSA, hash,
+                         base64), with its licence files
+src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
+                         .idata/.CRT/.tls/.rsrc, ctor/dtor lists
+src/globals.c            COMMON (uninitialized global) block, in address order
+re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
+re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
+re/units.py              objects from .eh_frame CIEs; profile of each for naming
+re/gcda.py               crafted .gcda for mode_update's profile build (build.sh)
+re/objcmp.py             section-by-section compare of a .o against the exe
+re/execmp.py             header/section/byte compare of two exes
+re/stamp.py              set PE timestamp and recompute checksum
+re/progress.py           regenerate the Progress section of NOTES.md
+re/audit.py              symbolization audit against IDA's pointer analysis
+re/shifttest.py          relink with everything moved, check every pointer followed
+re/single.ld             link script for the single-file build/xeBuild.s (shift test)
+re/ida_dump.py           IDA export of instructions/address fields/imports (JSON)
+re/ida_export_asm.py     IDA's own MASM-style listing (reference only)
+re/mapparse.py           GNU ld -Map parser
+re/runtime_syms.json     names of mingw runtime functions found in the exe
+tools/fetch_toolchain.sh download + verify + unpack the 2016 MSYS2 toolchain
+tools/packages.sha256    hashes of those packages
+tools/ddisasm/           user-local ddisasm install for WSL, and the disassembly step
+build/                   generated, ignored
+```
+
+## Setup
+
+Toolchain (Git Bash, repo root). Downloads ~55 MB from the MIT Kodi mirror of
+old MSYS2 packages and unpacks to `tools/toolchain-4745/`:
+
+```bash
+sh tools/fetch_toolchain.sh
+```
+
+ddisasm (WSL Ubuntu; no root needed, installs to `~/ddisasm-root`):
+
+```bash
+wsl -d Ubuntu -- bash tools/ddisasm/install.sh
+```
+
+## Building
+
+```bash
+sh build.sh
+```
+
+Builds every object in `src/objects.txt`: `src/<obj>.c` with gcc 6.2.0 if it
+exists (flags and original `__FILE__` path per directory in `build.sh`), otherwise
+`src/<obj>.s` with binutils 2.27; with both, the `.c`'s functions are spliced
+into the `.s` (mixed objects, below). Links them with
+`ld -T src/link.ld --no-insert-timestamp -s`, writes the original link time
+(`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
+take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA256.
+
+## Regenerating `src/`
+
+```bash
+wsl -d Ubuntu -- bash tools/ddisasm/disasm.sh xeBuild.exe build
+python re/ddfix.py xeBuild.exe build/xeBuild.dbg.s build/xeBuild.s
+python re/split.py xeBuild.exe build/xeBuild.lines.json src
+sh build.sh
+```
+
+Hand-written sources began with XeCrypt's C files (October 2026). `split.py`
+still writes every `.s`, overwriting those, but skips any object that has a `.c`.
+So the `.c` files are maintained by hand. The functions they share with `.s`
+files are named in `split.py`'s `SYMBOLS` (`_mpAdd`, `_XeCryptSha`, `__assert`,
+`_memset`, ...; data too, e.g. the COMMON `_XeCryptRandomState`). Where
+references alone would put data in the wrong object, `DATA_OWNERS` assigns it
+(the AES tables, defined in aestab.c but used only by aescrypt/aeskey).
+Every `SYMBOLS` name is `.globl` where the `.s` defines it, so a C object can
+use it even if no other `.s` does; that includes import stubs, libgcc's
+64-bit division, and IAT slots that dllimport declarations reference
+(`__imp___errno`). `END_POINTERS` rewrites one-past-the-end pointers that
+ddisasm symbolized as the following label (console_hdd's `L_45c644+16` had
+pulled log's strings into console_hdd).
+
+#### Mixed objects: moving a file to C one function at a time
+
+An object doesn't have to move to C all at once. Functions listed in
+`split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.
+The `.s` is still generated, with a `#@C _name` marker in place of each such
+function's FDE range. `build.sh` sees both files, compiles the C with `-S
+-fno-asynchronous-unwind-tables`, and `re/splice.py` puts each function's
+code in place of its marker, between `.att_syntax`/`.intel_syntax`. Data,
+the ident and `.eh_frame` (including the C functions' FDEs) stay in the `.s`.
+The padding after each function is already in the `.s`, so gcc's `.p2align`
+does nothing.
+
+- Why not a C file with the rest as top-level `__asm__`: gcc 6 puts all
+  top-level asm before every function. `-fno-toplevel-reorder` keeps the
+  order, but it also changes the order functions are compiled in, which
+  changed `readFileIn`. `-fno-asynchronous-unwind-tables` changes no code in
+  the app's C files.  Where the flag changes nothing, that layout works
+  as a step: `app/bootloaders.c` had its unmatched functions, strings and
+  `.eh_frame` as top-level `__asm__` between the C functions. `progress.py`
+  counts a function whose label is in a `.c`'s asm as assembly, and an
+  object with any top-level asm left as not fully C.
+- Whole objects in C (`app/filelist_ini`, `app/bootloaders`): gcc emits a
+  function's literals in expand-time block order, which can differ from
+  the original's even when the code matches (error messages first). Such
+  strings are `static const char` arrays in the original's order, defined
+  before the first function that uses them, and the object is built with
+  `-fno-toplevel-reorder` so they are emitted in place. Each gets
+  `aligned(4)` from 31 bytes, else `aligned(1)` (a literal's alignment; a
+  user alignment stops gcc's 4/32-byte array bump).
+- The C functions can't emit data (string literals, statics); `splice.py`
+  refuses. Declare the `.s`'s data `extern` under `SYMBOLS` names instead
+  (`iniBuf`, `iniSize`). Literals move when the whole object goes to C.
+- Jump tables are the exception: `split.py` writes a `#@J name k n` marker
+  where the original's k-th table of C function `name` (n entries) is, and
+  `splice.py` puts gcc's table (its label and `.long`s) there, so a switch
+  can stay in a mixed object (`buildImage`).
+- `split.py` refuses a C function whose internal labels the `.s` still
+  uses in anything else.
+- A function matched alongside asm neighbours is only provisionally matched.
+  gcc can't inline into, or know the registers used by, asm functions, so
+  matched code can change when its neighbours become C. Re-check it then.
+- When every function is in C, move the data into the `.c`, drop the
+  object's `C_FUNCS` entries and let `split.py` skip the `.s` as usual.
+
+`python re/fncmp.py src/<obj>.c <name> [gcc flags]` diffs one function's
+gcc output against the original instructions (`build/xeBuild.lines.json`),
+with ddisasm's and gcc's spellings normalised. It ignores padding and
+encodings, so `sh build.sh` has the last word. It reports MATCH for every
+function already in C. Its default flags are `-O3`; give fileutil's
+`--param` or crypto's `-Isrc/crypto` explicitly.
+
+The first mixed object was `app/filelist_ini` (whole C now; parseIni's
+strings are `static const` arrays defined before it so that, with
+`-fno-toplevel-reorder`, they keep the original's `.rdata` order; `getIniValue`, with a `findInst`-style
+`findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
+helper). The slot order needed `key[0] == buf[i]`, the reverse of
+`findInst`. And `app/options` (whole object in C now, no `.s`):
+
+- Its strings are `static const char str_*/msg_*[]` arrays in the
+  original's `.rdata` order. Without `-fno-toplevel-reorder` (which would
+  keep the never-written `aio_never*` statics) gcc emits statics in reverse
+  definition order, so they are defined last to first. The `OUTCAT` sources
+  are used through 1-element aliases: gcc folds a visible array's contents
+  into a second literal.
+- `baseFileExists` is ipa-split; its `.part.0` (4236f0) is in `C_FUNCS`
+  under gcc's name.
+- `parseButton`'s split part (449640) is gcc's `.text.unlikely`. A profile
+  build doesn't split, so it is written out as a `cold` function in
+  `.text.startup` under gcc's name (`_parseButton.part.0`). It is global
+  (with `regparm(1)`, the static's convention) and defined first, so its
+  FDE comes right after the split `baseFileExists.part.0`'s.
+- gcc emits the functions in source order, so applyIniOptions sits after
+  parseCmdOptions as in the original.
+- `applyIniOptions` is built with a crafted profile (`src/app/options.prof`,
+  written by `wip/aiodesign.py`; the other functions keep gcc's guessed
+  one). Its label alignment needs stale block counts, which tests of
+  never-written statics (`aio_never*`) give: IPA folds them after the
+  profile is read and the counts of their dead edges stay behind
+  (wip/README.md, app/options.c).
+- `strcat(xb.outName, "name")` is expanded inline. Short names become
+  immediate stores, so the literal stays and no data is emitted. Longer ones
+  copy from the string itself; those are written as `OUTCAT(name)`
+  (`memcpy(dst + strlen(dst), str_name, sizeof "name")`). Which names are
+  long differs between iniConsoleType and setConsoleType, so follow gcc.
+
+And `app/keys` (whole object in C, data included; built with
+`-fno-toplevel-reorder` so functions, key buffers and the string arrays of
+setFuseCpuKey, daeEncrypt and fcrtEncrypt come out in definition order).
+The names (`keysInit`, `cbaEncrypt`, `kvPrepare`, the `infoKey0..5` HMAC
+salts, ...) are ours.
+
+- `daeEncrypt` tests `!n` before each log, so gcc threads one decrypt
+  sequence per n and the first-key success is shared. That success has its
+  own `daeEncryptOne(); n++; goto next;` copy: LRA's EBB stops at a block
+  that starts with a label, so only a copy reached by fallthrough keeps off
+  saved across both calls (no reload), and crossjumping later merges the
+  copy into the main encrypt.
+
+- The hash check before decrypting extended.bin/kv.bin is a static helper
+  (`kvHashOk`) inlined next to `kvEncrypt`: its `ver`/hash locals share stack
+  slots with kvEncrypt's, which a function-scope local doesn't.
+- The SMC checksum's 64-bit rotates are written as
+  `(s << 29) | (u32)((u32)(s >> 32) >> 3)`: the original isn't a rotate
+  (shift and or, no double `shld`).
+- `crlEncrypt` writes the success branch twice (CPU key, then the alternate
+  key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
+
+And `app/mode_update` (whole object in C).
+`mode_update` itself only matches when built with a profile: its cold
+blocks are placed by bb-reorder's Fibonacci-heap ties, and no guessed
+profile we found gives the original's (wip/README.md has the search,
+`wip/fibsolve.py`). build.sh compiles the object with
+`-fbranch-probabilities` and a `.gcda` from `re/gcda.py`: counts for
+`mode_update` and its inlined `updateNand` only, gcc's guessed profile with
+11 edges changed. The edges are a fit to the layout, not the original's
+profile. The other functions are `optimize("no-branch-probabilities",
+"no-reorder-functions")` (`NOPROF`), so they keep the guessed profile and
+`.text`. getBadBlocks is written success-first (no early-return predictor),
+which puts its error block over the default align-threshold, as the
+original's is. 126 of its 152 strings are plain literals, which gcc
+emits in the original's `.rdata` order; in seven functions the first few
+aren't, so those are static arrays defined right before the function. The
+variables are zero-initialized globals in `.bss` order. Both rely on
+`-fno-toplevel-reorder` (the filelist_ini recipe).
+
+And `app/image_write` (whole object in C, no `.s`; `-O3 --param
+builtin-expect-probability=50`, default top-level order).
+
+- `imgAdd` (copy to the image, set the spare bytes, chain the FS table) is
+  the only writer: the image's imgWriteStart, imgWritePage and imgWriteAt
+  are gcc's ipa-cp clones of it (off 0, type 0, pad 1; len 0x1000, type 1,
+  pad 0 for addSmcConfig's and imgAddRaw's calls; type 0, pad 1), named
+  `_imgAdd.constprop.1/.2/.4` in `SYMBOLS`. ipa-cp makes them in that
+  order, and gcc's reverse-postorder expansion emits these local nodes
+  first, oldest first: the original's `.text` order. (Written by hand,
+  imgWritePage came out ahead of all three.) len 0x1000 is only worth a clone while no dead
+  pin modifies `len` (ipa-cp can't specialise a modified parameter).
+- Dead `if (...) blocks++;`-style tests in imgAdd keep the off-0 clone's
+  ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
+  recycled, i.e. the compare operand orders in the clones and inlined
+  copies; their layout was found by a search (wip/README.md).
+- imgAddFile computes imgFits' limit and end itself before a dead `len++`
+  (the end kept by a code-free asm), and the dead test in its body is
+  `cold`, so VRP1's jump threading neither renumbers those values nor
+  leaves the error edge at 75%.
+- String literals are emitted in statement order with each function, and
+  the buildImage jump table after its strings, which is the `.rdata`
+  order; finalizeImage's arms are written in the order that gives it.
+  copyright's year digit is a NUL in the data (buildImage sets it), and the
+  two globals are initialised (`.bss`, not COMMON) and defined in reverse.
+- ddisasm read 4 bytes of wassert's UTF-16 "MinGW" as a pointer into
+  smcPage; `split.py`'s `NOT_POINTERS` writes it back as a number.
+
+Application files in C (all **-O3**; timeutil doesn't match at -O2):
+
+- `app/crc32.c`: Gary S. Brown's CRC-32 table and an `UPDC32` loop.
+- `app/log.c`: verbosity, `build.log`, renaming it to `<name>.log`. The
+  verbose-flag switch needs the `'\0'` case written as a separate copy of the
+  level-1 body (gcc merges the copies, but block order follows them).
+- `app/timeutil.c`: Wine's ntdll/kernel32 time code (`RtlTimeFieldsToTime`,
+  `RtlTimeToTimeFields`, `SystemTimeToFileTime`, `FileTimeToSystemTime`,
+  `FileTimeToDosDateTime`, `DosDateTimeToFileTime`, `GetSystemTime`) as cdecl
+  functions with own WORD-based types, `errno = EINVAL` for SetLastError, and
+  `time()`/`rand()` for the clock (GetSystemTime fills milliseconds with
+  `rand() % 999`). FileTimeToDosDateTime rounds up to whole, then even, seconds.
+  The names are Wine's; a file that also includes `windows.h` would clash.
+
+From Git Bash, set `MSYS_NO_PATHCONV=1` before calling `wsl` with paths.
+
+`disasm.sh` runs ddisasm 1.9.5 and prints with
+`gtirb-pprinter --format raw --syntax intel --keep-all --listing-mode debug`:
+PE output only supports MASM syntax, and the debug listing tags every line
+with its original address.
+
+`ddfix.py` strips those addresses, assembles with binutils 2.27 and, wherever
+gas emits different bytes than the exe, pins the original encoding (`.byte`,
+or opcode + `.long label-.-4` for branches so targets stay symbolic). Currently
+528 lines are pinned: 7-byte padding `lea`s gas would shorten, near jumps it
+would relax, and 2-byte `66 90` padding that ddisasm prints as two `nop`s.
+
+Next it symbolizes what ddisasm left as numbers (943 fields, output unchanged):
+`.idata` descriptor/thunk RVAs and the `.rsrc` data entry RVA become `.rva
+label`, the 685 `.eh_frame` FDE pc_begin fields (pcrel sdata4) become
+`.long label - .`, the `.CRT`/`.tls` TLS callback pointer becomes `.long
+label`, and 3 mingw pseudo-reloc operands become `.L_464900_END+N`. Imports get
+labels on their IAT slots, plus `__IAT_start__`/`__IAT_end__`/`__tls_used`
+(ld fills the IAT and TLS data directories from them).
+
+It writes `build/xeBuild.lines.json` (every line with its original address) and
+a single-file `build/xeBuild.s` that links with `re/single.ld` (used by the
+shift test; it needs `$zz` tail sections to get the section sizes right, which
+the per-object build gets naturally).
+
+### How the objects were recovered (`re/split.py`)
+
+- **.text and .eh_frame, exact.** Every gcc object contributes one CIE plus
+  its FDEs to `.eh_frame`, in link order, so the 94 CIEs give the objects and
+  their functions. Objects without unwind info were matched byte for byte
+  against the toolchain's libraries (`_chkstk_ms`, import stubs).
+  `.text.startup` holds `main` (app/main), a startup function of app/options
+  and crtend's constructor; the default link script's ctor/dtor lists follow.
+- **.data, .rdata, .bss, inferred.** Each is split at 4-aligned labels (gas
+  pads sections to 4, so objects start 4-aligned). Each atom gets the set of
+  objects whose code references it, propagated through data-to-data
+  pointers, and monotone boundaries in link order are chosen to minimise atoms
+  placed outside a referencing object: 20 of ~1500 atoms end up there (shared
+  globals). Padding stays with the object before it.
+- **Fixed pieces.** `.jcr` (end of `.data`) and the eh_frame terminator are
+  crtend's. The 104 `GCC:` idents (`.rdata$zzz`) go one per gcc object; the
+  10 belonging to objects without code (data-only runtime objects, and likely
+  one data-only program file whose data is merged into its neighbours) are in
+  `runtime/no_code_objects.s`. `.idata`, `.CRT`/`.tls` and `.rsrc` are whole
+  files. The COMMON block at the end of `.bss` stays one file: ld lays COMMON
+  symbols out in hash-table order, so it can't be attributed to sources.
+  `src/globals.c` defines its variables in address order (`-fno-common
+  -fno-toplevel-reorder`, every one `aligned(4)`, with in-place pads for
+  ld's 32-byte alignment; `-fno-ident`, as it adds an object the original
+  link didn't have). The fields of `xb` that ddisasm labelled (`cpuKey`,
+  `iniBuf`, ...) are `xb.` members in the C, and two UTF-16 words in
+  wassert's strings that ddisasm took for pointers into the block are
+  `NOT_POINTERS`.
+- Labels referenced from another file are `.globl`; `__ImageBase` comes from
+  the link script.
+
+### Source files
+
+Names are inferred from content; each file's header repeats the evidence and
+its original addresses. Library files use the library's own file names.
+
+| File | Evidence |
+|---|---|
+| app/main | `main`, signal handlers, mode dispatch |
+| app/mode_build, mode_update, mode_client, mode_extract, mode_ini | each prints its mode's usage text |
+| app/build | image build: inputs with crc32 checks, patches, payloads |
+| app/image_read / image_write | parse an existing NAND image / lay out and write one |
+| app/bootloaders | CB/CF/CD/CE decryption, pairing, bootloader signatures |
+| app/keys | CPU/1BL keys, SMC/keyvault/CRL input decryption |
+| app/keyvault | keyvault hash, DVD key |
+| app/smc | SMC checksum, type detection, patches |
+| app/sysupdate, stfs | system update container, container/manifest hashes |
+| app/options | console types, command line options |
+| app/filelist_ini | file list ini parser |
+| app/consoleinfo, console_hdd, net | console info/options ini, HDD transfer, winsock |
+| app/log, fileutil, timeutil, crc32, xboxrom | logging, file helpers, dates, crc32, ROM names |
+| crypto/xecrypt, xecryptBn | XeCrypt API and big-endian bignum helpers (C source) |
+| crypto/aes/aes_modes, aestab, aescrypt, aeskey | Brian Gladman's AES (C source) |
+| crypto/rc4/rc4_enc, rc4_skey, sha/sha1dgst, md5/md5 | OpenSSL RC4 (`"rc4(idx,int)"`), SHA-1; MD5 (C source) |
+| crypto/des/des, bign/pkcs1-rsa, hash, base64, common | DES/3DES, RSA keygen/OAEP/PSS, hash wrappers, base64 (C source) |
+| crypto/bign/mp*, sp*, bigdUtils | BigDigits functions (mpAdd, mpModExp, spMultiply, ...) (C source) |
+
+### App headers
+
+`src/app/xebuild.h` holds the types the app's objects share (`struct xebuild`,
+the program state `xb`, and `fileent`, `netfile`, `flashhdr`, `consoleinfo`,
+...) and declares `src/globals.c`'s variables. Each object's functions (and
+data) that others use are in `src/app/<obj>.h`, which the object itself
+includes too; app files take XeCrypt's prototypes from `src/crypto/xecrypt.h`.
+Two switches, defined before including `xebuild.h`, give a file the view of
+`xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
+and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
+
+The files' code was matched against their own declarations, which did not
+always agree with each other. Where a file still needs another typing than the
+header's to compile to the original's code, it says so in a comment marked
+`TODO(xebuild.h cast)` (a field read as another type) or `TODO(prototype cast)`
+(a function's argument or return type: a cast, or a declaration under another
+name bound to the same symbol with an asm label, e.g. `u32
+FileExistsU32(const char *) __asm__("_FileExists")`), so a later pass can settle
+the types. `grep -rn 'TODO(' src/app` lists them.
+
+### XeCrypt in C
+
+All 41 crypto objects are XeCrypt, copied unmodified (LF line endings) from
+[cOzInABox/XeCrypt](https://github.com/cOzInABox/XeCrypt) at commit `7d619af`
+into `src/crypto/`, which mirrors that repo's tree (its headers include
+`"bign/bigdigits.h"`, `"../sha/sha.h"` and so on). Only the files the program
+links, and the headers they include, are copied. The whole library was built
+at **-O3** (its Makefile's `-s -O3`; -O2 gives different code for 12 of the 15
+crypto files outside BigDigits), and each file compiles to the reference object.
+`src/crypto/LICENSE-XeCrypt.txt` is that repo's licence: MIT, plus the notices
+of the projects it includes (Gladman AES, Eric Young's RC4/SHA, MD5, DES,
+BigDigits). The BigDigits section says the 1.0 extension was released into
+the public domain with Ireland's permission. `bign/bigdigitsCopyright.txt` is
+the original 1.0 notice.
+
+Library objects use XeCrypt's file names: the objects first named
+crypto/xecrypt_bn, rsa, memwipe and md5_dgst are xecryptBn.c,
+bign/pkcs1-rsa.c, bign/common.c and md5/md5.c. aestab.c defines the AES
+tables, which the inferred data split had placed in aescrypt/aeskey (see
+`DATA_OWNERS` in `split.py`). xecrypt.c's `XeCryptRandomState` is a tentative
+definition, so it stays in the COMMON block (`globals.c` defines it).
+
+#### BigDigits
+
+XeCrypt's `bign/` is Dang Nguyen Duc's extension of David Ireland's BigDigits
+**version 1.0** (2001, one function per file). Only -O3's loop-to-`memset`
+distribution reproduces mpSetZero, mpSetDigit and mpDivide.
+
+The header matters: mpModExp only matches with its `const` prototypes.
+Compared with upstream 1.0, the edits include `MAX_DIG_LEN` 64, no wiping of
+temporaries, `assert`s in mpAdd/mpSubtract/mpMultiply and shifts of any size.
+Upstream 1.0 can be found as `di-mgt.com.au/src/BigDigits.zip` on the Wayback
+Machine.
+
+mpIsPrime.c holds `mpIsPrime` (full test, unused), `mpIsPrimeShort` (trial
+division only; bign/pkcs1-rsa calls it) and `mpIsPrimeRabin`. The 15-byte gap
+before `mpIsPrimeRabin` is gas alignment padding: a short `jmp` over nops,
+which the disassembly showed as a call.
+
+`build.sh` feeds each file through stdin behind
+`#line 1 "H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/<path>.c"` so that `__FILE__`
+matches (only bign's `assert`s use it).
+
+`bigdUtils.c` (alloc/free, printing, random fill, string conversion) is
+the object formerly called mpUtil. gcc turns its `malloc` + `memset(0)` into
+`calloc`, as in the original.
+
+Licence note: BigDigits 1.0's own notice asks that the attribution text in
+`bigdigitsCopyright.txt` stay in distributed executables. `xeBuild.exe`
+doesn't contain it, so builds distributed after bug fixes should add it.
+
+## Symbolization checks
+
+Two independent checks that code and data can move without breaking pointers:
+
+```bash
+python re/audit.py xeBuild.exe build/xeBuild.dbg.s build/ida_dump.json build/audit.txt
+python re/shifttest.py xeBuild.exe build/xeBuild.s build
+```
+
+`build/ida_dump.json` comes from `python re/ida_dump.py build/ida/xeBuild.exe
+build/ida_dump.json` (IDA 9.x, on a copy of the exe).
+
+**audit.py** compares the source with IDA's pointer analysis (operands it
+treats as addresses, data it marks as offsets, in-image dwords). Current result:
+
+| Category | Count | Verdict |
+|---|---|---|
+| missed (IDA: address, source: number) | 1 | IDA false positive: string `"CBB"` at 0x459f25 |
+| maybe (unmarked in-image data dwords) | 18 | strings and bit-mask tables (0x400000, 0x410000, ...) |
+| false (symbol where IDA sees a constant) | 0 | |
+| imagebase (`__ImageBase` as a number) | 62 | PE header reads, plus 0x400000 used as a bit mask; fine while the base stays 0x400000 |
+| cross-section `sym+off` | 0 | |
+| cross-label `sym+off` | 67 | struct fields addressed from a neighbouring label (`L_47a0d4+4`); fine unless data is reordered |
+
+**shifttest.py** relinks with 16 bytes inserted before every function and every
+data label, then checks every address-like word of the original against the
+moved build: 7848 absolute pointers, 255 RVAs and 685 eh_frame pcrel pointers
+follow their targets. What remains is noise (strings, bit masks, import-name
+text, resource directory counts) and the 67 cross-label fields above, which the
+per-label padding deliberately pulls apart. The moved exe also runs: its output
+without arguments is identical to the original's.
+
+Remaining caveats when editing:
+- `.eh_frame` pc_range and CFA programs are still raw: a function whose size or
+  stack layout changes needs its FDE regenerated (C rewrites get this from gcc).
+- Keep the image base at 0x400000 (see the imagebase row).
+- Don't insert data between the labels of the 67 cross-label fields.
+- Function alignment is explicit padding; ddisasm's `.align`s are dropped in
+  the split files, so code inserted mid-file shifts the functions after it
+  (harmless, but they lose 16-byte alignment).
+
+<!-- progress:begin -->
+<!-- generated by re/progress.py; edit that, not this -->
+
+## Progress
+
+Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly; the COMMON globals at the end of `.bss` (the program's and the runtime's) are C, in `src/globals.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+
+| Component | Objects in C | Functions in C |
+|---|---|---|
+| `app/` | 25 / 25 | 432 / 432 |
+| `crypto/` | 41 / 41 | 185 / 185 |
+
+### In progress
+
+Objects with functions or data still in assembly (a `src/<obj>.s` or top-level asm in the `.c`). Per-function status in address order: ✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. "Functions in C" counts both ✅ and ☑️.
+
+| Object | State | Functions in C |
+|---|---|---|
+
+
+### Completed
+
+Objects built entirely from C, in link order.
+
+| Object | Functions |
+|---|---|
+| `app/bootloaders` | 19 |
+| `app/mode_update` | 14 |
+| `app/stfs` | 7 |
+| `app/mode_client` | 16 |
+| `app/filelist_ini` | 12 |
+| `app/timeutil` | 7 |
+| `app/smc` | 4 |
+| `app/sysupdate` | 12 |
+| `app/main` | 8 |
+| `app/mode_extract` | 2 |
+| `app/xboxrom` | 7 |
+| `app/image_write` | 46 |
+| `app/keyvault` | 12 |
+| `app/image_read` | 33 |
+| `app/mode_ini` | 6 |
+| `app/mode_build` | 5 |
+| `app/keys` | 48 |
+| `app/net` | 32 |
+| `app/fileutil` | 47 |
+| `app/options` | 19 |
+| `app/build` | 41 |
+| `app/consoleinfo` | 13 |
+| `app/console_hdd` | 14 |
+| `app/log` | 7 |
+| `app/crc32` | 1 |
+| `crypto/*` (41 XeCrypt objects) | 185 |
+
+<details>
+<summary><code>app/bootloaders</code>: 19 functions</summary>
+
+- ✅ `verifyExtended` (0x401630)
+- ✅ `unscramble` (0x401730)
+- ✅ `cbGetPairing` (0x4017d0)
+- ✅ `cfGetPairing` (0x401910)
+- ✅ `cfBestPairing` (0x401a00)
+- ✅ `cfDecrypt` (0x401ce0)
+- ✅ `cgDecrypt` (0x401dc0)
+- ✅ `verifySecdata` (0x401e60)
+- ✅ `crlVerifySig` (0x401f80)
+- ✅ `verifyCrl` (0x402020)
+- ✅ `daeDecrypt` (0x402210)
+- ✅ `daeVerifySig` (0x4022f0)
+- ✅ `verifyDae` (0x402410)
+- ✅ `fcrtVerifySig` (0x402610)
+- ✅ `verifyFcrt` (0x402720)
+- ✅ `shaSelfCheck` (0x402a00)
+- ✅ `cbDecrypt` (0x402a70)
+- ✅ `cdDecrypt` (0x402c70)
+- ✅ `ceDecrypt` (0x402ec0)
+
+</details>
+<details>
+<summary><code>app/mode_update</code>: 14 functions</summary>
+
+- ✅ `getBadBlocks` (0x4030b0)
+- ✅ `update_usage` (0x4031d0)
+- ✅ `wantFile` (0x403460)
+- ✅ `parseAddonIdx` (0x4034f0)
+- ✅ `getAddons` (0x403700)
+- ✅ `getMobileFiles` (0x403820)
+- ✅ `bldrGetKv` (0x403cf0)
+- ✅ `bldrGetSmc` (0x403d80)
+- ✅ `getSecurityFiles` (0x403e10)
+- ✅ `checkBadBlocks` (0x404320)
+- ✅ `getBootloaders` (0x404340)
+- ✅ `getConsoleFiles` (0x404430)
+- ✅ `updateGetFile` (0x404600)
+- ✅ `mode_update` (0x404770)
+
+</details>
+<details>
+<summary><code>app/stfs</code>: 7 functions</summary>
+
+- ✅ `stfsCheckHashes` (0x405610)
+- ✅ `stfsListFiles` (0x405980)
+- ✅ `stfsCheckHeader` (0x405ac0)
+- ✅ `stfsGetFile` (0x405d50)
+- ✅ `stfsInit` (0x405f20)
+- ✅ `stfsFree` (0x405f50)
+- ✅ `stfsLoad` (0x405fa0)
+
+</details>
+<details>
+<summary><code>app/mode_client</code>: 16 functions</summary>
+
+- ✅ `client_usage` (0x406330)
+- ✅ `clientInfo` (0x406740)
+- ✅ `clientWrite` (0x406980)
+- ✅ `clientManifest` (0x406aa0)
+- ✅ `dumpKey` (0x406b60)
+- ✅ `clientKeys` (0x406c60)
+- ✅ `checkPatches` (0x406e50)
+- ✅ `updatePatches` (0x407160)
+- ✅ `clientPatches` (0x407320)
+- ✅ `clientReadBlocks` (0x4076b0)
+- ✅ `clientWriteBlocks` (0x407850)
+- ✅ `patchNand` (0x407a00)
+- ✅ `clientBinPatch` (0x407bf0)
+- ✅ `clientEraseBlock` (0x408080)
+- ✅ `getArgs` (0x408160)
+- ✅ `mode_client` (0x408260)
+
+</details>
+<details>
+<summary><code>app/filelist_ini</code>: 12 functions</summary>
+
+- ✅ `fixFileCase` (0x408ec0)
+- ✅ `iniPreParse` (0x408fe0)
+- ✅ `memFindStr` (0x409310)
+- ✅ `memFindChar` (0x4093d0)
+- ✅ `checkFileCase` (0x409410)
+- ✅ `parseIni` (0x409430)
+- ✅ `getIniValue` (0x40aa10)
+- ✅ `getIniBool` (0x40aad0)
+- ✅ `iniBoolInvalid` (0x40abf0)
+- ✅ `getIniU32` (0x40acf0)
+- ✅ `iniU32Invalid` (0x40ade0)
+- ✅ `loadUserIni` (0x40aef0)
+
+</details>
+<details>
+<summary><code>app/timeutil</code>: 7 functions</summary>
+
+- ✅ `RtlTimeFieldsToTime` (0x40b130)
+- ✅ `RtlTimeToTimeFields` (0x40b330)
+- ✅ `FileTimeToSystemTime` (0x40b500)
+- ✅ `SystemTimeToFileTime` (0x40b700)
+- ✅ `FileTimeToDosDateTime` (0x40b910)
+- ✅ `DosDateTimeToFileTime` (0x40ba30)
+- ✅ `GetSystemTime` (0x40bae0)
+
+</details>
+<details>
+<summary><code>app/smc</code>: 4 functions</summary>
+
+- ✅ `smcFindResetLimit` (0x40bd30)
+- ✅ `smcCheck` (0x40bd80)
+- ✅ `smcPatch` (0x40c020)
+- ✅ `smcConfigOk` (0x40c210)
+
+</details>
+<details>
+<summary><code>app/sysupdate</code>: 12 functions</summary>
+
+- ✅ `suGetPath` (0x40c240)
+- ✅ `suGetDir` (0x40c260)
+- ✅ `suFreeBl` (0x40c280)
+- ✅ `suExtractBl` (0x40c2e0)
+- ✅ `suGetCF` (0x40c650)
+- ✅ `suGetCG` (0x40c700)
+- ✅ `suGetFile` (0x40c7b0)
+- ✅ `suNextFile` (0x40c860)
+- ✅ `suFirstFile` (0x40c940)
+- ✅ `suLoadDir` (0x40ca30)
+- ✅ `suLoad` (0x40cc80)
+- ✅ `suFree` (0x40cfa0)
+
+</details>
+<details>
+<summary><code>app/main</code>: 8 functions</summary>
+
+- ✅ `sigHandler` (0x40d010)
+- ✅ `installSignals` (0x40d0a0)
+- ✅ `verifyFlashFile` (0x40d120)
+- ✅ `logButton` (0x40d370)
+- ✅ `showConsoleInfo` (0x40d500)
+- ✅ `initGlobals` (0x40de60)
+- ✅ `setBasePath` (0x40df90)
+- ✅ `main` (0x4492c0)
+
+</details>
+<details>
+<summary><code>app/mode_extract</code>: 2 functions</summary>
+
+- ✅ `extract_usage` (0x40e020)
+- ✅ `mode_extract` (0x40e200)
+
+</details>
+<details>
+<summary><code>app/xboxrom</code>: 7 functions</summary>
+
+- ✅ `kvVerifySig` (0x40e520)
+- ✅ `cbVerifySig` (0x40e5a0)
+- ✅ `blVerifySig` (0x40e620)
+- ✅ `blSign` (0x40e690)
+- ✅ `blCheckHash` (0x40e7b0)
+- ✅ `blUpdateHash` (0x40e810)
+- ✅ `blHashAndSign` (0x40e8a0)
+
+</details>
+<details>
+<summary><code>app/image_write</code>: 46 functions</summary>
+
+- ✅ `imgAdd.constprop.1` (0x40e950)
+- ✅ `imgAdd.constprop.2` (0x40ecc0)
+- ✅ `imgAdd.constprop.4` (0x40eef0)
+- ✅ `buildImage` (0x40f330)
+- ✅ `imageFree` (0x40fb10)
+- ✅ `calcEcd` (0x40fb60)
+- ✅ `calcPageEcc` (0x40fbb0)
+- ✅ `pageEccOk` (0x40fc30)
+- ✅ `blockEccOk` (0x40fcc0)
+- ✅ `pageErased` (0x40feb0)
+- ✅ `blockErased` (0x40ff40)
+- ✅ `blockPagesErased` (0x40ff80)
+- ✅ `blockIsFF` (0x410040)
+- ✅ `isErased` (0x410070)
+- ✅ `setBlockSpare` (0x4100b0)
+- ✅ `imgSizeAligned` (0x410220)
+- ✅ `setFlashBuild` (0x410240)
+- ✅ `smcSetLoad` (0x410290)
+- ✅ `imgSmcOffset` (0x410350)
+- ✅ `setPatchSlot` (0x410360)
+- ✅ `imgCfOffset` (0x410460)
+- ✅ `imgCfSize` (0x410490)
+- ✅ `imgSize` (0x4104d0)
+- ✅ `imgSetSize` (0x4104e0)
+- ✅ `imgBigBlock` (0x4104f0)
+- ✅ `imgAdd` (0x410500)
+- ✅ `imgFits` (0x410b90)
+- ✅ `imgAddFile` (0x410bb0)
+- ✅ `imgAddFileAs` (0x411030)
+- ✅ `imgAddMobile` (0x4110b0)
+- ✅ `fixupFsTable` (0x4112b0)
+- ✅ `fixupEmptyFsBlocks` (0x4112f0)
+- ✅ `addSmcConfig` (0x411600)
+- ✅ `writeInitialHeader` (0x411680)
+- ✅ `checkBootImage` (0x411800)
+- ✅ `writeFsTable` (0x411bd0)
+- ✅ `copyAnchorBlock` (0x412110)
+- ✅ `spareUsed` (0x4121b0)
+- ✅ `imageGetBuffer` (0x412230)
+- ✅ `writeImage` (0x412260)
+- ✅ `finalizeImage` (0x4125a0)
+- ✅ `fsStartBlock` (0x412dd0)
+- ✅ `reservedAreaOffset` (0x412de0)
+- ✅ `statisticsOffset` (0x412e90)
+- ✅ `manufacturingOffset` (0x412f60)
+- ✅ `imgAddRaw` (0x413030)
+
+</details>
+<details>
+<summary><code>app/keyvault</code>: 12 functions</summary>
+
+- ✅ `kvGetType` (0x413090)
+- ✅ `kvIsLoaded` (0x4130b0)
+- ✅ `kvCheckHash` (0x4130c0)
+- ✅ `kvSet` (0x4131a0)
+- ✅ `kvGetGameRegion` (0x413370)
+- ✅ `kvGetDvdKey` (0x4133d0)
+- ✅ `kvGetConsoleId` (0x4133f0)
+- ✅ `kvGetSerial` (0x413410)
+- ✅ `kvGetConsoleCert` (0x4134f0)
+- ✅ `kvGetMfgDate` (0x413510)
+- ✅ `kvHashIsOk` (0x413590)
+- ✅ `kvSetDvdKey` (0x4135a0)
+
+</details>
+<details>
+<summary><code>app/image_read</code>: 33 functions</summary>
+
+- ✅ `fsFind` (0x4136a0)
+- ✅ `buildCleanup` (0x4137f0)
+- ✅ `getImageLdv` (0x4138c0)
+- ✅ `getImageSmc` (0x413ad0)
+- ✅ `getImageKv` (0x413d30)
+- ✅ `getImageMobiles` (0x414050)
+- ✅ `getNetKd` (0x414300)
+- ✅ `loadFlashFile` (0x4144e0)
+- ✅ `fsFindFile` (0x414610)
+- ✅ `listFlashFiles` (0x414650)
+- ✅ `fsGetFile` (0x414760)
+- ✅ `findAnchor` (0x414960)
+- ✅ `mmcFindMobiles` (0x414af0)
+- ✅ `spareVersion` (0x414b90)
+- ✅ `showMobilePages` (0x414be0)
+- ✅ `scanMobiles` (0x414e90)
+- ✅ `setFsOffset` (0x4151c0)
+- ✅ `findFsRoot` (0x415230)
+- ✅ `imgGetSecurityFiles` (0x4154d0)
+- ✅ `findSmcConfig` (0x415970)
+- ✅ `checkBlock` (0x415b00)
+- ✅ `addRemap` (0x415d90)
+- ✅ `findFreeRemap` (0x415e90)
+- ✅ `remapBadBlocks` (0x415ef0)
+- ✅ `notZeropair` (0x416040)
+- ✅ `spareLbaOk` (0x416070)
+- ✅ `copyMmcImage` (0x4160d0)
+- ✅ `parseDump` (0x416150)
+- ✅ `copyMuData` (0x416840)
+- ✅ `detectController` (0x416aa0)
+- ✅ `checkHeader` (0x416cd0)
+- ✅ `getNonces` (0x4172c0)
+- ✅ `loadDump` (0x417680)
+
+</details>
+<details>
+<summary><code>app/mode_ini</code>: 6 functions</summary>
+
+- ✅ `ini_usage` (0x418240)
+- ✅ `iniSetFile` (0x418380)
+- ✅ `iniPrintf` (0x4183d0)
+- ✅ `iniWriteFlashfs` (0x418450)
+- ✅ `iniWriteBl` (0x418680)
+- ✅ `mode_ini` (0x418830)
+
+</details>
+<details>
+<summary><code>app/mode_build</code>: 5 functions</summary>
+
+- ✅ `build_usage` (0x418a10)
+- ✅ `loadKeyFile` (0x418ee0)
+- ✅ `loadPubKey` (0x418fd0)
+- ✅ `loadPubKeys` (0x419150)
+- ✅ `mode_build` (0x419230)
+
+</details>
+<details>
+<summary><code>app/keys</code>: 48 functions</summary>
+
+- ✅ `keysInit` (0x41aa00)
+- ✅ `setCrlKey` (0x41abb0)
+- ✅ `setDaeKey` (0x41ac00)
+- ✅ `setSecdataKey` (0x41ac50)
+- ✅ `setInfoKey0` (0x41ac70)
+- ✅ `setInfoKey1` (0x41aca0)
+- ✅ `setInfoKey2` (0x41acd0)
+- ✅ `setInfoKey3` (0x41ad00)
+- ✅ `setInfoKey4` (0x41ad30)
+- ✅ `setInfoKey5` (0x41ad60)
+- ✅ `setKvSalt` (0x41ad90)
+- ✅ `setKvAltSalt` (0x41adb0)
+- ✅ `setSmcKey` (0x41add0)
+- ✅ `setPairing` (0x41ade0)
+- ✅ `checkCpuKey` (0x41ae40)
+- ✅ `setCpuKeyStr` (0x41afe0)
+- ✅ `setCpuKey` (0x41b120)
+- ✅ `setFuseLdv` (0x41b1d0)
+- ✅ `setFuseCpuKey` (0x41b320)
+- ✅ `calcXexKey` (0x41b420)
+- ✅ `check1blKey` (0x41b520)
+- ✅ `set1blKey` (0x41b600)
+- ✅ `checkKeys` (0x41b740)
+- ✅ `smcChecksum` (0x41b8e0)
+- ✅ `smcEncrypt` (0x41ba00)
+- ✅ `smcPrepare` (0x41ba80)
+- ✅ `cbaEncrypt` (0x41bf50)
+- ✅ `cbaEncryptZero` (0x41c0c0)
+- ✅ `cbaEncrypt2` (0x41c1b0)
+- ✅ `cbbEncrypt` (0x41c370)
+- ✅ `cdEncryptZero` (0x41c5e0)
+- ✅ `cdEncrypt` (0x41c6b0)
+- ✅ `cdEncryptCpu` (0x41c760)
+- ✅ `ceEncrypt` (0x41c860)
+- ✅ `cfPatchSlots` (0x41c910)
+- ✅ `cfEncrypt` (0x41ca20)
+- ✅ `cgEncrypt` (0x41ce50)
+- ✅ `kvEncrypt` (0x41cf00)
+- ✅ `kvEncryptAlt` (0x41cff0)
+- ✅ `kvPrepare` (0x41d0e0)
+- ✅ `extendedPrepare` (0x41d6a0)
+- ✅ `secdataPrepare` (0x41d9b0)
+- ✅ `shaCheck` (0x41db70)
+- ✅ `crlEncrypt` (0x41dc30)
+- ✅ `daeEncryptOne` (0x41dfa0)
+- ✅ `daeEncrypt` (0x41e180)
+- ✅ `fcrtEncrypt` (0x41e620)
+- ✅ `shaHeader` (0x41e7b0)
+
+</details>
+<details>
+<summary><code>app/net</code>: 32 functions</summary>
+
+- ✅ `netRecvVerbose.constprop.1` (0x41e800)
+- ✅ `netFree` (0x41ea70)
+- ✅ `netFindBeacon` (0x41ea90)
+- ✅ `netTimerStart` (0x41ed50)
+- ✅ `netTimerEnd` (0x41ed70)
+- ✅ `netTimerElapsed` (0x41edb0)
+- ✅ `netSendStr` (0x41ede0)
+- ✅ `netRecvVerbose` (0x41ee30)
+- ✅ `netSendData` (0x41f1a0)
+- ✅ `netCheckOk` (0x41f330)
+- ✅ `netOpenSocket` (0x41f390)
+- ✅ `netReadInfo` (0x41f470)
+- ✅ `netConnect` (0x41f700)
+- ✅ `netClose` (0x41fa00)
+- ✅ `netDisconnect` (0x41fa40)
+- ✅ `netMount` (0x41faf0)
+- ✅ `netUnmount` (0x41fc30)
+- ✅ `netGetFile` (0x41fd60)
+- ✅ `netGetInfo` (0x41fe10)
+- ✅ `netDumpNand` (0x41fe20)
+- ✅ `netGetBldrs` (0x41ff90)
+- ✅ `netSendFlash` (0x41ffe0)
+- ✅ `netReadBlocks` (0x420140)
+- ✅ `netWriteBlocks` (0x420200)
+- ✅ `netEraseBlock` (0x420320)
+- ✅ `netGetBadBlocks` (0x420420)
+- ✅ `netSendFile` (0x420470)
+- ✅ `netFormatSysex` (0x4205d0)
+- ✅ `netFormatCompat` (0x420670)
+- ✅ `netMkdir` (0x420710)
+- ✅ `netReboot` (0x420840)
+- ✅ `netWritePatches` (0x420910)
+
+</details>
+<details>
+<summary><code>app/fileutil</code>: 47 functions</summary>
+
+- ✅ `getConsoleTypeStr` (0x420a90)
+- ✅ `getBeU16` (0x420ab0)
+- ✅ `getBeU32` (0x420ad0)
+- ✅ `getBeU64` (0x420ae0)
+- ✅ `getLeU32` (0x420af0)
+- ✅ `setBeU16` (0x420b00)
+- ✅ `setBeU32` (0x420b20)
+- ✅ `setBeU64` (0x420b50)
+- ✅ `display_buffer_hex` (0x420bb0)
+- ✅ `dump_buffer_hex` (0x420c30)
+- ✅ `writeFile` (0x420d00)
+- ✅ `writeFileIn` (0x420d80)
+- ✅ `writeKeyFile` (0x420e40)
+- ✅ `writeFuseFile` (0x420f10)
+- ✅ `findInst` (0x421000)
+- ✅ `countInst` (0x4210b0)
+- ✅ `findInstExists` (0x421170)
+- ✅ `replaceInst` (0x421200)
+- ✅ `myatox` (0x4212d0)
+- ✅ `myatox8` (0x421300)
+- ✅ `myatox32` (0x421380)
+- ✅ `myatol` (0x421840)
+- ✅ `myatou32` (0x421860)
+- ✅ `myatoh32` (0x421de0)
+- ✅ `validateString` (0x422350)
+- ✅ `checkZeros` (0x4223b0)
+- ✅ `memcpyrev` (0x4223f0)
+- ✅ `getFileSize` (0x422420)
+- ✅ `getFileSizeName` (0x422470)
+- ✅ `getFileSize64` (0x4224d0)
+- ✅ `getFileSize64Name` (0x422530)
+- ✅ `FileExists` (0x4225a0)
+- ✅ `FileExistsIn` (0x4225d0)
+- ✅ `FileToBuffer` (0x422670)
+- ✅ `readFileTo` (0x422740)
+- ✅ `readFileInTo` (0x4227e0)
+- ✅ `readFileIn` (0x4228c0)
+- ✅ `calcConfigSum` (0x422aa0)
+- ✅ `sumBytes` (0x422ae0)
+- ✅ `showExpectedFuses` (0x422b10)
+- ✅ `showFuses` (0x4232e0)
+- ✅ `showKey` (0x423370)
+- ✅ `showMac` (0x4233b0)
+- ✅ `showHexPairs` (0x423420)
+- ✅ `writeSha1File` (0x423490)
+- ✅ `createDir` (0x423650)
+- ✅ `makeBranch` (0x4236c0)
+
+</details>
+<details>
+<summary><code>app/options</code>: 19 functions</summary>
+
+- ✅ `baseFileExists.part.1` (0x4236f0)
+- ✅ `baseFileExists` (0x423730)
+- ✅ `perboxExists` (0x423750)
+- ✅ `iniConsoleType` (0x423830)
+- ✅ `setConsoleType` (0x424170)
+- ✅ `optIniBool` (0x424930)
+- ✅ `optIniInt` (0x424a10)
+- ✅ `parseButton` (0x424a70)
+- ✅ `stripColons` (0x424b20)
+- ✅ `macidSet` (0x424b60)
+- ✅ `setBoolOption` (0x424bb0)
+- ✅ `parseOption` (0x425110)
+- ✅ `parseCmdOptions` (0x4258e0)
+- ✅ `applyIniOptions` (0x4259a0)
+- ✅ `parseRawPatch` (0x427000)
+- ✅ `parseRawPatches` (0x4271a0)
+- ✅ `addPatch` (0x427260)
+- ✅ `loadAddons` (0x427340)
+- ✅ `parseButton.part.0` (0x449640)
+
+</details>
+<details>
+<summary><code>app/build</code>: 41 functions</summary>
+
+- ✅ `loadBaseFile` (0x427500)
+- ✅ `findFileOffset` (0x427650)
+- ✅ `findFileSize` (0x4276a0)
+- ✅ `findFile` (0x4276f0)
+- ✅ `loadFileCrc` (0x427730)
+- ✅ `readMetaFile` (0x427950)
+- ✅ `makeTimestamp` (0x4279b0)
+- ✅ `timestampToFileTime` (0x427a70)
+- ✅ `loadBaseFileMeta` (0x427ab0)
+- ✅ `loadCommonFile` (0x427cc0)
+- ✅ `loadInputFile` (0x428040)
+- ✅ `loadBinFile` (0x428780)
+- ✅ `loadLocalFile` (0x4288c0)
+- ✅ `setFileData` (0x428ac0)
+- ✅ `appendAddonPatches` (0x428b10)
+- ✅ `showSmcConfig` (0x428d20)
+- ✅ `iniRangeOk` (0x429180)
+- ✅ `patchSmcConfig` (0x4291f0)
+- ✅ `extractSmcConfig` (0x4297d0)
+- ✅ `raiseKernel` (0x429b10)
+- ✅ `checkBl` (0x429b30)
+- ✅ `verifyBlSigs` (0x429e70)
+- ✅ `loadBlFiles` (0x42a370)
+- ✅ `loadConsoleBlFiles` (0x42adc0)
+- ✅ `patchHeaderOpts` (0x42b2b0)
+- ✅ `blmodMissing` (0x42b3d0)
+- ✅ `rotSumSha` (0x42b3f0)
+- ✅ `countBits` (0x42b610)
+- ✅ `patchBlsResign` (0x42b660)
+- ✅ `patchBlsBlmod` (0x42bb10)
+- ✅ `fixupPatchSet` (0x42bf70)
+- ✅ `addBlsToImage` (0x42c090)
+- ✅ `isUpdateBl` (0x42c600)
+- ✅ `addUpdateBls` (0x42c620)
+- ✅ `logPowerButton` (0x42c900)
+- ✅ `patchFreeboot` (0x42cbb0)
+- ✅ `patchPayloadSize` (0x42cee0)
+- ✅ `encodeBls` (0x42cfa0)
+- ✅ `encodeUpdateBls` (0x42dfb0)
+- ✅ `calcBlAreaSize` (0x42e160)
+- ✅ `buildFlash` (0x42e760)
+
+</details>
+<details>
+<summary><code>app/consoleinfo</code>: 13 functions</summary>
+
+- ✅ `optOpen` (0x430460)
+- ✅ `optClose` (0x430540)
+- ✅ `optWrite` (0x430570)
+- ✅ `optLdv` (0x4305b0)
+- ✅ `optHex` (0x4305e0)
+- ✅ `optButton` (0x430660)
+- ✅ `showImageType` (0x4308d0)
+- ✅ `getFreebootOpts` (0x430b60)
+- ✅ `getFlashHdrOpts` (0x430e00)
+- ✅ `showInfoKeys` (0x430fe0)
+- ✅ `showCurrentInfo` (0x4317c0)
+- ✅ `setInfoKeys` (0x4318e0)
+- ✅ `parseConsoleInfo` (0x431a60)
+
+</details>
+<details>
+<summary><code>app/console_hdd</code>: 14 functions</summary>
+
+- ✅ `createSysexDirs` (0x431c20)
+- ✅ `addTitleId` (0x431d20)
+- ✅ `checkManifestHeader` (0x431d70)
+- ✅ `readManifestString` (0x431f20)
+- ✅ `loadFileChecked` (0x431f80)
+- ✅ `loadStfsChecked` (0x4320b0)
+- ✅ `parseManifestEntries` (0x432190)
+- ✅ `parseManifest` (0x4327a0)
+- ✅ `freeManifest` (0x432aa0)
+- ✅ `loadManifest` (0x432b10)
+- ✅ `prepSysex` (0x432de0)
+- ✅ `sendAvatarData` (0x432e50)
+- ✅ `sendDir` (0x433130)
+- ✅ `sendCompatData` (0x433440)
+
+</details>
+<details>
+<summary><code>app/log</code>: 7 functions</summary>
+
+- ✅ `log_set_verbose` (0x433570)
+- ✅ `log_verbose_flag` (0x4335a0)
+- ✅ `log_get_verbose` (0x433600)
+- ✅ `log_set_name` (0x433610)
+- ✅ `log_printf` (0x433690)
+- ✅ `log_init` (0x433740)
+- ✅ `log_finish` (0x4337a0)
+
+</details>
+<details>
+<summary><code>app/crc32</code>: 1 functions</summary>
+
+- ✅ `crc32` (0x433800)
+
+</details>
+<details>
+<summary><code>crypto/*</code>: 41 objects, 185 functions</summary>
+
+- `crypto/xecrypt`
+  - ✅ `XeCryptRotSum.part.1` (0x433840)
+  - ✅ `XeCryptBnDwLePkcs1Format.part.2` (0x4339d0)
+  - ✅ `XeCryptBnQwNeModExpRoot.part.3` (0x433aa0)
+  - ✅ `XeCryptBnDwLePkcs1Verify.part.4` (0x433c80)
+  - ✅ `XeCryptBnQw_SwapDwQwLeBe` (0x433e10)
+  - ✅ `XeCryptUidEccEncode` (0x433ff0)
+  - ✅ `XeCryptHammingWeight` (0x434090)
+  - ✅ `XeCryptHmacSha` (0x434110)
+  - ✅ `XeCryptRc4` (0x4345b0)
+  - ✅ `XeCryptRc4Key` (0x434610)
+  - ✅ `XeCryptRc4Ecb` (0x434630)
+  - ✅ `XeCryptRandomInit` (0x434660)
+  - ✅ `XeCryptRandom` (0x4346c0)
+  - ✅ `XeCryptAesKey` (0x434850)
+  - ✅ `XeCryptAesEcb` (0x4348a0)
+  - ✅ `XeCryptAesCbc` (0x4348f0)
+  - ✅ `XeCryptShaInit` (0x434950)
+  - ✅ `XeCryptShaUpdate` (0x434960)
+  - ✅ `XeCryptShaFinal` (0x4349c0)
+  - ✅ `XeCryptSha` (0x434a30)
+  - ✅ `XeCryptRotSum` (0x434be0)
+  - ✅ `XeCryptRotSumSha` (0x434c00)
+  - ✅ `XeCryptBnDwLePkcs1Format` (0x434f50)
+  - ✅ `XeCryptBnQwBeSigFormat` (0x435020)
+  - ✅ `XeCryptBnQwBeSigCompute` (0x435210)
+  - ✅ `XeCryptBnQwBeSigVerify` (0x435440)
+  - ✅ `XeCryptBnQwBeSigCreate` (0x435530)
+  - ✅ `XeCryptBnQwNeModExpRoot` (0x4357b0)
+  - ✅ `XeCryptBnQwNeRsaPrvCrypt` (0x435820)
+  - ✅ `XeCryptBnQwNeRsaPubCrypt` (0x435940)
+  - ✅ `XeCryptBnDwLePkcs1Verify` (0x435a60)
+  - ✅ `XeCryptShowBuffer` (0x435a90)
+  - ✅ `XeKeysPkcs1Verify` (0x435b00)
+  - ✅ `XeKeysPkcs1Create` (0x435cf0)
+  - ✅ `XeCryptBnQwNeRsaKeyGen` (0x435ee0)
+  - ✅ `XeCryptDesKey` (0x4364f0)
+  - ✅ `XeCryptDesEcb` (0x436520)
+  - ✅ `XeCryptDesCbc` (0x436550)
+  - ✅ `XeCryptDes3Key` (0x4366c0)
+  - ✅ `XeCryptDes3Ecb` (0x4366f0)
+  - ✅ `XeCryptDes3Cbc` (0x436720)
+  - ✅ `XeCryptMd5Init` (0x436890)
+  - ✅ `XeCryptMd5Update` (0x4368a0)
+  - ✅ `XeCryptMd5Final` (0x4368b0)
+  - ✅ `XeCryptMd5` (0x436920)
+- `crypto/xecryptBn`
+  - ✅ `xcgetBeU32` (0x436a50)
+  - ✅ `xcgetBeU64` (0x436a60)
+  - ✅ `xcsetBeU32` (0x436a70)
+  - ✅ `xcsetBeU64` (0x436aa0)
+  - ✅ `XeCryptLoadQuad` (0x436b00)
+  - ✅ `XeCryptStoreQuad` (0x436c50)
+  - ✅ `XeCryptBnQw_Copy` (0x436d80)
+  - ✅ `XeCryptBnDw_Copy` (0x436dc0)
+  - ✅ `XeCryptBnQw_Zero` (0x436df0)
+  - ✅ `XeCryptMemcpyRev` (0x436e20)
+  - ✅ `BnQwBeBufSwap` (0x436e50)
+  - ✅ `display_digitt` (0x436f50)
+  - ✅ `mpSetBeQwBigNum` (0x436fe0)
+  - ✅ `mpGetBeQwBigNum` (0x437040)
+  - ✅ `load32LeValBigNum` (0x4370d0)
+  - ✅ `XeCryptBnQwNeModInv` (0x437120)
+  - ✅ `XeCryptMulHdu` (0x437220)
+  - ✅ `XeCryptBnQwNeModMul` (0x4372a0)
+  - ✅ `XeCryptBnQwNeModExp` (0x4380f0)
+  - ✅ `XeCryptBnQwNeMul` (0x4382c0)
+  - ✅ `XeCryptBnQwNeMod` (0x438460)
+  - ✅ `XeCryptBnQwNeCompare` (0x438620)
+  - ✅ `XeCryptBnQwNeSub` (0x438860)
+  - ✅ `XeCryptBnQwNeAdd` (0x4389b0)
+- `crypto/aes/aes_modes`
+  - ✅ `aes_test_alignment_detection` (0x438b00)
+  - ✅ `aes_mode_reset` (0x438bb0)
+  - ✅ `aes_ecb_encrypt` (0x438bc0)
+  - ✅ `aes_ecb_decrypt` (0x438c30)
+  - ✅ `aes_cbc_encrypt` (0x438ca0)
+  - ✅ `aes_cbc_decrypt` (0x438e20)
+  - ✅ `aes_cfb_encrypt` (0x438fd0)
+  - ✅ `aes_cfb_decrypt` (0x4392e0)
+  - ✅ `aes_ofb_crypt` (0x439620)
+  - ✅ `aes_ctr_crypt` (0x4398e0)
+- `crypto/aes/aestab`
+  - ✅ `aes_init` (0x439eb0)
+- `crypto/aes/aescrypt`
+  - ✅ `aes_encrypt` (0x439ec0)
+  - ✅ `aes_decrypt` (0x43aca0)
+- `crypto/aes/aeskey`
+  - ✅ `aes_encrypt_key128` (0x43bae0)
+  - ✅ `aes_encrypt_key192` (0x43be40)
+  - ✅ `aes_encrypt_key256` (0x43c1b0)
+  - ✅ `aes_encrypt_key` (0x43c6f0)
+  - ✅ `aes_decrypt_key128` (0x43cae0)
+  - ✅ `aes_decrypt_key192` (0x43d150)
+  - ✅ `aes_decrypt_key256` (0x43d9a0)
+  - ✅ `aes_decrypt_key` (0x43e4e0)
+- `crypto/bign/mpSubtract`
+  - ✅ `mpSubtract` (0x43e550)
+- `crypto/bign/pkcs1-rsa`
+  - ✅ `GenRsaPrime` (0x43e5e0)
+  - ✅ `MGF1` (0x43e6f0)
+  - ✅ `PKCS1_RSA_FreeKey` (0x43e870)
+  - ✅ `PKCS1_RSA_GenKey` (0x43e940)
+  - ✅ `PKCS1_RSAEP` (0x43ee20)
+  - ✅ `PKCS1_RSADP` (0x43ee60)
+  - ✅ `PKCS1_RSASP1` (0x43eea0)
+  - ✅ `PKCS1_RSAVP1` (0x43eee0)
+  - ✅ `PKCS1_EME_OAEP_ENC` (0x43ef20)
+  - ✅ `PKCS1_RSA_OAEP_ENCRYPT` (0x43f290)
+  - ✅ `PKCS1_EME_OAEP_DEC` (0x43f6b0)
+  - ✅ `PKCS1_RSA_OAEP_DECRYPT` (0x43fab0)
+  - ✅ `PKCS1_RSASSA_PSS_SIGN` (0x43fba0)
+  - ✅ `PKCS1_RSASSA_PSS_VERIFY` (0x43ffc0)
+  - ✅ `PKCS1_EMSA_PSS_ENCODE` (0x4403e0)
+  - ✅ `PKCS1_EMSA_PSS_VERIFY` (0x440730)
+  - ✅ `errmsg` (0x440ac0)
+  - ✅ `LoadPublicKey` (0x440bc0)
+  - ✅ `LoadPrivateKey` (0x440cf0)
+- `crypto/bign/mpMultiply`
+  - ✅ `mpMultiply` (0x440e20)
+- `crypto/bign/mpShortMod`
+  - ✅ `mpShortMod` (0x440f80)
+- `crypto/bign/mpModExp`
+  - ✅ `mpModExp` (0x440fc0)
+- `crypto/bign/mpSetZero`
+  - ✅ `mpSetZero` (0x4410e0)
+- `crypto/bign/mpShortDiv`
+  - ✅ `mpShortDiv` (0x441110)
+- `crypto/bign/base64`
+  - ✅ `mpBase64Encode` (0x4411f0)
+  - ✅ `mpBase64Decode` (0x441330)
+- `crypto/bign/hash`
+  - ✅ `GenSeed` (0x441400)
+  - ✅ `HashLenQuery` (0x441410)
+  - ✅ `SHA1Hash` (0x441430)
+  - ✅ `Hash` (0x441480)
+  - ✅ `Hash2BigInt` (0x4414e0)
+- `crypto/bign/mpModInv`
+  - ✅ `mpModInv` (0x441540)
+- `crypto/bign/mpModulo`
+  - ✅ `mpModulo` (0x441710)
+- `crypto/bign/mpShortSub`
+  - ✅ `mpShortSub` (0x441780)
+- `crypto/bign/mpSizeof`
+  - ✅ `mpSizeof` (0x4417d0)
+- `crypto/bign/mpCompare`
+  - ✅ `mpCompare` (0x441800)
+- `crypto/bign/common`
+  - ✅ `prng` (0x441850)
+  - ✅ `mcrypto_msg` (0x441880)
+  - ✅ `mcrypto_dump` (0x441890)
+- `crypto/bign/mpSetDigit`
+  - ✅ `mpSetDigit` (0x4418a0)
+- `crypto/bign/mpIsPrime`
+  - ✅ `mpIsPrime` (0x4418e0)
+  - ✅ `mpIsPrimeShort` (0x441be0)
+  - ✅ `mpIsPrimeRabin` (0x441c80)
+- `crypto/bign/mpIsZero`
+  - ✅ `mpIsZero` (0x441f00)
+- `crypto/bign/mpShiftLeft`
+  - ✅ `mpShiftLeft` (0x441f40)
+- `crypto/bign/spMultiply`
+  - ✅ `spMultiply` (0x442050)
+- `crypto/bign/mpAdd`
+  - ✅ `mpAdd` (0x4420b0)
+- `crypto/bign/mpModMult`
+  - ✅ `mpModMult` (0x442130)
+- `crypto/bign/bigdUtils`
+  - ✅ `mpMalloc` (0x4421a0)
+  - ✅ `mpMallocB` (0x4421c0)
+  - ✅ `mpFree` (0x4421f0)
+  - ✅ `mpPrint` (0x442210)
+  - ✅ `mpPrintNL` (0x442250)
+  - ✅ `mpPrintTrim` (0x4422c0)
+  - ✅ `mpPrintTrimNL` (0x442320)
+  - ✅ `mpMakeRandom` (0x4423a0)
+  - ✅ `mpASC2BIN` (0x4423e0)
+  - ✅ `mpBIN2ASC` (0x442430)
+  - ✅ `mpHex2Bin` (0x442470)
+  - ✅ `mpBin2Hex` (0x442540)
+  - ✅ `mpDec2Bin` (0x4425b0)
+  - ✅ `mpOct2Hex` (0x4425c0)
+- `crypto/bign/mpShortAdd`
+  - ✅ `mpShortAdd` (0x4425d0)
+- `crypto/rc4/rc4_enc`
+  - ✅ `RC4` (0x442630)
+- `crypto/rc4/rc4_skey`
+  - ✅ `RC4_options` (0x4429c0)
+  - ✅ `RC4_set_key` (0x4429d0)
+- `crypto/sha/sha1dgst`
+  - ✅ `SHA1_Init` (0x442b00)
+  - ✅ `sha1_block` (0x442b40)
+  - ✅ `SHA1_Update` (0x4448d0)
+  - ✅ `SHA1_Final` (0x444da0)
+- `crypto/md5/md5`
+  - ✅ `body` (0x444fb0)
+  - ✅ `MD5_Init` (0x445690)
+  - ✅ `MD5_Update` (0x4456c0)
+  - ✅ `MD5_Final` (0x445830)
+- `crypto/des/des`
+  - ✅ `desfunc` (0x445a50)
+  - ✅ `deskey` (0x445c50)
+  - ✅ `des_setup` (0x445e50)
+  - ✅ `des3_setup` (0x445ea0)
+  - ✅ `des_ecb_encrypt` (0x445f60)
+  - ✅ `des_ecb_decrypt` (0x445fd0)
+  - ✅ `des3_ecb_encrypt` (0x446050)
+  - ✅ `des3_ecb_decrypt` (0x4460e0)
+  - ✅ `des_test` (0x446180)
+  - ✅ `des3_test` (0x446190)
+  - ✅ `des_done` (0x4461a0)
+  - ✅ `des3_done` (0x4461b0)
+  - ✅ `des_keysize` (0x4461c0)
+  - ✅ `des3_keysize` (0x4461e0)
+- `crypto/bign/mpSetEqual`
+  - ✅ `mpSetEqual` (0x446200)
+- `crypto/bign/mpShiftRight`
+  - ✅ `mpShiftRight` (0x446230)
+- `crypto/bign/mpDivide`
+  - ✅ `mpDivide` (0x446360)
+- `crypto/bign/spDivide`
+  - ✅ `spDivide` (0x446830)
+- `crypto/bign/mpShortCmp`
+  - ✅ `mpShortCmp` (0x446a40)
+- `crypto/bign/spPseudoRand`
+  - ✅ `spPseudoRand` (0x446a90)
+
+</details>
+<!-- progress:end -->

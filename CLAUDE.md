@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pipeline.
+Matching rebuild of `xeBuild.exe`. README.md is the high-level overview for people;
+NOTES.md has the findings, layout and the pipeline.
 
 ## Rules
 
@@ -13,28 +14,28 @@ Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pi
   `build/xeBuild.lines.json` (`re/ddfix.py`). Change them by changing those
   scripts and regenerating; regenerating overwrites hand edits to `.s` files.
 - `src/**/*.c` are hand-maintained: XeCrypt's sources under `src/crypto` (see
-  README) and the app's reconstructed C under `src/app`. An object with a `.c` gets no `.s` from `split.py`; `build.sh` compiles it with
+  NOTES.md) and the app's reconstructed C under `src/app`. An object with a `.c` gets no `.s` from `split.py`; `build.sh` compiles it with
   the per-directory flags and original `__FILE__` path set there. When moving
   an object to C, put names for the functions it shares with `.s` files in
   `split.py`'s `SYMBOLS` and regenerate. Keep third-party licence notices intact.
 - Shared app types live in `src/app/xebuild.h` and each object's exported
-  prototypes in `src/app/<obj>.h` (README, App headers); don't redeclare them
+  prototypes in `src/app/<obj>.h` (NOTES.md, App headers); don't redeclare them
   in a .c. If a file's code needs another typing to match, use a cast or an
   asm-label declaration (`T fnU32(...) __asm__("_fn")`) marked
   `TODO(xebuild.h cast)` / `TODO(prototype cast)`.
-- Move big objects to C one function at a time (mixed objects, README): add
+- Move big objects to C one function at a time (mixed objects, NOTES.md): add
   the function's address to `split.py`'s `C_FUNCS` and its name to `SYMBOLS`,
   write it in `src/<obj>.c`, regenerate. Leave hard functions in asm and come
   back to them later. C functions in a mixed object can't emit data (string
   literals, switch tables); use `extern` names for the `.s`'s data.
-- Keep README's Progress section current: after converting an object or
+- Keep NOTES.md's Progress section current: after converting an object or
   function (or parking one in `wip/`), run `sh build.sh` then
-  `python re/progress.py`, and commit the README with the change. Functions
+  `python re/progress.py`, and commit NOTES.md with the change. Functions
   defined in `wip/<obj>.c` that `re/fncmp.py` matches count as C (put a
   draft's non-default gcc flags in the script's `WIP_FLAGS`). The section
-  is generated; change `re/progress.py`, not the README text between the
+  is generated; change `re/progress.py`, not the NOTES.md text between the
   `progress:begin/end` markers. Update the
-  "Move functions to C" row in Status by hand when the totals move.
+  "Move functions to C" row in NOTES.md's Status by hand when the totals move.
 - To match a function before a full build: `python re/fncmp.py src/<obj>.c
   <name> [flags]` (MATCH or a diff against the original). For a whole C
   file, compare its `.text` against `build/obj/<obj>.o` from the asm build

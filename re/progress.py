@@ -1,6 +1,6 @@
-"""Write the "Progress" section of README.md: which objects and functions are in C.
+"""Write the "Progress" section of NOTES.md: which objects and functions are in C.
 
-python re/progress.py [README.md]
+python re/progress.py [NOTES.md]
 
 Run after `sh build.sh` (it reads build/obj/*.o and build/xeBuild.map for the
 function names).  Functions come from the reference exe's .eh_frame (one FDE
@@ -88,7 +88,7 @@ def wip_state(obj, addrs):
 
 
 def main():
-    readme = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'README.md')
+    readme = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'NOTES.md')
     img = Image(os.path.join(ROOT, 'xeBuild.exe'))
     bases = section_bases()
     objs = collections.OrderedDict()   # obj -> [(va, name, state)]
