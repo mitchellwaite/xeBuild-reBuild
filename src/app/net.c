@@ -6,38 +6,12 @@
 #include <string.h>
 #include <time.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
+#include "xebuild.h"
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 #define BEACON_MAGIC	0x4e537672	/* "NSvr" */
 #define OK_REPLY	0x4f4b	/* "OK" */
-/* what GTIN returns; the first 8 words come big-endian */
-struct consoleinfo {
-	u32 version;			/* 000 updsvr version; low byte: peek version */
-	u32 kernel;			/* 004 */
-	u32 f008;			/* 008 */
-	u32 bootstrap;			/* 00c */
-	u32 hwFlags;			/* 010 console type in the top 4 bits */
-	u32 nandSize;			/* 014 */
-	u32 blockSize;			/* 018 */
-	u32 pairing;			/* 01c */
-	u8 cpuKey[16];			/* 020 */
-	u8 dvdKey[16];			/* 030 */
-	u8 fuses[96];			/* 040 */
-	u8 vfuses[96];			/* 0a0 */
-	u8 key1bl[16];			/* 100 */
-	struct {
-		u32 cqw;
-		u32 exp;
-		u64 reserved;		/* 118 */
-		u8 mod[256];
-	} pub1bl;			/* 110 */
-	u8 rest[0x4a0 - 0x220];		/* 220 */
-};
 
 void log_printf(int level, const char *fmt, ...);
 unsigned int log_get_verbose(void);
@@ -384,7 +358,7 @@ int netReadInfo(void)
 		log_printf(0, net_4577bb);
 		return 0;
 	}
-	info->pub1bl.reserved = 0;
+	info->pub1blKey.reserved = 0;
 	netInfo = info;
 	info->version = SWAP32(info->version);
 	info->kernel = SWAP32(info->kernel);

@@ -1,7 +1,6 @@
 /* smc: SMC checksum, type detection, reset-limit/eject/blink patches */
 
-typedef unsigned char u8;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 u32 crc32(const u8 *buf, int len);
 void log_printf(int level, const char *fmt, ...);

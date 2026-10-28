@@ -9,104 +9,17 @@
    resolve to), -fno-toplevel-reorder (definition order) and -fno-ident (the
    original link had no such object, so no `GCC:` ident).  Every variable is
    aligned(4) like the block, and the pad arrays stand for ld's alignment
-   padding.  The other files declare struct xebuild with just the fields they
-   use; this one names the fields they share. */
+   padding.  The types come from app/xebuild.h. */
 #include <time.h>
 #include "crypto/rc4/rc4.h"
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "app/xebuild.h"
 
 #define A4 __attribute__((aligned(4)))
 /* static, but in place: gcc would emit a plain static as .lcomm, which gas
    puts after all of .bss */
 #define PAD __attribute__((used, section(".bss")))
 
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 console type (& 7), NAND flags */
-	u32 type;			/* 008 build type */
-	u32 kernel;			/* 00c */
-	u8 pad010[0x038 - 0x010];
-	u8 *hdr;			/* 038 the flash image */
-	u32 userSize;			/* 03c its user (non-spare) size */
-	u8 pad040[0x0ac - 0x040];
-	u8 *dump;			/* 0ac the nand dump's data */
-	u8 pad0b0[0x1e0 - 0x0b0];
-	u8 *bl;				/* 1e0 the bootloaders */
-	u8 pad1e4[0x26c - 0x1e4];
-	u8 key1bl[16];			/* 26c */
-	u8 cpuKey[16];			/* 27c */
-	u8 key28c[16];			/* 28c */
-	void *pub1bl;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *pub2a4;			/* 2a4 */
-	u8 *prvKey;			/* 2a8 the ini's 2BL private key */
-	u8 pad2ac[0x6ac - 0x2ac];
-	char binDir[0x800];		/* 6ac */
-	char baseDir[0x400];		/* eac */
-	char dataDir[0x400];		/* 12ac */
-	char commonDir[0x400];		/* 16ac */
-	char firmware[256][0x400];	/* 1aac the ini's firmware files */
-	u32 firmwareCrc[256];		/* 41aac */
-	u32 nFirmware;			/* 41eac */
-	u8 files[35][0x42c];		/* 41eb0 struct fileent */
-	u8 pad4b0b4[0x4f144 - 0x4b0b4];
-	char flashFiles[10][22];	/* 4f144 security files */
-	void *flashBuf[10];		/* 4f220 */
-	u32 flashSize[10];		/* 4f248 */
-	u8 pad4f270[0x4f2c0 - 0x4f270];
-	u32 nFlashFiles2;		/* 4f2c0 the security file count */
-	u32 mmcAnchor[0x80];		/* 4f2c4 MMC anchor block */
-	u8 pad4f4c4[0x4f504 - 0x4f4c4];
-	char *iniBuf;			/* 4f504 the ini file */
-	char sha1File[0x400];		/* 4f508 */
-	int sha1Write;			/* 4f908 */
-	int iniSize;			/* 4f90c */
-};
 _Static_assert(sizeof(struct xebuild) == 0x4f910, "struct xebuild");
-
-/* an entry of the flash file system's file table */
-struct fsent {
-	char name[22];
-	u16 block;			/* 16 */
-	u32 size;			/* 18 */
-	u32 time;			/* 1c */
-};
-
-/* the flash image header */
-struct flashhdr {
-	u16 magic;			/* 00 */
-	u16 build;			/* 02 */
-	u16 qfe;			/* 04 */
-	u16 flags;			/* 06 */
-	u32 cbOffset;			/* 08 */
-	u32 cfOffset;			/* 0c */
-	char copyright[0x40];		/* 10 */
-	u8 reserved[0x10];		/* 50 */
-	u32 kvLength;			/* 60 */
-	u32 cfOffset2;			/* 64 */
-	u32 patchSlots;			/* 68 */
-	u32 kvOffset;			/* 6c */
-	u32 patchSlotSize;		/* 70 */
-	u32 smcConfigOffset;		/* 74 */
-	u32 smcLength;			/* 78 */
-	u32 smcOffset;			/* 7c */
-};
-
-/* console_hdd's file manifest */
-struct manifest {
-	struct mfFile *data;
-	char path[1024];
-	size_t size;
-	int count;
-	struct {
-		void *data;
-		u32 len;
-		char path[1024];
-	} e[256];
-};
 
 typedef void (*_PVFV)(void);
 

@@ -14,10 +14,7 @@ int _mkdir(const char *path);	/* msvcrt, called through its import stub */
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
+#include "xebuild.h"
 typedef int BOOL;
 #define TRUE 1
 #define FALSE 0

@@ -25,42 +25,7 @@
 #define NO_MODE_ARG(m, a) (!((m) && (a)))
 #endif
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
-/* the console's info response (net.c) */
-struct consoleinfo {
-	u32 version;			/* 000 updsvr version; low byte: hv patches */
-	u32 kernel;			/* 004 */
-	u32 f008;			/* 008 */
-	u32 bootstrap;			/* 00c hack type in the top bits */
-	u32 hwFlags;			/* 010 0x20: has HDD */
-	u32 nandSize;			/* 014 system area */
-	u32 blockSize;			/* 018 */
-	u32 pairing;			/* 01c */
-	u8 cpuKey[16];			/* 020 */
-	u8 dvdKey[16];			/* 030 */
-	u8 fuses[96];			/* 040 */
-	u8 vfuses[96];			/* 0a0 */
-	u8 key1bl[16];			/* 100 */
-	u8 pub1bl[272];			/* 110 */
-	u8 pubPirs[272];		/* 220 */
-	u8 pubMaster[272];		/* 330 */
-};
-
-/* the loaded manifest and the files it lists (console_hdd.c) */
-struct manifest {
-	void *data;
-	char path[1024];
-	size_t size;
-	int count;
-	struct {
-		void *data;
-		u32 len;
-		char path[1024];
-	} e[256];
-};
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 void log_set_name(const char *name);

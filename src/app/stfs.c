@@ -3,9 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 int checkZeros(const u8 *p, u32 len);

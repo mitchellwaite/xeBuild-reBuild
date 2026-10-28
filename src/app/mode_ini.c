@@ -4,9 +4,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 void log_set_verbose(int v);
 void log_printf(int level, const char *fmt, ...);

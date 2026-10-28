@@ -1,7 +1,7 @@
 /* xboxrom: hashes, signs and verifies keyvault and bootloader signatures */
 #include <string.h>
 
-typedef unsigned char u8;
+#include "xebuild.h"
 
 void XeCryptHmacSha(const u8 *pbKey, unsigned int cbKey, const u8 *pbInp1, unsigned int cbInp1,
 	const u8 *pbInp2, unsigned int cbInp2, const u8 *pbInp3, unsigned int cbInp3,

@@ -5,9 +5,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 int FileExists(const char *name);
@@ -78,19 +76,6 @@ struct mfFile {
 	u8 sha[20];		/* 024 */
 	u8 pad038[0x138 - 0x38];
 	struct mfHeader hdr;	/* 138 */
-};
-
-/* the loaded manifest and the files it lists */
-struct manifest {
-	struct mfFile *data;
-	char path[1024];
-	size_t size;
-	int count;
-	struct {
-		void *data;
-		u32 len;
-		char path[1024];
-	} e[256];
 };
 
 extern struct manifest manifest;
