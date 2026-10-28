@@ -1510,6 +1510,13 @@ The last two (2026-10-27):
 
 ## build.c
 
+Since 2026-10-28 `src/build.c` uses string literals (patchFreeboot
+success-first, one `asm "i"` hint in checkBl), except 20 `bd_*` arrays:
+loadBlFiles' (and loadBl/loadBl60's), since splice.py takes that function
+from the FDO compile and both compiles must name its strings, and
+showSmcConfig's two `\370` lines, which break re/gcda.py's UTF-8 read of
+the profile_estimate dump. The `bd_<address>` history below predates that.
+
 Draft of the whole object (all 41 functions). 40 match and are built
 from `src/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,

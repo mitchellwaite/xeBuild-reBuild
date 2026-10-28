@@ -1,10 +1,16 @@
 /* build: reading the image's input files (with crc32 checks against the
    ini), bootloader checks, patches and payloads, encoding the flash.
    Built with -fno-toplevel-reorder: functions, .data and strings come out
-   in definition order. The strings are static arrays (named after their
-   original addresses, defined in the original's .rdata order, before the
-   first function that uses them; jump tables sit between them), aligned
-   as gcc aligns literals (4 from 31 bytes, else 1). */
+   in definition order. The strings are literals: gcc emits a function's
+   in the order it expands their blocks, so the original's .rdata order
+   follows from the code's shape (checkBl keeps an asm "i" hint). Two sets
+   stay static arrays (named after their original addresses, defined in
+   the original's .rdata order before the first function that uses them,
+   aligned as gcc aligns literals: 4 from 31 bytes, else 1): loadBlFiles'
+   (with the loadBl and loadBl60 it inlines), as build.sh takes that
+   function from a second compile whose literal labels aren't this one's,
+   and showSmcConfig's temperature lines, as re/gcda.py can't read their
+   \370 bytes in that compile's profile_estimate dump. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -428,77 +434,6 @@ struct fan {
 	uint8_t speed:7, override:1;
 };
 
-static const char bd_458ca4[] __attribute__((aligned(1))) = "rb";
-static const char bd_458ca8[] __attribute__((aligned(4))) = "\n******WARNING: '%s' is a 0 byte file, loading skipped!\n";
-static const char bd_458ce1[] __attribute__((aligned(1))) = "reading %s (0x%x bytes)";
-static const char bd_458cf9[] __attribute__((aligned(1))) = "\n";
-static const char bd_458cfc[] __attribute__((aligned(4))) = "reading %s (0x%x b pad 0x%x b)";
-static const char bd_458d1b[] __attribute__((aligned(1))) = " (crc32: 0x%08x ini: 0x%08x)\n";
-static const char bd_458d3c[] __attribute__((aligned(4))) = "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n";
-static const char bd_458d74[] __attribute__((aligned(4))) = "**** using default time!!! ****\n";
-static const char bd_458d98[] __attribute__((aligned(4))) = "**** %s metadata found, not using system time *****\n\n";
-static const char bd_458dd0[] __attribute__((aligned(4))) = "extracted SUPD/%s (0x%x bytes)";
-static const char bd_458df0[] __attribute__((aligned(4))) = "extracted nanddump/%s (0x%x bytes)";
-static const char bd_458e14[] __attribute__((aligned(4))) = "extracted USVR/%s (0x%x bytes)";
-static const char bd_458e34[] __attribute__((aligned(4))) = "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n";
-static const char bd_458e7c[] __attribute__((aligned(4))) = "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n";
-static const char bd_458ed0[] __attribute__((aligned(4))) = "\n***** WARNING: could not load addon patch %s%s!\n\n";
-static const char bd_458f04[] __attribute__((aligned(4))) = "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n";
-static const char bd_458f80[] __attribute__((aligned(4))) = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
-static const char bd_458fb4[] __attribute__((aligned(4))) = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
-static const char bd_458fe6[] __attribute__((aligned(1))) = "Cpu Fan     : ";
-static const char bd_458ff5[] __attribute__((aligned(1))) = "%d%%%% (overridden)\n";
-static const char bd_45900a[] __attribute__((aligned(1))) = "(auto)\n";
-static const char bd_459012[] __attribute__((aligned(1))) = "Gpu Fan     : ";
-static const char bd_459021[] __attribute__((aligned(1))) = "MAC Address : ";
-static const char bd_459030[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (NTSC-M)\n";
-static const char bd_459050[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (NTSC-J)\n";
-static const char bd_459070[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (PAL50)\n";
-static const char bd_459090[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (PAL60)\n";
-static const char bd_4590b0[] __attribute__((aligned(4))) = "\nAVRegion    : 0x%08x (Unknown)\n";
-static const char bd_4590d1[] __attribute__((aligned(1))) = "GameRegion  : 0x%04x ";
-static const char bd_4590e7[] __attribute__((aligned(1))) = "(NTSC/US)\n";
-static const char bd_4590f2[] __attribute__((aligned(1))) = "(NTSC/JAP)\n";
-static const char bd_4590fe[] __attribute__((aligned(1))) = "(NTSC/KOR)\n";
-static const char bd_45910a[] __attribute__((aligned(1))) = "(NTSC/HK)\n";
-static const char bd_459115[] __attribute__((aligned(1))) = "(PAL/EU)\n";
-static const char bd_45911f[] __attribute__((aligned(1))) = "(PAL/AUS)\n";
-static const char bd_45912a[] __attribute__((aligned(1))) = "(DEVKIT)\n";
-static const char bd_459134[] __attribute__((aligned(1))) = "(Unknown)\n";
-static const char bd_45913f[] __attribute__((aligned(1))) = "DVDRegion   : %d\n";
-static const char bd_459151[] __attribute__((aligned(1))) = "resetKey    : ";
-static const char bd_459160[] __attribute__((aligned(1))) = "%c";
-static const char bd_459164[] __attribute__((aligned(4))) = "Ini value %d for %s is out of range (%d-%d), not using\n";
-static const char bd_45919c[] __attribute__((aligned(4))) = "Checking for smc config data patches\n";
-static const char bd_4591c2[] __attribute__((aligned(1))) = "cputemp";
-static const char bd_4591ca[] __attribute__((aligned(1))) = "gputemp";
-static const char bd_4591d2[] __attribute__((aligned(1))) = "edramtemp";
-static const char bd_4591dc[] __attribute__((aligned(1))) = "overcputemp";
-static const char bd_4591e8[] __attribute__((aligned(1))) = "overgputemp";
-static const char bd_4591f4[] __attribute__((aligned(1))) = "overedramtemp";
-static const char bd_459202[] __attribute__((aligned(1))) = "cpufan";
-static const char bd_45920c[] __attribute__((aligned(4))) = "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n";
-static const char bd_459256[] __attribute__((aligned(1))) = "gpufan";
-static const char bd_459260[] __attribute__((aligned(4))) = "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n";
-static const char bd_4592d8[] __attribute__((aligned(4))) = "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n";
-static const char bd_459340[] __attribute__((aligned(1))) = "smc config patched!\n";
-static const char bd_459355[] __attribute__((aligned(1))) = "smc config was not patched\n";
-static const char bd_459371[] __attribute__((aligned(1))) = "---------------------\n";
-static const char bd_459388[] __attribute__((aligned(4))) = "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n";
-static const char bd_4593d7[] __attribute__((aligned(1))) = "-------------------\n";
-static const char bd_4593ec[] __attribute__((aligned(1))) = "checking smc_config\n";
-static const char bd_459401[] __attribute__((aligned(1))) = "extracting config\n";
-static const char bd_459414[] __attribute__((aligned(1))) = "extracting config raw\n";
-static const char bd_45942c[] __attribute__((aligned(4))) = "******* ERROR: extracting config did not work, not enough data to copy!\n";
-static const char bd_459478[] __attribute__((aligned(4))) = "valid SMC config data found at offset 0x%x\n";
-static const char bd_4594a4[] __attribute__((aligned(1))) = "------------------\n";
-static const char bd_4594b8[] __attribute__((aligned(1))) = "SMC config info:\n";
-static const char bd_4594ca[] __attribute__((aligned(1))) = "SMC patched info:\n";
-static const char bd_4594e0[] __attribute__((aligned(4))) = "******* ERROR: unable to find SMC config data!\n";
-static const char bd_459510[] __attribute__((aligned(4))) = "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n";
-static const char bd_459558[] __attribute__((aligned(4))) = "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n";
-static const char bd_4595a0[] __attribute__((aligned(4))) = "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n";
-
 /* read baseDir/name into e */
 NOPROF
 static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
@@ -553,7 +488,7 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	size_t size;
 	uint32_t c;
 
-	f = fopen(name, bd_458ca4);
+	f = fopen(name, "rb");
 	if (!f)
 		return -1;
 	if (e->data)
@@ -561,7 +496,7 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	size = getFileSize(f);
 	if (!size) {
 		fclose(f);
-		log_printf(0, bd_458ca8, name);
+		log_printf(0, "\n******WARNING: '%s' is a 0 byte file, loading skipped!\n", name);
 		return 1;
 	}
 	e->size = size;
@@ -572,10 +507,10 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	   out-of-line copy only (callers with pad == 0 drop this block) */
 	if (__builtin_expect(verbose, 1)) {
 		if (size != e->size) {
-			log_printf(1, bd_458cfc, name, size, (size + 15) & ~15);
+			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, (size + 15) & ~15);
 			__asm__("" : : "S"(e));
 		} else
-			log_printf(1, bd_458ce1, name, size);
+			log_printf(1, "reading %s (0x%x bytes)", name, size);
 	}
 	e->data = calloc(e->size + 0x10000, 1);
 	if (!e->data)
@@ -584,13 +519,13 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	fclose(f);
 	if (crc) {
 		c = crc32(e->data, size);
-		log_printf(1, bd_458d1b, c, crc);
+		log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
 		if (crc != c) {
-			log_printf(0, bd_458d3c, name, c, crc);
+			log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", name, c, crc);
 			return 1;
 		}
 	} else
-		log_printf(1, bd_458cf9);
+		log_printf(1, "\n");
 	return 0;
 }
 
@@ -599,7 +534,7 @@ int readMetaFile(const char *name, uint8_t *meta)
 {
 	FILE *f;
 
-	f = fopen(name, bd_458ca4);
+	f = fopen(name, "rb");
 	if (!f)
 		return -1;
 	fread(meta, 4, 1, f);
@@ -619,7 +554,7 @@ void makeTimestamp(uint8_t *out, FILETIME *ft)
 		GetSystemTime(&st);
 		SystemTimeToFileTime(&st, &now);
 	} else {
-		log_printf(2, bd_458d74);
+		log_printf(2, "**** using default time!!! ****\n");
 		now.dwHighDateTime = 30268127;
 		now.dwLowDateTime = 1903825408;
 	}
@@ -652,7 +587,7 @@ int loadBaseFileMeta(const char *name, struct fileent *e, uint8_t *meta)
 		if (!r && meta) {
 			strcat(path, ".meta");
 			if (!readMetaFile(path, meta))
-				log_printf(1, bd_458d98, path);
+				log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
 		}
 		return r;
 	}
@@ -671,7 +606,7 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	if (!r && meta) {
 		strcat(path, ".meta");
 		if (!readMetaFile(path, meta))
-			log_printf(1, bd_458d98, path);
+			log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
 		else
 			makeTimestamp(meta, NULL);
 	}
@@ -705,25 +640,25 @@ int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, ui
 	if (meta && !r) {
 		strcat(path, ".meta");
 		if (!readMetaFile(path, meta))
-			log_printf(1, bd_458d98, path);
+			log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
 		else
 			makeTimestamp(meta, NULL);
 	}
 	if (su && r) {
 		if (suGetFile(base, &e->data, &e->size)) {
-			log_printf(1, bd_458dd0, base, e->size);
+			log_printf(1, "extracted SUPD/%s (0x%x bytes)", base, e->size);
 			if (crc) {
 				c = crc32(e->data, e->size);
-				log_printf(1, bd_458d1b, c, crc);
+				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
 				if (crc != c)
-					log_printf(0, bd_458d3c, base, c, crc);
+					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
 				else {
 					if (meta)
 						makeTimestamp(meta, NULL);
 					r = 0;
 				}
 			} else
-				log_printf(1, bd_458cf9);
+				log_printf(1, "\n");
 		}
 	}
 	if (fs && r) {
@@ -732,10 +667,10 @@ int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, ui
 		uint32_t ts;
 
 		if (fsGetFile(base, &e->data, &e->size, &ts)) {
-			log_printf(1, bd_458df0, base, e->size);
+			log_printf(1, "extracted nanddump/%s (0x%x bytes)", base, e->size);
 			if (crc) {
 				c = crc32(e->data, e->size);
-				log_printf(1, bd_458d1b, c, crc);
+				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
 				if (crc == c) {
 					if (meta)
 						makeTimestamp(meta, NULL);
@@ -744,27 +679,27 @@ int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, ui
 					free(e->data);
 					e->data = NULL;
 					e->size = 0;
-					log_printf(0, bd_458d3c, base, c, crc);
+					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
 				}
 			} else
-				log_printf(1, bd_458cf9);
+				log_printf(1, "\n");
 		} else if (xb.mode == 2 && updateGetFile(base, &e->data, &e->size)) {
-			log_printf(1, bd_458e14, base, e->size);
+			log_printf(1, "extracted USVR/%s (0x%x bytes)", base, e->size);
 			if (crc) {
 				c = crc32(e->data, e->size);
-				log_printf(1, bd_458d1b, c, crc);
+				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
 				if (crc != c) {
 					free(e->data);
 					e->data = NULL;
 					e->size = 0;
-					log_printf(0, bd_458d3c, base, c, crc);
+					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
 				} else {
 					if (meta)
 						makeTimestamp(meta, NULL);
 					r = 0;
 				}
 			} else {
-				log_printf(1, bd_458cf9);
+				log_printf(1, "\n");
 				r = 0;
 			}
 		}
@@ -833,13 +768,13 @@ void appendAddonPatches(struct fileent *e)
 					added += a->size;
 					size += a->size;
 				} else
-					log_printf(0, bd_458e34,
+					log_printf(0, "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n",
 						   xb.binDir, a->name);
 			} else
-				log_printf(0, bd_458e7c,
+				log_printf(0, "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n",
 					   xb.binDir, a->name, a->size);
 		} else
-			log_printf(0, bd_458ed0, xb.binDir, a->name);
+			log_printf(0, "\n***** WARNING: could not load addon patch %s%s!\n\n", xb.binDir, a->name);
 	}
 	*(uint32_t *)(buf + size) = 0xffffffff;
 	setBeU32(added, buf + size + 4);
@@ -849,9 +784,14 @@ void appendAddonPatches(struct fileent *e)
 	e->data = buf;
 	e->size = size;
 	if (xb.numPatches)
-		log_printf(1, bd_458f04,
+		log_printf(1, "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n",
 			   added, xb.numPatches, size);
 }
+
+/* arrays: re/gcda.py reads the profile compile's dumps, which would show
+   these \370 bytes raw as literals */
+static const char bd_458f80[] __attribute__((aligned(4))) = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
+static const char bd_458fb4[] __attribute__((aligned(4))) = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
 
 NOPROF
 void showSmcConfig(const uint8_t *smc)
@@ -862,73 +802,73 @@ void showSmcConfig(const uint8_t *smc)
 
 	log_printf(1, bd_458f80, smc[0x29], smc[0x2a], smc[0x2b]);
 	log_printf(1, bd_458fb4, smc[0x2c], smc[0x2d], smc[0x2e]);
-	log_printf(1, bd_458fe6);
+	log_printf(1, "Cpu Fan     : ");
 	if (((struct fan *)(smc + 0x11))->override)
-		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x11))->speed);
+		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x11))->speed);
 	else
-		log_printf(1, bd_45900a);
-	log_printf(1, bd_459012, smc[0x12] & 0x7f);
+		log_printf(1, "(auto)\n");
+	log_printf(1, "Gpu Fan     : ", smc[0x12] & 0x7f);
 	if (((struct fan *)(smc + 0x12))->override)
-		log_printf(1, bd_458ff5, ((struct fan *)(smc + 0x12))->speed);
+		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x12))->speed);
 	else
-		log_printf(1, bd_45900a);
-	log_printf(1, bd_459021);
+		log_printf(1, "(auto)\n");
+	log_printf(1, "MAC Address : ");
 	showMac(1, smc + 0x220);
 	av = *(uint32_t *)(smc + 0x228);
 	av = SWAP32(av);
 	switch (av) {
 	case 0x100:
-		log_printf(1, bd_459030, av);
+		log_printf(1, "\nAVRegion    : 0x%08x (NTSC-M)\n", av);
 		break;
 	case 0x200:
-		log_printf(1, bd_459050, av);
+		log_printf(1, "\nAVRegion    : 0x%08x (NTSC-J)\n", av);
 		break;
 	case 0x300:
-		log_printf(1, bd_459070, av);
+		log_printf(1, "\nAVRegion    : 0x%08x (PAL50)\n", av);
 		break;
 	case 0x400:
-		log_printf(1, bd_459090, av);
+		log_printf(1, "\nAVRegion    : 0x%08x (PAL60)\n", av);
 		break;
 	default:
-		log_printf(1, bd_4590b0, av);
+		log_printf(1, "\nAVRegion    : 0x%08x (Unknown)\n", av);
 		break;
 	}
 	game = __builtin_bswap16(*(uint16_t *)(smc + 0x22c));
-	log_printf(1, bd_4590d1, game);
+	log_printf(1, "GameRegion  : 0x%04x ", game);
 	switch (game) {
 	case 0xff:
-		log_printf(1, bd_4590e7);
+		log_printf(1, "(NTSC/US)\n");
 		break;
 	case 0x1fe:
-		log_printf(1, bd_4590f2);
+		log_printf(1, "(NTSC/JAP)\n");
 		break;
 	case 0x1ff:
-		log_printf(1, bd_4590f2);
+		log_printf(1, "(NTSC/JAP)\n");
 		break;
 	case 0x1fc:
-		log_printf(1, bd_4590fe);
+		log_printf(1, "(NTSC/KOR)\n");
 		break;
 	case 0x101:
-		log_printf(1, bd_45910a);
+		log_printf(1, "(NTSC/HK)\n");
 		break;
 	case 0x2fe:
-		log_printf(1, bd_459115);
+		log_printf(1, "(PAL/EU)\n");
 		break;
 	case 0x201:
-		log_printf(1, bd_45911f);
+		log_printf(1, "(PAL/AUS)\n");
 		break;
 	case 0x7fff:
-		log_printf(1, bd_45912a);
+		log_printf(1, "(DEVKIT)\n");
 		break;
 	default:
-		log_printf(1, bd_459134);
+		log_printf(1, "(Unknown)\n");
 		break;
 	}
-	log_printf(1, bd_45913f, SWAP32(*(uint32_t *)(smc + 0x234)));
-	log_printf(1, bd_459151);
+	log_printf(1, "DVDRegion   : %d\n", SWAP32(*(uint32_t *)(smc + 0x234)));
+	log_printf(1, "resetKey    : ");
 	for (i = 0; i < 4; i++)
-		log_printf(1, bd_459160, smc[0x238 + i]);
-	log_printf(1, bd_458cf9);
+		log_printf(1, "%c", smc[0x238 + i]);
+	log_printf(1, "\n");
 }
 
 /* an ini value is used if it is in range; 0 and -1 mean unset */
@@ -940,7 +880,7 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 	if (v < lo || v > hi) {
 		ok = 0;
 		if (v != 0 && v != 0xffffffff)
-			log_printf(0, bd_459164, v, name, lo, hi);
+			log_printf(0, "Ini value %d for %s is out of range (%d-%d), not using\n", v, name, lo, hi);
 	}
 	return ok;
 }
@@ -958,38 +898,38 @@ uint32_t patchSmcConfig(uint8_t *smc)
 	uint32_t patched = 0;
 	int i, dead;
 
-	log_printf(1, bd_45919c);
-	if (iniRangeOk(bd_4591c2, xb.cpuTemp, 40, 120)) {
+	log_printf(1, "Checking for smc config data patches\n");
+	if (iniRangeOk("cputemp", xb.cpuTemp, 40, 120)) {
 		smc[0x29] = xb.cpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk(bd_4591ca, xb.gpuTemp, 40, 120)) {
+	if (iniRangeOk("gputemp", xb.gpuTemp, 40, 120)) {
 		smc[0x2a] = xb.gpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk(bd_4591d2, xb.edramTemp, 40, 120)) {
+	if (iniRangeOk("edramtemp", xb.edramTemp, 40, 120)) {
 		smc[0x2b] = xb.edramTemp;
 		patched = 1;
 	}
-	if (iniRangeOk(bd_4591dc, xb.overCpuTemp, 40, 120)) {
+	if (iniRangeOk("overcputemp", xb.overCpuTemp, 40, 120)) {
 		smc[0x2c] = xb.overCpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk(bd_4591e8, xb.overGpuTemp, 40, 120)) {
+	if (iniRangeOk("overgputemp", xb.overGpuTemp, 40, 120)) {
 		smc[0x2d] = xb.overGpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk(bd_4591f4, xb.overEdramTemp, 40, 120)) {
+	if (iniRangeOk("overedramtemp", xb.overEdramTemp, 40, 120)) {
 		smc[0x2e] = xb.overEdramTemp;
 		patched = 1;
 	}
 	if (xb.cpuFan != 0xffffffff) {
-		if (iniRangeOk(bd_459202, xb.cpuFan, 40, 100)) {
+		if (iniRangeOk("cpufan", xb.cpuFan, 40, 100)) {
 			cb_hint(&dead);
 			smc[0x11] = xb.cpuFan | 0x80;
 			patched = 1;
 		} else if (xb.cpuFan)
-			log_printf(0, bd_45920c, xb.cpuFan);
+			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.cpuFan);
 		else if (smc[0x11] != 0x7f) {
 			cb_hint(&dead);
 			smc[0x11] = 0x7f;
@@ -997,7 +937,7 @@ uint32_t patchSmcConfig(uint8_t *smc)
 		}
 	}
 	if (xb.gpuFan != 0xffffffff) {
-		if (iniRangeOk(bd_459256, xb.gpuFan, 40, 100)) {
+		if (iniRangeOk("gpufan", xb.gpuFan, 40, 100)) {
 			cb_hint(&dead);
 			smc[0x12] = xb.gpuFan | 0x80;
 			patched = 1;
@@ -1022,8 +962,8 @@ gpudone:
 		patched = 1;
 	}
 	if (!*(uint32_t *)(smc + 0x234)) {
-		log_printf(0, bd_459260);
-		log_printf(0, bd_4592d8);
+		log_printf(0, "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n");
+		log_printf(0, "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n");
 		*(uint32_t *)(smc + 0x234) = 0x1000000;
 		patched = 1;
 	}
@@ -1037,13 +977,13 @@ gpudone:
 		uint32_t sum = calcConfigSum(smc);
 
 		*(uint32_t *)smc = SWAP32(sum);
-		log_printf(1, bd_459340);
+		log_printf(1, "smc config patched!\n");
 	} else
-		log_printf(1, bd_459355);
-	log_printf(1, bd_459371);
+		log_printf(1, "smc config was not patched\n");
+	log_printf(1, "---------------------\n");
 	return patched;
 gpuwarn:
-	log_printf(0, bd_459388);
+	log_printf(0, "***** WARNING: gpu fan speed override setting ignored, not between 40 and 100\n");
 	goto gpudone;
 }
 
@@ -1065,9 +1005,9 @@ __attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, 
 	e->data = malloc(0x400);
 	if (!e->data)
 		return -2;
-	log_printf(1, bd_4593d7);
-	log_printf(1, bd_4593ec);
-	log_printf(1, bd_4593d7);
+	log_printf(1, "-------------------\n");
+	log_printf(1, "checking smc_config\n");
+	log_printf(1, "-------------------\n");
 	found = 0;
 	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
 		__asm__("" : : "S"(i + 0x200), "D"(buf));
@@ -1082,7 +1022,7 @@ __attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, 
 			goto notfound;
 	}
 	if (checkZeros(buf + i + 0x20c, 4)) {
-		log_printf(1, bd_459401);
+		log_printf(1, "extracting config\n");
 		if (__builtin_expect(size - i >= 0x400, 1)) {
 			uint8_t *src = buf + i;
 
@@ -1092,30 +1032,30 @@ __attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, 
 			memcpy(e->data, src, 0x400);
 		}
 	} else if (size - i >= 0x4200) {
-		log_printf(1, bd_459414);
+		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)
 			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
 	} else {
-		log_printf(1, bd_45942c);
+		log_printf(1, "******* ERROR: extracting config did not work, not enough data to copy!\n");
 		return -2;
 	}
 	if (i)
-		log_printf(1, bd_459478, i);
-	log_printf(1, bd_4594a4);
-	log_printf(1, bd_4594b8);
-	log_printf(1, bd_4594a4);
+		log_printf(1, "valid SMC config data found at offset 0x%x\n", i);
+	log_printf(1, "------------------\n");
+	log_printf(1, "SMC config info:\n");
+	log_printf(1, "------------------\n");
 	showSmcConfig(e->data);
-	log_printf(1, bd_459371);
+	log_printf(1, "---------------------\n");
 	if (patchSmcConfig(e->data)) {
-		log_printf(1, bd_4594ca);
-		log_printf(1, bd_4594a4);
+		log_printf(1, "SMC patched info:\n");
+		log_printf(1, "------------------\n");
 		showSmcConfig(e->data);
-		log_printf(1, bd_459371);
+		log_printf(1, "---------------------\n");
 	}
 	return 0;
 notfound: __attribute__((hot));
 notfound2: __attribute__((hot));
-	log_printf(0, bd_4594e0);
+	log_printf(0, "******* ERROR: unable to find SMC config data!\n");
 	return 2;
 }
 
@@ -1146,10 +1086,12 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 	   (crc32 path), so it is aligned as a loop head like the original
 	   (.p2align 4,,10: branch freq > 4 x the B case's fallthru). */
 	__asm__("" : : "D"(type));
+	/* emits the crc error's literal first, as the original's .rdata */
+	__asm__("" :: "i"("\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n"));
 	blsize = getBeU32(bl + 12);
 	if (blsize > size) {
 		size_err: __attribute__((hot));
-		log_printf(0, bd_459558, blsize, size);
+		log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
 		return -3;
 	}
 	cb_hint(&dead);
@@ -1247,29 +1189,87 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 	}
 	return 0;
 bad:
-	log_printf(0, bd_459510, c, crc);
+	log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
 	return -2;
 magic:
-	log_printf(0, bd_4595a0, bl[0], bl[1], type);
+	log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", bl[0], bl[1], type);
 	return -1;
 }
 
-static const char bd_45961c[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed signature check!\n";
-static const char bd_459646[] __attribute__((aligned(1))) = "%s signature is good\n";
-static const char bd_45965c[] __attribute__((aligned(4))) = "could not check signature of %s, 1BL RSA key not present!\n";
-static const char bd_459698[] __attribute__((aligned(4))) = "%s failed signature check, attempting to resign\n";
-static const char bd_4596cc[] __attribute__((aligned(4))) = "\n***** ERROR: failed to resign %s!\n";
-static const char bd_4596f0[] __attribute__((aligned(1))) = "%s resigned successfully!\n";
-static const char bd_45970c[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n";
-static const char bd_45976c[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n";
-static const char bd_4597bc[] __attribute__((aligned(4))) = "could not locate SB data to check %s!\n";
-static const char bd_4597e4[] __attribute__((aligned(4))) = "%s failed hash check, attempting to correct SE and resign\n";
-static const char bd_459820[] __attribute__((aligned(4))) = "\n***** ERROR: failed to resign SE to correct %s hash!\n";
-static const char bd_459858[] __attribute__((aligned(4))) = "SE resigned successfully to correct %s hash!\n";
-static const char bd_459888[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n";
-static const char bd_4598e0[] __attribute__((aligned(4))) = "\n***** ERROR: %s failed hash check!\n";
-static const char bd_459905[] __attribute__((aligned(1))) = "%s hash from SE is good\n";
-static const char bd_459920[] __attribute__((aligned(4))) = "\n***** ERROR: could not locate SD data to check %s!\n";
+NOPROF
+int verifyBlSigs(void)
+{
+	int ok = 1, sb, sd;
+	struct fileent *e;
+	uint32_t i;
+	const uint8_t *salt;
+
+	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
+		e = &xb.files[i];
+		switch (e->type) {
+		case 5:
+		case 11:
+		case 17:
+			if (xb.pub1bl) {
+				if (!cbVerifySig(e->data, xb.pub1bl))
+					log_printf(0, "\n***** ERROR: %s failed signature check!\n", e->name);
+				else
+					log_printf(1, "%s signature is good\n", e->name);
+			} else
+				log_printf(1, "could not check signature of %s, 1BL RSA key not present!\n", e->name);
+			break;
+		case 12:
+		case 13:
+			sb = findFile(11);
+			if (sb) {
+				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
+				if (blVerifySig(e->data, e->size, xb.files[sb].data + 616, salt))
+					log_printf(1, "%s signature is good\n", e->name);
+				else if (xb.prvKey) {
+					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+						log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
+						if (!blSignU32(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
+							log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
+							ok = 0;
+						} else
+							log_printf(1, "%s resigned successfully!\n", e->name);
+					} else
+						log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", e->name);
+				} else
+					log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", e->name);
+			} else
+				log_printf(1, "could not locate SB data to check %s!\n", e->name);
+			break;
+		case 14:
+			sd = findFile(13);
+			if (sd) {
+				if (!blCheckHashU32(e->data, e->size, xb.files[sd].data + 588)) {
+					if (xb.prvKey) {
+						sb = findFile(11);
+						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+							log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
+							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
+									   xb.files[sd].data + 588, xb.files[sb].data + 616, xb.prvKey))
+								log_printf(0, "\n***** ERROR: failed to resign SE to correct %s hash!\n", e->name);
+							else
+								log_printf(1, "SE resigned successfully to correct %s hash!\n", e->name);
+						} else
+							log_printf(0, "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n", e->name);
+					} else
+						log_printf(0, "\n***** ERROR: %s failed hash check!\n", e->name);
+				} else
+					log_printf(1, "%s hash from SE is good\n", e->name);
+			} else
+				log_printf(1, "\n***** ERROR: could not locate SD data to check %s!\n", e->name);
+			break;
+		}
+	}
+	return ok;
+}
+
+/* loadBlFiles' strings stay arrays: build.sh splices it in from the
+   profile compile, so its code must name them as this compile does
+   (loadConsoleBlFiles and the bl encoders share some) */
 static const char bd_459955[] __attribute__((aligned(1))) = "none";
 static const char bd_45995c[] __attribute__((aligned(4))) = "loaded %s, could not check signature rsa key not present!\n";
 static const char bd_459998[] __attribute__((aligned(4))) = "\n***** ERROR: loaded %s, but signature check failed!\n";
@@ -1288,77 +1288,6 @@ static const char bd_459b8c[] __attribute__((aligned(1))) = "config.bin";
 static const char bd_459b97[] __attribute__((aligned(1))) = "config_raw.bin";
 static const char bd_459ba8[] __attribute__((aligned(4))) = "####### unhandled bl load %d %s\n";
 static const char bd_459bcc[] __attribute__((aligned(4))) = "\n\n**** could not read %s (%i) ****\n\n";
-
-NOPROF
-int verifyBlSigs(void)
-{
-	int ok = 1, sb, sd;
-	struct fileent *e;
-	uint32_t i;
-	const uint8_t *salt;
-
-	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
-		e = &xb.files[i];
-		switch (e->type) {
-		case 5:
-		case 11:
-		case 17:
-			if (xb.pub1bl) {
-				if (!cbVerifySig(e->data, xb.pub1bl))
-					log_printf(0, bd_45961c, e->name);
-				else
-					log_printf(1, bd_459646, e->name);
-			} else
-				log_printf(1, bd_45965c, e->name);
-			break;
-		case 12:
-		case 13:
-			sb = findFile(11);
-			if (sb) {
-				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
-				if (blVerifySig(e->data, e->size, xb.files[sb].data + 616, salt))
-					log_printf(1, bd_459646, e->name);
-				else if (xb.prvKey) {
-					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
-						log_printf(0, bd_459698, e->name);
-						if (!blSignU32(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
-							log_printf(0, bd_4596cc, e->name);
-							ok = 0;
-						} else
-							log_printf(1, bd_4596f0, e->name);
-					} else
-						log_printf(0, bd_45970c, e->name);
-				} else
-					log_printf(0, bd_45976c, e->name);
-			} else
-				log_printf(1, bd_4597bc, e->name);
-			break;
-		case 14:
-			sd = findFile(13);
-			if (sd) {
-				if (!blCheckHashU32(e->data, e->size, xb.files[sd].data + 588)) {
-					if (xb.prvKey) {
-						sb = findFile(11);
-						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
-							log_printf(0, bd_4597e4, e->name);
-							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
-									   xb.files[sd].data + 588, xb.files[sb].data + 616, xb.prvKey))
-								log_printf(0, bd_459820, e->name);
-							else
-								log_printf(1, bd_459858, e->name);
-						} else
-							log_printf(0, bd_459888, e->name);
-					} else
-						log_printf(0, bd_4598e0, e->name);
-				} else
-					log_printf(1, bd_459905, e->name);
-			} else
-				log_printf(1, bd_459920, e->name);
-			break;
-		}
-	}
-	return ok;
-}
 
 /* the 0x60-byte bootloader (type 24) from the base dir, else the default */
 static int loadBl60(struct fileent *e)
@@ -1620,15 +1549,6 @@ int loadBlFiles(void)
 	return 0;
 }
 
-static const char bd_459c64[] __attribute__((aligned(4))) = "skipping %s%s as it is in glitch bootloader dump\n";
-static const char bd_459c98[] __attribute__((aligned(4))) = "using keyvault data from console\n";
-static const char bd_459cbc[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring keyvault data failed!\n";
-static const char bd_459cec[] __attribute__((aligned(4))) = "using keyvault alt data from console\n";
-static const char bd_459d14[] __attribute__((aligned(4))) = "using smc configuration from console\n";
-static const char bd_459d3c[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring smc configuration data failed!\n";
-static const char bd_459d78[] __attribute__((aligned(4))) = "using smc binary from console\n";
-static const char bd_459d98[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring smc binary data failed!\n";
-
 NOPROF
 static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct fileent *e)
 {
@@ -1639,7 +1559,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 	switch (type) {
 	case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
 	case 17: case 18: case 19:
-		log_printf(1, bd_459c64, xb.baseDir, e->name);
+		log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
 		break;
 	case 9: case 10: case 15: case 16: case 20: case 21:
 		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
@@ -1687,7 +1607,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 		break;
 	case 3:
 		if (xb.kv.data) {
-			log_printf(1, bd_459c98);
+			log_printf(1, "using keyvault data from console\n");
 			if (e->data)
 				free(e->data);
 			e->data = xb.kv.data;
@@ -1695,13 +1615,13 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 			xb.kv.data = NULL;
 			xb.kv.size = 0;
 		} else {
-			log_printf(0, bd_459cbc);
+			log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
 			r = -1;
 		}
 		break;
 	case 4:
 		if (xb.kvAlt.data) {
-			log_printf(1, bd_459cec);
+			log_printf(1, "using keyvault alt data from console\n");
 			if (e->data)
 				free(e->data);
 			e->data = xb.kvAlt.data;
@@ -1709,7 +1629,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 			xb.kvAlt.data = NULL;
 			xb.kvAlt.size = 0;
 		} else {
-			log_printf(0, bd_459cbc);
+			log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
 			r = -1;
 		}
 		break;
@@ -1726,7 +1646,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 		break;
 	case 27:
 		if (xb.smcConfig.data) {
-			log_printf(1, bd_459d14);
+			log_printf(1, "using smc configuration from console\n");
 			if (xb.files[xb.nFlashFiles].data)
 				free(xb.files[xb.nFlashFiles].data);
 			xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
@@ -1735,7 +1655,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 			xb.smcConfig.size = 0;
 			r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
 		} else {
-			log_printf(0, bd_459d3c);
+			log_printf(0, "\n***** ERROR!: acquiring smc configuration data failed!\n");
 			r = -1;
 		}
 		break;
@@ -1745,7 +1665,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 		if (__builtin_expect(type != 2, 0))
 			break;
 		if (xb.smc.data) {
-			log_printf(1, bd_459d78);
+			log_printf(1, "using smc binary from console\n");
 			if (e->data)
 				free(e->data);
 			e->data = xb.smc.data;
@@ -1756,7 +1676,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 			if (!e->offset)
 				r = -1;
 		} else {
-			log_printf(0, bd_459d98);
+			log_printf(0, "\n***** ERROR!: acquiring smc binary data failed!\n");
 			r = -1;
 		}
 		break;
@@ -1794,44 +1714,6 @@ none: __attribute__((cold));
 	return 0;
 }
 
-static const char bd_459e3c[] __attribute__((aligned(4))) = "\tPatching header for slower demon/cygnos UART speed\n";
-static const char bd_459e74[] __attribute__((aligned(4))) = "\tPatching header for xell power reason\n";
-static const char bd_459e9c[] __attribute__((aligned(4))) = "\tPatching header for xell alt power reason\n";
-static const char bd_459ec8[] __attribute__((aligned(1))) = "blmod.bin";
-static const char bd_459ed2[] __attribute__((aligned(1))) = "sum1:";
-static const char bd_459ed8[] __attribute__((aligned(1))) = "sum2:";
-static const char bd_459ede[] __attribute__((aligned(1))) = "sum3:";
-static const char bd_459ee4[] __attribute__((aligned(1))) = "fin :";
-static const char bd_459eea[] __attribute__((aligned(1))) = "Patching BLs...";
-static const char bd_459efa[] __attribute__((aligned(1))) = "Done!\n";
-static const char bd_459f04[] __attribute__((aligned(4))) = "Checking patched CD signature...";
-static const char bd_459f25[] __attribute__((aligned(1))) = "CBB";
-static const char bd_459f29[] __attribute__((aligned(1))) = "CD";
-static const char bd_459f2c[] __attribute__((aligned(4))) = "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n";
-static const char bd_459f7c[] __attribute__((aligned(4))) = "Adding 0x%x bytes blmod.bin data to %s...";
-static const char bd_459fa6[] __attribute__((aligned(1))) = "Fixing up patch set...";
-static const char bd_459fc0[] __attribute__((aligned(4))) = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n";
-static const char bd_45a000[] __attribute__((aligned(4))) = "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n";
-static const char bd_45a034[] __attribute__((aligned(1))) = "retail image, skipping %s\n";
-static const char bd_45a050[] __attribute__((aligned(4))) = "devkit/testkit image, skipping %s\n";
-static const char bd_45a074[] __attribute__((aligned(4))) = "***** WARNING: skipping xell, there doesn't appear to be enough room!\n";
-static const char bd_45a0bc[] __attribute__((aligned(4))) = "    - console power button is being used to %s \n";
-static const char bd_45a0f0[] __attribute__((aligned(4))) = "    - console DVD eject button is being used to %s \n";
-static const char bd_45a128[] __attribute__((aligned(4))) = "    - IR remote power button is being used to %s \n";
-static const char bd_45a15c[] __attribute__((aligned(4))) = "    - IR remote guide/X button is being used to %s \n";
-static const char bd_45a194[] __attribute__((aligned(4))) = "    - IR remote windows button is being used to %s \n";
-static const char bd_45a1cc[] __attribute__((aligned(4))) = "    - KIOSK debug pin is being used to %s \n";
-static const char bd_45a1f8[] __attribute__((aligned(4))) = "    - wireless controller powering on console is being used to %s \n";
-static const char bd_45a23c[] __attribute__((aligned(4))) = "wired controller (rear top usb port) is being used to %s \n";
-static const char bd_45a278[] __attribute__((aligned(4))) = "wired controller (INVALID FOR FATS!!) is being used to %s \n";
-static const char bd_45a2b4[] __attribute__((aligned(4))) = "wired controller (rear middle usb port) is being used to %s \n";
-static const char bd_45a2f4[] __attribute__((aligned(4))) = "wired controller (rear bottom usb port) is being used to %s \n";
-static const char bd_45a334[] __attribute__((aligned(4))) = "wired controller (rear usb port) is being used to %s \n";
-static const char bd_45a36c[] __attribute__((aligned(4))) = "wired controller (front left usb port) is being used to %s \n";
-static const char bd_45a3ac[] __attribute__((aligned(4))) = "wired controller (front top usb port) is being used to %s \n";
-static const char bd_45a3e8[] __attribute__((aligned(4))) = "wired controller (front right usb port) is being used to %s \n";
-static const char bd_45a428[] __attribute__((aligned(4))) = "wired controller (front bottom usb port) is being used to %s \n";
-
 /* the header bytes freeboot/xell read: UART speed, power-on reasons */
 NOPROF
 void patchHeaderOpts(void)
@@ -1840,7 +1722,7 @@ void patchHeaderOpts(void)
 
 	xb.hdr[0x4b] = 1;
 	if (xb.bootFlags & 9) {
-		log_printf(1, bd_459e3c);
+		log_printf(1, "\tPatching header for slower demon/cygnos UART speed\n");
 		opts = 1;
 	}
 	if (xb.type == 2) {
@@ -1853,19 +1735,19 @@ void patchHeaderOpts(void)
 		xb.dualButton = 0;
 	xb.hdr[0x4c] = xb.dualButton;
 	xb.hdr[0x4d] = opts;
-	log_printf(1, bd_459e74);
+	log_printf(1, "\tPatching header for xell power reason\n");
 	if (xb.xellButton == xb.xellAltButton)
 		xb.xellAltButton = 0;
 	xb.hdr[0x4f] = xb.xellButton;
 	if (xb.xellAltButton)
-		log_printf(1, bd_459e9c);
+		log_printf(1, "\tPatching header for xell alt power reason\n");
 	xb.hdr[0x4e] = xb.xellAltButton;
 }
 
 NOPROF
 int blmodMissing(struct fileent *e)
 {
-	return loadBaseFile(bd_459ec8, e) != 0;
+	return loadBaseFile("blmod.bin", e) != 0;
 }
 
 /* XeCryptRotSumSha, showing the sums */
@@ -1880,10 +1762,10 @@ void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen,
 		sum[i] = 0;
 	/* TODO(prototype cast): xecrypt.h's inputs aren't const */
 	XeCryptRotSum(sum, (uint8_t *)a, alen >> 3);
-	log_printf(1, bd_459ed2);
+	log_printf(1, "sum1:");
 	display_buffer_hex(sum, 32, 1);
 	XeCryptRotSum(sum, (uint8_t *)b, blen >> 3);
-	log_printf(1, bd_459ed8);
+	log_printf(1, "sum2:");
 	display_buffer_hex(sum, 32, 1);
 	XeCryptShaInit(&sha);
 	XeCryptShaUpdate(&sha, sum, 32);
@@ -1892,12 +1774,12 @@ void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen,
 	XeCryptShaUpdate(&sha, (uint8_t *)b, blen);
 	for (i = 0; i < 32; i++)
 		sum[i] = ~sum[i];
-	log_printf(1, bd_459ede);
+	log_printf(1, "sum3:");
 	display_buffer_hex(sum, 32, 1);
 	XeCryptShaUpdate(&sha, sum, 32);
 	XeCryptShaUpdate(&sha, sum, 32);
 	XeCryptShaFinal(&sha, out, outlen);
-	log_printf(1, bd_459ee4);
+	log_printf(1, "fin :");
 	display_buffer_hex(out, outlen, 1);
 }
 
@@ -1923,7 +1805,7 @@ int patchBlsResign(void)
 	uint32_t off, addr, len, i, t;
 	int n = 0, ok = 0;
 
-	log_printf(1, bd_459eea);
+	log_printf(1, "Patching BLs...");
 	off = 0;
 	while (off < p->size) {
 		if (n != 2) {
@@ -1952,31 +1834,31 @@ int patchBlsResign(void)
 			off = p->size;
 		}
 	}
-	log_printf(1, bd_459efa);
+	log_printf(1, "Done!\n");
 	if (sb) {
-		log_printf(1, bd_459f04);
+		log_printf(1, "Checking patched CD signature...");
 		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.files[sb].data + 914)) {
 			if (xb.prvKey) {
 				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
-					log_printf(0, bd_459698, xb.files[cd].name);
+					log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
 					if (!blSignU32(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
-						log_printf(0, bd_4596cc, xb.files[cd].name);
+						log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
 					else {
-						log_printf(1, bd_4596f0, xb.files[cd].name);
+						log_printf(1, "%s resigned successfully!\n", xb.files[cd].name);
 						ok = 1;
 					}
 				} else
-					log_printf(0, bd_45970c, xb.files[cd].name);
+					log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", xb.files[cd].name);
 			} else
-				log_printf(0, bd_45976c, xb.files[cd].name);
+				log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", xb.files[cd].name);
 		} else {
-			log_printf(1, bd_459646, xb.files[cd].name);
+			log_printf(1, "%s signature is good\n", xb.files[cd].name);
 			ok = 1;
 		}
 		if (ok)
-			log_printf(1, bd_459efa);
+			log_printf(1, "Done!\n");
 	} else
-		log_printf(1, bd_4597bc, xb.files[cd].name);
+		log_printf(1, "could not locate SB data to check %s!\n", xb.files[cd].name);
 	return ok;
 }
 
@@ -1990,7 +1872,7 @@ void patchBlsBlmod(const void *blmod, int size)
 	uint32_t off, addr, len, i, max, end, t;
 	int n = 0;
 
-	log_printf(1, bd_459eea);
+	log_printf(1, "Patching BLs...");
 	off = 0;
 	while (off < p->size) {
 		if (n != 2) {
@@ -2027,7 +1909,7 @@ void patchBlsBlmod(const void *blmod, int size)
 		}
 	}
 	if (blmod && size) {
-		log_printf(1, bd_459efa);
+		log_printf(1, "Done!\n");
 		if (!xb.cbb)
 			cbb = cd;
 		max = xb.cbb ? 0xc000 : 0x10000;
@@ -2035,9 +1917,9 @@ void patchBlsBlmod(const void *blmod, int size)
 		end = (off + size + 15) & ~15;
 		if (end > max) {
 			size -= end - max;
-			log_printf(0, bd_459f2c, end - max, max - off);
+			log_printf(0, "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n", end - max, max - off);
 		}
-		log_printf(1, bd_459f7c, size, xb.cbb ? bd_459f25 : bd_459f29);
+		log_printf(1, "Adding 0x%x bytes blmod.bin data to %s...", size, xb.cbb ? "CBB" : "CD");
 		memcpy(xb.files[cbb].data + off, blmod, size);
 		end = (off + size + 15) & ~15;
 		i = end - xb.files[cbb].size;
@@ -2046,7 +1928,7 @@ void patchBlsBlmod(const void *blmod, int size)
 		xb.files[cbb].size = end;
 		setBeU32(end, xb.files[cbb].data + 12);
 	}
-	log_printf(1, bd_459efa);
+	log_printf(1, "Done!\n");
 }
 
 NOPROF
@@ -2057,7 +1939,7 @@ void fixupPatchSet(void)
 	uint32_t off, i, v, t;
 	int n = 0;
 
-	log_printf(1, bd_459fa6);
+	log_printf(1, "Fixing up patch set...");
 	off = 0;
 	while (off < e->size) {
 		if (n == 2) {
@@ -2076,7 +1958,7 @@ void fixupPatchSet(void)
 			}
 		}
 	}
-	log_printf(1, bd_459efa);
+	log_printf(1, "Done!\n");
 }
 
 NOPROF
@@ -2101,16 +1983,16 @@ void addBlsToImage(void)
 			}
 			if (type == 21) {
 				j = findFile(20);
-				log_printf(1, bd_459fc0,
+				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 				imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 			} else if (type == 10) {
 				j = findFile(9);
-				log_printf(1, bd_459fc0,
+				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 				imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 			} else {
-				log_printf(1, bd_45a000,
+				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 			}
@@ -2129,28 +2011,28 @@ void addBlsToImage(void)
 				off += 0x10;
 		}
 		if (xb.type == 1 && (type == 23 || type == 25)) {
-			log_printf(1, bd_45a034, e->name);
+			log_printf(1, "retail image, skipping %s\n", e->name);
 			continue;
 		} else if (xb.type > 5) {
 			if (type == 23 || type == 25) {
-				log_printf(1, bd_45a050, e->name);
+				log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
 				continue;
 			}
 		} else if (type == 25 && __builtin_expect(type != 24, 1) && e->offset < imgSize()) {
-			log_printf(0, bd_45a074);
+			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
 		if (type != 10 && type != 16 && type != 24)
-			log_printf(1, bd_45a000,
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
 		if (type == 10) {
 			j = findFile(9);
-			log_printf(1, bd_459fc0,
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 16) {
 			j = findFile(15);
-			log_printf(1, bd_459fc0,
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 6) {
@@ -2158,7 +2040,7 @@ void addBlsToImage(void)
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 		} else if (type == 24) {
 			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
-				log_printf(1, bd_45a000,
+				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 			}
@@ -2168,7 +2050,7 @@ void addBlsToImage(void)
 	}
 	if (xb.f01c) {
 		j = findFile(14);
-		log_printf(1, bd_45a000,
+		log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
 		imgAddInt(off, xb.files[j].data, xb.files[j].size, 0, ecc, 1);
 	}
@@ -2208,25 +2090,25 @@ void addUpdateBls(void)
 				off += 0x10;
 		}
 		if (type == 25 && e->offset < imgSize()) {
-			log_printf(0, bd_45a074);
+			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
 		if (type != 10 && type != 16 && type != 24)
-			log_printf(1, bd_45a000,
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
 		if (type == 10) {
 			j = findFile(9);
-			log_printf(1, bd_459fc0,
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 16) {
 			j = findFile(15);
-			log_printf(1, bd_459fc0,
+			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 24) {
 			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
-				log_printf(1, bd_45a000,
+				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 			}
@@ -2241,88 +2123,61 @@ int logPowerButton(int reason, const char *use)
 {
 	switch (reason) {
 	case 0x11:
-		log_printf(1, bd_45a0bc, use);
+		log_printf(1, "    - console power button is being used to %s \n", use);
 		break;
 	case 0x12:
-		log_printf(1, bd_45a0f0, use);
+		log_printf(1, "    - console DVD eject button is being used to %s \n", use);
 		break;
 	case 0x20:
-		log_printf(1, bd_45a128, use);
+		log_printf(1, "    - IR remote power button is being used to %s \n", use);
 		break;
 	case 0x22:
-		log_printf(1, bd_45a15c, use);
+		log_printf(1, "    - IR remote guide/X button is being used to %s \n", use);
 		break;
 	case 0x24:
-		log_printf(1, bd_45a194, use);
+		log_printf(1, "    - IR remote windows button is being used to %s \n", use);
 		break;
 	case 0x41:
-		log_printf(1, bd_45a1cc, use);
+		log_printf(1, "    - KIOSK debug pin is being used to %s \n", use);
 		break;
 	case 0x55:
-		log_printf(1, bd_45a1f8, use);
+		log_printf(1, "    - wireless controller powering on console is being used to %s \n", use);
 		break;
 	case 0x59:
 		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a23c, use);
+			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
 		else
-			log_printf(1, bd_45a278, use);
+			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		break;
 	case 0x58:
 		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a2b4, use);
+			log_printf(1, "wired controller (rear middle usb port) is being used to %s \n", use);
 		else
-			log_printf(1, bd_45a278, use);
+			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		break;
 	case 0x5a:
 		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a2f4, use);
+			log_printf(1, "wired controller (rear bottom usb port) is being used to %s \n", use);
 		else
-			log_printf(1, bd_45a334, use);
+			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
 		break;
 	case 0x56:
 		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a36c, use);
+			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
 		else
-			log_printf(1, bd_45a3ac, use);
+			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
 		break;
 	case 0x57:
 		if ((xb.flags & 7) > 4)
-			log_printf(1, bd_45a3e8, use);
+			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
 		else
-			log_printf(1, bd_45a428, use);
+			log_printf(1, "wired controller (front bottom usb port) is being used to %s \n", use);
 		break;
 	default:
 		return 1;
 	}
 	return 0;
 }
-
-static const char bd_45a590[] __attribute__((aligned(4))) = "patching freeboot.bin with with kernel version string '%s'\n";
-static const char bd_45a5cc[] __attribute__((aligned(1))) = "Boot options set:\n";
-static const char bd_45a5e0[] __attribute__((aligned(4))) = "    - Set debug UART speed to cygnos/demon compatible\n";
-static const char bd_45a618[] __attribute__((aligned(4))) = "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n";
-static const char bd_45a664[] __attribute__((aligned(4))) = "    - When powered on, if tray is not fully closed Xell starts\n";
-static const char bd_45a6a4[] __attribute__((aligned(1))) = "start xell";
-static const char bd_45a6b0[] __attribute__((aligned(4))) = "    - UKNOWN POWER REASON, using eject button\n";
-static const char bd_45a6df[] __attribute__((aligned(1))) = "alternately start xell";
-static const char bd_45a6f8[] __attribute__((aligned(4))) = "    - alternate xell button disabled\n";
-static const char bd_45a71e[] __attribute__((aligned(1))) = "dual boot";
-static const char bd_45a728[] __attribute__((aligned(1))) = "org version %s\n";
-static const char bd_45a738[] __attribute__((aligned(1))) = "fin version %s\n";
-static const char bd_45a748[] __attribute__((aligned(4))) = "**** ERROR PATCHING FREEBOOT.BIN for kernel version string!\n";
-static const char bd_45a785[] __attribute__((aligned(1))) = "9199";
-static const char bd_45a78c[] __attribute__((aligned(4))) = "9199 ini string detected, patching to old hold address\n";
-static const char bd_45a7c4[] __attribute__((aligned(4))) = "patching payload.bin to load size 0x%x (0x%x reps)\n";
-static const char bd_45a7f8[] __attribute__((aligned(1))) = "org li %r4, %02x%02x\n";
-static const char bd_45a80e[] __attribute__((aligned(1))) = "fin li %r4, %02x%02x\n";
-static const char bd_45a824[] __attribute__((aligned(1))) = "encoding %s size 0x%x (JTAG)\n";
-static const char bd_45a844[] __attribute__((aligned(4))) = "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n";
-static const char bd_45a8af[] __attribute__((aligned(1))) = "encoding %s size 0x%x\n";
-static const char bd_45a8c6[] __attribute__((aligned(1))) = "zeropairing SB\n";
-static const char bd_45a8d8[] __attribute__((aligned(4))) = "CPU key is all zeros, zeropairing SB\n";
-static const char bd_45a900[] __attribute__((aligned(4))) = "****** Unhandled BL typ %d ******\n";
-static const char bd_45a924[] __attribute__((aligned(4))) = "CPU key is all zeros, zeropairing CB_B\n";
-static const char bd_45a94c[] __attribute__((aligned(1))) = "re-encoding %s size 0x%x\n";
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
 NOPROF
@@ -2336,41 +2191,43 @@ void patchFreeboot(uint8_t *buf, int len)
 
 	hold[0] = 0x80;
 	hold[1] = 0x78300001;
-	log_printf(1, bd_45a590, xb.kernelStr);
-	log_printf(1, bd_45a5cc);
+	log_printf(1, "patching freeboot.bin with with kernel version string '%s'\n", xb.kernelStr);
+	log_printf(1, "Boot options set:\n");
 	if (opts & 9) {
-		log_printf(1, bd_45a5e0);
+		log_printf(1, "    - Set debug UART speed to cygnos/demon compatible\n");
 		opts = (opts & 6) | 1;
 	}
-	if (opts & 4) {
-		if (logPowerButton(xb.xellButton, bd_45a6a4)) {
-			log_printf(1, bd_45a6b0);
+	if (!(opts & 4)) {
+		if (opts & 2)
+			log_printf(1, "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n");
+		else
+			log_printf(1, "    - When powered on, if tray is not fully closed Xell starts\n");
+	} else {
+		if (logPowerButton(xb.xellButton, "start xell")) {
+			log_printf(1, "    - UKNOWN POWER REASON, using eject button\n");
 			xb.xellButton = 0x12;
 		}
 		if (xb.xellAltButton == xb.xellButton)
 			xb.xellAltButton = 0;
-		if (logPowerButton(xb.xellAltButton, bd_45a6df)) {
-			log_printf(1, bd_45a6f8);
+		if (logPowerButton(xb.xellAltButton, "alternately start xell")) {
+			log_printf(1, "    - alternate xell button disabled\n");
 			xb.xellAltButton = 0;
 		}
-	} else if (opts & 2)
-		log_printf(1, bd_45a618);
-	else
-		log_printf(1, bd_45a664);
+	}
 	if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton ||
-	    logPowerButton(xb.dualButton, bd_45a71e))
+	    logPowerButton(xb.dualButton, "dual boot"))
 		xb.dualButton = 0;
 	p = (char *)findInst(buf, len, (uint8_t *)pat, 32);
 	if (p) {
-		log_printf(2, bd_45a728, p);
+		log_printf(2, "org version %s\n", p);
 		strncpy(p, xb.kernelStr, 32);
-		log_printf(2, bd_45a738, p);
+		log_printf(2, "fin version %s\n", p);
 	} else
-		log_printf(0, bd_45a748);
-	if (!strncmp(xb.kernelStr, bd_45a785, 4)) {
+		log_printf(0, "**** ERROR PATCHING FREEBOOT.BIN for kernel version string!\n");
+	if (!strncmp(xb.kernelStr, "9199", 4)) {
 		hold[2] = 0x80;
 		hold[3] = 0xf8ff1f00;
-		log_printf(1, bd_45a78c);
+		log_printf(1, "9199 ini string detected, patching to old hold address\n");
 		q = (uint32_t *)findInst(buf, len, (uint8_t *)hold, 8);
 		if (q)
 			memcpy(q, hold + 2, 8);
@@ -2385,14 +2242,14 @@ void patchPayloadSize(uint8_t *buf, int len, int size)
 	uint8_t *p;
 	uint32_t reps = (size + 3) >> 2;
 
-	log_printf(1, bd_45a7c4, size, reps);
+	log_printf(1, "patching payload.bin to load size 0x%x (0x%x reps)\n", size, reps);
 	p = findInst(buf, len, (uint8_t *)&pat, 4);
 	if (!p)
 		return;
-	log_printf(2, bd_45a7f8, p[2], p[3]);
+	log_printf(2, "org li %r4, %02x%02x\n", p[2], p[3]);
 	p[3] = reps;
 	p[2] = reps >> 8;
-	log_printf(2, bd_45a80e, p[2], p[3]);
+	log_printf(2, "fin li %r4, %02x%02x\n", p[2], p[3]);
 }
 
 NOPROF
@@ -2419,7 +2276,7 @@ int encodeBls(uint8_t *salt, int ldv)
 			continue;
 		type = e->type;
 		if (xb.type == 2) {
-			log_printf(1, bd_45a824, e->name, e->size);
+			log_printf(1, "encoding %s size 0x%x (JTAG)\n", e->name, e->size);
 			switch (type) {
 			case 1:
 				if (!memcmp(e->data, defPayload, 0x200))
@@ -2473,12 +2330,12 @@ int encodeBls(uint8_t *salt, int ldv)
 				if (!memcmp(e->data, defCore, 0xd40))
 					patchFreeboot(e->data, e->size);
 				else if (xb.bootFlags)
-					log_printf(0, bd_45a844);
+					log_printf(0, "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n");
 				break;
 			}
 		} else if (xb.type > 3) {
 			if (type != 24)
-				log_printf(1, bd_45a8af, e->name, e->size);
+				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			switch (type) {
 			case 2:
 				if (smcPrepare(e->data, salt, e->size))
@@ -2513,14 +2370,14 @@ int encodeBls(uint8_t *salt, int ldv)
 						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.f01c);
 					else
 						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.f01c);
-					log_printf(1, bd_45a8c6);
+					log_printf(1, "zeropairing SB\n");
 					setFuseCpuKey(xb.files[j].data);
 					cbaEncryptZero(e->data, e->key, e->size);
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
 				if (checkZeros(xb.cpuKey, 16)) {
-					log_printf(1, bd_45a8d8);
+					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
 					xb.cfLdv = 0;
 					cbaEncryptZero(e->data, e->key, e->size);
 				} else
@@ -2550,12 +2407,12 @@ int encodeBls(uint8_t *salt, int ldv)
 			case 25:
 				break;
 			default:
-				log_printf(1, bd_45a900, type);
+				log_printf(1, "****** Unhandled BL typ %d ******\n", type);
 				break;
 			}
 		} else {
 			if (type != 24 || xb.glitch2mfg)
-				log_printf(1, bd_45a8af, e->name, e->size);
+				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			switch (type) {
 			case 2:
 				if (smcPrepare(e->data, salt, e->size))
@@ -2585,7 +2442,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				else
 					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
 				if (zero) {
-					log_printf(1, bd_45a924);
+					log_printf(1, "CPU key is all zeros, zeropairing CB_B\n");
 					xb.cfLdv = 0;
 				}
 				j = findFile(5);
@@ -2622,67 +2479,11 @@ int encodeBls(uint8_t *salt, int ldv)
 		/* the SE that replaced the CF follows the CD */
 		e = &xb.files[findFile(14)];
 		j = findFile(7);
-		log_printf(1, bd_45a94c, e->name, e->size);
+		log_printf(1, "re-encoding %s size 0x%x\n", e->name, e->size);
 		ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 	}
 	return 0;
 }
-
-static const char bd_45aa58[] __attribute__((aligned(4))) = "***** WARNING: xell is unexpectedly larger than 256KiB!!\n";
-static const char bd_45aa94[] __attribute__((aligned(4))) = "Writing initial header to flash image\n";
-static const char bd_45aabc[] __attribute__((aligned(4))) = "\n------ Copying bootloader image to flash image ------ \n";
-static const char bd_45aaf8[] __attribute__((aligned(4))) = "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n";
-static const char bd_45ab50[] __attribute__((aligned(4))) = "\n------ Loading bootloaders and required security files ------\n";
-static const char bd_45ab90[] __attribute__((aligned(4))) = "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n";
-static const char bd_45abd8[] __attribute__((aligned(1))) = "done!\n";
-static const char bd_45abe0[] __attribute__((aligned(4))) = "\n------ Patching BLs and modifying patches ------\n";
-static const char bd_45ac14[] __attribute__((aligned(4))) = "\n------ Patching boot reasons and options into flash header ------\n";
-static const char bd_45ac58[] __attribute__((aligned(4))) = "\n------ Encrypting and finalizing bootloaders ------\n";
-static const char bd_45ac8e[] __attribute__((aligned(1))) = "\nVirtual Fuses set to:";
-static const char bd_45aca8[] __attribute__((aligned(4))) = "done!\n\n------ Adding bootloaders to flash image ------\n";
-static const char bd_45ace0[] __attribute__((aligned(1))) = "Fixing up FS table...";
-static const char bd_45acf8[] __attribute__((aligned(4))) = "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n";
-static const char bd_45ad3c[] __attribute__((aligned(4))) = "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...";
-static const char bd_45ad6c[] __attribute__((aligned(1))) = "sysupdate.xexp1";
-static const char bd_45ad7c[] __attribute__((aligned(4))) = "Writing CG patch slot overflow data to sysupdate.xexp1\n";
-static const char bd_45adb4[] __attribute__((aligned(4))) = "Writing target CG patch slot overflow data to sysupdate.xexp2\n";
-static const char bd_45adf3[] __attribute__((aligned(1))) = "sysupdate.xexp2";
-static const char bd_45ae04[] __attribute__((aligned(4))) = "\n------ adding %d firmware files ------\n";
-static const char bd_45ae30[] __attribute__((aligned(4))) = "\n------ adding %d security files ------\n";
-static const char bd_45ae59[] __attribute__((aligned(1))) = "sysupdate.xexp";
-static const char bd_45ae68[] __attribute__((aligned(4))) = "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n";
-static const char bd_45aebc[] __attribute__((aligned(4))) = "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n";
-static const char bd_45aef8[] __attribute__((aligned(4))) = "***** could not read file '%s', skipping *****\n";
-static const char bd_45af28[] __attribute__((aligned(4))) = "***** could not read file '%s' *****\n";
-static const char bd_45af50[] __attribute__((aligned(4))) = "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n";
-static const char bd_45af94[] __attribute__((aligned(4))) = "\n------ checking for Mobile*.dat ------\n";
-static const char bd_45afbd[] __attribute__((aligned(1))) = "<- Processing %s ->\n";
-static const char bd_45afd4[] __attribute__((aligned(4))) = "\tcould not read %s, using data from SUPD...\n";
-static const char bd_45b004[] __attribute__((aligned(4))) = "\tcould not read %s, using data from previous parse...\n";
-static const char bd_45b03b[] __attribute__((aligned(1))) = "secdata.bin";
-static const char bd_45b047[] __attribute__((aligned(1))) = "extended.bin";
-static const char bd_45b054[] __attribute__((aligned(1))) = "dae.bin";
-static const char bd_45b05c[] __attribute__((aligned(1))) = "crl.bin";
-static const char bd_45b064[] __attribute__((aligned(1))) = "fcrt.bin";
-static const char bd_45b06d[] __attribute__((aligned(1))) = "odd.bin";
-static const char bd_45b078[] __attribute__((aligned(4))) = "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n";
-static const char bd_45b0d4[] __attribute__((aligned(4))) = "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n";
-static const char bd_45b13c[] __attribute__((aligned(4))) = "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n";
-static const char bd_45b1a0[] __attribute__((aligned(4))) = "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n";
-static const char bd_45b1fc[] __attribute__((aligned(4))) = "             but should allow the machine to boot normally\n";
-static const char bd_45b238[] __attribute__((aligned(4))) = "\t%s not found and not required by keyvault, skipped\n";
-static const char bd_45b270[] __attribute__((aligned(4))) = "***** WARNING: %s not found, skipping *****\n";
-static const char bd_45b29d[] __attribute__((aligned(1))) = "%s found, adding from file\n";
-static const char bd_45b2bc[] __attribute__((aligned(4))) = "%s found, adding from previous parse\n";
-static const char bd_45b2e4[] __attribute__((aligned(4))) = "\n------ adding smc_config.bin ------\n";
-static const char bd_45b30c[] __attribute__((aligned(4))) = "\n------ cleaning up image ------\n";
-static const char bd_45b330[] __attribute__((aligned(4))) = "Fixing up empty FS block entries...";
-static const char bd_45b354[] __attribute__((aligned(4))) = "done!\nWriting FS table to image ";
-static const char bd_45b378[] __attribute__((aligned(4))) = "\n------ adding [rawpatch] data ------\n";
-static const char bd_45b3a0[] __attribute__((aligned(4))) = "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n";
-static const char bd_45b3f4[] __attribute__((aligned(4))) = "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n";
-static const char bd_45b44c[] __attribute__((aligned(4))) = "***** ERROR: could not load [rawpatch] file '%s'!!\n";
-static const char bd_45b480[] __attribute__((aligned(4))) = "\n------ finalizing image ------\n";
 
 /* encodeBls for an update image: only the CF and CG */
 NOPROF
@@ -2698,12 +2499,12 @@ int encodeUpdateBls(int unused, int ldv)
 			continue;
 		switch (e->type) {
 		case 9:
-			log_printf(1, bd_45a8af, e->name, e->size);
+			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			j = findFile(10);
 			cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 			break;
 		case 10:
-			log_printf(1, bd_45a8af, e->name, e->size);
+			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			j = findFile(9);
 			cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 			break;
@@ -2750,7 +2551,7 @@ uint32_t calcBlAreaSize(void)
 			if (xb.files[x].offset > size) {
 				xs = xb.files[x].size;
 				if (xs > 0x40000)
-					log_printf(0, bd_45aa58);
+					log_printf(0, "***** WARNING: xell is unexpectedly larger than 256KiB!!\n");
 				else
 					xs = 0x40000;
 				size = xb.files[x].offset + xs;
@@ -2797,29 +2598,29 @@ int buildFlash(void)
 			fuse = 1;
 	}
 	if (!xb.fromConsole) {
-		log_printf(1, bd_45aa94);
+		log_printf(1, "Writing initial header to flash image\n");
 		writeInitialHeader();
 	} else {
-		log_printf(1, bd_45aabc);
+		log_printf(1, "\n------ Copying bootloader image to flash image ------ \n");
 		r = checkBootImage(1);
 		if (r) {
-			log_printf(0, bd_45aaf8);
+			log_printf(0, "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n");
 			return r;
 		}
 	}
 	suLoadDir(xb.dataDir);
-	log_printf(1, bd_45ab50);
+	log_printf(1, "\n------ Loading bootloaders and required security files ------\n");
 	if (xb.fromConsole)
 		r = loadConsoleBlFiles();
 	else
 		r = loadBlFiles();
 	if (r) {
-		log_printf(0, bd_45ab90);
+		log_printf(0, "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n");
 		return r;
 	}
 	if (!xb.fromConsole && !verifyBlSigs())
 		return 1;
-	log_printf(1, bd_45abd8);
+	log_printf(1, "done!\n");
 	blocks = fsStartBlock();
 	area = calcBlAreaSize();
 	if (!blocks)
@@ -2827,29 +2628,29 @@ int buildFlash(void)
 	else
 		area = blocks << 14;
 	if (xb.type == 3) {
-		log_printf(1, bd_45abe0);
+		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (xb.fromConsole)
 			fixupPatchSet();
 		else {
 			struct fileent f;
 
 			memset(&f, 0, sizeof(f));
-			if (!loadBaseFile(bd_459ec8, &f)) {
+			if (!loadBaseFile("blmod.bin", &f)) {
 				patchBlsBlmod(f.data, f.size);
 				free(f.data);
 			} else
 				patchConsoleBlmod();
 		}
 	} else if (xb.type == 4 || xb.type == 5) {
-		log_printf(1, bd_45abe0);
+		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (!patchBlsResign())
 			return 1;
 	}
 	if (!xb.fromConsole && !(xb.type == 1 || xb.type > 5)) {
-		log_printf(1, bd_45ac14);
+		log_printf(1, "\n------ Patching boot reasons and options into flash header ------\n");
 		patchHeaderOpts();
 	}
-	log_printf(1, bd_45ac58);
+	log_printf(1, "\n------ Encrypting and finalizing bootloaders ------\n");
 	keysInit(xb.randomKeys);
 	if (fuse) {
 		struct fileent *e = &xb.files[findFile(24)];
@@ -2863,17 +2664,17 @@ int buildFlash(void)
 	} else if (encodeUpdateBls((int)salt, blocks))
 		return -4;
 	if (fuse)
-		showFuses(1, bd_45ac8e, xb.files[findFile(24)].data);
-	log_printf(1, bd_45aca8);
+		showFuses(1, "\nVirtual Fuses set to:", xb.files[findFile(24)].data);
+	log_printf(1, "done!\n\n------ Adding bootloaders to flash image ------\n");
 	if (!xb.fromConsole)
 		addBlsToImage();
 	else
 		addUpdateBls();
 	if (!fsStartBlock()) {
-		log_printf(1, bd_45ace0);
+		log_printf(1, "Fixing up FS table...");
 		fixupFsTable(area);
 		imgSetSize(area);
-		log_printf(1, bd_45abd8);
+		log_printf(1, "done!\n");
 	}
 	if (fsStartBlock())
 		imgSetSize(fsStartBlock() << 14);
@@ -2884,42 +2685,42 @@ int buildFlash(void)
 			off = imgSize();
 			cf = findFile(9);
 			cg = findFile(10);
-			log_printf(1, bd_45acf8);
-			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			log_printf(1, "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n");
+			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
 			makeTimestamp((uint8_t *)&ts, NULL);
-			imgAddFile(bd_45ad6c, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
-			log_printf(1, bd_45abd8);
+			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
+			log_printf(1, "done!\n");
 		}
 	} else {
 		off = imgSize();
 		if (xb.files[findFile(20)].fsSize) {
 			cf = findFile(20);
 			cg = findFile(21);
-			log_printf(1, bd_45ad7c);
-			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			log_printf(1, "Writing CG patch slot overflow data to sysupdate.xexp1\n");
+			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
 			makeTimestamp((uint8_t *)&ts, NULL);
-			imgAddFile(bd_45ad6c, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
-			log_printf(1, bd_45abd8);
+			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
+			log_printf(1, "done!\n");
 		}
 		if (xb.files[findFile(9)].fsSize) {
 			cf = findFile(9);
 			cg = findFile(10);
-			log_printf(1, bd_45adb4);
-			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
+			log_printf(1, "Writing target CG patch slot overflow data to sysupdate.xexp2\n");
+			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
 			makeTimestamp((uint8_t *)&ts, NULL);
-			imgAddFile(bd_45adf3, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
-			log_printf(1, bd_45abd8);
+			imgAddFile("sysupdate.xexp2", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
+			log_printf(1, "done!\n");
 		}
 	}
 
-	log_printf(1, bd_45ae04, xb.nFirmware);
+	log_printf(1, "\n------ adding %d firmware files ------\n", xb.nFirmware);
 	for (i = 0; i < xb.nFirmware; i++) {
 		struct fileent f;
 
 		strcpy(f.name, xb.firmware[i]);
 		last = f.name[strlen(f.name) - 1];
-		if (!strnicmp(bd_45ae59, f.name, 14)) {
-			log_printf(1, bd_45ae68, f.name);
+		if (!strnicmp("sysupdate.xexp", f.name, 14)) {
+			log_printf(1, "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n", f.name);
 			continue;
 		}
 		if (!xb.firmwareCrc[i])
@@ -2952,34 +2753,34 @@ int buildFlash(void)
 				base = xb.firmware[i];
 			off = imgSize();
 			len = xb.files[xb.nFlashFiles].size;
-			log_printf(1, bd_45aebc, base, off, len, off + len);
+			log_printf(1, "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n", base, off, len, off + len);
 			imgAddFile(base, xb.files[xb.nFlashFiles].data, &ts, len);
 		} else if (!xb.firmwareCrc[i])
-			log_printf(1, bd_45aef8, xb.firmware[i]);
+			log_printf(1, "***** could not read file '%s', skipping *****\n", xb.firmware[i]);
 		else {
-			log_printf(0, bd_45af28, xb.firmware[i]);
-			log_printf(0, bd_45af50);
+			log_printf(0, "***** could not read file '%s' *****\n", xb.firmware[i]);
+			log_printf(0, "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n");
 			return r;
 		}
 	}
 
-	log_printf(1, bd_45ae30, xb.nFlashFiles2);
+	log_printf(1, "\n------ adding %d security files ------\n", xb.nFlashFiles2);
 	for (k = 0; k < xb.nFlashFiles2; k++) {
 		int found = 1;
 
 		memset(&xb.files[xb.nFlashFiles], 0, sizeof(struct fileent));
 		setBeU32(0, (uint8_t *)&ts);
 		if (k)
-			log_printf(1, bd_458cf9);
+			log_printf(1, "\n");
 		name = xb.flashFiles[k];
-		log_printf(1, bd_45afbd, name);
+		log_printf(1, "<- Processing %s ->\n", name);
 		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (uint8_t *)&ts)) {
 			found = 0;
 			if (!(xb.bootFlags & 0x1000000)) {
 				if (xb.files[xb.nFlashFiles].data)
 					free(xb.files[xb.nFlashFiles].data);
 				if (suGetFile(name, &xb.files[xb.nFlashFiles].data, &xb.files[xb.nFlashFiles].size)) {
-					log_printf(1, bd_45afd4, name);
+					log_printf(1, "\tcould not read %s, using data from SUPD...\n", name);
 					found = 1;
 				}
 			}
@@ -2989,9 +2790,9 @@ int buildFlash(void)
 						free(xb.files[xb.nFlashFiles].data);
 					xb.files[xb.nFlashFiles].data = xb.flashBuf[k];
 					xb.files[xb.nFlashFiles].size = xb.flashSize[k];
-					log_printf(1, bd_45b004, name);
+					log_printf(1, "\tcould not read %s, using data from previous parse...\n", name);
 					found = 1;
-				} else if (!strcmp(name, bd_45b03b) || !strcmp(name, bd_45b047)) {
+				} else if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin")) {
 					xb.files[xb.nFlashFiles].size = 0;
 					found = 1;
 				}
@@ -3002,45 +2803,45 @@ int buildFlash(void)
 				makeTimestamp((uint8_t *)&ts, &ft);
 			else
 				timestampToFileTime((uint16_t *)&ts, &ft);
-			if (!strcmp(name, bd_45b03b))
+			if (!strcmp(name, "secdata.bin"))
 				secdataPrepare(&xb.files[xb.nFlashFiles], (uint8_t *)&ft);
-			else if (!strcmp(name, bd_45b047))
+			else if (!strcmp(name, "extended.bin"))
 				extendedPrepare(&xb.files[xb.nFlashFiles]);
-			else if (!strcmp(name, bd_45b054))
+			else if (!strcmp(name, "dae.bin"))
 				daeEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (uint8_t *)&ft);
-			else if (!strcmp(name, bd_45b05c))
+			else if (!strcmp(name, "crl.bin"))
 				crlEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (uint8_t *)&ft);
-			else if (!strcmp(name, bd_45b064))
+			else if (!strcmp(name, "fcrt.bin"))
 				fcrtEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
-			else if (!strcmp(name, bd_45b06d)) {
+			else if (!strcmp(name, "odd.bin")) {
 				if (xb.flashTime[k])
 					setBeU32(xb.flashTime[k], (uint8_t *)&ts);
 			} else
-				log_printf(0, bd_45b078, xb.baseDir, name);
+				log_printf(0, "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n", xb.baseDir, name);
 			imgAddFileAs(name, xb.files[xb.nFlashFiles].data, &ts, xb.files[xb.nFlashFiles].size);
-		} else if (!strcmp(name, bd_45b064)) {
+		} else if (!strcmp(name, "fcrt.bin")) {
 			region = kvGetGameRegion();
 			if (region) {
-				log_printf(0, bd_45b0d4, name);
+				log_printf(0, "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n", name);
 				if (xb.type != 1 && xb.type <= 5) {
 					if (region == 1)
-						log_printf(0, bd_45b13c);
+						log_printf(0, "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n");
 					else {
-						log_printf(0, bd_45b1a0);
-						log_printf(0, bd_45b1fc);
+						log_printf(0, "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n");
+						log_printf(0, "             but should allow the machine to boot normally\n");
 					}
 				}
 			} else
-				log_printf(1, bd_45b238, name);
+				log_printf(1, "\t%s not found and not required by keyvault, skipped\n", name);
 		} else
-			log_printf(0, bd_45b270, name);
+			log_printf(0, "***** WARNING: %s not found, skipping *****\n", name);
 		if (xb.files[xb.nFlashFiles].data) {
 			free(xb.files[xb.nFlashFiles].data);
 			xb.files[xb.nFlashFiles].data = NULL;
 		}
 	}
 
-	log_printf(1, bd_45af94);
+	log_printf(1, "\n------ checking for Mobile*.dat ------\n");
 	for (k = 0; k < 11; k++) {
 		struct fileent f;
 
@@ -3059,7 +2860,7 @@ int buildFlash(void)
 			raw = 0;
 		}
 		if (!loadBaseFile(f.name, &xb.files[xb.nFlashFiles])) {
-			log_printf(1, bd_45b29d, f.name, xb.files[xb.nFlashFiles].size, '1' + k);
+			log_printf(1, "%s found, adding from file\n", f.name, xb.files[xb.nFlashFiles].size, '1' + k);
 			if (raw) {
 				save = imgSize();
 				imgAddRawVoid(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
@@ -3072,7 +2873,7 @@ int buildFlash(void)
 				}
 			}
 		} else if (xb.mobile[k].data && xb.mobile[k].size) {
-			log_printf(1, bd_45b2bc, f.name);
+			log_printf(1, "%s found, adding from previous parse\n", f.name);
 			if (raw) {
 				save = imgSize();
 				imgAddRawVoid(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
@@ -3088,17 +2889,17 @@ int buildFlash(void)
 	}
 	a = imgSizeAligned();
 	b = imgSizeAligned();
-	log_printf(1, bd_45b2e4);
+	log_printf(1, "\n------ adding smc_config.bin ------\n");
 	{
 		struct fileent *e = &xb.files[findFile(27)];
 		addSmcConfig(e->data, e->size);
 	}
-	log_printf(1, bd_45b30c);
-	log_printf(1, bd_45b330);
+	log_printf(1, "\n------ cleaning up image ------\n");
+	log_printf(1, "Fixing up empty FS block entries...");
 	fixupEmptyFsBlocks(a);
-	log_printf(1, bd_45b354);
+	log_printf(1, "done!\nWriting FS table to image ");
 	writeFsTable(b);
-	log_printf(1, bd_45abd8);
+	log_printf(1, "done!\n");
 	if (xb.flags & 0x10000000) {
 		/* MMC: two anchor blocks */
 		xb.anchorNum = 1;
@@ -3116,7 +2917,7 @@ int buildFlash(void)
 	if (xb.nRawPatches) {
 		struct fileent f;
 
-		log_printf(1, bd_45b378);
+		log_printf(1, "\n------ adding [rawpatch] data ------\n");
 		f.data = NULL;
 		for (k = 0; k < xb.nRawPatches; k++) {
 			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, (uint8_t *)&ts, 0, 0, 0);
@@ -3125,23 +2926,23 @@ int buildFlash(void)
 				end = off + f.size;
 				if (end <= xb.userSize) {
 					memcpy(xb.hdr + off, f.data, f.size);
-					log_printf(1, bd_45b3a0,
+					log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n",
 						   k + 1, xb.rawPatch[k].name, off, f.size, end);
 					free(f.data);
 					f.data = NULL;
 				} else {
-					log_printf(1, bd_45b3f4,
+					log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n",
 						   k + 1, xb.rawPatch[k].name, off, f.size, xb.userSize);
 					free(f.data);
 					return -1;
 				}
 			} else {
-				log_printf(0, bd_45b44c, xb.rawPatch[k].name);
+				log_printf(0, "***** ERROR: could not load [rawpatch] file '%s'!!\n", xb.rawPatch[k].name);
 				return r;
 			}
 		}
-		log_printf(1, bd_45abd8);
+		log_printf(1, "done!\n");
 	}
-	log_printf(1, bd_45b480);
+	log_printf(1, "\n------ finalizing image ------\n");
 	return finalizeImage();
 }
