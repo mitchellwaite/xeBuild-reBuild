@@ -49,8 +49,8 @@ L_401062:
           mov DWORD PTR [ESP],4294967295
           call FUN_446fd0
           mov EDX,DWORD PTR [L_479e48]
-          mov DWORD PTR [L_50ec88],EAX
-          mov DWORD PTR [L_50ec8c],EAX
+          mov DWORD PTR [___onexitend],EAX
+          mov DWORD PTR [___onexitbegin],EAX
           mov EAX,DWORD PTR [_fmode]
           mov DWORD PTR [EAX],EDX
           call FUN_446cc0
@@ -166,20 +166,20 @@ L_4011f5:
           sub ESP,4
 L_401209:
           mov EAX,ESI
-          lock cmpxchg DWORD PTR [L_50ec90],EBX
+          lock cmpxchg DWORD PTR [___native_startup_lock],EBX
           test EAX,EAX
           jne L_4011f5
-          mov EAX,DWORD PTR [L_50ec94]
+          mov EAX,DWORD PTR [___native_startup_state]
           xor EBX,EBX
           cmp EAX,1
           je L_401425
 L_401227:
-          mov EAX,DWORD PTR [L_50ec94]
+          mov EAX,DWORD PTR [___native_startup_state]
           test EAX,EAX
           je L_401481
           mov DWORD PTR [L_46f004],1
 L_40123e:
-          mov EAX,DWORD PTR [L_50ec94]
+          mov EAX,DWORD PTR [___native_startup_state]
           cmp EAX,1
           je L_40143f
 L_40124c:
@@ -326,14 +326,14 @@ L_40140a:
           pop EBP
           ret 
 L_401412:
-          mov EAX,DWORD PTR [L_50ec94]
+          mov EAX,DWORD PTR [___native_startup_state]
           mov EBX,1
           cmp EAX,1
           jne L_401227
 L_401425:
           mov DWORD PTR [ESP],31
           call FUN_449268
-          mov EAX,DWORD PTR [L_50ec94]
+          mov EAX,DWORD PTR [___native_startup_state]
           cmp EAX,1
           jne L_40124c
 L_40143f:
@@ -341,10 +341,10 @@ L_40143f:
           mov DWORD PTR [ESP],OFFSET L_510000
           call FUN_449210
           test EBX,EBX
-          mov DWORD PTR [L_50ec94],2
+          mov DWORD PTR [___native_startup_state],2
           jne L_401254
 L_401465:
-          xchg DWORD PTR [L_50ec90],EBX
+          xchg DWORD PTR [___native_startup_lock],EBX
           jmp L_401254
 L_401470:
           mov DWORD PTR [ESP],EDX
@@ -352,7 +352,7 @@ L_401470:
           sub ESP,4
           jmp L_4011e2
 L_401481:
-          mov DWORD PTR [L_50ec94],1
+          mov DWORD PTR [___native_startup_state],1
           mov DWORD PTR [ESP+4],OFFSET L_510018
           mov DWORD PTR [ESP],OFFSET L_51000c
           call FUN_449210

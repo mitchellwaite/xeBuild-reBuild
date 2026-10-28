@@ -13,9 +13,16 @@ int kvVerifySig(u8 *kv, const void *pubKey, const u8 *hmacKey);
 int validateString(char *nString);
 unsigned char myatox8(char *dat);
 
-extern void *masterPub;
-extern u8 cpuKey[];
-extern int g479ea8;
+struct xebuild {
+	int mode;			/* 000 */
+	u32 flags;			/* 004 */
+	int type;			/* 008 build type */
+	u8 pad00c[0x27c - 0x00c];
+	u8 cpuKey[16];			/* 27c */
+	u8 pad28c[0x2a0 - 0x28c];
+	void *masterPub;		/* 2a0 */
+};
+extern struct xebuild xb;
 
 static u8 kvBuf[0x4000];
 static u8 dvdKey[16];
@@ -51,13 +58,13 @@ int kvCheckHash(void)
 	}
 	return 0;
 found:
-	if (!masterPub) {
+	if (!xb.masterPub) {
 		nomaster: __attribute__((cold));
 		log_printf(1, "Master RSA pub not available, not checking hash\n");
 		kvType = 1;
 		return 1;
 	}
-	if (__builtin_expect(kvVerifySig(kvBuf, masterPub, cpuKey), 1)) {
+	if (__builtin_expect(kvVerifySig(kvBuf, xb.masterPub, xb.cpuKey), 1)) {
 		kvType = 3;
 		log_printf(1, "Keyvault hash is good!\n");
 		return 1;
@@ -74,7 +81,7 @@ void kvSet(u8 *buf)
 	kv = kvBuf;
 	log_printf(1, "decrypted keyvault has been set for reference\n");
 	if (dvdKeySet) {
-		if (g479ea8 != 1) {
+		if (xb.type != 1) {
 			memcpy(buf + 0x100, dvdKey, 16);
 			memcpy(kv + 0x100, dvdKey, 16);
 			log_printf(1, "dvd key patched into keyvault\n");

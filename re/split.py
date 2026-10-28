@@ -24,7 +24,7 @@ the pieces are found:
              then choose monotone boundaries in link order minimising atoms
              placed in an object that doesn't reference them.
   COMMON     the end of .bss is uninitialized (common) globals, which ld lays
-             out in hash-table order, so it stays one file (common_bss.s).
+             out in hash-table order, so it stays one file (common_bss.c).
 """
 import bisect, collections, json, os, re, sys
 
@@ -327,8 +327,11 @@ SYMBOLS = {
     0x420670: '_netFormatCompat', 0x420710: '_netMkdir',
     0x448820: '_stat',   # libmingwex; msvcrt's `_stat` IAT slot is renamed (IAT_NAMES)
     0x4481c0: '_opendir', 0x448360: '_readdir', 0x448470: '_closedir',
-    # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.s)
+    # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.c)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
+    # mingw-w64 crt's COMMON globals (atonexit.c, natstart.c), in common_bss.c
+    0x50ec88: '___onexitend', 0x50ec8c: '___onexitbegin',
+    0x50ec90: '___native_startup_lock', 0x50ec94: '___native_startup_state',
     # app/bootloaders (src/app/bootloaders.c) and what it uses; names are ours
     0x401730: '_unscramble', 0x4017d0: '_cbGetPairing', 0x401910: '_cfGetPairing',
     0x401a00: '_cfBestPairing', 0x401f80: '_crlVerifySig', 0x402210: '_daeDecrypt',
@@ -512,6 +515,9 @@ NOT_POINTERS = {
     # "nG" of wassert's UTF-16 "MinGW Runtime Assertion"; 0x47006e lies in
     # app/image_write's smcPage, a static of its C
     0x46356c: 0x47006e,
+    # its UTF-16 "\nP" (of "failed!\n\nProgram") and " L" (of ", Line"); both
+    # lie in the COMMON block, which has no labels now that it's C
+    0x4634f8: 0x50000a, 0x463528: 0x4c0020,
 }
 COMMON = (0x479e84,'common_bss', 'COMMON globals, laid out by ld in hash order')
 WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import libraries)'),

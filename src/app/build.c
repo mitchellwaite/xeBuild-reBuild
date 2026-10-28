@@ -107,7 +107,11 @@ struct xebuild {
 	u32 dumpKvAltSize;		/* 258 */
 	u8 *dumpConfig;			/* 25c */
 	u32 dumpConfigSize;		/* 260 */
-	u8 pad264[0x2a8 - 0x264];
+	u8 pad264[0x27c - 0x264];
+	u8 cpuKey[16];			/* 27c */
+	u8 pad28c[0x29c - 0x28c];
+	u8 *pub1bl;			/* 29c the 1BL's public key */
+	u8 pad2a0[0x2a8 - 0x2a0];
 	u8 *prvKey;			/* 2a8 the ini's 2BL private key */
 	u8 pad2ac[0x6ac - 0x2ac];
 	char binDir[0x800];		/* 6ac */
@@ -208,7 +212,6 @@ void shaHeader(u8 *buf);
 u8 *setBeU16(u16 v, u8 *p);
 u32 statisticsOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
 u32 manufacturingOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
-extern u8 cpuKey[16];		/* xb+27c */
 int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
 /* .data, in this order (-fno-toplevel-reorder) */
 u8 defBl60[0x60] = {
@@ -605,7 +608,6 @@ struct fan {
 };
 
 extern struct xebuild xb;
-extern u8 *pub1bl;		/* xb+29c */
 #define addons (&xb.files[19])
 
 int suGetFile(const char *name, u8 **data, u32 *len);
@@ -1487,8 +1489,8 @@ int verifyBlSigs(void)
 		case 5:
 		case 11:
 		case 17:
-			if (pub1bl) {
-				if (!cbVerifySig(e->data, pub1bl))
+			if (xb.pub1bl) {
+				if (!cbVerifySig(e->data, xb.pub1bl))
 					log_printf(0, bd_45961c, e->name);
 				else
 					log_printf(1, bd_459646, e->name);
@@ -1596,9 +1598,9 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 		if (type == 5 || type == 17 || type == 11) {
 			NK_DEAD(nk_never2, nk_b);
 			NK_LABEL(nk_q)
-			if (pub1bl) {
+			if (xb.pub1bl) {
 				NK_DEAD(nk_never3, nk_b);
-				if (!cbVerifySig(e->data, pub1bl)) {
+				if (!cbVerifySig(e->data, xb.pub1bl)) {
 					log_printf(0, bd_459998, e->name);
 					*pr = -1;
 				} else if (type)
@@ -2702,7 +2704,7 @@ int encodeBls(u8 *salt, int ldv)
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
-				if (checkZeros(cpuKey, 16)) {
+				if (checkZeros(xb.cpuKey, 16)) {
 					log_printf(1, bd_45a8d8);
 					xb.cfLdv = 0;
 					cbaEncryptZero(e->data, e->key, e->size);
@@ -2761,7 +2763,7 @@ int encodeBls(u8 *salt, int ldv)
 			case 6:
 				if (!xb.cbb)
 					break;
-				zero = checkZeros(cpuKey, 16);
+				zero = checkZeros(xb.cpuKey, 16);
 				j = findFile(24);
 				if (xb.glitch2mfg)
 					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.f01c);

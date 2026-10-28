@@ -74,7 +74,9 @@ struct xebuild {
 	u8 cpuKey[16];			/* 27c */
 	u8 pad28c[0x41eb0 - 0x28c];
 	struct fileent files[35];	/* 41eb0 */
-	u8 pad4b0b4[0x4f508 - 0x4b0b4];
+	u8 pad4b0b4[0x4f2c4 - 0x4b0b4];
+	u32 mmcAnchor[0x80];		/* 4f2c4 MMC anchor block */
+	u8 pad4f4c4[0x4f508 - 0x4f4c4];
 	char sha1File[0x400];		/* 4f508 */
 	int sha1Write;			/* 4f908 */
 };
@@ -146,7 +148,6 @@ void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
 void *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));
 
 extern struct xebuild xb;
-extern u32 mmcAnchor[0x80];
 extern struct fsent fsFiles[256];
 extern u16 fsTable[0x1000];
 extern struct flashhdr hdrTemplate;
@@ -336,7 +337,7 @@ int buildImage(void)
 	memset(&hdrTemplate, 0, sizeof(hdrTemplate));
 	hdrTemplate.magic = 0x4fff;
 	hdrTemplate.build = 0x6007;
-	memset(mmcAnchor, 0, sizeof(mmcAnchor));
+	memset(xb.mmcAnchor, 0, sizeof(xb.mmcAnchor));
 	if (xb.type == 2) {
 		hdrTemplate.cbOffset = 0x800000;
 		hdrTemplate.cfOffset = 0x700;
@@ -1060,8 +1061,8 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
 small:
 	imgAdd(off, buf, i * 0x400, 0x30, 0x1ffd, 0);
 done:
-	setBeU16(blk, (u8 *)mmcAnchor + 0x1c);
-	setBeU16(0, (u8 *)mmcAnchor + 0x1e);
+	setBeU16(blk, (u8 *)xb.mmcAnchor + 0x1c);
+	setBeU16(0, (u8 *)xb.mmcAnchor + 0x1e);
 	free(buf);
 }
 
@@ -1071,7 +1072,7 @@ void copyAnchorBlock(int n)
 
 	log_printf(1, "copying anchor block %d to offset 0x%x\n", n, off);
 	memset(xb.hdr + off, 0, 0x1000);
-	memcpy(xb.hdr + off, mmcAnchor, sizeof(mmcAnchor));
+	memcpy(xb.hdr + off, xb.mmcAnchor, sizeof(xb.mmcAnchor));
 }
 
 int spareUsed(const u8 *s)

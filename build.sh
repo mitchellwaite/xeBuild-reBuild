@@ -136,6 +136,9 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;
+      # the COMMON block in address order (src/common_bss.c's head comment)
+      common_bss) orig="$f.c"
+             cflags="-O3 -fno-common -fno-toplevel-reorder -fno-ident" ;;
       *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
     esac
     uw=

@@ -54,10 +54,11 @@ struct xebuild {
 	u32 nFlashFiles2;		/* 4f2c0 the security file count */
 	u8 pad4f2c4[0x4f4c4 - 0x4f2c4];
 	char kernelStr[0x40];		/* 4f4c4 the ini's kernel version string */
+	unsigned char *iniBuf;		/* 4f504 the ini file */
+	u8 pad4f508[0x4f90c - 0x4f508];
+	int iniSize;			/* 4f90c */
 };
 extern struct xebuild xb;
-extern unsigned char *iniBuf;
-extern int iniSize;
 
 /* .data, in this order (-fno-toplevel-reorder) */
 /* the bl section's file order per build type (blOrder is one of them) */
@@ -804,12 +805,12 @@ char *getIniValue(const char *key)
 {
 	int off;
 
-	if (iniSize == 0)
+	if (xb.iniSize == 0)
 		return NULL;
-	off = findIniKey(iniBuf, iniSize, key);
+	off = findIniKey(xb.iniBuf, xb.iniSize, key);
 	if (off == -1)
 		return NULL;
-	return (char *)&iniBuf[off];
+	return (char *)&xb.iniBuf[off];
 }
 
 /* getters' own helper (not memFindStr).  The ebx pins fix RA ties; findKey's
@@ -819,7 +820,7 @@ static int findKey(unsigned char *buf, const char *key)
 	int i, j, len;
 	unsigned char *p;
 	len = strlen(key);
-	for (i = 0; i < iniSize - len; i++) {
+	for (i = 0; i < xb.iniSize - len; i++) {
 		if (key[0] == buf[i]) {
 			p = &buf[i];
 			for (j = 0; j < len; j++)
@@ -838,17 +839,17 @@ static int findKey(unsigned char *buf, const char *key)
 	}
 	return -1;
 }
-#define FIND findKey(iniBuf, key)
+#define FIND findKey(xb.iniBuf, key)
 long getIniBool(const char *key, int def)
 {
 	int off;
 	char *val;
-	if (iniSize == 0)
+	if (xb.iniSize == 0)
 		return def;
 	off = FIND;
 	if (off == -1)
 		return def;
-	val = (char *)&iniBuf[off];
+	val = (char *)&xb.iniBuf[off];
 	__asm__("" :: "b"(val));
 	if (strnicmp(val, "true", 4) == 0)
 		return 1;
@@ -861,12 +862,12 @@ char *iniBoolInvalid(const char *key)
 {
 	int off;
 	char *val;
-	if (iniSize == 0)
+	if (xb.iniSize == 0)
 		return NULL;
 	off = FIND;
 	if (off == -1)
 		return NULL;
-	val = (char *)&iniBuf[off];
+	val = (char *)&xb.iniBuf[off];
 	__asm__("" :: "b"(val));
 	if (strnicmp(val, "true", 4) == 0)
 		return NULL;
@@ -877,23 +878,23 @@ char *iniBoolInvalid(const char *key)
 unsigned int getIniU32(const char *key, unsigned int def)
 {
 	int off;
-	if (iniSize == 0)
+	if (xb.iniSize == 0)
 		return def;
 	off = FIND;
 	if (off == -1)
 		return def;
-	return myatou32((char *)&iniBuf[off], def);
+	return myatou32((char *)&xb.iniBuf[off], def);
 }
 char *iniU32Invalid(const char *key)
 {
 	int off;
 	char *val;
-	if (iniSize == 0)
+	if (xb.iniSize == 0)
 		return NULL;
 	off = FIND;
 	if (off == -1)
 		return NULL;
-	val = (char *)&iniBuf[off];
+	val = (char *)&xb.iniBuf[off];
 	if (val[0] == '0' && myatol(val[1]) == 'x') {
 		if (validateString(val + 2) == 0)
 			return val;
@@ -919,31 +920,31 @@ int loadUserIni(void)
 		log_printf(1, "\n******* WARNING: could not open user ini at '%s', skipping\n", path);
 		return 0;
 	}
-	iniSize = getFileSize(f);
-	len = iniSize + 1;
-	iniBuf = malloc(len);
-	if (iniBuf == NULL) {
+	xb.iniSize = getFileSize(f);
+	len = xb.iniSize + 1;
+	xb.iniBuf = malloc(len);
+	if (xb.iniBuf == NULL) {
 		log_printf(0, fi_44fbb0, path);
 		fclose(f);
 		return 0;
 	}
-	memset(iniBuf, 0xff, len);
+	memset(xb.iniBuf, 0xff, len);
 	log_printf(1, "loading file...", path);
-	fread(iniBuf, iniSize, 1, f);
+	fread(xb.iniBuf, xb.iniSize, 1, f);
 	fclose(f);
 	log_printf(1, "done!\n", path);
-	if (iniBuf[0] == 0xff || iniBuf[1] == 0xff) {
+	if (xb.iniBuf[0] == 0xff || xb.iniBuf[1] == 0xff) {
 		log_printf(0, "***** WARNING: User ini %s\nappears to be a multi byte file, not an ascii only file - ignoring it!\n", path);
-		free(iniBuf);
-		iniBuf = NULL;
-		iniSize = 0;
+		free(xb.iniBuf);
+		xb.iniBuf = NULL;
+		xb.iniSize = 0;
 		return 0;
 	}
-	iniBuf[iniSize] = 0xff;
+	xb.iniBuf[xb.iniSize] = 0xff;
 	log_printf(1, "pre-parsing and sanitizing\n");
-	iniSize = iniPreParse(iniBuf, iniSize);
+	xb.iniSize = iniPreParse(xb.iniBuf, xb.iniSize);
 	log_printf(1, "done!\n");
-	iniBuf[iniSize] = 0;
+	xb.iniBuf[xb.iniSize] = 0;
 	return 1;
 }
 

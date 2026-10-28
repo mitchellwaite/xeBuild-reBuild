@@ -38,12 +38,16 @@ int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
 int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int fcrtVerifySig(u8 *fcrt);
 
-extern u8 key1bl[16];
-extern u8 cpuKey[16];
-extern u8 key28c[16];
-extern void *pub1bl;
-extern void *masterPub;
-extern void *pub2a4;
+struct xebuild {
+	u8 pad000[0x26c];
+	u8 key1bl[16];			/* 26c */
+	u8 cpuKey[16];			/* 27c */
+	u8 key28c[16];			/* 28c */
+	void *pub1bl;			/* 29c */
+	void *masterPub;		/* 2a0 */
+	void *pub2a4;			/* 2a4 */
+};
+extern struct xebuild xb;
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
@@ -53,9 +57,9 @@ int verifyExtended(u8 *buf, u32 size)
 	u8 salt[2] = { 7, 0x12 };
 	u8 key[16];
 
-	XeCryptHmacSha(cpuKey, 16, buf, 16, 0, 0, 0, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, buf, 16, 0, 0, 0, 0, key, 16);
 	XeCryptRc4(key, 16, buf + 16, size - 16);
-	XeCryptHmacSha(cpuKey, 16, buf + 16, size - 16, salt, 2, 0, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, buf + 16, size - 16, salt, 2, 0, 0, key, 16);
 	return memcmp(buf, key, 16) == 0;
 }
 
@@ -89,7 +93,7 @@ u32 cbGetPairing(u8 *cb)
 		len = BL_SIZE(cb);
 		buf = malloc(len);
 		memcpy(buf, cb, len);
-		XeCryptHmacSha(key1bl, 16, cb + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, 0, 0, 0, 0, key, 16);
 		XeCryptRc4(key, 16, buf + 32, len - 32);
 		if (checkZeros(buf + 0x270, 0x120)) {
 			pairing = getBeU32(buf + 32) & 0xffffff00;
@@ -109,7 +113,7 @@ u32 cfGetPairing(u8 *cf, u32 size)
 	if (BL_MAGIC(cf, 'F')) {
 		len = BL_SIZE(cf);
 		if (size >= len) {
-			XeCryptHmacSha(key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
+			XeCryptHmacSha(xb.key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
 			XeCryptRc4(key, 16, cf + 48, len - 48);
 			if (checkZeros(cf + 496, 32))
 				return getBeU32(cf + 540);
@@ -163,7 +167,7 @@ int cfDecrypt(u8 *cf, u32 size)
 	if (BL_MAGIC(cf, 'F')) {
 		len = BL_SIZE(cf);
 		if (len <= size) {
-			XeCryptHmacSha(key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
+			XeCryptHmacSha(xb.key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
 			XeCryptRc4(key, 16, cf + 48, len - 48);
 			ok = checkZeros(cf + 496, 32);
 			if (ok)
@@ -189,9 +193,9 @@ int verifySecdata(u8 *buf, u32 size)
 	u8 hash[16];
 
 	memset(hash, 0, 16);
-	XeCryptHmacSha(cpuKey, 16, buf, 16, 0, 0, 0, 0, key, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, buf, 16, 0, 0, 0, 0, key, 16);
 	XeCryptRc4(key, 16, buf + 16, size - 16);
-	XeCryptHmacSha(cpuKey, 16, buf + 16, size - 16, 0, 0, 0, 0, hash, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, buf + 16, size - 16, 0, 0, 0, 0, hash, 16);
 	return memcmp(buf, hash, 16) == 0;
 }
 
@@ -202,11 +206,11 @@ int crlVerifySig(u8 *crl, u8 *hash)
 {
 	int ok;
 
-	if (!pub2a4)
+	if (!xb.pub2a4)
 		return 1;
 	if (getBeU32(crl) != 0x43524c50)	/* "CRLP" */
 		return 1;
-	ok = XeKeysPkcs1Verify(hash, crl + 32, pub2a4);
+	ok = XeKeysPkcs1Verify(hash, crl + 32, xb.pub2a4);
 	if (ok)
 		log_printf(1, msg_sigGood);
 	else
@@ -222,9 +226,9 @@ int verifyCrl(u8 *crl, u32 size, int perBox)
 	AESSTATE aes;
 
 	if (perBox)
-		XeCryptAesKey(&aes, cpuKey);
+		XeCryptAesKey(&aes, xb.cpuKey);
 	else
-		XeCryptAesKey(&aes, key28c);
+		XeCryptAesKey(&aes, xb.key28c);
 	XeCryptAesEcb(&aes, crl + 304, key, 0);
 	memcpy(crl + 304, key, 16);
 	XeCryptAesKey(&aes, key);
@@ -249,9 +253,9 @@ __attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 	memcpy(buf, dae, size);
 	memset(iv, 0, 16);
 	if (perBox)
-		XeCryptAesKey(&aes, cpuKey);
+		XeCryptAesKey(&aes, xb.cpuKey);
 	else
-		XeCryptAesKey(&aes, key28c);
+		XeCryptAesKey(&aes, xb.key28c);
 	XeCryptAesCbc(&aes, buf + 304, size - 304, dae + 304, iv, 0);
 	free(buf);
 }
@@ -262,9 +266,9 @@ static const char msg_daeSigGood[] __attribute__((aligned(1))) = "sig %d good! "
 static const char msg_daeSigFail[] __attribute__((aligned(1))) = "\nsig %d FAIL! ";
 
 /* check one DAE segment's signature (1 if no key or too short).  ifcombine
-   merges the size test with !pub2a4 and the pair keeps the size test's
+   merges the size test with !xb.pub2a4 and the pair keeps the size test's
    probability; the hint call (PRED_CALL; once inlined, its store to a dead
-   local goes) lowers it so the FAIL block comes before the !pub2a4 return */
+   local goes) lowers it so the FAIL block comes before the !xb.pub2a4 return */
 __attribute__((optimize("no-early-inlining")))
 int daeVerifySig(u8 *seg, u32 size, int n)
 {
@@ -272,7 +276,7 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 	u8 hash[20];
 	int ok, dead;
 
-	if (!pub2a4)
+	if (!xb.pub2a4)
 		return 1;
 	if (size < 288) {
 		hint(&dead);
@@ -280,7 +284,7 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 	}
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, pub2a4);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pub2a4);
 	if (!ok)
 		log_printf(1, msg_daeSigFail, n);
 	else
@@ -298,13 +302,13 @@ static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, 
 	u8 hash[20];
 	int ok;
 
-	if (!pub2a4)
+	if (!xb.pub2a4)
 		return 1;
 	if (size < 288)
 		return 1;
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, pub2a4);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pub2a4);
 	if (ok)
 		log_printf(1, msg_daeSigGood, n);
 	else
@@ -354,12 +358,12 @@ inline __attribute__((always_inline)) int fcrtVerifySig(u8 *fcrt)
 	void *pub;
 	int ok;
 
-	pub = (getBeU32(fcrt + 272) & 0x80000000) ? pub2a4 : masterPub;
+	pub = (getBeU32(fcrt + 272) & 0x80000000) ? xb.pub2a4 : xb.masterPub;
 	if (!pub) {
 		log_printf(1, msg_noPub);
 		return 1;
 	}
-	XeCryptHmacSha(cpuKey, 16, fcrt + 256, 64, 0, 0, 0, 0, hash, 20);
+	XeCryptHmacSha(xb.cpuKey, 16, fcrt + 256, 64, 0, 0, 0, 0, hash, 20);
 	ok = XeKeysPkcs1Verify(hash, fcrt, pub);
 	if (ok)
 		log_printf(1, msg_sigGood);
@@ -398,7 +402,7 @@ int verifyFcrt(u8 *fcrt, u32 size)
 		log_printf(1, msg_fcrtDone);
 		return 1;
 	}
-	XeCryptAesKey(&aes, cpuKey);
+	XeCryptAesKey(&aes, xb.cpuKey);
 	XeCryptAesCbc(&aes, fcrt + off, size - off, fcrt + off, iv, 0);
 	XeCryptSha(fcrt + off, size - off, 0, 0, 0, 0, hash, 20);
 	if (memcmp(fcrt + 300, hash, 20)) {
@@ -447,12 +451,12 @@ u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey)
 	buf = calloc(len, 1);
 	if (buf) {
 		memcpy(buf, cb, len);
-		XeCryptHmacSha(key1bl, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
+		XeCryptHmacSha(xb.key1bl, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
 		XeCryptRc4(key, 16, buf + 32, len - 32);
 		if (outKey)
 			memcpy(outKey, key, 16);
-		if (pub1bl) {
-			if (cbVerifySig(buf, pub1bl)) {
+		if (xb.pub1bl) {
+			if (cbVerifySig(buf, xb.pub1bl)) {
 				log_printf(1, msg_cbSigOk, buf[0]);
 				if (outLen)
 					*outLen = len;

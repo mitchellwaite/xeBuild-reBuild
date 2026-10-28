@@ -14,9 +14,17 @@ void checkBootImage(int arg);
 
 extern char separator[];
 extern int promptEnter;
-extern char flashFiles[][22];
-extern int buildMode;
-extern int g479f4c, g47a080;
+struct xebuild {
+	unsigned char pad000[0x0ac];
+	int dump;			/* 0ac the nand dump's data */
+	unsigned char pad0b0[0x1e0 - 0x0b0];
+	int bl;				/* 1e0 the bootloaders */
+	unsigned char pad1e4[0x4f144 - 0x1e4];
+	char flashFiles[10][22];	/* 4f144 security files */
+	unsigned char pad4f220[0x4f2c0 - 0x4f220];
+	int nFlashFiles2;		/* 4f2c0 the security file count */
+};
+extern struct xebuild xb;
 
 void extract_usage(int err, const char *opt)
 {
@@ -82,12 +90,12 @@ int mode_extract(int argc, char **argv)
 	}
 	if (dump == NULL)
 		extract_usage(2, NULL);
-	strcpy(flashFiles[0], "crl.bin");
-	strcpy(flashFiles[1], "dae.bin");
-	strcpy(flashFiles[2], "extended.bin");
-	strcpy(flashFiles[3], "fcrt.bin");
-	strcpy(flashFiles[4], "secdata.bin");
-	buildMode = 5;
+	strcpy(xb.flashFiles[0], "crl.bin");
+	strcpy(xb.flashFiles[1], "dae.bin");
+	strcpy(xb.flashFiles[2], "extended.bin");
+	strcpy(xb.flashFiles[3], "fcrt.bin");
+	strcpy(xb.flashFiles[4], "secdata.bin");
+	xb.nFlashFiles2 = 5;
 	if (!loadDump(dump)) {
 		log_printf(0, "Loading dump failed!\n");
 		return -1;
@@ -100,7 +108,7 @@ int mode_extract(int argc, char **argv)
 	log_printf(1, separator);
 	log_printf(1, "checking boot image (update mode test):\n");
 	log_printf(1, separator);
-	g47a080 = g479f4c;
+	xb.bl = xb.dump;
 	checkBootImage(0);
 	return 0;
 }

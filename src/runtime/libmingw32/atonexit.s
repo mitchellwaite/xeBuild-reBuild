@@ -13,7 +13,7 @@
 FUN_446b30:
           push EBX
           sub ESP,40
-          mov EAX,DWORD PTR [L_50ec8c]
+          mov EAX,DWORD PTR [___onexitbegin]
           mov DWORD PTR [ESP],EAX
           call FUN_446fc0
           cmp EAX,-1
@@ -21,11 +21,11 @@ FUN_446b30:
           je L_446bd0
           mov DWORD PTR [ESP],8
           call FUN_449208
-          mov EAX,DWORD PTR [L_50ec8c]
+          mov EAX,DWORD PTR [___onexitbegin]
           mov DWORD PTR [ESP],EAX
           call FUN_446fc0
           mov DWORD PTR [ESP+24],EAX
-          mov EAX,DWORD PTR [L_50ec88]
+          mov EAX,DWORD PTR [___onexitend]
           mov DWORD PTR [ESP],EAX
           call FUN_446fc0
           mov DWORD PTR [ESP+28],EAX
@@ -40,12 +40,12 @@ FUN_446b30:
           mov EAX,DWORD PTR [ESP+24]
           mov DWORD PTR [ESP],EAX
           call FUN_446fd0
-          mov DWORD PTR [L_50ec8c],EAX
+          mov DWORD PTR [___onexitbegin],EAX
           mov EAX,DWORD PTR [ESP+28]
           mov DWORD PTR [ESP],EAX
           call FUN_446fd0
           mov DWORD PTR [ESP],8
-          mov DWORD PTR [L_50ec88],EAX
+          mov DWORD PTR [___onexitend],EAX
           call FUN_4491c8
           add ESP,40
           mov EAX,EBX

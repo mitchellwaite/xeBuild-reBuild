@@ -218,7 +218,7 @@ L_4634d4:
           .string "d"
           .string "!"
           .string "\n"
-          .long L_50000a
+          .long 0x50000a
           .string "r"
           .string "o"
           .string "g"
@@ -241,7 +241,7 @@ L_4634d4:
           .string "w"
           .string "s"
           .string ","
-          .long L_4c0020
+          .long 0x4c0020
           .string "i"
           .string "n"
           .string "e"
