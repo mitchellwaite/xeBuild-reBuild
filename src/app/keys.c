@@ -4,10 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
+#include "xebuild.h"
 
 /* XeCrypt's XECRYPT_AES_STATE (two Gladman contexts) */
 typedef struct {
@@ -23,22 +20,6 @@ typedef struct {
 	u32 f424;			/* 424 */
 	u32 f428;			/* 428 */
 } part_t;
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 */
-	u32 type;			/* 008 build type */
-	u8 pad00c[0x060 - 0x00c];
-	u32 bootFlags;			/* 060 */
-	u8 pad064[0x074 - 0x064];
-	u8 cbLdv;			/* 074 */
-	u8 cfLdv;			/* 075 */
-	u8 pad076[0x26c - 0x076];
-	u8 key1bl[16];			/* 26c */
-	u8 cpuKey[16];			/* 27c */
-	u8 key28c[16];			/* 28c */
-};
 
 void aes_init(void);
 void XeCryptRandom(u8 *pb, u32 cb);
@@ -79,8 +60,6 @@ int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
 short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
 int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
 void shaHeader(u8 *buf);
-
-extern struct xebuild xb;
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 #define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))

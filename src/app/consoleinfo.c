@@ -2,66 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
-/* an input file fetched from the console or disk (build's table) */
-struct flashent {
-	int f000;
-	int id;				/* 004 */
-	int f008;
-	u8 *data;			/* 00c */
-	u32 size;			/* 010 */
-	u8 pad014[0x42c - 0x014];
-};
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 console type (& 7), NAND flags */
-	u32 type;			/* 008 build type */
-	u32 kernel;			/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	u8 pad018[0x020 - 0x018];
-	int f020, f024;			/* 020 */
-	u8 pad028[0x060 - 0x028];
-	u32 bootFlags;			/* 060 */
-	u8 pad064[0x068 - 0x064];
-	int xellButton;			/* 068 */
-	int xellAltButton;		/* 06c */
-	int dualButton;			/* 070 */
-	u8 pad074;
-	u8 cfLdv;			/* 075 */
-	u8 pad076[0x29c - 0x076];
-	void *p29c;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *p2a4;			/* 2a4 */
-	u8 pad2a8[0x422b0 - 0x2a8];
-	struct flashent files[34];	/* 422b0 */
-};
-
-/* the console's info response (net.c) */
-struct consoleinfo {
-	u32 version;			/* 000 updsvr version; low byte: hv patches */
-	u32 kernel;			/* 004 */
-	u32 f008;			/* 008 */
-	u32 bootstrap;			/* 00c */
-	u32 hwFlags;			/* 010 */
-	u32 nandType;			/* 014 */
-	u32 f018;			/* 018 */
-	u32 pairing;			/* 01c ldv in the low byte */
-	u8 cpuKey[16];			/* 020 */
-	u8 dvdKey[16];			/* 030 */
-	u8 fuses[96];			/* 040 */
-	u8 vfuses[96];			/* 0a0 */
-	u8 key1bl[16];			/* 100 */
-	u8 pub1bl[272];			/* 110 */
-	u8 pubPirs[272];		/* 220 */
-	u8 pubMaster[272];		/* 330 */
-	u8 keys[6][16];			/* 440 */
-};
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 const char *getConsoleTypeStr(int type);
@@ -89,8 +30,6 @@ void setInfoKey2(const u8 *key);
 void setInfoKey3(const u8 *key);
 void setInfoKey4(const u8 *key);
 void setInfoKey5(const u8 *key);
-
-extern struct xebuild xb;
 
 #define IS_SLIM ((xb.flags & 7) > 4)
 
@@ -386,7 +325,7 @@ int showInfoKeys(int level, const char *dir, int *update)
 	log_printf(level, "1BL RSA pub     : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
-			xb.p29c = info->pub1bl;
+			xb.pub1bl = info->pub1bl;
 		if (dir)
 			writeFileIn(dir, "1BL_pub.bin", info->pub1bl, 272);
 	}
@@ -394,7 +333,7 @@ int showInfoKeys(int level, const char *dir, int *update)
 	log_printf(level, "PIRS RSA pub    : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
-			xb.p2a4 = info->pubPirs;
+			xb.pubPirs = info->pubPirs;
 		if (dir)
 			writeFileIn(dir, "PIRS_pub.bin", info->pubPirs, 272);
 	}
@@ -441,7 +380,7 @@ void showCurrentInfo(int level, int *hdd)
 
 void setInfoKeys(void)
 {
-	xb.f020 = 0;
+	xb.randomKeys = 0;
 	if (!checkZeros(info->keys[0], 16))
 		setInfoKey0(info->keys[0]);
 	if (!checkZeros(info->keys[1], 16))
@@ -473,7 +412,7 @@ int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update
 		return 0;
 	} else {
 		optOpen(optDir);
-		if (showImageType(level, info->bootstrap, info->nandType, info->f018)
+		if (showImageType(level, info->bootstrap, info->nandSize, info->blockSize)
 		    && showInfoKeys(level, dir, update)
 		    && getFlashHdrOpts(level, dir)) {
 			xb.cfLdv = info->pairing;

@@ -14,17 +14,7 @@ void checkBootImage(int arg);
 
 extern char separator[];
 extern int promptEnter;
-struct xebuild {
-	unsigned char pad000[0x0ac];
-	int dump;			/* 0ac the nand dump's data */
-	unsigned char pad0b0[0x1e0 - 0x0b0];
-	int bl;				/* 1e0 the bootloaders */
-	unsigned char pad1e4[0x4f144 - 0x1e4];
-	char flashFiles[10][22];	/* 4f144 security files */
-	unsigned char pad4f220[0x4f2c0 - 0x4f220];
-	int nFlashFiles2;		/* 4f2c0 the security file count */
-};
-extern struct xebuild xb;
+#include "xebuild.h"
 
 void extract_usage(int err, const char *opt)
 {
@@ -108,7 +98,7 @@ int mode_extract(int argc, char **argv)
 	log_printf(1, separator);
 	log_printf(1, "checking boot image (update mode test):\n");
 	log_printf(1, separator);
-	xb.bl = xb.dump;
+	xb.bl.data = xb.dump;
 	checkBootImage(0);
 	return 0;
 }

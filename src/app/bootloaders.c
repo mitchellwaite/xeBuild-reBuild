@@ -9,9 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 /* XeCrypt's XECRYPT_AES_STATE (two Gladman contexts) */
 typedef struct {
@@ -37,17 +35,6 @@ int cbVerifySig(u8 *bl, const void *pubKey);
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
 int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int fcrtVerifySig(u8 *fcrt);
-
-struct xebuild {
-	u8 pad000[0x26c];
-	u8 key1bl[16];			/* 26c */
-	u8 cpuKey[16];			/* 27c */
-	u8 key28c[16];			/* 28c */
-	void *pub1bl;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *pub2a4;			/* 2a4 */
-};
-extern struct xebuild xb;
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
@@ -206,11 +193,11 @@ int crlVerifySig(u8 *crl, u8 *hash)
 {
 	int ok;
 
-	if (!xb.pub2a4)
+	if (!xb.pubPirs)
 		return 1;
 	if (getBeU32(crl) != 0x43524c50)	/* "CRLP" */
 		return 1;
-	ok = XeKeysPkcs1Verify(hash, crl + 32, xb.pub2a4);
+	ok = XeKeysPkcs1Verify(hash, crl + 32, xb.pubPirs);
 	if (ok)
 		log_printf(1, msg_sigGood);
 	else
@@ -266,9 +253,9 @@ static const char msg_daeSigGood[] __attribute__((aligned(1))) = "sig %d good! "
 static const char msg_daeSigFail[] __attribute__((aligned(1))) = "\nsig %d FAIL! ";
 
 /* check one DAE segment's signature (1 if no key or too short).  ifcombine
-   merges the size test with !xb.pub2a4 and the pair keeps the size test's
+   merges the size test with !xb.pubPirs and the pair keeps the size test's
    probability; the hint call (PRED_CALL; once inlined, its store to a dead
-   local goes) lowers it so the FAIL block comes before the !xb.pub2a4 return */
+   local goes) lowers it so the FAIL block comes before the !xb.pubPirs return */
 __attribute__((optimize("no-early-inlining")))
 int daeVerifySig(u8 *seg, u32 size, int n)
 {
@@ -276,7 +263,7 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 	u8 hash[20];
 	int ok, dead;
 
-	if (!xb.pub2a4)
+	if (!xb.pubPirs)
 		return 1;
 	if (size < 288) {
 		hint(&dead);
@@ -284,7 +271,7 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 	}
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pub2a4);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pubPirs);
 	if (!ok)
 		log_printf(1, msg_daeSigFail, n);
 	else
@@ -302,13 +289,13 @@ static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, 
 	u8 hash[20];
 	int ok;
 
-	if (!xb.pub2a4)
+	if (!xb.pubPirs)
 		return 1;
 	if (size < 288)
 		return 1;
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pub2a4);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pubPirs);
 	if (ok)
 		log_printf(1, msg_daeSigGood, n);
 	else
@@ -358,7 +345,7 @@ inline __attribute__((always_inline)) int fcrtVerifySig(u8 *fcrt)
 	void *pub;
 	int ok;
 
-	pub = (getBeU32(fcrt + 272) & 0x80000000) ? xb.pub2a4 : xb.masterPub;
+	pub = (getBeU32(fcrt + 272) & 0x80000000) ? xb.pubPirs : xb.masterPub;
 	if (!pub) {
 		log_printf(1, msg_noPub);
 		return 1;

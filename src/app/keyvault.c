@@ -2,27 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 u32 getBeU32(const u8 *p);
 int kvVerifySig(u8 *kv, const void *pubKey, const u8 *hmacKey);
 int validateString(char *nString);
 unsigned char myatox8(char *dat);
-
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 */
-	int type;			/* 008 build type */
-	u8 pad00c[0x27c - 0x00c];
-	u8 cpuKey[16];			/* 27c */
-	u8 pad28c[0x2a0 - 0x28c];
-	void *masterPub;		/* 2a0 */
-};
-extern struct xebuild xb;
 
 static u8 kvBuf[0x4000];
 static u8 dvdKey[16];

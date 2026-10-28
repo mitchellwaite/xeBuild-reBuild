@@ -5,60 +5,12 @@ int _chdir(const char *path);	/* msvcrt, called through its import stub */
 #include <string.h>
 #include <signal.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 #define XEBUILD_NAME "xeBuild"
 #define XEBUILD_MAJOR 1
 #define XEBUILD_MINOR 21
 #define XEBUILD_BUILD "810"
-
-/* the program's state; initGlobals clears all of it */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 console type (& 7), NAND flags */
-	u32 type;			/* 008 build type */
-	u32 kernel;			/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	u8 pad018[0x020 - 0x018];
-	int f020, f024;			/* 020 */
-	u8 pad028[0x060 - 0x028];
-	u32 bootFlags;			/* 060 */
-	u8 pad064[0x068 - 0x064];
-	int xellButton;			/* 068 */
-	int xellAltButton;		/* 06c */
-	int dualButton;			/* 070 */
-	u8 pad074;
-	u8 cfLdv;			/* 075 */
-	u8 pad076[0x078 - 0x076];
-	int f078[13];			/* 078 */
-	u8 pad0ac[0x0cc - 0x0ac];
-	int nandMu;			/* 0cc */
-	u8 pad0d0[0x26c - 0x0d0];
-	u8 key1bl[16];			/* 26c */
-	u8 cpuKey[16];			/* 27c */
-	u8 pad28c[0x29c - 0x28c];
-	void *p29c;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *p2a4;			/* 2a4 */
-	void *p2a8;			/* 2a8 */
-	u8 pad2ac[0x6ac - 0x2ac];
-	char binDir[0x800];		/* 6ac */
-	char baseDir[0x400];		/* eac */
-	char dataDir[0x400];		/* 12ac */
-	char commonDir[0x400];		/* 16ac */
-	u8 pad1aac[0x4f144 - 0x1aac];
-	char flashFiles[10][22];	/* 4f144 */
-	void *flashBuf[10];		/* 4f220 */
-	int flashSize[10];		/* 4f248 */
-	u8 pad4f270[0x4f504 - 0x4f270];
-	char *iniBuf;			/* 4f504 */
-	char sha1File[0x400];		/* 4f508 */
-	int sha1Write;			/* 4f908 */
-	int iniSize;			/* 4f90c */
-};
 
 void log_set_verbose(int v);
 void log_printf(int level, const char *fmt, ...);
@@ -88,8 +40,6 @@ int mode_update(int argc, char **argv);
 int mode_extract(int argc, char **argv);
 int mode_build(int argc, char **argv);
 void build_usage(void);
-
-extern struct xebuild xb;
 
 /* gcc emits these in reverse: separator comes first in .data */
 int promptEnter = 1;
@@ -430,10 +380,12 @@ void initGlobals(void)
 	strcpy(xb.binDir, "./bin/");
 	strcpy(xb.dataDir, "./data/");
 	strcpy(xb.commonDir, "./common/");
-	xb.f020 = 1;
-	xb.f024 = 1;
+	xb.randomKeys = 1;
+	xb.sysTime = 1;
+	/* TODO(xebuild.h cast): the 13 ints from cpuTemp to macid's padding,
+	   set as one array; xb has named fields there now */
 	for (i = 0; i < 13; i++)
-		xb.f078[i] = -1;
+		((int *)&xb.cpuTemp)[i] = -1;
 }
 
 void setBasePath(const char *argv0)
@@ -506,14 +458,14 @@ done:
 	imageFree();
 	if (xb.iniBuf)
 		free(xb.iniBuf);
-	if (xb.p29c)
-		free(xb.p29c);
-	if (xb.p2a4)
-		free(xb.p2a4);
+	if (xb.pub1bl)
+		free(xb.pub1bl);
+	if (xb.pubPirs)
+		free(xb.pubPirs);
 	if (xb.masterPub)
 		free(xb.masterPub);
-	if (xb.p2a8)
-		free(xb.p2a8);
+	if (xb.prvKey)
+		free(xb.prvKey);
 	log_printf(0, separator);
 	log_printf(0, "    %s Finished. Have a nice day.\n", XEBUILD_NAME);
 	log_printf(0, separator);
