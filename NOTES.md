@@ -155,7 +155,7 @@ does nothing.
   (error messages first). The order shows the original's shape: write the
   function success-first (error in an else, or after the main path) and
   the literals line up, usually with identical code (bootloaders, keys,
-  mode_update, filelist_ini, net, options). Where the shape is pinned by layout, an
+  mode_update, filelist_ini, net, options, image_read). Where the shape is pinned by layout, an
   empty `__asm__("" :: "i"("literal"))` pulls a literal earlier without
   touching codegen (it makes no SSA names). Older objects still keep such
   strings as `static const char` arrays in the original's order, defined

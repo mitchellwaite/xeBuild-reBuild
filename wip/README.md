@@ -937,10 +937,15 @@ Still off:
 
 Draft of the whole object, with string literals. All 33 functions match;
 `src/image_read.c` is the whole object (no `.s`), made from this file
-by `python wip/irwhole.py` and built with `-fno-toplevel-reorder`: the
-strings become `static const char ir_<address>[]` arrays, each defined
-before the first function whose part of .rdata it lies in, and the
-variables go in the original's .data/.bss order. The history below is
+by `python wip/irwhole.py` and built with `-fno-toplevel-reorder`, which
+keeps the variables in the original's .data/.bss order. irwhole.py made
+the strings `static const char ir_<address>[]` arrays; since 2026-10-28
+src uses plain literals instead, in the original's .rdata order through
+its shape (getImageLdv, getImageMobiles, findFsRoot, findSmcConfig,
+addRemap, detectController and loadDump are success-first) and two
+`asm "i"` hints: getImageSmc's zero/bad arms must stay last, and
+findAnchor's 0x2fec000 logs exist only as dom3-threaded copies.
+findFsRoot's `if (!i)` list test doesn't unroll in that nested shape. The history below is
 from when the object was mixed (`wip/irmixed.py`, removed). Compare with
 the strings as those names (`wip/ircmp.py` does), not with
 `FNCMP_LITERALS=1`: two cold blocks that differ only in their string
