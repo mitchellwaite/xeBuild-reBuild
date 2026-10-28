@@ -2091,6 +2091,54 @@ only shows in `sh build.sh`.
     bb-reorder's round-3 branch threshold (10%): at 40% (v1, the B-loop only)
     nokey went to that round's heap, was re-pushed later and the fibheap tie
     popped it before SE and c11.
+  Eleventh pass (2026-10-28, without a profile: 16 -> 2 fncmp lines, 3 asm
+  lines with alignment; wip/build_noprof.patch on 28c909e's src/build.c,
+  plain compile only, the other 40 functions and .rdata unchanged; scratch
+  build/v/nop/: var.py variants (BASE=, FN=), probe.py/dd.sh bbro rows per
+  block, asmcmp.sh / ascore.sh = build.sh's plain compile of a file diffed
+  against build/obj/build.s's loadBlFiles, alignment included):
+  - Un-draining c11: a fifth entry into dom2's FSM region head X (vrp1's
+    shared checkBl joiner copy) whose `type` PHI arg is not a literal, so
+    no FSM thread takes it and X keeps a fraction: c11 ends at c11 x
+    f5 / X instead of 0. The entry is dead but only folds after the loop
+    passes: `if ((char *)__builtin_constant_p(i) == (char *)1 && (char
+    *)__builtin_constant_p(type) == (char *)1) { type = (type & 1) + 18;
+    goto chk; }` in loadBl's default case. __builtin_constant_p stays a
+    call until fab (pass 174, after dom3/vrp2; ccp leaves it, only fab
+    folds it to 0); on a pointer argument it folds to 0 before IPA (no dead
+    edge). The value's range ([18,19]; [6,7] and [12,15] work too) lets
+    vrp1 put the entry into the same joiner copy. The two pointer compares
+    (PRED_TREE_POINTER, 15% each) set the weight: c11 = 31 (one `==
+    const` test 57, expect 4; the window is between the sigfail trace head
+    ~29-33 and SE 22). It also keeps the type-10 expect working: the 17 ->
+    pub1bl edge is 73 x 69% = 50 >= round-3 exec_th 44, so bb 23 (type ==
+    17) is no trace end and c11 has no priority. Without the expect the edge
+    is fine too, but the type-9 checkBl copy reaches 90 >= the duplication
+    threshold (88) and bb-reorder copies the r test into its tail (n_p, 4).
+    The dead blocks are still there at ivopts: weaker weights (one 34% `==`
+    and one pointer test in the else-break slot) left the sigfail
+    setFlashBuild copy to dom3 (`mov eax,[ebx]` instead of `imul
+    [44+esp]`); the default-case slot doesn't.
+  - Left 1, SE `ja` for `jbe` (old): the SE copy of `xb.type <= 5` has the
+    generic test's 23.1% (50% at profile_estimate, no predictor; vrp1's
+    threads drain the <=5 side). expect(<=5, 1) or a cold label on the >5
+    side fix the polarity but make the generic setFlashBuild block cold (it
+    moves, 14); a hot label on the <=5 side changes nothing.
+  - Left 2, `.p2align 4,,10` on c11 (the original has none): compute_
+    alignments' second rule, freq > 10 x prev's freq, prev being the sigfail
+    setFlashBuild copy at frequency 0. That copy is dom2's FSM copy entered
+    over the sigfail joiner copy of `xb.type <= 5`, whose >5 edge vrp1
+    made 0%: tree-ssa-threadupdate.c compute_path_counts (gcc 6.2) raises a
+    joiner copy's on-path count to elast->count - nonpath_count (capped at
+    the path minimum), and nonpath_count is tiny because nearly every
+    predecessor of `xb.type <= 5` is itself on a thread path; the sigfail
+    copy's <=5 edge takes all 29. So c11 (>= 22 for its slot) needs that
+    copy >= c11 / 10: more non-threaded flow into `xb.type <= 5` or into
+    the `if (*pr) goto fail` block after it (another dead entry) is the
+    next thing to try, but the copy tops out near 29 x 13.7% = 4.
+  - Dead ends this pass: every single -fno-* flag of the usual set
+    (none below the plain 22); the dead entry at the top of loadBl (238+,
+    the hot path's frequencies change); `||` dead tests (22).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
