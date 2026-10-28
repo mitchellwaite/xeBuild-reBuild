@@ -1266,6 +1266,45 @@ now works for this object:
   (fncmp 148); the realized frequencies match the design exactly, so the
   tooling isn't the limit.  Scripts: `wip/mc/mcgrid.py` (grid over
   cold keys on a build's own dump), `wip/mc/mcsolve.py`, `mcearly.py`.
+  `wip/mc/fdodesigns.sh` has every design as run, with the prep command
+  and how to inspect a slot (`cfgdump.py` for frequencies, probabilities
+  and counts of an RTL dump; `gcdadbg.py` for what gcda.py wrote).
+
+For a future session (state on 2026-10-27, commit 852133f):
+
+- What is known for certain, from the original's layout: the cold round-4
+  traces are extracted in the order of `wip/mc/mcvar.py`'s WANT (HDD errors
+  before usage(2)); the entry frequency is in 141..240 (round thresholds:
+  -ip at 7 is round 4, usage(0) at 12 round 3); every block's content
+  matches the draft.  Under gcc's rules as understood (bb_to_key = -freq,
+  copy_bb_p ending the trace at the arg test, connect_traces by
+  probability, the 2% loop-exit floor, 1/13 per switch edge, PRED_CALL on
+  the HDD test) that order is impossible, so one of those rules must not
+  hold for the original's CFG.  The cheapest checks still open:
+  - make usage(2)'s block colder than its threaded edge: in our build the
+    4 units arrive when `sink` merges the entry-path forwarder into it
+    (`wip/README.md` above, dom2/pre/sink dumps); a CFG where that merge
+    doesn't happen (two forwarders, or a PHI in the way) would leave the
+    block at 0 — but then -r (2) would precede usage(2), unless the chain
+    is colder than ours too;
+  - make the HDD cases hotter than 1/13: a switch with fewer edges at
+    estimation time (any `case` folded or merged later), or a second
+    predecessor of the error blocks;
+  - a hotter block than the loop header at estimation time (an inner loop
+    removed later) scales the entry down; a loop around the three help
+    tests was tried (`tv_helploop` in `wip/mc/tailvar.py` style) and
+    destroys the hot layout, but other shapes weren't.
+- Don't redo: hint/polarity/expect searches, tail shapes in `gen2.py`,
+  key searches on the draft's heap history, profile designs with uniform
+  or grouped cases (the arg test decides them).
+- When mode_client finally matches: `python wip/mcwhole.py` turns the
+  draft into a whole-object `src/app/mode_client.c` (strings as
+  `mc_<addr>` arrays in .rdata order, client_usage's table placed; its
+  .rdata end came out 3 bytes short of the original on 2026-10-27, check
+  that first), then `re/split.py` loses the object's `.s`, build.sh gets
+  the flags (the draft wants `-O3 --param builtin-expect-probability=50`,
+  plus `-fno-toplevel-reorder` for the string order), and README's
+  Progress section is regenerated with `re/progress.py`.
 
 ## app/net.c
 
