@@ -8,7 +8,7 @@ X2LABELS: comma list of sp numbers in edge order, e.g. 112,115,103,107"""
 import sys
 ROOT = r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix'
 LAB = {112: 'hdd4', 115: 'hdd5', 103: 'u2', 107: 'c1', 108: 'c2', 109: 'c3', 116: 'c7', 119: 'c8', 120: 'c9',
-       121: 'c10', 128: 'c11', 129: 'c12', 132: 'cdef', 117: 'p0', 130: 'i0'}
+       121: 'c10', 128: 'c11', 129: 'c12', 132: 'cdef', 117: 'p0', 130: 'i0', 131: 'i1', 118: 'p1', 114: 's5'}
 out, x2 = sys.argv[1], [int(x) for x in sys.argv[2].split(',') if x]
 x1 = [int(x) for x in sys.argv[3].split(',') if x] if len(sys.argv) > 3 and not ':' in sys.argv[3] else None
 rx = [a for a in sys.argv[3:] if ':' in a]
@@ -39,6 +39,10 @@ rep("case 11:\n\t\t\t\tclientBinPatch(", "case 11:\n\t\t\t\tc11: clientBinPatch(
 rep("case 12:\n\t\t\t\tif (arg == dummy)\n\t\t\t\t\tclientInfo(NULL);",
     "case 12:\n\t\t\t\tc12: if (arg == dummy)\n\t\t\t\t\t{ i0: clientInfo(NULL); }")
 rep("default:\n\t\t\t\tlog_printf(0, \"\\n\\n***** ERROR: invalid mode", "default:\n\t\t\t\tcdef: log_printf(0, \"\\n\\n***** ERROR: invalid mode")
+allt = set(x2) | set(x1 or [])
+if 131 in allt: rep("clientInfo(arg);", "{ i1: clientInfo(arg); }")
+if 118 in allt: rep("clientPatches(arg);", "{ p1: clientPatches(arg); }")
+if 114 in allt: rep("sendCompatData(arg);", "{ s5: sendCompatData(arg); }")
 if '126:125' in rx:
     rep("""				log_printf(0, "\\n\\n***** ERROR: Failed to erase block 0x%x!\\n", block);""",
         """				{ efail: log_printf(0, "\\n\\n***** ERROR: Failed to erase block 0x%x!\\n", block); }""")

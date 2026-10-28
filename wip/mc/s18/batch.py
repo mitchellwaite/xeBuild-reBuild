@@ -24,6 +24,9 @@ for it in range(N):
     else:
         x2 = random.sample(X2ALL, len(X2ALL))
         x1 = [t for t in X1ALL if random.random() < 0.5]; random.shuffle(x1)
+    if os.environ.get('DROPX2') == '1':
+        for t in (117, 130):
+            if random.random() < 0.6 and t in x2: x2.remove(t)
     rx = os.environ.get('BRX', '126')
     r = subprocess.run([sys.executable, S + r'\variant.py', name, ','.join(map(str, x2)), ','.join(map(str, x1)), rx,
                         os.environ.get('BASEOV', ROOT + r'\build\mcz8\slotz1\ov.json'), S + r'\des_sane.json'], capture_output=True, text=True,

@@ -12,6 +12,7 @@ os.environ['MCD'] = MCD
 TC = {107: 114, 108: 115, 109: 116, 110: 117, 113: 120, 116: 123, 119: 126, 120: 127, 121: 128, 128: 129, 129: 130, 132: 133}
 X2T = {112: 119, 115: 122, 103: 110, 117: 124, 130: 131, 107: 114, 108: 115, 109: 116, 116: 123, 119: 126, 120: 127,
        121: 128, 128: 129, 129: 130, 132: 133}
+ARMT = {131: 132, 118: 125, 114: 121}    # arm blocks (zero-flow X1/X2 targets)
 LOOPU = {29: 'mode_client:27>29', 33: 'mode_client:19>20', 35: 'mode_client:34>35', 53: 'mode_client:40>41',
          42: 'mode_client:42>43', 77: 'mode_client:61>62', 79: 'mode_client:77>78'}
 XPRI = {}
@@ -27,7 +28,7 @@ def defaults(tgt):
     ov['mode_client:113>134'] = 0.0
     for t in X2T: ov['mode_client:109>%d' % X2T[t]] = 0.0
     for t in os.environ.get('X1T', '112,115,121').split(','):       # X1 (vY asm goto) carries no flow
-        if t: ov['mode_client:112>%d' % X2T[int(t)]] = 0.0
+        if t: ov['mode_client:112>%d' % {**X2T, **ARMT}[int(t)]] = 0.0
     ov['mode_client:45>49'] = 15.7; ov['mode_client:46>47'] = 17.0
     if os.environ.get('RX117') == '1': ov['mode_client:124>131'] = 0.0
     if os.environ.get('RX126', '1') == '1': ov['clientEraseBlock:7>6'] = 0.0
@@ -96,10 +97,10 @@ def step(ov, tgt, keys, named, corr):
             # measured dispatch part: the larger of the two parts is P (if dispatch is larger)
             mD = mP if Dc >= ec else (mF - mP if c != 132 else (mF - mP) / 2.0)
             if mD > 0 and abs(mD - Dc) >= 1:
-                corr["D%d" % c] = min(1.25, max(0.8, corr.get('D%d' % c, 1.0) * (Dc / mD) ** 0.7))
+                corr["D%d" % c] = min(1.15, max(0.85, corr.get('D%d' % c, 1.0) * (Dc / mD) ** 0.7))
         sh = 100.0 * Dc / D * corr.get('D%d' % c, 1.0) * (2.0 if c == 132 else 1.0)
         ov['mode_client:113>%d' % TC[c]] = max(0.0, sh); tot += max(0.0, sh)
-        k = 'mode_client:109>%d' % X2T[c] if c in X2T else None
+        k = 'mode_client:109>%d' % X2T[c] if c in X2T and ('mode_client:109>%d' % X2T[c]) in ov else None
         if k:
             if ec <= 0: ov[k] = 0.0
             else:
@@ -111,6 +112,7 @@ def step(ov, tgt, keys, named, corr):
     ov['mode_client:113>134'] = max(0.0, 100.0 - tot)
     for t in (112, 115, 103, 117, 130):
         k = 'mode_client:109>%d' % X2T[t]
+        if k not in ov: continue
         want, got = P.get(t, 0), mp(t)
         ck = 'x2_%d' % t
         if want <= 0:
@@ -144,7 +146,7 @@ def step(ov, tgt, keys, named, corr):
         t46 = max(11, min(named['k48'] - 2, 13))
         adj(ov, 'mode_client:46>47', t46, named['b46'], 1, 60)
     adj(ov, run12.key('r'), f[55], mf(55), 0.05, 49)
-    adj(ov, run12.key('w'), f[61], mf(61), 0.05, 49)
+    adj(ov, run12.key('w'), f[61], mf(61), 0.05, 47)
     adj(ov, run12.key('e'), f[67], mf(67), 0.05, 49)
     for b, k in LOOPU.items():
         if b in f: adj(ov, k, f[b], mf(b), 0.0, 5)

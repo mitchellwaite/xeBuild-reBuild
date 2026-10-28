@@ -46,8 +46,15 @@ def spmap(sd):
     if 'k48' in inv2:
         for x in blk[inv2['k48']]['succ']:
             if x != inv2.get(49): sp[x] = 'k94'
+    for b, d in blk.items():
+        if b in sp: continue
+        if 'clientInfo' in d['calls']: sp[b] = 131
+        elif 'clientPatches' in d['calls']: sp[b] = 118
+        elif 'sendCompatData' in d['calls']: sp[b] = 114
     disp = max((b for b in blk if not blk[b]['calls']), key=lambda b: len(blk[b]['succ']))
     sp[disp] = 'disp'
+    for b, d in blk.items():
+        if b != disp and not d['calls'] and len(d['succ']) >= 3 and b not in sp: sp[b] = 'x1'
     for b, d in blk.items():
         if 'netGetInfo' in d['calls'] and inv.get(103) in d['succ']: sp[b] = 'rok'
     return bbro, sp

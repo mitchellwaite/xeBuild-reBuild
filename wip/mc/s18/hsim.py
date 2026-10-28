@@ -11,9 +11,12 @@ import fibsim, fibwhatif, mcsim2, analyze
 def load(sd):
     bbro, sp = analyze.spmap(sd)
     ren = {}
+    global ROK
     for b, s in sp.items():
         if isinstance(s, int): ren[b] = s
         elif s == 'k94': ren[b] = 94
+        elif s == 'rok': ROK = b + 1000
+        elif s == 'x1': globals()['X1B'] = b + 1000
     def rn(b):
         return ren.get(b, b + 1000)
     tmp = os.path.join(sd, 'bbro_mc.txt')
@@ -27,6 +30,11 @@ def load(sd):
         elif e[0] == 'chg': out.append(('chg', rn(e[1]), e[2]))
         else: out.append(e)
     R = fibwhatif.groups(out)
+    PFIN.clear()
+    for e in out:
+        k = e[3] if e[0] == 'ins' else (e[2] if e[0] in ('push', 'chg') else None)
+        b = e[2] if e[0] == 'ins' else (e[1] if e[0] in ('push', 'chg') else None)
+        if k is not None and k <= -1000000: PFIN[b] = (-k - 1000000) // 100
     o, inv, keys, named = analyze.analyze(sd)
     return R, keys
 
@@ -37,19 +45,33 @@ for _it in os.environ.get('RXEV', '').split(','):
         _s, _t = map(int, _it.split(':')); RXEV.setdefault(_s, []).append(_t)
 
 
+PFIN = {}
+XINS = [int(x) for x in os.environ.get('XINS', '').split(',') if x]
+XINS1 = [int(x) for x in os.environ.get('XINS1', '').split(',') if x]
+X1B = None
+ROK = None
+
+
 def sim(R, f, P, entry=1002):
     heap = fibsim.Heap(); new = None
     loc = {entry: (heap, heap.insert(0, entry))}
     order = []
     def key(b, k):
         if b not in f: return k
-        if k <= -1000000: return -(1000000 + 100 * P.get(b, 0) + f[b]) if P.get(b, 0) > 0 else -f[b]
+        if k <= -1000000:
+            ph = (-k - 1000000) // 100
+            if b in PFIN and ph != PFIN[b]:
+                return -(1000000 + 100 * ph + f[b])      # intermediate priority (e.g. dispatch before X2)
+            return -(1000000 + 100 * P.get(b, 0) + f[b]) if P.get(b, 0) > 0 else -f[b]
         if k >= 10000: return k
         return -f[b]
     def apply(e):
         if e[0] == 'visit':
             if e[1] in loc:
                 h, n = loc.pop(e[1]); h.delete_node(n)
+            if e[1] == X1B and XINS1:
+                for t in XINS1:
+                    if t not in loc: loc[t] = (new, new.insert(-f.get(t, 5), t))
         elif e[0] == 'ins':
             h = heap if e[1] == 'this' else new
             if e[2] in loc: return
@@ -68,7 +90,13 @@ def sim(R, f, P, entry=1002):
         while heap.min is not None:
             z = heap.extract_min(); b = z.data; loc.pop(b, None)
             order.append((ri, b))
-            for e in r['g'].get(b, []): apply(e)
+            evs = r['g'].get(b, [])
+            if ri == 3 and b == ROK and XINS:
+                # gcc inserts the not-yet-queued targets while visiting rok (edge order), then re-keys
+                pos = os.environ.get('XPOS', 'mid')
+                k = 1 if pos == 'pre' else next((i for i, e in enumerate(evs) if e[0] == 'chg'), len(evs))
+                evs = evs[:k] + [('ins', 'next', t, -f.get(t, 5)) for t in XINS] + evs[k:]
+            for e in evs: apply(e)
             if ri == 4 and b in RXEV:
                 for t in RXEV[b]:
                     if t in loc and P.get(t, 0) > 0:
@@ -96,6 +124,11 @@ def measured(keys):
         f[b] = v if v is not None and v >= 0 else 0
         P[b] = p or 0
     return f, P
+
+
+def armf(sd):
+    o, inv, keys, named = analyze.analyze(sd)
+    return {b: named['fq'].get(b) for b in (131, 118, 114) if named['fq'].get(b) is not None}
 
 
 if __name__ == '__main__':

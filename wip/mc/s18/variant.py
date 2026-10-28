@@ -15,8 +15,13 @@ sd = d + r'\slotv'
 os.makedirs(sd, exist_ok=True)
 ov = json.load(open(ov0))
 X2T = {112: 119, 115: 122, 103: 110, 117: 124, 130: 131, 107: 114, 108: 115, 109: 116, 116: 123, 119: 126, 120: 127,
-       121: 128, 128: 129, 129: 130, 132: 133}
+       121: 128, 128: 129, 129: 130, 132: 133, 131: 132, 118: 125, 114: 121}
 ov = {k: v for k, v in ov.items() if not k.startswith('mode_client:112>')}
+x2s = set(int(t) for t in x2.split(',') if t)
+for t, tt in X2T.items():
+    k = 'mode_client:109>%d' % tt
+    if t in x2s: ov.setdefault(k, 0.0)
+    else: ov.pop(k, None)
 for t in x1.split(','):
     if t: ov['mode_client:112>%d' % X2T[int(t)]] = 0.0
 if '117' not in rx.split(','): ov.pop('mode_client:124>131', None)

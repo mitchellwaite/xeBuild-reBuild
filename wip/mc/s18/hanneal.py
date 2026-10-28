@@ -7,6 +7,7 @@ sd, EV, SEED = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 random.seed(SEED)
 R, keys = hsim.load(sd)
 f0, P0 = hsim.measured(keys)
+f0.update(hsim.armf(sd))
 if os.environ.get('START'):
     d = json.load(open(os.environ['START']))
     for k, v in d['f'].items(): f0.setdefault(int(k), v)
@@ -21,10 +22,20 @@ RX126 = P0.get(125, 0) > 0
 RX117 = '117:130' in os.environ.get('RXEV', '')
 
 
+MARG = float(os.environ.get('MARG', '0.3'))
+
+
+def chain_ok(f):
+    rm = fake7.rmax
+    x49 = f[49] + MARG
+    h = 0.48
+    return f[55] <= rm(x49 * h) and f[61] <= rm(x49 * h * h) and f[67] <= rm(x49 * h ** 3)         and f[61] <= rm((f[55] + MARG) * h) and f[67] <= rm((f[61] + MARG) * h)
+
+
 def ok(f, P):
-    if not fake7.chain_ok(f): return False
+    if not chain_ok(f): return False
     if not (f[49] - 1 <= P[49] <= f[49]): return False
-    if f[94] > 9 or f[94] + f[49] < int(os.environ.get('F48', '12')) or P.get(94, f[94]) != f[94]: return False
+    if f[94] > 9 or f[94] + f[49] < int(os.environ.get('F48', '15')) or P.get(94, f[94]) != f[94]: return False
     for c in CASES:
         if f[c] > FMAX or P[c] < 1 or P[c] > f[c]: return False
         if c in (110, 113) and f[c] != P[c]: return False
@@ -34,6 +45,7 @@ def ok(f, P):
     for b in (112, 115, 103):
         if P[b] > f[b] or f[b] > 9: return False
     if f[103] < P[103] + 1: return False
+    if f[103] - P[103] > int(os.environ.get('U2BASE', '99')): return False
     if f[112] - P[112] > f[110] / 2 or f[115] - P[115] > f[113] / 2: return False
     if f[117] > f[116] / 2 or f[130] > f[129] / 2 or f[127] > f[121] / 2: return False
     if RX117:
@@ -43,7 +55,9 @@ def ok(f, P):
     if f[127] > f[121] or f[126] > f[121] / 2 + .5: return False
     if RX126 and P[125] > f[125]: return False
     if sum(f[c] for c in CASES) + P[112] + P[115] + P[103] > int(os.environ.get('FLOWMAX', '113')): return False
-    if sum(f[c] - P[c] for c in CASES if c != 132) + P[112] + P[115] + P[103] > int(os.environ.get('X2MAX', '33')): return False
+    sp = sum(P[c] for c in CASES)
+    if sum(f[c] - P[c] for c in CASES if c != 132) + P[112] + P[115] + P[103] + max(0, sp - int(os.environ.get('DMAX', '78'))) > int(os.environ.get('X2MAX', '31')): return False
+    if f[126] > (f[121] - f[127]) * 0.48 + 0.3: return False
     return True
 
 
