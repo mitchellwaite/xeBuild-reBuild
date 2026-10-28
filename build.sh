@@ -56,8 +56,7 @@ objs=
 for f in $objects globals; do
   mkdir -p "$OBJ/$(dirname "$f")"
   [ -f "src/$f.c" ] || { echo "build.sh: no src/$f.c" >&2; exit 1; }
-  prof= fprof= ffns=
-  fflags="-DBUILD_FDO -fno-ipa-profile -fno-reorder-functions -ftoplevel-reorder -Wno-aggressive-loop-optimizations"
+  prof= fprof= ffns= fflags=
   case "$f" in
     # original build path, for __FILE__ in assert(); fed through stdin so
     # the #line can name it (gcc 6 has no -ffile-prefix-map)
@@ -126,21 +125,10 @@ for f in $objects globals; do
     net) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=65" ;;
     # loadFileCrc's verbose hint (92-99); 98 for wip/'s checkBl draft.
-    # loadBlFiles' type-11 block is laid out by frequencies no guessed
-    # profile gives (dom2's FSM threader zeroes it; wip/README.md): it comes
-    # from a second compile (fprof) with -DBUILD_FDO and a crafted profile
-    # for it and the static loadBl it inlines (and loadBl60); NOPROF keeps
-    # the guessed one for the rest. -DBUILD_FDO also shrinks xb.files' bound
-    # (the loop's iteration estimate decides an ivopts tie), hence the
-    # warning flag. --consistent: exact zero counts. --runs=0: no block is
-    # never executed, so the no-key log (hot for its alignment, through
-    # dead edges) keys 0 in bb-reorder like the zero-count chains it follows.
     # -fno-toplevel-reorder emits the functions, strings and .data in
     # definition order
     build) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=98"
-           fprof="@src/build.prof --only=loadBlFiles,loadBl,loadBl60 --consistent --runs=0"
-           ffns=_loadBlFiles ;;
+           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=98" ;;
     # mode_client's layout comes from a second compile (fprof) with
     # -DBUILD_FDO: empty asm-goto edges and a crafted profile for it and
     # the clientEraseBlock it inlines (src/mode_client.c's head
@@ -166,10 +154,8 @@ for f in $objects globals; do
     { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
       "$TC/gcc.exe" -S $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
   fi
-  # a second compile with -DBUILD_FDO and a profile for the functions in $ffns
-  # (-ftoplevel-reorder: with -fno-toplevel-reorder ipa-reference doesn't
-  # see the never-set statics as read-only, so ccp2 keeps their tests);
-  # these are build.c's flags, a case may set its own $fflags
+  # a second compile with the case's $fflags and a profile for the functions
+  # in $ffns
   fs=
   if [ -n "$fprof" ]; then
     fdo "$fprof" $fflags > "$OBJ/$f.fdo.s"

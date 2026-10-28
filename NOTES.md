@@ -129,7 +129,8 @@ pulled log's strings into console_hdd).
 
 (History: every object is whole C now, and `build.sh` no longer assembles
 `.s` files or splices C functions into them; `splice.py --whole` is still
-used for the second-compile functions of `build` and `mode_client`.)
+used for `mode_client`'s second-compile function; `build` compiles plainly
+since the eleventh pass in wip/README.md.)
 
 An object doesn't have to move to C all at once. Functions listed in
 `split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.

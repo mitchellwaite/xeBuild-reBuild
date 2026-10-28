@@ -3,23 +3,13 @@
    Built with -fno-toplevel-reorder: functions, .data and strings come out
    in definition order. The strings are literals: gcc emits a function's
    in the order it expands their blocks, so the original's .rdata order
-   follows from the code's shape (checkBl keeps an asm "i" hint).
-   build.sh takes loadBlFiles from a second (profile) compile; its
-   literals stay where this compile puts them (re/splice.py --whole maps
-   its labels to this compile's by contents). */
+   follows from the code's shape (checkBl keeps an asm "i" hint). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* xb.files' declared bound sets the files loops' trip count estimate. In
-   build.sh's profile compile (-DBUILD_FDO) loadBlFiles' loop gets it from the
-   crafted counts (11 iterations), which ivopts' cost model turns into a third
-   IV; 5 caps it as the guessed profile's 5 does */
-#ifdef BUILD_FDO
-#define XB_FILES_BOUND 5
-#else
+/* xb.files' declared bound sets the files loops' trip count estimate */
 #define XB_FILES_BOUND 19
-#endif
 
 #include "crypto/xecrypt.h"
 #include "xebuild.h"
@@ -400,38 +390,12 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
    call argument it is computed at its store */
 #define SWAP16(x) ((uint16_t)(((uint32_t)(x) << 8) | ((uint32_t)(x) >> 8)))
-/* build.sh compiles src/build.c twice: plainly, and with -DBUILD_FDO, a
-   crafted profile for loadBlFiles and the loadBl it inlines (dom2's FSM
-   threader zeroes loadBlFiles' type-11 block, which no guessed profile places
-   right: wip/README.md) and the guessed one for everything else
-   (NOPROF on them; a function without counts would compile as never
-   executed). Only loadBlFiles is taken from the second compile
-   (re/splice.py --whole) */
-#ifdef BUILD_FDO
-#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
-#else
-#define NOPROF
-#endif
-/* -DBUILD_FDO: loadBl's dead edges (never-set statics, folded by ccp2 after
-   the profile is read; blocks keep the removed edges' counts) give its no-key
-   log a hot count, frequency 0 and an incoming edge frequency above the
-   alignment threshold, so final aligns it while bb-reorder keys it 0 like the
-   type-11 and SE chains it must follow (wip/README.md, tenth pass) */
-#ifdef BUILD_FDO
-static int nk_never1, nk_never2, nk_never3;
-#define NK_DEAD(v, l) if (v) goto l
-#define NK_LABEL(l) l:
-#else
-#define NK_DEAD(v, l)
-#define NK_LABEL(l)
-#endif
 /* an SMC config fan byte */
 struct fan {
 	uint8_t speed:7, override:1;
 };
 
 /* read baseDir/name into e */
-NOPROF
 static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
 {
 	if (xb.baseDir[0]) {
@@ -444,7 +408,6 @@ static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, str
 	return -1;
 }
 
-NOPROF
 uint32_t findFileOffset(int type)
 {
 	int i;
@@ -455,7 +418,6 @@ uint32_t findFileOffset(int type)
 	return 0;
 }
 
-NOPROF
 uint32_t findFileSize(int type)
 {
 	int i;
@@ -466,7 +428,6 @@ uint32_t findFileSize(int type)
 	return 0;
 }
 
-NOPROF
 int findFile(int type)
 {
 	int i;
@@ -477,7 +438,6 @@ int findFile(int type)
 	return 0;
 }
 
-NOPROF
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc)
 {
 	FILE *f;
@@ -525,7 +485,6 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	return 0;
 }
 
-NOPROF
 int readMetaFile(const char *name, uint8_t *meta)
 {
 	FILE *f;
@@ -539,7 +498,6 @@ int readMetaFile(const char *name, uint8_t *meta)
 }
 
 /* the build time as a big-endian FAT date and time */
-NOPROF
 void makeTimestamp(uint8_t *out, FILETIME *ft)
 {
 	SYSTEMTIME st;
@@ -563,14 +521,12 @@ void makeTimestamp(uint8_t *out, FILETIME *ft)
 	out[3] = time;
 }
 
-NOPROF
 int timestampToFileTime(const uint16_t *ts, FILETIME *ft)
 {
 	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
 }
 
 /* the same with its timestamp from name.meta if there is one */
-NOPROF
 int loadBaseFileMeta(const char *name, struct fileent *e, uint8_t *meta)
 {
 	if (xb.baseDir[0]) {
@@ -590,7 +546,6 @@ int loadBaseFileMeta(const char *name, struct fileent *e, uint8_t *meta)
 	return -1;
 }
 
-NOPROF
 int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, uint8_t *meta)
 {
 	char path[0x400];
@@ -609,7 +564,6 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	return r;
 }
 
-NOPROF
 __attribute__((noclone))
 int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, uint8_t *meta,
 		  int su, int fs, int common)
@@ -706,7 +660,6 @@ int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, ui
 }
 
 /* an addon patch from the bin dir */
-NOPROF
 int loadBinFile(struct fileent *e)
 {
 	char path[0x400];
@@ -717,7 +670,6 @@ int loadBinFile(struct fileent *e)
 }
 
 /* e->name as given, else from ./ */
-NOPROF
 int loadLocalFile(struct fileent *e)
 {
 	char path[0x400];
@@ -730,7 +682,6 @@ int loadLocalFile(struct fileent *e)
 	return loadFileCrc(path, e, 1, 0, 0);
 }
 
-NOPROF
 int setFileData(struct fileent *e, const void *data, size_t size)
 {
 	e->data = calloc(size, 1);
@@ -741,7 +692,6 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 	return 0;
 }
 
-NOPROF
 void appendAddonPatches(struct fileent *e)
 {
 	uint32_t size = e->size - 4;
@@ -784,7 +734,6 @@ void appendAddonPatches(struct fileent *e)
 			   added, xb.numPatches, size);
 }
 
-NOPROF
 void showSmcConfig(const uint8_t *smc)
 {
 	uint32_t av;
@@ -863,7 +812,6 @@ void showSmcConfig(const uint8_t *smc)
 }
 
 /* an ini value is used if it is in range; 0 and -1 mean unset */
-NOPROF
 int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 {
 	int ok = 1;
@@ -876,13 +824,11 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 	return ok;
 }
 
-NOPROF
 static void cb_hint(int *p)
 {
 	*p = 1;
 }
 
-NOPROF
 __attribute__((optimize("no-early-inlining")))
 uint32_t patchSmcConfig(uint8_t *smc)
 {
@@ -978,7 +924,6 @@ gpuwarn:
 	goto gpudone;
 }
 
-NOPROF
 __attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, uint32_t size)
 {
 	uint32_t i, j;
@@ -1051,7 +996,6 @@ notfound2: __attribute__((hot));
 }
 
 /* the build's kernel version is the highest of its bootloaders' */
-NOPROF
 void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
 {
 	uint32_t k = 0x20000000 | build << 8;
@@ -1060,7 +1004,6 @@ void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
 		xb.kernel = k;
 }
 
-NOPROF
 __attribute__((optimize("no-early-inlining")))
 int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 {
@@ -1187,7 +1130,6 @@ magic:
 	return -1;
 }
 
-NOPROF
 int verifyBlSigs(void)
 {
 	int ok = 1, sb, sd;
@@ -1308,23 +1250,22 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		if (*pr)
 			break;
 		if (type == 5 || type == 17 || type == 11) {
-			NK_DEAD(nk_never2, nk_b);
-			NK_LABEL(nk_q)
 			if (xb.pub1bl) {
-				NK_DEAD(nk_never3, nk_b);
 				if (!cbVerifySig(e->data, xb.pub1bl)) {
 					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
 					*pr = -1;
 				} else if (type)
 					log_printf(1, "loaded %s, signature check passed!\n", e->name);
-			} else {
-				NK_LABEL(nk_b)
-				NK_DEAD(nk_never1, nk_q);
+			} else
 				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
-			}
 		}
+		/* the expect leaves vrp1's signature-failed copy of this test a
+		   >5 edge (else its setFlashBuild copy has frequency 0 and final
+		   aligns the type-11 block after it); the hot label keeps the SE
+		   copy's <=5 edge the likely one (jbe) */
 		if (xb.type <= 5) {
-			if (*pr)
+		t5le: __attribute__((hot));
+			if (__builtin_expect(*pr != 0, 0))
 				goto fail;
 			break;
 		}
@@ -1488,6 +1429,16 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		break;
 	default:
 		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+		/* never taken, but only known after the loop passes (gcc folds
+		   __builtin_constant_p in fab): an entry into vrp1's shared checkBl
+		   copy whose type isn't a constant, so dom2's jump threads don't
+		   scale the type == 11 test's frequency down to 0 (the original
+		   places it by a frequency of ~25). The pointer compares set its
+		   weight (wip/README.md, build.c, eleventh pass) */
+		if ((char *)__builtin_constant_p(i) == (char *)1 && (char *)__builtin_constant_p(type) == (char *)1) {
+			type = (type & 1) + 18;
+			goto chk;
+		}
 		break;
 	}
 	return;
@@ -1518,7 +1469,6 @@ int loadBlFiles(void)
 	return 0;
 }
 
-NOPROF
 static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct fileent *e)
 {
 	uint32_t r = 0;
@@ -1656,7 +1606,6 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 	return r;
 }
 
-NOPROF
 int loadConsoleBlFiles(void)
 {
 	struct fileent *e;
@@ -1684,7 +1633,6 @@ none: __attribute__((cold));
 }
 
 /* the header bytes freeboot/xell read: UART speed, power-on reasons */
-NOPROF
 void patchHeaderOpts(void)
 {
 	uint8_t opts = 0;
@@ -1713,14 +1661,12 @@ void patchHeaderOpts(void)
 	xb.hdr[0x4e] = xb.xellAltButton;
 }
 
-NOPROF
 int blmodMissing(struct fileent *e)
 {
 	return loadBaseFile("blmod.bin", e) != 0;
 }
 
 /* XeCryptRotSumSha, showing the sums */
-NOPROF
 void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen, uint8_t *out, uint32_t outlen)
 {
 	uint8_t sum[32];
@@ -1752,7 +1698,6 @@ void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen,
 	display_buffer_hex(out, outlen, 1);
 }
 
-NOPROF
 int countBits(uint8_t v)
 {
 	int i, n = 0;
@@ -1765,7 +1710,6 @@ int countBits(uint8_t v)
 	return n;
 }
 
-NOPROF
 int patchBlsResign(void)
 {
 	int sb = findFile(11), cd = findFile(7), pt = findFile(23);
@@ -1831,7 +1775,6 @@ int patchBlsResign(void)
 	return ok;
 }
 
-NOPROF
 __attribute__((optimize("no-early-inlining")))
 void patchBlsBlmod(const void *blmod, int size)
 {
@@ -1900,7 +1843,6 @@ void patchBlsBlmod(const void *blmod, int size)
 	log_printf(1, "Done!\n");
 }
 
-NOPROF
 void fixupPatchSet(void)
 {
 	struct fileent *e = &xb.files[findFile(23)];
@@ -1930,7 +1872,6 @@ void fixupPatchSet(void)
 	log_printf(1, "Done!\n");
 }
 
-NOPROF
 void addBlsToImage(void)
 {
 	struct fileent *e;
@@ -2026,13 +1967,11 @@ void addBlsToImage(void)
 }
 
 /* the bootloader types an update (xeBuild's -u) replaces */
-NOPROF
 int isUpdateBl(int type)
 {
 	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
-NOPROF
 void addUpdateBls(void)
 {
 	struct fileent *e;
@@ -2087,7 +2026,6 @@ void addUpdateBls(void)
 	}
 }
 
-NOPROF
 int logPowerButton(int reason, const char *use)
 {
 	switch (reason) {
@@ -2149,7 +2087,6 @@ int logPowerButton(int reason, const char *use)
 }
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
-NOPROF
 void patchFreeboot(uint8_t *buf, int len)
 {
 	uint32_t opts = xb.bootFlags & 0xf;
@@ -2204,7 +2141,6 @@ void patchFreeboot(uint8_t *buf, int len)
 }
 
 /* payload.bin's `li r4, reps` (copy loop count in words) */
-NOPROF
 void patchPayloadSize(uint8_t *buf, int len, int size)
 {
 	int pat = 0xffff8038;	/* li r4, (any) */
@@ -2221,7 +2157,6 @@ void patchPayloadSize(uint8_t *buf, int len, int size)
 	log_printf(2, "fin li %r4, %02x%02x\n", p[2], p[3]);
 }
 
-NOPROF
 static int findFileN(int type)
 {
 	int i, n = xb.nFiles;
@@ -2232,7 +2167,6 @@ static int findFileN(int type)
 	return 0;
 }
 
-NOPROF
 int encodeBls(uint8_t *salt, int ldv)
 {
 	struct fileent *e;
@@ -2455,7 +2389,6 @@ int encodeBls(uint8_t *salt, int ldv)
 }
 
 /* encodeBls for an update image: only the CF and CG */
-NOPROF
 int encodeUpdateBls(int unused, int ldv)
 {
 	struct fileent *e;
@@ -2482,7 +2415,6 @@ int encodeUpdateBls(int unused, int ldv)
 	return 0;
 }
 
-NOPROF
 uint32_t calcBlAreaSize(void)
 {
 	uint32_t size, xs, x;
@@ -2536,7 +2468,6 @@ uint32_t calcBlAreaSize(void)
 }
 
 /* no blmod.bin: the console's, if any */
-NOPROF
 static void patchConsoleBlmod(void)
 {
 	if (!xb.consoleBlmod.data || !xb.consoleBlmod.size) {
@@ -2547,7 +2478,6 @@ static void patchConsoleBlmod(void)
 	free(xb.consoleBlmod.data);
 }
 
-NOPROF
 int buildFlash(void)
 {
 	uint8_t salt[16];

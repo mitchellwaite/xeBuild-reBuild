@@ -2091,8 +2091,8 @@ only shows in `sh build.sh`.
     bb-reorder's round-3 branch threshold (10%): at 40% (v1, the B-loop only)
     nokey went to that round's heap, was re-pushed later and the fibheap tie
     popped it before SE and c11.
-  Eleventh pass (2026-10-28, without a profile: 16 -> 2 fncmp lines, 3 asm
-  lines with alignment; wip/build_noprof.patch on 28c909e's src/build.c,
+  Eleventh pass (2026-10-28, without a profile: 16 -> 0, built from C plainly;
+  first 2 fncmp / 3 asm lines (the patch from that step is in 8207ce5),
   plain compile only, the other 40 functions and .rdata unchanged; scratch
   build/v/nop/: var.py variants (BASE=, FN=), probe.py/dd.sh bbro rows per
   block, asmcmp.sh / ascore.sh = build.sh's plain compile of a file diffed
@@ -2139,6 +2139,19 @@ only shows in `sh build.sh`.
   - Dead ends this pass: every single -fno-* flag of the usual set
     (none below the plain 22); the dead entry at the top of loadBl (238+,
     the hot path's frequencies change); `||` dead tests (22).
+  - Finished the same day (built without a profile; src/build.prof, the
+    NOPROF/NK_DEAD scaffolding and build.sh's second compile for build are
+    gone): `if (__builtin_expect(*pr != 0, 0)) goto fail;` in the `xb.type
+    <= 5` arm lowers elast->count (the fail edge) below the sigfail path's
+    in-flow, so vrp1's sigfail copy keeps a >5 edge (6.4%: setFlashBuild
+    copy 4, c11 22, no alignment), and it also fixes the SE polarity (copy
+    58% <=5, jbe). That left the final no-key log unaligned: its layout
+    predecessor is fixup_reorder_chain's jmp block for the SE copy's >5
+    edge (4 x 42% rounds to 2, log 17 is not > 20). A hot label first in
+    the <=5 arm (`t5le: __attribute__((hot));`) lowers that edge to 1 and
+    the build matches. Scratch: build/v/nop/v11.py (the *pr hints:
+    pointer forms 8-41, int forms unchanged), v13.py (labels: cold >5 15,
+    hot on the no-key log 77).
   With loadBl/loadBlFiles (or loadConsoleBlFiles) in C, extractSmcConfig
   was 8 lines off (both loop compares `cmp ebp,esi; jb`): ipa-split only
   considers functions with a direct caller in the TU. Fixed with
