@@ -1,20 +1,17 @@
 #!/bin/sh
-# Fetch the 2016 MSYS2 packages the original exe was built with, verify them
-# against tools/packages.sha256 and unpack the toolchain into tools/toolchain-4745,
-# then rebuild its kernel32 and msvcrt import libraries as the original's were
-# (below).  Run from the repo root in Git Bash.  repo.msys2.org no longer
-# carries these packages.
+# Verify the 2016 MSYS2 packages the original exe was built with
+# (tools/packages, checked against tools/packages/SHA256SUMS), unpack them
+# into tools/toolchain-4745, then rebuild its kernel32 and msvcrt import
+# libraries as the original's were (below).  Run from the repo root in Git
+# Bash.  The packages came from the MIT Kodi mirror of old MSYS2 repos
+# (https://mirrors.mit.edu/kodi/build-deps/win32/msys2/repos/mingw32);
+# repo.msys2.org no longer carries them.
 set -e
-M=https://mirrors.mit.edu/kodi/build-deps/win32/msys2/repos/mingw32
 T=$(cd "$(dirname "$0")" && pwd)
-mkdir -p "$T/pkgs"; cd "$T/pkgs"
-for f in $(sed 's/^.*\*//' ../packages.sha256 | tr -d '\r'); do
-  [ -f "$f" ] || curl -sfLO "$M/$f"
-done
-sha256sum -c ../packages.sha256
+cd "$T/packages"
+sha256sum -c SHA256SUMS
 O=$T/toolchain-4745; rm -rf "$O"; mkdir -p "$O"
-for f in *binutils* *gcc-6* *gcc-libs* *gmp* *zlib* *libiconv* *winpthread* \
-         *default-manifest-6.4-2* *crt-git-5.0.0.4745* *headers-git-5.0.0.4747*; do
+for f in $(sed 's/^.*\*//' SHA256SUMS | tr -d '\r'); do
   tar -xJf "$f" -C "$O" --exclude='.*'
 done
 "$O/mingw32/bin/gcc.exe" --version | head -1

@@ -1,4 +1,5 @@
-# Downloaded / unpacked toolchain (re-create with tools/fetch_toolchain.sh)
+# Unpacked toolchain (re-create with tools/fetch_toolchain.sh), and the old
+# download cache
 tools/pkgs/
 tools/toolchain-*/
 

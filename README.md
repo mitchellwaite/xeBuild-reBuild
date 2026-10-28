@@ -51,14 +51,15 @@ tricks some functions needed to match, and the checks behind each step.
 | `src/globals.c` | the program's uninitialized globals |
 | `build.sh` | builds everything and checks the result |
 | `re/` | reverse-engineering and verification scripts |
-| `tools/` | toolchain download and ddisasm setup |
+| `tools/` | the toolchain's packages and setup, and ddisasm setup |
 | `wip/` | experiments and notes from the matching work |
 
 ## Building
 
-You need Windows with Git Bash and Python. First download the pinned
-toolchain (about 55 MB, unpacked to `tools/toolchain-4745/`; it also rebuilds
-two import libraries from the mingw-w64 sources in `tools/mingw-w64/`):
+You need Windows with Git Bash and Python. First unpack the pinned
+toolchain, whose packages are in `tools/packages/` (to `tools/toolchain-4745/`;
+it also rebuilds two import libraries from the mingw-w64 sources in
+`tools/mingw-w64/`):
 
 ```bash
 sh tools/fetch_toolchain.sh

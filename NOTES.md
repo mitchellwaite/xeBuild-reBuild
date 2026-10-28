@@ -58,8 +58,8 @@ re/ida_dump.py           IDA export of instructions/address fields/imports (JSON
 re/ida_export_asm.py     IDA's own MASM-style listing (reference only)
 re/mapparse.py           GNU ld -Map parser
 re/runtime_syms.json     names of mingw runtime functions found in the exe
-tools/fetch_toolchain.sh download + verify + unpack the 2016 MSYS2 toolchain
-tools/packages.sha256    hashes of those packages
+tools/fetch_toolchain.sh verify + unpack the 2016 MSYS2 toolchain, rebuild 2 import libs
+tools/packages/          those MSYS2 packages (.pkg.tar.xz) and their SHA256SUMS
 tools/mingw-w64/         mingw-w64's kernel32/msvcrt .def files at e05f3e8 (+ COPYING)
 tools/ddisasm/           user-local ddisasm install for WSL, and the disassembly step
 build/                   generated, ignored
@@ -67,8 +67,10 @@ build/                   generated, ignored
 
 ## Setup
 
-Toolchain (Git Bash, repo root). Downloads ~55 MB from the MIT Kodi mirror of
-old MSYS2 packages and unpacks to `tools/toolchain-4745/`, then rebuilds its
+Toolchain (Git Bash, repo root). Verifies the 11 MSYS2 packages in
+`tools/packages/` (50 MB, originally from the MIT Kodi mirror of old MSYS2
+repos) against their SHA256 sums, unpacks them to `tools/toolchain-4745/`
+(333 MB), then rebuilds its
 kernel32 and msvcrt import libraries from mingw-w64's `.def` files at
 e05f3e8 (kept in `tools/mingw-w64/`; Runtime below):
 
