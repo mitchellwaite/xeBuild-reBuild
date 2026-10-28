@@ -44,3 +44,20 @@ needed because 49's key must stay below 132's.
 - fake7: 0 inversions reachable (an2_*), but not on real histories.
 - real histories (hanneal floor per history): RX126 only: 2..18 (48 variants); RX126+RX117:
   best 1 (b10_4: only u2/-r order, tail perfect; b11_1/b12_1: -c/-e usage 42 vs 35).
+
+## Result: MATCH (mode_client, profiled compile; whole object byte-identical in .text/.rdata/.bss/.eh_frame)
+- Source: `match/mode_client_fdo.c` (genq variant zero1: vY + X2 asm goto at rok with labels
+  `c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5`, X1 (switch path) labels
+  `i1,p1,hdd5,hdd4,c10,c9,c1,c7,cdef`, RX126 + RX117, labels on case heads/arms).
+- Profile: `match/overrides.txt` (re/gcda.py overrides, from runq + grid tuning).
+- `bash wip/mc/s18/match/repro.sh` -> fncmp 0.
+- `FDOX="--param align-loop-iterations=100" bash wip/mc/s18/match/integrate.sh` -> whole-object
+  app/mode_client.o: .text diff 0 vs build/obj/app/mode_client.o, .rdata/.bss/.eh_frame/.rdata$zzz
+  identical; only reloc symbol name `_iob` (asm) vs `__imp___iob` (C; same IAT slot).
+- fncmp ignores literal identity and alignment nops: two traps found at byte level:
+  the HDD errors are compat (115) BEFORE avatar (112) in the original (mcvar/mcsim2 WANT has them
+  reversed), and FDO frequencies add a loop alignment at the reboot-test join and two more blocks
+  (fixed with --param align-loop-iterations=100 on the FDO compile only).
+- Key steps that made it: hsim (real-history replay; needed per-event priority PFIN fix),
+  arm-block zero-flow targets (i1/p1/s5: extra heap insert/delete events) as tie knobs, then
+  grid.py fine-tuning (P49 = f49-1 rounding, 61 = 2, 116/128/132 strict keys).

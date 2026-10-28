@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\Win11VM\Documents\GitHub\xebuildBugFix\wip\mc\s18\hanneal.py", line 8, in <module>
+    R, keys = hsim.load(sd)
+              ~~~~~~~~~^^^^
+  File "C:\Users\Win11VM\Documents\GitHub\xebuildBugFix\wip\mc\s18\hsim.py", line 24, in load
+    ev = fibsim.parse(tmp)
+  File "C:\Users\Win11VM\Documents\GitHub\xebuildBugFix\wip\fibsim.py", line 170, in parse
+    t = t[t.index('Reordering with the STC algorithm.'):]
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: substring not found
