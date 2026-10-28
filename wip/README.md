@@ -1151,7 +1151,10 @@ written the other way round the order is right but the blocks move.
 
 ## mode_client.c
 
-Draft of the whole object, with string literals.  Compare a function with
+Draft of the whole object, with string literals (src/mode_client.c uses
+literals too since 2026-10-28: mode_client and clientEraseBlock needed
+nothing, clientInfo and clientWriteBlocks one `asm "i"` hint each, as
+their reshapes move blocks; `mc_rdpad` stays as .rdata padding).  Compare a function with
 `FNCMP_LITERALS=1 python re/fncmp.py wip/mode_client.c <fn> -O3 --param
 builtin-expect-probability=50`.  (The long notes on how the other 15
 functions and the hot part of `mode_client` were matched are in this file at

@@ -156,16 +156,13 @@ does nothing.
   function success-first (error in an else, or after the main path) and
   the literals line up, usually with identical code (bootloaders, keys,
   mode_update, filelist_ini, net, options, image_read, build). Where the
-  shape is pinned by layout, an empty `__asm__("" :: "i"("literal"))`
-  pulls a literal earlier without touching codegen (it makes no SSA
-  names). A function spliced from a second compile can use literals
-  too: `splice.py --whole` renames its `LCn` to the main compile's
-  label with the same contents. mode_client still keeps such strings
-  as `static const char` arrays in the original's order, defined
-  before the first function that uses them and emitted in place by
-  `-fno-toplevel-reorder`; each gets `aligned(4)` from 31 bytes, else
-  `aligned(1)` (a literal's alignment; a user alignment stops gcc's
-  4/32-byte array bump).
+  shape is pinned by layout or a crafted profile, an empty
+  `__asm__("" :: "i"("literal"))` pulls a literal earlier without
+  touching codegen (it makes no SSA names; mode_client needs only two).
+  A function spliced from a second compile can use literals too:
+  `splice.py --whole` renames its `LCn` to the main compile's label with
+  the same contents. Every object's strings are literals now; the only
+  `static const char` arrays left are padding (mode_client's `mc_rdpad`).
 - The C functions can't emit data (string literals, statics); `splice.py`
   refuses. Declare the `.s`'s data `extern` under `SYMBOLS` names instead
   (`iniBuf`, `iniSize`). Literals move when the whole object goes to C.

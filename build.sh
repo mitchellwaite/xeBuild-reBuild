@@ -145,8 +145,8 @@ for f in $objects globals; do
     # -DBUILD_FDO: empty asm-goto edges and a crafted profile for it and
     # the clientEraseBlock it inlines (src/mode_client.c's head
     # comment; wip/mc/s18/NOTES.md); align-loop-iterations=100 aligns its
-    # loop like the original. -fno-toplevel-reorder emits the string
-    # arrays and data in definition order
+    # loop like the original. -fno-toplevel-reorder emits the functions
+    # (and so their literals) and data in definition order
     mode_client) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param builtin-expect-probability=50"
            fprof="@src/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64"
