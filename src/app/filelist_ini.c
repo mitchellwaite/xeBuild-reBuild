@@ -9,6 +9,9 @@
 /* the files loop's guessed trip count (xebuild.h) */
 #define XB_FILES_BOUND 19
 #include "xebuild.h"
+#include "filelist_ini.h"
+#include "fileutil.h"
+#include "log.h"
 
 /* .data, in this order (-fno-toplevel-reorder) */
 /* the bl section's file order per build type (blOrder is one of them) */
@@ -59,11 +62,6 @@ char fnPayload[32] = "payload.bin";
 extern const char *const consoleNames[8];
 extern const unsigned char validChars[74];
 int iniPreParse(unsigned char *buf, int size);
-void log_printf(int level, const char *fmt, ...);
-long getFileSize(FILE *f);
-char myatol(char c);
-int validateString(char *s);
-unsigned int myatou32(char *dat, unsigned int def);
 
 /* copy the base dir's casing of the smc, kv and patches file names; IRA's
    regional allocation keeps &st rather than dir in a register (ira-region=one) */
@@ -179,8 +177,6 @@ int iniPreParse(unsigned char *buf, int size)
 	return n;
 }
 
-extern int *blOrder;
-u32 myatox32(char *dat, u32 def);
 int memFindStr(unsigned char *buf, int size, const char *key, int label);
 int memFindChar(unsigned char *buf, char c, int size);
 void checkFileCase(void);

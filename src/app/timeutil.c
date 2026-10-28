@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-typedef unsigned short WORD;
+#include "timeutil.h"
+
 typedef short CSHORT;
-typedef unsigned int DWORD;
 typedef long long LONGLONG;
 typedef unsigned long long ULONGLONG;
 
@@ -39,22 +39,6 @@ typedef union {
 	} u;
 	LONGLONG QuadPart;
 } LARGE_INTEGER;
-
-typedef struct {
-	DWORD dwLowDateTime;
-	DWORD dwHighDateTime;
-} FILETIME;
-
-typedef struct {
-	WORD wYear;
-	WORD wMonth;
-	WORD wDayOfWeek;
-	WORD wDay;
-	WORD wHour;
-	WORD wMinute;
-	WORD wSecond;
-	WORD wMilliseconds;
-} SYSTEMTIME;
 
 typedef struct {
 	WORD Year;

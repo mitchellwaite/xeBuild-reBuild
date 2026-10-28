@@ -880,7 +880,9 @@ xeBuild.exe              reference binary (do not modify)
 build.sh                 compile/assemble src/ + link + stamp + verify -> build/xeBuild.exe
 src/objects.txt          link order
 src/link.ld              link script (default i386pe order for the sections used)
-src/app/                 the application (25 files)
+src/app/                 the application (25 files) and its headers: xebuild.h
+                         (shared types, struct xebuild), <obj>.h (each object's
+                         functions and data that others use)
 src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCrypt
                          API, aes/ (Gladman), rc4/ sha/ (OpenSSL), md5/, des/, and
                          bign/ (BigDigits bignum library + PKCS#1 RSA, hash,
@@ -1211,6 +1213,26 @@ its original addresses. Library files use the library's own file names.
 | crypto/rc4/rc4_enc, rc4_skey, sha/sha1dgst, md5/md5 | OpenSSL RC4 (`"rc4(idx,int)"`), SHA-1; MD5 (C source) |
 | crypto/des/des, bign/pkcs1-rsa, hash, base64, common | DES/3DES, RSA keygen/OAEP/PSS, hash wrappers, base64 (C source) |
 | crypto/bign/mp*, sp*, bigdUtils | BigDigits functions (mpAdd, mpModExp, spMultiply, ...) (C source) |
+
+### App headers
+
+`src/app/xebuild.h` holds the types the app's objects share (`struct xebuild`,
+the program state `xb`, and `fileent`, `netfile`, `flashhdr`, `consoleinfo`,
+...) and declares `src/globals.c`'s variables. Each object's functions (and
+data) that others use are in `src/app/<obj>.h`, which the object itself
+includes too; app files take XeCrypt's prototypes from `src/crypto/xecrypt.h`.
+Two switches, defined before including `xebuild.h`, give a file the view of
+`xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
+and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
+
+The files' code was matched against their own declarations, which did not
+always agree with each other. Where a file still needs another typing than the
+header's to compile to the original's code, it says so in a comment marked
+`TODO(xebuild.h cast)` (a field read as another type) or `TODO(prototype cast)`
+(a function's argument or return type: a cast, or a declaration under another
+name bound to the same symbol with an asm label, e.g. `u32
+FileExistsU32(const char *) __asm__("_FileExists")`), so a later pass can settle
+the types. `grep -rn 'TODO(' src/app` lists them.
 
 ### XeCrypt in C
 

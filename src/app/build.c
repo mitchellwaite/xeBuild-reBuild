@@ -19,89 +19,25 @@
 #define XB_FILES_BOUND 19
 #endif
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
+#include "build.h"
+#include "crc32.h"
+#include "fileutil.h"
+#include "image_read.h"
+#include "image_write.h"
+#include "keys.h"
+#include "keyvault.h"
+#include "log.h"
+#include "mode_update.h"
+#include "options.h"
+#include "smc.h"
+#include "sysupdate.h"
+#include "timeutil.h"
+#include "xboxrom.h"
 
-/* timeutil.c's cdecl ports of the Win32 time functions */
-typedef unsigned short WORD;
-typedef unsigned int DWORD;
-typedef struct {
-	DWORD dwLowDateTime;
-	DWORD dwHighDateTime;
-} FILETIME;
-typedef struct {
-	WORD wYear, wMonth, wDayOfWeek, wDay;
-	WORD wHour, wMinute, wSecond, wMilliseconds;
-} SYSTEMTIME;
-int SystemTimeToFileTime(const SYSTEMTIME *syst, FILETIME *ft);
-int FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime);
-int DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME *ft);
-void GetSystemTime(SYSTEMTIME *systime);
-
-void log_printf(int level, const char *fmt, ...);
-long getFileSize(FILE *f);
-unsigned int crc32(const unsigned char *buf, unsigned int len);
-u16 getBeU16(const u8 *p);
-u32 getBeU32(const u8 *p);
-u8 *setBeU32(u32 v, u8 *p);
-int checkZeros(const u8 *p, u32 len);
-int smcConfigOk(const u8 *smc);
 void showSmcConfig(const u8 *smc);
-void showMac(u32 level, const u8 *mac);
-int macidSet(void);
-int suGetCF(u8 **data, u32 *len);
-int suGetCG(u8 **data, u32 *len);
-u32 smcSetLoad(u32 size);
-void setFlashBuild(u16 build);
-/* image_write's */
-int imgBigBlock(void);
-u32 imgCfOffset(void);
-u32 imgCfSize(void);
-u32 imgSize(void);
-void setPatchSlot(u32 off);
-void writeInitialHeader(void);
-u32 fsStartBlock(void);
-void fixupFsTable(u32 off);
-u32 imgSetSize(u32 size);
-u32 imgSizeAligned(void);
-void imgAddFile(const char *name, const void *data, const u32 *time, u32 len);
-void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len);
-u16 imgAddMobile(const void *data, u32 len, u8 type);
-void imgAddRaw(const char *name, const void *data, u32 len, u32 off);
-int addSmcConfig(const u8 *cfg, u32 len);
-void fixupEmptyFsBlocks(u32 off);
-void writeFsTable(u32 off);
-void copyAnchorBlock(int n);
-int finalizeImage(void);
-/* keys.c's */
-u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
-void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
-void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
-void cbaEncryptZero(u8 *cb, u8 *key, u32 size);
-void cbaEncrypt2(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
-void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int zero);
-void cdEncryptZero(u8 *cd, u8 *key, u32 size);
-void cdEncrypt(u8 *cd, u8 *prevKey, u8 *key, u32 size);
-void cdEncryptCpu(u8 *cd, u8 *prevKey, u8 *key, u32 size);
-void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size);
-int smcPrepare(u8 *smc, u8 *hash, u32 size);
-void kvPrepare(struct fileent *kv, int alt);
-void setFuseCpuKey(u8 *fuse);
-void showExpectedFuses(u32 flags, u16 cb, u8 *fuses, int clear);
-void showFuses(int level, const char *title, const u8 *fuses);
-int checkBootImage(int arg);
-int suLoadDir(const char *dir);
-void keysInit(int random);
-int kvGetGameRegion(void);
-void extendedPrepare(struct fileent *ext);
-void secdataPrepare(struct fileent *sd, u8 *date);
-void daeEncrypt(u8 *buf, u32 size, u8 *date);
-void crlEncrypt(u8 *crl, u32 size, u8 *date);
-void fcrtEncrypt(u8 *fcrt, u32 size);
-void shaHeader(u8 *buf);
-u8 *setBeU16(u16 v, u8 *p);
-u32 statisticsOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
-u32 manufacturingOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
-int imgAdd(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5);
+
 /* .data, in this order (-fno-toplevel-reorder) */
 u8 defBl60[0x60] = {
 	0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x0f, 0x0f, 0x0f,
@@ -443,24 +379,20 @@ u8 defCore[0xd40] = {
 	0x00, 0x00, 0x00, 0x00, 0x61, 0x6c, 0x74, 0x20, 0x66, 0x69, 0x72, 0x6d,
 	0x77, 0x61, 0x72, 0x65, 0x00, 0x00, 0x00, 0x00,
 };
-int cbVerifySig(u8 *bl, const void *pubKey);
-int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
-u32 blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt);
-/* int in xboxrom.c; as u32 here verifyBlSigs' inlined findFile(11) counts
-   from its 0 result instead of a new xor (uncprop) */
-u32 blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
-int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen, u8 *hashOut,
-	const void *pubKey, const void *prvKey);
-u32 calcConfigSum(const u8 *buf);
+/* TODO(prototype cast): blCheckHash and blSign are int in xboxrom.c; as
+   u32 here verifyBlSigs' inlined findFile(11) counts from blCheckHash's 0
+   result instead of a new xor (uncprop) */
+u32 blSignU32(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey,
+	      const u8 *salt) __asm__("_blSign");
+u32 blCheckHashU32(u8 *bl, unsigned int len, const u8 *expect) __asm__("_blCheckHash");
+/* TODO(prototype cast): image_write.c's imgAdd takes (..., u8 type, u16 next,
+   int pad) and imgAddRaw returns int; build.c's calls compile to the
+   original's code only with these types */
+int imgAddInt(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5) __asm__("_imgAdd");
+void imgAddRawVoid(const char *name, const void *data, u32 len, u32 off) __asm__("_imgAddRaw");
+
 u32 patchSmcConfig(u8 *smc);
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 crc);
-u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
-void display_buffer_hex(const u8 *buf, u32 len, u32 level);
-typedef struct { u32 state[24]; } XECRYPT_SHA_STATE;	/* SHA_CTX */
-void XeCryptShaInit(XECRYPT_SHA_STATE *sha);
-void XeCryptShaUpdate(XECRYPT_SHA_STATE *sha, const void *buf, u32 len);
-void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
-void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
@@ -495,11 +427,6 @@ static int nk_never1, nk_never2, nk_never3;
 struct fan {
 	u8 speed:7, override:1;
 };
-
-
-int suGetFile(const char *name, u8 **data, u32 *len);
-int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
-int updateGetFile(const char *name, u8 **data, u32 *size);
 
 static const char bd_458ca4[] __attribute__((aligned(1))) = "rb";
 static const char bd_458ca8[] __attribute__((aligned(4))) = "\n******WARNING: '%s' is a 0 byte file, loading skipped!\n";
@@ -1394,7 +1321,7 @@ int verifyBlSigs(void)
 				else if (xb.prvKey) {
 					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 						log_printf(0, bd_459698, e->name);
-						if (!blSign(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
+						if (!blSignU32(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
 							log_printf(0, bd_4596cc, e->name);
 							ok = 0;
 						} else
@@ -1409,7 +1336,7 @@ int verifyBlSigs(void)
 		case 14:
 			sd = findFile(13);
 			if (sd) {
-				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588)) {
+				if (!blCheckHashU32(e->data, e->size, xb.files[sd].data + 588)) {
 					if (xb.prvKey) {
 						sb = findFile(11);
 						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
@@ -1951,17 +1878,18 @@ void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen
 
 	for (i = 0; i < 32; i++)
 		sum[i] = 0;
-	XeCryptRotSum(sum, a, alen >> 3);
+	/* TODO(prototype cast): xecrypt.h's inputs aren't const */
+	XeCryptRotSum(sum, (u8 *)a, alen >> 3);
 	log_printf(1, bd_459ed2);
 	display_buffer_hex(sum, 32, 1);
-	XeCryptRotSum(sum, b, blen >> 3);
+	XeCryptRotSum(sum, (u8 *)b, blen >> 3);
 	log_printf(1, bd_459ed8);
 	display_buffer_hex(sum, 32, 1);
 	XeCryptShaInit(&sha);
 	XeCryptShaUpdate(&sha, sum, 32);
 	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaUpdate(&sha, a, alen);
-	XeCryptShaUpdate(&sha, b, blen);
+	XeCryptShaUpdate(&sha, (u8 *)a, alen);
+	XeCryptShaUpdate(&sha, (u8 *)b, blen);
 	for (i = 0; i < 32; i++)
 		sum[i] = ~sum[i];
 	log_printf(1, bd_459ede);
@@ -2031,7 +1959,7 @@ int patchBlsResign(void)
 			if (xb.prvKey) {
 				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 					log_printf(0, bd_459698, xb.files[cd].name);
-					if (!blSign(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
+					if (!blSignU32(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
 						log_printf(0, bd_4596cc, xb.files[cd].name);
 					else {
 						log_printf(1, bd_4596f0, xb.files[cd].name);
@@ -2175,16 +2103,16 @@ void addBlsToImage(void)
 				j = findFile(20);
 				log_printf(1, bd_459fc0,
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
-				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+				imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 			} else if (type == 10) {
 				j = findFile(9);
 				log_printf(1, bd_459fc0,
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
-				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+				imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 			} else {
 				log_printf(1, bd_45a000,
 					   e->name, off, e->size, off + e->size);
-				imgAdd(off, e->data, e->size, 0, ecc, 1);
+				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 			}
 			off += e->size;
 			continue;
@@ -2219,30 +2147,30 @@ void addBlsToImage(void)
 			j = findFile(9);
 			log_printf(1, bd_459fc0,
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
-			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 16) {
 			j = findFile(15);
 			log_printf(1, bd_459fc0,
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
-			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 6) {
 			if (xb.cbb)
-				imgAdd(off, e->data, e->size, 0, ecc, 1);
+				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 		} else if (type == 24) {
 			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
 				log_printf(1, bd_45a000,
 					   e->name, off, e->size, off + e->size);
-				imgAdd(off, e->data, e->size, 0, ecc, 1);
+				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 			}
 		} else
-			imgAdd(off, e->data, e->size, 0, ecc, 1);
+			imgAddInt(off, e->data, e->size, 0, ecc, 1);
 		off += e->size;
 	}
 	if (xb.f01c) {
 		j = findFile(14);
 		log_printf(1, bd_45a000,
 			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
-		imgAdd(off, xb.files[j].data, xb.files[j].size, 0, ecc, 1);
+		imgAddInt(off, xb.files[j].data, xb.files[j].size, 0, ecc, 1);
 	}
 }
 
@@ -2290,20 +2218,20 @@ void addUpdateBls(void)
 			j = findFile(9);
 			log_printf(1, bd_459fc0,
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
-			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 16) {
 			j = findFile(15);
 			log_printf(1, bd_459fc0,
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
-			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
+			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 24) {
 			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
 				log_printf(1, bd_45a000,
 					   e->name, off, e->size, off + e->size);
-				imgAdd(off, e->data, e->size, 0, ecc, 1);
+				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 			}
 		} else
-			imgAdd(off, e->data, e->size, 0, ecc, 1);
+			imgAddInt(off, e->data, e->size, 0, ecc, 1);
 		off += e->size;
 	}
 }
@@ -3134,7 +3062,7 @@ int buildFlash(void)
 			log_printf(1, bd_45b29d, f.name, xb.files[xb.nFlashFiles].size, '1' + k);
 			if (raw) {
 				save = imgSize();
-				imgAddRaw(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
+				imgAddRawVoid(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
 				imgSetSize(save);
 			} else {
 				t = imgAddMobile(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, '1' + k);
@@ -3147,7 +3075,7 @@ int buildFlash(void)
 			log_printf(1, bd_45b2bc, f.name);
 			if (raw) {
 				save = imgSize();
-				imgAddRaw(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
+				imgAddRawVoid(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
 				imgSetSize(save);
 			} else {
 				t = imgAddMobile(xb.mobile[k].data, xb.mobile[k].size, '1' + k);

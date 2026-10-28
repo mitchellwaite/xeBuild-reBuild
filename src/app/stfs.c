@@ -3,26 +3,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
-
-void log_printf(int level, const char *fmt, ...);
-int checkZeros(const u8 *p, u32 len);
-int FileExists(const char *name);
-void *FileToBuffer(const char *name, size_t *psize);
-void XeCryptSha(u8 *pbInp1, u32 cbInp1, u8 *pbInp2, u32 cbInp2,
-		u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
+#include "fileutil.h"
+#include "log.h"
+#include "stfs.h"
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define LE24(p) ((p)[0] + ((p)[1] << 8) + ((p)[2] << 16))
-
-typedef struct {
-	u8 *data;
-	u32 *blocks;
-	size_t size;
-	u32 hdrSize;
-	u8 *fileTable;
-} stfs_t;
 
 typedef struct {
 	char name[40];

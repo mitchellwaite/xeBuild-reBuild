@@ -3,7 +3,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
+#include "bootloaders.h"
+#include "fileutil.h"
+#include "image_read.h"
+#include "image_write.h"
+#include "keys.h"
+#include "log.h"
+#include "main.h"
+#include "smc.h"
+
+/* TODO(prototype cast): shaSelfCheck returns int (bootloaders.c);
+   findAnchor's code wants a u32 */
+u32 shaSelfCheckU32(u8 *p) __asm__("_shaSelfCheck");
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define ROT16(x) ((u16)(((x) << 8) | ((x) >> 8)))
@@ -24,47 +37,12 @@ struct mobile {
 	u32 spare;
 };
 
-void log_printf(int level, const char *fmt, ...);
-unsigned int log_get_verbose(void);
-unsigned short getBeU16(const unsigned char *p);
-u32 getBeU32(const u8 *p);
-long long getFileSize64(FILE *f);
 int fseeko64(FILE *f, long long off, int whence);
-u32 cfBestPairing(u8 *data, u32 size);
-u32 cbGetPairing(u8 *cb);
-int setPairing(u32 pairing);
-int unscramble(u8 *buf, u32 len);
-void setSmcKey(u8 *key);
-int verifyExtended(u8 *buf, u32 size);
-void setKvSalt(u8 *key);
-void setKvAltSalt(u8 *key);
-u32 shaSelfCheck(u8 *p);
-int smcConfigOk(const u8 *smc);
-int verifyFlashFile(int i);
-void setInfoKey0(const u8 *key);
-void setInfoKey1(const u8 *key);
-void setInfoKey2(const u8 *key);
-void setInfoKey3(const u8 *key);
-void setInfoKey4(const u8 *key);
-void setInfoKey5(const u8 *key);
-void XeCryptShaUpdate(void *ctx, const u8 *buf, u32 len);
-/* image_write.c */
-int pageEccOk(u8 *data, u8 *spare);
-int blockEccOk(u8 *blk, int bigBlock);
-int blockErased(u8 *blk, int bigBlock);
-int isErased(u8 *buf, int len);
-u32 statisticsOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
-u32 manufacturingOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
 
-extern char separator[];
-
-void buildCleanup(void);
 int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet);
 /* not inlined into imgGetSecurityFiles in the original (growth 39 is under
    max-inline-insns-auto here; something made it 40+ there) */
 int loadFlashFile(int i, u32 block) __attribute__((noinline));
-void listFlashFiles(void);
-int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
 int findAnchor(void);
 int mmcFindMobiles(void);
 u32 spareVersion(u8 *s);
@@ -77,16 +55,13 @@ void findSmcConfig(void);
 int checkBlock(u8 *blk, int block, int numBlocks);
 int addRemap(u32 block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
-void remapBadBlocks(int numBlocks);
 int notZeropair(void);
 unsigned long spareLbaOk(int pages);
 u32 copyMmcImage(u8 *raw);
 unsigned long parseDump(u8 *raw);
-u32 copyMuData(FILE *out, void *sha);
 int detectController(u8 *raw, int size);
 int checkHeader(const char *name, FILE *fp);
 void getNonces(void);
-u32 loadDump(const char *path);
 
 /* .bss and .data in the original's order */
 static struct mobile mobiles[10];
@@ -502,12 +477,12 @@ int findAnchor(void)
 	log_printf(1, ir_4529d0);
 	v0 = getBeU32(xb.dump + 0x2fe8018);
 	v1 = getBeU32(xb.dump + 0x2fec018);
-	ok0 = shaSelfCheck(xb.dump + 0x2fe8000);
+	ok0 = shaSelfCheckU32(xb.dump + 0x2fe8000);
 	if (ok0)
 		log_printf(1, ir_4529f8, v0);
 	else
 		log_printf(1, ir_452a24);
-	ok1 = shaSelfCheck(xb.dump + 0x2fec000);
+	ok1 = shaSelfCheckU32(xb.dump + 0x2fec000);
 	if (ok1)
 		log_printf(1, ir_452a4c, v1);
 	else {

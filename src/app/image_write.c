@@ -7,7 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
+#include "build.h"
+#include "fileutil.h"
+#include "image_read.h"
+#include "image_write.h"
+#include "log.h"
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + (((x) >> 8) & 0xff))
 #define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
@@ -29,31 +35,10 @@ struct spare {
 	u8 b[16];
 };
 
-void log_printf(int level, const char *fmt, ...);
-int checkZeros(const u8 *p, u32 len);
-u8 *setBeU16(u16 v, u8 *p);
-int findFile(int type);
-u32 findFileOffset(int type);
-int buildFlash(void);
-int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad);
 int pageErased(const u8 *data, const u8 *spare);
-u32 copyMuData(FILE *out, void *sha);
-int isErased(const u8 *p, u32 len);
-void writeSha1File(char *out, const char *src, const unsigned char *sha);
-typedef struct { u32 state[24]; } XECRYPT_SHA_STATE;	/* SHA_CTX */
-void XeCryptShaInit(XECRYPT_SHA_STATE *sha);
-void XeCryptShaUpdate(XECRYPT_SHA_STATE *sha, const void *buf, u32 len);
-void XeCryptShaFinal(XECRYPT_SHA_STATE *sha, u8 *out, u32 len);
-void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
-	const u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
 /* the malloc call without the builtin: same call, but CCP doesn't assume
    MALLOC_ABI_ALIGNMENT for the result (the ECD memcpy aligns its destination) */
 void *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));
-
-extern struct fsent fsFiles[256];
-extern u16 fsTable[0x1000];
-extern struct flashhdr hdrTemplate;
-extern u32 imgEnd;
 
 /* the year's last digit is a NUL in the image: buildImage sets it per
    console type */

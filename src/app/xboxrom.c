@@ -1,19 +1,10 @@
 /* xboxrom: hashes, signs and verifies keyvault and bootloader signatures */
 #include <string.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
-
-void XeCryptHmacSha(const u8 *pbKey, unsigned int cbKey, const u8 *pbInp1, unsigned int cbInp1,
-	const u8 *pbInp2, unsigned int cbInp2, const u8 *pbInp3, unsigned int cbInp3,
-	u8 *pbOut, unsigned int cbOut);
-void XeCryptRotSumSha(u8 *pbInp1, unsigned int cbInp1, u8 *pbInp2, unsigned int cbInp2,
-	u8 *pbOut, unsigned int cbOut);
-int XeCryptBnQwBeSigVerify(void *pSig, const u8 *pbHash, const u8 *pbSalt, const void *pRsa);
-int XeCryptBnQwBeSigCreate(void *pSig, const u8 *pbHash, const u8 *pbSalt, const void *pRsa);
-int XeCryptBnQwNeRsaPrvCrypt(const void *pqwIn, void *pqwOut, const void *pRsa);
-int XeKeysPkcs1Verify(const u8 *pbHash, const u8 *pbSig, const void *pRsaPub);
-unsigned short getBeU16(const u8 *p);
-unsigned int getBeU32(const u8 *p);
+#include "fileutil.h"
+#include "xboxrom.h"
 
 char romSalts[3][12] = { "XBOX_ROM_4", "XBOX_ROM_3", "XBOX_ROM_B" };
 
@@ -31,7 +22,10 @@ int cbVerifySig(u8 *bl, const void *pubKey)
 	unsigned int len = (getBeU32(bl + 12) + 15) & ~15;
 
 	XeCryptRotSumSha(bl, 16, bl + 0x140, len - 0x140, hash, 20);
-	return XeCryptBnQwBeSigVerify(bl + 0x40, hash, (u8 *)romSalts[2], pubKey);
+	/* TODO(prototype cast): the bootloaders' signatures and keys are bytes
+	   here; xecrypt.h types them (and its keys aren't const) */
+	return XeCryptBnQwBeSigVerify((XECRYPT_SIG *)(bl + 0x40), hash, (u8 *)romSalts[2],
+				      (XECRYPT_RSA *)pubKey);
 }
 
 int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt)
@@ -39,7 +33,8 @@ int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt)
 	u8 hash[20];
 
 	XeCryptRotSumSha(bl, 16, bl + 0x120, len - 0x120, hash, 20);
-	return XeCryptBnQwBeSigVerify(bl + 0x20, hash, salt, pubKey);
+	/* TODO(prototype cast): as in cbVerifySig */
+	return XeCryptBnQwBeSigVerify((XECRYPT_SIG *)(bl + 0x20), hash, salt, (XECRYPT_RSA *)pubKey);
 }
 
 int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, const u8 *salt)
@@ -53,11 +48,12 @@ int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey, con
 	memset(s.salt, 0, sizeof(s.salt));
 	memcpy(s.salt, salt, 10);
 	XeCryptRotSumSha(bl, 16, bl + 0x120, len - 0x120, s.hash, 20);
-	if (!XeCryptBnQwBeSigCreate(s.sig, s.hash, salt, prvKey))
+	/* TODO(prototype cast): as in cbVerifySig */
+	if (!XeCryptBnQwBeSigCreate((XECRYPT_SIG *)s.sig, s.hash, salt, prvKey))
 		return 0;
-	if (!XeCryptBnQwNeRsaPrvCrypt(s.sig, s.sig, prvKey))
+	if (!XeCryptBnQwNeRsaPrvCrypt((u64 *)s.sig, (u64 *)s.sig, prvKey))
 		return 0;
-	if (!XeCryptBnQwBeSigVerify(s.sig, s.hash, salt, pubKey))
+	if (!XeCryptBnQwBeSigVerify((XECRYPT_SIG *)s.sig, s.hash, salt, (XECRYPT_RSA *)pubKey))
 		return 0;
 	memcpy(bl + 0x20, s.sig, 256);
 	return 1;

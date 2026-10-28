@@ -4,62 +4,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
+#include "bootloaders.h"
+#include "fileutil.h"
+#include "keys.h"
+#include "keyvault.h"
+#include "log.h"
+#include "smc.h"
 
-/* XeCrypt's XECRYPT_AES_STATE (two Gladman contexts) */
-typedef struct {
-	u32 ctx[2][61];
-} AESSTATE;
-
-/* a file of the image (build.c's table, 0x42c bytes) */
-typedef struct {
-	char name[0x40c];
-	u8 *buf;			/* 40c */
-	u32 size;			/* 410 */
-	u32 f414[4];			/* 414 */
-	u32 f424;			/* 424 */
-	u32 f428;			/* 428 */
-} part_t;
-
-void aes_init(void);
-void XeCryptRandom(u8 *pb, u32 cb);
-int XeCryptHammingWeight(u8 *data, int len);
-void XeCryptUidEccEncode(u8 *pbaCpuKey);
-void XeCryptHmacSha(const u8 *pbKey, u32 cbKey, const u8 *pbInp1, u32 cbInp1,
-	const u8 *pbInp2, u32 cbInp2, const u8 *pbInp3, u32 cbInp3,
-	u8 *pbOut, u32 cbOut);
-void XeCryptRc4(const u8 *pbKey, u32 cbKey, u8 *pbInpOut, u32 cbInpOut);
-void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
-	const u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
-void XeCryptAesKey(AESSTATE *pAesState, const u8 *pbKey);
-void XeCryptAesEcb(AESSTATE *pAesState, const u8 *pbInp, u8 *pbOut, int fEncrypt);
-void XeCryptAesCbc(AESSTATE *pAesState, const u8 *pbInp, u32 cbInp, u8 *pbOut,
-	u8 *pbFeed, int fEncrypt);
-void log_printf(int level, const char *fmt, ...);
-int validateString(char *s);
-u8 myatox8(char *dat);
-int checkZeros(const u8 *p, u32 len);
-void showKey(int level, const u8 *key);
-u8 *setBeU64(u64 v, u8 *p);
-u16 getBeU16(const u8 *p);
-/* getBeU32 and verifyFcrt pure: fcrtEncrypt's block order needs them left
+/* getBeU32 and verifyFcrt redeclared pure (only here: in the headers it
+   changes other objects' code): fcrtEncrypt's block order needs them left
    out of the call heuristic (with its off < 0x4000 hint at
    builtin-expect-probability 60) */
 u32 getBeU32(const u8 *p) __attribute__((pure));
-u32 sumBytes(const u8 *p, u32 len);
-void memcpyrev(u8 *dst, const u8 *src, int len);
-int unscramble(u8 *buf, u32 len);
-int smcCheck(u8 *smc, int len, int type);
-void smcPatch(u8 *smc, int len, u32 flags);
-void kvSet(u8 *buf);
-int verifyExtended(void *buf, int size);
-int verifyCrl(void *buf, int size, int perBox);
-void daeDecrypt(u8 *dae, u32 size, int perBox);
 int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
 /* external copy of the always_inline cfPatchSlots */
-short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max);
-int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
-void shaHeader(u8 *buf);
+short cfPatchSlots(struct fileent *cf, u32 extra, u16 block, u32 max);
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 #define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
@@ -614,9 +575,9 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
    the last index as trips + 2 but n as (trips + 1) + 1); n is 16-bit, so
    its add isn't CSE'd with the index's. */
 __attribute__((always_inline))
-inline short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
+inline short cfPatchSlots(struct fileent *cf, u32 extra, u16 block, u32 max)
 {
-	u8 *buf = cf->buf;
+	u8 *buf = cf->data;
 	u32 end = cf->size + extra;
 	u32 over;
 	short n = 0;
@@ -625,8 +586,8 @@ inline short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 
 	if (__builtin_expect(end > max, 1)) {
 		over = end - max;
-		cf->f428 = max - cf->size;
-		cf->f424 = over;
+		cf->fsOffset = max - cf->size;
+		cf->fsSize = over;
 		for (i = 1; over > 0x4000; i++, over -= 0x4000) {
 			tbl[i] = SWAP16(block + i - 1);
 			n++;
@@ -640,7 +601,7 @@ inline short cfPatchSlots(part_t *cf, u32 extra, u16 block, u32 max)
 	return n;
 }
 
-u16 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
+u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max)
 {
 	u8 key[16];
 	u8 salt[16];
@@ -649,25 +610,25 @@ u16 cfEncrypt(part_t *cf, u32 extra, u16 block, int keep, u32 max)
 
 	memcpy(salt, infoKey4, 16);
 	if (!keep) {
-		buf = cf->buf;
+		buf = cf->data;
 		memset(buf + 32, 0, 528);
 		if (xb.type == 2)
-			cf->buf[539] = 1;
+			cf->data[539] = 1;
 		else
-			cf->buf[539] = 0;
-		memcpy(cf->buf + 540, pairing, 3);
-		cf->buf[543] = xb.cfLdv;
+			cf->data[539] = 0;
+		memcpy(cf->data + 540, pairing, 3);
+		cf->data[543] = xb.cfLdv;
 	}
 	n = cfPatchSlots(cf, extra, block, max);
 	XeCryptHmacSha(xb.key1bl, 16, salt, 16, NULL, 0, NULL, 0, key, 16);
 	if (!keep) {
-		memcpy(cf->buf + 32, key, 16);
-		XeCryptHmacSha(xb.cpuKey, 16, cf->buf, 0x220, NULL, 0, NULL, 0, cf->buf + 544, 16);
+		memcpy(cf->data + 32, key, 16);
+		XeCryptHmacSha(xb.cpuKey, 16, cf->data, 0x220, NULL, 0, NULL, 0, cf->data + 544, 16);
 	}
-	buf = cf->buf;
-	memcpy(cf->f414, buf + 816, 16);
+	buf = cf->data;
+	memcpy(cf->key, buf + 816, 16);
 	memcpy(buf + 32, salt, 16);
-	XeCryptRc4(key, 16, cf->buf + 48, cf->size - 48);
+	XeCryptRc4(key, 16, cf->data + 48, cf->size - 48);
 	return n;
 }
 
@@ -713,7 +674,7 @@ static int kvHashOk(u8 *kv, u32 size)
    jump threading: a colder main path makes alt a caller-saved ecx).  The
    hints and labels give bb-reorder the original's trace order and LRA
    its spill-slot order (wip/README.md). */
-void kvPrepare(part_t *kv, int alt)
+void kvPrepare(struct fileent *kv, int alt)
 {
 	const char *file = "kv.bin", *name = "kv";
 	u8 *buf, *nbuf;
@@ -725,9 +686,9 @@ void kvPrepare(part_t *kv, int alt)
 	if (kv->size == 0x3ff0) {
 		nbuf = malloc(0x4000);
 		memset(nbuf, 0, 16);
-		memcpy(nbuf + 16, kv->buf, 0x3ff0);
-		free(kv->buf);
-		kv->buf = nbuf;
+		memcpy(nbuf + 16, kv->data, 0x3ff0);
+		free(kv->data);
+		kv->data = nbuf;
 		kv->size = 0x4000;
 	}
 	if (__builtin_expect(kv->size != 0x4000, 1)) {
@@ -735,7 +696,7 @@ void kvPrepare(part_t *kv, int alt)
 		return;
 	}
 	buf = malloc(0x4000);
-	memcpy(buf, kv->buf, 0x4000);
+	memcpy(buf, kv->data, 0x4000);
 	if (__builtin_expect(!checkZeros(buf, 16), 0)) {
 		if (!kvHashOk(buf, kv->size)) {
 			if (__builtin_expect(checkZeros(buf + 56, 88), 0)) {
@@ -743,33 +704,33 @@ void kvPrepare(part_t *kv, int alt)
 				log_printf(0, "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n", file);
 			} else {
 				log_printf(1, "%s appears to be encrypted, attempting to decrypt...", file);
-				memcpy(buf, kv->buf, kv->size);
+				memcpy(buf, kv->data, kv->size);
 				if (!verifyExtended(buf, 0x4000)) {
 				failed: __attribute__((hot));
 					log_printf(1, "Failed!\n%s could not be decrypted!\n", file);
 					log_printf(0, "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n", name, file);
-					memcpy(buf, kv->buf, kv->size);
+					memcpy(buf, kv->data, kv->size);
 				} else
 					log_printf(1, "Success!\n");
 			}
 		} else {
 		hashOk: __attribute__((hot));
 		}
-	} else if (!checkZeros(kv->buf + 88, 8))
+	} else if (!checkZeros(kv->data + 88, 8))
 		log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
 	else {
 	zerosOk: __attribute__((hot));
 	}
-	memcpy(kv->buf, buf, kv->size);
+	memcpy(kv->data, buf, kv->size);
 	if (__builtin_expect(!alt, 0)) {
-		kvSet(kv->buf);
-		kvEncrypt(kv->buf, kv->size);
+		kvSet(kv->data);
+		kvEncrypt(kv->data, kv->size);
 	} else
-		kvEncryptAlt(kv->buf, kv->size);
+		kvEncryptAlt(kv->data, kv->size);
 	free(buf);
 }
 
-void extendedPrepare(part_t *ext)
+void extendedPrepare(struct fileent *ext)
 {
 	u8 *buf;
 
@@ -778,16 +739,16 @@ void extendedPrepare(part_t *ext)
 			log_printf(1, "******* WARNING: extended.bin was not provided or was invalid! Making up an clean/empty extended.bin!\n");
 		else
 			log_printf(1, "******* WARNING: extended.bin is not the correct size! Making up an clean/empty extended.bin!\n");
-		if (ext->buf)
-			free(ext->buf);
+		if (ext->data)
+			free(ext->data);
 		ext->size = 0x4000;
-		ext->buf = calloc(0x4000, 1);
+		ext->data = calloc(0x4000, 1);
 	}
 	buf = malloc(0x4000);
-	memcpy(buf, ext->buf, 0x4000);
+	memcpy(buf, ext->data, 0x4000);
 	if (!checkZeros(buf, 16) && !kvHashOk(buf, ext->size)) {
 		log_printf(1, "extended.bin appears to be encrypted, attempting to decrypt...");
-		memcpy(buf, ext->buf, ext->size);
+		memcpy(buf, ext->data, ext->size);
 		if (verifyExtended(buf, 0x4000))
 			log_printf(1, "Success!\n");
 		else {
@@ -795,12 +756,12 @@ void extendedPrepare(part_t *ext)
 			memset(buf, 0, ext->size);
 		}
 	}
-	memcpy(ext->buf, buf, ext->size);
+	memcpy(ext->data, buf, ext->size);
 	free(buf);
-	kvEncrypt(ext->buf, ext->size);
+	kvEncrypt(ext->data, ext->size);
 }
 
-void secdataPrepare(part_t *sd, u8 *date)
+void secdataPrepare(struct fileent *sd, u8 *date)
 {
 	u8 key[16];
 
@@ -809,17 +770,17 @@ void secdataPrepare(part_t *sd, u8 *date)
 			log_printf(1, "******* WARNING: secdata.bin was not provided or was invalid! Making up an clean/empty secdata.bin!\n");
 		else
 			log_printf(1, "******* WARNING: secdata.bin is not the correct size! Making up an clean/empty secdata.bin!\n");
-		free(sd->buf);
+		free(sd->data);
 		sd->size = 0x400;
-		sd->buf = calloc(0x400, 1);
+		sd->data = calloc(0x400, 1);
 	}
-	memcpy(sd->buf + 16, secdataKey, 8);
-	memcpyrev(sd->buf + 32, date, 8);
-	sd->buf[24] = 1;
-	sd->buf[25] = xb.cfLdv;
-	XeCryptHmacSha(xb.cpuKey, 16, sd->buf + 16, sd->size - 16, NULL, 0, NULL, 0, sd->buf, 16);
-	XeCryptHmacSha(xb.cpuKey, 16, sd->buf, 16, NULL, 0, NULL, 0, key, 16);
-	XeCryptRc4(key, 16, sd->buf + 16, sd->size - 16);
+	memcpy(sd->data + 16, secdataKey, 8);
+	memcpyrev(sd->data + 32, date, 8);
+	sd->data[24] = 1;
+	sd->data[25] = xb.cfLdv;
+	XeCryptHmacSha(xb.cpuKey, 16, sd->data + 16, sd->size - 16, NULL, 0, NULL, 0, sd->data, 16);
+	XeCryptHmacSha(xb.cpuKey, 16, sd->data, 16, NULL, 0, NULL, 0, key, 16);
+	XeCryptRc4(key, 16, sd->data + 16, sd->size - 16);
 }
 
 int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut)
@@ -840,7 +801,7 @@ void crlEncrypt(u8 *crl, u32 size, u8 *date)
 	u8 *buf = malloc(size);
 	u8 key[16];
 	u8 iv[16];
-	AESSTATE aes;
+	XECRYPT_AES_STATE aes;
 	int ok;
 
 	memcpy(buf, crl, size);
@@ -882,7 +843,7 @@ void daeEncryptOne(u8 *dae, u32 size, u8 *date)
 	u8 *buf = malloc(size);
 	u8 hash[16];
 	u8 iv[16];
-	AESSTATE aes;
+	XECRYPT_AES_STATE aes;
 
 	memcpy(dae + 288, daeKey, 32);
 	dae[289] |= 1;
@@ -974,7 +935,7 @@ void fcrtEncrypt(u8 *fcrt, u32 size)
 	u8 iv[16];
 	u8 hash[20];
 	u32 off;
-	AESSTATE aes;
+	XECRYPT_AES_STATE aes;
 
 	memcpy(iv, fcrt + 256, 16);
 	if (size != 0x4000) {

@@ -3,12 +3,10 @@
 #include <string.h>
 
 #include "xebuild.h"
-
-void log_printf(int level, const char *fmt, ...);
-u32 getBeU32(const u8 *p);
-int kvVerifySig(u8 *kv, const void *pubKey, const u8 *hmacKey);
-int validateString(char *nString);
-unsigned char myatox8(char *dat);
+#include "fileutil.h"
+#include "keyvault.h"
+#include "log.h"
+#include "xboxrom.h"
 
 static u8 kvBuf[0x4000];
 static u8 dvdKey[16];

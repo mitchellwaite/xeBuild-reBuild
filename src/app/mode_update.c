@@ -6,48 +6,27 @@
 
 #define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
+#include "bootloaders.h"
+#include "console_hdd.h"
+#include "consoleinfo.h"
+#include "filelist_ini.h"
+#include "fileutil.h"
+#include "image_read.h"
+#include "image_write.h"
+#include "keys.h"
+#include "log.h"
+#include "main.h"
+#include "mode_update.h"
+#include "net.h"
+#include "smc.h"
+
+/* TODO(prototype cast): verifyExtended returns int (bootloaders.c); getKv's
+   code wants a u32 */
+u32 verifyExtendedU32(void *buf, int size) __asm__("_verifyExtended");
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
-void log_printf(int level, const char *fmt, ...);
-void log_set_name(const char *name);
-void log_verbose_flag(unsigned char c);
-void log_finish(void);
-u16 getBeU16(const u8 *p);
-u32 getBeU32(const u8 *p);
-int findInstExists(const u8 *buf, int len, const void *inst, int instLen);
-void *FileToBuffer(const char *name, size_t *psize);
-int writeFileIn(const char *dir, const char *name, const void *buf, size_t size);
-int createDir(const char *path);
-int smcConfigOk(const u8 *smc);
-u32 verifyExtended(void *buf, int size);
-int unscramble(u8 *buf, u32 len);
 u32 getSecurityFiles(const char *dir);
-void setKvSalt(u8 *key);
-void setSmcKey(u8 *key);
-int verifyFlashFile(int i);
-int parseIni(const char *path);
-int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update);
-int buildImage(void);
-int writeImage(const char *name);
-u8 *imageGetBuffer(u32 *size);
-void remapBadBlocks(u32 numBlocks);
-void sendAvatarData(const char *dir, u32 kernel);
-int netConnect(const char *ip);
-struct consoleinfo *netGetInfo(void);
-u8 *netGetFile(const char *name, int *len);
-u8 *netGetBadBlocks(int *len);
-u8 *netGetBldrs(int *len);
-u32 netMount(const char *drive, const char *path);
-int netUnmount(const char *drive);
-int netDumpNand(const char *path);
-void netTimerStart(void);
-int netSendFlash(u8 *buf, u32 len);
-void netReboot(int how);
-void netFree(void *p);
-
-extern char separator[];
-extern int promptEnter;
 
 /* the other functions keep gcc's guessed profile, and .text */
 #define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
@@ -368,7 +347,7 @@ NOPROF static u32 getKv(const char *dir)
 		return 0;
 	}
 	log_printf(1, mu_44d278, xb.kv.size);
-	ret = verifyExtended(xb.kv.data, xb.kv.size);
+	ret = verifyExtendedU32(xb.kv.data, xb.kv.size);
 	if (ret) {
 		log_printf(1, mu_44d2ae);
 		setKvSalt(xb.kv.data + 16);

@@ -10,20 +10,15 @@
 
 #define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
+#include "filelist_ini.h"
+#include "fileutil.h"
+#include "keyvault.h"
+#include "log.h"
+#include "options.h"
 
-void log_printf(int level, const char *fmt, ...);
-int FileExists(const char *name);
-char *getIniValue(const char *key);
-int getIniBool(const char *key, int def);
-char *iniBoolInvalid(const char *key);
-u32 getIniU32(const char *key, u32 def);
-char *iniU32Invalid(const char *key);
-u32 myatou32(char *dat, u32 defValue);
-unsigned char myatox8(char *dat);
-u32 validateString(char *nString);
-void showHexPairs(unsigned int level, const char *s);
-int kvSetDvdKey(char *key);
-void applyIniOptions(void);
+/* TODO(prototype cast): validateString read as u32 here */
+u32 validateStringU32(const char *nString) __asm__("_validateString");
+
 u32 parseOption(char *opt);
 /* parseCmdOptions matches only when it sees an int return */
 int parseOptionInt(char *opt) __asm__("_parseOption");
@@ -915,7 +910,7 @@ u32 parseOption(char *opt)
 				log_printf(1, msg_macidBadLength, opt);
 				return 0;
 			}
-			if (!validateString(val)) {
+			if (!validateStringU32(val)) {
 				log_printf(1, msg_macidBadValues, opt);
 				return 0;
 			}
@@ -1023,7 +1018,7 @@ void applyIniOptions(void)
 				log_printf(0, msg_iniMacidBadLength);
 				showHexPairs(0, s);
 				log_printf(0, msg_iniMacidDiscard, s);
-			} else if (!validateString(s)) {
+			} else if (!validateStringU32(s)) {
 				log_printf(0, msg_iniMacidBadChars);
 				showHexPairs(0, s);
 				log_printf(0, msg_iniMacidDiscard, s);

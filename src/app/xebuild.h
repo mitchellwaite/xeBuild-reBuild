@@ -261,6 +261,13 @@ struct xebuild {
 	int iniSize;			/* 4f90c */
 };
 
+/* src/globals.c */
+extern int *blOrder;			/* filelist_ini: one of the bl* tables */
 extern struct xebuild xb;
+extern struct fsent fsFiles[256];	/* image_write */
+extern u16 fsTable[0x1000];
+extern struct flashhdr hdrTemplate;
+extern u32 imgEnd;
+extern struct manifest manifest;	/* console_hdd */
 
 #endif

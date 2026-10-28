@@ -1,13 +1,10 @@
 /* smc: SMC checksum, type detection, reset-limit/eject/blink patches */
 
 #include "xebuild.h"
-
-u32 crc32(const u8 *buf, int len);
-void log_printf(int level, const char *fmt, ...);
-const char *getConsoleTypeStr(int type);
-int findInstExists(const u8 *buf, int len, const void *inst, int instLen);
-int replaceInst(u8 *buf, int len, const void *inst, int instLen, const void *repl, int replLen);
-u32 calcConfigSum(const u8 *buf);
+#include "crc32.h"
+#include "fileutil.h"
+#include "log.h"
+#include "smc.h"
 
 struct knownSmc {
 	u32 crc;

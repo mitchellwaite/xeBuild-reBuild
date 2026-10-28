@@ -3,33 +3,18 @@
 #include <string.h>
 
 #include "xebuild.h"
+#include "build.h"
+#include "consoleinfo.h"
+#include "fileutil.h"
+#include "keys.h"
+#include "log.h"
+#include "main.h"
+#include "net.h"
+#include "options.h"
 
-void log_printf(int level, const char *fmt, ...);
-const char *getConsoleTypeStr(int type);
-u32 getBeU32(const u8 *p);
-int writeFileIn(const char *dir, const char *name, const void *buf, size_t size);
-int writeFuseFile(const char *dir, const char *name, const u8 *fuses);
-u8 *findInst(u8 *buf, int len, const u8 *pat, int patlen);
-int checkZeros(const u8 *p, u32 len);
-u32 sumBytes(const u8 *p, u32 len);
-void showFuses(int level, const char *title, const u8 *fuses);
-void showKey(int level, const u8 *key);
-void logButton(int level, int code);
-int setConsoleType(const char *name);
-int findFile(int id);
-u8 *netGetFile(const char *name, u32 *len);
-struct consoleinfo *netGetInfo(void);
-void netFree(void *p);
-int checkCpuKey(int level, const u8 *key);
-int setCpuKey(int level, const u8 *key);
-int set1blKey(const u8 *key);
-int setPairing(u32 pairing);
-void setInfoKey0(const u8 *key);
-void setInfoKey1(const u8 *key);
-void setInfoKey2(const u8 *key);
-void setInfoKey3(const u8 *key);
-void setInfoKey4(const u8 *key);
-void setInfoKey5(const u8 *key);
+/* TODO(prototype cast): log_printf's level is unsigned (log.c); converting
+   consoleinfo's int levels changes showInfoKeys' code */
+void log_printfInt(int level, const char *fmt, ...) __asm__("_log_printf");
 
 #define IS_SLIM ((xb.flags & 7) > 4)
 
@@ -162,26 +147,26 @@ int showImageType(int level, int bootstrap, u32 nandType, u32 unused)
 		}
 		break;
 	}
-	log_printf(level, "Image Type      : %s (", type);
+	log_printfInt(level, "Image Type      : %s (", type);
 	if (bootstrap < 0) {
 		xb.type = 2;
-		log_printf(level, "JTAG");
+		log_printfInt(level, "JTAG");
 	} else {
 		xb.type = 3;
 		if (bootstrap & 0x20000000) {
 			xb.glitch2 = 1;
-			log_printf(level, "Glitch2");
+			log_printfInt(level, "Glitch2");
 		} else if (bootstrap & 0x40000000) {
-			log_printf(level, "Glitch");
+			log_printfInt(level, "Glitch");
 			if (!t)
-				log_printf(level, "-FAT");
+				log_printfInt(level, "-FAT");
 		} else if (bootstrap & 0x10000000) {
 			xb.glitch2mfg = 1;
 			xb.glitch2 = 1;
-			log_printf(level, "Glitch2M");
+			log_printfInt(level, "Glitch2M");
 		}
 	}
-	log_printf(level, ")\n");
+	log_printfInt(level, ")\n");
 	optWrite("type", type);
 	return setConsoleType(type);
 }
@@ -192,38 +177,38 @@ int getFreebootOpts(int level, const char *dir)
 	u8 *p;
 	int flags;
 
-	log_printf(1, "retrieving USVR\\freeboot_bin...");
+	log_printfInt(1, "retrieving USVR\\freeboot_bin...");
 	xb.files[i].data = netGetFile("freeboot_bin", &xb.files[i].size);
 	if (xb.files[i].data && xb.files[i].size) {
 		char sig[] = "[v0.08 - inspired by ikari]";
 
 		if (findInst(xb.files[i].data, xb.files[i].size, (u8 *)sig, 27)) {
 			flags = xb.bootFlags;
-			log_printf(level, "parsing freeboot 0.08 core for opts\n");
+			log_printfInt(level, "parsing freeboot 0.08 core for opts\n");
 			p = xb.files[i].data + 2464;
 			xb.xellButton = p[7];
 			xb.dualButton = p[11];
 			xb.xellAltButton = p[15];
 			flags = (flags & ~0xf) | (getBeU32(p) & 0xf);
-			log_printf(level, "Xell Reason     : ");
+			log_printfInt(level, "Xell Reason     : ");
 			logButton(level, xb.xellButton);
 			optButton("xellbutton", xb.xellButton);
 			if (xb.xellAltButton) {
-				log_printf(level, "Xell Alt Reason : ");
+				log_printfInt(level, "Xell Alt Reason : ");
 				logButton(level, xb.xellAltButton);
 				optButton("xellbutton2", xb.xellAltButton);
 			}
 			if (flags & 9) {
-				log_printf(level, "UART speed      : cygnos/demon speed set\n");
+				log_printfInt(level, "UART speed      : cygnos/demon speed set\n");
 				optWrite("cygnos", "true");
 			}
 			if (xb.dualButton) {
-				log_printf(level, "DualBoot Reason :");
+				log_printfInt(level, "DualBoot Reason :");
 				logButton(level, xb.dualButton);
 				optButton("dualboot", xb.dualButton);
 			}
 		} else {
-			log_printf(0, "\n*****WARNING: unrecognized freeboot binary on console! Using default options for xell/uart speed!\n");
+			log_printfInt(0, "\n*****WARNING: unrecognized freeboot binary on console! Using default options for xell/uart speed!\n");
 			xb.xellButton = 18;
 		}
 		netFree(xb.files[i].data);
@@ -257,16 +242,16 @@ int getFlashHdrOpts(int level, const char *dir)
 	}
 	xb.xellButton = hdr[79];
 	xb.xellAltButton = hdr[78];
-	log_printf(level, "Xell Reason     : ");
+	log_printfInt(level, "Xell Reason     : ");
 	logButton(level, xb.xellButton);
 	optButton("xellbutton", xb.xellButton);
 	if (xb.xellAltButton) {
-		log_printf(level, "Xell Alt Reason : ");
+		log_printfInt(level, "Xell Alt Reason : ");
 		logButton(level, xb.xellAltButton);
 		optButton("xellbutton2", xb.xellAltButton);
 	}
 	if (flags & 1) {
-		log_printf(level, "UART speed      : cygnos/demon speed set\n");
+		log_printfInt(level, "UART speed      : cygnos/demon speed set\n");
 		optWrite("cygnos", "true");
 	}
 	if (flags & 2)
@@ -293,36 +278,36 @@ int showInfoKeys(int level, const char *dir, int *update)
 		__builtin_unreachable();
 	if (!checkZeros(info->cpuKey, 16)) {
 		optHex("cpukey", info->cpuKey);
-		log_printf(level, "CPU key         : ");
+		log_printfInt(level, "CPU key         : ");
 		showKey(level, info->cpuKey);
 		checkCpuKey(level, info->cpuKey);
-		log_printf(level, "\n");
+		log_printfInt(level, "\n");
 	}
 	optLdv(info->pairing);
 	if (!checkZeros(info->dvdKey, 16)) {
 		optHex("dvdkey", info->dvdKey);
-		log_printf(level, "DVD key         : ");
+		log_printfInt(level, "DVD key         : ");
 		showKey(level, info->dvdKey);
-		log_printf(level, "\n");
+		log_printfInt(level, "\n");
 	}
 	sum = sumBytes(info->key1bl, 16);
-	log_printf(level, "1BL key         : ");
+	log_printfInt(level, "1BL key         : ");
 	showKey(level, info->key1bl);
-	log_printf(level, " (%s)\n", sum == 0x983 ? "good" : "bad");
-	log_printf(level, "Fuses           : ");
+	log_printfInt(level, " (%s)\n", sum == 0x983 ? "good" : "bad");
+	log_printfInt(level, "Fuses           : ");
 	if (!checkZeros(info->fuses, 96))
 		showFuses(level, "present", info->fuses);
 	else
-		log_printf(level, "not present\n");
-	log_printf(level, "Virtual Fuses   : ");
+		log_printfInt(level, "not present\n");
+	log_printfInt(level, "Virtual Fuses   : ");
 	if (!checkZeros(info->vfuses, 96))
 		showFuses(level, "present", info->vfuses);
 	else
-		log_printf(level, "not present\n");
+		log_printfInt(level, "not present\n");
 	/* one log call per key; gcc's jump threading splits it into the
 	   good/bad calls (and puts their strings after vfuses.txt) */
 	ok = sumBytes(info->pub1bl, 272) == 0x79c7;
-	log_printf(level, "1BL RSA pub     : %s\n", ok ? "good" : "bad");
+	log_printfInt(level, "1BL RSA pub     : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
 			xb.pub1bl = info->pub1bl;
@@ -330,7 +315,7 @@ int showInfoKeys(int level, const char *dir, int *update)
 			writeFileIn(dir, "1BL_pub.bin", info->pub1bl, 272);
 	}
 	ok = sumBytes(info->pubPirs, 272) == 0x80d0;
-	log_printf(level, "PIRS RSA pub    : %s\n", ok ? "good" : "bad");
+	log_printfInt(level, "PIRS RSA pub    : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
 			xb.pubPirs = info->pubPirs;
@@ -338,7 +323,7 @@ int showInfoKeys(int level, const char *dir, int *update)
 			writeFileIn(dir, "PIRS_pub.bin", info->pubPirs, 272);
 	}
 	ok = sumBytes(info->pubMaster, 272) == 0x843c;
-	log_printf(level, "MASTER RSA pub  : %s\n", ok ? "good" : "bad");
+	log_printfInt(level, "MASTER RSA pub  : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
 			xb.masterPub = info->pubMaster;
@@ -354,7 +339,7 @@ int showInfoKeys(int level, const char *dir, int *update)
 	/* ret = 0 before the set1blKey test (not `&&`) keeps the result in edx */
 	ret = 1;
 	if (update) {
-		log_printf(level, "\n");
+		log_printfInt(level, "\n");
 		cpuOk = setCpuKey(level, info->cpuKey);
 		ret = cpuOk == 1;
 		if (set1blKey(info->key1bl) != 1)
@@ -367,13 +352,13 @@ void showCurrentInfo(int level, int *hdd)
 {
 	u32 k;
 
-	log_printf(level, "Console Current Info:\n");
+	log_printfInt(level, "Console Current Info:\n");
 	k = info->kernel;
-	log_printf(level, "running kernel  : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf, (u16)(k >> 8), k & 0xf);
-	log_printf(level, "bootstrap type  : %s\n", getConsoleTypeStr((info->bootstrap & 0xf) + 1));
-	log_printf(level, "hardware type   : %s\n", getConsoleTypeStr((info->hwFlags >> 28) + 1));
-	log_printf(level, "hardware flags  : 0x%08x\n", info->hwFlags);
-	log_printf(level, "internal HDD    : %s\n", (info->hwFlags & 0x20) ? "present" : "not present");
+	log_printfInt(level, "running kernel  : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf, (u16)(k >> 8), k & 0xf);
+	log_printfInt(level, "bootstrap type  : %s\n", getConsoleTypeStr((info->bootstrap & 0xf) + 1));
+	log_printfInt(level, "hardware type   : %s\n", getConsoleTypeStr((info->hwFlags >> 28) + 1));
+	log_printfInt(level, "hardware flags  : 0x%08x\n", info->hwFlags);
+	log_printfInt(level, "internal HDD    : %s\n", (info->hwFlags & 0x20) ? "present" : "not present");
 	if ((info->hwFlags & 0x20) && hdd)
 		*hdd = 1;
 }
@@ -400,15 +385,15 @@ int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update
 	int ret;
 
 	info = netGetInfo();
-	log_printf(level, "\n------ parsing console info response ------\n");
+	log_printfInt(level, "\n------ parsing console info response ------\n");
 	showCurrentInfo(level, update);
 	if (update && (u8)info->version <= 1) {
-		log_printf(0, "\n*****ERROR: console hv patches are not recent enough to support update mode!\n");
-		log_printf(0, "\n            update console patches and reboot before trying again.\n");
+		log_printfInt(0, "\n*****ERROR: console hv patches are not recent enough to support update mode!\n");
+		log_printfInt(0, "\n            update console patches and reboot before trying again.\n");
 		optClose();
 		return 0;
 	} else if ((info->version & ~0xff) <= 0x2ff) {
-		log_printf(0, "\n*****ERROR: updsvr on console needs to be updated!\n");
+		log_printfInt(0, "\n*****ERROR: updsvr on console needs to be updated!\n");
 		return 0;
 	} else {
 		optOpen(optDir);
@@ -416,12 +401,12 @@ int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update
 		    && showInfoKeys(level, dir, update)
 		    && getFlashHdrOpts(level, dir)) {
 			xb.cfLdv = info->pairing;
-			log_printf(level, "CF LDV          : %d\n", xb.cfLdv);
-			log_printf(level, "Pairing Value   : 0x%06x ", info->pairing >> 8);
+			log_printfInt(level, "CF LDV          : %d\n", xb.cfLdv);
+			log_printfInt(level, "Pairing Value   : 0x%06x ", info->pairing >> 8);
 			if (update)
 				setPairing(info->pairing >> 8);
 			else
-				log_printf(level, "\n");
+				log_printfInt(level, "\n");
 			setInfoKeys();
 			ret = 1;
 		} else

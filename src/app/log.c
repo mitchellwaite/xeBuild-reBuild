@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "log.h"
+
 #define LOG_FILE "build.log"
 
 static unsigned int verbose_level;

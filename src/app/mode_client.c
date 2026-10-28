@@ -26,51 +26,26 @@
 #endif
 
 #include "xebuild.h"
+#include "console_hdd.h"
+#include "consoleinfo.h"
+#include "fileutil.h"
+#include "image_write.h"
+#include "log.h"
+#include "main.h"
+#include "mode_client.h"
+#include "net.h"
 
-void log_printf(int level, const char *fmt, ...);
-void log_set_name(const char *name);
-void log_verbose_flag(unsigned char c);
-void log_finish(void);
-u16 getBeU16(const u8 *p);
-const char *getConsoleTypeStr(int type);
-u32 myatoh32(const char *s, u32 def);
-u32 sumBytes(const u8 *p, u32 len);
-u8 *findInst(u8 *buf, int len, const void *pat, int patlen);
-int countInst(u8 *buf, int len, const void *pat, int patlen);
-int FileExists(const char *name);
-void *FileToBuffer(const char *name, size_t *psize);
-int writeFile(const char *name, const void *buf, size_t size);
-int writeFileIn(const char *dir, const char *name, const void *buf, size_t size);
-int writeKeyFile(const char *dir, const char *name, const u8 *key);
-int createDir(const char *path);
-int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update);
-void calcPageEcc(u8 *page, u8 *spare);
-int loadManifest(const char *dir, u32 ver);
-void freeManifest(void);
-void sendAvatarData(const char *dir, u32 kernel);
-u32 sendCompatData(const char *dir);
-int netConnect(const char *ip);
-void netDisconnect(void);
-struct consoleinfo *netGetInfo(void);
-u8 *netGetFile(const char *name, size_t *len);
-u8 *netGetBadBlocks(int *len);
-int netDumpNand(const char *path);
-void netTimerStart(void);
-int netSendFlash(u8 *buf, u32 len);
-void netReboot(int how);
-u8 *netReadBlocks(int *len, u32 start, u32 count);
-int netWriteBlocks(u8 *buf, int len, u32 start, u32 count);
-int netEraseBlock(u32 block, int force);
-int netWritePatches(u8 *buf, size_t len);
+/* TODO(prototype cast): net.c takes u16 block numbers; mode_client's calls
+   compile to the original's code only with u32 ones */
+int netEraseBlockU32(u32 block, int force) __asm__("_netEraseBlock");
+u8 *netReadBlocksU32(int *len, u32 start, u32 count) __asm__("_netReadBlocks");
+int netWriteBlocksU32(u8 *buf, int len, u32 start, u32 count) __asm__("_netWriteBlocks");
+
 void client_usage(int err, const char *arg) __attribute__((noreturn));
 int dumpKey(const char *name, const char *file, const u8 *key, size_t len, u32 sum);
 int checkPatches(u8 *buf, size_t *len, u32 type);
 void updatePatches(const char *file, u32 type);
 void patchNand(u8 *buf, int off, const u8 *data, int len);
-
-extern char separator[];
-extern int promptEnter;
-extern struct manifest manifest;
 
 /* the original object's .bss is 32 bytes, cinfo at its start */
 static struct consoleinfo *cinfo __attribute__((aligned(32)));
@@ -483,7 +458,7 @@ void clientReadBlocks(const char *file, const char *sstart, const char *scount)
 	if (count != 0 && count != -1 && start != -1) {
 		if (start + count <= cinfo->nandSize / cinfo->blockSize) {
 			log_printf(0, mc_44f240, count, count, start, start);
-			buf = netReadBlocks(&len, start, count);
+			buf = netReadBlocksU32(&len, start, count);
 			if (buf && len > 0) {
 				log_printf(0, mc_44f288, len, len, file);
 				if (writeFile(file, buf, len))
@@ -526,7 +501,7 @@ void clientWriteBlocks(const char *file, const char *sstart)
 	if (!(len % cinfo->blockSize)) {
 		if (start + n <= cinfo->nandSize / cinfo->blockSize) {
 			log_printf(0, mc_44f3f0, n, n, start, start);
-			if (netWriteBlocks(buf, len, start, n))
+			if (netWriteBlocksU32(buf, len, start, n))
 				log_printf(0, mc_44f434, len, len);
 			else
 				log_printf(0, mc_44f464);
@@ -606,7 +581,7 @@ void clientBinPatch(const char *file, const char *soff)
 				if ((len + rem) % bs)
 					count++;
 				log_printf(0, mc_44f52c, count, start, start);
-				nand = netReadBlocks(&rlen, start, count);
+				nand = netReadBlocksU32(&rlen, start, count);
 				if (nand && rlen) {
 					log_printf(0, mc_44f570);
 					switch (cinfo->nandSize) {
@@ -624,7 +599,7 @@ void clientBinPatch(const char *file, const char *soff)
 					log_printf(0, mc_44f2b0);
 					log_printf(0, mc_44f594, count, start);
 					__asm__("" :: "r"(count));
-					if (netWriteBlocks(nand, rlen, start, count))
+					if (netWriteBlocksU32(nand, rlen, start, count))
 						log_printf(0, mc_44f5d0);
 					else
 						log_printf(0, mc_44f464);
@@ -650,7 +625,7 @@ void clientEraseBlock(const char *sblock)
 	if (block != -1) {
 		if (block < cinfo->nandSize / cinfo->blockSize) {
 			log_printf(0, mc_44f6d5, block);
-			if (netEraseBlock(block, 1))
+			if (netEraseBlockU32(block, 1))
 				log_printf(0, mc_44f6eb);
 			else
 				{ AT(efail) log_printf(0, mc_44f6f8, block); }

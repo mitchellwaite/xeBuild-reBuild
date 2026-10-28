@@ -3,18 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-void log_set_name(const char *name);
-void log_printf(int level, const char *fmt, ...);
-void log_verbose_flag(unsigned char c);
-void log_finish(void);
-
-int loadDump(const char *path);
-void listFlashFiles(void);
-void checkBootImage(int arg);
-
-extern char separator[];
-extern int promptEnter;
 #include "xebuild.h"
+#include "image_read.h"
+#include "image_write.h"
+#include "log.h"
+#include "main.h"
+#include "mode_extract.h"
 
 void extract_usage(int err, const char *opt)
 {

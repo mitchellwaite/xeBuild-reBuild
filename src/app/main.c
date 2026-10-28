@@ -6,40 +6,24 @@ int _chdir(const char *path);	/* msvcrt, called through its import stub */
 #include <signal.h>
 
 #include "xebuild.h"
+#include "bootloaders.h"
+#include "fileutil.h"
+#include "image_write.h"
+#include "keys.h"
+#include "keyvault.h"
+#include "log.h"
+#include "main.h"
+#include "mode_build.h"
+#include "mode_client.h"
+#include "mode_extract.h"
+#include "mode_ini.h"
+#include "mode_update.h"
+#include "sysupdate.h"
 
 #define XEBUILD_NAME "xeBuild"
 #define XEBUILD_MAJOR 1
 #define XEBUILD_MINOR 21
 #define XEBUILD_BUILD "810"
-
-void log_set_verbose(int v);
-void log_printf(int level, const char *fmt, ...);
-void log_init(void);
-void log_finish(void);
-void showKey(int level, const u8 *key);
-u8 *kvGetConsoleId(void);
-int kvGetSerial(char *out);
-u8 *kvGetConsoleCert(void);
-int kvGetMfgDate(char *out);
-u8 *kvGetDvdKey(void);
-int kvIsLoaded(void);
-int kvGetType(void);
-int verifyFcrt(void *buf, int size);
-int verifyExtended(void *buf, int size);
-int verifyCrl(void *buf, int size, int arg);
-int verifyDae(void *buf, int size);
-int verifySecdata(void *buf, int size);
-void setCrlKey(void *key);
-void setDaeKey(void *key);
-void setSecdataKey(void *key);
-void suFree(void);
-void imageFree(void);
-int mode_ini(int argc, char **argv);
-int mode_client(int argc, char **argv);
-int mode_update(int argc, char **argv);
-int mode_extract(int argc, char **argv);
-int mode_build(int argc, char **argv);
-void build_usage(void);
 
 /* gcc emits these in reverse: separator comes first in .data */
 int promptEnter = 1;

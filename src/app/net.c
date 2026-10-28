@@ -7,20 +7,14 @@
 #include <time.h>
 
 #include "xebuild.h"
+#include "fileutil.h"
+#include "log.h"
+#include "net.h"
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 #define BEACON_MAGIC	0x4e537672	/* "NSvr" */
 #define OK_REPLY	0x4f4b	/* "OK" */
-
-void log_printf(int level, const char *fmt, ...);
-unsigned int log_get_verbose(void);
-const char *getConsoleTypeStr(int type);
-u16 getBeU16(const u8 *p);
-u32 getBeU32(const u8 *p);
-u32 getLeU32(const u8 *p);
-void setBeU32(u32 v, u8 *p);
-int writeFile(const char *name, const void *buf, size_t size);
 
 /* not static: as a public variable *len may alias it, so sched2 keeps
    netRecv's `*len = 0` after the netSock load (anti-dependence) */
@@ -492,13 +486,13 @@ u32 netUnmount(const char *drive)
 	return 0;
 }
 
-u32 netGetFile(const char *name, int *len)
+u8 *netGetFile(const char *name, int *len)
 {
 	char cmd[260];
 
 	sprintf(cmd, net_457962, name);
 	if (netSendStr(cmd))
-		return (u32)netRecv(len);
+		return netRecv(len);
 	return 0;
 }
 
@@ -531,10 +525,10 @@ int netDumpNand(const char *path)
 	return 0;
 }
 
-u32 netGetBldrs(int *len)
+u8 *netGetBldrs(int *len)
 {
 	if (netSendStr(net_4579cb))
-		return (u32)netRecv(len);
+		return netRecv(len);
 	return 0;
 }
 
@@ -563,13 +557,13 @@ u32 netSendFlash(const u8 *buf, u32 len)
 	return 1;
 }
 
-u32 netReadBlocks(int *len, u16 start, u16 count)
+u8 *netReadBlocks(int *len, u16 start, u16 count)
 {
 	char cmd[32];
 
 	sprintf(cmd, net_4579f9, start, count);
 	if (netSendStr(cmd))
-		return (u32)netRecvVerbose(len, log_get_verbose() != 0);
+		return netRecvVerbose(len, log_get_verbose() != 0);
 	return 0;
 }
 
@@ -620,15 +614,15 @@ int netEraseBlock(u16 block, u16 count)
 	return 0;
 }
 
-u32 netGetBadBlocks(int *len)
+u8 *netGetBadBlocks(int *len)
 {
 	if (netSendStr(net_457a23))
-		return (u32)netRecv(len);
+		return netRecv(len);
 	return 0;
 }
 
 __attribute__((optimize("no-crossjumping")))
-int netSendFile(const char *name, const u8 *buf, u32 len)
+int netSendFile(const char *name, const void *buf, u32 len)
 {
 	int rlen, ret;
 	u8 *r;

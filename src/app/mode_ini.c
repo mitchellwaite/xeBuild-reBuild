@@ -5,25 +5,18 @@
 #include <stdarg.h>
 
 #include "xebuild.h"
+#include "crc32.h"
+#include "fileutil.h"
+#include "keys.h"
+#include "log.h"
+#include "main.h"
+#include "mode_build.h"
+#include "mode_ini.h"
+#include "sysupdate.h"
 
-void log_set_verbose(int v);
-void log_printf(int level, const char *fmt, ...);
-u32 crc32(const u8 *buf, int len);
-u16 getBeU16(const u8 *p);
-u32 getBeU32(const u8 *p);
-
-const char *suGetDir(void);
-int suLoad(const char *path);
-int suGetCF(u8 **data, u32 *len);
-int suGetCG(u8 **data, u32 *len);
-u32 suFirstFile(char *name, int *idx);
-int suNextFile(char *name, int *idx);
-int suGetFile(const char *name, u8 **data, u32 *len);
-int loadKeyFile(void *keys, const char *dir, const char *name);
-int checkKeys(void *keys);
-
-extern char separator[];
-extern int promptEnter;
+/* TODO(prototype cast): suFirstFile read as u32 (iniWriteFlashfs then
+   returns a fresh 0, not its result); sysupdate.c's code needs the int */
+u32 suFirstFileU32(char *name, int *idx) __asm__("_suFirstFile");
 
 static char iniFile[1024];
 static char iniDir[1024];
@@ -82,7 +75,7 @@ u32 iniWriteFlashfs(void)
 	u32 crc;
 
 	iniPrintf("[flashfs]\n");
-	if (!suFirstFile(name, &idx))
+	if (!suFirstFileU32(name, &idx))
 		goto unparsed;
 	idx = 0;
 	while (suNextFile(name, &idx)) {
@@ -152,7 +145,8 @@ int mode_ini(int argc, char **argv)
 
 	log_set_verbose(1);
 	memset(keys, 0, sizeof(keys));
-	if (loadKeyFile(keys, 0, "1blkey.txt") && !checkKeys(keys)) {
+	/* TODO(prototype cast): keys is an int array used as the key string */
+	if (loadKeyFile((char *)keys, 0, "1blkey.txt") && !checkKeys((char *)keys)) {
 		log_printf(0, "\n***** WARNING: 1blkey.txt not found or invalid, cannot proceed.\n\n");
 		return 4;
 	}

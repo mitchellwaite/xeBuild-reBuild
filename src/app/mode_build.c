@@ -5,31 +5,15 @@
 
 #define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
-
-void log_printf(int level, const char *fmt, ...);
-void log_set_name(const char *name);
-void log_verbose_flag(unsigned char c);
-int FileExists(const char *name);
-void *FileToBuffer(const char *name, size_t *psize);
-u32 sumBytes(const u8 *p, u32 len);
-char *getIniValue(const char *key);
-int checkKeys(void *keys);
-int setCpuKeyStr(const char *key);
-int setConsoleType(const char *name);
-int loadDump(const char *path);
-void loadUserIni(void);
-int parseIni(const char *path);
-void applyIniOptions(void);
-void loadAddons(void);
-int parseCmdOptions(const char *opts);
-int parseRawPatches(const char *pats);
-int iniConsoleType(void);
-void buildCleanup(void);
-int buildImage(void);
-int writeImage(const char *name);
-
-extern char separator[];
-extern int promptEnter;
+#include "filelist_ini.h"
+#include "fileutil.h"
+#include "image_read.h"
+#include "image_write.h"
+#include "keys.h"
+#include "log.h"
+#include "main.h"
+#include "mode_build.h"
+#include "options.h"
 
 void build_usage(void)
 {

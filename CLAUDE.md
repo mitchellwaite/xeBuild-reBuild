@@ -17,6 +17,11 @@ Matching rebuild of `xeBuild.exe`; see README.md for findings, layout and the pi
   the per-directory flags and original `__FILE__` path set there. When moving
   an object to C, put names for the functions it shares with `.s` files in
   `split.py`'s `SYMBOLS` and regenerate. Keep third-party licence notices intact.
+- Shared app types live in `src/app/xebuild.h` and each object's exported
+  prototypes in `src/app/<obj>.h` (README, App headers); don't redeclare them
+  in a .c. If a file's code needs another typing to match, use a cast or an
+  asm-label declaration (`T fnU32(...) __asm__("_fn")`) marked
+  `TODO(xebuild.h cast)` / `TODO(prototype cast)`.
 - Move big objects to C one function at a time (mixed objects, README): add
   the function's address to `split.py`'s `C_FUNCS` and its name to `SYMBOLS`,
   write it in `src/<obj>.c`, regenerate. Leave hard functions in asm and come

@@ -9,31 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
+#include "bootloaders.h"
+#include "fileutil.h"
+#include "keys.h"
+#include "log.h"
+#include "xboxrom.h"
 
-/* XeCrypt's XECRYPT_AES_STATE (two Gladman contexts) */
-typedef struct {
-	u32 ctx[2][61];
-} AESSTATE;
-
-void XeCryptHmacSha(const u8 *pbKey, u32 cbKey, const u8 *pbInp1, u32 cbInp1,
-	const u8 *pbInp2, u32 cbInp2, const u8 *pbInp3, u32 cbInp3,
-	u8 *pbOut, u32 cbOut);
-void XeCryptRc4(const u8 *pbKey, u32 cbKey, u8 *pbInpOut, u32 cbInpOut);
-void XeCryptSha(const u8 *pbInp1, u32 cbInp1, const u8 *pbInp2, u32 cbInp2,
-	const u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
-void XeCryptAesKey(AESSTATE *pAesState, const u8 *pbKey);
-void XeCryptAesEcb(AESSTATE *pAesState, const u8 *pbInp, u8 *pbOut, int fEncrypt);
-void XeCryptAesCbc(AESSTATE *pAesState, const u8 *pbInp, u32 cbInp, u8 *pbOut,
-	u8 *pbFeed, int fEncrypt);
-int XeKeysPkcs1Verify(const u8 *pbHash, const u8 *pbSig, const void *pRsaPub);
-void log_printf(int level, const char *fmt, ...);
-u32 getBeU32(const u8 *p);
-int checkZeros(const u8 *p, u32 len);
-int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut);
-int cbVerifySig(u8 *bl, const void *pubKey);
-int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
-int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
 int fcrtVerifySig(u8 *fcrt);
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
@@ -141,7 +124,6 @@ u32 cfBestPairing(u8 *data, u32 size)
 }
 
 /* decrypt a CF in place with the 1BL key; 1 if it checks out */
-int cfDecrypt(u8 *cf, u32 size);
 /* no DOM/VRP: they fold ok to 0 on the false edge and the result becomes a
    setne; the original keeps `ok` there and if-converts to cmovne */
 __attribute__((optimize("no-tree-dominator-opts", "no-tree-vrp")))
@@ -210,7 +192,7 @@ int verifyCrl(u8 *crl, u32 size, int perBox)
 	u8 key[16];
 	u8 iv[16];
 	u8 hash[20];
-	AESSTATE aes;
+	XECRYPT_AES_STATE aes;
 
 	if (perBox)
 		XeCryptAesKey(&aes, xb.cpuKey);
@@ -234,7 +216,7 @@ __attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 {
 	u8 *buf;
 	u8 iv[16];
-	AESSTATE aes;
+	XECRYPT_AES_STATE aes;
 
 	buf = malloc(size);
 	memcpy(buf, dae, size);
@@ -280,7 +262,6 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 }
 
 /* check and decrypt the two DAEP segments of a DAE file */
-int verifyDae(u8 *buf, u32 size);
 /* daeVerifySig as verifyDae inlines it: `if (ok)` first, inlined before
    profile estimation (the standalone daeVerifySig tests !ok first) */
 static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, int n)
@@ -365,12 +346,11 @@ static const char msg_fcrtDone[] __attribute__((aligned(1))) = "FCRT was already
 static const char msg_fcrtHash[] __attribute__((aligned(4))) = "\n******* ERROR: FCRT hash check failed, could not decrypt!\n";
 
 /* check an FCRT's signature, then decrypt it with the CPU key */
-int verifyFcrt(u8 *fcrt, u32 size);
 int verifyFcrt(u8 *fcrt, u32 size)
 {
 	u8 iv[16];
 	u8 hash[20];
-	AESSTATE aes;
+	XECRYPT_AES_STATE aes;
 	u32 off;
 
 	fcrtVerifySig(fcrt);

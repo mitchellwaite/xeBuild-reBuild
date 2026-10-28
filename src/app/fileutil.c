@@ -15,12 +15,12 @@ int _mkdir(const char *path);	/* msvcrt, called through its import stub */
 #include <string.h>
 
 #include "xebuild.h"
+#include "fileutil.h"
+#include "log.h"
+
 typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
-
-void log_printf(unsigned int level, const char *fmt, ...);
-BOOL validateString(char* nString);
 
 const char *consoleTypeStr[] = {
 	"Unknown", "Xenon", "Zephyr", "Falcon", "Jasper", "Trinity", "Corona",
@@ -39,9 +39,10 @@ unsigned short getBeU16(const unsigned char *p)
 	return (p[0] << 8) | p[1];
 }
 
-unsigned int getBeU32(const unsigned int *p)
+unsigned int getBeU32(const u8 *p)
 {
-	return __builtin_bswap32(*p);
+	/* TODO(prototype cast): its callers pass bytes; the original read a u32 */
+	return __builtin_bswap32(*(const u32 *)p);
 }
 
 unsigned long long getBeU64(const unsigned long long *p)
@@ -49,9 +50,10 @@ unsigned long long getBeU64(const unsigned long long *p)
 	return __builtin_bswap64(*p);
 }
 
-unsigned int getLeU32(const unsigned int *p)
+unsigned int getLeU32(const u8 *p)
 {
-	return *p;
+	/* TODO(prototype cast): as getBeU32 */
+	return *(const u32 *)p;
 }
 
 unsigned char *setBeU16(unsigned short v, unsigned char *p)
@@ -184,8 +186,9 @@ int writeFuseFile(const char *dir, const char *name, const unsigned char *fuses)
 	return 0;
 }
 
-unsigned char *findInst(unsigned char *buf, int len, const unsigned char *pat, int patlen)
+unsigned char *findInst(unsigned char *buf, int len, const void *patv, int patlen)
 {
+	const unsigned char *pat = patv;
 	int i, j;
 
 	for (i = 0; i <= len - patlen; i++) {
@@ -200,7 +203,7 @@ unsigned char *findInst(unsigned char *buf, int len, const unsigned char *pat, i
 	return NULL;
 }
 
-int countInst(unsigned char *buf, int len, const unsigned char *pat, int patlen)
+int countInst(unsigned char *buf, int len, const void *pat, int patlen)
 {
 	int count = 0, off = 0;
 	unsigned char* ptr;
@@ -218,8 +221,9 @@ int countInst(unsigned char *buf, int len, const unsigned char *pat, int patlen)
 	return count;
 }
 
-int findInstExists(unsigned char *buf, int len, const unsigned char *pat, int patlen)
+int findInstExists(const unsigned char *buf, int len, const void *patv, int patlen)
 {
+	const unsigned char *pat = patv;
 	int i, j;
 
 	for (i = 0; i <= len - patlen; i++) {
@@ -234,7 +238,7 @@ int findInstExists(unsigned char *buf, int len, const unsigned char *pat, int pa
 	return 0;
 }
 
-int replaceInst(unsigned char *buf, int len, const unsigned char *pat, int patlen,
+int replaceInst(unsigned char *buf, int len, const void *pat, int patlen,
 		  const void *rep, size_t replen)
 {
 	unsigned char *p = findInst(buf, len, pat, patlen);
@@ -258,7 +262,7 @@ unsigned char myatox(char c)
 }
 
 // converts char nibble pair into a uchar
-unsigned char myatox8(char* dat)
+unsigned char myatox8(const char* dat)
 {
 	unsigned char retval;
 	retval	= myatox(dat[0]) & 0xF;
@@ -267,7 +271,7 @@ unsigned char myatox8(char* dat)
 }
 
 // converts (up to) 16 uchar nibbles into a u32
-u32 myatox32(char* dat, u32 defValue)
+u32 myatox32(const char* dat, u32 defValue)
 {
 	u32 retval = 0, i;
 	unsigned char res;
@@ -302,7 +306,7 @@ char myatol(char c)
 // converts a decimal or 0x-prefixed hex string into a u32
 // (opt_idx's myatou32; this build also tests for an upper case 'X' after
 // myatol, which can never match but changes gcc's branch estimate)
-u32 myatou32(char* dat, u32 defValue)
+u32 myatou32(const char* dat, u32 defValue)
 {
 	if(((dat[0]&0xFF) == '0')&&((myatol(dat[1]&0xFF) == 'x')||(myatol(dat[1]&0xFF) == 'X')))
 	{
@@ -317,7 +321,7 @@ u32 myatou32(char* dat, u32 defValue)
 	return defValue;
 }
 
-u32 myatoh32(char* dat, u32 defValue)
+u32 myatoh32(const char* dat, u32 defValue)
 {
 	if((strlen(dat) > 2)&&((dat[0]&0xFF) == '0')&&(myatol(dat[1]&0xFF) == 'x'))
 		dat = &dat[2];
@@ -327,7 +331,7 @@ u32 myatoh32(char* dat, u32 defValue)
 }
 
 // checks chars are valid
-BOOL validateString(char* nString)
+BOOL validateString(const char* nString)
 {
 	int i, len;
 	if(nString == NULL)
@@ -625,7 +629,7 @@ void showExpectedFuses(unsigned int flags, unsigned short cb, unsigned char *fus
 	}
 }
 
-void showFuses(unsigned int level, const char *title, const unsigned char *fuses)
+void showFuses(int level, const char *title, const unsigned char *fuses)
 {
 	int i, n = 0;
 
@@ -641,7 +645,7 @@ void showFuses(unsigned int level, const char *title, const unsigned char *fuses
 	log_printf(level, "\n");
 }
 
-void showKey(unsigned int level, const unsigned char *key)
+void showKey(int level, const unsigned char *key)
 {
 	int i;
 

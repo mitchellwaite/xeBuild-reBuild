@@ -5,38 +5,17 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include "../crypto/xecrypt.h"
 #include "xebuild.h"
+#include "console_hdd.h"
+#include "fileutil.h"
+#include "log.h"
+#include "net.h"
+#include "stfs.h"
 
-void log_printf(int level, const char *fmt, ...);
-int FileExists(const char *name);
-int FileExistsIn(const char *dir, const char *name);
-void *FileToBuffer(const char *name, size_t *psize);
-u16 getBeU16(const u8 *p);
-u32 getBeU32(const u8 *p);
-void XeCryptSha(u8 *pbInp1, u32 cbInp1, u8 *pbInp2, u32 cbInp2,
-		u8 *pbInp3, u32 cbInp3, u8 *pbOut, u32 cbOut);
-
-typedef struct {
-	u8 *data;
-	u32 *blocks;
-	size_t size;
-	u32 hdrSize;
-	u8 *fileTable;
-} stfs_t;
-
-void stfsInit(stfs_t *c);
-void stfsFree(stfs_t *c);
-u32 stfsLoad(stfs_t *c, const char *path, int magic, u32 id1, u32 id2, u8 *manifestHash, int verbose);
-
-/* app/net: commands to the console */
-void netTimerStart(void);
-void netTimerEnd(void);
-int netMount(const char *drive, const char *device);
-u32 netUnmount(const char *drive);
-int netSendFile(const char *name, void *buf, u32 len);
-u32 netFormatSysex(void);
-int netFormatCompat(void);
-u32 netMkdir(const char *name);
+/* TODO(prototype cast): netMount returns u32 (net.c); sendCompatData's code
+   wants an int */
+int netMountInt(const char *drive, const char *device) __asm__("_netMount");
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
@@ -77,8 +56,6 @@ struct mfFile {
 	u8 pad038[0x138 - 0x38];
 	struct mfHeader hdr;	/* 138 */
 };
-
-extern struct manifest manifest;
 
 static u32 errCount;
 static u32 flashVer;
@@ -348,7 +325,7 @@ int prepSysex(void)
 {
 	if (netFormatSysex()) {
 		/* hint: makes the mount failure cold where sendAvatarData inlines this */
-		if (__builtin_expect(netMount(SYSEX, "\\SEP"), 1))
+		if (__builtin_expect(netMountInt(SYSEX, "\\SEP"), 1))
 			return createSysexDirs();
 		log_printf(0, "ERROR: unable to mount sysex partition!\n");
 	} else
@@ -484,7 +461,7 @@ u32 sendCompatData(const char *dir)
 		log_printf(0, "formatting compatibility partition...");
 		if (netFormatCompat()) {
 			log_printf(0, "success!\n");
-			if (netMount("XCOM", "\\Device\\Harddisk0\\SystemPartition")) {
+			if (netMountInt("XCOM", "\\Device\\Harddisk0\\SystemPartition")) {
 				if (sendDir(dir, "XCOM:")) {
 					ret = 1;
 					log_printf(0, "sent files to partition OK!\n");
