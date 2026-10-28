@@ -117,11 +117,8 @@ for f in $objects globals; do
     # imgAddMobile's 50/50 imgFits hint
     image_write) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=50" ;;
-    # its string arrays are defined in the original's .rdata order, which
-    # -fno-toplevel-reorder keeps
-    bootloaders) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder" ;;
-    # same for its string arrays (made by wip/irwhole.py) and data
+    # its string arrays (made by wip/irwhole.py) and data are defined in the
+    # original's .rdata order, which -fno-toplevel-reorder keeps
     image_read) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder" ;;
     # netSendFile's !name hint (55-65), netRecvVerbose's verbose hint (65).

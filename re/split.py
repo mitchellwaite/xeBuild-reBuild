@@ -358,10 +358,6 @@ SYMBOLS = {
     0x44a674: '_infoKey3', 0x44a684: '_infoKey2', 0x44a694: '_infoKey1', 0x44a6a4: '_infoKey0',
     0x479560: '_zeroKey', 0x479570: '_pairing',
     0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
-    # bootloaders.c's string arrays
-    0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
-    0x44c110: '_msg_cfSlot1', 0x44c143: '_msg_sigGood', 0x44c14e: '_msg_sigCheckFail',
-    0x44c200: '_msg_sigFail', 0x44c214: '_msg_noPub',
     # mode_update (src/mode_update.c) and what it calls; names are ours
     0x4030b0: '_getBadBlocks', 0x4031d0: '_update_usage', 0x403460: '_wantFile',
     0x4034f0: '_parseAddonIdx', 0x403700: '_getAddons', 0x403820: '_getMobileFiles',

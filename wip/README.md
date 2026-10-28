@@ -332,10 +332,11 @@ Findings:
 ## bootloaders.c
 
 Draft of the whole object, with string literals. All 19 functions match
-and are built from `src/bootloaders.c`, which has no asm left: its
-strings are `static const` arrays (`msg_*`) in the original's .rdata order
-(built with `-fno-toplevel-reorder`); with literals, daeVerifySig,
-fcrtVerifySig and cb/cd/ceDecrypt emit their error strings first.
+and are built from `src/bootloaders.c`, which has no asm left and uses
+plain string literals. Their .rdata order follows expand order, so
+fcrtVerifySig and cb/cd/ceDecrypt are written success-first with the
+error logs at the end (as this draft's early returns aren't), and
+daeVerifySig pulls "good" ahead of "FAIL" with an `asm "i"` hint.
 
 - `ceDecrypt`: cbDecrypt's fix (below) keeps the calloc-fail
   `xor ebx,ebx` but rotates the registers (IRA gives bl esi instead of
