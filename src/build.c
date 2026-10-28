@@ -4,12 +4,9 @@
    in definition order. The strings are literals: gcc emits a function's
    in the order it expands their blocks, so the original's .rdata order
    follows from the code's shape (checkBl keeps an asm "i" hint).
-   loadBlFiles' strings (with the loadBl and loadBl60 it inlines) stay
-   static arrays (named after their original addresses, defined in the
-   original's .rdata order before the first function that uses them,
-   aligned as gcc aligns literals: 4 from 31 bytes, else 1), as build.sh
-   takes that function from a second compile whose literal labels aren't
-   this one's. */
+   build.sh takes loadBlFiles from a second (profile) compile; its
+   literals stay where this compile puts them (re/splice.py --whole maps
+   its labels to this compile's by contents). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1261,28 +1258,6 @@ int verifyBlSigs(void)
 	return ok;
 }
 
-/* loadBlFiles' strings stay arrays: build.sh splices it in from the
-   profile compile, so its code must name them as this compile does
-   (loadConsoleBlFiles and the bl encoders share some) */
-static const char bd_459955[] __attribute__((aligned(1))) = "none";
-static const char bd_45995c[] __attribute__((aligned(4))) = "loaded %s, could not check signature rsa key not present!\n";
-static const char bd_459998[] __attribute__((aligned(4))) = "\n***** ERROR: loaded %s, but signature check failed!\n";
-static const char bd_4599d0[] __attribute__((aligned(4))) = "loaded %s, signature check passed!\n";
-static const char bd_4599f4[] __attribute__((aligned(4))) = "could not read %s%s, using built in payload (0x%x bytes)\n";
-static const char bd_459a30[] __attribute__((aligned(4))) = "could not read %s%s, using built in core (0x%x bytes)\n";
-static const char bd_459a68[] __attribute__((aligned(4))) = "xell not found in perbuild directory, checking firmware /bin folder\n";
-static const char bd_459ab0[] __attribute__((aligned(4))) = "xell not found in firmware /bin folder, checking base path\n";
-static const char bd_459aec[] __attribute__((aligned(1))) = "keyvault.bin";
-static const char bd_459af9[] __attribute__((aligned(1))) = "KV_dec.bin";
-static const char bd_459b04[] __attribute__((aligned(4))) = "reading %s%s failed, using %s from nand dump\n";
-static const char bd_459b32[] __attribute__((aligned(1))) = "keyvault_alt.bin";
-static const char bd_459b43[] __attribute__((aligned(1))) = "KV_alt_dec.bin";
-static const char bd_459b54[] __attribute__((aligned(4))) = "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n";
-static const char bd_459b8c[] __attribute__((aligned(1))) = "config.bin";
-static const char bd_459b97[] __attribute__((aligned(1))) = "config_raw.bin";
-static const char bd_459ba8[] __attribute__((aligned(4))) = "####### unhandled bl load %d %s\n";
-static const char bd_459bcc[] __attribute__((aligned(4))) = "\n\n**** could not read %s (%i) ****\n\n";
-
 /* the 0x60-byte bootloader (type 24) from the base dir, else the default */
 static int loadBl60(struct fileent *e)
 {
@@ -1338,14 +1313,14 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 			if (xb.pub1bl) {
 				NK_DEAD(nk_never3, nk_b);
 				if (!cbVerifySig(e->data, xb.pub1bl)) {
-					log_printf(0, bd_459998, e->name);
+					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
 					*pr = -1;
 				} else if (type)
-					log_printf(1, bd_4599d0, e->name);
+					log_printf(1, "loaded %s, signature check passed!\n", e->name);
 			} else {
 				NK_LABEL(nk_b)
 				NK_DEAD(nk_never1, nk_q);
-				log_printf(1, bd_45995c, e->name);
+				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
 			}
 		}
 		if (xb.type <= 5) {
@@ -1376,7 +1351,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 	case 1:
 		if (!loadBinFile(e))
 			break;
-		log_printf(1, bd_4599f4, xb.binDir, e->name, 0x200);
+		log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
 		e->data = malloc(0x200);
 		if (!e->data) {
 			*pr = 1;
@@ -1388,7 +1363,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 	case 22:
 		if (!loadBinFile(e))
 			break;
-		log_printf(1, bd_459a30, xb.binDir, e->name, 0xd40);
+		log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
 		e->data = malloc(0xd40);
 		if (!e->data) {
 			*pr = 1;
@@ -1402,16 +1377,16 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 			break;
 		if (!loadBaseFile(e->name, e))
 			break;
-		log_printf(1, bd_459a68);
+		log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
 		if (!loadBinFile(e))
 			break;
-		log_printf(1, bd_459ab0);
+		log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
 		*pr = loadLocalFile(e);
 		break;
 	case 3:
 		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
-		    !loadBaseFile(bd_459aec, &xb.files[xb.nFlashFiles]) ||
-		    !(*pr = loadBaseFile(bd_459af9, &xb.files[xb.nFlashFiles]))) {
+		    !loadBaseFile("keyvault.bin", &xb.files[xb.nFlashFiles]) ||
+		    !(*pr = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles]))) {
 			if (e->data)
 				free(e->data);
 			e->data = xb.files[xb.nFlashFiles].data;
@@ -1419,7 +1394,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 			xb.files[xb.nFlashFiles].data = NULL;
 			xb.files[xb.nFlashFiles].size = 0;
 		} else if (xb.kv.data) {
-			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 			if (e->data)
 				free(e->data);
 			e->data = xb.kv.data;
@@ -1431,8 +1406,8 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		break;
 	case 4:
 		if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
-		    !loadBaseFile(bd_459b32, &xb.files[xb.nFlashFiles]) ||
-		    !(*pr = loadBaseFile(bd_459b43, &xb.files[xb.nFlashFiles]))) {
+		    !loadBaseFile("keyvault_alt.bin", &xb.files[xb.nFlashFiles]) ||
+		    !(*pr = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles]))) {
 			if (e->data)
 				free(e->data);
 			e->data = xb.files[xb.nFlashFiles].data;
@@ -1440,7 +1415,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 			xb.files[xb.nFlashFiles].data = NULL;
 			xb.files[xb.nFlashFiles].size = 0;
 		} else if (xb.kvAlt.data) {
-			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 			if (e->data)
 				free(e->data);
 			e->data = xb.kvAlt.data;
@@ -1458,18 +1433,18 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 			break;
 		if (e->size & 3) {
 		badsize: __attribute__((hot));
-			log_printf(1, bd_459b54, e->size);
+			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
 			goto fail;
 		}
 		appendAddonPatches(e);
 		break;
 	case 27:
 		if (__builtin_expect(type == 27, 1) && loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
-		    loadBaseFile(bd_459b8c, &xb.files[xb.nFlashFiles]) &&
-		    (*pr = loadBaseFile(bd_459b97, &xb.files[xb.nFlashFiles]))) {
+		    loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]) &&
+		    (*pr = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]))) {
 			if (!xb.smcConfig.data)
 				break;
-			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 			if (xb.files[xb.nFlashFiles].data)
 				free(xb.files[xb.nFlashFiles].data);
 			xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
@@ -1498,7 +1473,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		} else {
 			if (!xb.smc.data)
 				break;
-			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
+			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 			if (e->data)
 				free(e->data);
 			e->data = xb.smc.data;
@@ -1512,7 +1487,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 			goto fail;
 		break;
 	default:
-		log_printf(1, bd_459ba8, type, e->name);
+		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
 		break;
 	}
 	return;
@@ -1533,10 +1508,10 @@ int loadBlFiles(void)
 	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
 		r = 0;
-		if (strnicmp(e->name, bd_459955, 4) || e->crc)
+		if (strnicmp(e->name, "none", 4) || e->crc)
 			loadBl(e, i, &r);
 		if (r) {
-			log_printf(0, bd_459bcc, e->name, r);
+			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
 			return -1;
 		}
 	}
@@ -1593,10 +1568,10 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 			break;
 		if (!loadBaseFile(e->name, e))
 			break;
-		log_printf(1, bd_459a68);
+		log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
 		if (!loadBinFile(e))
 			break;
-		log_printf(1, bd_459ab0);
+		log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
 		r = loadLocalFile(e);
 		break;
 	case 3:
@@ -1632,7 +1607,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 		if (r)
 			break;
 		if (e->size & 3) {
-			log_printf(1, bd_459b54, e->size);
+			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
 			r = -1;
 			break;
 		}
@@ -1675,7 +1650,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 		}
 		break;
 	default:
-		log_printf(1, bd_459ba8, type, e->name);
+		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
 		break;
 	}
 	return r;
@@ -1694,12 +1669,12 @@ int loadConsoleBlFiles(void)
 		goto none;
 	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
-		if (strnicmp(e->name, bd_459955, 4) || e->crc)
+		if (strnicmp(e->name, "none", 4) || e->crc)
 			r = loadConsoleBl(e);
 		else
 			r = 0;
 		if (r) {
-			log_printf(0, bd_459bcc, e->name, r);
+			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
 			return -1;
 		}
 	}
@@ -1968,7 +1943,7 @@ void addBlsToImage(void)
 		type = e->type;
 		if (e->offset != 0xffffffff)
 			off = e->offset;
-		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
 		if (xb.type == 2) {
 			if (type == 14) {
@@ -2072,7 +2047,7 @@ void addUpdateBls(void)
 			continue;
 		if (e->offset != 0xffffffff)
 			off = e->offset;
-		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
 		if (type == 9)
 			off = imgCfOffset();
@@ -2266,7 +2241,7 @@ int encodeBls(uint8_t *salt, int ldv)
 
 	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
-		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
 		type = e->type;
 		if (xb.type == 2) {
@@ -2489,7 +2464,7 @@ int encodeUpdateBls(int unused, int ldv)
 
 	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
-		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
+		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
 		switch (e->type) {
 		case 9:

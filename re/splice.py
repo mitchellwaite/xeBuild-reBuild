@@ -4,6 +4,13 @@ python re/splice.py <src/obj.s> <gcc -S output> <out.s> [_name=<other -S output>
 python re/splice.py --whole <gcc -S output> <out.s> _name=<other -S output> ...
 (an object all in C, with some functions from a second compile)
 
+--whole: each function is taken from the other compile from its `.p2align`
+to its `.cfi_endproc` (jump tables included, local labels renamed LF*) in
+place of the first's copy.  Its string literals stay where the first
+compile put them (it compiled the same function, so it emits them all in
+their places): each `LCn` the function refers to is renamed to the first
+compile's label with the same .rdata contents; one it lacks is an error.
+
 The .s (from split.py) holds the object's data, ident, .eh_frame and every
 function not yet in C; the C file is compiled with -S and
 -fno-asynchronous-unwind-tables (the .s already has the FDEs; the flag doesn't
@@ -142,15 +149,53 @@ def chunk(lines, name):
     sys.exit('splice.py: no function %s' % name)
 
 
+def literals(lines):
+    """{`LCn`: its data lines} for gcc's local constants (string literals)
+    in .rdata: the directives after the label up to the next label or
+    section switch, alignment left out"""
+    out, sec, k = {}, None, 0
+    while k < len(lines):
+        m = SECTION.match(lines[k])
+        if m:
+            sec = lines[k].split()[1] if m.group(1) == '.section' else m.group(1)
+        m = LABEL.match(lines[k])
+        if m and re.match(r'LC\d+$', m.group(1)) and sec and sec.startswith('.rdata'):
+            e = k + 1
+            while e < len(lines) and not LABEL.match(lines[e]) and not SECTION.match(lines[e]):
+                e += 1
+            out[m.group(1)] = tuple(l.strip() for l in lines[k + 1:e]
+                                    if not re.match(r'^\s*$|^\s*\.(p2)?align\b', l))
+            k = e
+            continue
+        k += 1
+    return out
+
+
 def whole(gen, dst, subs):
     """A whole object's gcc output with the functions in subs (`_name=other.s`)
-    replaced by that compile's (and so their jump tables and FDEs)"""
+    replaced by that compile's (and so their jump tables and FDEs).  Their
+    literals stay where gen put them: each `LCn` the function refers to is
+    renamed to gen's label with the same contents (gen compiled the same
+    function, so it has them all)."""
     lines = open(gen).read().split('\n')
+    mine = {v: k for k, v in literals(lines).items()}
     for a in subs:
         name, other = a.split('=', 1)
         olines = open(other).read().split('\n')
+        theirs = literals(olines)
         s, e = chunk(olines, name)
+
+        def lc(m):
+            if m.group(0) not in theirs:
+                sys.exit('splice.py: %s refers to %s, which %s does not define in .rdata'
+                         % (name, m.group(0), other))
+            if theirs[m.group(0)] not in mine:
+                sys.exit('splice.py: %s (%s in %s: %s) is not in %s'
+                         % (name, m.group(0), other, ' '.join(theirs[m.group(0)]), gen))
+            return mine[theirs[m.group(0)]]
         body = [re.sub(r'(?<![\w$.])L(\d+)\b', r'LF\1', l) for l in olines[s:e]]
+        # `$LCn` (an immediate) too, but not a name ending in LCn
+        body = [re.sub(r'(?<![\w.])(?<![\w.$]\$)LC\d+\b', lc, l) for l in body]
         s, e = chunk(lines, name)
         lines[s:e] = body
     open(dst, 'w', newline='\n').write('\n'.join(lines))
