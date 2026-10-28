@@ -9,8 +9,14 @@ The reference binary is `xeBuild.exe` in this folder, SHA256
 
 ## Status
 
+- [x] Produce xeBuild from C
+- [ ] Clean up the decompiled source (de-slopification)
+- [ ] Fix bugs
+
 The rebuild is complete: all of the program's code is C, and the build
-reproduces the original exe byte for byte. Fixing bugs is the next step.
+reproduces the original exe byte for byte. The decompiled C still reads like
+compiler-matching output, so the next step is cleaning it up into readable
+source while it keeps building to the same bytes. Bug fixes come after that.
 
 - **Application:** 25 source files (432 functions), rebuilt by hand from the
   binary.
