@@ -15,7 +15,7 @@ Reference binary: `xeBuild.exe`, SHA256
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
 | Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
-| Move functions to C | **In progress: all 41 XeCrypt files and 24 of 25 app files build from C, one more (mode_client) is mixed; see Progress** |
+| Move functions to C | **Done: all 41 XeCrypt files and all 25 app files build from C (617 of 617 functions); see Progress** |
 | Fix bugs | Next |
 
 <!-- progress:begin -->
@@ -23,11 +23,11 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **616 of 617** (614 built from `src/`, 2 matching drafts in `wip/` that the build doesn't use yet); 65 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 24 / 25 | 431 / 432 |
+| `app/` | 25 / 25 | 432 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -36,29 +36,7 @@ Objects with functions or data still in assembly (a `src/<obj>.s` or top-level a
 
 | Object | State | Functions in C |
 |---|---|---|
-| `app/mode_client` | mixed; 2 of 3 drafted functions match in `wip/app/mode_client.c` | 15 / 16 |
 
-<details>
-<summary><code>app/mode_client</code>: 15 / 16 in C</summary>
-
-- ☑️ `client_usage` (0x406330)
-- ✅ `clientInfo` (0x406740)
-- ✅ `clientWrite` (0x406980)
-- ✅ `clientManifest` (0x406aa0)
-- ✅ `dumpKey` (0x406b60)
-- ☑️ `clientKeys` (0x406c60)
-- ✅ `checkPatches` (0x406e50)
-- ✅ `updatePatches` (0x407160)
-- ✅ `clientPatches` (0x407320)
-- ✅ `clientReadBlocks` (0x4076b0)
-- ✅ `clientWriteBlocks` (0x407850)
-- ✅ `patchNand` (0x407a00)
-- ✅ `clientBinPatch` (0x407bf0)
-- ✅ `clientEraseBlock` (0x408080)
-- ✅ `getArgs` (0x408160)
-- ⬜ `mode_client` (0x408260) (draft in `wip/`, no match yet)
-
-</details>
 
 ### Completed
 
@@ -69,6 +47,7 @@ Objects built entirely from C, in link order.
 | `app/bootloaders` | 19 |
 | `app/mode_update` | 14 |
 | `app/stfs` | 7 |
+| `app/mode_client` | 16 |
 | `app/filelist_ini` | 12 |
 | `app/timeutil` | 7 |
 | `app/smc` | 4 |
@@ -145,6 +124,27 @@ Objects built entirely from C, in link order.
 - ✅ `stfsInit` (0x405f20)
 - ✅ `stfsFree` (0x405f50)
 - ✅ `stfsLoad` (0x405fa0)
+
+</details>
+<details>
+<summary><code>app/mode_client</code>: 16 functions</summary>
+
+- ✅ `client_usage` (0x406330)
+- ✅ `clientInfo` (0x406740)
+- ✅ `clientWrite` (0x406980)
+- ✅ `clientManifest` (0x406aa0)
+- ✅ `dumpKey` (0x406b60)
+- ✅ `clientKeys` (0x406c60)
+- ✅ `checkPatches` (0x406e50)
+- ✅ `updatePatches` (0x407160)
+- ✅ `clientPatches` (0x407320)
+- ✅ `clientReadBlocks` (0x4076b0)
+- ✅ `clientWriteBlocks` (0x407850)
+- ✅ `patchNand` (0x407a00)
+- ✅ `clientBinPatch` (0x407bf0)
+- ✅ `clientEraseBlock` (0x408080)
+- ✅ `getArgs` (0x408160)
+- ✅ `mode_client` (0x408260)
 
 </details>
 <details>

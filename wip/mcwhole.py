@@ -1,5 +1,9 @@
 """Make a whole-object src/app/mode_client.c (no mode_client.s) from the draft.
 
+src/app/mode_client.c was made with it from the draft plus the BUILD_FDO
+macros (NOPROF, AT, JUMP, NO_MODE_ARG; wip/mc/s18/match) and its padding;
+edit that file now rather than regenerating it.
+
 python wip/mcwhole.py [draft.c] [out.c]   (wip/app/mode_client.c, src/app/mode_client.c)
 
 Built with -fno-toplevel-reorder (the draft's functions match with it too),

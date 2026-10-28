@@ -34,6 +34,7 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
   mkdir -p "$OBJ/$(dirname "$f")"
   if [ -f "src/$f.c" ]; then
     prof= fprof= ffns=
+    fflags="-DBUILD_FDO -fno-ipa-profile -fno-reorder-functions -ftoplevel-reorder -Wno-aggressive-loop-optimizations"
     case "$f" in
       # original build path, for __FILE__ in assert(); fed through stdin so
       # the #line can name it (gcc 6 has no -ffile-prefix-map)
@@ -121,6 +122,17 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
              cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=98"
              fprof="@src/app/build.prof --only=loadBlFiles,loadBl,loadBl60 --consistent --runs=0"
              ffns=_loadBlFiles ;;
+      # mode_client's layout comes from a second compile (fprof) with
+      # -DBUILD_FDO: empty asm-goto edges and a crafted profile for it and
+      # the clientEraseBlock it inlines (src/app/mode_client.c's head
+      # comment; wip/mc/s18/NOTES.md); align-loop-iterations=100 aligns its
+      # loop like the original. -fno-toplevel-reorder emits the string
+      # arrays and data in definition order
+      app/mode_client) orig="$f.c"
+             cflags="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param builtin-expect-probability=50"
+             fprof="@src/app/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64"
+             fflags="-DBUILD_FDO --param align-loop-iterations=100"
+             ffns=_mode_client ;;
       # original path unknown (no assert in the app); timeutil needs -O3
       app/*) orig="$f.c"
              cflags="-O3" ;;
@@ -136,11 +148,11 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
     fi
     # a second compile with -DBUILD_FDO and a profile for the functions in $ffns
     # (-ftoplevel-reorder: with -fno-toplevel-reorder ipa-reference doesn't
-    # see the never-set statics as read-only, so ccp2 keeps their tests)
+    # see the never-set statics as read-only, so ccp2 keeps their tests);
+    # these are app/build's flags, a case may set its own $fflags
     fs=
     if [ -n "$fprof" ]; then
-      fdo "$fprof" -DBUILD_FDO -fno-ipa-profile -fno-reorder-functions -ftoplevel-reorder \
-        -Wno-aggressive-loop-optimizations > "$OBJ/$f.fdo.s"
+      fdo "$fprof" $fflags > "$OBJ/$f.fdo.s"
       for n in $ffns; do fs="$fs $n=$OBJ/$f.fdo.s"; done
     fi
     if [ -n "$uw" ]; then
