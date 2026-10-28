@@ -642,10 +642,12 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 ## keys.c
 
 Whole object in C since 2026-10-22 (no keys.s): `src/keys.c` is this
-draft plus the key buffers' initial values, three functions' strings as
-arrays in the original's order, and the original's function order
-(shaCheck before crlEncrypt, daeEncrypt before fcrtEncrypt, shaHeader
-last), built with `-fno-toplevel-reorder`.  wip/keysmixed.py (the mixed
+draft plus the key buffers' initial values and the original's function
+order (shaCheck before crlEncrypt, daeEncrypt before fcrtEncrypt,
+shaHeader last), built with `-fno-toplevel-reorder`. Its strings are
+plain literals: setFuseCpuKey, daeEncrypt and fcrtEncrypt are reshaped
+(error in an else / early return) so expand order gives the original's
+.rdata order.  wip/keysmixed.py (the mixed
 build's generator) is gone; the notes below are the matching history.  Line counts
 below are `FNCMP_LITERALS=1 python re/fncmp.py wip/keys.c <name>` (the
 variable makes the draft's literals compare equal to the `.s`'s named

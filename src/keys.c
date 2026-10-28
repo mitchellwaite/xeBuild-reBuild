@@ -265,30 +265,26 @@ void setFuseLdv(uint8_t *fuse, uint8_t ldv)
 	log_printf(1, "\n");
 }
 
-/* setFuseCpuKey, daeEncrypt and fcrtEncrypt expand their error blocks
-   first, so their strings are arrays in the original's order
-   (-fno-toplevel-reorder emits them here), aligned as literals are (4
-   from 31 bytes, else 1) */
-static const char msg_fuseCpuKey[] __attribute__((aligned(1))) = "Fuse CPU Key set to: 0x";
-static const char msg_fuseNull[] __attribute__((aligned(4))) = "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n";
-
+/* gcc emits a function's literals in expand-time block order, so the
+   original's .rdata order shows its shape: setFuseCpuKey and daeEncrypt
+   log a bad argument or header in an else after the main path, and
+   fcrtEncrypt returns early on a bad offset */
 void setFuseCpuKey(uint8_t *fuse)
 {
 	int i;
 
-	if (__builtin_expect(fuse == NULL, 0)) {
-		log_printf(0, msg_fuseNull);
-		return;
-	}
-	memcpy(fuse + 24, xb.cpuKey, 8);
-	memcpy(fuse + 32, xb.cpuKey, 16);
-	memcpy(fuse + 48, xb.cpuKey + 8, 8);
-	memcpy(xb.cpuKey, fuse + 32, 16);
-	setFuseLdv(fuse, xb.cfLdv);
-	log_printf(1, msg_fuseCpuKey);
-	for (i = 32; i < 48; i++)
-		log_printf(1, "%02X", fuse[i]);
-	log_printf(1, "\n");
+	if (__builtin_expect(fuse != NULL, 1)) {
+		memcpy(fuse + 24, xb.cpuKey, 8);
+		memcpy(fuse + 32, xb.cpuKey, 16);
+		memcpy(fuse + 48, xb.cpuKey + 8, 8);
+		memcpy(xb.cpuKey, fuse + 32, 16);
+		setFuseLdv(fuse, xb.cfLdv);
+		log_printf(1, "Fuse CPU Key set to: 0x");
+		for (i = 32; i < 48; i++)
+			log_printf(1, "%02X", fuse[i]);
+		log_printf(1, "\n");
+	} else
+		log_printf(0, "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n");
 }
 
 uint32_t calcXexKey(void)
@@ -859,12 +855,6 @@ void daeEncryptOne(uint8_t *dae, uint32_t size, uint8_t *date)
 	free(buf);
 }
 
-static const char msg_daeBad[] __attribute__((aligned(4))) = "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n";
-static const char msg_daeEncrypted[] __attribute__((aligned(4))) = "dae appears encrypted, attempting to decrypt with CPU key...";
-static const char msg_daeHeader[] __attribute__((aligned(4))) = "\n******* ERROR: dae segment does not have the expected header!\n";
-static const char msg_daeRetry[] __attribute__((aligned(4))) = "failed! Attempting to decrypt with alternate key...\n";
-static const char msg_daeHash[] __attribute__((aligned(4))) = "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n";
-
 /* The `!n` tests are threaded apart into one decrypt sequence per n, which
    leaves the first-key success shared by both; its own encrypt copy keeps
    it in one LRA EBB (no reload of off before the encrypt), and crossjumping
@@ -883,52 +873,49 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 	if (__builtin_expect(size, 1)) do {
 		dae = buf + off;
 		__asm__("" :: "d"(off));
-		if (__builtin_expect(buf[off] != 'D', 0) || __builtin_expect(buf[off + 1] != 'A', 1) || __builtin_expect(buf[off + 2] != 'E', 1) || __builtin_expect(buf[off + 3] != 'P', 1)) {
-			log_printf(0, msg_daeHeader);
+		if (__builtin_expect(buf[off] == 'D', 1) && __builtin_expect(buf[off + 1] == 'A', 0) && __builtin_expect(buf[off + 2] == 'E', 0) && __builtin_expect(buf[off + 3] == 'P', 0)) {
+			len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
+			if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
+				if (!n)
+					log_printf(1, "dae appears encrypted, attempting to decrypt with CPU key...");
+				memcpy(dae, orig + off, len);
+				daeDecrypt(dae, len, 1);
+				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+					ok: __attribute__((cold));
+					log_printf(1, "success!\n");
+					daeEncryptOne(dae, len, date);
+					n++;
+					goto next;
+				}
+				if (!n)
+					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
+				memcpy(dae, orig + off, len);
+				daeDecrypt(dae, len, 0);
+				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+					if (!n)
+						log_printf(1, "success!\n");
+				} else {
+					if (!n)
+						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
+					n = 0;
+					off = size + 1;
+					goto next;
+				}
+			}
+			daeEncryptOne(dae, len, date);
+			n++;
+		} else {
+			log_printf(0, "\n******* ERROR: dae segment does not have the expected header!\n");
 			break;
 		}
-		len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
-		if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
-			if (!n)
-				log_printf(1, msg_daeEncrypted);
-			memcpy(dae, orig + off, len);
-			daeDecrypt(dae, len, 1);
-			if (shaCheck(dae, len, 12, 20, 336, NULL)) {
-				ok: __attribute__((cold));
-				log_printf(1, "success!\n");
-				daeEncryptOne(dae, len, date);
-				n++;
-				goto next;
-			}
-			if (!n)
-				log_printf(1, msg_daeRetry);
-			memcpy(dae, orig + off, len);
-			daeDecrypt(dae, len, 0);
-			if (shaCheck(dae, len, 12, 20, 336, NULL)) {
-				if (!n)
-					log_printf(1, "success!\n");
-			} else {
-				if (!n)
-					log_printf(0, msg_daeHash);
-				n = 0;
-				off = size + 1;
-				goto next;
-			}
-		}
-		daeEncryptOne(dae, len, date);
-		n++;
 	next:
 		off += len;
 	} while (off < size);
 	if (n != 2) {
-		log_printf(0, msg_daeBad);
+		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
 	}
 	free(orig);
 }
-
-static const char msg_fcrtSize[] __attribute__((aligned(4))) = "****** ERROR: FCRT encrypt invalid size!\n";
-static const char msg_fcrtOffset[] __attribute__((aligned(4))) = "**** ERROR: FCRT encrypt invalid offset!\n";
-static const char msg_fcrtBad[] __attribute__((aligned(4))) = "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n";
 
 void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
 {
@@ -939,20 +926,21 @@ void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
 
 	memcpy(iv, fcrt + 256, 16);
 	if (size != 0x4000) {
-		log_printf(0, msg_fcrtSize);
+		log_printf(0, "****** ERROR: FCRT encrypt invalid size!\n");
 		return;
 	}
 	off = getBeU32(fcrt + 284);
-	if (__builtin_expect(off < 0x4000, 1)) {
-		XeCryptSha(fcrt + off, 0x4000 - off, NULL, 0, NULL, 0, hash, 20);
-		if (memcmp(fcrt + 300, hash, 20) && verifyFcrt(fcrt, 0x4000) != 1) {
-			log_printf(0, msg_fcrtBad);
-			return;
-		}
-		XeCryptAesKey(&aes, xb.cpuKey);
-		XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
-	} else
-		log_printf(1, msg_fcrtOffset);
+	if (__builtin_expect(off >= 0x4000, 0)) {
+		log_printf(1, "**** ERROR: FCRT encrypt invalid offset!\n");
+		return;
+	}
+	XeCryptSha(fcrt + off, 0x4000 - off, NULL, 0, NULL, 0, hash, 20);
+	if (memcmp(fcrt + 300, hash, 20) && verifyFcrt(fcrt, 0x4000) != 1) {
+		log_printf(0, "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n");
+		return;
+	}
+	XeCryptAesKey(&aes, xb.cpuKey);
+	XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
 }
 
 void shaHeader(uint8_t *buf)

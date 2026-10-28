@@ -215,8 +215,8 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
   long differs between iniConsoleType and setConsoleType, so follow gcc.
 
 And `keys` (whole object in C, data included; built with
-`-fno-toplevel-reorder` so functions, key buffers and the string arrays of
-setFuseCpuKey, daeEncrypt and fcrtEncrypt come out in definition order).
+`-fno-toplevel-reorder` so functions and key buffers come out in definition
+order; its strings are plain literals).
 The names (`keysInit`, `cbaEncrypt`, `kvPrepare`, the `infoKey0..5` HMAC
 salts, ...) are ours.
 

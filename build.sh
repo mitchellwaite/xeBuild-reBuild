@@ -91,7 +91,7 @@ for f in $objects globals; do
     # fcrtEncrypt's offset hint needs 60 (and setFuseCpuKey's NULL hint
     # then aligns that block; align-threshold=200 would also align
     # smcChecksum's count == 0 block, which the original doesn't);
-    # -fno-toplevel-reorder emits the key buffers and string arrays in
+    # -fno-toplevel-reorder emits the functions and key buffers in
     # definition order
     keys) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=60" ;;
