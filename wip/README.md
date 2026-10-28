@@ -1193,6 +1193,51 @@ cold order, FNCMP=1 adds the fncmp count); `wip/mc/bbsum.py` lists a
 bbro dump's traces with each block's calls, `wip/mc/mcblk.py` diffs the
 block order against the original's .s.
 
+Source-shape search (2026-10-27, second session), negative:
+
+- Tail structures without the draft's hints (`wip/mc/gen2.py`: usage check
+  first or not, `if (mode && arg)` / inverted / `!mode || !arg`, failure as
+  `goto fail` / inline `return 0` / `else log`, the reboot+disconnect tail
+  common or duplicated; `wip/mc/tailvar.py` has the hand-written ones and
+  an early-return `clientEraseBlock`): every hint-free variant is >= 123
+  fncmp lines and none puts the HDD errors before usage(2).  The usage check
+  first (`if (!(mode && arg) && !reboot) client_usage(2, NULL)`, then the
+  retest, which gcc threads) does make the switch path 50% and the HDD
+  errors 4 (cold order inv 18, prefix 4), but then the arg test falls into
+  the switch path (110 lines): expand splits the combined test q/2 then
+  (q/2)/(1-q/2), and the trace follows the switch edge unless its block
+  fails round 1's exec threshold while the reboot test passes the 40%
+  branch threshold, i.e. P(switch) <= 42.9%.  With P(switch) <= 42.9% the
+  dispatch is <= 80 and a case <= 6, so an HDD error (half a case, 72% with
+  `(hwFlags & 0x20) == 0x20`) is <= 3 < usage(2) = 4 whatever the connect's
+  probability; and the connect itself has no heuristic above 61% (early
+  return on the failure block) unless the failure path is noreturn/cold.
+  The `== 0x20` spelling changes nothing in the order.
+- Why the hinted draft needs its hints: `fail: cold` gives the switch
+  connect 99.9% ok (without it the shared `goto fail` block isn't dominated
+  by either connect, so only the ok edges get PRED_CALL and both connects
+  are 29% ok); `rok: cold` keeps the reboot connect falling into fail; and
+  `E(reboot)` cancels the early-return penalty on the netDisconnect block
+  (gcc 6 exempts only the function's last block, `last_basic_block_p`), so
+  in the original the `if (reboot) netReboot; netDisconnect; return 0` tail
+  was probably the last code in the function and the "unable to connect"
+  log before it (it is the last string, but has no code after it).
+- The heap itself: `wip/mc/mcsolve.py` (fibsolve on the draft's dump, all
+  28 small keys symbolic) reaches 19 of the 40 round-4 starts at best (it
+  can't get `-w` after Block/Failed), `wip/mc/mcgrid.py` (7776 frequency
+  designs replayed with mcsim2) bottoms out at 6 inversions, all equal-key
+  ties ((Block, Failed), (u4cx, u3cx), Invalid vs -e, the -bp/-wb/-eb
+  usage blocks vs patches/info), and `wip/mc/mcearly.py` (single key
+  changes in rounds 2-3, event-driven from round 2) moves nothing.  So the
+  original's insertion history into the last heap differs from the draft's,
+  not just its keys; a crafted profile changes that history (the FDO
+  baseline, `python wip/mcfdo.py <abs dir> wip/app/mode_client.c`, is 126
+  lines / inv 40 by itself), which is the only remaining lever besides a
+  structure nobody has guessed.  usage(2)'s 4 comes from dom2 threading the
+  copied header's 2% exit through the post-loop tests (the block is 0 until
+  `sink` merges the 4-unit copy), and the entry can't be below 175 (rounds
+  put it in 141..240, the 2% loop-exit floor at 200+).
+
 ## app/net.c
 
 Built entirely from `src/app/net.c` (no .s) since 2026-10-27; this draft
