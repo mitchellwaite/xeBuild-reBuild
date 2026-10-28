@@ -2733,3 +2733,10 @@ Still off:
   block loop's exit assertion `blocks <= b`), the chain collapses to
   VARYING and the `== 3` test stays `> 3`; no equivalent spelling of
   the FS-table or block loop code changed that.
+
+Session 2026-10-28 (4th): re-checked the draft (`fncmp` still differs only in
+cold trace order). No new search run: the memory note asks for user sign-off
+before another long search, and no concrete new angle beyond the three
+"cheapest checks still open" above was found. Next angle remains the first
+of those: a CFG where `sink` does not merge the entry-path forwarder into
+usage(2)'s block.
