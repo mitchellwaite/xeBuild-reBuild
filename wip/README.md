@@ -1238,6 +1238,35 @@ Source-shape search (2026-10-27, second session), negative:
   `sink` merges the 4-unit copy), and the entry can't be below 175 (rounds
   put it in 141..240, the 2% loop-exit floor at 200+).
 
+Crafted profile (2026-10-27, third session), also negative, but the tooling
+now works for this object:
+
+- Profile-build mechanics learned on the way (all in `re/gcda.py` now):
+  gcc 6 inlines a global callee with its gcda counts *unscaled* (the clone's
+  count is the callee's, not the call site's), so `--entry=fn:caller:bb`
+  ties the callee's entry count to the call block's; the callee's empty
+  return block is merged into one of its leaf blocks after inlining, which
+  gave that leaf the whole entry count (Success or Invalid depending on the
+  leaf counts) until `fn:bb>1=P` routed 100% of each erase leaf's flow
+  through its fake exit arc (the join count becomes 0, the leaves keep their
+  own counts); `--consistent` is needed once an edge is zero.  With the
+  plain frequencies as the design (`wip/mc/fdorun.py c1400 ...`, see the
+  slot dirs under build/mcfdo) the profile build is 64 lines and has the
+  plain build's cold order.
+- The blocker: at the arg test the trace always ends (the reboot test has
+  two predecessors and is copyable, `copy_bb_p`), so connect_traces picks
+  the switch or the reboot path by edge probability, i.e. P(switch) <=
+  1/3 in every mode, plain or profile (the 42.9% window in the paragraph
+  above was wrong; the earlier notes' 1/3 was right).  Then the dispatch is
+  <= 62, a case <= 5 and an HDD error <= 3, while usage(2) is >= 4 unless
+  the loop-exit probability is lowered, which compresses every cold key into
+  0..2 and multiplies the ties.  Designs that keep the hot layout (D4:
+  cases 7/6.55 in two equal-key groups, HDD 50.5%, chain 45/50/50%) reach
+  prefix 8 of 40, inv 15, with the arg test falling into the switch path
+  (fncmp 148); the realized frequencies match the design exactly, so the
+  tooling isn't the limit.  Scripts: `wip/mc/mcgrid.py` (grid over
+  cold keys on a build's own dump), `wip/mc/mcsolve.py`, `mcearly.py`.
+
 ## app/net.c
 
 Built entirely from `src/app/net.c` (no .s) since 2026-10-27; this draft

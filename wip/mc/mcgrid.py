@@ -15,16 +15,18 @@ top = int(sys.argv[2]) if len(sys.argv) > 2 else 15
 # block: candidate frequencies (draft's values: 103=4 112/115=2 55=2 126/127/125/117/130=1 61=1 33/29=1 53/42/35=0 67/77/79/73=0)
 GRID = {
     103: (3, 4),          # usage(2)
-    'hdd': (3, 4),        # 112 and 115 together
-    55: (2, 3, 4),        # -r
-    126: (1, 2, 3),       # Block outside
-    125: (1, 2, 3),       # Failed to erase
+    'hdd': (4,),          # 112 and 115 together
+    55: (3,),             # -r
+    126: (2, 3),          # Block outside
+    125: (1, 2),          # Failed to erase
     61: (1, 2),           # -w
     'u43': (0, 1, 2),     # 33 and 29 together (usage 4/3 cx)
     67: (0, 1),           # -e
     127: (0, 1),          # Invalid
     'pi': (0, 1),         # 117 and 130 together (patches/info NULL)
     'u5': (0, 1),         # 35 42 53 together
+    77: (0, 1),           # usage 3 ax
+    79: (0, 1),           # usage 5 ax
 }
 keys = list(GRID)
 best = []
@@ -34,7 +36,7 @@ for vals in itertools.product(*(GRID[k] for k in keys)):
     if d['hdd'] < d[103]:
         continue
     f = {103: d[103], 112: d['hdd'], 115: d['hdd'], 55: d[55], 126: d[126], 125: d[125], 61: d[61],
-         33: d['u43'], 29: d['u43'], 67: d[67], 127: d[127], 117: d['pi'], 130: d['pi'], 35: d['u5'], 42: d['u5'], 53: d['u5']}
+         33: d['u43'], 29: d['u43'], 67: d[67], 127: d[127], 117: d['pi'], 130: d['pi'], 35: d['u5'], 42: d['u5'], 53: d['u5'], 77: d[77], 79: d[79]}
     try:
         o = mcsim2.sim(R, f)
     except Exception as e:

@@ -159,11 +159,15 @@ def fix(blocks, preds):
                 succ[ds[0]] = 100.0
 
 
-def solve(arcs, probs):
-    """Flows (entry = 1) for the non-fake arcs; probs {(src, dst): p}."""
+def solve(arcs, probs, fakeov=None):
+    """Flows (entry = 1) for the non-fake arcs; probs {(src, dst): p}.
+    fakeov {gcno block: percent} also routes that share of a call block's
+    flow through its fake arc to EXIT (gcc derives the fake arc's count from
+    the block's others, so the block keeps its count and only its successors
+    see less)."""
     succ = {}
     for s, d, f in arcs:
-        if not f & FAKE:
+        if not f & FAKE or (fakeov and s in fakeov and d == 1):
             succ.setdefault(s, []).append(d)
     x = {0: 1.0}
     for _ in range(200000):
@@ -229,8 +233,20 @@ def flows(fn, est, over):
         else:
             probs[(s, d)] = est[t][1][m[d]]
     fn['map'] = m
-    # dump numbering; several overrides on one source block set those edges
-    # and share what is left among the block's other edges in their ratios
+    # `fn:bb>1=P` on a block with a fake arc to EXIT (a call that may not
+    # return): P% of its flow leaves by that arc, the real successors share
+    # the rest in their ratios
+    fakeov = {}
+    for (ts, td), p in list(over.items()):
+        if td == 1 and not any(m[k[0]] == ts and m[k[1]] == 1 for k in probs):
+            for s, d, f in arcs:
+                if f & FAKE and d == 1 and m.get(s) == ts:
+                    fakeov[s] = p
+            del over[(ts, td)]
+    for s, p in fakeov.items():
+        for k in [k for k in probs if k[0] == s]:
+            probs[k] *= (100 - p) / 100
+        probs[(s, 1)] = p
     groups = {}
     for (ts, td), p in over.items():
         s, d = [k for k in probs if m[k[0]] == ts and m[k[1]] == td and ts != td][0]
@@ -242,7 +258,7 @@ def flows(fn, est, over):
             probs[k] = probs[k] * left / rest if rest else left
         for d, p in ds.items():
             probs[(s, d)] = p
-    x, flow = solve(arcs, probs)
+    x, flow = solve(arcs, probs, fakeov)
     real = {s for s, d, f in arcs if not f & FAKE}
     for s, d, f in arcs:
         if f & FAKE and s not in real:
@@ -261,6 +277,7 @@ def hot_scale(x):
 
 CONSISTENT = False
 MULT = {}
+ENTRY = {}
 RUNS = 1
 
 
@@ -327,6 +344,12 @@ def main():
             f, k = a[7:].split(':')
             MULT[f] = float(k)
             continue
+        if a.startswith('--entry='):
+            # --entry=fn:caller:bb: fn's entry count is caller's dump block bb's
+            # count (gcc 6 inlines a global callee with its own counts, unscaled)
+            f, cf, bb = a[8:].split(':')
+            ENTRY[f] = (cf, int(bb))
+            continue
         if a.startswith('--runs='):
             # the summary's run count: 0 makes no block probably-never-executed
             # (count * fraction >= runs), so count-0 blocks key -freq in bb-reorder
@@ -361,6 +384,9 @@ def main():
     sites = {n: [(f, map_bb(fns, f, bb)) for f in calls if f in fl
                  for bb, cs in calls[f].items() if n in cs]
              for n in static}
+    for f, (cf, bb) in ENTRY.items():
+        static.add(f)
+        sites[f] = [(cf, map_bb(fns, cf, bb))]
 
     def min_flow(name):
         """Smallest flow (entry = 1) in name and the static functions inlined into it."""
