@@ -1,8 +1,8 @@
 #!/bin/sh
-# Build every object in src/objects.txt (src/<obj>.c with gcc if it exists,
-# else src/<obj>.s with as), link them with ld's default script into build/xeBuild.exe
-# and check it against the reference.  Run from the repo root in Git Bash after
-# tools/fetch_toolchain.sh.
+# Build every object in src/objects.txt and src/globals.c (src/<obj>.c with gcc
+# if it exists, else src/<obj>.s with as), link them with the toolchain's
+# runtime into build/xeBuild.exe and check it against the reference.  Run from
+# the repo root in Git Bash after tools/fetch_toolchain.sh.
 set -e
 TC=tools/toolchain-4745/mingw32/bin
 OBJ=build/obj
@@ -30,7 +30,7 @@ fdo() {
   ccp $cflags $uw "$@" -fbranch-probabilities -fprofile-dir="$pw"
 }
 objs=
-for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
+for f in $(grep -v '^#' src/objects.txt | tr -d '\r') globals; do
   mkdir -p "$OBJ/$(dirname "$f")"
   if [ -f "src/$f.c" ]; then
     prof= fprof= ffns=
@@ -138,7 +138,7 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
              cflags="-O3" ;;
       # the COMMON block in address order (src/globals.c's head comment)
       globals) orig="$f.c"
-             cflags="-O3 -fno-common -fno-toplevel-reorder -fno-ident" ;;
+             cflags="-O3 -fno-common -fno-toplevel-reorder" ;;
       *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
     esac
     uw=
@@ -175,11 +175,18 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
   else
     "$TC/as.exe" --32 "src/$f.s" -o "$OBJ/$f.o"
   fi
-  objs="$objs $OBJ/$f.o"
+  [ "$f" = globals ] || objs="$objs $OBJ/$f.o"
 done
-# ld's default i386pe link script, image base, entry point and subsystem
-"$TC/ld.exe" -m i386pe -s --no-insert-timestamp -Map build/xeBuild.map \
-  -o build/xeBuild.exe $objs
+# Link as gcc does: crt2.o and crtbegin.o, the program, the libraries (gcc's
+# defaults, ws2_32), the default manifest and crtend.o, with ld's default
+# script (tools/fetch_toolchain.sh rebuilds the kernel32 and msvcrt import
+# libraries as the original had them).  globals.o goes after the libraries,
+# so its .bss follows theirs like the original's COMMON block
+# (src/globals.c).
+libs="-lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt -lpthread
+      -ladvapi32 -lshell32 -luser32 -lkernel32"
+"$TC/gcc.exe" -s -o build/xeBuild.exe $objs -lws2_32 $libs $OBJ/globals.o \
+  -Wl,--no-insert-timestamp,-Map,build/xeBuild.map
 # original link time; ld 2.27 can't take a fixed timestamp itself
 python re/stamp.py build/xeBuild.exe 0x5DCAB029
 python re/execmp.py xeBuild.exe build/xeBuild.exe

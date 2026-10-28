@@ -1,9 +1,9 @@
 /* main: globals, signal handlers, console info, mode dispatch */
-int _chdir(const char *path);	/* msvcrt, called through its import stub */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "xebuild.h"
 #include "bootloaders.h"
@@ -386,7 +386,7 @@ void setBasePath(const char *argv0)
 	if (!p)
 		return;
 	*p = 0;
-	if (!_chdir(path))
+	if (!chdir(path))
 		log_printf(0, "base path changed to %s\n", path);
 }
 

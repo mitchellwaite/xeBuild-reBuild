@@ -23,8 +23,8 @@ come after that.
   binary.
 - **Crypto:** 41 source files (185 functions) from XeCrypt, its crypto
   library, used as published.
-- **Runtime:** the MinGW startup code and libgcc helpers are kept as
-  assembly. They are stock library code and already match.
+- **Runtime:** the MinGW startup code, libraries and import tables come from
+  the toolchain itself, linked the way gcc links any program.
 
 ## How it was done
 
@@ -48,7 +48,6 @@ tricks some functions needed to match, and the checks behind each step.
 | `xeBuild.exe` | the reference binary (never modified) |
 | `src/app/` | the application's C source and headers |
 | `src/crypto/` | XeCrypt (AES, RC4, SHA-1, MD5, DES, RSA/BigDigits) |
-| `src/runtime/` | MinGW runtime objects, as assembly |
 | `src/globals.c` | the program's uninitialized globals |
 | `build.sh` | builds everything and checks the result |
 | `re/` | reverse-engineering and verification scripts |
@@ -58,7 +57,8 @@ tricks some functions needed to match, and the checks behind each step.
 ## Building
 
 You need Windows with Git Bash and Python. First download the pinned
-toolchain (about 55 MB, unpacked to `tools/toolchain-4745/`):
+toolchain (about 55 MB, unpacked to `tools/toolchain-4745/`; it also rebuilds
+two import libraries from mingw-w64's sources on GitHub):
 
 ```bash
 sh tools/fetch_toolchain.sh

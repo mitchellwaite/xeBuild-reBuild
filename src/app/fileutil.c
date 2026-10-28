@@ -8,11 +8,11 @@
  * readFileIn needs compiler hints to match (see the comment above it).
  */
 
-int _mkdir(const char *path);	/* msvcrt, called through its import stub */
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "xebuild.h"
 #include "fileutil.h"
@@ -709,7 +709,7 @@ int createDir(const char *path)
 {
 	int err;
 
-	if (path == NULL || _mkdir(path) == 0)
+	if (path == NULL || mkdir(path) == 0)
 		return 1;
 	err = errno;
 	if (err == EEXIST) {

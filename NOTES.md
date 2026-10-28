@@ -8,11 +8,11 @@ holds. README.md has the overview.
 
 | Stage | State |
 |---|---|
-| Identify toolchain | Done: MSYS2 gcc 6.2.0 Rev2, binutils 2.27, mingw-w64 crt-git 5.0.0.4745 |
+| Identify toolchain | Done: MSYS2 gcc 6.2.0 Rev2, binutils 2.27, mingw-w64 crt-git 5.0.0.4745 with the kernel32/msvcrt import libraries of a slightly later crt-git (mingw-w64 e05f3e8..b508bb8^) |
 | Disassemble to re-assemblable GNU `as` source | Done |
 | Link to a byte-identical exe | Done |
 | Check ddisasm's symbolization (code can move safely) | Done: audit + shift test, see below |
-| Split into the original object files | **Done: 102 files (66 program + runtime), `sh build.sh` reproduces the SHA256** |
+| Split into the original object files | **Done: 66 program objects; the runtime comes from the toolchain's own objects and libraries (Runtime below)** |
 | Move functions to C | **Done: all 41 XeCrypt files and all 25 app files build from C (617 of 617 functions), and so do the COMMON globals; see Progress below** |
 | Fix bugs | Next |
 
@@ -33,7 +33,7 @@ holds. README.md has the overview.
 ```
 xeBuild.exe              reference binary (do not modify)
 build.sh                 compile/assemble src/ + link + stamp + verify -> build/xeBuild.exe
-src/objects.txt          link order
+src/objects.txt          the program's objects in link order
 src/app/                 the application (25 files) and its headers: xebuild.h
                          (shared types, struct xebuild), <obj>.h (each object's
                          functions and data that others use)
@@ -41,9 +41,8 @@ src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCryp
                          API, aes/ (Gladman), rc4/ sha/ (OpenSSL), md5/, des/, and
                          bign/ (BigDigits bignum library + PKCS#1 RSA, hash,
                          base64), with its licence files
-src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
-                         .idata$2..$7/.CRT/.tls/.rsrc
-src/globals.c            COMMON (uninitialized global) block, in address order
+src/globals.c            the program's COMMON (uninitialized global) block, in
+                         address order
 re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
 re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
 re/units.py              objects from .eh_frame CIEs; profile of each for naming
@@ -61,6 +60,7 @@ re/mapparse.py           GNU ld -Map parser
 re/runtime_syms.json     names of mingw runtime functions found in the exe
 tools/fetch_toolchain.sh download + verify + unpack the 2016 MSYS2 toolchain
 tools/packages.sha256    hashes of those packages
+tools/importlibs.sha256  hashes of the mingw-w64 .def files for kernel32/msvcrt
 tools/ddisasm/           user-local ddisasm install for WSL, and the disassembly step
 build/                   generated, ignored
 ```
@@ -68,7 +68,9 @@ build/                   generated, ignored
 ## Setup
 
 Toolchain (Git Bash, repo root). Downloads ~55 MB from the MIT Kodi mirror of
-old MSYS2 packages and unpacks to `tools/toolchain-4745/`:
+old MSYS2 packages and unpacks to `tools/toolchain-4745/`, then rebuilds its
+kernel32 and msvcrt import libraries from mingw-w64's `.def` files at
+e05f3e8 (fetched from GitHub; Runtime below):
 
 ```bash
 sh tools/fetch_toolchain.sh
@@ -86,13 +88,15 @@ wsl -d Ubuntu -- bash tools/ddisasm/install.sh
 sh build.sh
 ```
 
-Builds every object in `src/objects.txt`: `src/<obj>.c` with gcc 6.2.0 if it
-exists (flags and original `__FILE__` path per directory in `build.sh`), otherwise
-`src/<obj>.s` with binutils 2.27; with both, the `.c`'s functions are spliced
-into the `.s` (mixed objects, below). Links them with
-`ld --no-insert-timestamp -s` and ld's default i386pe link script, image
-base, entry point (`_mainCRTStartup`) and subsystem, writes the original link
-time (`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
+Builds every object in `src/objects.txt` and `src/globals.c`: `src/<obj>.c`
+with gcc 6.2.0 if it exists (flags and original `__FILE__` path per directory
+in `build.sh`), otherwise `src/<obj>.s` with binutils 2.27; with both, the
+`.c`'s functions are spliced into the `.s` (mixed objects, below). Links them
+with the gcc driver, as the original was: its crt2.o/crtbegin.o/crtend.o,
+default libraries (plus `-lws2_32`) and default manifest, ld's default link
+script, image base, entry point and subsystem, and `-s
+--no-insert-timestamp`; `globals.o` goes after the libraries (Runtime below).
+Then it writes the original link time (`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
 take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA256.
 
 ## Regenerating `src/`
@@ -327,27 +331,62 @@ the per-object build gets naturally).
   globals). Padding stays with the object before it.
 - **Fixed pieces.** `.jcr` (end of `.data`) and the eh_frame terminator are
   crtend's. The 104 `GCC:` idents (`.rdata$zzz`) go one per gcc object; the
-  10 belonging to objects without code (data-only runtime objects, and likely
-  one data-only program file whose data is merged into its neighbours) are in
-  `runtime/no_code_objects.s`. `.idata`, `.CRT`/`.tls` and `.rsrc` are whole
-  files, except that `.idata` is split into the `.idata$2`..`$7` pieces the
-  import libraries contribute, which the default link script sorts and
-  follows `$2` with the null descriptor. The COMMON block at the end of
-  `.bss` stays one file: ld lays COMMON symbols out in hash-table order, so
-  it can't be attributed to sources.
-  `src/globals.c` defines its variables in address order (`-fno-common
-  -fno-toplevel-reorder`, every one `aligned(4)`, with in-place pads for
-  ld's 32-byte alignment; `-fno-ident`, as it adds an object the original
-  link didn't have). The fields of `xb` that ddisasm labelled (`cpuKey`,
-  `iniBuf`, ...) are `xb.` members in the C, and two UTF-16 words in
-  wassert's strings that ddisasm took for pointers into the block are
-  `NOT_POINTERS`.
+  10 belonging to objects without code (data-only runtime objects, and one
+  data-only program file whose data is merged into its neighbours) went to
+  `runtime/no_code_objects.s`. `.idata`, `.CRT`/`.tls` and `.rsrc` were
+  whole files, except that `.idata` is split into the `.idata$2`..`$7`
+  pieces the import libraries contribute, which the default link script
+  sorts and follows `$2` with the null descriptor. The COMMON block near
+  the end of `.bss` stays one file (`src/globals.c`, Runtime below). The
+  fields of `xb` that ddisasm labelled (`cpuKey`, `iniBuf`, ...) are `xb.`
+  members in the C, and two UTF-16 words in wassert's strings that ddisasm
+  took for pointers into the block are `NOT_POINTERS`.
+- **Runtime pieces.** split.py still finds the runtime objects' pieces (they
+  bound the program's data) but no longer writes them (`TOOLCHAIN`): the
+  build links the toolchain's own (Runtime below).
 - Labels referenced from another file are `.globl`. What the default link
   script writes is left out: the ctor/dtor lists (crtend's one `.ctors.65535`
   entry stays) and the null import descriptor. Its symbols replace ddisasm's
   labels: `__image_base__`, `___CTOR_LIST__`/`___DTOR_LIST__`, the empty
   `___RUNTIME_PSEUDO_RELOC_LIST__`/`_END__` pair (as pseudo-reloc.o uses
   them) and `__IAT_start__`/`__IAT_end__`.
+
+### Runtime: the toolchain's own objects and libraries
+
+Linking the program's objects with the gcc driver (crt2.o, crtbegin.o, the
+default libraries, `-lws2_32`, the default manifest, crtend.o) reproduces
+every runtime byte, given three things:
+
+- **The original's import libraries.** Every crt object of crt-git 4745
+  byte-matches, but its import hints don't (`DeleteCriticalSection` is hint
+  213 there, 214 in the exe). An import's hint is its index in mingw-w64's
+  `.def` file; kernel32.def matches from e05f3e8 (2016-11-23, adds
+  `CreateRemoteThreadEx`) until 306037f (2017-01-30, the `K32*` exports),
+  msvcrt.def.in until b508bb8 (2017-01-27, `_create_locale`). No MSYS2
+  package from that range survives (not on the MIT mirror, repo.msys2.org or
+  the Wayback Machine), so `tools/fetch_toolchain.sh` builds libkernel32.a
+  and libmsvcrt.a as mingw-w64-crt does (`cpp` for msvcrt.def.in, then
+  `dlltool --as-flags=--32 -m i386 -k`, plus 4745's own `lib32_*` objects)
+  from e05f3e8's files, with the toolchain's dlltool, into the toolchain's
+  lib directory: ld's default script sorts `.idata$N` pieces by file name
+  including the directory, so all import libraries must sit together, as
+  they did in the original's.
+- **POSIX `chdir`/`mkdir`.** msvcrt.def has both `_chdir` and the alias
+  `chdir == _chdir` (the next index); the exe's hints are the aliases', so
+  main.c and fileutil.c call `chdir()`/`mkdir()` from `<unistd.h>` (same
+  code, same stub bytes).
+- **globals.c after the libraries.** ld allocates COMMON symbols per input
+  file in link order (within a file, in hash-table order): crt2's
+  `__mingw_winmain_lpCmdLine`/`hInstance` and crtbegin's `hmod_libgcc`, then
+  the program's block, then atonexit's `__onexitend`/`__onexitbegin`,
+  natstart's `__native_startup_lock`/`_state` and libgcc `_ctors.o`'s
+  `__CTOR_LIST__`/`__DTOR_LIST__`. `globals.c` defines the program's block
+  and the three crt words before it (`-fno-common`), and build.sh links it
+  after the libraries so it follows their `.bss`; the libraries' COMMON
+  symbols then follow it. It no longer defines natstart's two words, so the
+  link pulls natstart.o in like the original (its two `-1` words in
+  `.data`). Its `GCC:` ident is the 104th: the one data-only program object
+  of the original.
 
 ### Source files
 
@@ -496,7 +535,7 @@ Remaining caveats when editing:
 
 ## Progress
 
-Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly; the COMMON globals at the end of `.bss` (the program's and the runtime's) are C, in `src/globals.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime (crt objects, libgcc, libmingw32/ex, import libraries) comes from the toolchain itself; the program's COMMON globals near the end of `.bss` are C, in `src/globals.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|

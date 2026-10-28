@@ -1,0 +1,3 @@
+5b2bdc099116806829d6734db8c7e659422050318e1778476878ba3e1da52f0f *lib32/kernel32.def
+b85c32795cf4c26e8d8f584f285d7711ed4f579116fc20bbdffdcabed682ac5b *lib32/msvcrt.def.in
+7de65fd08dfcfa3bfb7c076756e00332ecf952430a21be2cde0efbacb3c50ae6 *def-include/msvcrt-common.def.in

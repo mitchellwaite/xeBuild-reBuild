@@ -51,9 +51,10 @@ NOTES.md has the findings, layout and the pipeline.
   pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `re/stamp.py` (timestamp + checksum);
   every other difference must be fixed in the source, split.py or ddfix (the link uses
-  ld's default script).
+  the gcc driver with the toolchain's own runtime and ld's default script).
 - Only use the pinned toolchain in `tools/toolchain-4745/` (gcc 6.2.0, binutils
-  2.27, crt 4745). Newer binutils encode differently. gcc needs its `bin/` on
+  2.27, crt 4745 with kernel32/msvcrt import libraries rebuilt from mingw-w64
+  e05f3e8 by `tools/fetch_toolchain.sh`). Newer binutils encode differently. gcc needs its `bin/` on
   PATH (cc1 and as load DLLs from there); otherwise it fails silently.
 - Don't search the machine for GCC sources or use copies left under `tmp/`.
   Try gcc's dumps (`-fdump-rtl-*`, `-fdump-tree-*`) and the notes first; only

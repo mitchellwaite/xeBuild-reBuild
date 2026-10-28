@@ -140,9 +140,9 @@ def main():
            '## Progress', '',
            'Program functions in matching C: **%d of %d** (%d built from `src/`, %d matching '
            'drafts in `wip/` that the build doesn\'t use yet); %d of %d objects fully built from C. '
-           'The runtime objects (crt, libgcc, libmingw32/ex) are library code that already '
-           'byte-matches and is left as assembly; the COMMON globals at the end of `.bss` '
-           '(the program\'s and the runtime\'s) are C, in `src/globals.c`. '
+           'The runtime (crt objects, libgcc, libmingw32/ex, import libraries) comes from '
+           'the toolchain itself; the program\'s COMMON globals near the end of `.bss` '
+           'are C, in `src/globals.c`. '
            'Function lists come from the reference '
            "exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`."
            % (in_c(allf), len(allf), n(allf, 'C'), n(allf, 'wip'),
