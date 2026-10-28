@@ -4,70 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-
-/* a file fetched from the console */
-struct netfile {
-	u8 *data;
-	int size;
-};
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 console type (& 7), NAND flags */
-	u32 type;			/* 008 build type */
-	u32 kernel;			/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	u8 pad018[0x0d4 - 0x018];
-	u32 numBad;			/* 0d4 */
-	u32 badBlocks[32];		/* 0d8 */
-	u32 badRemap[32];		/* 158 */
-	struct netfile blmod;		/* 1d8 */
-	struct netfile bldrs;		/* 1e0 raw bootloaders (glitch) */
-	int haveBldrs;			/* 1e8 */
-	struct netfile mobile[11];	/* 1ec MobileB-J, Statistics, Manufacturing */
-	struct netfile smc;		/* 244 */
-	struct netfile kv;		/* 24c */
-	struct netfile f254;		/* 254 */
-	struct netfile smcConfig;	/* 25c */
-	u8 pad264[0x29c - 0x264];
-	void *pub1bl;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *pubPirs;			/* 2a4 */
-	void *privSb;			/* 2a8 */
-	char suffix[0x400];		/* 2ac -i */
-	char binDir[0x400];		/* 6ac */
-	char outName[0x400];		/* aac */
-	char baseDir[0x400];		/* eac */
-	char dataDir[0x400];		/* 12ac -f */
-	u8 pad16ac[0x46df4 - 0x16ac];
-	char patches[16][0x42c];	/* 46df4 -a */
-	char blSuffix[0x40];		/* 4b0b4 -r */
-	int numPatches;			/* 4b0f4 */
-	u8 pad4b0f8[0x4f144 - 0x4b0f8];
-	char flashFiles[10][22];	/* 4f144 */
-	u8 *flashBuf[10];		/* 4f220 */
-	int flashSize[10];		/* 4f248 */
-	u8 pad4f270[0x4f2c0 - 0x4f270];
-	u32 numFlashFiles;		/* 4f2c0 */
-};
-
-/* the console's info response (net.c) */
-struct consoleinfo {
-	u32 version;			/* 000 */
-	u32 kernel;			/* 004 */
-	u32 f008;			/* 008 2: has blmod, 4: has addons */
-	u32 bootstrap;			/* 00c */
-	u32 hwFlags;			/* 010 */
-	u32 nandType;			/* 014 */
-	u32 f018;			/* 018 */
-};
 
 void log_printf(int level, const char *fmt, ...);
 void log_set_name(const char *name);
@@ -106,7 +45,6 @@ int netSendFlash(u8 *buf, u32 len);
 void netReboot(int how);
 void netFree(void *p);
 
-extern struct xebuild xb;
 extern char separator[];
 extern int promptEnter;
 
@@ -141,7 +79,7 @@ NOPROF u32 getBadBlocks(void)
 	list = netGetBadBlocks(&len);
 	if (list) {
 	if (len) {
-		blocks = info->nandType / info->f018;
+		blocks = info->nandSize / info->blockSize;
 		log_printf(1, "processing %d bad blocks on device\n", len / 2);
 		for (i = len - 2; i >= 0; i -= 2) {
 			block = getBeU16(list + i);
@@ -320,14 +258,14 @@ NOPROF u32 getMobileFiles(const char *dir)
 	}
 	if (info->f008 & 2) {
 		log_printf(1, "retrieving USVR\\blmod...");
-		xb.blmod.data = netGetFile("blmod", &xb.blmod.size);
-		if (xb.blmod.data && xb.blmod.size)
-			log_printf(1, mu_44cea3, xb.blmod.size);
+		xb.consoleBlmod.data = netGetFile("blmod", &xb.consoleBlmod.size);
+		if (xb.consoleBlmod.data && xb.consoleBlmod.size)
+			log_printf(1, mu_44cea3, xb.consoleBlmod.size);
 		else
 			log_printf(0, "\n\n***** WARNING: Unable to retrieve blmod.bin data from console!\n");
-		netFree(xb.blmod.data);
-		xb.blmod.size = 0;
-		xb.blmod.data = NULL;
+		netFree(xb.consoleBlmod.data);
+		xb.consoleBlmod.size = 0;
+		xb.consoleBlmod.data = NULL;
 	} else
 		log_printf(1, "console has no available blmod\n");
 	if (info->f008 & 4) {
@@ -357,7 +295,7 @@ NOPROF u32 getMobileFiles(const char *dir)
 
 NOPROF u8 *bldrGetKv(int *size)
 {
-	u8 *bl = xb.bldrs.data;
+	u8 *bl = xb.bl.data;
 	u32 len = SWAP32(*(u32 *)(bl + 96));
 	u8 *kv = calloc(len, 1);
 
@@ -368,7 +306,7 @@ NOPROF u8 *bldrGetKv(int *size)
 
 NOPROF u8 *bldrGetSmc(int *size)
 {
-	u8 *bl = xb.bldrs.data;
+	u8 *bl = xb.bl.data;
 	u32 len = SWAP32(*(u32 *)(bl + 120));
 	u8 *smc = calloc(len, 1);
 
@@ -386,7 +324,7 @@ static const char mu_44d278[] __attribute__((aligned(4))) = "OK, received 0x%x b
 
 NOPROF static u32 getSmc(const char *dir)
 {
-	if (!xb.haveBldrs) {
+	if (!xb.fromConsole) {
 		log_printf(1, "retrieving USVR\\smc_enc...");
 		xb.smc.data = netGetFile("smc_enc", &xb.smc.size);
 	} else {
@@ -417,7 +355,7 @@ NOPROF static u32 getKv(const char *dir)
 {
 	u32 ret;
 
-	if (!xb.haveBldrs) {
+	if (!xb.fromConsole) {
 		log_printf(1, mu_44d23d);
 		xb.kv.data = netGetFile(mu_44d257, &xb.kv.size);
 	} else {
@@ -445,7 +383,7 @@ NOPROF u32 getSecurityFiles(const char *dir)
 	u32 i;
 
 	log_printf(1, mu_44d1f4);
-	for (i = 0; i < xb.numFlashFiles; i++) {
+	for (i = 0; i < xb.nFlashFiles2; i++) {
 		if (!xb.flashFiles[i][0])
 			continue;
 		if (!wantFile(xb.flashFiles[i]))
@@ -487,15 +425,15 @@ NOPROF u32 getBootloaders(const char *dir)
 		return 1;
 	}
 	log_printf(1, mu_44d424);
-	xb.bldrs.data = netGetBldrs(&xb.bldrs.size);
-	if (!xb.bldrs.data || !xb.bldrs.size) {
+	xb.bl.data = netGetBldrs(&xb.bl.size);
+	if (!xb.bl.data || !xb.bl.size) {
 		log_printf(1, mu_44d479);
 		return 0;
 	}
-	log_printf(1, mu_44d440, xb.bldrs.size);
+	log_printf(1, mu_44d440, xb.bl.size);
 	if (dir)
-		writeFileIn(dir, mu_44d46e, xb.bldrs.data, xb.bldrs.size);
-	xb.haveBldrs = 1;
+		writeFileIn(dir, mu_44d46e, xb.bl.data, xb.bl.size);
+	xb.fromConsole = 1;
 	return 1;
 }
 

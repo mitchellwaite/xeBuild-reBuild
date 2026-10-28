@@ -114,9 +114,11 @@ struct manifest {
 	} e[256];
 };
 
-/* xb.files has 35 entries, 19..34 the addon patches (-a).  A file may
-   declare fewer (XB_FILES_BOUND) before including this: the bound sets gcc's
-   trip count estimate for loops over them (build.c, filelist_ini.c) */
+/* xb.files has 35 entries, 19..34 the addon patches (-a), whose names are
+   also xb.patches (indexing that array, not &xb.files[XB_ADDONS], is what
+   compiles to the original's code).  A file may declare fewer files
+   (XB_FILES_BOUND) before including this: the bound sets gcc's trip count
+   estimate for loops over them (build.c, filelist_ini.c) */
 #ifndef XB_FILES_BOUND
 #define XB_FILES_BOUND 35
 #endif
@@ -153,8 +155,10 @@ struct xebuild {
 	u32 bootFlags;			/* 060 options turned on */
 	u32 bootFlagsOff;		/* 064 options turned off */
 	int xellButton;			/* 068 */
-	int xellAltButton;		/* 06c */
-	int dualButton;			/* 070 */
+	/* u32 (unlike xellButton): options.c's applyIniOptions' tests of them
+	   don't get reused for parseButton's 0 */
+	u32 xellAltButton;		/* 06c */
+	u32 dualButton;			/* 070 */
 	u8 cbLdv;			/* 074 */
 	u8 cfLdv;			/* 075 */
 	u8 pad076[2];
@@ -209,8 +213,13 @@ struct xebuild {
 	char firmware[256][0x400];	/* 1aac the ini's firmware files */
 	u32 firmwareCrc[256];		/* 41aac */
 	u32 nFirmware;			/* 41eac */
-	struct fileent files[XB_FILES_BOUND];	/* 41eb0 */
-	u8 padFiles[(35 - XB_FILES_BOUND) * sizeof(struct fileent)];
+	union {
+		struct fileent files[XB_FILES_BOUND];	/* 41eb0 */
+		struct {
+			u8 pad41eb0[XB_ADDONS * sizeof(struct fileent)];
+			char patches[16][sizeof(struct fileent)];	/* 46df4 the addons' names */
+		};
+	};
 	char blSuffix[0x40];		/* 4b0b4 -r */
 	int numPatches;			/* 4b0f4 addons (files[XB_ADDONS...]) */
 	int nFiles;			/* 4b0f8 */
@@ -219,7 +228,7 @@ struct xebuild {
 		char name[0x400];
 		u32 offset;
 	} rawPatch[16];			/* 4b100 */
-	u32 nRawPatches;		/* 4f140 */
+	int nRawPatches;		/* 4f140 */
 	char flashFiles[10][22];	/* 4f144 security files */
 	u8 *flashBuf[10];		/* 4f220 their data from a dump */
 	u32 flashSize[10];		/* 4f248 */

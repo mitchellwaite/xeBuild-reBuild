@@ -8,51 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned int u32;
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 console type (& 7), NAND flags */
-	u32 type;			/* 008 build type */
-	u8 pad00c[0x060 - 0x00c];
-	u32 bootFlags;			/* 060 options turned on */
-	u32 bootFlagsOff;		/* 064 options turned off */
-	int xellButton;			/* 068 */
-	/* u32 (unlike xellButton): applyIniOptions' tests of them don't
-	   get reused for parseButton's 0 */
-	u32 xellAltButton;		/* 06c */
-	u32 dualButton;			/* 070 */
-	u8 pad074;
-	u8 cfLdv;			/* 075 */
-	u8 pad076[0x078 - 0x076];
-	u32 cpuTemp;			/* 078 */
-	u32 gpuTemp;			/* 07c */
-	u32 edramTemp;			/* 080 */
-	u32 overCpuTemp;		/* 084 */
-	u32 overGpuTemp;		/* 088 */
-	u32 overEdramTemp;		/* 08c */
-	u32 cpuFan;			/* 090 */
-	u32 gpuFan;			/* 094 */
-	u32 avRegion;			/* 098 */
-	u32 gameRegion;			/* 09c */
-	u32 dvdRegion;			/* 0a0 */
-	u8 macid[6];			/* 0a4 */
-	u8 pad0aa[0xaac - 0x0aa];
-	char outName[0x400];		/* aac */
-	char baseDir[0x400];		/* eac */
-	u8 pad12ac[0x46df4 - 0x12ac];
-	char patches[16][0x42c];	/* 46df4 */
-	char blSuffix[0x40];		/* 4b0b4 */
-	int numPatches;			/* 4b0f4 */
-	u8 pad4b0f8[0x4b100 - 0x4b0f8];
-	struct {
-		char name[0x400];
-		u32 offset;
-	} rawPatches[16];		/* 4b100 */
-	int numRawPatches;		/* 4f140 */
-};
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 int FileExists(const char *name);
@@ -70,8 +26,6 @@ void applyIniOptions(void);
 u32 parseOption(char *opt);
 /* parseCmdOptions matches only when it sees an int return */
 int parseOptionInt(char *opt) __asm__("_parseOption");
-
-extern struct xebuild xb;
 
 /* the strings, in the original's .rdata order: gcc emits static variables
    in reverse definition order, so they are defined last to first.  Arrays
@@ -633,7 +587,6 @@ static inline __attribute__((always_inline)) void stripColonsI(char *s)
 		xb.bootFlags |= (set); \
 	} while (0)
 
-
 #pragma GCC push_options
 #pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
 
@@ -1187,20 +1140,20 @@ int parseRawPatch(char *pat)
 		}
 	}
 	if (len != strlen(pat)) {
-		if (xb.numRawPatches <= 15) {
-			strcpy(xb.rawPatches[xb.numRawPatches].name, pat);
-			n = xb.numRawPatches;
-			xb.rawPatches[n].offset = myatou32(val, -1);
-			if (xb.rawPatches[xb.numRawPatches].offset != -1) {
-				log_printf(1, msg_rawPatchParsed, xb.numRawPatches + 1,
-					   xb.rawPatches[xb.numRawPatches].name, xb.rawPatches[xb.numRawPatches].offset);
-				xb.numRawPatches++;
+		if (xb.nRawPatches <= 15) {
+			strcpy(xb.rawPatch[xb.nRawPatches].name, pat);
+			n = xb.nRawPatches;
+			xb.rawPatch[n].offset = myatou32(val, -1);
+			if (xb.rawPatch[xb.nRawPatches].offset != -1) {
+				log_printf(1, msg_rawPatchParsed, xb.nRawPatches + 1,
+					   xb.rawPatch[xb.nRawPatches].name, xb.rawPatch[xb.nRawPatches].offset);
+				xb.nRawPatches++;
 				return 1;
 			}
 			log_printf(0, msg_rawPatchBadOffset, pat);
 			return 0;
 		}
-		log_printf(0, msg_rawPatchSlotsFull, xb.numRawPatches, 16, pat);
+		log_printf(0, msg_rawPatchSlotsFull, xb.nRawPatches, 16, pat);
 		return 0;
 	}
 	log_printf(0, msg_patchParseFailed, pat);

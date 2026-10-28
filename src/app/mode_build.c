@@ -3,41 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 console type (& 7), NAND flags */
-	u32 type;			/* 008 build type */
-	u32 kernel;			/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	u8 pad018[0x020 - 0x018];
-	int randomNonces;		/* 020 */
-	u8 pad024[0x29c - 0x024];
-	void *pub1bl;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *pubPirs;			/* 2a4 */
-	void *privSb;			/* 2a8 */
-	char suffix[0x400];		/* 2ac -i */
-	char binDir[0x400];		/* 6ac */
-	char outName[0x400];		/* aac */
-	char baseDir[0x400];		/* eac -d */
-	char dataDir[0x400];		/* 12ac -f */
-	u8 pad16ac[0x46df4 - 0x16ac];
-	char patches[16][0x42c];	/* 46df4 -a */
-	char blSuffix[0x40];		/* 4b0b4 -r */
-	int numPatches;			/* 4b0f4 */
-	u8 pad4b0f8[0x4f140 - 0x4b0f8];
-	int f4f140;			/* 4f140 */
-	u8 pad4f144[0x4f508 - 0x4f144];
-	char sha1File[0x400];		/* 4f508 */
-	int sha1Write;			/* 4f908 */
-	int iniSize;			/* 4f90c */
-};
+#include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
 void log_set_name(const char *name);
@@ -61,7 +27,6 @@ void buildCleanup(void);
 int buildImage(void);
 int writeImage(const char *name);
 
-extern struct xebuild xb;
 extern char separator[];
 extern int promptEnter;
 
@@ -185,7 +150,7 @@ void loadPubKeys(void)
 	loadPubKey("1BL RSA pub key", "1BL_pub.bin", &xb.pub1bl, 272, 0x79c7, 0);
 	loadPubKey("PIRS RSA pub key", "PIRS_pub.bin", &xb.pubPirs, 272, 0x80d0, 0);
 	loadPubKey("MASTER RSA pub key", "MAST_pub.bin", &xb.masterPub, 272, 0x843c, 0);
-	loadPubKey("SC/SD RSA priv key", "SB_priv.bin", &xb.privSb, 912, 0x1ca16, 1);
+	loadPubKey("SC/SD RSA priv key", "SB_priv.bin", &xb.prvKey, 912, 0x1ca16, 1);
 }
 
 int mode_build(int argc, char **argv)
@@ -199,7 +164,7 @@ int mode_build(int argc, char **argv)
 	char *v;
 	int ret;
 
-	xb.f4f140 = 0;
+	xb.nRawPatches = 0;
 	for (i = 0; i < argc; i++) {
 		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2)) {
 			build_usage();
@@ -208,7 +173,7 @@ int mode_build(int argc, char **argv)
 			promptEnter = 0;
 		} else if (!strnicmp(argv[i], "-norandom", 9)) {
 			log_printf(1, "disabling random nonces\n");
-			xb.randomNonces = 0;
+			xb.randomKeys = 0;
 		} else if (!strnicmp(argv[i], "-t", 2)) {
 			if (!argv[++i] || i == argc || argv[i][0] == '-') {
 				log_printf(0, "\n\n***** ERROR: option flag -t on command line but no argument provided!\n");
