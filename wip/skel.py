@@ -1,13 +1,13 @@
 """skel.py fn [gcc flags]: diff the original's and a draft's sequence of calls,
 string literals (by content) and jumps for one function; ignores registers, so it
 shows block order and duplication.  SRC= the draft (default
-wip/app/filelist_ini.c), OBJ= its object (default app/filelist_ini)."""
+wip/filelist_ini.c), OBJ= its object (default filelist_ini)."""
 import difflib, os, re, subprocess, sys
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fn = sys.argv[1]
 flags = sys.argv[2:] or ['-O3']
-src = os.environ.get('SRC', os.path.join(R, 'wip', 'app', 'filelist_ini.c'))
-obj = os.environ.get('OBJ', 'app/filelist_ini')
+src = os.environ.get('SRC', os.path.join(R, 'wip', 'filelist_ini.c'))
+obj = os.environ.get('OBJ', 'filelist_ini')
 
 
 def strings(lines, labre):

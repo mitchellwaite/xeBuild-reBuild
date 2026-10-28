@@ -1,7 +1,7 @@
 /* xboxrom: hashes, signs and verifies keyvault and bootloader signatures */
 #include <string.h>
 
-#include "../crypto/xecrypt.h"
+#include "crypto/xecrypt.h"
 #include "xebuild.h"
 #include "fileutil.h"
 #include "xboxrom.h"

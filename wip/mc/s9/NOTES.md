@@ -1,7 +1,7 @@
 # mode_client, 9th session (2026-10-28): structural probes + split-test crafted profile, NO MATCH (still 15/16)
 
 ## Facts checked
-- Original jump table (src/app/mode_client.s, L_44fb1c): 13 entries (index 0..12), 13 distinct
+- Original jump table (src/mode_client.s, L_44fb1c): 13 entries (index 0..12), 13 distinct
   targets, index 0 = the `ja` default target, case 6 = the join.  Same as ours: no merged
   labels, no fewer edges.  predict.c 6.2 ignores switch predictions (`nedges != 2` ->
   even), so `__builtin_expect` on the switch index does nothing (exp4/exp1: same keys).

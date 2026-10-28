@@ -33,11 +33,11 @@ fdo() {
 # order; re/split.py's NAMES has the evidence for each).  ld lays out
 # .text/.rdata/.data in this order.
 objects="
-  app/bootloaders app/mode_update app/stfs app/mode_client app/filelist_ini
-  app/timeutil app/smc app/sysupdate app/main app/mode_extract app/xboxrom
-  app/image_write app/keyvault app/image_read app/mode_ini app/mode_build
-  app/keys app/net app/fileutil app/options app/build app/consoleinfo
-  app/console_hdd app/log app/crc32
+  bootloaders mode_update stfs mode_client filelist_ini
+  timeutil smc sysupdate main mode_extract xboxrom
+  image_write keyvault image_read mode_ini mode_build
+  keys net fileutil options build consoleinfo
+  console_hdd log crc32
   crypto/xecrypt crypto/xecryptBn
   crypto/aes/aes_modes crypto/aes/aestab crypto/aes/aescrypt crypto/aes/aeskey
   crypto/bign/mpSubtract crypto/bign/pkcs1-rsa crypto/bign/mpMultiply
@@ -65,14 +65,14 @@ for f in $objects globals; do
     crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
               cflags="-O3 -Isrc/crypto" ;;
     # readFileIn's __builtin_expect hints are tuned to this probability
-    app/fileutil) orig="$f.c"
+    fileutil) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=65" ;;
     # kvCheckHash's __builtin_expect needs a weak hint (51-60 match)
-    app/keyvault) orig="$f.c"
+    keyvault) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=55" ;;
     # showInfoKeys aligns a block at frequency 61 of 9412 (default 100
     # would need 95); 155 and up match
-    app/consoleinfo) orig="$f.c"
+    consoleinfo) orig="$f.c"
            cflags="-O3 --param align-threshold=200" ;;
     # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
     # mode_update's cold blocks are laid out by frequency ties that no
@@ -82,7 +82,7 @@ for f in $objects globals; do
     # The other functions are optimize("no-branch-probabilities") and keep
     # the guessed profile; -fno-ipa-profile keeps their hot test, and
     # -fno-reorder-functions keeps mode_update out of .text.hot.
-    app/mode_update) orig="$f.c"
+    mode_update) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=68 -fno-ipa-profile -fno-reorder-functions"
            prof="mode_update:59>3=97.9 mode_update:65>66=16 mode_update:67>68=16
                  mode_update:69>70=30 mode_update:75>76=21 mode_update:79>80=80.5
@@ -93,41 +93,41 @@ for f in $objects globals; do
     # smcChecksum's count == 0 block, which the original doesn't);
     # -fno-toplevel-reorder emits the key buffers and string arrays in
     # definition order
-    app/keys) orig="$f.c"
+    keys) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=60" ;;
     # console_hdd's __builtin_expect hints are tuned to this probability;
     # sendAvatarData's loop is aligned (1 and 2 align other loops too)
-    app/console_hdd) orig="$f.c"
+    console_hdd) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3" ;;
     # parseOption's setBoolOption and vlen hints (82 and 84 lay out the
     # done/incomplete blocks differently). applyIniOptions has a crafted
-    # profile like mode_update (src/app/options.prof, from
+    # profile like mode_update (src/options.prof, from
     # wip/aiodesign.py); the rest keep the guessed one
-    app/options) orig="$f.c"
+    options) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=83 -fno-ipa-profile -fno-reorder-functions"
-           prof="@src/app/options.prof --only=applyIniOptions" ;;
+           prof="@src/options.prof --only=applyIniOptions" ;;
     # iniPreParse: vectorization makes PRE drop a PHI; its ';' hint (65-66)
     # makes its memcpy block hot enough to be aligned; parseIni needs
     # LRA's EBBs to stop at a 50% fallthrough (51-70 work);
     # -fno-toplevel-reorder emits parseIni's string arrays and the tables
     # in definition order
-    app/filelist_ini) orig="$f.c"
+    filelist_ini) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder -fno-tree-loop-vectorize --param builtin-expect-probability=65
                    --param lra-inheritance-ebb-probability-cutoff=60" ;;
     # imgAddMobile's 50/50 imgFits hint
-    app/image_write) orig="$f.c"
+    image_write) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=50" ;;
     # its string arrays are defined in the original's .rdata order, which
     # -fno-toplevel-reorder keeps
-    app/bootloaders) orig="$f.c"
+    bootloaders) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder" ;;
     # same for its string arrays (made by wip/irwhole.py) and data
-    app/image_read) orig="$f.c"
+    image_read) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder" ;;
     # netSendFile's !name hint (55-65), netRecvVerbose's verbose hint (65).
     # No -fno-toplevel-reorder: netRecv is netRecvVerbose's IPA-CP clone,
     # which only the default order emits first (as the original)
-    app/net) orig="$f.c"
+    net) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=65" ;;
     # loadFileCrc's verbose hint (92-99); 98 for wip/'s checkBl draft.
     # loadBlFiles' type-11 block is laid out by frequencies no guessed
@@ -141,28 +141,28 @@ for f in $objects globals; do
     # dead edges) keys 0 in bb-reorder like the zero-count chains it follows.
     # -fno-toplevel-reorder emits the functions, strings and .data in
     # definition order
-    app/build) orig="$f.c"
+    build) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=98"
-           fprof="@src/app/build.prof --only=loadBlFiles,loadBl,loadBl60 --consistent --runs=0"
+           fprof="@src/build.prof --only=loadBlFiles,loadBl,loadBl60 --consistent --runs=0"
            ffns=_loadBlFiles ;;
     # mode_client's layout comes from a second compile (fprof) with
     # -DBUILD_FDO: empty asm-goto edges and a crafted profile for it and
-    # the clientEraseBlock it inlines (src/app/mode_client.c's head
+    # the clientEraseBlock it inlines (src/mode_client.c's head
     # comment; wip/mc/s18/NOTES.md); align-loop-iterations=100 aligns its
     # loop like the original. -fno-toplevel-reorder emits the string
     # arrays and data in definition order
-    app/mode_client) orig="$f.c"
+    mode_client) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param builtin-expect-probability=50"
-           fprof="@src/app/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64"
+           fprof="@src/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64"
            fflags="-DBUILD_FDO --param align-loop-iterations=100"
            ffns=_mode_client ;;
-    # original path unknown (no assert in the app); timeutil needs -O3
-    app/*) orig="$f.c"
-           cflags="-O3" ;;
     # the COMMON block in address order (src/globals.c's head comment)
     globals) orig="$f.c"
            cflags="-O3 -fno-common -fno-toplevel-reorder" ;;
-    *) echo "build.sh: no flags for $f" >&2; exit 1 ;;
+    # the rest of the app: original path unknown (no assert in the app);
+    # timeutil needs -O3
+    *) orig="$f.c"
+       cflags="-O3" ;;
   esac
   if [ -n "$prof" ]; then
     fdo "$prof" > "$OBJ/$f.c.s"
@@ -173,7 +173,7 @@ for f in $objects globals; do
   # a second compile with -DBUILD_FDO and a profile for the functions in $ffns
   # (-ftoplevel-reorder: with -fno-toplevel-reorder ipa-reference doesn't
   # see the never-set statics as read-only, so ccp2 keeps their tests);
-  # these are app/build's flags, a case may set its own $fflags
+  # these are build.c's flags, a case may set its own $fflags
   fs=
   if [ -n "$fprof" ]; then
     fdo "$fprof" $fflags > "$OBJ/$f.fdo.s"

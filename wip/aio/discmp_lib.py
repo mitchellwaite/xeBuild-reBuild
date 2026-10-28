@@ -10,7 +10,7 @@ def norm_gcc(l):
 
 
 def orig_stream():
-    lines = subprocess.run(['git', 'show', '56e988e:src/app/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
+    lines = subprocess.run(['git', 'show', '56e988e:src/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
     s = lines.index('_applyIniOptions:')
     out, lab = [], None
     for l in lines[s + 1:]:

@@ -8,7 +8,7 @@ TC=$R/tools/toolchain-4745/mingw32/bin
 FL="${GFL:--O3 --param builtin-expect-probability=83 -fno-ipa-profile -fno-reorder-functions}"
 cd "$S/$1" || exit 1
 rm -f a.c.*r.* a.c.*t.*
-PATH="$TC:$PATH" gcc -S -masm=intel -dA $FL -fno-asynchronous-unwind-tables -I "$R/src/app" "$(pwd -W)/a.c" -o o.s \
+PATH="$TC:$PATH" gcc -S -masm=intel -dA $FL -fno-asynchronous-unwind-tables -I "$R/src" "$(pwd -W)/a.c" -o o.s \
   -fdump-rtl-bbro-details -fdump-rtl-cprop_hardreg-blocks-details -fdump-rtl-alignments 2>/dev/null || { echo compile failed; exit 1; }
 awk '/^;; Function applyIniOptions/,/^;; Function parseRawPatch/' a.c.274r.bbro > aio.bbro
 cd "$S"

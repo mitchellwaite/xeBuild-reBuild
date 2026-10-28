@@ -8,7 +8,7 @@ d=$(cd "$d" && pwd -W 2>/dev/null || pwd)
 FL="${AIOFL:--fno-ipa-profile -fno-reorder-functions -O3 -fno-asynchronous-unwind-tables --param builtin-expect-probability=83}"
 ONLY=${AIOONLY:-applyIniOptions}
 if [ ! -f "$d/-.gcno" ] || [ "$d/a.c" -nt "$d/-.gcno" ]; then
-  (cd "$d" && PATH="$R/tools/toolchain-4745/mingw32/bin:$PATH" gcc -S -I "$R/wip/app" -I "$R/src/app" $FL \
+  (cd "$d" && PATH="$R/tools/toolchain-4745/mingw32/bin:$PATH" gcc -S -I "$R/wip" -I "$R/src" $FL \
     -fprofile-arcs -ftest-coverage -fdump-tree-profile_estimate-blocks-details "$d/a.c" -o - >/dev/null)
 fi
 python re/gcda.py "$d/-.gcno" "$d/a.c.042t.profile_estimate" "$d/-.gcda" "$@" --only=$ONLY >/dev/null

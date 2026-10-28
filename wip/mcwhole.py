@@ -1,10 +1,10 @@
-"""Make a whole-object src/app/mode_client.c (no mode_client.s) from the draft.
+"""Make a whole-object src/mode_client.c (no mode_client.s) from the draft.
 
-src/app/mode_client.c was made with it from the draft plus the BUILD_FDO
+src/mode_client.c was made with it from the draft plus the BUILD_FDO
 macros (NOPROF, AT, JUMP, NO_MODE_ARG; wip/mc/s18/match) and its padding;
 edit that file now rather than regenerating it.
 
-python wip/mcwhole.py [draft.c] [out.c]   (wip/app/mode_client.c, src/app/mode_client.c)
+python wip/mcwhole.py [draft.c] [out.c]   (wip/mode_client.c, src/mode_client.c)
 
 Built with -fno-toplevel-reorder (the draft's functions match with it too),
 which emits functions and variables in definition order.  As in
@@ -45,8 +45,8 @@ def cstr(s):
 
 
 def main():
-    src_path = sys.argv[1] if len(sys.argv) > 1 else 'wip/app/mode_client.c'
-    out_path = sys.argv[2] if len(sys.argv) > 2 else 'src/app/mode_client.c'
+    src_path = sys.argv[1] if len(sys.argv) > 1 else 'wip/mode_client.c'
+    out_path = sys.argv[2] if len(sys.argv) > 2 else 'src/mode_client.c'
     src = open(src_path).read()
     text = strings()
     by_addr = {a: s for s, a in text.items()}

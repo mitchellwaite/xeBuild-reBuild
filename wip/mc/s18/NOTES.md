@@ -52,7 +52,7 @@ needed because 49's key must stay below 132's.
 - Profile: `match/overrides.txt` (re/gcda.py overrides, from runq + grid tuning).
 - `bash wip/mc/s18/match/repro.sh` -> fncmp 0.
 - `FDOX="--param align-loop-iterations=100" bash wip/mc/s18/match/integrate.sh` -> whole-object
-  app/mode_client.o: .text diff 0 vs build/obj/app/mode_client.o, .rdata/.bss/.eh_frame/.rdata$zzz
+  mode_client.o: .text diff 0 vs build/obj/mode_client.o, .rdata/.bss/.eh_frame/.rdata$zzz
   identical; only reloc symbol name `_iob` (asm) vs `__imp___iob` (C; same IAT slot).
 - fncmp ignores literal identity and alignment nops: two traps found at byte level:
   the HDD errors are compat (115) BEFORE avatar (112) in the original (mcvar/mcsim2 WANT has them

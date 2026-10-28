@@ -8,7 +8,7 @@
 #
 # Prepare once (absolute dir; gcc drops the profile silently if the compile path differs):
 #   export EXTRA='--param builtin-expect-probability=50'
-#   python wip/mcfdo.py "$(cygpath -w "$PWD")\\build\\mcfdo" wip/app/mode_client.c
+#   python wip/mcfdo.py "$(cygpath -w "$PWD")\\build\\mcfdo" wip/mode_client.c
 #
 # Always needed (see wip/README.md, "Crafted profile"):
 #   --consistent                               exact integer flows (an edge is zero)

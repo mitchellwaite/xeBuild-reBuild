@@ -1,6 +1,6 @@
 # applyIniOptions' edge probabilities (%) for its crafted profile: re/gcda.py
-# overrides in profile_estimate bb numbers of src/app/options.c.
-# Generated: python wip/aiodesign.py build/obj/app/options.fdo/-.042t.profile_estimate
+# overrides in profile_estimate bb numbers of src/options.c.
+# Generated: python wip/aiodesign.py build/obj/options.fdo/-.042t.profile_estimate
 applyIniOptions:2>3=17.193
 applyIniOptions:3>4=94.9998
 applyIniOptions:4>6=20.2429

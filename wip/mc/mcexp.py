@@ -4,7 +4,7 @@ import os, re, sys
 S = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, S)
 import mcvar
-DRAFT = os.environ.get('BASE') or r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix\wip\app\mode_client.c'
+DRAFT = os.environ.get('BASE') or r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix\wip\mode_client.c'
 base = open(DRAFT).read()
 start = base.index('void clientEraseBlock(')
 conds = []

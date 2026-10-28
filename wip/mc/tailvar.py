@@ -5,7 +5,7 @@ ROOT = r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix'
 sys.path.insert(0, os.path.join(ROOT, 'wip', 'mc'))
 import mcvar
 SP = os.path.dirname(os.path.abspath(__file__))
-src = open(os.path.join(ROOT, 'wip', 'app', 'mode_client.c')).read()
+src = open(os.path.join(ROOT, 'wip', 'mode_client.c')).read()
 head, tail = src.split('\tif (!(mode && arg)) {\n', 1)
 # the "unable to connect" log statement, taken verbatim from the draft (avoids escape trouble)
 UNABLE = [l for l in src.split('\n') if 'unable to connect' in l][0].strip()

@@ -1,5 +1,5 @@
 #!/bin/sh
-# fncmp every function of a draft: sh wip/all.sh wip/app/build.c fn1 fn2 ... [-- flags]
+# fncmp every function of a draft: sh wip/all.sh wip/build.c fn1 fn2 ... [-- flags]
 f=$1; shift
 fns=; while [ $# -gt 0 ] && [ "$1" != -- ]; do fns="$fns $1"; shift; done
 [ "$1" = -- ] && shift

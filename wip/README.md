@@ -3,9 +3,9 @@
 C ports that don't match yet, kept out of `src/` so `build.sh` still uses
 the generated asm (and still reproduces the SHA256).
 
-## app/console_hdd.c
+## console_hdd.c
 
-All 14 functions match and are built from `src/app/console_hdd.c` with
+All 14 functions match and are built from `src/console_hdd.c` with
 `-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3`
 (the expect param like fileutil/keyvault; 3 aligns sendAvatarData's loop
 as the original, 1 or 2 align other loops too). `sendDir` matches: both
@@ -44,10 +44,10 @@ explain the block order and SSA numbering.
 had that name, so `re/split.py` renames the slot to `__imp___stat`
 (`IAT_NAMES`, like `_stricmp`) and 448820 is `_stat`.
 
-## app/options.c
+## options.c
 
 Draft of the whole object, with string literals, from before the hints.
-The object is built entirely from `src/app/options.c` now (no options.s;
+The object is built entirely from `src/options.c` now (no options.s;
 README has how the strings are emitted).  setBoolOption's 4 fncmp lines
 are ddisasm writing 0x400000 as `__ImageBase` (the bytes match).  Notes
 from getting there:
@@ -163,7 +163,7 @@ from getting there:
   threshold of 57).  The int/u32 clash is solved with an `int
   parseOptionInt(char *) __asm__("_parseOption")` declaration for
   parseCmdOptions.  fncmp ignores padding; compare raw offsets when the
-  object size is off.  wip/app/options.c keeps the pre-hint draft.
+  object size is off.  wip/options.c keeps the pre-hint draft.
 - `loadAddons` builds from src: addPatch declares `path` inside the
   `numPatches <= 15` block.  With it at function scope, the inlined
   `path ={v} {CLOBBER}` joins the over-limit and strcpy paths before the
@@ -186,8 +186,8 @@ Findings:
 - The temperature/fan/region fields must be u32 (an int would let the
   -1 default reuse the loaded value).
 - 2026-10-21, applyIniOptions written as goto code in the original's
-  block order (`wip/app/options_aio_goto.c`; to try it, replace the
-  stand-in in src/app/options.c and put it after macidSet).  With
+  block order (`wip/options_aio_goto.c`; to try it, replace the
+  stand-in in src/options.c and put it after macidSet).  With
   `optimize("no-reorder-blocks", "no-reorder-blocks-and-partition",
   "no-tree-tail-merge", "no-crossjumping")` gcc keeps the source block
   order exactly (fncmp 247 lines, from 1177 with bbro on).  The inlined
@@ -220,8 +220,8 @@ Findings:
   gcc sees before bbro, to work out which profile gives the original
   layout.  The goto form helps there because it fixes block order and the
   CFG shape, so only the profile is left to find.
-- 2026-10-22, crafted profile (like mode_update): src/app/options.c
-  builds applyIniOptions with a profile (build.sh), `src/app/options.prof`
+- 2026-10-22, crafted profile (like mode_update): src/options.c
+  builds applyIniOptions with a profile (build.sh), `src/options.prof`
   its edge overrides (re/gcda.py, `@file` accepted), written by
   `python wip/aiodesign.py <profile_estimate dump>`.  The code matched
   first, then the block layout, then (below) the label alignment padding.
@@ -264,7 +264,7 @@ Findings:
     that can't hold under a consistent profile (PL + 5G > 4I with I >= PL).
     The original's frequencies there must be stale ones left by jump
     threading; a profile alone can't give them.
-  - 2026-10-22 (later), matched (src/app/options.c, analysis tools in
+  - 2026-10-22 (later), matched (src/options.c, analysis tools in
     wip/aio/README.md).  Stale counts come from dead edges: a test of a
     never-written static (`aio_never*`) is still there when the profile is
     read (pass 042t), IPA marks the static read-only and ccp2 folds the
@@ -299,7 +299,7 @@ Findings:
   too: profile_estimate runs while the dead tests still exist) to break the
   ties the crafted profile's bands break.  The user chose nudges over a
   natural-source-only search.
-  - Tools: `python wip/aiog.py <cfg.json> <out.c>` turns src/app/options.c
+  - Tools: `python wip/aiog.py <cfg.json> <out.c>` turns src/options.c
     into a profile-free variant (pragmas and the crafted design's dead edges
     removed, options as OPTK with per-option form/expect hints, cfg as in
     wip/aiosearch.json).  `sh wip/aio/grun.sh <dir>` compiles `<dir>/a.c`
@@ -329,10 +329,10 @@ Findings:
     (wip/aio/t/trl.txt) as targets, add nudges in source order and rebuild
     after each, checking the first trace that differs from the reference.
 
-## app/bootloaders.c
+## bootloaders.c
 
 Draft of the whole object, with string literals. All 19 functions match
-and are built from `src/app/bootloaders.c`, which has no asm left: its
+and are built from `src/bootloaders.c`, which has no asm left: its
 strings are `static const` arrays (`msg_*`) in the original's .rdata order
 (built with `-fno-toplevel-reorder`); with literals, daeVerifySig,
 fcrtVerifySig and cb/cd/ceDecrypt emit their error strings first.
@@ -374,7 +374,7 @@ How the others matched:
   `j = (j + 1) & 3` after `t = buf[i] * 251`; `if (ok) good else FAIL` in
   crlVerifySig and fcrtVerifySig.
 
-## app/filelist_ini (draft: wip/app/filelist_ini.c)
+## filelist_ini (draft: wip/filelist_ini.c)
 
 Whole object in C now (no filelist_ini.s). The literal order gcc emits for parseIni
 (expand-time block order) puts error strings before the code they follow in the
@@ -383,7 +383,7 @@ before it and emitted in place by `-fno-toplevel-reorder` (`aligned(4)` from 31 
 `aligned(1)` below: a user alignment stops gcc's array bump). validChars and
 consoleNames are defined after loadUserIni (extern before) for the same reason.
 
-Mixed since 17269c2; built from src/app/filelist_ini.c: getIniValue, memFindStr (4-arg,
+Mixed since 17269c2; built from src/filelist_ini.c: getIniValue, memFindStr (4-arg,
 `skipNul`), memFindChar, checkFileCase, loadUserIni (keep `iniSize + 1` in a local;
 strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional IRA kept
 &st in a register instead of dir; ira-region doesn't help any other function here).
@@ -420,7 +420,7 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   `&iniData[off]` per use, the out-param helper) give 25-78 lines (iniBuf reloaded after
   each call); its `j = sizeof(validChars) + 1` exit gives iniPreParse 36, its `while`
   comment loop no change.
-- parseIni (409430-40aa10, 5.6 KB) drafted in wip/app/filelist_ini.c (from a Hex-Rays
+- parseIni (409430-40aa10, 5.6 KB) drafted in wip/filelist_ini.c (from a Hex-Rays
   decompile; its tables/names are still `extern`). 486 of 1241 normalized lines equal
   (fncmp with full context, FNCMP_LITERALS=1), 549 with
   `--param max-jump-thread-duplication-stmts=12`. It has a jump table (L_4501e8); re/splice.py
@@ -638,15 +638,15 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
     data names in split.py (bl*, loc*, fn*, consoleNames, blOrder in
     common_bss).
 
-## app/keys.c
+## keys.c
 
-Whole object in C since 2026-10-22 (no keys.s): `src/app/keys.c` is this
+Whole object in C since 2026-10-22 (no keys.s): `src/keys.c` is this
 draft plus the key buffers' initial values, three functions' strings as
 arrays in the original's order, and the original's function order
 (shaCheck before crlEncrypt, daeEncrypt before fcrtEncrypt, shaHeader
 last), built with `-fno-toplevel-reorder`.  wip/keysmixed.py (the mixed
 build's generator) is gone; the notes below are the matching history.  Line counts
-below are `FNCMP_LITERALS=1 python re/fncmp.py wip/app/keys.c <name>` (the
+below are `FNCMP_LITERALS=1 python re/fncmp.py wip/keys.c <name>` (the
 variable makes the draft's literals compare equal to the `.s`'s named
 strings). setFuseLdv matched by declaring `u32 i;` before `u64 cb, cf;`
 (that stops the `xor edi,edi` for `i = 0` moving above `test al,al`); its
@@ -755,14 +755,14 @@ line before `inline short cfPatchSlots(` so keysmixed picks it up (its
   argument stores.  Making that block fall into daeEncryptOne
   (`goto ok` ... `ok: log_printf(...)` before it) changes too much.
 
-## app/mode_update.c
+## mode_update.c
 
-The whole object is built from `src/app/mode_update.c` (no `.s` since
+The whole object is built from `src/mode_update.c` (no `.s` since
 2026-10-22; `mode_update` from build.sh's profile compile, see the
 2026-10-22 notes below). This draft, with string literals and statics, is
 what `wip/mufdo.sh` experiments on; it is older than src (getBadBlocks there
 still has the early return that needed `align-threshold=200`). Line counts
-are `FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_update.c <name>`.
+are `FNCMP_LITERALS=1 python re/fncmp.py wip/mode_update.c <name>`.
 
 Matching notes: uncprop return reuse is steered by prototype types
 (getSecurityFiles and verifyExtended `u32`, unscramble `int`; netMount and
@@ -927,10 +927,10 @@ Still off:
   making the first mismatch (and its function's earlier strings) arrays until
   the order matched: 26 arrays.
 
-## app/image_read.c
+## image_read.c
 
 Draft of the whole object, with string literals. All 33 functions match;
-`src/app/image_read.c` is the whole object (no `.s`), made from this file
+`src/image_read.c` is the whole object (no `.s`), made from this file
 by `python wip/irwhole.py` and built with `-fno-toplevel-reorder`: the
 strings become `static const char ir_<address>[]` arrays, each defined
 before the first function whose part of .rdata it lies in, and the
@@ -950,7 +950,7 @@ clobbers fsOffset and loadFlashFile reloads it). dumpSize stays extern
 think it is always 0; loadDump, which writes it, matches with it extern).
 
 When all 33 match, `python wip/irwhole.py` makes the whole-object
-`src/app/image_read.c` (no .s, `-fno-toplevel-reorder`): each string becomes
+`src/image_read.c` (no .s, `-fno-toplevel-reorder`): each string becomes
 a `static const char ir_<addr>[]` array before the first function that uses
 it (aligned 4 from 31 bytes, else 1), and the variables go in the
 original's order; it checks every string's address. Tested on the 27 built
@@ -1138,10 +1138,10 @@ buildCleanup's first loop ends at `&xb.smc` (a pointer loop with `m !=
 the second test's SSA name first, and forwprop orders operands by version;
 written the other way round the order is right but the blocks move.
 
-## app/mode_client.c
+## mode_client.c
 
 Draft of the whole object, with string literals.  Compare a function with
-`FNCMP_LITERALS=1 python re/fncmp.py wip/app/mode_client.c <fn> -O3 --param
+`FNCMP_LITERALS=1 python re/fncmp.py wip/mode_client.c <fn> -O3 --param
 builtin-expect-probability=50`.  (The long notes on how the other 15
 functions and the hot part of `mode_client` were matched are in this file at
 commit 6e3d2db.)
@@ -1231,7 +1231,7 @@ Source-shape search (2026-10-27, second session), negative:
   changes in rounds 2-3, event-driven from round 2) moves nothing.  So the
   original's insertion history into the last heap differs from the draft's,
   not just its keys; a crafted profile changes that history (the FDO
-  baseline, `python wip/mcfdo.py <abs dir> wip/app/mode_client.c`, is 126
+  baseline, `python wip/mcfdo.py <abs dir> wip/mode_client.c`, is 126
   lines / inv 40 by itself), which is the only remaining lever besides a
   structure nobody has guessed.  usage(2)'s 4 comes from dom2 threading the
   copied header's 2% exit through the post-loop tests (the block is 0 until
@@ -1298,7 +1298,7 @@ For a future session (state on 2026-10-27, commit 852133f):
   key searches on the draft's heap history, profile designs with uniform
   or grouped cases (the arg test decides them).
 - When mode_client finally matches: `python wip/mcwhole.py` turns the
-  draft into a whole-object `src/app/mode_client.c` (strings as
+  draft into a whole-object `src/mode_client.c` (strings as
   `mc_<addr>` arrays in .rdata order, client_usage's table placed; its
   .rdata end came out 3 bytes short of the original on 2026-10-27, check
   that first), then `re/split.py` loses the object's `.s`, build.sh gets
@@ -1306,9 +1306,9 @@ For a future session (state on 2026-10-27, commit 852133f):
   plus `-fno-toplevel-reorder` for the string order), and README's
   Progress section is regenerated with `re/progress.py`.
 
-## app/net.c
+## net.c
 
-Built entirely from `src/app/net.c` (no .s) since 2026-10-27; this draft
+Built entirely from `src/net.c` (no .s) since 2026-10-27; this draft
 is the same code with plain string literals. The src file gives every
 string as a `static const char net_<address>[]`: gcc emits variables in
 reverse definition order (net is built without -fno-toplevel-reorder,
@@ -1324,10 +1324,10 @@ IAT slots are renamed to winsock2.h's `__imp__send@16` spelling
 (`IAT_NAMES`; `.string` lines are skipped so "bind"/"connect" in messages
 survive).
 
-Test the draft with `FNCMP_LITERALS=1 python re/fncmp.py wip/app/net.c
+Test the draft with `FNCMP_LITERALS=1 python re/fncmp.py wip/net.c
 <fn> -O3 --param builtin-expect-probability=65` (netRecv:
 `FNCMP_GCCSYM=_netRecvVerbose.constprop.1`); `python wip/fnvar.py
-wip/app/net.c <fn> <forms file> [attrs]` scores body variants (FLAGS for
+wip/net.c <fn> <forms file> [attrs]` scores body variants (FLAGS for
 the probability, CMPFN/GCCSYM for the netRecvVerbose clone).
 
 What got them:
@@ -1499,10 +1499,10 @@ The last two (2026-10-27):
 - `-fno-tree-dominator-opts`, `-fno-if-conversion`, `-mbranch-cost=1`,
   `-O2`: none is better for the whole file.
 
-## app/build.c
+## build.c
 
 Draft of the whole object (all 41 functions). 40 match and are built
-from `src/app/build.c` (mixed): findFileOffset, findFileSize, findFile,
+from `src/build.c` (mixed): findFileOffset, findFileSize, findFile,
 readMetaFile, makeTimestamp, loadCommonFile, loadBinFile, loadLocalFile,
 setFileData, iniRangeOk, raiseKernel, patchHeaderOpts, rotSumSha,
 countBits, isUpdateBl, patchPayloadSize, showSmcConfig, blmodMissing,
@@ -1513,12 +1513,12 @@ patchBlsResign, calcBlAreaSize, patchBlsBlmod, addBlsToImage, loadInputFile,
 addUpdateBls, loadConsoleBlFiles, buildFlash, encodeBls.
 Switch tables go through
 split.py's `#@J` marker (README, mixed objects); checkBl, loadBlFiles,
-loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py app/build
+loadConsoleBlFiles and encodeBls have them too. `python wip/mixed.py build
 <fns> > syms.txt` makes the src file from the draft (a generic
 netmixed.py: strings become `bd_<address>` statics, set up per object in
 its `OBJS`); `python wip/mixedsyms.py bd syms.txt` puts the string names
 in split.py's SYMBOLS. Test the draft with `FNCMP_LITERALS=1`; `sh
-wip/all.sh wip/app/build.c <fns>` runs fncmp over a list. fncmp doesn't
+wip/all.sh wip/build.c <fns>` runs fncmp over a list. fncmp doesn't
 check offsets from named symbols: a wrong `struct xebuild` field offset
 only shows in `sh build.sh`.
 
@@ -1962,10 +1962,10 @@ only shows in `sh build.sh`.
     5/17 (c11 lands in the main trace); 9/10 without own r-tests (flows not
     x0.61, c11 9); int-typed r tests (still threaded); `*pr = 0` after the
     r-test (VRP keeps an unused assert in the split edge block).
-  Eighth pass (2026-10-26, crafted profile, best 15; wip/app/build_fdo.patch
+  Eighth pass (2026-10-26, crafted profile, best 15; wip/build_fdo.patch
   applies to the commit that adds it: b4.c's signature form as the draft,
   NOPROF macro, mixed.py `profiled`, build.sh second compile `fprof`/`ffns`
-  spliced by `splice.py _loadBlFiles=<fdo.s>`, src/app/build.prof with the
+  spliced by `splice.py _loadBlFiles=<fdo.s>`, src/build.prof with the
   best overrides; regenerate with split.py after applying):
   - A profile can't undo the zeroing: duplicate_thread_path scales the
     region by (X - e)/X in counts or frequencies, so c11 ends at 0 in every
@@ -2006,7 +2006,7 @@ only shows in `sh build.sh`.
     type-14 test's region undrained, or combine the PROFILE_READ regime
     (17, layout right) with a source change that breaks the ivopts tie.
   Ninth pass (2026-10-26, fncmp MATCH, link 34 bytes off; the setup is
-  wip/app/build_fdo.patch, which now applies to the ninth-pass commit;
+  wip/build_fdo.patch, which now applies to the ninth-pass commit;
   regenerate with split.py after applying; scratch build/v/lbf10/: rb.sh =
   build.sh's -DBUILD_FDO compile of any source copy + fncmp + .p2align count,
   var.py variants, search.py, gcda_runs.py = gcda.py with GCDA_RUNS):
@@ -2024,7 +2024,7 @@ only shows in `sh build.sh`.
     test after it) give the SE copy of X the original's probability (the
     vrp1 joiner copies' TRUE edge was 0% from the counts) and keep the
     sigfail c14 copy hot (`mov edi,-1` after the cmp, not `or` before it):
-    fncmp MATCH (src/app/build.prof in the patch).
+    fncmp MATCH (src/build.prof in the patch).
   - Left: the final nokey log (L_42ada0) must be `.p2align 4,,7`-aligned.
     In PROFILE_READ compute_alignments skips it (count 0, so
     optimize_bb_for_size_p), and it is laid out last only because c11, SE
@@ -2234,10 +2234,10 @@ only shows in `sh build.sh`.
   0x42ced1 was gas's long-padding jump, not code. The old patch's .text
   0x20 deficit was loadBlFiles (unsolved then).
 
-## app/image_write.c
+## image_write.c
 
-**Done (2026-10-27): whole object in C, no `.s`.** `src/app/image_write.c`
-is the draft itself (`wip/app/image_write.c`, the same file), built with
+**Done (2026-10-27): whole object in C, no `.s`.** `src/image_write.c`
+is the draft itself (`wip/image_write.c`, the same file), built with
 `-O3 --param builtin-expect-probability=50` in gcc's default top-level
 order. What the last step needed (README has the summary):
 
@@ -2284,7 +2284,7 @@ order. What the last step needed (README has the summary):
   remap loop's "not sane" error comes before the "not required" arm.
 
 Before (mixed object): the 45 matching functions built from
-`src/app/image_write.c`, a mixed object made by `python wip/mixed.py app/image_write <fns>` (its OBJS entry
+`src/image_write.c`, a mixed object made by `python wip/mixed.py image_write <fns>` (its OBJS entry
 turns the draft's `copyright` and `mobileOffset` definitions into
 externs; the `.s` keeps the data). imgWriteAt (0x40eef0) is gcc's ipa-cp
 clone of imgAdd for type 0, pad 1, built as `_imgAdd.constprop.3`, and
@@ -2650,7 +2650,7 @@ Still off:
   order (so the range check stays `raw < off`, as in a plain function).
   With imgWriteAt's calls rewritten to imgAdd(..., 0, next, 1), the
   clone `_imgAdd.constprop.2` reproduces the original's first 26
-  instructions, registers included, with no pins (wip/app/
+  instructions, registers included, with no pins (wip/
   image_write_clone.c, 68 normalised lines). The pipeline can take it:
   splice.py already drops gcc's copy of a function the .s keeps in asm,
   so the C file can carry imgAdd's body only for its clone, and SYMBOLS
@@ -2688,7 +2688,7 @@ Still off:
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
   structure only.
-- imgAdd rebuilt (2026-10-23, wip/app/image_write_clone.c): 21 raw /
+- imgAdd rebuilt (2026-10-23, wip/image_write_clone.c): 21 raw /
   19 normalised lines, and its imgWriteAt clone 11/11. What each piece
   does:
   - The page counts, `partial`, `sp9`, `left` and the page count

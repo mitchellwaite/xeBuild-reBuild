@@ -3,7 +3,7 @@ import sys, os, re
 ROOT = r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix'
 sys.path.insert(0, ROOT + r'\wip\mc'); import mcvar
 os.chdir(ROOT)
-src = sys.argv[1] if len(sys.argv) > 1 else 'wip/app/mode_client.c'
+src = sys.argv[1] if len(sys.argv) > 1 else 'wip/mode_client.c'
 BASE = ['-O3', '--param', 'builtin-expect-probability=50']
 SETS = [[]]
 for v in (45, 48, 52, 55, 60):

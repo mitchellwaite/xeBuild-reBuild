@@ -1,6 +1,6 @@
 """Rewrite an object's string names in re/split.py SYMBOLS from mixed.py's output.
 
-python wip/mixed.py app/build fn... > syms.txt
+python wip/mixed.py build fn... > syms.txt
 python wip/mixedsyms.py <prefix> syms.txt
 
 Replaces the block after the `# <obj>'s strings that its C functions use`

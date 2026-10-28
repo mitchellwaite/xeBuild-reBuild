@@ -1,4 +1,4 @@
-"""String literals in wip/app/image_read.c -> extern names for image_read.s's strings.
+"""String literals in wip/image_read.c -> extern names for image_read.s's strings.
 
 externize(src) returns the C text with each literal passed to a function
 replaced by `ir_<address>` (the .s's string with that text) and extern

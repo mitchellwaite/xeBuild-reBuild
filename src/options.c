@@ -3,7 +3,7 @@
    static arrays in the original's .rdata order (literals in the original:
    several functions are matched with hints that expand their blocks in
    another order).  applyIniOptions is built with a crafted profile
-   (build.sh, src/app/options.prof); everything else keeps gcc's guessed
+   (build.sh, src/options.prof); everything else keeps gcc's guessed
    one. */
 #include <stdio.h>
 #include <string.h>
@@ -521,7 +521,7 @@ static inline __attribute__((always_inline)) int optIniIntI(const char *name, in
    the tests on them fold away in ccp2.  The counts the profile gave their
    dead edges stay on the blocks around them (gcc doesn't update counts
    when an edge goes), the stale frequencies the original's alignment
-   padding needs (see wip/README.md, app/options.c) */
+   padding needs (see wip/README.md, options.c) */
 static int aio_never, aio_never2, aio_never3, aio_never4;
 
 static inline __attribute__((always_inline)) int parseButtonI(const char *s, int skip)
@@ -967,7 +967,7 @@ int parseCmdOptions(const char *opts)
 #pragma GCC pop_options
 
 /* options from perbox files and options.ini that the command line didn't
-   set.  The block layout comes from the profile: src/app/options.prof sets
+   set.  The block layout comes from the profile: src/options.prof sets
    the edges (see wip/README.md for how its frequencies were chosen) */
 void applyIniOptions(void)
 {

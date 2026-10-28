@@ -1,11 +1,11 @@
 # applyIniOptions profile-build tools
 
-For applyIniOptions' crafted profile (src/app/options.c and .prof; see
-wip/README.md, app/options).  Work dirs are subdirectories here (ignored by
+For applyIniOptions' crafted profile (src/options.c and .prof; see
+wip/README.md, options).  Work dirs are subdirectories here (ignored by
 git).  Check a change to the source or to wip/aiodesign.py:
 
-    mkdir -p wip/aio/t && cp src/app/options.c wip/aio/t/a.c
-    sh wip/aio/align.sh t ../../src/app/options.prof   # blk/fncmp counts, then padding diffs
+    mkdir -p wip/aio/t && cp src/options.c wip/aio/t/a.c
+    sh wip/aio/align.sh t ../../src/options.prof   # blk/fncmp counts, then padding diffs
     cd wip/aio && python aldiag.py t                    # each label that needs (P) or must not get (N) alignment
 
 After a source change regenerate the overrides from the new dump first
@@ -27,7 +27,7 @@ overrides the compile flags of aiofdo.sh and dumps.sh.
   numbers vs alignreq.txt (P padded in the original, N must not be requested,
   F free: 16-aligned or 1..5 mod 16, where `.p2align 4,,10` emits nothing).
 - `lab.py`, `trl.py`, `discmp.py`, `discmp_lib.py`, `alignreq.py`: helpers.
-  They read the original applyIniOptions from `git show 56e988e:src/app/options.s`.
+  They read the original applyIniOptions from `git show 56e988e:src/options.s`.
 
 `python wip/aiodesign.py <dir>/a.c.042t.profile_estimate` regenerates the
-overrides (src/app/options.prof).
+overrides (src/options.prof).

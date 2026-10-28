@@ -7,7 +7,7 @@ sys.path.insert(0, '.')
 import lab
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 d = json.load(open(ROOT + '/build/xeBuild.lines.json'))
-lines = subprocess.run(['git', 'show', '56e988e:src/app/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
+lines = subprocess.run(['git', 'show', '56e988e:src/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
 st = lab.strings(lines, r'^(\w+):\s*$', r'\s*\.string "(.*)"')
 # label -> address from the line/addr table
 ref = [(l, a) for l, a in zip(d['lines'], d['addr']) if a is not None and 0x4259a0 <= a < 0x427000]

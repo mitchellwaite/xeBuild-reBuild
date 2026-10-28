@@ -1,5 +1,5 @@
 """Sweep expect-hint subsets x builtin-expect-probability for getImageKv in
-wip/app/image_read.c, checked with fncmp then wip/jcmp.py (jump targets;
+wip/image_read.c, checked with fncmp then wip/jcmp.py (jump targets;
 0.5 = fncmp MATCH but a jump goes to the wrong identical block).
 MAXK=max hints, P0/P1/PS probabilities.  python wip/kvsweep.py"""
 import itertools, os, re, subprocess, sys
@@ -9,7 +9,7 @@ from irlit import externize
 
 ROOT = r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix'
 S = os.path.join(ROOT, 'build', 'image_read')   # scratch variants go to build/image_read/sw
-src = open(os.path.join(ROOT, 'wip', 'app', 'image_read.c')).read()
+src = open(os.path.join(ROOT, 'wip', 'image_read.c')).read()
 FN = 'getImageKv'
 CONDS = ['size == 0x8000', 'xb.kv.data != 0', 'xb.kvAlt.data != 0',
          'verifyExtended(xb.kv.data, xb.kv.size)', 'verifyExtended(xb.kvAlt.data, xb.kvAlt.size)',

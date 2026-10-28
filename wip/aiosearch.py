@@ -63,7 +63,7 @@ FN = r'''_Bool optIniBool(const char *name, u32 set, u32 clear, int def)
 	return 1;
 }
 '''
-SRC = open(os.path.join(ROOT, 'wip', 'app', 'options.c')).read()
+SRC = open(os.path.join(ROOT, 'wip', 'options.c')).read()
 SRC = re.sub(r'_Bool optIniBool\(.*?\n}\n', lambda m: FN, SRC, flags=re.S)
 I = SRC.index('void applyIniOptions(void)\n{')
 HEAD, BODY = SRC[:I], SRC[I:]

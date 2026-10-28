@@ -4,12 +4,12 @@
    a function's literals in expand-time block order, which differs here
    (error messages first).  build.sh compiles this with -fno-toplevel-reorder
    so they are emitted where they are defined; each is aligned as a literal
-   would be (4 from 31 bytes, else 1).  wip/app/bootloaders.c is the same
+   would be (4 from 31 bytes, else 1).  wip/bootloaders.c is the same
    code with string literals. */
 #include <stdlib.h>
 #include <string.h>
 
-#include "../crypto/xecrypt.h"
+#include "crypto/xecrypt.h"
 #include "xebuild.h"
 #include "bootloaders.h"
 #include "fileutil.h"

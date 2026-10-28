@@ -1,13 +1,13 @@
-"""Write src/app/options.prof: applyIniOptions' crafted profile.
+"""Write src/options.prof: applyIniOptions' crafted profile.
 
-python wip/aiodesign.py build/obj/app/options.fdo/-.042t.profile_estimate > src/app/options.prof
+python wip/aiodesign.py build/obj/options.fdo/-.042t.profile_estimate > src/options.prof
 
-The dump comes from the instrumented compile build.sh does for app/options
+The dump comes from the instrumented compile build.sh does for options
 (-fdump-tree-profile_estimate-blocks-details).  The original's cold blocks
 were laid out by ties in gcc's fibonacci heap (identical options have
 identical guessed frequencies); here every trace start gets its own
 frequency instead, in the original's order, within the band of the STC
-round it belongs to (wip/README.md, app/options.c).  Blocks are found by
+round it belongs to (wip/README.md, options.c).  Blocks are found by
 content; TARGET gives block frequencies (BB_FREQ_MAX scale, entry 1815), and
 the edge into each target block gets the probability that yields it, solved
 to a fixpoint on gcc's guessed profile (re/gcda.py's numbers).
@@ -251,7 +251,7 @@ for it in range(50):
     if worst < 0.01:
         break
 print("# applyIniOptions' edge probabilities (%) for its crafted profile: re/gcda.py")
-print('# overrides in profile_estimate bb numbers of src/app/options.c.')
-print('# Generated: python wip/aiodesign.py build/obj/app/options.fdo/-.042t.profile_estimate')
+print('# overrides in profile_estimate bb numbers of src/options.c.')
+print('# Generated: python wip/aiodesign.py build/obj/options.fdo/-.042t.profile_estimate')
 for (a, d), p in sorted(OVER.items()):
     print('%s:%d>%d=%g' % (FN, a, d, p))

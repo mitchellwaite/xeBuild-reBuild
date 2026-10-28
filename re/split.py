@@ -37,31 +37,31 @@ from units import units
 NAMES = {
     0: ('runtime/crt2', 'mingw-w64 crt2.o, byte match'),
     1: ('runtime/crtbegin', 'gcc crtbegin.o, byte match'),
-    2: ('app/bootloaders', 'CB/CF/CD/CE decryption, pairing, FCRT, bootloader signature checks'),
-    3: ('app/mode_update', '"Usage: %s update", bad block handling'),
-    4: ('app/stfs', 'container header/content/manifest hash checks, STFS file listing'),
-    5: ('app/mode_client', '"Usage: %s client", network read/write of NAND'),
-    6: ('app/filelist_ini', '"parsing ini at", file list ini labels'),
-    7: ('app/timeutil', 'gmtime/mktime/rand, date arithmetic constants'),
-    8: ('app/smc', 'SMC checksum, type detection, reset-limit/eject/blink patches'),
-    9: ('app/sysupdate', 'system update container, xboxupd.bin extraction'),
-    10: ('app/main', 'main (.text.startup), signal handlers, mode dispatch'),
-    11: ('app/mode_extract', '"Usage: %s extract"'),
-    12: ('app/xboxrom', 'XBOX_ROM_B/4/3 names'),
-    13: ('app/image_write', 'flash layout (CB/CE/SMC/Mobile*.dat), writing image to disk'),
-    14: ('app/keyvault', 'keyvault hash check, DVD key, console serial/date formatting'),
-    15: ('app/image_read', 'parsing an existing NAND image: sectors, pairing, LDV, smc.bin'),
-    16: ('app/mode_ini', '"Usage: %s ini"'),
-    17: ('app/mode_build', 'default build mode usage and switches (-t/-c/-d/-b/-p)'),
-    18: ('app/keys', 'CPU/1BL key setup, SMC/keyvault/CRL input decryption, pairing init'),
-    19: ('app/net', 'winsock: beacon, send/recv'),
-    20: ('app/fileutil', 'file read/write/dump helpers, mkdir; called by almost every unit'),
-    21: ('app/options', 'console types (xenon...corona), command line options; startup fn'),
-    22: ('app/build', 'image build: reading inputs with crc32 checks, patches, payloads'),
-    23: ('app/consoleinfo', 'options/launch ini writing, console info response parsing'),
-    24: ('app/console_hdd', 'manifest + avatar/kinect data to console HDD, remote dirs'),
-    25: ('app/log', 'build.log, verbose levels; called by every app unit'),
-    26: ('app/crc32', "table-driven crc32; Gary S. Brown's (per xeBuild's docs), byte match from C"),
+    2: ('bootloaders', 'CB/CF/CD/CE decryption, pairing, FCRT, bootloader signature checks'),
+    3: ('mode_update', '"Usage: %s update", bad block handling'),
+    4: ('stfs', 'container header/content/manifest hash checks, STFS file listing'),
+    5: ('mode_client', '"Usage: %s client", network read/write of NAND'),
+    6: ('filelist_ini', '"parsing ini at", file list ini labels'),
+    7: ('timeutil', 'gmtime/mktime/rand, date arithmetic constants'),
+    8: ('smc', 'SMC checksum, type detection, reset-limit/eject/blink patches'),
+    9: ('sysupdate', 'system update container, xboxupd.bin extraction'),
+    10: ('main', 'main (.text.startup), signal handlers, mode dispatch'),
+    11: ('mode_extract', '"Usage: %s extract"'),
+    12: ('xboxrom', 'XBOX_ROM_B/4/3 names'),
+    13: ('image_write', 'flash layout (CB/CE/SMC/Mobile*.dat), writing image to disk'),
+    14: ('keyvault', 'keyvault hash check, DVD key, console serial/date formatting'),
+    15: ('image_read', 'parsing an existing NAND image: sectors, pairing, LDV, smc.bin'),
+    16: ('mode_ini', '"Usage: %s ini"'),
+    17: ('mode_build', 'default build mode usage and switches (-t/-c/-d/-b/-p)'),
+    18: ('keys', 'CPU/1BL key setup, SMC/keyvault/CRL input decryption, pairing init'),
+    19: ('net', 'winsock: beacon, send/recv'),
+    20: ('fileutil', 'file read/write/dump helpers, mkdir; called by almost every unit'),
+    21: ('options', 'console types (xenon...corona), command line options; startup fn'),
+    22: ('build', 'image build: reading inputs with crc32 checks, patches, payloads'),
+    23: ('consoleinfo', 'options/launch ini writing, console info response parsing'),
+    24: ('console_hdd', 'manifest + avatar/kinect data to console HDD, remote dirs'),
+    25: ('log', 'build.log, verbose levels; called by every app unit'),
+    26: ('crc32', "table-driven crc32; Gary S. Brown's (per xeBuild's docs), byte match from C"),
     27: ('crypto/xecrypt', 'XeCrypt-style API: SHA/HMAC (0x36/0x5c pads), RC4, DES, AES, RSA'),
     28: ('crypto/xecryptBn', 'big-endian qword bignum helpers, Montgomery inverse (XeCrypt xecryptBn.c)'),
     29: ('crypto/aes/aes_modes', 'Gladman AES: ECB/CBC over the block functions'),
@@ -193,13 +193,13 @@ SYMBOLS = {
     # des/des
     0x445fd0: '_des_ecb_decrypt', 0x445f60: '_des_ecb_encrypt', 0x445e50: '_des_setup',
     0x4460e0: '_des3_ecb_decrypt', 0x446050: '_des3_ecb_encrypt', 0x445ea0: '_des3_setup',
-    # app/crc32 (src/app/crc32.c); Gary S. Brown's crc32
+    # crc32 (src/crc32.c); Gary S. Brown's crc32
     0x433800: '_crc32',
-    # app/log (src/app/log.c); names are ours
+    # log (src/log.c); names are ours
     0x433570: '_log_set_verbose', 0x4335a0: '_log_verbose_flag', 0x433600: '_log_get_verbose',
     0x433610: '_log_set_name', 0x433690: '_log_printf', 0x433740: '_log_init',
     0x4337a0: '_log_finish',
-    # app/filelist_ini (src/app/filelist_ini.c); names are ours
+    # filelist_ini (src/filelist_ini.c); names are ours
     0x40aa10: '_getIniValue', 0x4c93a4: '_iniBuf', 0x4c97ac: '_iniSize',
     0x408ec0: '_fixFileCase',       # copies the dir's casing of smc.bin/kv.bin/patches_
     0x408fe0: '_iniPreParse',       # (buf, len) -> new len; DashLaunch iniPreParse
@@ -217,7 +217,7 @@ SYMBOLS = {
     0x44a460: '_fnPayload',         # .data char[32] file names
     0x450400: '_consoleNames',      # const char *[8] by xb.flags & 7; [0] is NULL
     0x479e84: '_blOrder',           # COMMON int *: one of the bl* tables
-    # app/fileutil (src/app/fileutil.c); the author's names where his tools'
+    # fileutil (src/fileutil.c); the author's names where his tools'
     # util.c has the function (cOzInABox/XeBuild tools/*/util.c), else ours
     0x420a90: '_getConsoleTypeStr', 0x420ab0: '_getBeU16', 0x420ad0: '_getBeU32',
     0x420ae0: '_getBeU64', 0x420af0: '_getLeU32', 0x420b00: '_setBeU16',
@@ -235,45 +235,45 @@ SYMBOLS = {
     0x4232e0: '_showFuses', 0x423370: '_showKey', 0x4233b0: '_showMac',
     0x423420: '_showHexPairs', 0x423490: '_writeSha1File', 0x423650: '_createDir',
     0x4236c0: '_makeBranch',
-    # app/timeutil (src/app/timeutil.c); Wine's names, cdecl
+    # timeutil (src/timeutil.c); Wine's names, cdecl
     0x40b130: '_RtlTimeFieldsToTime', 0x40b330: '_RtlTimeToTimeFields',
     0x40b500: '_FileTimeToSystemTime', 0x40b700: '_SystemTimeToFileTime',
     0x40b910: '_FileTimeToDosDateTime', 0x40ba30: '_DosDateTimeToFileTime',
     0x40bae0: '_GetSystemTime',
-    # app/mode_extract (src/app/mode_extract.c); names are ours
+    # mode_extract (src/mode_extract.c); names are ours
     0x40e020: '_extract_usage', 0x40e200: '_mode_extract',
     0x417680: '_loadDump', 0x414650: '_listFlashFiles', 0x411800: '_checkBootImage',
     0x44a4e0: '_separator', 0x44a524: '_promptEnter', 0x4c8fe4: '_flashFiles',
     0x4c9160: '_buildMode', 0x479f4c: '_g479f4c', 0x47a080: '_g47a080',
     0x50f318: '__imp___iob',
-    # app/xboxrom (src/app/xboxrom.c); names are ours
+    # xboxrom (src/xboxrom.c); names are ours
     0x40e520: '_kvVerifySig', 0x40e5a0: '_cbVerifySig', 0x40e620: '_blVerifySig',
     0x40e690: '_blSign', 0x40e7b0: '_blCheckHash', 0x40e810: '_blUpdateHash',
     0x40e8a0: '_blHashAndSign', 0x44a540: '_romSalts',
-    # app/smc (src/app/smc.c); names are ours
+    # smc (src/smc.c); names are ours
     0x40bd30: '_smcFindResetLimit', 0x40bd80: '_smcCheck', 0x40c020: '_smcPatch',
     0x40c210: '_smcConfigOk', 0x44a480: '_knownSmcs',
-    # app/mode_ini (src/app/mode_ini.c); names are ours
+    # mode_ini (src/mode_ini.c); names are ours
     0x418240: '_ini_usage', 0x418380: '_iniSetFile', 0x4183d0: '_iniPrintf',
     0x418450: '_iniWriteFlashfs', 0x418680: '_iniWriteBl', 0x418830: '_mode_ini',
     0x40c260: '_suGetDir', 0x40cc80: '_suLoad', 0x40c650: '_suGetCF', 0x40c700: '_suGetCG',
     0x40c940: '_suFirstFile', 0x40c860: '_suNextFile', 0x40c7b0: '_suGetFile',
-    # app/sysupdate (src/app/sysupdate.c); names are ours
+    # sysupdate (src/sysupdate.c); names are ours
     0x40c240: '_suGetPath', 0x40c280: '_suFreeBl', 0x40c2e0: '_suExtractBl',
     0x40ca30: '_suLoadDir', 0x401ce0: '_cfDecrypt', 0x401dc0: '_cgDecrypt',
     0x449070: '_strncat',
     0x418ee0: '_loadKeyFile', 0x41b740: '_checkKeys',
-    # app/keyvault (src/app/keyvault.c); names are ours
+    # keyvault (src/keyvault.c); names are ours
     0x413090: '_kvGetType', 0x4130b0: '_kvIsLoaded', 0x4130c0: '_kvCheckHash',
     0x4131a0: '_kvSet', 0x413370: '_kvGetGameRegion', 0x4133d0: '_kvGetDvdKey',
     0x4133f0: '_kvGetConsoleId', 0x413410: '_kvGetSerial', 0x4134f0: '_kvGetConsoleCert',
     0x413510: '_kvGetMfgDate', 0x413590: '_kvHashIsOk', 0x4135a0: '_kvSetDvdKey',
     0x47a140: '_masterPub', 0x47a11c: '_cpuKey', 0x479ea8: '_g479ea8',
-    # app/stfs (src/app/stfs.c); names are ours
+    # stfs (src/stfs.c); names are ours
     0x405610: '_stfsCheckHashes', 0x405980: '_stfsListFiles', 0x405ac0: '_stfsCheckHeader',
     0x405d50: '_stfsGetFile', 0x405f20: '_stfsInit', 0x405f50: '_stfsFree',
     0x405fa0: '_stfsLoad',
-    # app/main (src/app/main.c); names are ours.  xb is the one big global
+    # main (src/main.c); names are ours.  xb is the one big global
     # (main's init memsets 0x479ea0-0x4c97b0); the names above inside it
     # (g479ea8, cpuKey, masterPub, flashFiles, buildMode, iniBuf, ...) are fields
     0x40d010: '_sigHandler', 0x40d0a0: '_installSignals', 0x40d120: '_verifyFlashFile',
@@ -287,7 +287,7 @@ SYMBOLS = {
     0x40fbb0: '_calcPageEcc', 0x41fa40: '_netDisconnect', 0x420140: '_netReadBlocks',
     0x420200: '_netWriteBlocks', 0x420320: '_netEraseBlock', 0x420910: '_netWritePatches',
     0x446c90: '___main',
-    # app/consoleinfo (src/app/consoleinfo.c); names are ours
+    # consoleinfo (src/consoleinfo.c); names are ours
     0x430460: '_optOpen', 0x430540: '_optClose', 0x430570: '_optWrite',
     0x4305b0: '_optLdv', 0x4305e0: '_optHex', 0x430660: '_optButton',
     0x4308d0: '_showImageType', 0x430b60: '_getFreebootOpts',
@@ -300,13 +300,13 @@ SYMBOLS = {
     0x41ade0: '_setPairing', 0x41ac70: '_setInfoKey0', 0x41aca0: '_setInfoKey1',
     0x41acd0: '_setInfoKey2', 0x41ad00: '_setInfoKey3', 0x41ad30: '_setInfoKey4',
     0x41ad60: '_setInfoKey5', 0x449180: '_fflush',
-    # app/mode_build (src/app/mode_build.c) and what it calls; names are ours
+    # mode_build (src/mode_build.c) and what it calls; names are ours
     0x418fd0: '_loadPubKey', 0x419150: '_loadPubKeys',
     0x40aef0: '_loadUserIni', 0x409430: '_parseIni', 0x4259a0: '_applyIniOptions',
     0x427340: '_loadAddons', 0x4258e0: '_parseCmdOptions', 0x4271a0: '_parseRawPatches',
     0x423830: '_iniConsoleType', 0x4137f0: '_buildCleanup', 0x40f330: '_buildImage',
     0x412260: '_writeImage', 0x41afe0: '_setCpuKeyStr',
-    # app/options (src/app/options.c) and what it calls; names are ours
+    # options (src/options.c) and what it calls; names are ours
     0x4236f0: '_baseFileExists.part.0',   # gcc's ipa-split tail of baseFileExists
     0x423730: '_baseFileExists', 0x423750: '_perboxExists',
     0x424930: '_optIniBool', 0x424a10: '_optIniInt', 0x424a70: '_parseButton',
@@ -315,7 +315,7 @@ SYMBOLS = {
     0x425110: '_parseOption', 0x427000: '_parseRawPatch', 0x427260: '_addPatch',
     0x40aad0: '_getIniBool', 0x40abf0: '_iniBoolInvalid', 0x40acf0: '_getIniU32',
     0x40ade0: '_iniU32Invalid',
-    # app/console_hdd (src/app/console_hdd.c) and what it calls; names are ours
+    # console_hdd (src/console_hdd.c) and what it calls; names are ours
     0x431c20: '_createSysexDirs', 0x431d20: '_addTitleId',
     0x431d70: '_checkManifestHeader', 0x431f20: '_readManifestString',
     0x431f80: '_loadFileChecked', 0x4320b0: '_loadStfsChecked',
@@ -335,13 +335,13 @@ SYMBOLS = {
     # mingw-w64 crt's COMMON globals (atonexit.c, natstart.c), in globals.c
     0x50ec88: '___onexitend', 0x50ec8c: '___onexitbegin',
     0x50ec90: '___native_startup_lock', 0x50ec94: '___native_startup_state',
-    # app/bootloaders (src/app/bootloaders.c) and what it uses; names are ours
+    # bootloaders (src/bootloaders.c) and what it uses; names are ours
     0x401730: '_unscramble', 0x4017d0: '_cbGetPairing', 0x401910: '_cfGetPairing',
     0x401a00: '_cfBestPairing', 0x401f80: '_crlVerifySig', 0x402210: '_daeDecrypt',
     0x4022f0: '_daeVerifySig', 0x402610: '_fcrtVerifySig', 0x402a00: '_shaSelfCheck',
     0x402a70: '_cbDecrypt', 0x402c70: '_cdDecrypt', 0x402ec0: '_ceDecrypt',
     0x41db70: '_shaCheck',
-    # app/keys (src/app/keys.c); names are ours
+    # keys (src/keys.c); names are ours
     0x41aa00: '_keysInit', 0x41ad90: '_setKvSalt', 0x41adb0: '_setKvAltSalt',
     0x41add0: '_setSmcKey', 0x41b1d0: '_setFuseLdv', 0x41b320: '_setFuseCpuKey',
     0x41b420: '_calcXexKey', 0x41b520: '_check1blKey', 0x41b8e0: '_smcChecksum',
@@ -362,7 +362,7 @@ SYMBOLS = {
     0x44c064: '_msg_cbPairOk', 0x44c09c: '_msg_cbPairFail', 0x44c0dc: '_msg_cfSlot0',
     0x44c110: '_msg_cfSlot1', 0x44c143: '_msg_sigGood', 0x44c14e: '_msg_sigCheckFail',
     0x44c200: '_msg_sigFail', 0x44c214: '_msg_noPub',
-    # app/mode_update (src/app/mode_update.c) and what it calls; names are ours
+    # mode_update (src/mode_update.c) and what it calls; names are ours
     0x4030b0: '_getBadBlocks', 0x4031d0: '_update_usage', 0x403460: '_wantFile',
     0x4034f0: '_parseAddonIdx', 0x403700: '_getAddons', 0x403820: '_getMobileFiles',
     0x403cf0: '_bldrGetKv', 0x403d80: '_bldrGetSmc', 0x403e10: '_getSecurityFiles',
@@ -372,13 +372,13 @@ SYMBOLS = {
     0x412230: '_imageGetBuffer', 0x415ef0: '_remapBadBlocks',
     0x41f700: '_netConnect', 0x41fe20: '_netDumpNand', 0x41ff90: '_netGetBldrs',
     0x41ffe0: '_netSendFlash', 0x420420: '_netGetBadBlocks', 0x420840: '_netReboot',
-    # app/net's other functions and data (names are ours; nothing outside calls them)
+    # net's other functions and data (names are ours; nothing outside calls them)
     0x41e800: '_netRecv', 0x41ea90: '_netFindBeacon', 0x41edb0: '_netTimerElapsed',
     0x41ede0: '_netSendStr', 0x41ee30: '_netRecvVerbose', 0x41f1a0: '_netSendData',
     0x41f330: '_netCheckOk', 0x41f390: '_netOpenSocket', 0x41f470: '_netReadInfo',
     0x41fa00: '_netClose', 0x44a6c0: '_netSock', 0x479574: '_netInfo',
     0x479578: '_netEmpty', 0x4cd844: '_netStartTime', 0x448190: '__difftime32',
-    # app/image_read (wip/app/image_read.c) and what it calls; names are ours
+    # image_read (wip/image_read.c) and what it calls; names are ours
     0x4136a0: '_fsFind', 0x4138c0: '_getImageLdv', 0x413ad0: '_getImageSmc',
     0x413d30: '_getImageKv', 0x414050: '_getImageMobiles', 0x414300: '_getNetKd',
     0x4144e0: '_loadFlashFile', 0x414610: '_fsFindFile', 0x414760: '_fsGetFile',
@@ -394,7 +394,7 @@ SYMBOLS = {
     # image_read's variables (names are ours)
     0x44a5c0: '_zeropair', 0x44a5d0: '_mobileName', 0x44a5d8: '_fs', 0x474a20: '_mobiles', 0x474b20: '_anchor',
     0x474d20: '_fsOffset', 0x474d24: '_fsValid', 0x474d40: '_fsBuf', 0x478d40: '_dumpSize',
-    # app/build; names are ours.  Its file table entry is {name[0x400], crc,
+    # build; names are ours.  Its file table entry is {name[0x400], crc,
     # type, offset, data, size, ...}, 0x42c bytes.  findFile is named above.
     0x427500: '_loadBaseFile',          # baseDir+name; regparm (eax, edx)
     0x427650: '_findFileOffset', 0x4276a0: '_findFileSize',
@@ -412,12 +412,12 @@ SYMBOLS = {
     0x42c620: '_addUpdateBls', 0x42c900: '_logPowerButton', 0x42cbb0: '_patchFreeboot',
     0x42cee0: '_patchPayloadSize', 0x42cfa0: '_encodeBls', 0x42dfb0: '_encodeUpdateBls',
     0x42e160: '_calcBlAreaSize', 0x42e760: '_buildFlash',   # buildImage tail-calls it
-    # app/image_write functions app/build calls (names are ours, from what
+    # image_write functions build calls (names are ours, from what
     # build does with them)
     0x410240: '_setFlashBuild', 0x410290: '_smcSetLoad', 0x410360: '_setPatchSlot',
     0x410460: '_imgCfOffset', 0x410490: '_imgCfSize', 0x4104d0: '_imgSize',
     0x4104f0: '_imgBigBlock', 0x410500: '_imgAdd',
-    # the rest of app/image_write (names are ours).  0x4cb7c0 is a uint16_t per
+    # the rest of image_write (names are ours).  0x4cb7c0 is a uint16_t per
     # block from fsStart (479efc) to fsEnd (479ef8): the FS table build.s's
     # "Fixing up FS table..." / "Writing FS table to image" logs refer to.
     # imgWriteStart: regparm (src, len, fs type), copy to offset 0.  gcc's
@@ -451,12 +451,12 @@ SYMBOLS = {
     0x410b90: '_imgFits',           # (offset, len) within the FS end block
     0x4121b0: '_spareUsed',         # 16 spare bytes not all 0xff
     0x412de0: '_reservedAreaOffset',  # like statisticsOffset, per NAND type
-    # app/image_write's data (COMMON globals in globals.c, and its own)
+    # image_write's data (COMMON globals in globals.c, and its own)
     0x4c9164: '_mmcAnchor', 0x4c97c0: '_fsFiles', 0x4cb7c0: '_fsTable',
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
     0x46f9c0: '_mobileOffset', 0x46f9c4: '_nFsFiles', 0x46f9e0: '_smcPage',
-    0x44a700: '_defBl60',      # app/build .data, loadConsoleBlFiles' case 24
-    0x44a760: '_defPayload', 0x44a960: '_defCore',  # app/build .data, encodeBls
+    0x44a700: '_defBl60',      # build .data, loadConsoleBlFiles' case 24
+    0x44a760: '_defPayload', 0x44a960: '_defCore',  # build .data, encodeBls
     # runtime functions the C code calls
     0x448760: '__assert',      # libmingwex wassert.o
     0x447c00: '___chkstk_ms',   # libgcc _chkstk_ms.o
@@ -488,7 +488,7 @@ IAT_NAMES = {'_strnicmp': '__imp___strnicmp', '_exit': '__imp___exit',
              '_stricmp': '__imp___stricmp', '_stat': '__imp___stat',
              '_chdir': '__imp__chdir', '_mkdir': '__imp__mkdir'}
 # ws2_32 imports, named as winsock2.h's dllimport __stdcall declarations
-# reference them (app/net.c)
+# reference them (net.c)
 IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
     ('WSAGetLastError', 0), ('WSAStartup', 8), ('WSAStringToAddressA', 20),
     ('bind', 12), ('closesocket', 4), ('connect', 12), ('htons', 4), ('recv', 16),
@@ -539,7 +539,7 @@ END_POINTERS = {
 # Data words ddisasm symbolized that aren't pointers: address -> the word.
 NOT_POINTERS = {
     # "nG" of wassert's UTF-16 "MinGW Runtime Assertion"; 0x47006e lies in
-    # app/image_write's smcPage, a static of its C
+    # image_write's smcPage, a static of its C
     0x46356c: 0x47006e,
     # its UTF-16 "\nP" (of "failed!\n\nProgram") and " L" (of ", Line"); both
     # lie in the COMMON block, which has no labels now that it's C

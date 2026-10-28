@@ -15,11 +15,11 @@ NOTES.md has the findings, layout and the pipeline.
   evidence). `re/split.py` still writes a `.s` from `build/xeBuild.lines.json`
   (`re/ddfix.py`) for any object without a `.c`, but nothing builds it.
 - `src/**/*.c` are hand-maintained: XeCrypt's sources under `src/crypto` (see
-  NOTES.md) and the app's reconstructed C under `src/app`. `build.sh`
+  NOTES.md) and the app's reconstructed C directly in `src/`. `build.sh`
   compiles each with the per-object flags and original `__FILE__` path set
   there. Keep third-party licence notices intact.
-- Shared app types live in `src/app/xebuild.h` and each object's exported
-  prototypes in `src/app/<obj>.h` (NOTES.md, App headers); don't redeclare them
+- Shared app types live in `src/xebuild.h` and each object's exported
+  prototypes in `src/<obj>.h` (NOTES.md, App headers); don't redeclare them
   in a .c. If a file's code needs another typing to match, use a cast or an
   asm-label declaration (`T fnU32(...) __asm__("_fn")`) marked
   `TODO(xebuild.h cast)` / `TODO(prototype cast)`.

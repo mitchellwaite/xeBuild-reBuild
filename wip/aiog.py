@@ -1,4 +1,4 @@
-"""applyIniOptions without a profile: variants of src/app/options.c for gcc's
+"""applyIniOptions without a profile: variants of src/options.c for gcc's
 guessed profile.
 
 python wip/aiog.py <cfg.json> <out.c>
@@ -47,7 +47,7 @@ def cut(t, a, b):
 
 
 def gen(cfg, src=None):
-    t = src or open(ROOT + '/src/app/options.c').read()
+    t = src or open(ROOT + '/src/options.c').read()
     for l in ['#pragma GCC push_options\n', '#pragma GCC pop_options\n',
               '#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")\n']:
         t = t.replace(l, '')

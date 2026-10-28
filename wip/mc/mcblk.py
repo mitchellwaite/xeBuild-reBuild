@@ -1,4 +1,4 @@
-"""Block order of mode_client: original (src/app/mode_client.s) vs a gcc -S intel file.
+"""Block order of mode_client: original (src/mode_client.s) vs a gcc -S intel file.
 python mcblk.py <gcc.s> [fn]
 Each block: label, calls, string refs (first 20 chars), usage codes."""
 import re, sys, os, difflib
@@ -52,7 +52,7 @@ def blocks(lines, fnlab, labre, strs, isend):
     if cur: res.append((lab, cur))
     return res
 
-orig = open(os.path.join(ROOT, 'src', 'app', 'mode_client.s')).read().split('\n')
+orig = open(os.path.join(ROOT, 'src', 'mode_client.s')).read().split('\n')
 ostr = strings(orig, r'^(L_[0-9a-f]+|_mc_[0-9a-f]+):', r'^\.(?:string|ascii)\s+"(.*)"')
 ob = blocks(orig, '_' + fn, r'^(L_[0-9a-f]+):', ostr, lambda l: False)
 mine = open(args[0]).read().split('\n')

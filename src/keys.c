@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../crypto/xecrypt.h"
+#include "crypto/xecrypt.h"
 #include "xebuild.h"
 #include "bootloaders.h"
 #include "fileutil.h"

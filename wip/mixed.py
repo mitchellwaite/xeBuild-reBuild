@@ -2,7 +2,7 @@
 
 python wip/mixed.py <obj> fn1 fn2 ...   (the functions that match)
 
-Generic version of the old netmixed.py (app/net, now whole C), set up per
+Generic version of the old netmixed.py (net, now whole C), set up per
 object in OBJS.  String literals
 passed to functions become static arrays named after the .s's strings
 (`<prefix>_<address>`; static arrays rather than externs so gcc still folds
@@ -16,7 +16,7 @@ import os, re, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 're'))
 from ddfix import Image
 
-# per-object setup; app/image_write (the last user) is whole C now
+# per-object setup; image_write (the last user) is whole C now
 OBJS = {
 }
 

@@ -228,7 +228,7 @@ void XeCryptRotSum(u8 *sum, const void *buf, u32 cqw);
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
    call argument it is computed at its store */
 #define SWAP16(x) ((u16)(((u32)(x) << 8) | ((u32)(x) >> 8)))
-/* build.sh compiles src/app/build.c twice: plainly, and with -DBUILD_FDO, a
+/* build.sh compiles src/build.c twice: plainly, and with -DBUILD_FDO, a
    crafted profile for loadBlFiles and the loadBl it inlines (dom2's FSM
    threader zeroes loadBlFiles' type-11 block, which no guessed profile places
    right: wip/README.md) and the guessed one for everything else

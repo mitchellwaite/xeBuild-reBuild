@@ -58,7 +58,7 @@ def label(ins, st):
 
 
 def orig_blocks():
-    lines = subprocess.run(['git', 'show', '56e988e:src/app/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
+    lines = subprocess.run(['git', 'show', '56e988e:src/options.s'], capture_output=True, text=True, check=True).stdout.split('\n')
     st = strings(lines, r'^(\w+):\s*$', r'\s*\.string "(.*)"')
     s = lines.index('_applyIniOptions:')
     out, cur = [], []

@@ -3,7 +3,7 @@
 # object's .text (alignment included, which re/fncmp.py ignores) with a known
 # good object, without a full build.
 #   sh wip/mixedcmp.sh <obj> <file.c> <good.o> [gcc flags]
-# e.g. sh wip/mixedcmp.sh app/net src/app/net.c /tmp/good.o --param builtin-expect-probability=65
+# e.g. sh wip/mixedcmp.sh net src/net.c /tmp/good.o --param builtin-expect-probability=65
 # (copy build/obj/<obj>.o to good.o after a matching build).  Prints SAME or
 # the first N (default 40) lines of the objdump diff.
 TC=tools/toolchain-4745/mingw32/bin

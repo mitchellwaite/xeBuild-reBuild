@@ -3,7 +3,7 @@ usage: python wip/mc/s5/var.py NAME [extra gcc flags]
 Prints the number of +/- lines of fncmp (72 = the draft), or MATCH."""
 import subprocess, sys
 
-SRC = 'wip/app/mode_client.c'
+SRC = 'wip/mode_client.c'
 src = open(SRC).read()
 MA = r'log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n");'
 MC = r'log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n");'

@@ -1,9 +1,9 @@
 # loadBl edge probabilities (%) for loadBlFiles' crafted profile: re/gcda.py
-# overrides in profile_estimate bb numbers of src/app/build.c (loadBl's own
+# overrides in profile_estimate bb numbers of src/build.c (loadBl's own
 # counts survive inlining; loadBlFiles keeps the guessed profile's).
 # 9>10: the SE-in-the-CF-slot path; 13>14: the type == 11 test; 18>19:
 # signature failed; 24>25: xb.type <= 5; 25>93: that and r set (to the shared
-# -1 block); wip/README.md "app/build.c", ninth pass
+# -1 block); wip/README.md "build.c", ninth pass
 loadBl:9>10=0
 loadBl:13>14=0.5
 loadBl:18>19=18

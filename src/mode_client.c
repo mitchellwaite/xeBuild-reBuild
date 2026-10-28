@@ -5,7 +5,7 @@
 
 /* build.sh compiles this file twice: plainly (every function but
    mode_client), and with -DBUILD_FDO and a crafted profile
-   (src/app/mode_client.prof) for mode_client and the clientEraseBlock it
+   (src/mode_client.prof) for mode_client and the clientEraseBlock it
    inlines; mode_client comes from that compile (re/splice.py --whole).
    Under BUILD_FDO the other functions keep the guessed profile (NOPROF),
    and mode_client's blocks get labels (AT) reached by empty asm gotos

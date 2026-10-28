@@ -62,7 +62,7 @@ def blocks(lines, fnlab, labre, strs, isend):
 
 
 # the original: options.s from before applyIniOptions moved to C
-orig = subprocess.run(['git', '-C', ROOT, 'show', '56e988e:src/app/options.s'],
+orig = subprocess.run(['git', '-C', ROOT, 'show', '56e988e:src/options.s'],
                       capture_output=True, text=True, check=True).stdout.split('\n')
 ostr = strings(orig, r'^(L_[0-9a-f]+|_msg_\w+|_str_\w+):', r'^\s*\.(?:string|ascii)\s+"(.*)"')
 ob = blocks(orig, '_' + fn, r'^(L_[0-9a-f]+):', ostr, lambda l: False)

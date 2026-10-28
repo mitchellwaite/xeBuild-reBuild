@@ -1,7 +1,7 @@
 """sw.py NAME COND : swap post-loop branches -> if (COND) {switch part} else {reboot part}"""
 import sys, subprocess, os
 os.chdir(r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix')
-s = open('wip/app/mode_client.c').read()
+s = open('wip/mode_client.c').read()
 a = s.index('\tif (!(mode && arg)) {\n'); b = s.index('\t} else {\n', a); c = s.index('\n\t}\n\tif (E(reboot))', b)
 reb = s[a + len('\tif (!(mode && arg)) {\n'):b]; sw = s[b + len('\t} else {\n'):c + 1]
 s = s[:a] + '\tif (%s) {\n' % sys.argv[2] + sw + '\t} else {\n' + reb + s[c + 1:]

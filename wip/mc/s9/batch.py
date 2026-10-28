@@ -6,7 +6,7 @@ ROOT = r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix'
 sys.path.insert(0, ROOT + r'\wip\mc'); import mcvar
 os.chdir(ROOT)
 ns = {}; exec(open(sys.argv[1]).read(), ns)
-base = open(ns.get('BASE', 'wip/app/mode_client.c')).read()
+base = open(ns.get('BASE', 'wip/mode_client.c')).read()
 os.makedirs('wip/mc/s9', exist_ok=True)
 def keys(r):
     t = mcvar.section(open(r['dir'] + '/v.c.274r.bbro').read(), 'mode_client')

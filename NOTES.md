@@ -34,7 +34,7 @@ holds. README.md has the overview.
 xeBuild.exe              reference binary (do not modify)
 build.sh                 compile src/ + link + stamp + verify -> build/xeBuild.exe
                          ($objects: the program's objects in link order)
-src/app/                 the application (25 files) and its headers: xebuild.h
+src/*.c, src/*.h         the application (25 files) and its headers: xebuild.h
                          (shared types, struct xebuild), <obj>.h (each object's
                          functions and data that others use)
 src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCrypt
@@ -129,7 +129,7 @@ pulled log's strings into console_hdd).
 
 (History: every object is whole C now, and `build.sh` no longer assembles
 `.s` files or splices C functions into them; `splice.py --whole` is still
-used for the second-compile functions of `app/build` and `app/mode_client`.)
+used for the second-compile functions of `build` and `mode_client`.)
 
 An object doesn't have to move to C all at once. Functions listed in
 `split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.
@@ -146,11 +146,11 @@ does nothing.
   order, but it also changes the order functions are compiled in, which
   changed `readFileIn`. `-fno-asynchronous-unwind-tables` changes no code in
   the app's C files.  Where the flag changes nothing, that layout works
-  as a step: `app/bootloaders.c` had its unmatched functions, strings and
+  as a step: `bootloaders.c` had its unmatched functions, strings and
   `.eh_frame` as top-level `__asm__` between the C functions. `progress.py`
   counts a function whose label is in a `.c`'s asm as assembly, and an
   object with any top-level asm left as not fully C.
-- Whole objects in C (`app/filelist_ini`, `app/bootloaders`): gcc emits a
+- Whole objects in C (`filelist_ini`, `bootloaders`): gcc emits a
   function's literals in expand-time block order, which can differ from
   the original's even when the code matches (error messages first). Such
   strings are `static const char` arrays in the original's order, defined
@@ -180,12 +180,12 @@ encodings, so `sh build.sh` has the last word. It reports MATCH for every
 function already in C. Its default flags are `-O3`; give fileutil's
 `--param` or crypto's `-Isrc/crypto` explicitly.
 
-The first mixed object was `app/filelist_ini` (whole C now; parseIni's
+The first mixed object was `filelist_ini` (whole C now; parseIni's
 strings are `static const` arrays defined before it so that, with
 `-fno-toplevel-reorder`, they keep the original's `.rdata` order; `getIniValue`, with a `findInst`-style
 `findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
-`findInst`. And `app/options` (whole object in C now, no `.s`):
+`findInst`. And `options` (whole object in C now, no `.s`):
 
 - Its strings are `static const char str_*/msg_*[]` arrays in the
   original's `.rdata` order. Without `-fno-toplevel-reorder` (which would
@@ -202,19 +202,19 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
   FDE comes right after the split `baseFileExists.part.0`'s.
 - gcc emits the functions in source order, so applyIniOptions sits after
   parseCmdOptions as in the original.
-- `applyIniOptions` is built with a crafted profile (`src/app/options.prof`,
+- `applyIniOptions` is built with a crafted profile (`src/options.prof`,
   written by `wip/aiodesign.py`; the other functions keep gcc's guessed
   one). Its label alignment needs stale block counts, which tests of
   never-written statics (`aio_never*`) give: IPA folds them after the
   profile is read and the counts of their dead edges stay behind
-  (wip/README.md, app/options.c).
+  (wip/README.md, options.c).
 - `strcat(xb.outName, "name")` is expanded inline. Short names become
   immediate stores, so the literal stays and no data is emitted. Longer ones
   copy from the string itself; those are written as `OUTCAT(name)`
   (`memcpy(dst + strlen(dst), str_name, sizeof "name")`). Which names are
   long differs between iniConsoleType and setConsoleType, so follow gcc.
 
-And `app/keys` (whole object in C, data included; built with
+And `keys` (whole object in C, data included; built with
 `-fno-toplevel-reorder` so functions, key buffers and the string arrays of
 setFuseCpuKey, daeEncrypt and fcrtEncrypt come out in definition order).
 The names (`keysInit`, `cbaEncrypt`, `kvPrepare`, the `infoKey0..5` HMAC
@@ -236,7 +236,7 @@ salts, ...) are ours.
 - `crlEncrypt` writes the success branch twice (CPU key, then the alternate
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
 
-And `app/mode_update` (whole object in C).
+And `mode_update` (whole object in C).
 `mode_update` itself only matches when built with a profile: its cold
 blocks are placed by bb-reorder's Fibonacci-heap ties, and no guessed
 profile we found gives the original's (wip/README.md has the search,
@@ -254,7 +254,7 @@ aren't, so those are static arrays defined right before the function. The
 variables are zero-initialized globals in `.bss` order. Both rely on
 `-fno-toplevel-reorder` (the filelist_ini recipe).
 
-And `app/image_write` (whole object in C, no `.s`; `-O3 --param
+And `image_write` (whole object in C, no `.s`; `-O3 --param
 builtin-expect-probability=50`, default top-level order).
 
 - `imgAdd` (copy to the image, set the spare bytes, chain the FS table) is
@@ -284,11 +284,11 @@ builtin-expect-probability=50`, default top-level order).
 
 Application files in C (all **-O3**; timeutil doesn't match at -O2):
 
-- `app/crc32.c`: Gary S. Brown's CRC-32 table and an `UPDC32` loop.
-- `app/log.c`: verbosity, `build.log`, renaming it to `<name>.log`. The
+- `crc32.c`: Gary S. Brown's CRC-32 table and an `UPDC32` loop.
+- `log.c`: verbosity, `build.log`, renaming it to `<name>.log`. The
   verbose-flag switch needs the `'\0'` case written as a separate copy of the
   level-1 body (gcc merges the copies, but block order follows them).
-- `app/timeutil.c`: Wine's ntdll/kernel32 time code (`RtlTimeFieldsToTime`,
+- `timeutil.c`: Wine's ntdll/kernel32 time code (`RtlTimeFieldsToTime`,
   `RtlTimeToTimeFields`, `SystemTimeToFileTime`, `FileTimeToSystemTime`,
   `FileTimeToDosDateTime`, `DosDateTimeToFileTime`, `GetSystemTime`) as cdecl
   functions with own WORD-based types, `errno = EINVAL` for SetLastError, and
@@ -328,7 +328,7 @@ the per-object build gets naturally).
   its FDEs to `.eh_frame`, in link order, so the 94 CIEs give the objects and
   their functions. Objects without unwind info were matched byte for byte
   against the toolchain's libraries (`_chkstk_ms`, import stubs).
-  `.text.startup` holds `main` (app/main), a startup function of app/options
+  `.text.startup` holds `main` (main.c), a startup function of options.c
   and crtend's constructor; the default link script's ctor/dtor lists follow.
 - **.data, .rdata, .bss, inferred.** Each is split at 4-aligned labels (gas
   pads sections to 4, so objects start 4-aligned). Each atom gets the set of
@@ -403,19 +403,19 @@ its original addresses. Library files use the library's own file names.
 
 | File | Evidence |
 |---|---|
-| app/main | `main`, signal handlers, mode dispatch |
-| app/mode_build, mode_update, mode_client, mode_extract, mode_ini | each prints its mode's usage text |
-| app/build | image build: inputs with crc32 checks, patches, payloads |
-| app/image_read / image_write | parse an existing NAND image / lay out and write one |
-| app/bootloaders | CB/CF/CD/CE decryption, pairing, bootloader signatures |
-| app/keys | CPU/1BL keys, SMC/keyvault/CRL input decryption |
-| app/keyvault | keyvault hash, DVD key |
-| app/smc | SMC checksum, type detection, patches |
-| app/sysupdate, stfs | system update container, container/manifest hashes |
-| app/options | console types, command line options |
-| app/filelist_ini | file list ini parser |
-| app/consoleinfo, console_hdd, net | console info/options ini, HDD transfer, winsock |
-| app/log, fileutil, timeutil, crc32, xboxrom | logging, file helpers, dates, crc32, ROM names |
+| main | `main`, signal handlers, mode dispatch |
+| mode_build, mode_update, mode_client, mode_extract, mode_ini | each prints its mode's usage text |
+| build | image build: inputs with crc32 checks, patches, payloads |
+| image_read / image_write | parse an existing NAND image / lay out and write one |
+| bootloaders | CB/CF/CD/CE decryption, pairing, bootloader signatures |
+| keys | CPU/1BL keys, SMC/keyvault/CRL input decryption |
+| keyvault | keyvault hash, DVD key |
+| smc | SMC checksum, type detection, patches |
+| sysupdate, stfs | system update container, container/manifest hashes |
+| options | console types, command line options |
+| filelist_ini | file list ini parser |
+| consoleinfo, console_hdd, net | console info/options ini, HDD transfer, winsock |
+| log, fileutil, timeutil, crc32, xboxrom | logging, file helpers, dates, crc32, ROM names |
 | crypto/xecrypt, xecryptBn | XeCrypt API and big-endian bignum helpers (C source) |
 | crypto/aes/aes_modes, aestab, aescrypt, aeskey | Brian Gladman's AES (C source) |
 | crypto/rc4/rc4_enc, rc4_skey, sha/sha1dgst, md5/md5 | OpenSSL RC4 (`"rc4(idx,int)"`), SHA-1; MD5 (C source) |
@@ -424,10 +424,10 @@ its original addresses. Library files use the library's own file names.
 
 ### App headers
 
-`src/app/xebuild.h` holds the types the app's objects share (`struct xebuild`,
+`src/xebuild.h` holds the types the app's objects share (`struct xebuild`,
 the program state `xb`, and `fileent`, `netfile`, `flashhdr`, `consoleinfo`,
 ...) and declares `src/globals.c`'s variables. Each object's functions (and
-data) that others use are in `src/app/<obj>.h`, which the object itself
+data) that others use are in `src/<obj>.h`, which the object itself
 includes too; app files take XeCrypt's prototypes from `src/crypto/xecrypt.h`.
 Fixed-width integers are `<stdint.h>`'s (`uint8_t` ... `uint64_t`, included by
 `xebuild.h`): with this toolchain they are the same C types as the
@@ -444,7 +444,7 @@ header's to compile to the original's code, it says so in a comment marked
 (a function's argument or return type: a cast, or a declaration under another
 name bound to the same symbol with an asm label, e.g. `uint32_t
 FileExistsU32(const char *) __asm__("_FileExists")`), so a later pass can settle
-the types. `grep -rn 'TODO(' src/app` lists them.
+the types. `grep -n 'TODO(' src/*.c` lists them.
 
 ### XeCrypt in C
 
@@ -547,7 +547,7 @@ Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matchi
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
-| `app/` | 25 / 25 | 432 / 432 |
+| app (`src/*.c`) | 25 / 25 | 432 / 432 |
 | `crypto/` | 41 / 41 | 185 / 185 |
 
 ### In progress
@@ -564,35 +564,35 @@ Objects built entirely from C, in link order.
 
 | Object | Functions |
 |---|---|
-| `app/bootloaders` | 19 |
-| `app/mode_update` | 14 |
-| `app/stfs` | 7 |
-| `app/mode_client` | 16 |
-| `app/filelist_ini` | 12 |
-| `app/timeutil` | 7 |
-| `app/smc` | 4 |
-| `app/sysupdate` | 12 |
-| `app/main` | 8 |
-| `app/mode_extract` | 2 |
-| `app/xboxrom` | 7 |
-| `app/image_write` | 46 |
-| `app/keyvault` | 12 |
-| `app/image_read` | 33 |
-| `app/mode_ini` | 6 |
-| `app/mode_build` | 5 |
-| `app/keys` | 48 |
-| `app/net` | 32 |
-| `app/fileutil` | 47 |
-| `app/options` | 19 |
-| `app/build` | 41 |
-| `app/consoleinfo` | 13 |
-| `app/console_hdd` | 14 |
-| `app/log` | 7 |
-| `app/crc32` | 1 |
+| `bootloaders` | 19 |
+| `mode_update` | 14 |
+| `stfs` | 7 |
+| `mode_client` | 16 |
+| `filelist_ini` | 12 |
+| `timeutil` | 7 |
+| `smc` | 4 |
+| `sysupdate` | 12 |
+| `main` | 8 |
+| `mode_extract` | 2 |
+| `xboxrom` | 7 |
+| `image_write` | 46 |
+| `keyvault` | 12 |
+| `image_read` | 33 |
+| `mode_ini` | 6 |
+| `mode_build` | 5 |
+| `keys` | 48 |
+| `net` | 32 |
+| `fileutil` | 47 |
+| `options` | 19 |
+| `build` | 41 |
+| `consoleinfo` | 13 |
+| `console_hdd` | 14 |
+| `log` | 7 |
+| `crc32` | 1 |
 | `crypto/*` (41 XeCrypt objects) | 185 |
 
 <details>
-<summary><code>app/bootloaders</code>: 19 functions</summary>
+<summary><code>bootloaders</code>: 19 functions</summary>
 
 - ✅ `verifyExtended` (0x401630)
 - ✅ `unscramble` (0x401730)
@@ -616,7 +616,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/mode_update</code>: 14 functions</summary>
+<summary><code>mode_update</code>: 14 functions</summary>
 
 - ✅ `getBadBlocks` (0x4030b0)
 - ✅ `update_usage` (0x4031d0)
@@ -635,7 +635,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/stfs</code>: 7 functions</summary>
+<summary><code>stfs</code>: 7 functions</summary>
 
 - ✅ `stfsCheckHashes` (0x405610)
 - ✅ `stfsListFiles` (0x405980)
@@ -647,7 +647,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/mode_client</code>: 16 functions</summary>
+<summary><code>mode_client</code>: 16 functions</summary>
 
 - ✅ `client_usage` (0x406330)
 - ✅ `clientInfo` (0x406740)
@@ -668,7 +668,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/filelist_ini</code>: 12 functions</summary>
+<summary><code>filelist_ini</code>: 12 functions</summary>
 
 - ✅ `fixFileCase` (0x408ec0)
 - ✅ `iniPreParse` (0x408fe0)
@@ -685,7 +685,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/timeutil</code>: 7 functions</summary>
+<summary><code>timeutil</code>: 7 functions</summary>
 
 - ✅ `RtlTimeFieldsToTime` (0x40b130)
 - ✅ `RtlTimeToTimeFields` (0x40b330)
@@ -697,7 +697,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/smc</code>: 4 functions</summary>
+<summary><code>smc</code>: 4 functions</summary>
 
 - ✅ `smcFindResetLimit` (0x40bd30)
 - ✅ `smcCheck` (0x40bd80)
@@ -706,7 +706,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/sysupdate</code>: 12 functions</summary>
+<summary><code>sysupdate</code>: 12 functions</summary>
 
 - ✅ `suGetPath` (0x40c240)
 - ✅ `suGetDir` (0x40c260)
@@ -723,7 +723,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/main</code>: 8 functions</summary>
+<summary><code>main</code>: 8 functions</summary>
 
 - ✅ `sigHandler` (0x40d010)
 - ✅ `installSignals` (0x40d0a0)
@@ -736,14 +736,14 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/mode_extract</code>: 2 functions</summary>
+<summary><code>mode_extract</code>: 2 functions</summary>
 
 - ✅ `extract_usage` (0x40e020)
 - ✅ `mode_extract` (0x40e200)
 
 </details>
 <details>
-<summary><code>app/xboxrom</code>: 7 functions</summary>
+<summary><code>xboxrom</code>: 7 functions</summary>
 
 - ✅ `kvVerifySig` (0x40e520)
 - ✅ `cbVerifySig` (0x40e5a0)
@@ -755,7 +755,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/image_write</code>: 46 functions</summary>
+<summary><code>image_write</code>: 46 functions</summary>
 
 - ✅ `imgAdd.constprop.1` (0x40e950)
 - ✅ `imgAdd.constprop.2` (0x40ecc0)
@@ -806,7 +806,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/keyvault</code>: 12 functions</summary>
+<summary><code>keyvault</code>: 12 functions</summary>
 
 - ✅ `kvGetType` (0x413090)
 - ✅ `kvIsLoaded` (0x4130b0)
@@ -823,7 +823,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/image_read</code>: 33 functions</summary>
+<summary><code>image_read</code>: 33 functions</summary>
 
 - ✅ `fsFind` (0x4136a0)
 - ✅ `buildCleanup` (0x4137f0)
@@ -861,7 +861,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/mode_ini</code>: 6 functions</summary>
+<summary><code>mode_ini</code>: 6 functions</summary>
 
 - ✅ `ini_usage` (0x418240)
 - ✅ `iniSetFile` (0x418380)
@@ -872,7 +872,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/mode_build</code>: 5 functions</summary>
+<summary><code>mode_build</code>: 5 functions</summary>
 
 - ✅ `build_usage` (0x418a10)
 - ✅ `loadKeyFile` (0x418ee0)
@@ -882,7 +882,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/keys</code>: 48 functions</summary>
+<summary><code>keys</code>: 48 functions</summary>
 
 - ✅ `keysInit` (0x41aa00)
 - ✅ `setCrlKey` (0x41abb0)
@@ -935,7 +935,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/net</code>: 32 functions</summary>
+<summary><code>net</code>: 32 functions</summary>
 
 - ✅ `netRecvVerbose.constprop.1` (0x41e800)
 - ✅ `netFree` (0x41ea70)
@@ -972,7 +972,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/fileutil</code>: 47 functions</summary>
+<summary><code>fileutil</code>: 47 functions</summary>
 
 - ✅ `getConsoleTypeStr` (0x420a90)
 - ✅ `getBeU16` (0x420ab0)
@@ -1024,7 +1024,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/options</code>: 19 functions</summary>
+<summary><code>options</code>: 19 functions</summary>
 
 - ✅ `baseFileExists.part.1` (0x4236f0)
 - ✅ `baseFileExists` (0x423730)
@@ -1048,7 +1048,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/build</code>: 41 functions</summary>
+<summary><code>build</code>: 41 functions</summary>
 
 - ✅ `loadBaseFile` (0x427500)
 - ✅ `findFileOffset` (0x427650)
@@ -1094,7 +1094,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/consoleinfo</code>: 13 functions</summary>
+<summary><code>consoleinfo</code>: 13 functions</summary>
 
 - ✅ `optOpen` (0x430460)
 - ✅ `optClose` (0x430540)
@@ -1112,7 +1112,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/console_hdd</code>: 14 functions</summary>
+<summary><code>console_hdd</code>: 14 functions</summary>
 
 - ✅ `createSysexDirs` (0x431c20)
 - ✅ `addTitleId` (0x431d20)
@@ -1131,7 +1131,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/log</code>: 7 functions</summary>
+<summary><code>log</code>: 7 functions</summary>
 
 - ✅ `log_set_verbose` (0x433570)
 - ✅ `log_verbose_flag` (0x4335a0)
@@ -1143,7 +1143,7 @@ Objects built entirely from C, in link order.
 
 </details>
 <details>
-<summary><code>app/crc32</code>: 1 functions</summary>
+<summary><code>crc32</code>: 1 functions</summary>
 
 - ✅ `crc32` (0x433800)
 

@@ -15,10 +15,10 @@
    -fno-toplevel-reorder (definition order).  Its `GCC:` ident stands for a
    data-only program object of the original (one ident more than the objects
    we know).  Every variable is aligned(4) like the block, and the pad arrays
-   stand for ld's alignment padding.  The types come from app/xebuild.h. */
+   stand for ld's alignment padding.  The types come from xebuild.h. */
 #include <time.h>
 #include "crypto/rc4/rc4.h"
-#include "app/xebuild.h"
+#include "xebuild.h"
 
 #define A4 __attribute__((aligned(4)))
 /* static, but in place: gcc would emit a plain static as .lcomm, which gas

@@ -1,7 +1,7 @@
 """6th session: python g.py NAME 'old'=>'new' ... ; writes v6_NAME.c from draft, prints mcvar+fncmp"""
 import sys, subprocess, os
 os.chdir(r'C:\Users\Win11VM\Documents\GitHub\xebuildBugFix')
-src = open('wip/app/mode_client.c').read()
+src = open('wip/mode_client.c').read()
 name = sys.argv[1]
 for rep in sys.argv[2:]:
     o, n = rep.split('=>')

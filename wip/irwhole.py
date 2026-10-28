@@ -1,6 +1,6 @@
-"""Make a whole-object src/app/image_read.c (no image_read.s) from the draft.
+"""Make a whole-object src/image_read.c (no image_read.s) from the draft.
 
-python wip/irwhole.py [draft.c] [out.c]   (wip/app/image_read.c, src/app/image_read.c)
+python wip/irwhole.py [draft.c] [out.c]   (wip/image_read.c, src/image_read.c)
 
 Built with -fno-toplevel-reorder, which emits functions and variables in
 definition order.  The string literals become `static const char ir_<addr>[]`
@@ -20,8 +20,8 @@ RDATA = 0x4521b8
 
 
 def main():
-    src_path = sys.argv[1] if len(sys.argv) > 1 else 'wip/app/image_read.c'
-    out_path = sys.argv[2] if len(sys.argv) > 2 else 'src/app/image_read.c'
+    src_path = sys.argv[1] if len(sys.argv) > 1 else 'wip/image_read.c'
+    out_path = sys.argv[2] if len(sys.argv) > 2 else 'src/image_read.c'
     src = open(src_path).read()
     first = src.index('\n/* gcc emits these in reverse */')
     end = src.index('\n\n', src.index('static struct mobile mobiles[10];'))

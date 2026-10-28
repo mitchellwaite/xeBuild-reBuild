@@ -15,7 +15,7 @@ Tie order (angle 4) is already exact: wip/fibsim.py replays gcc 6's fibonacci_he
 order is modelled, and the sims already explore it.
 
 ## Integration route for clientEraseBlock (angle 5)
-src/app/mode_client.c's clientEraseBlock matches unprofiled (fncmp 0) and its body is identical
+src/mode_client.c's clientEraseBlock matches unprofiled (fncmp 0) and its body is identical
 to sp.c's except extern literal names (sp.c's standalone diff 10 lines = literal/tail shape).
 So when a profiled mode_client matches: emit everything from the plain compile and only
 mode_client from the FDO compile, like build's loadBlFiles:

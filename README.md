@@ -46,7 +46,7 @@ tricks some functions needed to match, and the checks behind each step.
 | Path | Contents |
 |---|---|
 | `xeBuild.exe` | the reference binary (never modified) |
-| `src/app/` | the application's C source and headers |
+| `src/` | the application's C source and headers |
 | `src/crypto/` | XeCrypt (AES, RC4, SHA-1, MD5, DES, RSA/BigDigits) |
 | `src/globals.c` | the program's uninitialized globals |
 | `build.sh` | builds everything and checks the result |
@@ -85,5 +85,5 @@ also needs ddisasm under WSL; NOTES.md covers that.
   (`src/crypto/bign/bigdigitsCopyright.txt`) be kept in distributed
   executables. The original `xeBuild.exe` doesn't include it, so builds
   distributed with bug fixes should add it.
-- `src/app/timeutil.c` is based on Wine's time conversion code, and
-  `src/app/crc32.c` on Gary S. Brown's CRC-32.
+- `src/timeutil.c` is based on Wine's time conversion code, and
+  `src/crc32.c` on Gary S. Brown's CRC-32.

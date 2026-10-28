@@ -5,7 +5,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-#include "../crypto/xecrypt.h"
+#include "crypto/xecrypt.h"
 #include "xebuild.h"
 #include "console_hdd.h"
 #include "fileutil.h"
