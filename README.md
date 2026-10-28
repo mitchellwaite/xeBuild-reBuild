@@ -58,7 +58,7 @@ tricks some functions needed to match, and the checks behind each step.
 
 You need Windows with Git Bash and Python. First download the pinned
 toolchain (about 55 MB, unpacked to `tools/toolchain-4745/`; it also rebuilds
-two import libraries from mingw-w64's sources on GitHub):
+two import libraries from the mingw-w64 sources in `tools/mingw-w64/`):
 
 ```bash
 sh tools/fetch_toolchain.sh

@@ -25,19 +25,12 @@ done
 # _create_locale in msvcrt.def.in): the same objects as 4745, but newer
 # kernel32 and msvcrt import libraries, whose hints are in the exe.  No
 # package of it survives, so build those two as mingw-w64-crt does, from
-# e05f3e8's .def files (verified against tools/importlibs.sha256) with this
-# dlltool, each with 4745's own objects (lib32_lib*_a-*.o) added, and put
+# e05f3e8's .def files (kept in tools/mingw-w64) with this dlltool, each
+# with 4745's own objects (lib32_lib*_a-*.o) added, and put
 # them in the toolchain's lib directory in place of 4745's.  (They have to be
 # in the same directory as the other import libraries: ld's default script
 # sorts the .idata pieces by file name, directory included.)
-C=e05f3e86898d91b870c9c7256efd24c8dd6de9cb
-D=$T/pkgs/mingw-w64-crt-$C
-mkdir -p "$D/lib32" "$D/def-include"
-for f in $(sed 's/^.*\*//' "$T/importlibs.sha256" | tr -d '\r'); do
-  [ -f "$D/$f" ] || curl -sfL -o "$D/$f" \
-    "https://raw.githubusercontent.com/mingw-w64/mingw-w64/$C/mingw-w64-crt/$f"
-done
-(cd "$D" && sha256sum -c "$T/importlibs.sha256")
+D=$T/mingw-w64/mingw-w64-crt
 B=$O/mingw32/bin; L=$O/mingw32/i686-w64-mingw32/lib; I=$O/importlibs
 PATH="$B:$PATH"
 mkdir -p "$I"; cd "$I"

@@ -60,7 +60,7 @@ re/mapparse.py           GNU ld -Map parser
 re/runtime_syms.json     names of mingw runtime functions found in the exe
 tools/fetch_toolchain.sh download + verify + unpack the 2016 MSYS2 toolchain
 tools/packages.sha256    hashes of those packages
-tools/importlibs.sha256  hashes of the mingw-w64 .def files for kernel32/msvcrt
+tools/mingw-w64/         mingw-w64's kernel32/msvcrt .def files at e05f3e8 (+ COPYING)
 tools/ddisasm/           user-local ddisasm install for WSL, and the disassembly step
 build/                   generated, ignored
 ```
@@ -70,7 +70,7 @@ build/                   generated, ignored
 Toolchain (Git Bash, repo root). Downloads ~55 MB from the MIT Kodi mirror of
 old MSYS2 packages and unpacks to `tools/toolchain-4745/`, then rebuilds its
 kernel32 and msvcrt import libraries from mingw-w64's `.def` files at
-e05f3e8 (fetched from GitHub; Runtime below):
+e05f3e8 (kept in `tools/mingw-w64/`; Runtime below):
 
 ```bash
 sh tools/fetch_toolchain.sh
@@ -367,7 +367,8 @@ every runtime byte, given three things:
   the Wayback Machine), so `tools/fetch_toolchain.sh` builds libkernel32.a
   and libmsvcrt.a as mingw-w64-crt does (`cpp` for msvcrt.def.in, then
   `dlltool --as-flags=--32 -m i386 -k`, plus 4745's own `lib32_*` objects)
-  from e05f3e8's files, with the toolchain's dlltool, into the toolchain's
+  from e05f3e8's files (`tools/mingw-w64/`, unmodified, with mingw-w64's
+  licence), with the toolchain's dlltool, into the toolchain's
   lib directory: ld's default script sorts `.idata$N` pieces by file name
   including the directory, so all import libraries must sit together, as
   they did in the original's.
