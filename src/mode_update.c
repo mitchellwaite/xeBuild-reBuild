@@ -43,10 +43,10 @@ int hasHdd = 0;
 int updating = 0;
 struct consoleinfo *info = 0;
 
-/* Strings are literals where gcc emits them in the original's .rdata order
-   (expand-time block order).  Where it doesn't, the first ones of that
-   function are static arrays defined right before it (-fno-toplevel-reorder
-   emits them there), aligned as gcc aligns literals: 4 from 31 bytes. */
+/* gcc emits a function's literals in expand-time block order, so the
+   original's .rdata order shows its shape: parseAddonIdx, getAddons,
+   getKv, getBootloaders, getConsoleFiles and updateGetFile test for
+   success and log their errors after it. */
 
 NOPROF uint32_t getBadBlocks(void)
 {
@@ -130,8 +130,6 @@ NOPROF int wantFile(const char *name)
 	return ret;
 }
 
-static const char mu_44ce21[] __attribute__((aligned(1))) = "addon patch from console: %s\n";
-
 NOPROF void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, size_t idxLen)
 {
 	uint32_t e, i, n;
@@ -151,33 +149,29 @@ NOPROF void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, si
 		}
 		off += n * 8;
 		if (ok) {
-			if (xb.numPatches > 15) {
+			if (xb.numPatches <= 15) {
+				strcpy(name, (const char *)idx + off);
+				strcat(name, ".bin");
+				ok = 1;
+				for (i = 0; i < xb.numPatches; i++) {
+					if (!stricmp(name, xb.patches[i])) {
+						i = xb.numPatches;
+						ok = 0;
+					}
+				}
+				if (ok) {
+					strcpy(xb.patches[xb.numPatches], name);
+					xb.numPatches++;
+					log_printf(0, "addon patch from console: %s\n", idx + off);
+				}
+			} else {
 				log_printf(0, "***** WARNING: exceeded total number of optional patches while processing %s from console!\n", idx + off);
 				return;
-			}
-			strcpy(name, (const char *)idx + off);
-			strcat(name, ".bin");
-			ok = 1;
-			for (i = 0; i < xb.numPatches; i++) {
-				if (!stricmp(name, xb.patches[i])) {
-					i = xb.numPatches;
-					ok = 0;
-				}
-			}
-			if (ok) {
-				strcpy(xb.patches[xb.numPatches], name);
-				xb.numPatches++;
-				log_printf(0, mu_44ce21, idx + off);
 			}
 		}
 		off += 16;
 	}
 }
-
-static const char mu_44ce9c[] __attribute__((aligned(1))) = "addons";
-static const char mu_44cea3[] __attribute__((aligned(1))) = "OK, received 0x%x bytes\n";
-static const char mu_44cebc[] __attribute__((aligned(1))) = ".\\%d\\bin\\addon.idx";
-static const char mu_44ced0[] __attribute__((aligned(4))) = "\n\n***** WARNING: unable to open %s to parse addons.bin from console!\n";
 
 NOPROF void getAddons(void)
 {
@@ -186,20 +180,21 @@ NOPROF void getAddons(void)
 	size_t size;
 	char name[1024];
 
-	addons = netGetFile(mu_44ce9c, &len);
+	addons = netGetFile("addons", &len);
 	if (addons) {
-		log_printf(1, mu_44cea3, len);
-		if (len & 3)
+		log_printf(1, "OK, received 0x%x bytes\n", len);
+		if (!(len & 3)) {
+			if (len) {
+				sprintf(name, ".\\%d\\bin\\addon.idx", *(uint16_t *)((uint8_t *)info + 5));
+				idx = FileToBuffer(name, &size);
+				if (idx) {
+					parseAddonIdx(addons, len, idx, size);
+					free(idx);
+				} else
+					log_printf(0, "\n\n***** WARNING: unable to open %s to parse addons.bin from console!\n", name);
+			}
+		} else
 			log_printf(0, "\n\n***** WARNING: addons.bin from console is not a multiple of 4 bytes! Skipping!\n");
-		else if (len) {
-			sprintf(name, mu_44cebc, *(uint16_t *)((uint8_t *)info + 5));
-			idx = FileToBuffer(name, &size);
-			if (idx) {
-				parseAddonIdx(addons, len, idx, size);
-				free(idx);
-			} else
-				log_printf(0, mu_44ced0, name);
-		}
 		netFree(addons);
 	} else
 		log_printf(0, "\n\n***** WARNING: Unable to retrieve addons.bin from console!\n");
@@ -229,7 +224,7 @@ NOPROF uint32_t getMobileFiles(const char *dir)
 					xb.mobile[i].size = 1024;
 				else if (i == 10)
 					xb.mobile[i].size = 128;
-				log_printf(1, mu_44cea3, xb.mobile[i].size);
+				log_printf(1, "OK, received 0x%x bytes\n", xb.mobile[i].size);
 				if (dir)
 					writeFileIn(dir, name, xb.mobile[i].data, xb.mobile[i].size);
 			} else
@@ -240,7 +235,7 @@ NOPROF uint32_t getMobileFiles(const char *dir)
 		log_printf(1, "retrieving USVR\\blmod...");
 		xb.consoleBlmod.data = netGetFile("blmod", &xb.consoleBlmod.size);
 		if (xb.consoleBlmod.data && xb.consoleBlmod.size)
-			log_printf(1, mu_44cea3, xb.consoleBlmod.size);
+			log_printf(1, "OK, received 0x%x bytes\n", xb.consoleBlmod.size);
 		else
 			log_printf(0, "\n\n***** WARNING: Unable to retrieve blmod.bin data from console!\n");
 		netFree(xb.consoleBlmod.data);
@@ -295,13 +290,6 @@ NOPROF uint8_t *bldrGetSmc(int *size)
 	return smc;
 }
 
-static const char mu_44d1f4[] __attribute__((aligned(4))) = "\n------ getting security files ------\n";
-static const char mu_44d21c[] __attribute__((aligned(4))) = "OK, received 0x%x bytes\n        ";
-static const char mu_44d23d[] __attribute__((aligned(1))) = "retrieving USVR\\kv_enc...";
-static const char mu_44d257[] __attribute__((aligned(1))) = "kv_enc";
-static const char mu_44d25e[] __attribute__((aligned(1))) = "extracting BLDR\\kv_enc...";
-static const char mu_44d278[] __attribute__((aligned(4))) = "OK, received 0x%x bytes\n        decrypt and verify...";
-
 NOPROF static uint32_t getSmc(const char *dir)
 {
 	if (!xb.fromConsole) {
@@ -312,7 +300,7 @@ NOPROF static uint32_t getSmc(const char *dir)
 		xb.smc.data = bldrGetSmc(&xb.smc.size);
 	}
 	if (xb.smc.data && xb.smc.size > 0x2fff) {
-		log_printf(1, mu_44d278, xb.smc.size);
+		log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.smc.size);
 		if (unscramble(xb.smc.data, xb.smc.size)) {
 			log_printf(1, "smc is good!\n");
 			setSmcKey(xb.smc.data);
@@ -327,42 +315,38 @@ NOPROF static uint32_t getSmc(const char *dir)
 	return 0;
 }
 
-static const char mu_44d2ae[] __attribute__((aligned(1))) = "keyvault is good!\n";
-static const char mu_44d2c1[] __attribute__((aligned(1))) = "kv.bin";
-static const char mu_44d2c8[] __attribute__((aligned(4))) = "\n***** ERROR: could not decrypt keyvault from console!\n";
-
 NOPROF static uint32_t getKv(const char *dir)
 {
 	uint32_t ret;
 
 	if (!xb.fromConsole) {
-		log_printf(1, mu_44d23d);
-		xb.kv.data = netGetFile(mu_44d257, &xb.kv.size);
+		log_printf(1, "retrieving USVR\\kv_enc...");
+		xb.kv.data = netGetFile("kv_enc", &xb.kv.size);
 	} else {
-		log_printf(1, mu_44d25e);
+		log_printf(1, "extracting BLDR\\kv_enc...");
 		xb.kv.data = bldrGetKv(&xb.kv.size);
 	}
-	if (!xb.kv.data || xb.kv.size <= 0x3fff) {
-		log_printf(0, "\n***** ERROR: could not retrieve keyvault from console!\n");
-		return 0;
+	if (xb.kv.data && xb.kv.size > 0x3fff) {
+		log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.kv.size);
+		ret = verifyExtendedU32(xb.kv.data, xb.kv.size);
+		if (ret) {
+			log_printf(1, "keyvault is good!\n");
+			setKvSalt(xb.kv.data + 16);
+			if (dir)
+				writeFileIn(dir, "kv.bin", xb.kv.data, xb.kv.size);
+		} else
+			log_printf(0, "\n***** ERROR: could not decrypt keyvault from console!\n");
+		return ret;
 	}
-	log_printf(1, mu_44d278, xb.kv.size);
-	ret = verifyExtendedU32(xb.kv.data, xb.kv.size);
-	if (ret) {
-		log_printf(1, mu_44d2ae);
-		setKvSalt(xb.kv.data + 16);
-		if (dir)
-			writeFileIn(dir, mu_44d2c1, xb.kv.data, xb.kv.size);
-	} else
-		log_printf(0, mu_44d2c8);
-	return ret;
+	log_printf(0, "\n***** ERROR: could not retrieve keyvault from console!\n");
+	return 0;
 }
 
 NOPROF uint32_t getSecurityFiles(const char *dir)
 {
 	uint32_t i;
 
-	log_printf(1, mu_44d1f4);
+	log_printf(1, "\n------ getting security files ------\n");
 	for (i = 0; i < xb.nFlashFiles2; i++) {
 		if (!xb.flashFiles[i][0])
 			continue;
@@ -372,7 +356,7 @@ NOPROF uint32_t getSecurityFiles(const char *dir)
 		log_printf(1, "retrieving USVR\\%s...", xb.flashFiles[i]);
 		xb.flashBuf[i] = netGetFile(path, &xb.flashSize[i]);
 		if (xb.flashBuf[i] && xb.flashSize[i]) {
-			log_printf(1, mu_44d21c, xb.flashSize[i]);
+			log_printf(1, "OK, received 0x%x bytes\n        ", xb.flashSize[i]);
 			verifyFlashFile(i);
 			if (dir)
 				writeFileIn(dir, xb.flashFiles[i], xb.flashBuf[i], xb.flashSize[i]);
@@ -391,65 +375,46 @@ NOPROF uint32_t checkBadBlocks(void)
 	return getBadBlocks();
 }
 
-static const char mu_44d400[] __attribute__((aligned(4))) = "\n------ getting bootloaders ------\n";
-static const char mu_44d424[] __attribute__((aligned(1))) = "reading bootloader data...";
-static const char mu_44d440[] __attribute__((aligned(4))) = "success! Bootloader size with xell is 0x%08x\n";
-static const char mu_44d46e[] __attribute__((aligned(1))) = "fbldrs.bin";
-static const char mu_44d479[] __attribute__((aligned(1))) = "failed!\n";
-
 NOPROF uint32_t getBootloaders(const char *dir)
 {
-	log_printf(1, mu_44d400);
-	if (xb.type != 3) {
-		log_printf(1, "Skipping getting bootloaders on non-glitch machine!\n");
-		return 1;
-	}
-	log_printf(1, mu_44d424);
-	xb.bl.data = netGetBldrs(&xb.bl.size);
-	if (!xb.bl.data || !xb.bl.size) {
-		log_printf(1, mu_44d479);
+	log_printf(1, "\n------ getting bootloaders ------\n");
+	if (xb.type == 3) {
+		log_printf(1, "reading bootloader data...");
+		xb.bl.data = netGetBldrs(&xb.bl.size);
+		if (xb.bl.data && xb.bl.size) {
+			log_printf(1, "success! Bootloader size with xell is 0x%08x\n", xb.bl.size);
+			if (dir)
+				writeFileIn(dir, "fbldrs.bin", xb.bl.data, xb.bl.size);
+			xb.fromConsole = 1;
+			return 1;
+		}
+		log_printf(1, "failed!\n");
 		return 0;
 	}
-	log_printf(1, mu_44d440, xb.bl.size);
-	if (dir)
-		writeFileIn(dir, mu_44d46e, xb.bl.data, xb.bl.size);
-	xb.fromConsole = 1;
+	log_printf(1, "Skipping getting bootloaders on non-glitch machine!\n");
 	return 1;
 }
-
-static const char mu_44d4b9[] __attribute__((aligned(1))) = "\\SystemRoot";
-static const char mu_44d4c5[] __attribute__((aligned(1))) = "usv";
-static const char mu_44d4cc[] __attribute__((aligned(4))) = "\n***** ERROR: getting raw boot loaders failed!\n";
-static const char mu_44d4fc[] __attribute__((aligned(4))) = "\n***** ERROR: getting mobile files failed!\n";
-static const char mu_44d528[] __attribute__((aligned(4))) = "\n***** ERROR: retrieving security files failed!\n";
-static const char mu_44d55c[] __attribute__((aligned(4))) = "\n***** ERROR: mounting remote SystemRoot failed!\n";
 
 NOPROF int getConsoleFiles(const char *dir)
 {
-	if (!checkBadBlocks()) {
+	if (checkBadBlocks()) {
+		if (__builtin_expect(netMount("usv", "\\SystemRoot"), 1)) {
+			if (!getBootloaders(dir)) {
+				log_printf(0, "\n***** ERROR: getting raw boot loaders failed!\n");
+				return 0;
+			}
+			if (getSecurityFiles(dir)) {
+				if (getMobileFiles(dir))
+					return 1;
+				log_printf(0, "\n***** ERROR: getting mobile files failed!\n");
+			} else
+				log_printf(0, "\n***** ERROR: retrieving security files failed!\n");
+		} else
+			log_printf(0, "\n***** ERROR: mounting remote SystemRoot failed!\n");
+	} else
 		log_printf(0, "\n***** ERROR: getting bad blocks failed!\n");
-		return 0;
-	}
-	if (!__builtin_expect(netMount(mu_44d4c5, mu_44d4b9), 1)) {
-		log_printf(0, mu_44d55c);
-		return 0;
-	}
-	if (!getBootloaders(dir)) {
-		log_printf(0, mu_44d4cc);
-		return 0;
-	}
-	if (!getSecurityFiles(dir)) {
-		log_printf(0, mu_44d528);
-		return 0;
-	}
-	if (!getMobileFiles(dir)) {
-		log_printf(0, mu_44d4fc);
-		return 0;
-	}
-	return 1;
+	return 0;
 }
-
-static const char mu_44d5ba[] __attribute__((aligned(1))) = "failed! received 0 bytes\n";
 
 NOPROF int updateGetFile(const char *name, uint8_t **data, int *size)
 {
@@ -472,19 +437,19 @@ NOPROF int updateGetFile(const char *name, uint8_t **data, int *size)
 			strcpy(file + 5, name);
 		log_printf(1, "retrieving USVR\\%s...", name);
 		buf = netGetFile(file, (int *)&len);
-		if (!buf) {
-			log_printf(1, "failed! file not found on console\n");
-			return 0;
+		if (buf) {
+			if (!len) {
+				log_printf(1, "failed! received 0 bytes\n");
+				free(buf);
+				return 0;
+			}
+			log_printf(1, "OK, received 0x%x bytes\n", len);
+			*data = buf;
+			*size = len;
+			return 1;
 		}
-		if (!len) {
-			log_printf(1, mu_44d5ba);
-			free(buf);
-			return 0;
-		}
-		log_printf(1, mu_44cea3, len);
-		*data = buf;
-		*size = len;
-		return 1;
+		log_printf(1, "failed! file not found on console\n");
+		return 0;
 	}
 	return on;
 }
@@ -497,7 +462,7 @@ static void updateNand(char *dumpDir, int *pret)
 		updating = 1;
 		ret = buildImage();
 		if (!ret) {
-			netUnmount(mu_44d4c5);
+			netUnmount("usv");
 			if (dumpDir) {
 				char nand[1024];
 
@@ -506,7 +471,7 @@ static void updateNand(char *dumpDir, int *pret)
 				log_printf(1, "\n------ dumping console flash ------\n");
 				if (!netDumpNand(nand)) {
 					ret = 5;
-					log_printf(0, mu_44d479);
+					log_printf(0, "failed!\n");
 				}
 			}
 			log_printf(1, "\n------ flashing console ------\n");

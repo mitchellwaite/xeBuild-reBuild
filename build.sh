@@ -109,8 +109,7 @@ for f in $objects globals; do
     # iniPreParse: vectorization makes PRE drop a PHI; its ';' hint (65-66)
     # makes its memcpy block hot enough to be aligned; parseIni needs
     # LRA's EBBs to stop at a 50% fallthrough (51-70 work);
-    # -fno-toplevel-reorder emits parseIni's string arrays and the tables
-    # in definition order
+    # -fno-toplevel-reorder emits the tables in definition order
     filelist_ini) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder -fno-tree-loop-vectorize --param builtin-expect-probability=65
                    --param lra-inheritance-ebb-probability-cutoff=60" ;;

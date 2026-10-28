@@ -150,14 +150,19 @@ does nothing.
   `.eh_frame` as top-level `__asm__` between the C functions. `progress.py`
   counts a function whose label is in a `.c`'s asm as assembly, and an
   object with any top-level asm left as not fully C.
-- Whole objects in C (`filelist_ini`, `bootloaders`): gcc emits a
-  function's literals in expand-time block order, which can differ from
-  the original's even when the code matches (error messages first). Such
-  strings are `static const char` arrays in the original's order, defined
-  before the first function that uses them, and the object is built with
-  `-fno-toplevel-reorder` so they are emitted in place. Each gets
-  `aligned(4)` from 31 bytes, else `aligned(1)` (a literal's alignment; a
-  user alignment stops gcc's 4/32-byte array bump).
+- String order: gcc emits a function's literals in expand-time block
+  order, which can differ from the original's even when the code matches
+  (error messages first). The order shows the original's shape: write the
+  function success-first (error in an else, or after the main path) and
+  the literals line up, usually with identical code (bootloaders, keys,
+  mode_update, filelist_ini). Where the shape is pinned by layout, an
+  empty `__asm__("" :: "i"("literal"))` pulls a literal earlier without
+  touching codegen (it makes no SSA names). Older objects still keep such
+  strings as `static const char` arrays in the original's order, defined
+  before the first function that uses them and emitted in place by
+  `-fno-toplevel-reorder`; each gets `aligned(4)` from 31 bytes, else
+  `aligned(1)` (a literal's alignment; a user alignment stops gcc's
+  4/32-byte array bump).
 - The C functions can't emit data (string literals, statics); `splice.py`
   refuses. Declare the `.s`'s data `extern` under `SYMBOLS` names instead
   (`iniBuf`, `iniSize`). Literals move when the whole object goes to C.
@@ -181,8 +186,8 @@ function already in C. Its default flags are `-O3`; give fileutil's
 `--param` or crypto's `-Isrc/crypto` explicitly.
 
 The first mixed object was `filelist_ini` (whole C now; parseIni's
-strings are `static const` arrays defined before it so that, with
-`-fno-toplevel-reorder`, they keep the original's `.rdata` order; `getIniValue`, with a `findInst`-style
+strings are literals, in the original's `.rdata` order through its shape
+and three `asm "i"` hints; `getIniValue`, with a `findInst`-style
 `findIniKey` helper inlined; its siblings at 40aad0/40abf0 inline the same
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
 `findInst`. And `options` (whole object in C now, no `.s`):
@@ -248,11 +253,11 @@ profile. The other functions are `optimize("no-branch-probabilities",
 "no-reorder-functions")` (`NOPROF`), so they keep the guessed profile and
 `.text`. getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the
-original's is. 126 of its 152 strings are plain literals, which gcc
-emits in the original's `.rdata` order; in seven functions the first few
-aren't, so those are static arrays defined right before the function. The
-variables are zero-initialized globals in `.bss` order. Both rely on
-`-fno-toplevel-reorder` (the filelist_ini recipe).
+original's is. Its strings are plain literals: the functions whose
+literals came out of order are written success-first (errors in an else
+or after the main path), which gives the original's `.rdata` order. The
+variables are zero-initialized globals in `.bss` order, which relies on
+`-fno-toplevel-reorder`.
 
 And `image_write` (whole object in C, no `.s`; `-O3 --param
 builtin-expect-probability=50`, default top-level order).

@@ -378,10 +378,13 @@ How the others matched:
 ## filelist_ini (draft: wip/filelist_ini.c)
 
 Whole object in C now (no filelist_ini.s). The literal order gcc emits for parseIni
-(expand-time block order) puts error strings before the code they follow in the
-original, so its strings are `static const` arrays in the original's order, defined
-before it and emitted in place by `-fno-toplevel-reorder` (`aligned(4)` from 31 bytes,
-`aligned(1)` below: a user alignment stops gcc's array bump). validChars and
+(expand-time block order) put error strings before the code they follow in the
+original. parseIni's strings are literals now: [version] and the bl label are
+success-first with the error in an else, [rawpatch] nests its name-length check, and
+three empty `asm "i"` hints emit the rest early. Reshaping those three spots
+instead (an else for [rawpatch]'s "not found", a nested [flashfs] path check, an
+inline secName) renumbers SSA names under the dead `< -1` stores or moves IRA's
+choices; single and paired dead-store searches didn't recover them. validChars and
 consoleNames are defined after loadUserIni (extern before) for the same reason.
 
 Mixed since 17269c2; built from src/filelist_ini.c: getIniValue, memFindStr (4-arg,
