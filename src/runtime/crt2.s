@@ -10,6 +10,7 @@
 .intel_syntax noprefix
 .globl L_401010
 .globl L_401130
+.globl _mainCRTStartup
 
 .text
 .p2align 4
@@ -32,7 +33,7 @@ FUN_401000:
 L_401010:
           sub ESP,28
           xor EAX,EAX
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           mov DWORD PTR [L_479e2c],1
           mov DWORD PTR [L_479e28],1
           mov DWORD PTR [L_479e24],1
@@ -73,9 +74,9 @@ L_4010a0:
           .byte 0x66
           .byte 0x90
 L_4010b0:
-          mov EDX,DWORD PTR [__ImageBase+60]
-          cmp DWORD PTR [EDX+__ImageBase],17744
-          lea ECX,DWORD PTR [EDX+__ImageBase]
+          mov EDX,DWORD PTR [__image_base__+60]
+          cmp DWORD PTR [EDX+__image_base__],17744
+          lea ECX,DWORD PTR [EDX+__image_base__]
           jne L_401048
           movzx EDX,WORD PTR [ECX+24]
           cmp DX,267
@@ -204,7 +205,7 @@ L_401279:
           call FUN_4492b0
           call FUN_446fb0
           mov EAX,DWORD PTR [_acmdln]
-          mov DWORD PTR [L_479e7c],OFFSET __ImageBase
+          mov DWORD PTR [L_479e7c],OFFSET __image_base__
           mov EAX,DWORD PTR [EAX]
           test EAX,EAX
           je L_401314
@@ -377,9 +378,7 @@ L_4014c0:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-.globl __EntryPoint
-__EntryPoint:
-L_4014e0:
+_mainCRTStartup:
           sub ESP,12
           mov DWORD PTR [L_479e38],0
           call FUN_446cd0
@@ -618,7 +617,7 @@ L_44a000:
           .byte 0x0
           .byte 0x0
           .byte 0x0
-          .long L_4014e0 - .
+          .long _mainCRTStartup - .
           .byte 0x1a
           .byte 0x0
           .byte 0x0

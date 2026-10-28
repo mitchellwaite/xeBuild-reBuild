@@ -95,7 +95,6 @@ runtime/ms_vsnprintf
 runtime/import_stubs
 runtime/libmingwex/invalid_parameter_handler
 runtime/crtend
-runtime/ctor_dtor_lists
 runtime/no_code_objects
 globals
 runtime/idata

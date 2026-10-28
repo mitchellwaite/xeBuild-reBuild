@@ -180,39 +180,39 @@ L_4471a0:
           lea EAX,DWORD PTR [ESP+31]
           and EAX,4294967280
           mov DWORD PTR [L_479e44],EAX
-          mov EAX,OFFSET L_464900_END
-          sub EAX,OFFSET L_464900_END
+          mov EAX,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST_END__
+          sub EAX,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST__
           cmp EAX,7
           jle L_447193
           cmp EAX,11
           jle L_447360
-          mov EAX,DWORD PTR [L_464900_END]
+          mov EAX,DWORD PTR [___RUNTIME_PSEUDO_RELOC_LIST__]
           test EAX,EAX
           jne L_447288
-          mov EAX,DWORD PTR [L_464900_END+4]
+          mov EAX,DWORD PTR [___RUNTIME_PSEUDO_RELOC_LIST__+4]
           test EAX,EAX
           jne L_447288
-          mov EAX,DWORD PTR [L_464900_END+8]
-          mov ESI,OFFSET L_464900_END+12
+          mov EAX,DWORD PTR [___RUNTIME_PSEUDO_RELOC_LIST__+8]
+          mov ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST__+12
           test EAX,EAX
           je L_447365
-          mov ESI,OFFSET L_464900_END
+          mov ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST__
 L_447221:
           mov EAX,DWORD PTR [ESI+8]
           cmp EAX,1
           jne L_447433
           add ESI,12
-          cmp ESI,OFFSET L_464900_END
+          cmp ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST_END__
           jae L_447193
           mov DWORD PTR [EBP-64],EBX
 L_44723f:
           mov EAX,DWORD PTR [ESI]
           movzx EDX,BYTE PTR [ESI+8]
           mov EDI,DWORD PTR [ESI+4]
-          lea ECX,DWORD PTR [EAX+__ImageBase]
-          mov EAX,DWORD PTR [EAX+__ImageBase]
+          lea ECX,DWORD PTR [EAX+__image_base__]
+          mov EAX,DWORD PTR [EAX+__image_base__]
           cmp EDX,16
-          lea EBX,DWORD PTR [EDI+__ImageBase]
+          lea EBX,DWORD PTR [EDI+__image_base__]
           mov DWORD PTR [EBP-60],EAX
           je L_44737f
           cmp EDX,32
@@ -223,9 +223,9 @@ L_44723f:
           mov DWORD PTR [ESP],OFFSET L_463490
           call FUN_446fe0
 L_447288:
-          mov ESI,OFFSET L_464900_END
+          mov ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST__
 L_44728d:
-          cmp ESI,OFFSET L_464900_END
+          cmp ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST_END__
           jae L_447193
           mov DWORD PTR [EBP-60],EBX
           .byte 0x8d,0x74,0x26,0x00   # lea ESI,DWORD PTR [ESI]
@@ -233,12 +233,12 @@ L_4472a0:
           mov EDI,DWORD PTR [ESI+4]
           mov EDX,DWORD PTR [ESI]
           add ESI,8
-          add EDX,DWORD PTR [EDI+__ImageBase]
-          lea EAX,DWORD PTR [EDI+__ImageBase]
+          add EDX,DWORD PTR [EDI+__image_base__]
+          lea EAX,DWORD PTR [EDI+__image_base__]
           mov EBX,EDX
           call FUN_447040
-          cmp ESI,OFFSET L_464900_END
-          mov DWORD PTR [EDI+__ImageBase],EBX
+          cmp ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST_END__
+          mov DWORD PTR [EDI+__image_base__],EBX
           jb L_4472a0
           mov EBX,DWORD PTR [EBP-60]
           mov EAX,DWORD PTR [L_479e40]
@@ -289,7 +289,7 @@ L_447357:
           mov ESI,ESI
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_447360:
-          mov ESI,OFFSET L_464900_END
+          mov ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST__
 L_447365:
           mov EDI,DWORD PTR [ESI]
           test EDI,EDI
@@ -299,10 +299,10 @@ L_447365:
           je L_447221
           jmp L_44728d
 L_44737f:
-          movzx EDX,WORD PTR [EDI+__ImageBase]
+          movzx EDX,WORD PTR [EDI+__image_base__]
           mov EAX,EDX
           or EAX,4294901760
-          cmp WORD PTR [EDI+__ImageBase],0
+          cmp WORD PTR [EDI+__image_base__],0
           cmovs EDX,EAX
           mov EAX,DWORD PTR [EBP-60]
           sub EDX,ECX
@@ -311,10 +311,10 @@ L_44737f:
           mov EAX,EBX
           call FUN_447040
           movzx EAX,WORD PTR [EBP-52]
-          mov WORD PTR [EDI+__ImageBase],AX
+          mov WORD PTR [EDI+__image_base__],AX
 L_4473b4:
           add ESI,12
-          cmp ESI,OFFSET L_464900_END
+          cmp ESI,OFFSET ___RUNTIME_PSEUDO_RELOC_LIST_END__
           jb L_44723f
           mov EBX,DWORD PTR [EBP-64]
           mov EAX,DWORD PTR [L_479e40]

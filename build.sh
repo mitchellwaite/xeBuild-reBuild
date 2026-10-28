@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build every object in src/objects.txt (src/<obj>.c with gcc if it exists,
-# else src/<obj>.s with as), link them with src/link.ld into build/xeBuild.exe
+# else src/<obj>.s with as), link them with ld's default script into build/xeBuild.exe
 # and check it against the reference.  Run from the repo root in Git Bash after
 # tools/fetch_toolchain.sh.
 set -e
@@ -177,8 +177,8 @@ for f in $(grep -v '^#' src/objects.txt | tr -d '\r'); do
   fi
   objs="$objs $OBJ/$f.o"
 done
-"$TC/ld.exe" -m i386pe -T src/link.ld --image-base 0x400000 -e __EntryPoint \
-  --subsystem console -s --no-insert-timestamp -Map build/xeBuild.map \
+# ld's default i386pe link script, image base, entry point and subsystem
+"$TC/ld.exe" -m i386pe -s --no-insert-timestamp -Map build/xeBuild.map \
   -o build/xeBuild.exe $objs
 # original link time; ld 2.27 can't take a fixed timestamp itself
 python re/stamp.py build/xeBuild.exe 0x5DCAB029

@@ -96,7 +96,7 @@ L_447900:
           call _strlen
           cmp EAX,8
           ja L_447925
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           je L_447930
 L_447925:
           add ESP,28
@@ -108,13 +108,13 @@ L_447925:
           ret 
           .byte 0x90
 L_447930:
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
           je L_447925
-          mov EAX,DWORD PTR [__ImageBase+60]
-          movzx EDX,WORD PTR [EAX+__ImageBase+20]
-          add EAX,OFFSET __ImageBase
+          mov EAX,DWORD PTR [__image_base__+60]
+          movzx EDX,WORD PTR [EAX+__image_base__+20]
+          add EAX,OFFSET __image_base__
           movzx EBP,WORD PTR [EAX+6]
           lea EBX,DWORD PTR [EAX+EDX*1+24]
           test EBP,EBP
@@ -145,22 +145,22 @@ L_447982:
           .byte 0x90
 FUN_447990:
           xor EDX,EDX
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           je L_4479a0
           mov EAX,EDX
           ret 
 L_4479a0:
           push ESI
           push EBX
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
           je L_4479fa
-          mov EAX,DWORD PTR [__ImageBase+60]
+          mov EAX,DWORD PTR [__image_base__+60]
           mov EBX,DWORD PTR [ESP+12]
-          movzx EDX,WORD PTR [EAX+__ImageBase+20]
-          add EAX,OFFSET __ImageBase
-          sub EBX,OFFSET __ImageBase
+          movzx EDX,WORD PTR [EAX+__image_base__+20]
+          add EAX,OFFSET __image_base__
+          sub EBX,OFFSET __image_base__
           movzx ESI,WORD PTR [EAX+6]
           lea EDX,DWORD PTR [EAX+EDX*1+24]
           test ESI,ESI
@@ -189,18 +189,18 @@ L_4479fa:
           .byte 0x90
 FUN_447a00:
           xor EDX,EDX
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           je L_447a10
 L_447a0d:
           mov EAX,EDX
           ret 
 L_447a10:
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
           je L_447a0d
-          mov EAX,DWORD PTR [__ImageBase+60]
-          movzx EDX,WORD PTR [EAX+__ImageBase+6]
+          mov EAX,DWORD PTR [__image_base__+60]
+          movzx EDX,WORD PTR [EAX+__image_base__+6]
           mov EAX,EDX
           ret 
           .byte 0x8d
@@ -208,7 +208,7 @@ L_447a10:
           .byte 0x0
 L_447a30:
           xor EDX,EDX
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           push EBX
           mov ECX,DWORD PTR [ESP+8]
           je L_447a50
@@ -221,13 +221,13 @@ L_447a42:
           .byte 0x0
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_447a50:
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
           je L_447a42
-          mov EAX,DWORD PTR [__ImageBase+60]
-          movzx EDX,WORD PTR [EAX+__ImageBase+20]
-          add EAX,OFFSET __ImageBase
+          mov EAX,DWORD PTR [__image_base__+60]
+          movzx EDX,WORD PTR [EAX+__image_base__+20]
+          add EAX,OFFSET __image_base__
           movzx EBX,WORD PTR [EAX+6]
           lea EDX,DWORD PTR [EAX+EDX*1+24]
           test EBX,EBX
@@ -255,15 +255,15 @@ L_447a97:
           .byte 0x0
 FUN_447aa0:
           xor EDX,EDX
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           je L_447ab0
           mov EAX,EDX
           ret 
 L_447ab0:
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           cmovne EDX,EAX
           mov EAX,EDX
           ret 
@@ -272,7 +272,7 @@ L_447ac7:
           .byte 0x8d,0xbc,0x27,0x00,0x00,0x00,0x00   # lea EDI,DWORD PTR [EDI]
 L_447ad0:
           xor EAX,EAX
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           je L_447ae0
           ret 
           .byte 0x66
@@ -280,15 +280,15 @@ L_447ad0:
 L_447ae0:
           push ESI
           push EBX
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
           je L_447b3a
-          mov EAX,DWORD PTR [__ImageBase+60]
+          mov EAX,DWORD PTR [__image_base__+60]
           mov EBX,DWORD PTR [ESP+12]
-          lea EDX,DWORD PTR [EAX+__ImageBase]
-          movzx EAX,WORD PTR [EAX+__ImageBase+20]
-          sub EBX,OFFSET __ImageBase
+          lea EDX,DWORD PTR [EAX+__image_base__]
+          movzx EAX,WORD PTR [EAX+__image_base__+20]
+          sub EBX,OFFSET __image_base__
           movzx ESI,WORD PTR [EDX+6]
           lea EAX,DWORD PTR [EDX+EAX*1+24]
           test ESI,ESI
@@ -331,7 +331,7 @@ L_447b50:
           push EDI
           push ESI
           xor ESI,ESI
-          cmp WORD PTR [__ImageBase],23117
+          cmp WORD PTR [__image_base__],23117
           push EBX
           mov EBX,DWORD PTR [ESP+16]
           je L_447b70
@@ -348,13 +348,13 @@ L_447b64:
           .byte 0x0
           .byte 0x0
 L_447b70:
-          mov EAX,OFFSET __ImageBase
+          mov EAX,OFFSET __image_base__
           call FUN_447880
           test EAX,EAX
           je L_447b64
-          mov EAX,DWORD PTR [__ImageBase+60]
-          lea ECX,DWORD PTR [EAX+__ImageBase]
-          mov EAX,DWORD PTR [EAX+__ImageBase+128]
+          mov EAX,DWORD PTR [__image_base__+60]
+          lea ECX,DWORD PTR [EAX+__image_base__]
+          mov EAX,DWORD PTR [EAX+__image_base__+128]
           test EAX,EAX
           je L_447b64
           movzx EDI,WORD PTR [ECX+6]
@@ -382,7 +382,7 @@ L_447bbb:
           pop EDI
           ret 
 L_447bc3:
-          add EAX,OFFSET __ImageBase
+          add EAX,OFFSET __image_base__
           jne L_447bd6
           jmp L_447bbb
           .byte 0x8d
@@ -404,7 +404,7 @@ L_447be4:
           jg L_447bd0
           mov ESI,DWORD PTR [EAX+12]
           pop EBX
-          add ESI,OFFSET __ImageBase
+          add ESI,OFFSET __image_base__
           mov EAX,ESI
           pop ESI
           pop EDI

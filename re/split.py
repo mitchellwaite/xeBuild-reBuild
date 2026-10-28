@@ -329,6 +329,8 @@ SYMBOLS = {
     0x4481c0: '_opendir', 0x448360: '_readdir', 0x448470: '_closedir',
     # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to globals.c)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
+    # crt2's entry point, ld's default entry for console programs
+    0x4014e0: '_mainCRTStartup',
     # mingw-w64 crt's COMMON globals (atonexit.c, natstart.c), in globals.c
     0x50ec88: '___onexitend', 0x50ec8c: '___onexitbegin',
     0x50ec90: '___native_startup_lock', 0x50ec94: '___native_startup_state',
@@ -496,7 +498,28 @@ C_FUNCS = set()
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
 STUBS = (0x449038, 'runtime/import_stubs', 'dlltool `jmp [__imp_x]` stubs, no unwind info')
 STARTUP = 0x4492c0          # .text.startup begins (main)
-LISTS = (0x4497a0, 0x4497b4, 'runtime/ctor_dtor_lists', '__CTOR_LIST__/__DTOR_LIST__ from the link script')
+# What ld's default i386pe link script (`ld --verbose`) writes and defines.
+# At the end of .text it writes the ctor/dtor lists (-1, the .ctors entries, 0;
+# -1, 0), whose one entry is crtend's register_frame_ctor (.ctors.65535), and
+# after .idata$2/$3 the null import descriptor; those words are left out of the
+# .s files.  Its symbols replace the labels ddisasm gave their addresses, and
+# __image_base__ (which ld defines for PE) replaces ddisasm's __ImageBase.
+CTOR_LIST = 0x4497a0
+CTORS = (0x4497a4, 0x4497a8)
+SCRIPT_DATA = [(CTOR_LIST, 0x4497b4), (0x50f050, 0x50f064)]
+SCRIPT_SYMS = {'__ImageBase': '__image_base__', 'L_4497a0': '___CTOR_LIST__',
+               'L_4497b0': '___DTOR_LIST__+4', 'L_464900_END': '___RUNTIME_PSEUDO_RELOC_LIST__'}
+# pseudo-reloc's loop ends: the list is empty, so its end has the same address
+PSEUDO_END = {0x4471dc, 0x447230, 0x44728d, 0x4472bb, 0x4473b7}
+# labels ddfix adds for re/single.ld that the default script defines or
+# replaces: the IAT bounds and the entry point (ld's default, _mainCRTStartup)
+SCRIPT_LABELS = {'__IAT_start__', '__IAT_end__', '__EntryPoint'}
+# .idata as the import libraries' .idata$N sections build it (the script sorts
+# them by N): descriptors, lookup tables, IAT, hint/names, then the DLL names
+# and the head pointers of each import
+IDATA = [(0x50f000, 0x50f050, '.idata$2'), (0x50f064, 0x50f258, '.idata$4'),
+         (0x50f258, 0x50f44c, '.idata$5'), (0x50f44c, 0x50fa58, '.idata$6'),
+         (0x50fa58, 0x50fc70, '.idata$7')]
 NOCODE = ('runtime/no_code_objects', '10 gcc objects without code (idents only; data merged into neighbours)')
 # Data whose defining object is known from its C source, where references
 # alone would place it wrongly: (lo, hi, file, evidence).
@@ -527,11 +550,12 @@ WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import
 
 # output section in the object file: (directive, alignment cap)
 OUT = {'.text': ('.text', 16), '.text.startup': ('.section .text.startup,"xr"', 16),
-       '.ctors_dtors': ('.section .ctors_dtors,"dxr"', 4), '.data': ('.data', 32),
+       '.ctors.65535': ('.section .ctors.65535,"dw"', 4), '.data': ('.data', 32),
        '.jcr': ('.section .jcr,"dw"', 4), '.rdata': ('.section .rdata,"dr"', 32),
        '.rdata$zzz': ('.section .rdata$zzz,"dr"', 4), '.eh_frame': ('.section .eh_frame,"dr"', 4),
-       '.bss': ('.bss', 32), '.idata': ('.section .idata,"dw"', 4), '.CRT': ('.section .CRT,"dw"', 4),
+       '.bss': ('.bss', 32), '.CRT': ('.section .CRT,"dw"', 4),
        '.tls': ('.section .tls,"dw"', 4), '.rsrc': ('.section .rsrc,"dw"', 4)}
+OUT.update((n, ('.section %s,"dw"' % n, 4)) for _, _, n in IDATA)
 
 SECDIR = re.compile(r'^(?:\.section\s+([^\s,]+)\s*,.*|(\.text|\.data|\.bss))$')
 LABEL = re.compile(r'^([A-Za-z_.$][\w.$@]*):\s*$')
@@ -559,6 +583,11 @@ def main():
         if a in NOT_POINTERS:
             L[i], n = re.subn(r'\.long\s+L_[0-9a-f]+\s*$', '.long %#x' % NOT_POINTERS[a], L[i])
             assert n == 1, (hex(a), L[i])
+        if a in PSEUDO_END:
+            L[i], n = re.subn(r'(?<![\w.$])L_464900_END(?![\w$])', '___RUNTIME_PSEUDO_RELOC_LIST_END__', L[i])
+            assert n == 1, (hex(a), L[i])
+    sscript = re.compile(r'(?<![\w.$])(%s)(?![\w$])' % '|'.join(map(re.escape, SCRIPT_SYMS)))
+    L = [sscript.sub(lambda m: SCRIPT_SYMS[m.group(1)], l) for l in L]
     sec = {n: (va, va + max(vsz, rsz) if n == '.bss' else va + vsz) for n, va, vsz, _, rsz in img.secs}
     sec['.bss'] = (sec['.bss'][0], img.sec('.bss')[1] + img.sec('.bss')[2])
     us = units(img)
@@ -601,7 +630,6 @@ def main():
         normal = [a for a, _ in fdes if a < STARTUP]
         if normal:
             text_starts[min(normal)] = path
-    add(LISTS[2], LISTS[3])
     add(NOCODE[0], NOCODE[1])
     add(COMMON[1], COMMON[2])
     for s, (p, why) in WHOLE.items():
@@ -611,8 +639,8 @@ def main():
         pieces.append(('.text', a, ts[k + 1] if k + 1 < len(ts) else STARTUP, text_starts[a], '.text'))
     startup = sorted((a, NAMES[i][0]) for i, (_, f) in enumerate(us) for a, _ in f if a >= STARTUP)
     for k, (a, p) in enumerate(startup):
-        pieces.append(('.text', a, startup[k + 1][0] if k + 1 < len(startup) else LISTS[0], p, '.text.startup'))
-    pieces.append(('.text', LISTS[0], LISTS[1], LISTS[2], '.ctors_dtors'))
+        pieces.append(('.text', a, startup[k + 1][0] if k + 1 < len(startup) else CTOR_LIST, p, '.text.startup'))
+    pieces.append(('.text', CTORS[0], CTORS[1], NAMES[93][0], '.ctors.65535'))
     # eh_frame: one piece per CIE; crtend's starts with the 4-byte zero terminator
     ehs = []
     for i, (cie, _) in enumerate(us):
@@ -632,7 +660,10 @@ def main():
     pieces.append(('.data', jcr, sec['.data'][1], NAMES[93][0], '.jcr'))
     pieces.append(('.bss', COMMON[0], sec['.bss'][1], COMMON[1], '.bss'))
     for s, (p, _) in WHOLE.items():
-        pieces.append((s, sec[s][0], sec[s][1], p, s))
+        if s == '.idata':
+            pieces += [(s, lo, hi, p, o) for lo, hi, o in IDATA]
+        else:
+            pieces.append((s, sec[s][0], sec[s][1], p, s))
 
     # ---- inferred pieces for .data/.rdata/.bss
     owner_text = []
@@ -665,7 +696,7 @@ def main():
                     code_refs[t].add(o)
             elif secof[i] in regions:
                 data_refs[t].add(pos[i])
-    participants = [p for p in order if p not in (LISTS[2], NOCODE[0], COMMON[1]) and p not in
+    participants = [p for p in order if p not in (NOCODE[0], COMMON[1]) and p not in
                     {v[0] for v in WHOLE.values()} and p != STUBS[1] and p != CHKSTK[1]]
     pidx = {p: k for k, p in enumerate(participants)}
     # atoms of all three regions, with the files referencing them
@@ -764,12 +795,19 @@ def main():
         by_sec[s].sort(key=lambda x: x[1])
     files = collections.defaultdict(lambda: collections.defaultdict(list))  # file -> outsec -> [(lo,hi,lines)]
     piece_lines = {pc: [] for pc in pieces}
+    script_names = SCRIPT_LABELS | set(SCRIPT_SYMS.values()) | {'___RUNTIME_PSEUDO_RELOC_LIST_END__'}
     for i, l in enumerate(L):
         s = secof[i]
         st = l.strip()
         if s is None or SECDIR.match(st) or re.match(r'^\.align\s', st) or st.startswith('#') or not st \
-                or st == '.intel_syntax noprefix' or st.startswith('.set __ImageBase'):
-            continue  # __ImageBase comes from the link script instead
+                or st == '.intel_syntax noprefix':
+            continue
+        # the link script's words and symbols, and the labels it replaces
+        m = re.match(r'^(?:\.globl\s+|\.set\s+)?([\w.$@]+)\s*(?::|,.*)?$', st)
+        if m and m.group(1) in script_names:
+            continue
+        if any(lo <= pos[i] < hi for lo, hi in SCRIPT_DATA) and not CTORS[0] <= pos[i] < CTORS[1]:
+            continue
         lst = by_sec[s]
         k = bisect.bisect_right([x[1] for x in lst], pos[i]) - 1
         if k < 0:

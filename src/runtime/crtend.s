@@ -5,9 +5,9 @@
 #   .eh_frame      0046ecac-0046ece8
 #   .rdata$zzz     0046471c-00464748
 #   .text.startup  00449790-004497a0
+#   .ctors.65535   004497a4-004497a8
 
 .intel_syntax noprefix
-.globl L_449790
 .globl L_44b6d4
 
 .section .text.startup,"xr"
@@ -24,6 +24,10 @@ L_449790:
           .byte 0x90
           .byte 0x90
           .byte 0x90
+
+.section .ctors.65535,"dw"
+.p2align 2
+          .long L_449790
 
 .section .jcr,"dw"
 .p2align 2

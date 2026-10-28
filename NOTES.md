@@ -34,7 +34,6 @@ holds. README.md has the overview.
 xeBuild.exe              reference binary (do not modify)
 build.sh                 compile/assemble src/ + link + stamp + verify -> build/xeBuild.exe
 src/objects.txt          link order
-src/link.ld              link script (default i386pe order for the sections used)
 src/app/                 the application (25 files) and its headers: xebuild.h
                          (shared types, struct xebuild), <obj>.h (each object's
                          functions and data that others use)
@@ -43,7 +42,7 @@ src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCryp
                          bign/ (BigDigits bignum library + PKCS#1 RSA, hash,
                          base64), with its licence files
 src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
-                         .idata/.CRT/.tls/.rsrc, ctor/dtor lists
+                         .idata$2..$7/.CRT/.tls/.rsrc
 src/globals.c            COMMON (uninitialized global) block, in address order
 re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
 re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
@@ -91,8 +90,9 @@ Builds every object in `src/objects.txt`: `src/<obj>.c` with gcc 6.2.0 if it
 exists (flags and original `__FILE__` path per directory in `build.sh`), otherwise
 `src/<obj>.s` with binutils 2.27; with both, the `.c`'s functions are spliced
 into the `.s` (mixed objects, below). Links them with
-`ld -T src/link.ld --no-insert-timestamp -s`, writes the original link time
-(`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
+`ld --no-insert-timestamp -s` and ld's default i386pe link script, image
+base, entry point (`_mainCRTStartup`) and subsystem, writes the original link
+time (`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
 take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA256.
 
 ## Regenerating `src/`
@@ -330,8 +330,11 @@ the per-object build gets naturally).
   10 belonging to objects without code (data-only runtime objects, and likely
   one data-only program file whose data is merged into its neighbours) are in
   `runtime/no_code_objects.s`. `.idata`, `.CRT`/`.tls` and `.rsrc` are whole
-  files. The COMMON block at the end of `.bss` stays one file: ld lays COMMON
-  symbols out in hash-table order, so it can't be attributed to sources.
+  files, except that `.idata` is split into the `.idata$2`..`$7` pieces the
+  import libraries contribute, which the default link script sorts and
+  follows `$2` with the null descriptor. The COMMON block at the end of
+  `.bss` stays one file: ld lays COMMON symbols out in hash-table order, so
+  it can't be attributed to sources.
   `src/globals.c` defines its variables in address order (`-fno-common
   -fno-toplevel-reorder`, every one `aligned(4)`, with in-place pads for
   ld's 32-byte alignment; `-fno-ident`, as it adds an object the original
@@ -339,8 +342,12 @@ the per-object build gets naturally).
   `iniBuf`, ...) are `xb.` members in the C, and two UTF-16 words in
   wassert's strings that ddisasm took for pointers into the block are
   `NOT_POINTERS`.
-- Labels referenced from another file are `.globl`; `__ImageBase` comes from
-  the link script.
+- Labels referenced from another file are `.globl`. What the default link
+  script writes is left out: the ctor/dtor lists (crtend's one `.ctors.65535`
+  entry stays) and the null import descriptor. Its symbols replace ddisasm's
+  labels: `__image_base__`, `___CTOR_LIST__`/`___DTOR_LIST__`, the empty
+  `___RUNTIME_PSEUDO_RELOC_LIST__`/`_END__` pair (as pseudo-reloc.o uses
+  them) and `__IAT_start__`/`__IAT_end__`.
 
 ### Source files
 

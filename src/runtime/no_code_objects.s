@@ -13,7 +13,6 @@
 #   .rdata$zzz     004648d4-00464900
 
 .intel_syntax noprefix
-.globl L_464900_END
 
 .section .rdata$zzz,"dr"
 .p2align 2
@@ -484,5 +483,4 @@
           .byte 0x0
           .byte 0x0
           .byte 0x0
-L_464900_END:
 L_464900:

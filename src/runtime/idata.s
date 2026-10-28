@@ -1,7 +1,11 @@
 # runtime/idata.s -- import tables (ld builds these from import libraries)
 #
 # original placement:
-#   .idata         0050f000-0050fc70
+#   .idata$2       0050f000-0050f050
+#   .idata$4       0050f064-0050f258
+#   .idata$5       0050f258-0050f44c
+#   .idata$6       0050f44c-0050fa58
+#   .idata$7       0050fa58-0050fc70
 
 .intel_syntax noprefix
 .globl DeleteCriticalSection
@@ -128,7 +132,7 @@
 .globl vfprintf
 .globl wcscpy
 
-.section .idata,"dw"
+.section .idata$2,"dw"
 .p2align 2
           .rva L_50f064
           .byte 0x0
@@ -174,26 +178,9 @@
           .byte 0x0
           .rva L_50fc64
           .rva L_50f414
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
+
+.section .idata$4,"dw"
+.p2align 2
 L_50f064:
           .rva L_50f44c
           .rva L_50f464
@@ -335,11 +322,12 @@ L_50f220:
           .byte 0x0
           .byte 0x0
           .byte 0x0
+
+.section .idata$5,"dw"
+.p2align 2
 L_50f258:
 .globl DeleteCriticalSection
 DeleteCriticalSection:
-.globl __IAT_start__
-__IAT_start__:
           .rva L_50f44c
 L_50f25c:
 .globl EnterCriticalSection
@@ -837,9 +825,10 @@ __imp__socket@12:
           .byte 0x0
           .byte 0x0
           .byte 0x0
+
+.section .idata$6,"dw"
+.p2align 2
 L_50f44c:
-.globl __IAT_end__
-__IAT_end__:
           .byte 0xd6
           .byte 0x0
           .byte 0x44
@@ -2508,6 +2497,9 @@ L_50fa4c:
           .byte 0x0
           .byte 0x0
           .byte 0x0
+
+.section .idata$7,"dw"
+.p2align 2
           .byte 0x0
           .byte 0xf0
           .byte 0x10

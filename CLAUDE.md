@@ -50,7 +50,8 @@ NOTES.md has the findings, layout and the pipeline.
 - Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
   pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `re/stamp.py` (timestamp + checksum);
-  every other difference must be fixed in the source, linker script or ddfix.
+  every other difference must be fixed in the source, split.py or ddfix (the link uses
+  ld's default script).
 - Only use the pinned toolchain in `tools/toolchain-4745/` (gcc 6.2.0, binutils
   2.27, crt 4745). Newer binutils encode differently. gcc needs its `bin/` on
   PATH (cc1 and as load DLLs from there); otherwise it fails silently.

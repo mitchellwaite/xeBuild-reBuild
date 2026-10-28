@@ -42,14 +42,14 @@ L_446c3a:
 L_446c40:
           push EBX
           sub ESP,24
-          mov EBX,DWORD PTR [L_4497a0]
+          mov EBX,DWORD PTR [___CTOR_LIST__]
           cmp EBX,-1
           je L_446c70
 L_446c4f:
           test EBX,EBX
           je L_446c5f
 L_446c53:
-          call DWORD PTR [EBX*4+L_4497a0]
+          call DWORD PTR [EBX*4+___CTOR_LIST__]
           sub EBX,1
           jne L_446c53
 L_446c5f:
@@ -65,7 +65,7 @@ L_446c74:
           mov EBX,EAX
 L_446c76:
           lea EAX,DWORD PTR [EBX+1]
-          mov EDX,DWORD PTR [EAX*4+L_4497a0]
+          mov EDX,DWORD PTR [EAX*4+___CTOR_LIST__]
           test EDX,EDX
           jne L_446c74
           jmp L_446c4f
@@ -94,7 +94,7 @@ L_446ca0:
 .data
 .p2align 2
 L_44b6a4:
-          .long L_4497b0
+          .long ___DTOR_LIST__+4
           .byte 0xff
           .byte 0xff
           .byte 0xff
