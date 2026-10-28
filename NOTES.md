@@ -32,8 +32,8 @@ holds. README.md has the overview.
 
 ```
 xeBuild.exe              reference binary (do not modify)
-build.sh                 compile/assemble src/ + link + stamp + verify -> build/xeBuild.exe
-src/objects.txt          the program's objects in link order
+build.sh                 compile src/ + link + stamp + verify -> build/xeBuild.exe
+                         ($objects: the program's objects in link order)
 src/app/                 the application (25 files) and its headers: xebuild.h
                          (shared types, struct xebuild), <obj>.h (each object's
                          functions and data that others use)
@@ -90,10 +90,11 @@ wsl -d Ubuntu -- bash tools/ddisasm/install.sh
 sh build.sh
 ```
 
-Builds every object in `src/objects.txt` and `src/globals.c`: `src/<obj>.c`
-with gcc 6.2.0 if it exists (flags and original `__FILE__` path per directory
-in `build.sh`), otherwise `src/<obj>.s` with binutils 2.27; with both, the
-`.c`'s functions are spliced into the `.s` (mixed objects, below). Links them
+Compiles every object in `build.sh`'s `$objects` (the original's link order,
+which decides where ld puts each object's code and data) and `src/globals.c`:
+`src/<obj>.c` with gcc 6.2.0 (flags and original `__FILE__` path per directory
+in `build.sh`). Every object is C now; the `.s` and mixed-object build paths
+(below) are gone. Links them
 with the gcc driver, as the original was: its crt2.o/crtbegin.o/crtend.o,
 default libraries (plus `-lws2_32`) and default manifest, ld's default link
 script, image base, entry point and subsystem, and `-s
@@ -125,6 +126,10 @@ ddisasm symbolized as the following label (console_hdd's `L_45c644+16` had
 pulled log's strings into console_hdd).
 
 #### Mixed objects: moving a file to C one function at a time
+
+(History: every object is whole C now, and `build.sh` no longer assembles
+`.s` files or splices C functions into them; `splice.py --whole` is still
+used for the second-compile functions of `app/build` and `app/mode_client`.)
 
 An object doesn't have to move to C all at once. Functions listed in
 `split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.
