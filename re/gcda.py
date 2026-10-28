@@ -108,7 +108,8 @@ def read_dump(path):
     {function: {bb: [called names]}}."""
     out, fn, bb, calls = {}, None, None, {}
     preds, cur = {}, None
-    for l in open(path):
+    # latin-1: the dump prints string literals' raw bytes (e.g. \370)
+    for l in open(path, encoding='latin-1'):
         m = re.match(r';; Function (\S+)', l)
         if m:
             if fn in out:

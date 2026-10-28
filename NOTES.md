@@ -159,10 +159,9 @@ does nothing.
   shape is pinned by layout, an empty `__asm__("" :: "i"("literal"))`
   pulls a literal earlier without touching codegen (it makes no SSA
   names). mode_client, and build's strings for loadBlFiles (spliced from
-  the second compile, so both compiles must name its strings) and
-  showSmcConfig's temperature lines (`\370` in the dump `re/gcda.py`
-  reads as UTF-8), still keep such strings as `static const char`
-  arrays in the original's order, defined
+  the second compile, so both compiles must name its strings), still
+  keep such strings as `static const char` arrays in the original's
+  order, defined
   before the first function that uses them and emitted in place by
   `-fno-toplevel-reorder`; each gets `aligned(4)` from 31 bytes, else
   `aligned(1)` (a literal's alignment; a user alignment stops gcc's

@@ -3,14 +3,13 @@
    Built with -fno-toplevel-reorder: functions, .data and strings come out
    in definition order. The strings are literals: gcc emits a function's
    in the order it expands their blocks, so the original's .rdata order
-   follows from the code's shape (checkBl keeps an asm "i" hint). Two sets
-   stay static arrays (named after their original addresses, defined in
-   the original's .rdata order before the first function that uses them,
-   aligned as gcc aligns literals: 4 from 31 bytes, else 1): loadBlFiles'
-   (with the loadBl and loadBl60 it inlines), as build.sh takes that
-   function from a second compile whose literal labels aren't this one's,
-   and showSmcConfig's temperature lines, as re/gcda.py can't read their
-   \370 bytes in that compile's profile_estimate dump. */
+   follows from the code's shape (checkBl keeps an asm "i" hint).
+   loadBlFiles' strings (with the loadBl and loadBl60 it inlines) stay
+   static arrays (named after their original addresses, defined in the
+   original's .rdata order before the first function that uses them,
+   aligned as gcc aligns literals: 4 from 31 bytes, else 1), as build.sh
+   takes that function from a second compile whose literal labels aren't
+   this one's. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -788,11 +787,6 @@ void appendAddonPatches(struct fileent *e)
 			   added, xb.numPatches, size);
 }
 
-/* arrays: re/gcda.py reads the profile compile's dumps, which would show
-   these \370 bytes raw as literals */
-static const char bd_458f80[] __attribute__((aligned(4))) = "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
-static const char bd_458fb4[] __attribute__((aligned(4))) = "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n";
-
 NOPROF
 void showSmcConfig(const uint8_t *smc)
 {
@@ -800,8 +794,8 @@ void showSmcConfig(const uint8_t *smc)
 	uint16_t game;
 	int i;
 
-	log_printf(1, bd_458f80, smc[0x29], smc[0x2a], smc[0x2b]);
-	log_printf(1, bd_458fb4, smc[0x2c], smc[0x2d], smc[0x2e]);
+	log_printf(1, "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[0x29], smc[0x2a], smc[0x2b]);
+	log_printf(1, "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[0x2c], smc[0x2d], smc[0x2e]);
 	log_printf(1, "Cpu Fan     : ");
 	if (((struct fan *)(smc + 0x11))->override)
 		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x11))->speed);
