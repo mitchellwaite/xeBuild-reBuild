@@ -1314,15 +1314,13 @@ For a future session (state on 2026-10-27, commit 852133f):
 
 ## net.c
 
-Built entirely from `src/net.c` (no .s) since 2026-10-27; this draft
-is the same code with plain string literals. The src file gives every
-string as a `static const char net_<address>[]`: gcc emits variables in
-reverse definition order (net is built without -fno-toplevel-reorder,
-which would emit the netRecv clone last), so the arrays are defined from
-the last .rdata string to the first, aligned as gcc aligns a literal
-(`aligned(4)` from 31 bytes, else 1). With literals, netReadInfo's and
-netConnect's strings come out in a different order from the original's;
-the rest already matched. `.bss` order is the reverse of the statics'
+Built entirely from `src/net.c` (no .s) since 2026-10-27; this draft is
+older (superseded by src). src/net.c's strings are plain literals since
+2026-10-28; the original's .rdata order came from jump threading:
+netReadInfo starts `info = NULL` and tests it after the send (no `ok`
+flag), and netConnect's beacon branch tests a `connected` flag (as if
+netOpenSocket were inlined), which threads its "Getting console info"
+success block to the end of the function. `.bss` order is the reverse of the statics'
 definitions too (netEmpty is defined before netInfo). The names for the
 unexported functions and data (`netRecv`, `netFindBeacon`, `netSock`,
 `netEmpty`, `netStartTime`, ...) are in `split.py` SYMBOLS, and the ws2_32

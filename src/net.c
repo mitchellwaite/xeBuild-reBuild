@@ -24,71 +24,6 @@ static uint32_t netEmpty;	/* returned for a zero-length reply */
 static struct consoleinfo *netInfo;
 time_t netStartTime;
 
-/* the strings, as static arrays: gcc emits variables in reverse order of
-   definition, so these are defined from the last .rdata string to the
-   first; aligned as gcc aligns a literal (4 from 31 bytes) */
-static const char net_457a77[] __attribute__((aligned(1))) = "WBPT\n";
-static const char net_457a71[] __attribute__((aligned(1))) = "REEB\n";
-static const char net_457a57[] __attribute__((aligned(1))) = "sending reboot command...";
-static const char net_457a51[] __attribute__((aligned(1))) = "SHDN\n";
-static const char net_457a35[] __attribute__((aligned(1))) = "sending shutdown command...";
-static const char net_457a2f[] __attribute__((aligned(1))) = "FMCM\n";
-static const char net_457a29[] __attribute__((aligned(1))) = "FMEX\n";
-static const char net_457a23[] __attribute__((aligned(1))) = "GTBB\n";
-static const char net_457a15[] __attribute__((aligned(1))) = "ERBL%04x%04x\n";
-static const char net_457a07[] __attribute__((aligned(1))) = "WBLK%04x%04x\n";
-static const char net_4579f9[] __attribute__((aligned(1))) = "RBLK%04x%04x\n";
-static const char net_4579d8[] __attribute__((aligned(4))) = "file sent OK, awaiting result...";
-static const char net_4579d1[] __attribute__((aligned(1))) = "WRFL\n";
-static const char net_4579cb[] __attribute__((aligned(1))) = "GTBL\n";
-static const char net_457998[] __attribute__((aligned(4))) = "received 0x%x bytes data OK, writing to file %s...";
-static const char net_457990[] __attribute__((aligned(1))) = "GTFL\n";
-static const char net_45796c[] __attribute__((aligned(4))) = "reading flash image from console...";
-static const char net_457962[] __attribute__((aligned(1))) = "GETF%s\n";
-static const char net_457950[] __attribute__((aligned(1))) = "unmounting %s:...";
-static const char net_457947[] __attribute__((aligned(1))) = "UMPT%s:\n";
-static const char net_457931[] __attribute__((aligned(1))) = "mounting %s to %s:...";
-static const char net_457925[] __attribute__((aligned(1))) = "MTPT%s: %s\n";
-static const char net_45791d[] __attribute__((aligned(1))) = "failed\n";
-static const char net_457919[] __attribute__((aligned(1))) = "OK\n";
-static const char net_457913[] __attribute__((aligned(1))) = "QUIT\n";
-static const char net_4578f5[] __attribute__((aligned(1))) = "\ndisconnecting from server...";
-static const char net_4578d4[] __attribute__((aligned(4))) = "success!\nGetting console info...";
-static const char net_4578b5[] __attribute__((aligned(1))) = "WSAStartup failed, error %d\n";
-static const char net_45787c[] __attribute__((aligned(4))) = "attempting to convert %s to an address failed, error %d\n";
-static const char net_45784c[] __attribute__((aligned(4))) = "attempting forced connection to %u.%u.%u.%u...";
-static const char net_457830[] __attribute__((aligned(1))) = "failed to find xbox beacon\n";
-static const char net_457817[] __attribute__((aligned(1))) = "attempting to connect...";
-static const char net_4577ec[] __attribute__((aligned(4))) = "success, found xbox beacon at %u.%u.%u.%u\n";
-static const char net_4577c4[] __attribute__((aligned(4))) = "started, watching network for xbox...";
-static const char net_4577bb[] __attribute__((aligned(1))) = "failed!\n";
-static const char net_457784[] __attribute__((aligned(4))) = "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n";
-static const char net_457758[] __attribute__((aligned(4))) = " with updsvr version %d (peek version %d)\n";
-static const char net_457746[] __attribute__((aligned(1))) = "connected to %s";
-static const char net_45773c[] __attribute__((aligned(1))) = "success!\n";
-static const char net_457736[] __attribute__((aligned(1))) = "GTIN\n";
-static const char net_457732[] __attribute__((aligned(1))) = "Yes";
-static const char net_45772f[] __attribute__((aligned(1))) = "No";
-static const char net_457712[] __attribute__((aligned(1))) = "could not connect, error %d\n";
-static const char net_4576e8[] __attribute__((aligned(4))) = "could not create client socket, error %d\n";
-static const char net_4576cf[] __attribute__((aligned(1))) = "sent 0x%08x of 0x%08x\r";
-static const char net_4576ac[] __attribute__((aligned(4))) = "socket error sending data (1), %d\n";
-static const char net_457688[] __attribute__((aligned(4))) = "socket error sending data size, %d\n";
-static const char net_45766a[] __attribute__((aligned(1))) = "received 0x%08x of 0x%08x\r";
-static const char net_457652[] __attribute__((aligned(1))) = "waiting for 0x%x bytes\n";
-static const char net_45763e[] __attribute__((aligned(1))) = "Completed in %.0fs\n";
-static const char net_457608[] __attribute__((aligned(4))) = "Beacon received, but the beacon magic %X was not %X!\n";
-static const char net_4575f3[] __attribute__((aligned(1))) = "UDP wait timeout!\n";
-static const char net_4575e1[] __attribute__((aligned(1))) = "Socket error! %d\n";
-static const char net_4575bc[] __attribute__((aligned(4))) = "unable to set bind socket, error %d\n";
-static const char net_45758c[] __attribute__((aligned(4))) = "unable to set bcast socket option, error %d\n";
-static const char net_457568[] __attribute__((aligned(4))) = "unable to open socket, error %d\n";
-static const char net_457544[] __attribute__((aligned(4))) = "received only %x of %x bytes! fail\n";
-static const char net_457518[] __attribute__((aligned(4))) = "could not receive data on socket, error %d\n";
-static const char net_4574f4[] __attribute__((aligned(4))) = "timeout waiting for data, error %d\n";
-static const char net_4574d0[] __attribute__((aligned(4))) = "unable to fetch first 4 bytes, %d\n";
-static const char net_4574b0[] __attribute__((aligned(1))) = "timeout waiting for data, %d\n";
-
 void netFree(void *p)
 {
 	if (p && p != &netEmpty)
@@ -111,11 +46,11 @@ uint32_t netFindBeacon(void)
 	s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	addr = 0;
 	if (s == INVALID_SOCKET) {
-		log_printf(0, net_457568, WSAGetLastError());
+		log_printf(0, "unable to open socket, error %d\n", WSAGetLastError());
 		return addr;
 	}
 	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof one) == SOCKET_ERROR) {
-		log_printf(0, net_45758c, WSAGetLastError());
+		log_printf(0, "unable to set bcast socket option, error %d\n", WSAGetLastError());
 		closesocket(s);
 		return addr;
 	}
@@ -124,7 +59,7 @@ uint32_t netFindBeacon(void)
 	sa.sin_port = htons(48);
 	sa.sin_addr.s_addr = INADDR_ANY;
 	if (bind(s, (struct sockaddr *)&sa, sizeof sa) == SOCKET_ERROR) {
-		log_printf(0, net_4575bc, WSAGetLastError());
+		log_printf(0, "unable to set bind socket, error %d\n", WSAGetLastError());
 		closesocket(s);
 		return addr;
 	}
@@ -137,12 +72,12 @@ uint32_t netFindBeacon(void)
 		tv.tv_usec = 0;
 		r = select(0, &fds, NULL, NULL, &tv);
 		if (r == SOCKET_ERROR) {
-			log_printf(0, net_4575e1, WSAGetLastError());
+			log_printf(0, "Socket error! %d\n", WSAGetLastError());
 			closesocket(s);
 			return addr;
 		}
 		if (r == 0) {
-			log_printf(0, net_4575f3);
+			log_printf(0, "UDP wait timeout!\n");
 			closesocket(s);
 			return addr;
 		}
@@ -151,7 +86,7 @@ uint32_t netFindBeacon(void)
 			addr = getLeU32(pkt + 4);
 			break;
 		}
-		log_printf(0, net_457608,
+		log_printf(0, "Beacon received, but the beacon magic %X was not %X!\n",
 			   getBeU32(pkt), BEACON_MAGIC);
 	}
 	closesocket(s);
@@ -168,7 +103,7 @@ void netTimerEnd(void)
 	time_t now;
 
 	time(&now);
-	log_printf(0, net_45763e, difftime(now, netStartTime));
+	log_printf(0, "Completed in %.0fs\n", difftime(now, netStartTime));
 }
 
 double netTimerElapsed(void)
@@ -212,12 +147,12 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	*len = 0;
 	r = select(0, &fds, NULL, NULL, &tv);
 	if (r == SOCKET_ERROR || r == 0) {
-		log_printf(0, net_4574b0, WSAGetLastError());
+		log_printf(0, "timeout waiting for data, %d\n", WSAGetLastError());
 		return NULL;
 	}
 	r = recv(netSock, (char *)hdr, 4, 0);
 	if (r == SOCKET_ERROR || r == 0) {
-		log_printf(0, net_4574d0, WSAGetLastError());
+		log_printf(0, "unable to fetch first 4 bytes, %d\n", WSAGetLastError());
 		return NULL;
 	}
 	size = getBeU32(hdr);
@@ -229,12 +164,12 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	}
 	buf = calloc(size, 1);
 	if (__builtin_expect(verbose, 0))
-		printf(net_457652, size);
+		printf("waiting for 0x%x bytes\n", size);
 	got = 0;
 	while (got < size) {
 		r = select(0, &fds, NULL, NULL, &tv);
 		if (r == SOCKET_ERROR || r == 0) {
-			log_printf(0, net_4574f4, WSAGetLastError());
+			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
 			if (buf != (uint8_t *)&netEmpty)
 				free(buf);
 			return NULL;
@@ -243,14 +178,15 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 		if (r == SOCKET_ERROR) {
 			if (verbose)
 				putchar('\n');
-			log_printf(0, net_457518, WSAGetLastError());
+			log_printf(0, "could not receive data on socket, error %d\n",
+				   WSAGetLastError());
 			if (buf != (uint8_t *)&netEmpty)
 				free(buf);
 			return NULL;
 		}
 		got += r;
 		if (verbose)
-			printf(net_45766a, got, size);
+			printf("received 0x%08x of 0x%08x\r", got, size);
 	}
 	if (verbose)
 		putchar('\n');
@@ -261,7 +197,7 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	if (verbose)
 		putchar('\n');
 	__asm__ ("" : : "g"(got));
-	log_printf(0, net_457544, got, size);
+	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 	if (buf != (uint8_t *)&netEmpty)
 		free(buf);
 	return NULL;
@@ -278,7 +214,7 @@ int netSendData(const uint8_t *buf, uint32_t len, int verbose)
 
 	setBeU32(len, hdr);
 	if (send(netSock, (char *)hdr, 4, 0) == SOCKET_ERROR) {
-		log_printf(0, net_457688, WSAGetLastError());
+		log_printf(0, "socket error sending data size, %d\n", WSAGetLastError());
 		return 0;
 	}
 	sent = 0;
@@ -290,12 +226,12 @@ int netSendData(const uint8_t *buf, uint32_t len, int verbose)
 		if (r == SOCKET_ERROR) {
 			if (verbose)
 				putchar('\n');
-			log_printf(0, net_4576ac, WSAGetLastError());
+			log_printf(0, "socket error sending data (1), %d\n", WSAGetLastError());
 			return 0;
 		}
 		sent += r;
 		if (verbose)
-			printf(net_4576cf, sent, len);
+			printf("sent 0x%08x of 0x%08x\r", sent, len);
 	}
 	if (verbose)
 		putchar('\n');
@@ -323,60 +259,62 @@ int netOpenSocket(uint32_t addr)
 
 	netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (netSock == INVALID_SOCKET) {
-		log_printf(0, net_4576e8, WSAGetLastError());
+		log_printf(0, "could not create client socket, error %d\n", WSAGetLastError());
 		return 0;
 	}
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(49);
 	sa.sin_addr.s_addr = addr;
 	if (connect(netSock, (struct sockaddr *)&sa, sizeof sa) < 0) {
-		log_printf(0, net_457712, WSAGetLastError());
+		log_printf(0, "could not connect, error %d\n", WSAGetLastError());
 		return 0;
 	}
 	return 1;
 }
 
+/* info starts NULL so a failed send threads straight to "failed!",
+   leaving the success block before it (the .rdata string order) */
 int netReadInfo(void)
 {
 	uint32_t len;
-	struct consoleinfo *info;
-	int ok = 0;
+	struct consoleinfo *info = NULL;
 
-	if (send(netSock, net_457736, 5, 0) == 5) {
+	if (send(netSock, "GTIN\n", 5, 0) == 5) {
 		len = 0;
 		info = (struct consoleinfo *)netRecv((int *)&len);
-		if (info && len >= sizeof *info)
-			ok = 1;
 	}
-	if (!ok) {
-		log_printf(0, net_4577bb);
-		return 0;
+	if (info && len >= sizeof *info) {
+		info->pub1blKey.reserved = 0;
+		netInfo = info;
+		info->version = SWAP32(info->version);
+		info->kernel = SWAP32(info->kernel);
+		info->f008 = SWAP32(info->f008);
+		info->bootstrap = SWAP32(info->bootstrap);
+		info->hwFlags = SWAP32(info->hwFlags);
+		info->nandSize = SWAP32(info->nandSize);
+		info->blockSize = SWAP32(info->blockSize);
+		info->pairing = SWAP32(info->pairing);
+		log_printf(1, "success!\n");
+		log_printf(0, "connected to %s", getConsoleTypeStr((netInfo->hwFlags >> 28) + 1));
+		log_printf(0, " with updsvr version %d (peek version %d)\n",
+			   netInfo->version >> 8, netInfo->version & 0xff);
+		log_printf(1, "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n",
+			   netInfo->nandSize, netInfo->blockSize,
+			   netInfo->nandSize == 0x3000000 ? "No" : "Yes");
+		return 1;
 	}
-	info->pub1blKey.reserved = 0;
-	netInfo = info;
-	info->version = SWAP32(info->version);
-	info->kernel = SWAP32(info->kernel);
-	info->f008 = SWAP32(info->f008);
-	info->bootstrap = SWAP32(info->bootstrap);
-	info->hwFlags = SWAP32(info->hwFlags);
-	info->nandSize = SWAP32(info->nandSize);
-	info->blockSize = SWAP32(info->blockSize);
-	info->pairing = SWAP32(info->pairing);
-	log_printf(1, net_45773c);
-	log_printf(0, net_457746, getConsoleTypeStr((netInfo->hwFlags >> 28) + 1));
-	log_printf(0, net_457758,
-		   netInfo->version >> 8, netInfo->version & 0xff);
-	log_printf(1, net_457784,
-		   netInfo->nandSize, netInfo->blockSize,
-		   netInfo->nandSize == 0x3000000 ? net_45772f : net_457732);
-	return 1;
+	log_printf(0, "failed!\n");
+	return 0;
 }
 
 /* Failures fall through to one return 0.  Each branch has its own sockaddr
    (the socket code written out, as in netOpenSocket) and its own
    netReadInfo: the branch's clobber block keeps phiopt off the readinfo
    test, ce2 speculates the 1 into both copies and jump2 crossjumps them;
-   goto ok keeps the success block from following the test. */
+   goto ok keeps the success block from following the test.  The beacon
+   branch tests a connected flag (netOpenSocket inlined, as it were): jump
+   threading moves its success block to the end of the function, where the
+   original's .rdata has its string. */
 uint32_t netConnect(const char *ip)
 {
 	WSADATA wsa;
@@ -385,35 +323,41 @@ uint32_t netConnect(const char *ip)
 		if (ip == NULL) {
 			struct sockaddr_in server;
 			uint32_t addr;
+			int connected = 0;
 
-			log_printf(0, net_4577c4);
+			log_printf(0, "started, watching network for xbox...");
 			addr = netFindBeacon();
 			if (addr != 0) {
-				log_printf(0, net_4577ec,
+				log_printf(0, "success, found xbox beacon at %u.%u.%u.%u\n",
 					   addr & 0xff, (addr >> 8) & 0xff, (addr >> 16) & 0xff, addr >> 24);
-				log_printf(1, net_457817);
+				log_printf(1, "attempting to connect...");
 				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 				if (netSock != INVALID_SOCKET) {
 					server.sin_family = AF_INET;
 					server.sin_port = htons(49);
 					server.sin_addr.s_addr = addr;
-					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
-						log_printf(1, net_4578d4);
-						if (netReadInfo())
-							goto ok;
-					} else
-						log_printf(0, net_457712, WSAGetLastError());
+					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0)
+						connected = 1;
+					else
+						log_printf(0, "could not connect, error %d\n",
+							   WSAGetLastError());
 				} else
-					log_printf(0, net_4576e8, WSAGetLastError());
+					log_printf(0, "could not create client socket, error %d\n",
+						   WSAGetLastError());
+				if (connected) {
+					log_printf(1, "success!\nGetting console info...");
+					if (netReadInfo())
+						goto ok;
+				}
 			} else
-				log_printf(0, net_457830);
+				log_printf(0, "failed to find xbox beacon\n");
 		} else {
 			struct sockaddr_in sa, server;
 			int saLen = sizeof sa;
 			uint32_t addr;
 
 			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0) {
-				log_printf(0, net_45784c,
+				log_printf(0, "attempting forced connection to %u.%u.%u.%u...",
 					   sa.sin_addr.S_un.S_un_b.s_b1, sa.sin_addr.S_un.S_un_b.s_b2,
 					   sa.sin_addr.S_un.S_un_b.s_b3, sa.sin_addr.S_un.S_un_b.s_b4);
 				addr = sa.sin_addr.s_addr;
@@ -423,19 +367,21 @@ uint32_t netConnect(const char *ip)
 					server.sin_port = htons(49);
 					server.sin_addr.s_addr = addr;
 					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
-						log_printf(0, net_45773c);
+						log_printf(0, "success!\n");
 						if (netReadInfo())
 							goto ok;
 					} else
-						log_printf(0, net_457712, WSAGetLastError());
+						log_printf(0, "could not connect, error %d\n",
+							   WSAGetLastError());
 				} else
-					log_printf(0, net_4576e8, WSAGetLastError());
+					log_printf(0, "could not create client socket, error %d\n",
+						   WSAGetLastError());
 			} else
-				log_printf(0, net_45787c,
+				log_printf(0, "attempting to convert %s to an address failed, error %d\n",
 					   ip, WSAGetLastError());
 		}
 	} else
-		log_printf(0, net_4578b5, WSAGetLastError());
+		log_printf(0, "WSAStartup failed, error %d\n", WSAGetLastError());
 	return 0;
 ok:
 	return 1;
@@ -450,11 +396,11 @@ void netClose(void)
 
 void netDisconnect(void)
 {
-	log_printf(0, net_4578f5);
-	if (netSendStr(net_457913))
-		log_printf(0, net_457919);
+	log_printf(0, "\ndisconnecting from server...");
+	if (netSendStr("QUIT\n"))
+		log_printf(0, "OK\n");
 	else
-		log_printf(0, net_45791d);
+		log_printf(0, "failed\n");
 	netClose();
 }
 
@@ -462,13 +408,13 @@ uint32_t netMount(const char *drive, const char *device)
 {
 	char cmd[260];
 
-	sprintf(cmd, net_457925, drive, device);
-	log_printf(1, net_457931, device, drive);
+	sprintf(cmd, "MTPT%s: %s\n", drive, device);
+	log_printf(1, "mounting %s to %s:...", device, drive);
 	if (netSendStr(cmd) && netCheckOk()) {
-		log_printf(1, net_45773c);
+		log_printf(1, "success!\n");
 		return 1;
 	}
-	log_printf(1, net_4577bb);
+	log_printf(1, "failed!\n");
 	return 0;
 }
 
@@ -476,13 +422,13 @@ uint32_t netUnmount(const char *drive)
 {
 	char cmd[260];
 
-	sprintf(cmd, net_457947, drive);
-	log_printf(1, net_457950, drive);
+	sprintf(cmd, "UMPT%s:\n", drive);
+	log_printf(1, "unmounting %s:...", drive);
 	if (netSendStr(cmd) && netCheckOk()) {
-		log_printf(1, net_45773c);
+		log_printf(1, "success!\n");
 		return 1;
 	}
-	log_printf(1, net_4577bb);
+	log_printf(1, "failed!\n");
 	return 0;
 }
 
@@ -490,7 +436,7 @@ uint8_t *netGetFile(const char *name, int *len)
 {
 	char cmd[260];
 
-	sprintf(cmd, net_457962, name);
+	sprintf(cmd, "GETF%s\n", name);
 	if (netSendStr(cmd))
 		return netRecv(len);
 	return 0;
@@ -507,50 +453,51 @@ int netDumpNand(const char *path)
 	uint8_t *buf;
 
 	netTimerStart();
-	log_printf(0, net_45796c);
-	if (send(netSock, net_457990, 5, 0) == 5) {
+	log_printf(0, "reading flash image from console...");
+	if (send(netSock, "GTFL\n", 5, 0) == 5) {
 		buf = netRecvVerbose(&len, log_get_verbose() != 0);
 		if (buf) {
-			log_printf(1, net_457998, len, path);
+			log_printf(1, "received 0x%x bytes data OK, writing to file %s...",
+				   len, path);
 			if (writeFile(path, buf, len))
-				log_printf(0, net_45773c);
+				log_printf(0, "success!\n");
 			else
-				log_printf(0, net_4577bb);
+				log_printf(0, "failed!\n");
 			netTimerEnd();
 			netFree(buf);
 			return 1;
 		}
 	}
-	log_printf(0, net_4577bb);
+	log_printf(0, "failed!\n");
 	return 0;
 }
 
 uint8_t *netGetBldrs(int *len)
 {
-	if (netSendStr(net_4579cb))
+	if (netSendStr("GTBL\n"))
 		return netRecv(len);
 	return 0;
 }
 
 uint32_t netSendFlash(const uint8_t *buf, uint32_t len)
 {
-	if (!buf || !netSendStr(net_4579d1))
+	if (!buf || !netSendStr("WRFL\n"))
 		return 0;
 	if (!netSendData(buf, len, log_get_verbose() != 0)) {
-		log_printf(0, net_4577bb);
+		log_printf(0, "failed!\n");
 		return 0;
 	}
-	log_printf(0, net_4579d8);
+	log_printf(0, "file sent OK, awaiting result...");
 	{
 		int rlen;
 		uint8_t *r = netRecv(&rlen);
 
 		if (r && rlen == 2 && getBeU16(r) == OK_REPLY) {
 			netFree(r);
-			log_printf(0, net_45773c);
+			log_printf(0, "success!\n");
 		} else {
 			netFree(r);
-			log_printf(0, net_4577bb);
+			log_printf(0, "failed!\n");
 		}
 	}
 	netTimerEnd();
@@ -561,7 +508,7 @@ uint8_t *netReadBlocks(int *len, uint16_t start, uint16_t count)
 {
 	char cmd[32];
 
-	sprintf(cmd, net_4579f9, start, count);
+	sprintf(cmd, "RBLK%04x%04x\n", start, count);
 	if (netSendStr(cmd))
 		return netRecvVerbose(len, log_get_verbose() != 0);
 	return 0;
@@ -574,7 +521,7 @@ int netWriteBlocks(const uint8_t *buf, uint32_t len, uint16_t start, uint16_t co
 	uint8_t *r;
 	char cmd[32];
 
-	sprintf(cmd, net_457a07, start, count);
+	sprintf(cmd, "WBLK%04x%04x\n", start, count);
 	if (!netSendStr(cmd))
 		return 0;
 	if (!netSendData(buf, len, log_get_verbose() != 0))
@@ -597,7 +544,7 @@ int netEraseBlock(uint16_t block, uint16_t count)
 	uint8_t *r;
 	char cmd[32];
 
-	sprintf(cmd, net_457a15, block, count);
+	sprintf(cmd, "ERBL%04x%04x\n", block, count);
 	{
 		int rlen;
 
@@ -616,7 +563,7 @@ int netEraseBlock(uint16_t block, uint16_t count)
 
 uint8_t *netGetBadBlocks(int *len)
 {
-	if (netSendStr(net_457a23))
+	if (netSendStr("GTBB\n"))
 		return netRecv(len);
 	return 0;
 }
@@ -663,7 +610,7 @@ int netFormatSysex(void)
 	{
 		int len;
 
-		if (!netSendStr(net_457a29))
+		if (!netSendStr("FMEX\n"))
 			return 0;
 		r = netRecv(&len);
 		if (!r)
@@ -684,7 +631,7 @@ int netFormatCompat(void)
 	{
 		int len;
 
-		if (!netSendStr(net_457a2f))
+		if (!netSendStr("FMCM\n"))
 			return 0;
 		r = netRecv(&len);
 		if (!r)
@@ -727,17 +674,17 @@ int netMkdir(const char *name)
 int netReboot(int how)
 {
 	if (how == 1) {
-		log_printf(0, net_457a35);
-		if (netSendStr(net_457a51))
-			log_printf(0, net_457919);
+		log_printf(0, "sending shutdown command...");
+		if (netSendStr("SHDN\n"))
+			log_printf(0, "OK\n");
 		else
-			log_printf(0, net_45791d);
+			log_printf(0, "failed\n");
 	} else if (how == 2) {
-		log_printf(0, net_457a57);
-		if (netSendStr(net_457a71))
-			log_printf(0, net_457919);
+		log_printf(0, "sending reboot command...");
+		if (netSendStr("REEB\n"))
+			log_printf(0, "OK\n");
 		else
-			log_printf(0, net_45791d);
+			log_printf(0, "failed\n");
 	}
 	return 1;
 }
@@ -751,7 +698,7 @@ int netWritePatches(const uint8_t *buf, uint32_t len)
 	{
 		int rlen;
 
-		if (!netSendStr(net_457a77) || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
+		if (!netSendStr("WBPT\n") || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
 			return 0;
 		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);

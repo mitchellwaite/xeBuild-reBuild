@@ -155,7 +155,7 @@ does nothing.
   (error messages first). The order shows the original's shape: write the
   function success-first (error in an else, or after the main path) and
   the literals line up, usually with identical code (bootloaders, keys,
-  mode_update, filelist_ini). Where the shape is pinned by layout, an
+  mode_update, filelist_ini, net, options). Where the shape is pinned by layout, an
   empty `__asm__("" :: "i"("literal"))` pulls a literal earlier without
   touching codegen (it makes no SSA names). Older objects still keep such
   strings as `static const char` arrays in the original's order, defined
@@ -192,12 +192,10 @@ and three `asm "i"` hints; `getIniValue`, with a `findInst`-style
 helper). The slot order needed `key[0] == buf[i]`, the reverse of
 `findInst`. And `options` (whole object in C now, no `.s`):
 
-- Its strings are `static const char str_*/msg_*[]` arrays in the
-  original's `.rdata` order. Without `-fno-toplevel-reorder` (which would
-  keep the never-written `aio_never*` statics) gcc emits statics in reverse
-  definition order, so they are defined last to first. The `OUTCAT` sources
-  are used through 1-element aliases: gcc folds a visible array's contents
-  into a second literal.
+- Its strings are literals in the original's `.rdata` order:
+  parseOption's macid branch is written success-first, and
+  applyIniOptions' macid test has one `asm "i"` hint (reshaping it would
+  renumber the blocks `src/options.prof` is keyed by).
 - `baseFileExists` is ipa-split; its `.part.0` (4236f0) is in `C_FUNCS`
   under gcc's name.
 - `parseButton`'s split part (449640) is gcc's `.text.unlikely`. A profile
@@ -213,11 +211,9 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
   never-written statics (`aio_never*`) give: IPA folds them after the
   profile is read and the counts of their dead edges stay behind
   (wip/README.md, options.c).
-- `strcat(xb.outName, "name")` is expanded inline. Short names become
-  immediate stores, so the literal stays and no data is emitted. Longer ones
-  copy from the string itself; those are written as `OUTCAT(name)`
-  (`memcpy(dst + strlen(dst), str_name, sizeof "name")`). Which names are
-  long differs between iniConsoleType and setConsoleType, so follow gcc.
+- `strcat(xb.outName, "name")` is expanded inline: short names become
+  immediate stores, longer ones copy from the (merged) literal, as in the
+  original, so it stays a plain strcat.
 
 And `keys` (whole object in C, data included; built with
 `-fno-toplevel-reorder` so functions and key buffers come out in definition
