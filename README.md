@@ -23,7 +23,7 @@ Reference binary: `xeBuild.exe`, SHA256
 
 ## Progress
 
-Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly; the COMMON globals at the end of `.bss` (the program's and the runtime's) are C, in `src/common_bss.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime objects (crt, libgcc, libmingw32/ex) are library code that already byte-matches and is left as assembly; the COMMON globals at the end of `.bss` (the program's and the runtime's) are C, in `src/globals.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
@@ -888,7 +888,7 @@ src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCryp
                          its licence files
 src/runtime/             crt2, crtbegin/crtend, mingw/libgcc objects, import stubs,
                          .idata/.CRT/.tls/.rsrc, ctor/dtor lists
-src/common_bss.c         COMMON (uninitialized global) block, in address order
+src/globals.c            COMMON (uninitialized global) block, in address order
 re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
 re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
 re/units.py              objects from .eh_frame CIEs; profile of each for naming
@@ -1176,7 +1176,7 @@ the per-object build gets naturally).
   `runtime/no_code_objects.s`. `.idata`, `.CRT`/`.tls` and `.rsrc` are whole
   files. The COMMON block at the end of `.bss` stays one file: ld lays COMMON
   symbols out in hash-table order, so it can't be attributed to sources.
-  `src/common_bss.c` defines its variables in address order (`-fno-common
+  `src/globals.c` defines its variables in address order (`-fno-common
   -fno-toplevel-reorder`, every one `aligned(4)`, with in-place pads for
   ld's 32-byte alignment; `-fno-ident`, as it adds an object the original
   link didn't have). The fields of `xb` that ddisasm labelled (`cpuKey`,
@@ -1232,7 +1232,7 @@ crypto/xecrypt_bn, rsa, memwipe and md5_dgst are xecryptBn.c,
 bign/pkcs1-rsa.c, bign/common.c and md5/md5.c. aestab.c defines the AES
 tables, which the inferred data split had placed in aescrypt/aeskey (see
 `DATA_OWNERS` in `split.py`). xecrypt.c's `XeCryptRandomState` is a tentative
-definition, so it stays in the COMMON block (`common_bss.c` defines it).
+definition, so it stays in the COMMON block (`globals.c` defines it).
 
 #### BigDigits
 

@@ -24,7 +24,7 @@ the pieces are found:
              then choose monotone boundaries in link order minimising atoms
              placed in an object that doesn't reference them.
   COMMON     the end of .bss is uninitialized (common) globals, which ld lays
-             out in hash-table order, so it stays one file (common_bss.c).
+             out in hash-table order, so it stays one file (globals.c).
 """
 import bisect, collections, json, os, re, sys
 
@@ -327,9 +327,9 @@ SYMBOLS = {
     0x420670: '_netFormatCompat', 0x420710: '_netMkdir',
     0x448820: '_stat',   # libmingwex; msvcrt's `_stat` IAT slot is renamed (IAT_NAMES)
     0x4481c0: '_opendir', 0x448360: '_readdir', 0x448470: '_closedir',
-    # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to common_bss.c)
+    # data: .bss, and a COMMON symbol (xecrypt.o's .comm resolves to globals.c)
     0x479ac0: '_XeRandomIsInit', 0x50e880: '_XeCryptRandomState',
-    # mingw-w64 crt's COMMON globals (atonexit.c, natstart.c), in common_bss.c
+    # mingw-w64 crt's COMMON globals (atonexit.c, natstart.c), in globals.c
     0x50ec88: '___onexitend', 0x50ec8c: '___onexitbegin',
     0x50ec90: '___native_startup_lock', 0x50ec94: '___native_startup_state',
     # app/bootloaders (src/app/bootloaders.c) and what it uses; names are ours
@@ -448,7 +448,7 @@ SYMBOLS = {
     0x410b90: '_imgFits',           # (offset, len) within the FS end block
     0x4121b0: '_spareUsed',         # 16 spare bytes not all 0xff
     0x412de0: '_reservedAreaOffset',  # like statisticsOffset, per NAND type
-    # app/image_write's data (COMMON globals in common_bss.s, and its own)
+    # app/image_write's data (COMMON globals in globals.c, and its own)
     0x4c9164: '_mmcAnchor', 0x4c97c0: '_fsFiles', 0x4cb7c0: '_fsTable',
     0x4cd7c0: '_hdrTemplate', 0x4cd840: '_imgEnd', 0x44a580: '_copyright',
     0x46f9c0: '_mobileOffset', 0x46f9c4: '_nFsFiles', 0x46f9e0: '_smcPage',
@@ -519,7 +519,7 @@ NOT_POINTERS = {
     # lie in the COMMON block, which has no labels now that it's C
     0x4634f8: 0x50000a, 0x463528: 0x4c0020,
 }
-COMMON = (0x479e84,'common_bss', 'COMMON globals, laid out by ld in hash order')
+COMMON = (0x479e84,'globals', 'COMMON globals, laid out by ld in hash order')
 WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import libraries)'),
          '.CRT': ('runtime/crt_tls_sections', '.CRT initializer tables and .tls directory'),
          '.tls': ('runtime/crt_tls_sections', None),

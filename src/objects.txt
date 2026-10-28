@@ -97,7 +97,7 @@ runtime/libmingwex/invalid_parameter_handler
 runtime/crtend
 runtime/ctor_dtor_lists
 runtime/no_code_objects
-common_bss
+globals
 runtime/idata
 runtime/crt_tls_sections
 runtime/manifest

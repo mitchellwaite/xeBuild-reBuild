@@ -1,4 +1,4 @@
-/* common_bss: the COMMON block, the uninitialized globals at the end of .bss.
+/* globals: the COMMON block, the uninitialized globals at the end of .bss.
 
    The original objects declared these without initializers, so gcc made them
    COMMON symbols and ld laid them out after every object's .bss, in the order
