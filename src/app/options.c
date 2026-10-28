@@ -16,10 +16,10 @@
 #include "log.h"
 #include "options.h"
 
-/* TODO(prototype cast): validateString read as u32 here */
-u32 validateStringU32(const char *nString) __asm__("_validateString");
+/* TODO(prototype cast): validateString read as uint32_t here */
+uint32_t validateStringU32(const char *nString) __asm__("_validateString");
 
-u32 parseOption(char *opt);
+uint32_t parseOption(char *opt);
 /* parseCmdOptions matches only when it sees an int return */
 int parseOptionInt(char *opt) __asm__("_parseOption");
 
@@ -440,7 +440,7 @@ int setConsoleType(const char *name)
 
 /* a boolean option from a perbox file or options.ini, unless the command
    line already set it either way */
-_Bool optIniBool(const char *name, u32 set, u32 clear, int def)
+_Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
 
@@ -461,7 +461,7 @@ _Bool optIniBool(const char *name, u32 set, u32 clear, int def)
 	}
 	{
 		/* the original ORs into eax (so `return 1` isn't hoisted) */
-		u32 f = (xb.bootFlags & ~clear) | set;
+		uint32_t f = (xb.bootFlags & ~clear) | set;
 		__asm__("" : "+a" (f));
 		xb.bootFlags = f;
 	}
@@ -609,7 +609,7 @@ int macidSet(void)
 /* a boolean option given as name, name=true or name=false */
 int setBoolOption(const char *name, const char *val)
 {
-	u32 off = 0;
+	uint32_t off = 0;
 
 	if (val) {
 		if (!stricmp(val, str_false))
@@ -759,7 +759,7 @@ int setBoolOption(const char *name, const char *val)
      the done edges stay under gputemp's (so its match trace comes first)
      but above the macid loop exit, and the incomplete block reaches the
      epilogue-copy threshold.
-   The return is u32 (int keeps it in esi); parseCmdOptions calls it
+   The return is uint32_t (int keeps it in esi); parseCmdOptions calls it
    through parseOptionInt.  po_hint gets parseOption's options too, or it
    can't be inlined there (the pragma above gives both an optimize
    attribute). */
@@ -767,7 +767,7 @@ __attribute__((optimize("no-early-inlining")))
 static void po_hint(int *p) { *p = 1; }
 
 __attribute__((optimize("no-early-inlining")))
-u32 parseOption(char *opt)
+uint32_t parseOption(char *opt)
 {
 	int dead;
 	char *val = NULL;
@@ -1136,7 +1136,7 @@ int parseRawPatch(char *pat)
 		}
 	}
 	if (len != strlen(pat)) {
-		/* TODO(xebuild.h cast): a signed test here, u32 in filelist_ini */
+		/* TODO(xebuild.h cast): a signed test here, uint32_t in filelist_ini */
 		if ((int)xb.nRawPatches <= 15) {
 			strcpy(xb.rawPatch[xb.nRawPatches].name, pat);
 			n = xb.nRawPatches;

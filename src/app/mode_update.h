@@ -4,7 +4,7 @@
 
 #include "xebuild.h"
 
-int updateGetFile(const char *name, u8 **data, int *size);
+int updateGetFile(const char *name, uint8_t **data, int *size);
 int mode_update(int argc, char **argv);
 
 #endif

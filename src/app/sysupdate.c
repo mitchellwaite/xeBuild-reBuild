@@ -9,10 +9,10 @@
 #include "stfs.h"
 #include "sysupdate.h"
 
-/* TODO(prototype cast): FileExists read as u32, not int: with an int, gcc
+/* TODO(prototype cast): FileExists read as uint32_t, not int: with an int, gcc
    returns FileExists' 0 instead of a fresh xor in suLoad/suLoadDir's failure
    paths (stfs.c's stfsLoad needs the int) */
-u32 FileExistsU32(const char *name) __asm__("_FileExists");
+uint32_t FileExistsU32(const char *name) __asm__("_FileExists");
 
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
@@ -21,10 +21,10 @@ static char suPath[1024];
 static char suDir[1024];
 static stfs_t su;
 static int suLoaded;
-static u8 *cf;
-static u8 *cg;
-static u32 cfLen;
-static u32 cgLen;
+static uint8_t *cf;
+static uint8_t *cg;
+static uint32_t cfLen;
+static uint32_t cgLen;
 
 const char *suGetPath(void)
 {
@@ -52,9 +52,9 @@ void suFreeBl(void)
 
 void suExtractBl(void)
 {
-	u8 *data;
-	u32 len, size, cgSize;
-	u16 magic;
+	uint8_t *data;
+	uint32_t len, size, cgSize;
+	uint16_t magic;
 	int ver;
 
 	if (suGetFile("xboxupd.bin", &data, &len)) {
@@ -95,7 +95,7 @@ void suExtractBl(void)
 	suFreeBl();
 }
 
-int suGetCF(u8 **data, u32 *len)
+int suGetCF(uint8_t **data, uint32_t *len)
 {
 	if (!cf || !cfLen)
 		return 0;
@@ -106,7 +106,7 @@ int suGetCF(u8 **data, u32 *len)
 	return 1;
 }
 
-int suGetCG(u8 **data, u32 *len)
+int suGetCG(uint8_t **data, uint32_t *len)
 {
 	if (!cg || !cgLen)
 		return 0;
@@ -117,7 +117,7 @@ int suGetCG(u8 **data, u32 *len)
 	return 1;
 }
 
-int suGetFile(const char *name, u8 **data, u32 *len)
+int suGetFile(const char *name, uint8_t **data, uint32_t *len)
 {
 	if (!suLoaded)
 		return 0;
@@ -139,7 +139,7 @@ int suNextFile(char *name, int *idx)
 		return 0;
 	}
 	memcpy(name, su.fileTable + *idx * 64, 40);
-	*(u32 *)(name + 40) = SWAP32(*(u32 *)(su.fileTable + *idx * 64 + 52));
+	*(uint32_t *)(name + 40) = SWAP32(*(uint32_t *)(su.fileTable + *idx * 64 + 52));
 	(*idx)++;
 	return 1;
 }

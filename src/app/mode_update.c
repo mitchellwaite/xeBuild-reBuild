@@ -21,12 +21,12 @@
 #include "smc.h"
 
 /* TODO(prototype cast): verifyExtended returns int (bootloaders.c); getKv's
-   code wants a u32 */
-u32 verifyExtendedU32(void *buf, int size) __asm__("_verifyExtended");
+   code wants a uint32_t */
+uint32_t verifyExtendedU32(void *buf, int size) __asm__("_verifyExtended");
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
-u32 getSecurityFiles(const char *dir);
+uint32_t getSecurityFiles(const char *dir);
 
 /* the other functions keep gcc's guessed profile, and .text */
 #define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
@@ -48,12 +48,12 @@ struct consoleinfo *info = 0;
    function are static arrays defined right before it (-fno-toplevel-reorder
    emits them there), aligned as gcc aligns literals: 4 from 31 bytes. */
 
-NOPROF u32 getBadBlocks(void)
+NOPROF uint32_t getBadBlocks(void)
 {
-	u8 *list;
+	uint8_t *list;
 	int len, i;
-	u32 blocks;
-	u32 block;
+	uint32_t blocks;
+	uint32_t block;
 
 	log_printf(1, "\n------ getting bad blocks ------\n");
 	list = netGetBadBlocks(&len);
@@ -132,11 +132,11 @@ NOPROF int wantFile(const char *name)
 
 static const char mu_44ce21[] __attribute__((aligned(1))) = "addon patch from console: %s\n";
 
-NOPROF void parseAddonIdx(const u8 *addons, int len, const u8 *idx, size_t idxLen)
+NOPROF void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, size_t idxLen)
 {
-	u32 e, i, n;
-	u32 off = 4;
-	u32 ok;
+	uint32_t e, i, n;
+	uint32_t off = 4;
+	uint32_t ok;
 	char name[1024];
 
 	for (e = 0; e < getBeU32(idx); e++) {
@@ -181,7 +181,7 @@ static const char mu_44ced0[] __attribute__((aligned(4))) = "\n\n***** WARNING: 
 
 NOPROF void getAddons(void)
 {
-	u8 *addons, *idx;
+	uint8_t *addons, *idx;
 	int len;
 	size_t size;
 	char name[1024];
@@ -192,7 +192,7 @@ NOPROF void getAddons(void)
 		if (len & 3)
 			log_printf(0, "\n\n***** WARNING: addons.bin from console is not a multiple of 4 bytes! Skipping!\n");
 		else if (len) {
-			sprintf(name, mu_44cebc, *(u16 *)((u8 *)info + 5));
+			sprintf(name, mu_44cebc, *(uint16_t *)((uint8_t *)info + 5));
 			idx = FileToBuffer(name, &size);
 			if (idx) {
 				parseAddonIdx(addons, len, idx, size);
@@ -205,9 +205,9 @@ NOPROF void getAddons(void)
 		log_printf(0, "\n\n***** WARNING: Unable to retrieve addons.bin from console!\n");
 }
 
-NOPROF u32 getMobileFiles(const char *dir)
+NOPROF uint32_t getMobileFiles(const char *dir)
 {
-	u8 i;
+	uint8_t i;
 	char name[64];
 	int ret;
 
@@ -273,24 +273,24 @@ NOPROF u32 getMobileFiles(const char *dir)
 	return 0;
 }
 
-NOPROF u8 *bldrGetKv(int *size)
+NOPROF uint8_t *bldrGetKv(int *size)
 {
-	u8 *bl = xb.bl.data;
-	u32 len = SWAP32(*(u32 *)(bl + 96));
-	u8 *kv = calloc(len, 1);
+	uint8_t *bl = xb.bl.data;
+	uint32_t len = SWAP32(*(uint32_t *)(bl + 96));
+	uint8_t *kv = calloc(len, 1);
 
-	memcpy(kv, bl + SWAP32(*(u32 *)(bl + 108)), len);
+	memcpy(kv, bl + SWAP32(*(uint32_t *)(bl + 108)), len);
 	*size = len;
 	return kv;
 }
 
-NOPROF u8 *bldrGetSmc(int *size)
+NOPROF uint8_t *bldrGetSmc(int *size)
 {
-	u8 *bl = xb.bl.data;
-	u32 len = SWAP32(*(u32 *)(bl + 120));
-	u8 *smc = calloc(len, 1);
+	uint8_t *bl = xb.bl.data;
+	uint32_t len = SWAP32(*(uint32_t *)(bl + 120));
+	uint8_t *smc = calloc(len, 1);
 
-	memcpy(smc, bl + SWAP32(*(u32 *)(bl + 124)), len);
+	memcpy(smc, bl + SWAP32(*(uint32_t *)(bl + 124)), len);
 	*size = len;
 	return smc;
 }
@@ -302,7 +302,7 @@ static const char mu_44d257[] __attribute__((aligned(1))) = "kv_enc";
 static const char mu_44d25e[] __attribute__((aligned(1))) = "extracting BLDR\\kv_enc...";
 static const char mu_44d278[] __attribute__((aligned(4))) = "OK, received 0x%x bytes\n        decrypt and verify...";
 
-NOPROF static u32 getSmc(const char *dir)
+NOPROF static uint32_t getSmc(const char *dir)
 {
 	if (!xb.fromConsole) {
 		log_printf(1, "retrieving USVR\\smc_enc...");
@@ -331,9 +331,9 @@ static const char mu_44d2ae[] __attribute__((aligned(1))) = "keyvault is good!\n
 static const char mu_44d2c1[] __attribute__((aligned(1))) = "kv.bin";
 static const char mu_44d2c8[] __attribute__((aligned(4))) = "\n***** ERROR: could not decrypt keyvault from console!\n";
 
-NOPROF static u32 getKv(const char *dir)
+NOPROF static uint32_t getKv(const char *dir)
 {
-	u32 ret;
+	uint32_t ret;
 
 	if (!xb.fromConsole) {
 		log_printf(1, mu_44d23d);
@@ -358,9 +358,9 @@ NOPROF static u32 getKv(const char *dir)
 	return ret;
 }
 
-NOPROF u32 getSecurityFiles(const char *dir)
+NOPROF uint32_t getSecurityFiles(const char *dir)
 {
-	u32 i;
+	uint32_t i;
 
 	log_printf(1, mu_44d1f4);
 	for (i = 0; i < xb.nFlashFiles2; i++) {
@@ -384,7 +384,7 @@ NOPROF u32 getSecurityFiles(const char *dir)
 	return getSmc(dir);
 }
 
-NOPROF u32 checkBadBlocks(void)
+NOPROF uint32_t checkBadBlocks(void)
 {
 	if (xb.flags & 0x10000000)
 		return 1;
@@ -397,7 +397,7 @@ static const char mu_44d440[] __attribute__((aligned(4))) = "success! Bootloader
 static const char mu_44d46e[] __attribute__((aligned(1))) = "fbldrs.bin";
 static const char mu_44d479[] __attribute__((aligned(1))) = "failed!\n";
 
-NOPROF u32 getBootloaders(const char *dir)
+NOPROF uint32_t getBootloaders(const char *dir)
 {
 	log_printf(1, mu_44d400);
 	if (xb.type != 3) {
@@ -451,11 +451,11 @@ NOPROF int getConsoleFiles(const char *dir)
 
 static const char mu_44d5ba[] __attribute__((aligned(1))) = "failed! received 0 bytes\n";
 
-NOPROF int updateGetFile(const char *name, u8 **data, int *size)
+NOPROF int updateGetFile(const char *name, uint8_t **data, int *size)
 {
 	char *p;
-	u8 *buf;
-	u32 len;
+	uint8_t *buf;
+	uint32_t len;
 	int on = updating;
 
 	*size = 0;
@@ -511,8 +511,8 @@ static void updateNand(char *dumpDir, int *pret)
 			}
 			log_printf(1, "\n------ flashing console ------\n");
 			if (!noWrite) {
-				u32 size;
-				u8 *buf = imageGetBuffer(&size);
+				uint32_t size;
+				uint8_t *buf = imageGetBuffer(&size);
 
 				log_printf(0, "sending flash data to console...\n");
 				netTimerStart();

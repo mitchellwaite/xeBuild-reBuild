@@ -4,7 +4,7 @@
 
 #include "xebuild.h"
 
-u32 parseIni(char *path);
+uint32_t parseIni(char *path);
 char *getIniValue(const char *key);
 long getIniBool(const char *key, int def);
 char *iniBoolInvalid(const char *key);

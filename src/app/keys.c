@@ -17,52 +17,52 @@
    changes other objects' code): fcrtEncrypt's block order needs them left
    out of the call heuristic (with its off < 0x4000 hint at
    builtin-expect-probability 60) */
-u32 getBeU32(const u8 *p) __attribute__((pure));
-int verifyFcrt(u8 *fcrt, u32 size) __attribute__((pure));
+uint32_t getBeU32(const uint8_t *p) __attribute__((pure));
+int verifyFcrt(uint8_t *fcrt, uint32_t size) __attribute__((pure));
 /* external copy of the always_inline cfPatchSlots */
-short cfPatchSlots(struct fileent *cf, u32 extra, u16 block, u32 max);
+short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max);
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 #define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
-u8 secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
-u8 daeKey[32] = {
+uint8_t secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
+uint8_t daeKey[32] = {
 	0xa1, 0xb2, 0x69, 0x50, 0x58, 0xf4, 0xed, 0x05, 0xe5, 0x80, 0xc7, 0xee, 0x18, 0x9a, 0x27, 0xb5,
 	0xac, 0x5e, 0xbc, 0x70, 0x89, 0x29, 0x65, 0x90, 0xf4, 0x24, 0xed, 0x2a, 0xd3, 0x62, 0x83, 0x14
 };
-u8 crlKey[32] = {
+uint8_t crlKey[32] = {
 	0xc7, 0x03, 0xb9, 0x32, 0xd4, 0x07, 0x7d, 0x41, 0x60, 0x52, 0xa8, 0x13, 0x5e, 0xde, 0x68, 0x18,
 	0xd9, 0x75, 0x98, 0xa6, 0xf8, 0x5d, 0x9b, 0x86, 0x7b, 0xc4, 0x34, 0x99, 0xe3, 0x3d, 0xa4, 0xaa
 };
-u8 smcKey[4] = { 0x8e, 0x03, 0x75, 0xcc };
-u8 kvAltSalt[8] = { 0x36, 0xca, 0xb0, 0x87, 0x8b, 0x83, 0xb7, 0xf6 };
-u8 kvSalt[8] = { 0x36, 0xca, 0xb0, 0x87, 0x8b, 0x83, 0xb7, 0xf6 };
-u8 infoKey5[16] = {
+uint8_t smcKey[4] = { 0x8e, 0x03, 0x75, 0xcc };
+uint8_t kvAltSalt[8] = { 0x36, 0xca, 0xb0, 0x87, 0x8b, 0x83, 0xb7, 0xf6 };
+uint8_t kvSalt[8] = { 0x36, 0xca, 0xb0, 0x87, 0x8b, 0x83, 0xb7, 0xf6 };
+uint8_t infoKey5[16] = {
 	0xb9, 0xa2, 0x1e, 0x3b, 0xfc, 0x2e, 0xab, 0xb4,
 	0x19, 0x81, 0x2d, 0x8a, 0x85, 0xaa, 0xa8, 0xce
 };
-u8 infoKey4[16] = {
+uint8_t infoKey4[16] = {
 	0xce, 0xe5, 0x04, 0xee, 0x9f, 0x61, 0x2b, 0x9b,
 	0xa5, 0x20, 0xf8, 0xeb, 0x0b, 0x64, 0x68, 0x2a
 };
-u8 infoKey3[16] = {
+uint8_t infoKey3[16] = {
 	0x56, 0xa9, 0x81, 0xcd, 0x8c, 0xbc, 0x07, 0x29,
 	0xdd, 0x0b, 0x7b, 0xbc, 0x76, 0xe5, 0x79, 0x98
 };
-u8 infoKey2[16] = {
+uint8_t infoKey2[16] = {
 	0xb3, 0x38, 0x64, 0x1c, 0xeb, 0xd0, 0x1e, 0x10,
 	0x2c, 0xdd, 0xe0, 0xf3, 0x19, 0xa1, 0x9f, 0x84
 };
-u8 infoKey1[16] = {
+uint8_t infoKey1[16] = {
 	0xfb, 0xe2, 0x70, 0x9a, 0xe7, 0xa1, 0x3f, 0x42,
 	0xcf, 0xec, 0x45, 0x92, 0x8e, 0x3f, 0x0e, 0x37
 };
-u8 infoKey0[16] = {
+uint8_t infoKey0[16] = {
 	0x37, 0x10, 0xa2, 0xf2, 0x2e, 0xd5, 0xf0, 0xa8,
 	0xe4, 0x9c, 0xb4, 0xc7, 0xa1, 0x39, 0x5d, 0xaa
 };
-u8 zeroKey[16] = { 0 };
-u8 pairing[3] = { 0 };
+uint8_t zeroKey[16] = { 0 };
+uint8_t pairing[3] = { 0 };
 
 void keysInit(int random)
 {
@@ -91,13 +91,13 @@ void keysInit(int random)
 		XeCryptRandom(pairing, 3);
 }
 
-void setCrlKey(u8 *key)
+void setCrlKey(uint8_t *key)
 {
 #if 1 == 1
 	memcpy(crlKey, key + 16, 16);
 	memcpy(crlKey + 16, key, 16);
 #elif 1 == 2
-	u32 *k = (u32 *)key, *c = (u32 *)crlKey;
+	uint32_t *k = (uint32_t *)key, *c = (uint32_t *)crlKey;
 	c[0] = k[4]; c[1] = k[5]; c[2] = k[6]; c[3] = k[7];
 	c[4] = k[0]; c[5] = k[1]; c[6] = k[2]; c[7] = k[3];
 #elif 1 == 3
@@ -112,62 +112,62 @@ void setCrlKey(u8 *key)
 #endif
 }
 
-void setDaeKey(u8 *key)
+void setDaeKey(uint8_t *key)
 {
 	memcpy(daeKey, key, 32);
 }
 
-void setSecdataKey(u8 *key)
+void setSecdataKey(uint8_t *key)
 {
 	memcpy(secdataKey, key, 8);
 }
 
-void setInfoKey0(u8 *key)
+void setInfoKey0(uint8_t *key)
 {
 	memcpy(infoKey0, key, 16);
 }
 
-void setInfoKey1(u8 *key)
+void setInfoKey1(uint8_t *key)
 {
 	memcpy(infoKey1, key, 16);
 }
 
-void setInfoKey2(u8 *key)
+void setInfoKey2(uint8_t *key)
 {
 	memcpy(infoKey2, key, 16);
 }
 
-void setInfoKey3(u8 *key)
+void setInfoKey3(uint8_t *key)
 {
 	memcpy(infoKey3, key, 16);
 }
 
-void setInfoKey4(u8 *key)
+void setInfoKey4(uint8_t *key)
 {
 	memcpy(infoKey4, key, 16);
 }
 
-void setInfoKey5(u8 *key)
+void setInfoKey5(uint8_t *key)
 {
 	memcpy(infoKey5, key, 16);
 }
 
-void setKvSalt(u8 *key)
+void setKvSalt(uint8_t *key)
 {
 	memcpy(kvSalt, key, 8);
 }
 
-void setKvAltSalt(u8 *key)
+void setKvAltSalt(uint8_t *key)
 {
 	memcpy(kvAltSalt, key, 8);
 }
 
-void setSmcKey(u8 *key)
+void setSmcKey(uint8_t *key)
 {
 	memcpy(smcKey, key, 4);
 }
 
-int setPairing(u32 pair)
+int setPairing(uint32_t pair)
 {
 	if (pair & 0xffffff) {
 		pairing[2] = pair;
@@ -179,11 +179,11 @@ int setPairing(u32 pair)
 	return 0;
 }
 
-int checkCpuKey(int level, u8 *key)
+int checkCpuKey(int level, uint8_t *key)
 {
-	u8 mask[16] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	uint8_t mask[16] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff, 0xff, 0x03, 0, 0 };
-	u8 tmp[16];
+	uint8_t tmp[16];
 	int i, weight, ecd, wok;
 
 	for (i = 0; i < 16; i++)
@@ -226,7 +226,7 @@ int setCpuKeyStr(char *str)
 	return ret;
 }
 
-int setCpuKey(int level, u8 *key)
+int setCpuKey(int level, uint8_t *key)
 {
 	memcpy(xb.cpuKey, key, 16);
 	log_printf(level, "CPU Key set to  : ");
@@ -237,10 +237,10 @@ int setCpuKey(int level, u8 *key)
 	return 1;
 }
 
-void setFuseLdv(u8 *fuse, u8 ldv)
+void setFuseLdv(uint8_t *fuse, uint8_t ldv)
 {
-	u32 i;
-	u64 cb, cf;
+	uint32_t i;
+	uint64_t cb, cf;
 
 	if (ldv > 16) {
 		if (ldv > 31)
@@ -272,7 +272,7 @@ void setFuseLdv(u8 *fuse, u8 ldv)
 static const char msg_fuseCpuKey[] __attribute__((aligned(1))) = "Fuse CPU Key set to: 0x";
 static const char msg_fuseNull[] __attribute__((aligned(4))) = "\nERROR: YOU SHOULD NOT BE SEEING THIS ERROR!\n";
 
-void setFuseCpuKey(u8 *fuse)
+void setFuseCpuKey(uint8_t *fuse)
 {
 	int i;
 
@@ -291,12 +291,12 @@ void setFuseCpuKey(u8 *fuse)
 	log_printf(1, "\n");
 }
 
-u32 calcXexKey(void)
+uint32_t calcXexKey(void)
 {
-	u8 key[16] = { 0x95, 0x27, 0x72, 0xbf, 0x47, 0xc0, 0xf6, 0x98,
+	uint8_t key[16] = { 0x95, 0x27, 0x72, 0xbf, 0x47, 0xc0, 0xf6, 0x98,
 		0x5c, 0x7d, 0xf2, 0x50, 0x65, 0x4d, 0x55, 0xcd };
-	u8 junk[16];
-	u8 hash[16];
+	uint8_t junk[16];
+	uint8_t hash[16];
 
 	memcpy(junk, "thisisjustajunky", 16);
 	XeCryptHmacSha(junk, 16, xb.key1bl, 16, NULL, 0, NULL, 0, hash, 16);
@@ -307,8 +307,8 @@ u32 calcXexKey(void)
 
 int check1blKey(void)
 {
-	u32 sum1 = sumBytes(xb.key1bl, 16);
-	u32 sum2 = calcXexKey();
+	uint32_t sum1 = sumBytes(xb.key1bl, 16);
+	uint32_t sum2 = calcXexKey();
 
 	if (sum1 == 0x983 && sum2 == 0x800) {
 		log_printf(1, "1BL Key set to  : 0x");
@@ -322,7 +322,7 @@ int check1blKey(void)
 	return 0;
 }
 
-int set1blKey(u8 *key)
+int set1blKey(uint8_t *key)
 {
 	memcpy(xb.key1bl, key, 16);
 	if (check1blKey())
@@ -360,18 +360,18 @@ int checkKeys(char *str)
    unsigned), so the value after the loop is its own pseudo: in registers
    there (xor'd on the count == 0 path) while the loop's sums stay in memory */
 __attribute__((always_inline))
-static inline void smcSum(u32 *buf, u8 *out, u32 count)
+static inline void smcSum(uint32_t *buf, uint8_t *out, uint32_t count)
 {
-	u64 s1 = 0, s2 = 0;
+	uint64_t s1 = 0, s2 = 0;
 	long long sum1 = 0, sum2 = 0;
-	u32 i, v;
+	uint32_t i, v;
 
 	for (i = 0; i < count; i++) {
 		v = SWAP32(buf[i]);
 		sum1 += v;
 		sum2 -= v;
-		sum1 = (sum1 << 29) | (u32)((u32)(sum1 >> 32) >> 3);
-		sum2 = (sum2 << 31) | (u32)((u32)(sum2 >> 32) >> 1);
+		sum1 = (sum1 << 29) | (uint32_t)((uint32_t)(sum1 >> 32) >> 3);
+		sum2 = (sum2 << 31) | (uint32_t)((uint32_t)(sum2 >> 32) >> 1);
 		s1 = sum1;
 		s2 = sum2;
 	}
@@ -383,15 +383,15 @@ static inline void smcSum(u32 *buf, u8 *out, u32 count)
    skips the late forwprop (it would put the loop bound first in the exit
    cmp) and reassoc (SWAP32's first add) */
 __attribute__((optimize("no-tree-forwprop", "no-tree-reassoc")))
-void smcChecksum(u32 *buf, u8 *out, u32 count)
+void smcChecksum(uint32_t *buf, uint8_t *out, uint32_t count)
 {
 	smcSum(buf, out, count);
 }
 
-void smcEncrypt(u8 *buf, u32 len)
+void smcEncrypt(uint8_t *buf, uint32_t len)
 {
-	u8 s[4] = { 'B', 'u', 'N', 'y' };
-	u32 i, j = 0;
+	uint8_t s[4] = { 'B', 'u', 'N', 'y' };
+	uint32_t i, j = 0;
 	int t;
 
 	for (i = 0; i < len; i++) {
@@ -403,10 +403,10 @@ void smcEncrypt(u8 *buf, u32 len)
 	}
 }
 
-int smcPrepare(u8 *smc, u8 *hash, u32 size)
+int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 {
-	u8 *buf = malloc(size);
-	u32 patch;
+	uint8_t *buf = malloc(size);
+	uint32_t patch;
 	int bad;
 
 	memcpy(buf, smc, size);
@@ -466,12 +466,12 @@ int smcPrepare(u8 *smc, u8 *hash, u32 size)
 		smcEncrypt(smc, size);
 	}
 	memcpy(buf, smc, size);
-	smcSum((u32 *)buf, hash, size / 4);
+	smcSum((uint32_t *)buf, hash, size / 4);
 	free(buf);
 	return 0;
 }
 
-void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
+void cbaEncrypt(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zero)
 {
 	memcpy(cb + 16, infoKey0, 16);
 	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
@@ -484,7 +484,7 @@ void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
 	XeCryptRc4(key, 16, cb + 32, size - 32);
 }
 
-void cbaEncryptZero(u8 *cb, u8 *key, u32 size)
+void cbaEncryptZero(uint8_t *cb, uint8_t *key, uint32_t size)
 {
 	memset(pairing, 0, 3);
 	memcpy(cb + 16, infoKey0, 16);
@@ -493,7 +493,7 @@ void cbaEncryptZero(u8 *cb, u8 *key, u32 size)
 	XeCryptRc4(key, 16, cb + 32, size - 32);
 }
 
-void cbaEncrypt2(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
+void cbaEncrypt2(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zero)
 {
 	memcpy(cb + 16, infoKey0, 16);
 	if (zero)
@@ -507,11 +507,11 @@ void cbaEncrypt2(u8 *salt, u8 *cb, u8 *key, u32 size, int zero)
 	XeCryptRc4(key, 16, cb + 32, size - 32);
 }
 
-void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int zero)
+void cbbEncrypt(uint8_t *salt, uint8_t *cbb, uint8_t *cbaKey, uint8_t *cba, uint8_t *key, uint32_t size, int zero)
 {
-	u16 flags = getBeU16(cba + 6);
-	u8 *ck;
-	u8 hdr[16];
+	uint16_t flags = getBeU16(cba + 6);
+	uint8_t *ck;
+	uint8_t hdr[16];
 
 	memcpy(cbb + 16, infoKey1, 16);
 	ck = !(flags & 1) ? xb.cpuKey : zeroKey;
@@ -539,9 +539,9 @@ void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size, int z
 	XeCryptRc4(key, 16, cbb + 32, size - 32);
 }
 
-void cdEncryptZero(u8 *cd, u8 *key, u32 size)
+void cdEncryptZero(uint8_t *cd, uint8_t *key, uint32_t size)
 {
-	u8 zero[16];
+	uint8_t zero[16];
 
 	memset(zero, 0, 16);
 	memcpy(cd + 16, infoKey1, 16);
@@ -549,14 +549,14 @@ void cdEncryptZero(u8 *cd, u8 *key, u32 size)
 	XeCryptRc4(key, 16, cd + 32, size - 32);
 }
 
-void cdEncrypt(u8 *cd, u8 *prevKey, u8 *key, u32 size)
+void cdEncrypt(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
 	memcpy(cd + 16, infoKey2, 16);
 	XeCryptHmacSha(prevKey, 16, cd + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cd + 32, size - 32);
 }
 
-void cdEncryptCpu(u8 *cd, u8 *prevKey, u8 *key, u32 size)
+void cdEncryptCpu(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
 	memcpy(cd + 16, infoKey2, 16);
 	XeCryptHmacSha(prevKey, 16, cd + 16, 16, NULL, 0, NULL, 0, key, 16);
@@ -564,7 +564,7 @@ void cdEncryptCpu(u8 *cd, u8 *prevKey, u8 *key, u32 size)
 	XeCryptRc4(key, 16, cd + 32, size - 32);
 }
 
-void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
+void ceEncrypt(uint8_t *ce, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
 	memcpy(ce + 16, infoKey3, 16);
 	XeCryptHmacSha(prevKey, 16, ce + 16, 16, NULL, 0, NULL, 0, key, 16);
@@ -575,14 +575,14 @@ void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size)
    the last index as trips + 2 but n as (trips + 1) + 1); n is 16-bit, so
    its add isn't CSE'd with the index's. */
 __attribute__((always_inline))
-inline short cfPatchSlots(struct fileent *cf, u32 extra, u16 block, u32 max)
+inline short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max)
 {
-	u8 *buf = cf->data;
-	u32 end = cf->size + extra;
-	u32 over;
+	uint8_t *buf = cf->data;
+	uint32_t end = cf->size + extra;
+	uint32_t over;
 	short n = 0;
-	u32 i;
-	u16 *tbl = (u16 *)(buf + 48);
+	uint32_t i;
+	uint16_t *tbl = (uint16_t *)(buf + 48);
 
 	if (__builtin_expect(end > max, 1)) {
 		over = end - max;
@@ -601,12 +601,12 @@ inline short cfPatchSlots(struct fileent *cf, u32 extra, u16 block, u32 max)
 	return n;
 }
 
-u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max)
+uint16_t cfEncrypt(struct fileent *cf, uint32_t extra, uint16_t block, int keep, uint32_t max)
 {
-	u8 key[16];
-	u8 salt[16];
+	uint8_t key[16];
+	uint8_t salt[16];
 	short n;
-	u8 *buf;
+	uint8_t *buf;
 
 	memcpy(salt, infoKey4, 16);
 	if (!keep) {
@@ -632,17 +632,17 @@ u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max)
 	return n;
 }
 
-void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size)
+void cgEncrypt(uint8_t *cg, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
 	memcpy(cg + 16, infoKey5, 16);
 	XeCryptHmacSha(prevKey, 16, cg + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cg + 32, size - 32);
 }
 
-void kvEncrypt(u8 *kv, u32 size)
+void kvEncrypt(uint8_t *kv, uint32_t size)
 {
-	u8 ver[2] = { 0x07, 0x12 };
-	u8 key[16];
+	uint8_t ver[2] = { 0x07, 0x12 };
+	uint8_t key[16];
 
 	memcpy(kv + 16, kvSalt, 8);
 	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, kv, 16);
@@ -650,10 +650,10 @@ void kvEncrypt(u8 *kv, u32 size)
 	XeCryptRc4(key, 16, kv + 16, size - 16);
 }
 
-void kvEncryptAlt(u8 *kv, u32 size)
+void kvEncryptAlt(uint8_t *kv, uint32_t size)
 {
-	u8 ver[2] = { 0x07, 0x12 };
-	u8 key[16];
+	uint8_t ver[2] = { 0x07, 0x12 };
+	uint8_t key[16];
 
 	memcpy(kv + 16, kvAltSalt, 8);
 	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, kv, 16);
@@ -661,10 +661,10 @@ void kvEncryptAlt(u8 *kv, u32 size)
 	XeCryptRc4(key, 16, kv + 16, size - 16);
 }
 
-static int kvHashOk(u8 *kv, u32 size)
+static int kvHashOk(uint8_t *kv, uint32_t size)
 {
-	u8 ver[2] = { 0x07, 0x12 };
-	u8 hash[16];
+	uint8_t ver[2] = { 0x07, 0x12 };
+	uint8_t hash[16];
 
 	XeCryptHmacSha(xb.cpuKey, 16, kv + 16, size - 16, ver, 2, NULL, 0, hash, 16);
 	return memcmp(kv, hash, 16) == 0;
@@ -677,7 +677,7 @@ static int kvHashOk(u8 *kv, u32 size)
 void kvPrepare(struct fileent *kv, int alt)
 {
 	const char *file = "kv.bin", *name = "kv";
-	u8 *buf, *nbuf;
+	uint8_t *buf, *nbuf;
 
 	if (alt) {
 		file = "kv_alt.bin";
@@ -732,7 +732,7 @@ void kvPrepare(struct fileent *kv, int alt)
 
 void extendedPrepare(struct fileent *ext)
 {
-	u8 *buf;
+	uint8_t *buf;
 
 	if (ext->size != 0x4000) {
 		if (!ext->size)
@@ -761,9 +761,9 @@ void extendedPrepare(struct fileent *ext)
 	kvEncrypt(ext->data, ext->size);
 }
 
-void secdataPrepare(struct fileent *sd, u8 *date)
+void secdataPrepare(struct fileent *sd, uint8_t *date)
 {
-	u8 key[16];
+	uint8_t key[16];
 
 	if (sd->size != 0x400) {
 		if (!sd->size)
@@ -783,9 +783,9 @@ void secdataPrepare(struct fileent *sd, u8 *date)
 	XeCryptRc4(key, 16, sd->data + 16, sd->size - 16);
 }
 
-int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashOut)
+int shaCheck(uint8_t *buf, uint32_t size, uint32_t hashOff, uint32_t hashLen, uint32_t dataOff, uint8_t *hashOut)
 {
-	u8 hash[20];
+	uint8_t hash[20];
 
 	XeCryptSha(buf + dataOff, size - dataOff, NULL, 0, NULL, 0, hash, 20);
 	if (memcmp(buf + hashOff, hash, hashLen) == 0) {
@@ -796,11 +796,11 @@ int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff, u8 *hashO
 	return 0;
 }
 
-void crlEncrypt(u8 *crl, u32 size, u8 *date)
+void crlEncrypt(uint8_t *crl, uint32_t size, uint8_t *date)
 {
-	u8 *buf = malloc(size);
-	u8 key[16];
-	u8 iv[16];
+	uint8_t *buf = malloc(size);
+	uint8_t key[16];
+	uint8_t iv[16];
 	XECRYPT_AES_STATE aes;
 	int ok;
 
@@ -838,11 +838,11 @@ void crlEncrypt(u8 *crl, u32 size, u8 *date)
 	free(buf);
 }
 
-void daeEncryptOne(u8 *dae, u32 size, u8 *date)
+void daeEncryptOne(uint8_t *dae, uint32_t size, uint8_t *date)
 {
-	u8 *buf = malloc(size);
-	u8 hash[16];
-	u8 iv[16];
+	uint8_t *buf = malloc(size);
+	uint8_t hash[16];
+	uint8_t iv[16];
 	XECRYPT_AES_STATE aes;
 
 	memcpy(dae + 288, daeKey, 32);
@@ -870,12 +870,12 @@ static const char msg_daeHash[] __attribute__((aligned(4))) = "failed!\n******* 
    it in one LRA EBB (no reload of off before the encrypt), and crossjumping
    then merges that copy into the main one.  The asm pins put off's zero in
    ebx across malloc/memcpy and off in edx in the loop, as the original. */
-void daeEncrypt(u8 *buf, u32 size, u8 *date)
+void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 {
-	u8 *orig = malloc(size);
-	u8 *dae;
-	u32 off = 0;
-	u32 len;
+	uint8_t *orig = malloc(size);
+	uint8_t *dae;
+	uint32_t off = 0;
+	uint32_t len;
 	int n = 0;
 	__asm__("" : "+b"(off));
 
@@ -887,7 +887,7 @@ void daeEncrypt(u8 *buf, u32 size, u8 *date)
 			log_printf(0, msg_daeHeader);
 			break;
 		}
-		len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
+		len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
 		if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
 			if (!n)
 				log_printf(1, msg_daeEncrypted);
@@ -930,11 +930,11 @@ static const char msg_fcrtSize[] __attribute__((aligned(4))) = "****** ERROR: FC
 static const char msg_fcrtOffset[] __attribute__((aligned(4))) = "**** ERROR: FCRT encrypt invalid offset!\n";
 static const char msg_fcrtBad[] __attribute__((aligned(4))) = "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n";
 
-void fcrtEncrypt(u8 *fcrt, u32 size)
+void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
 {
-	u8 iv[16];
-	u8 hash[20];
-	u32 off;
+	uint8_t iv[16];
+	uint8_t hash[20];
+	uint32_t off;
 	XECRYPT_AES_STATE aes;
 
 	memcpy(iv, fcrt + 256, 16);
@@ -955,7 +955,7 @@ void fcrtEncrypt(u8 *fcrt, u32 size)
 		log_printf(1, msg_fcrtOffset);
 }
 
-void shaHeader(u8 *buf)
+void shaHeader(uint8_t *buf)
 {
 	XeCryptSha(buf + 20, 0x1ec, NULL, 0, NULL, 0, buf, 20);
 }

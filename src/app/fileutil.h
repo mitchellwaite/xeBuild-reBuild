@@ -7,8 +7,8 @@
 
 const char *getConsoleTypeStr(int type);
 unsigned short getBeU16(const unsigned char *p);
-unsigned int getBeU32(const u8 *p);
-unsigned int getLeU32(const u8 *p);
+unsigned int getBeU32(const uint8_t *p);
+unsigned int getLeU32(const uint8_t *p);
 unsigned char *setBeU16(unsigned short v, unsigned char *p);
 unsigned char *setBeU32(unsigned int v, unsigned char *p);
 unsigned char *setBeU64(unsigned long long v, unsigned char *p);
@@ -28,10 +28,10 @@ int findInstExists(const unsigned char *buf, int len, const void *pat,
 int replaceInst(unsigned char *buf, int len, const void *pat, int patlen,
 	const void *rep, size_t replen);
 unsigned char myatox8(const char* dat);
-u32 myatox32(const char* dat, u32 defValue);
+uint32_t myatox32(const char* dat, uint32_t defValue);
 char myatol(char c);
-u32 myatou32(const char* dat, u32 defValue);
-u32 myatoh32(const char* dat, u32 defValue);
+uint32_t myatou32(const char* dat, uint32_t defValue);
+uint32_t myatoh32(const char* dat, uint32_t defValue);
 int validateString(const char* nString);
 int checkZeros(const unsigned char *p, unsigned int len);
 void memcpyrev(unsigned char *dst, const unsigned char *src, int len);

@@ -7,24 +7,24 @@
 void netFree(void *p);
 void netTimerStart(void);
 void netTimerEnd(void);
-u32 netConnect(const char *ip);
+uint32_t netConnect(const char *ip);
 void netDisconnect(void);
-u32 netMount(const char *drive, const char *device);
-u32 netUnmount(const char *drive);
-u8 *netGetFile(const char *name, int *len);
+uint32_t netMount(const char *drive, const char *device);
+uint32_t netUnmount(const char *drive);
+uint8_t *netGetFile(const char *name, int *len);
 struct consoleinfo *netGetInfo(void);
 int netDumpNand(const char *path);
-u8 *netGetBldrs(int *len);
-u32 netSendFlash(const u8 *buf, u32 len);
-u8 *netReadBlocks(int *len, u16 start, u16 count);
-int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count);
-int netEraseBlock(u16 block, u16 count);
-u8 *netGetBadBlocks(int *len);
-int netSendFile(const char *name, const void *buf, u32 len);
+uint8_t *netGetBldrs(int *len);
+uint32_t netSendFlash(const uint8_t *buf, uint32_t len);
+uint8_t *netReadBlocks(int *len, uint16_t start, uint16_t count);
+int netWriteBlocks(const uint8_t *buf, uint32_t len, uint16_t start, uint16_t count);
+int netEraseBlock(uint16_t block, uint16_t count);
+uint8_t *netGetBadBlocks(int *len);
+int netSendFile(const char *name, const void *buf, uint32_t len);
 int netFormatSysex(void);
 int netFormatCompat(void);
 int netMkdir(const char *name);
 int netReboot(int how);
-int netWritePatches(const u8 *buf, u32 len);
+int netWritePatches(const uint8_t *buf, uint32_t len);
 
 #endif

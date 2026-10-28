@@ -7,8 +7,8 @@
 #include "smc.h"
 
 struct knownSmc {
-	u32 crc;
-	u32 size;
+	uint32_t crc;
+	uint32_t size;
 };
 
 struct knownSmc knownSmcs[] = {
@@ -18,7 +18,7 @@ struct knownSmc knownSmcs[] = {
 	{ 0xcab0c3b2, 0x1180 }, { 0x6dad8fc1, 0x1180 },
 };
 
-int smcFindResetLimit(const u8 *smc, int len)
+int smcFindResetLimit(const uint8_t *smc, int len)
 {
 	int i;
 
@@ -28,11 +28,11 @@ int smcFindResetLimit(const u8 *smc, int len)
 	return 0;
 }
 
-int smcCheck(u8 *smc, int len, int type)
+int smcCheck(uint8_t *smc, int len, int type)
 {
-	u8 pat1[3] = { 0x78, 0xba, 0xb6 };
-	u32 pat2 = 0x1b0000d0;
-	u32 crc = crc32(smc + 4, len - 4);
+	uint8_t pat1[3] = { 0x78, 0xba, 0xb6 };
+	uint32_t pat2 = 0x1b0000d0;
+	uint32_t crc = crc32(smc + 4, len - 4);
 	int ver = smc[0x100] >> 4;
 	unsigned int i;
 
@@ -61,9 +61,9 @@ patches:
 	return 1;
 }
 
-void smcPatch(u8 *smc, int len, u32 flags)
+void smcPatch(uint8_t *smc, int len, uint32_t flags)
 {
-	u8 *data = smc + 4;
+	uint8_t *data = smc + 4;
 	int dataLen = len - 4;
 
 	if (flags & 0x8000000) {
@@ -77,14 +77,14 @@ void smcPatch(u8 *smc, int len, u32 flags)
 			log_printf(0, "\n******* WARNING: could not patch SMC reset limit!\n\n");
 	}
 	if (flags & 0x400000) {
-		u32 inst = 0x22b390a2, repl = 0x22c3;
+		uint32_t inst = 0x22b390a2, repl = 0x22c3;
 		if (replaceInst(data, dataLen, &inst, 4, &repl, 4))
 			log_printf(1, "SMC EJECT button disabled successfully!\n");
 		else
 			log_printf(0, "\n******* WARNING: could not patch SMC to disable EJECT button.\n\n");
 	}
 	if (flags & 0x800000) {
-		u32 inst[2] = { 0x92cfa2e4, 0x22cea2e0 }, repl[2] = { 0x22d3e4, 0 };
+		uint32_t inst[2] = { 0x92cfa2e4, 0x22cea2e0 }, repl[2] = { 0x22d3e4, 0 };
 		if (replaceInst(data, dataLen, inst, 8, repl, 8))
 			log_printf(1, "SMC ROL center blink disabled successfully!\n");
 		else
@@ -92,7 +92,7 @@ void smcPatch(u8 *smc, int len, u32 flags)
 	}
 }
 
-int smcConfigOk(const u8 *smc)
+int smcConfigOk(const uint8_t *smc)
 {
-	return ((u32)smc[0] << 24 | smc[1] << 16) == calcConfigSum(smc);
+	return ((uint32_t)smc[0] << 24 | smc[1] << 16) == calcConfigSum(smc);
 }

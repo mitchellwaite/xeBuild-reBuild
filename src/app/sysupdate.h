@@ -5,9 +5,9 @@
 #include "xebuild.h"
 
 const char *suGetDir(void);
-int suGetCF(u8 **data, u32 *len);
-int suGetCG(u8 **data, u32 *len);
-int suGetFile(const char *name, u8 **data, u32 *len);
+int suGetCF(uint8_t **data, uint32_t *len);
+int suGetCG(uint8_t **data, uint32_t *len);
+int suGetFile(const char *name, uint8_t **data, uint32_t *len);
 int suNextFile(char *name, int *idx);
 int suFirstFile(char *name, int *idx);
 int suLoadDir(const char *dir);

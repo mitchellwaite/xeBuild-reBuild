@@ -20,22 +20,22 @@
 
 /* a bootloader's header */
 struct blhdr {
-	u16 magic;
-	u16 build;
-	u16 qfe;
-	u16 flags;
-	u32 entry;
-	u32 size;
+	uint16_t magic;
+	uint16_t build;
+	uint16_t qfe;
+	uint16_t flags;
+	uint32_t entry;
+	uint32_t size;
 };
 
-struct spb { u8 b0; u8 b1; u8 b2lo:4, b2hi:4; u8 b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
-struct sps { u8 b0; u8 b1lo:4, b1hi:4; u8 b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
-struct sp { u8 b0; u8 b1lo:4, b1hi:4; u8 b2lo:4, b2hi:4; u8 b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
+struct spb { uint8_t b0; uint8_t b1; uint8_t b2lo:4, b2hi:4; uint8_t b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
+struct sps { uint8_t b0; uint8_t b1lo:4, b1hi:4; uint8_t b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
+struct sp { uint8_t b0; uint8_t b1lo:4, b1hi:4; uint8_t b2lo:4, b2hi:4; uint8_t b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
 struct spare {
-	u8 b[16];
+	uint8_t b[16];
 };
 
-int pageErased(const u8 *data, const u8 *spare);
+int pageErased(const uint8_t *data, const uint8_t *spare);
 /* the malloc call without the builtin: same call, but CCP doesn't assume
    MALLOC_ABI_ALIGNMENT for the result (the ECD memcpy aligns its destination) */
 void *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));
@@ -47,8 +47,8 @@ char copyright[0x40] = "\xa9 2004-200\0 Microsoft Corporation. All rights reserv
 /* initialised, so .bss rather than COMMON; gcc emits them in reverse
    order of definition */
 int nFsFiles = 0;
-u32 mobileOffset = 0;
-static u8 smcPage[0x1000];
+uint32_t mobileOffset = 0;
+static uint8_t smcPage[0x1000];
 
 #define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
 
@@ -59,7 +59,7 @@ static u8 smcPage[0x1000];
 	if (xb.bigBlock) { \
 		s_->b2lo = (block) >> 8; \
 		s_->b0 = 0xff; \
-		*((u8 *)s_ + 1) = (block); \
+		*((uint8_t *)s_ + 1) = (block); \
 	} else { \
 		s_->b1lo = (block) >> 8; \
 		s_->b5 = 0xff; \
@@ -70,7 +70,7 @@ static u8 smcPage[0x1000];
 /* the FS table entries of blocks start .. start + n: `next` for each
    (0xf1f1: leave them), or a chain (0: open, 0xffff: closed) */
 #define setFsTable(start, n, next) do { \
-	u32 i_; \
+	uint32_t i_; \
 	if ((next) != 0xf1f1) { \
 		for (i_ = 0; i_ < (n); i_++) { \
 			if ((next) != 0 && (next) != 0xffff) \
@@ -85,7 +85,7 @@ static u8 smcPage[0x1000];
 
 /* the same with the chain test first */
 #define setFsTableB(start, n, next) do { \
-	u32 i_; \
+	uint32_t i_; \
 	if ((next) != 0xf1f1) { \
 		for (i_ = 0; i_ < (n); i_++) { \
 			if ((next) == 0 || (next) == 0xffff) \
@@ -99,15 +99,15 @@ static u8 smcPage[0x1000];
 } while (0)
 
 /* imgWriteStart for big-block NAND (no FS table) */
-static int imgWriteHdr(const void *src, u32 len)
+static int imgWriteHdr(const void *src, uint32_t len)
 {
 	/* its own function: called once, so it inlines.  imgWriteStart can't
-	   for this call: the u16 `next` is passed promoted to int, so the
+	   for this call: the uint16_t `next` is passed promoted to int, so the
 	   inliner never sees its value.  The two b0 stores are spelt
 	   differently, or cselim sinks them after byte 1.  Absolute page
 	   numbers in the inner loop: gcc then guesses its trip count instead
 	   of knowing 32, which makes the call block's alignment come out */
-	u32 off = 0, first, rem, tail, blocks, start, b, p;
+	uint32_t off = 0, first, rem, tail, blocks, start, b, p;
 	struct sp *s;
 
 	if (off > xb.rawSize || off + len > xb.rawSize)
@@ -136,11 +136,11 @@ static int imgWriteHdr(const void *src, u32 len)
 			if (xb.bigBlock) {
 				s->b2lo = (start + b) >> 8;
 				s->b0 = 0xff;
-				*((u8 *)s + 1) = start + b;
+				*((uint8_t *)s + 1) = start + b;
 			} else {
 				s->b1lo = (start + b) >> 8;
 				s->b5 = 0xff;
-				*(u8 *)s = start + b;
+				*(uint8_t *)s = start + b;
 			}
 		}
 	imgEnd = off + len;
@@ -149,9 +149,9 @@ static int imgWriteHdr(const void *src, u32 len)
 
 int buildImage(void)
 {
-	u32 rawSize, spareSize, userSize, cf, bb;
+	uint32_t rawSize, spareSize, userSize, cf, bb;
 	int bigBlock;
-	u8 *spare, *hdr;
+	uint8_t *spare, *hdr;
 
 	if (xb.type == 1)
 		xb.files[findFile(9)].offset = xb.files[findFile(25)].offset;
@@ -329,7 +329,7 @@ void imageFree(void)
 }
 
 /* the 26-bit ECD of a page: its 512 data bytes and 12 spare bytes */
-u32 calcEcd(u8 *datc, u8 *spare)
+uint32_t calcEcd(uint8_t *datc, uint8_t *spare)
 {
 	unsigned int i = 0, val = 0;
 	unsigned int v = 0;
@@ -349,9 +349,9 @@ u32 calcEcd(u8 *datc, u8 *spare)
 	return ~val;
 }
 
-void calcPageEcc(u8 *data, u8 *spare)
+void calcPageEcc(uint8_t *data, uint8_t *spare)
 {
-	u32 val = calcEcd((u8 *)data, spare);
+	uint32_t val = calcEcd((uint8_t *)data, spare);
 
 	spare[12] = (spare[12] & 0x3f) + (val << 6);
 	spare[13] = val >> 2;
@@ -359,7 +359,7 @@ void calcPageEcc(u8 *data, u8 *spare)
 	spare[15] = val >> 18;
 }
 
-int pageEccOk(u8 *datc, u8 *spare)
+int pageEccOk(uint8_t *datc, uint8_t *spare)
 {
 	unsigned int i = 0, val = 0;
 	unsigned int v = 0;
@@ -390,7 +390,7 @@ int pageEccOk(u8 *datc, u8 *spare)
 }
 
 /* a raw block (data and spare interleaved) */
-int blockEccOk(u8 *blk, int bigBlock)
+int blockEccOk(uint8_t *blk, int bigBlock)
 {
 	int i, pages = bigBlock ? 256 : 32;
 
@@ -404,7 +404,7 @@ int blockEccOk(u8 *blk, int bigBlock)
 	return 1;
 }
 
-int pageErased(const u8 *data, const u8 *spare)
+int pageErased(const uint8_t *data, const uint8_t *spare)
 {
 	int i;
 
@@ -417,12 +417,12 @@ int pageErased(const u8 *data, const u8 *spare)
 	return 1;
 }
 
-int blockErased(u8 *blk, int bigBlock)
+int blockErased(uint8_t *blk, int bigBlock)
 {
 	return isErased(blk, (bigBlock ? 256 : 32) * 528);
 }
 
-int blockPagesErased(u8 *data, u8 *spare, int bigBlock)
+int blockPagesErased(uint8_t *data, uint8_t *spare, int bigBlock)
 {
 	int i, pages = bigBlock ? 256 : 32;
 
@@ -432,7 +432,7 @@ int blockPagesErased(u8 *data, u8 *spare, int bigBlock)
 	return 1;
 }
 
-int blockIsFF(const u8 *p)
+int blockIsFF(const uint8_t *p)
 {
 	int i;
 
@@ -442,9 +442,9 @@ int blockIsFF(const u8 *p)
 	return 1;
 }
 
-int isErased(const u8 *p, u32 len)
+int isErased(const uint8_t *p, uint32_t len)
 {
-	u32 i;
+	uint32_t i;
 
 	for (i = 0; i < len; i++)
 		if (p[i] != 0xff)
@@ -453,7 +453,7 @@ int isErased(const u8 *p, u32 len)
 }
 
 /* LBA and ECD of each page of a raw block */
-void setBlockSpare(u8 *blk, u32 lba, int bigBlock)
+void setBlockSpare(uint8_t *blk, uint32_t lba, int bigBlock)
 {
 	int i, pages = bigBlock ? 256 : 32;
 
@@ -464,38 +464,38 @@ void setBlockSpare(u8 *blk, u32 lba, int bigBlock)
 		if (bigBlock) {
 			s->b2lo = lba >> 8;
 			s->b0 = 0xff;
-			*((u8 *)s + 1) = lba;
+			*((uint8_t *)s + 1) = lba;
 		} else if (xb.bbController) {
 			s->b2lo = lba >> 8;
 			s->b5 = 0xff;
-			*((u8 *)s + 1) = lba;
+			*((uint8_t *)s + 1) = lba;
 		} else {
 			s->b1lo = lba >> 8;
 			s->b5 = 0xff;
 			s->b0 = lba;
 		}
-		calcPageEcc(blk + i * 528, (u8 *)s);
+		calcPageEcc(blk + i * 528, (uint8_t *)s);
 	}
 }
 
-u32 imgSizeAligned(void)
+uint32_t imgSizeAligned(void)
 {
-	u32 r = imgEnd % 0x4000;
+	uint32_t r = imgEnd % 0x4000;
 
 	return r ? imgEnd + 0x4000 - r : imgEnd;
 }
 
-void setFlashBuild(u16 build)
+void setFlashBuild(uint16_t build)
 {
-	u16 *p = (u16 *)(xb.hdr + 2);
+	uint16_t *p = (uint16_t *)(xb.hdr + 2);
 
 	*p = SWAP16(build);
 	log_printf(1, "flash header build version set to v.%d\n", SWAP16(*p));
 }
 
-u32 smcSetLoad(u32 size)
+uint32_t smcSetLoad(uint32_t size)
 {
-	u32 *h = (u32 *)xb.hdr;
+	uint32_t *h = (uint32_t *)xb.hdr;
 
 	if (size > 0x3800) {
 		log_printf(0, "\n***** ERROR: SMC size 0x%x not supported!!!\n\n", size);
@@ -507,22 +507,22 @@ u32 smcSetLoad(u32 size)
 	return 0x4000 - size;
 }
 
-u32 imgSmcOffset(void)
+uint32_t imgSmcOffset(void)
 {
-	return ((u32 *)xb.hdr)[31];
+	return ((uint32_t *)xb.hdr)[31];
 }
 
-u32 setPatchSlot(u32 off)
+uint32_t setPatchSlot(uint32_t off)
 {
-	u32 *h = (u32 *)xb.hdr;
-	u32 v;
+	uint32_t *h = (uint32_t *)xb.hdr;
+	uint32_t v;
 
 	if (!off)
 		off = imgEnd;
 	if (xb.bigBlock) {
 		off = (off + 0x1ffff) & ~0x1ffff;
 		if (xb.type == 1) {
-			u32 cf = SWAP32(h[28]);
+			uint32_t cf = SWAP32(h[28]);
 
 			xb.spare7 = (off + (cf ? cf * 2 : 0x20000)) >> 17;
 		}
@@ -535,27 +535,27 @@ u32 setPatchSlot(u32 off)
 	return off;
 }
 
-u32 imgCfOffset(void)
+uint32_t imgCfOffset(void)
 {
-	u32 *h = (u32 *)xb.hdr;
+	uint32_t *h = (uint32_t *)xb.hdr;
 
 	return SWAP32(h[25]);
 }
 
-u32 imgCfSize(void)
+uint32_t imgCfSize(void)
 {
-	u32 *h = (u32 *)xb.hdr;
-	u32 v = SWAP32(h[28]);
+	uint32_t *h = (uint32_t *)xb.hdr;
+	uint32_t v = SWAP32(h[28]);
 
 	return v ? v : 0x10000;
 }
 
-u32 imgSize(void)
+uint32_t imgSize(void)
 {
 	return imgEnd;
 }
 
-u32 imgSetSize(u32 size)
+uint32_t imgSetSize(uint32_t size)
 {
 	return imgEnd = size;
 }
@@ -571,16 +571,16 @@ int imgBigBlock(void)
    pad 1: imgAdd.constprop.1), imgWritePage (len 0x1000, type 1, pad 0:
    .constprop.2) and imgWriteAt (type 0, pad 1: .constprop.4), emitted
    in that order; imgAddFile's and writeFsTable's calls inline clones */
-int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
+int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t next, int pad)
 {
-	u32 x, first, rem, tail, blocks, start, p, end, npages, pages;
+	uint32_t x, first, rem, tail, blocks, start, p, end, npages, pages;
 	int left;
-	u8 t;
-	u32 pg;
-	u8 sp9, *s;
+	uint8_t t;
+	uint32_t pg;
+	uint8_t sp9, *s;
 	int partial;
-	u32 b;
-	u32 i;
+	uint32_t b;
+	uint32_t i;
 
 	if (xb.rawSize < off || xb.rawSize < off + len) {
 		return -1;
@@ -712,17 +712,17 @@ int imgAdd(u32 off, const void *src, u32 len, u8 type, u16 next, int pad)
 	return 0;
 }
 
-int imgFits(u32 off, u32 len)
+int imgFits(uint32_t off, uint32_t len)
 {
 	return (xb.fsEnd - 1) * 0x4000 >= off + len;
 }
 
-void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
+void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32_t len)
 {
-	u32 off = imgSizeAligned();
-	u32 start, b, p, pages, npages, first, rem, tail, blocks;
-	u16 blk;
-	u8 *s;
+	uint32_t off = imgSizeAligned();
+	uint32_t start, b, p, pages, npages, first, rem, tail, blocks;
+	uint16_t blk;
+	uint8_t *s;
 	/* imgFits by hand, its limit and end before the dead len++: VRP1's
 	   threading of the two dead tests copies the block after len++ (which
 	   gives the original's head registers), so names defined there are
@@ -730,8 +730,8 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	   by the code-free asm; DOM2 makes the inlined imgAdd's off + len this
 	   one) keep low numbers: `lim < end` and the range test's `end > raw`
 	   then come out in the original's operand order */
-	u32 lim = (xb.fsEnd - 1) * 0x4000;
-	u32 end = off + len;
+	uint32_t lim = (xb.fsEnd - 1) * 0x4000;
+	uint32_t end = off + len;
 
 	__asm__("" :: "g"(end));
 	if ((len & 0x3fff) > 0x3fff)
@@ -744,7 +744,7 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 			c1: __attribute__((cold));
 			name++;
 		}
-		fsFiles[nFsFiles].block = SWAP16((u16)(off >> 14) - xb.fsStart);
+		fsFiles[nFsFiles].block = SWAP16((uint16_t)(off >> 14) - xb.fsStart);
 		fsFiles[nFsFiles].size = SWAP32(len);
 		strcpy(fsFiles[nFsFiles].name, name);
 		fsFiles[nFsFiles].time = *time;
@@ -758,17 +758,17 @@ void imgAddFile(const char *name, const void *data, const u32 *time, u32 len)
 	}
 }
 
-void imgAddFileAs(const char *name, const void *data, const u32 *time, u32 len)
+void imgAddFileAs(const char *name, const void *data, const uint32_t *time, uint32_t len)
 {
-	u32 off = imgSizeAligned();
+	uint32_t off = imgSizeAligned();
 
 	log_printf(1, "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n", name, off, len, off + len);
 	imgAddFile(name, data, time, len);
 }
 
-u32 imgAddMobile(const void *data, u32 len, u8 type)
+uint32_t imgAddMobile(const void *data, uint32_t len, uint8_t type)
 {
-	u32 off, end, ret;
+	uint32_t off, end, ret;
 
 	if (xb.bigBlock) {
 		if (!mobileOffset) {
@@ -805,18 +805,18 @@ u32 imgAddMobile(const void *data, u32 len, u8 type)
 	return 0;
 }
 
-void fixupFsTable(u32 off)
+void fixupFsTable(uint32_t off)
 {
-	u32 i;
+	uint32_t i;
 
 	for (i = 0; i < off >> 14; i++)
 		if (fsTable[i - xb.fsStart] != SWAP16(0x1ffb))
 			fsTable[i - xb.fsStart] = SWAP16(0x1ffb);
 }
 
-void fixupEmptyFsBlocks(u32 off)
+void fixupEmptyFsBlocks(uint32_t off)
 {
-	u32 b, i, n;
+	uint32_t b, i, n;
 
 	for (b = off >> 14; b < xb.fsEnd; b++)
 		fsTable[b - xb.fsStart] = SWAP16(0x1ffe);
@@ -833,7 +833,7 @@ void fixupEmptyFsBlocks(u32 off)
 	}
 }
 
-int addSmcConfig(const u8 *cfg, u32 len)
+int addSmcConfig(const uint8_t *cfg, uint32_t len)
 {
 	memset(smcPage, 0xff, sizeof(smcPage));
 	memcpy(smcPage, cfg, 0x400);
@@ -862,8 +862,8 @@ long checkBootImage(int write)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.bl.data;
 	struct blhdr *b;
-	u32 off, size;
-	u16 magic, build;
+	uint32_t off, size;
+	uint16_t magic, build;
 
 	off = (SWAP32(h->kvAddr) + SWAP32(h->kvSize) + 15) & ~15;
 	b = (struct blhdr *)(xb.bl.data + off);
@@ -920,10 +920,10 @@ long checkBootImage(int write)
 	return 0;
 }
 
-__attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
+__attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 {
-	u8 *buf, *p;
-	u32 blk;
+	uint8_t *buf, *p;
+	uint32_t blk;
 	int i;
 
 	blk = off >> 14;
@@ -935,9 +935,9 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
 	buf = malloc(0x4000);
 	p = buf;
 	for (i = 0; i < 16; i++) {
-		memcpy(p, (u8 *)fsTable + i * 0x200, 0x200);
+		memcpy(p, (uint8_t *)fsTable + i * 0x200, 0x200);
 		p += 0x200;
-		memcpy(p, (u8 *)fsFiles + i * 0x200, 0x200);
+		memcpy(p, (uint8_t *)fsFiles + i * 0x200, 0x200);
 		p += 0x200;
 	}
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
@@ -948,21 +948,21 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(u32 off)
 small:
 	imgAdd(off, buf, i * 0x400, 0x30, 0x1ffd, 0);
 done:
-	setBeU16(blk, (u8 *)xb.mmcAnchor + 0x1c);
-	setBeU16(0, (u8 *)xb.mmcAnchor + 0x1e);
+	setBeU16(blk, (uint8_t *)xb.mmcAnchor + 0x1c);
+	setBeU16(0, (uint8_t *)xb.mmcAnchor + 0x1e);
 	free(buf);
 }
 
 void copyAnchorBlock(int n)
 {
-	u32 off = n != 1 ? 0x2fec000 : 0x2fe8000;
+	uint32_t off = n != 1 ? 0x2fec000 : 0x2fe8000;
 
 	log_printf(1, "copying anchor block %d to offset 0x%x\n", n, off);
 	memset(xb.hdr + off, 0, 0x1000);
 	memcpy(xb.hdr + off, xb.mmcAnchor, sizeof(xb.mmcAnchor));
 }
 
-int spareUsed(const u8 *s)
+int spareUsed(const uint8_t *s)
 {
 	int i;
 
@@ -972,7 +972,7 @@ int spareUsed(const u8 *s)
 	return 0;
 }
 
-u8 *imageGetBuffer(u32 *size)
+uint8_t *imageGetBuffer(uint32_t *size)
 {
 	if (xb.flags & 0x10000000) {
 		*size = 0x3000000;
@@ -999,7 +999,7 @@ int writeImage(char *name)
 			return 1;
 		}
 		if (xb.sha1Write) {
-			u8 hash[20];
+			uint8_t hash[20];
 
 			log_printf(1, "done!\ncreating SHA-1 hash from system area data...");
 			XeCryptSha(xb.hdr, 0x3000000, 0, 0, 0, 0, hash, 20);
@@ -1008,7 +1008,7 @@ int writeImage(char *name)
 		}
 	} else {
 		XECRYPT_SHA_STATE sha;
-		u8 hash[20];
+		uint8_t hash[20];
 
 		if (fwrite(xb.raw, xb.blocks * 0x4200, 1, f) != 1) {
 			log_printf(1, "failed!\n");
@@ -1045,15 +1045,15 @@ int writeImage(char *name)
 
 int finalizeImage(void)
 {
-	u32 b, p, i, n;
+	uint32_t b, p, i, n;
 	int size;
 	int blocks;
-	u8 *raw, *s, *spare;
+	uint8_t *raw, *s, *spare;
 	void *mem;
 
 	if (xb.flags & 0x10000000)
 		return 0;
-	xb.raw = (u8 *)(mem = xmalloc(xb.rawSize));
+	xb.raw = (uint8_t *)(mem = xmalloc(xb.rawSize));
 	if (!mem)
 		return -1;
 	if (xb.bigBlock) {
@@ -1072,7 +1072,7 @@ int finalizeImage(void)
 	} else if (xb.bbController) {
 		log_printf(1, "fixing up big block controller on small block NAND LBA numbers...");
 		for (i = 0; i < xb.blocks * 32; i++) {
-			u8 t;
+			uint8_t t;
 
 			if (!spareUsed(xb.spare + i * 16))
 				continue;
@@ -1084,7 +1084,7 @@ int finalizeImage(void)
 		log_printf(1, "done!\n");
 	}
 	log_printf(1, "calculating ECD bytes and assembling raw image...");
-	raw = (u8 *)mem;
+	raw = (uint8_t *)mem;
 	for (b = 0; b < xb.blocks; b++)
 		for (p = 0; p < 32; p++) {
 			if (!pageErased(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16))
@@ -1120,10 +1120,10 @@ int finalizeImage(void)
 				blocks = xb.type == 6 || xb.type == 8 ? 0x1000 : 0x400;
 			}
 			for (i = 0; i < xb.numBad; i++) {
-				u32 from = xb.badBlocks[i];
+				uint32_t from = xb.badBlocks[i];
 
 				if (from < blocks && xb.badRemap[i] < blocks) {
-					u32 src = size * from, dst = size * xb.badRemap[i];
+					uint32_t src = size * from, dst = size * xb.badRemap[i];
 
 					log_printf(1, "    copying 0x%x bytes of LBA 0x%x to block 0x%x...", size, from, xb.badRemap[i]);
 					memcpy(xb.raw + dst, xb.raw + src, size);
@@ -1138,7 +1138,7 @@ int finalizeImage(void)
 					log_printf(1, "\n\n***** ERROR: Remapping block 0x%x to block 0x%x is not sane on a NAND with 0x%x blocks!\n",
 						from, xb.badRemap[i], blocks);
 				else {
-					u32 off = size * from;
+					uint32_t off = size * from;
 
 					log_printf(1, "    Remapping block 0x%x is not required, zerofilling...", from);
 					memset(xb.raw + off, 0, size);
@@ -1153,14 +1153,14 @@ int finalizeImage(void)
 	return 0;
 }
 
-u32 fsStartBlock(void)
+uint32_t fsStartBlock(void)
 {
 	return xb.fsStart;
 }
 
-u32 reservedAreaOffset(int bigBlock, int big, int mmc, u32 *page, u32 *sector, int n)
+uint32_t reservedAreaOffset(int bigBlock, int big, int mmc, uint32_t *page, uint32_t *sector, int n)
 {
-	u32 b, off;
+	uint32_t b, off;
 
 	if (mmc) {
 		b = n + 0xbff;
@@ -1198,7 +1198,7 @@ u32 reservedAreaOffset(int bigBlock, int big, int mmc, u32 *page, u32 *sector, i
 	return off;
 }
 
-u32 statisticsOffset(int bigBlock, int big, int mmc, u32 *page, u32 *sector)
+uint32_t statisticsOffset(int bigBlock, int big, int mmc, uint32_t *page, uint32_t *sector)
 {
 	if (mmc) {
 		if (page)
@@ -1228,7 +1228,7 @@ u32 statisticsOffset(int bigBlock, int big, int mmc, u32 *page, u32 *sector)
 	return 0xf78000;
 }
 
-u32 manufacturingOffset(int bigBlock, int big, int mmc, u32 *page, u32 *sector)
+uint32_t manufacturingOffset(int bigBlock, int big, int mmc, uint32_t *page, uint32_t *sector)
 {
 	if (mmc) {
 		if (page)
@@ -1258,7 +1258,7 @@ u32 manufacturingOffset(int bigBlock, int big, int mmc, u32 *page, u32 *sector)
 	return 0xf74000;
 }
 
-int imgAddRaw(const char *name, const void *data, u32 len, u32 off)
+int imgAddRaw(const char *name, const void *data, uint32_t len, uint32_t off)
 {
 	log_printf(1, "\tadding %s at raw offset 0x%x len 0x%x (end 0x%x)\n", name, off, len, off + len);
 	if (xb.bigBlock)

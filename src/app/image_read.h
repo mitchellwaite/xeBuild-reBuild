@@ -6,9 +6,9 @@
 
 void buildCleanup(void);
 void listFlashFiles(void);
-int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
+int fsGetFile(const char *name, uint8_t **buf, uint32_t *size, uint32_t *time);
 void remapBadBlocks(int numBlocks);
-u32 copyMuData(FILE *out, void *sha);
-u32 loadDump(const char *path);
+uint32_t copyMuData(FILE *out, void *sha);
+uint32_t loadDump(const char *path);
 
 #endif

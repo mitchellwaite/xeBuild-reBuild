@@ -4,13 +4,13 @@
 
 #include "xebuild.h"
 
-int kvVerifySig(u8 *kv, const void *pubKey, const u8 *hmacKey);
-int cbVerifySig(u8 *bl, const void *pubKey);
-int blVerifySig(u8 *bl, unsigned int len, const void *pubKey, const u8 *salt);
-int blSign(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey,
-	const u8 *salt);
-int blCheckHash(u8 *bl, unsigned int len, const u8 *expect);
-int blHashAndSign(u8 *bl, unsigned int len, u8 *prev, unsigned int prevLen,
-	u8 *hashOut, const void *pubKey, const void *prvKey);
+int kvVerifySig(uint8_t *kv, const void *pubKey, const uint8_t *hmacKey);
+int cbVerifySig(uint8_t *bl, const void *pubKey);
+int blVerifySig(uint8_t *bl, unsigned int len, const void *pubKey, const uint8_t *salt);
+int blSign(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey,
+	const uint8_t *salt);
+int blCheckHash(uint8_t *bl, unsigned int len, const uint8_t *expect);
+int blHashAndSign(uint8_t *bl, unsigned int len, uint8_t *prev, unsigned int prevLen,
+	uint8_t *hashOut, const void *pubKey, const void *prvKey);
 
 #endif

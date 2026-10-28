@@ -4,8 +4,8 @@
 
 #include "xebuild.h"
 
-int smcCheck(u8 *smc, int len, int type);
-void smcPatch(u8 *smc, int len, u32 flags);
-int smcConfigOk(const u8 *smc);
+int smcCheck(uint8_t *smc, int len, int type);
+void smcPatch(uint8_t *smc, int len, uint32_t flags);
+int smcConfigOk(const uint8_t *smc);
 
 #endif

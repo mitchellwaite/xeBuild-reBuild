@@ -39,10 +39,10 @@ unsigned short getBeU16(const unsigned char *p)
 	return (p[0] << 8) | p[1];
 }
 
-unsigned int getBeU32(const u8 *p)
+unsigned int getBeU32(const uint8_t *p)
 {
-	/* TODO(prototype cast): its callers pass bytes; the original read a u32 */
-	return __builtin_bswap32(*(const u32 *)p);
+	/* TODO(prototype cast): its callers pass bytes; the original read a uint32_t */
+	return __builtin_bswap32(*(const uint32_t *)p);
 }
 
 unsigned long long getBeU64(const unsigned long long *p)
@@ -50,10 +50,10 @@ unsigned long long getBeU64(const unsigned long long *p)
 	return __builtin_bswap64(*p);
 }
 
-unsigned int getLeU32(const u8 *p)
+unsigned int getLeU32(const uint8_t *p)
 {
 	/* TODO(prototype cast): as getBeU32 */
-	return *(const u32 *)p;
+	return *(const uint32_t *)p;
 }
 
 unsigned char *setBeU16(unsigned short v, unsigned char *p)
@@ -270,10 +270,10 @@ unsigned char myatox8(const char* dat)
 	return retval;
 }
 
-// converts (up to) 16 uchar nibbles into a u32
-u32 myatox32(const char* dat, u32 defValue)
+// converts (up to) 16 uchar nibbles into a uint32_t
+uint32_t myatox32(const char* dat, uint32_t defValue)
 {
-	u32 retval = 0, i;
+	uint32_t retval = 0, i;
 	unsigned char res;
 	for(i = 0; i < 16; i++)
 	{
@@ -303,10 +303,10 @@ char myatol(char c)
 	return ret;
 }
 
-// converts a decimal or 0x-prefixed hex string into a u32
+// converts a decimal or 0x-prefixed hex string into a uint32_t
 // (opt_idx's myatou32; this build also tests for an upper case 'X' after
 // myatol, which can never match but changes gcc's branch estimate)
-u32 myatou32(const char* dat, u32 defValue)
+uint32_t myatou32(const char* dat, uint32_t defValue)
 {
 	if(((dat[0]&0xFF) == '0')&&((myatol(dat[1]&0xFF) == 'x')||(myatol(dat[1]&0xFF) == 'X')))
 	{
@@ -321,7 +321,7 @@ u32 myatou32(const char* dat, u32 defValue)
 	return defValue;
 }
 
-u32 myatoh32(const char* dat, u32 defValue)
+uint32_t myatoh32(const char* dat, uint32_t defValue)
 {
 	if((strlen(dat) > 2)&&((dat[0]&0xFF) == '0')&&(myatol(dat[1]&0xFF) == 'x'))
 		dat = &dat[2];
@@ -481,7 +481,7 @@ size_t readFileTo(const char *name, void *buf, size_t size)
 	return ret;
 }
 
-u32 readFileInTo(const char *dir, const char *name, void *buf, int size)
+uint32_t readFileInTo(const char *dir, const char *name, void *buf, int size)
 {
 	char path[1024];
 
@@ -571,10 +571,10 @@ unsigned int sumBytes(const unsigned char *p, unsigned int len)
 
 void showExpectedFuses(unsigned int flags, unsigned short cb, unsigned char *fuses, int clear)
 {
-	u32 type = flags >> 24;
-	u8 cseq = flags >> 16;
-	u16 allow = flags;
-	u64 mask, bit;
+	uint32_t type = flags >> 24;
+	uint8_t cseq = flags >> 16;
+	uint16_t allow = flags;
+	uint64_t mask, bit;
 	int i;
 
 	log_printf(1, "CB %d seq 0x%08x type: 0x%02x cseq: 0x%02x allow: 0x%04x\n",
@@ -614,7 +614,7 @@ void showExpectedFuses(unsigned int flags, unsigned short cb, unsigned char *fus
 		mask = 0;
 		log_printf(1, "\tfuseset 02: %016llX (sequence)\n", 0xFULL << ((16 - cseq) * 4));
 		for (i = 0; i < 16; i++) {
-			if (allow & (u16)(1 << i)) {
+			if (allow & (uint16_t)(1 << i)) {
 				bit = 0xF000000000000000ULL >> (i * 4);
 				log_printf(1, "\tfuseset 02: %016llX (allow cseq %d)\n", bit, i + 1);
 				mask |= bit;

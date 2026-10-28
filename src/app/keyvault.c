@@ -8,12 +8,12 @@
 #include "log.h"
 #include "xboxrom.h"
 
-static u8 kvBuf[0x4000];
-static u8 dvdKey[16];
-static u8 *kv;
-static u32 kvLoaded;
+static uint8_t kvBuf[0x4000];
+static uint8_t dvdKey[16];
+static uint8_t *kv;
+static uint32_t kvLoaded;
 static int dvdKeySet;
-static u32 kvHashOk;
+static uint32_t kvHashOk;
 static int kvType;
 
 int kvGetType(void)
@@ -31,7 +31,7 @@ int kvIsLoaded(void)
 int kvCheckHash(void)
 {
 	int i;
-	u32 v;
+	uint32_t v;
 
 	if (!kvLoaded)
 		return 0;
@@ -58,7 +58,7 @@ found:
 	return 1;
 }
 
-void kvSet(u8 *buf)
+void kvSet(uint8_t *buf)
 {
 	memcpy(kvBuf, buf, 0x4000);
 	kvLoaded = 1;
@@ -77,12 +77,12 @@ void kvSet(u8 *buf)
 
 int kvGetGameRegion(void)
 {
-	u16 x;
-	u16 f;
+	uint16_t x;
+	uint16_t f;
 
 	if (!kvLoaded)
 		return 0;
-	x = *(u16 *)(kv + 0x1c);
+	x = *(uint16_t *)(kv + 0x1c);
 	f = ((x & 0xff) << 8) + (x >> 8);
 	if (f) {
 		if (f & 0x300)
@@ -93,14 +93,14 @@ int kvGetGameRegion(void)
 	return ((((x & 0xff) << 8) + (x >> 8)) & 0x120) != 0;
 }
 
-u8 *kvGetDvdKey(void)
+uint8_t *kvGetDvdKey(void)
 {
 	if (!kvLoaded)
 		return 0;
 	return kv + 0x100;
 }
 
-u8 *kvGetConsoleId(void)
+uint8_t *kvGetConsoleId(void)
 {
 	if (!kvLoaded)
 		return 0;
@@ -109,10 +109,10 @@ u8 *kvGetConsoleId(void)
 
 int kvGetSerial(char *out)
 {
-	u64 v = 0;
+	uint64_t v = 0;
 	int i;
 	int ret = 0;
-	u8 digit, *p;
+	uint8_t digit, *p;
 
 	if (kvLoaded && out) {
 		p = kv + 0x9ca;
@@ -128,7 +128,7 @@ int kvGetSerial(char *out)
 	return ret;
 }
 
-u8 *kvGetConsoleCert(void)
+uint8_t *kvGetConsoleCert(void)
 {
 	if (!kvLoaded)
 		return 0;

@@ -22,7 +22,7 @@ int blDevk[6] = {3, 4, 5, 6, 7, 8};
 int blRetail[6] = {3, 4, 5, 6, 8, 9};
 
 /* {offset, type} of each file for each build type */
-struct fileloc { u32 offset; int type; };
+struct fileloc { uint32_t offset; int type; };
 struct fileloc locDevgl[14] = {
 	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 7}, {-1, 8},
 	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
@@ -275,15 +275,15 @@ static const char fi_4501c0[] __attribute__((aligned(4))) = "------ ini parsing 
 
 /* read the file list ini: the files for this build type, the bootloaders'
    names and crcs, [rawpatch], [flashfs] and [security] */
-u32 parseIni(char *path)
+uint32_t parseIni(char *path)
 {
 	FILE *f;
 	unsigned char *buf, *p;
 	int size, off, end, pos, len, nul, comma, n, i, nbl;
-	u32 noCrc;
+	uint32_t noCrc;
 	struct fileent *e;
 	char *s;
-	u32 crc;
+	uint32_t crc;
 	char label[50];
 	char tmp[0x400];
 
@@ -558,7 +558,7 @@ u32 parseIni(char *path)
 			tmp[n] = 0;
 			pos = pos + n + 1;
 			xb.rawPatch[i].offset = myatou32(tmp, -1);
-			if (xb.rawPatch[i].offset == (u32)-1) {
+			if (xb.rawPatch[i].offset == (uint32_t)-1) {
 				log_printf(1, fi_44ff60, xb.rawPatch[i].name);
 				free(buf);
 				return 0;

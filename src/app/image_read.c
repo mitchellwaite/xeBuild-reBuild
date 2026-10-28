@@ -15,58 +15,58 @@
 #include "smc.h"
 
 /* TODO(prototype cast): shaSelfCheck returns int (bootloaders.c);
-   findAnchor's code wants a u32 */
-u32 shaSelfCheckU32(u8 *p) __asm__("_shaSelfCheck");
+   findAnchor's code wants a uint32_t */
+uint32_t shaSelfCheckU32(uint8_t *p) __asm__("_shaSelfCheck");
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
-#define ROT16(x) ((u16)(((x) << 8) | ((x) >> 8)))
+#define ROT16(x) ((uint16_t)(((x) << 8) | ((x) >> 8)))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 struct fsroot {
-	u16 map[0x1000];
+	uint16_t map[0x1000];
 	struct fsent ent[256];
 };
 
 /* mobile files found by the scan; 0 is the fs root */
 struct mobile {
 	int found;
-	u32 version;
-	u32 page;
-	u32 len;
-	u32 offset;
-	u32 spare;
+	uint32_t version;
+	uint32_t page;
+	uint32_t len;
+	uint32_t offset;
+	uint32_t spare;
 };
 
 int fseeko64(FILE *f, long long off, int whence);
 
-int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet);
+int fsFindFile(const char *name, uint32_t *block, uint32_t *size, uint32_t *time, int quiet);
 /* not inlined into imgGetSecurityFiles in the original (growth 39 is under
    max-inline-insns-auto here; something made it 40+ there) */
-int loadFlashFile(int i, u32 block) __attribute__((noinline));
+int loadFlashFile(int i, uint32_t block) __attribute__((noinline));
 int findAnchor(void);
 int mmcFindMobiles(void);
-u32 spareVersion(u8 *s);
+uint32_t spareVersion(uint8_t *s);
 void showMobilePages(void);
 int scanMobiles(void);
 void setFsOffset(void);
 int findFsRoot(void);
 void imgGetSecurityFiles(void);
 void findSmcConfig(void);
-int checkBlock(u8 *blk, int block, int numBlocks);
-int addRemap(u32 block, int dest, int numBlocks);
+int checkBlock(uint8_t *blk, int block, int numBlocks);
+int addRemap(uint32_t block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
 int notZeropair(void);
 unsigned long spareLbaOk(int pages);
-u32 copyMmcImage(u8 *raw);
-unsigned long parseDump(u8 *raw);
-int detectController(u8 *raw, int size);
+uint32_t copyMmcImage(uint8_t *raw);
+unsigned long parseDump(uint8_t *raw);
+int detectController(uint8_t *raw, int size);
 int checkHeader(const char *name, FILE *fp);
 void getNonces(void);
 
 /* .bss and .data in the original's order */
 static struct mobile mobiles[10];
-static u8 anchor[0x200];
-static u32 fsOffset;
+static uint8_t anchor[0x200];
+static uint32_t fsOffset;
 static int fsValid;
 static struct fsroot fsBuf;
 static int dumpSize;
@@ -75,7 +75,7 @@ char mobileName[] = "MobileA";
 struct fsroot *fs = &fsBuf;
 
 static const char ir_4521b8[] __attribute__((aligned(4))) = "%s found in sector 0x%x size 0x%x...";
-static int fsFind(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
+static int fsFind(const char *name, uint32_t *block, uint32_t *size, uint32_t *time, int quiet)
 {
 	int i;
 
@@ -128,9 +128,9 @@ static const char ir_45230f[] __attribute__((aligned(1))) = "LDV was already set
 void getImageLdv(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
-	u32 size = SWAP32(h->patchSlotSize);
-	u32 pairing;
-	u32 ldv;
+	uint32_t size = SWAP32(h->patchSlotSize);
+	uint32_t pairing;
+	uint32_t ldv;
 
 	if (!size)
 		size = 0x10000;
@@ -155,7 +155,7 @@ void getImageLdv(void)
 	}
 	if (xb.cfLdv)
 		log_printf(1, ir_45230f, xb.cfLdv);
-	else if ((u8)ldv > 32)
+	else if ((uint8_t)ldv > 32)
 		xb.cfLdv = 32;
 	else
 		xb.cfLdv = ldv;
@@ -308,7 +308,7 @@ void getImageMobiles(void)
 {
 	int i;
 	char name[30];
-	u32 off, len;
+	uint32_t off, len;
 
 	for (i = 0; i < 9; i++) {
 		struct mobile *m = &mobiles[i + 1];
@@ -358,8 +358,8 @@ static const char ir_452958[] __attribute__((aligned(1))) = "    port    : %d\n"
 static const char ir_45296a[] __attribute__((aligned(1))) = "    host IP : %d.%d.%d.%d\n";
 void getNetKd(void)
 {
-	u8 *img, *p;
-	u32 ver;
+	uint8_t *img, *p;
+	uint32_t ver;
 
 	xb.netKd.data = 0;
 	if (getBeU16(xb.dump + 0x80) != 0xca4a)
@@ -381,11 +381,11 @@ void getNetKd(void)
 		memcpy(xb.netKd.data, p, xb.netKd.size);
 }
 
-int loadFlashFile(int i, u32 block)
+int loadFlashFile(int i, uint32_t block)
 {
-	u32 off = fsOffset + (block << 14);
-	u32 left = xb.flashSize[i];
-	u32 done = 0;
+	uint32_t off = fsOffset + (block << 14);
+	uint32_t left = xb.flashSize[i];
+	uint32_t done = 0;
 
 	xb.flashBuf[i] = calloc(left, 1);
 	while (left > 0x4000) {
@@ -400,7 +400,7 @@ int loadFlashFile(int i, u32 block)
 	return verifyFlashFile(i);
 }
 
-int fsFindFile(const char *name, u32 *block, u32 *size, u32 *time, int quiet)
+int fsFindFile(const char *name, uint32_t *block, uint32_t *size, uint32_t *time, int quiet)
 {
 	if (fsValid == 1)
 		return fsFind(name, block, size, time, quiet);
@@ -416,8 +416,8 @@ void listFlashFiles(void)
 		return;
 	for (i = 0; i < 256; i++) {
 		struct fsent *e = &fs->ent[i];
-		u32 block, size, time;
-		u16 b16;
+		uint32_t block, size, time;
+		uint16_t b16;
 
 		if (!e->name[0])
 			continue;
@@ -431,10 +431,10 @@ void listFlashFiles(void)
 	}
 }
 
-int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time)
+int fsGetFile(const char *name, uint8_t **buf, uint32_t *size, uint32_t *time)
 {
-	u32 block, len, t, off, left, done;
-	u8 *p;
+	uint32_t block, len, t, off, left, done;
+	uint8_t *p;
 	int v = fsValid;
 
 	/* code-free hint: fsValid (reused for return 1) in esi, name in edi */
@@ -471,8 +471,8 @@ static const char ir_452aa4[] __attribute__((aligned(4))) = "anchor block at 0x2
 static const char ir_452acc[] __attribute__((aligned(4))) = "anchor block v %d at 0x2fe8000 is selected\n";
 int findAnchor(void)
 {
-	u32 v0, v1;
-	u32 ok0, ok1;
+	uint32_t v0, v1;
+	uint32_t ok0, ok1;
 
 	log_printf(1, ir_4529d0);
 	v0 = getBeU32(xb.dump + 0x2fe8018);
@@ -505,7 +505,7 @@ int findAnchor(void)
 int mmcFindMobiles(void)
 {
 	int i;
-	u16 block, len;
+	uint16_t block, len;
 
 	if (!findAnchor())
 		return 0;
@@ -528,9 +528,9 @@ int mmcFindMobiles(void)
 	return mobiles[0].found;
 }
 
-u32 spareVersion(u8 *s)
+uint32_t spareVersion(uint8_t *s)
 {
-	u32 lo;
+	uint32_t lo;
 
 	if (xb.dumpBigBlock)
 		lo = s[5];
@@ -547,14 +547,14 @@ static const char ir_452b6c[] __attribute__((aligned(4))) = "mobile%c.dat ver %0
 static const char ir_452bc3[] __attribute__((aligned(1))) = "%02x ";
 static const char ir_452bc9[] __attribute__((aligned(1))) = "(DELETE)\n";
 static const char ir_452bd3[] __attribute__((aligned(1))) = "\n";
-/* (u32)letter: PRE hoists the cast into both arms, so letter's PHI dies with
+/* (uint32_t)letter: PRE hoists the cast into both arms, so letter's PHI dies with
    len's and ivopts' names give the inner loop's `cmp ebx,esi` (wip/README.md) */
 void showMobilePages(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
-	u32 page, end;
-	u32 off;
-	u8 fsType;
+	uint32_t page, end;
+	uint32_t off;
+	uint8_t fsType;
 
 	if (!xb.dumpBigBlock) {
 		end = xb.dumpPages - 1152;
@@ -573,11 +573,11 @@ void showMobilePages(void)
 	log_printf(2, ir_452b20,
 		   page, off, end, xb.dumpPages);
 	for (; page < end; page++) {
-		u8 *s = xb.dumpSpare + page * 16;
-		u8 t = s[12] & 0x3f;
+		uint8_t *s = xb.dumpSpare + page * 16;
+		uint8_t t = s[12] & 0x3f;
 		int letter, i;
-		u32 ver;
-		u16 len;
+		uint32_t ver;
+		uint16_t len;
 
 		if (t == fsType) {
 			letter = 'A';
@@ -589,7 +589,7 @@ void showMobilePages(void)
 			continue;
 		ver = spareVersion(s);
 		log_printf(2, ir_452b6c,
-			   (u32)letter, ver, page << 9, page * 528, s[9], len, page);
+			   (uint32_t)letter, ver, page << 9, page * 528, s[9], len, page);
 		for (i = 0; i < 16; i++)
 			log_printf(2, ir_452bc3, xb.dumpSpare[page * 16 + i]);
 		if (len & 0x8000)
@@ -603,8 +603,8 @@ void showMobilePages(void)
 int scanMobiles(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
-	u32 end, page, off;
-	u8 fsType;
+	uint32_t end, page, off;
+	uint8_t fsType;
 
 	if (!xb.dumpBigBlock) {
 		end = xb.dumpPages - 1152;
@@ -620,11 +620,11 @@ int scanMobiles(void)
 	page = SWAP32(h->sysUpdateAddr) >> 9;
 	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
 	while (page < end) {
-		u8 *s = xb.dumpSpare + page * 16;
-		u8 t = s[12] & 0x3f;
+		uint8_t *s = xb.dumpSpare + page * 16;
+		uint8_t t = s[12] & 0x3f;
 		int n, i;
-		u16 len;
-		u32 ver;
+		uint16_t len;
+		uint32_t ver;
 
 		/* sink moves this into spareVersion's join, after lo */
 		off = page << 9;
@@ -687,7 +687,7 @@ next:
 static const char ir_452bd8[] __attribute__((aligned(4))) = "bigblock file system offset set to 0x%x fsb: %x meta: %x lbaend: %x\n";
 void setFsOffset(void)
 {
-	u32 meta;
+	uint32_t meta;
 
 	fsOffset = 0;
 	if (!xb.dumpBigBlock)
@@ -707,7 +707,7 @@ static const char ir_452d0c[] __attribute__((aligned(4))) = "\n\n***** ERROR! Co
 int findFsRoot(void)
 {
 	int found, i;
-	u8 *src;
+	uint8_t *src;
 	
 
 	log_printf(1, ir_452c20);
@@ -732,8 +732,8 @@ int findFsRoot(void)
 	}
 	src = xb.dump + mobiles[0].offset;
 	for (i = 0; i < 16; i++) {
-		memcpy((u8 *)fsBuf.map + i * 512, src + i * 1024, 512);
-		memcpy((u8 *)fsBuf.ent + i * 512, src + i * 1024 + 512, 512);
+		memcpy((uint8_t *)fsBuf.map + i * 512, src + i * 1024, 512);
+		memcpy((uint8_t *)fsBuf.ent + i * 512, src + i * 1024 + 512, 512);
 	}
 	fsValid = 1;
 	return found;
@@ -743,7 +743,7 @@ static const char ir_452d33[] __attribute__((aligned(1))) = "seeking security fi
 static const char ir_452d4e[] __attribute__((aligned(1))) = "done!\n";
 inline void imgGetSecurityFiles(void)
 {
-	u32 i, block;
+	uint32_t i, block;
 
 	log_printf(1, ir_452d33);
 	for (i = 0; i < xb.nFlashFiles2; i++)
@@ -758,7 +758,7 @@ static const char ir_452db0[] __attribute__((aligned(4))) = "found at offset 0x%
 static const char ir_452e09[] __attribute__((aligned(1))) = "not found!\n";
 void findSmcConfig(void)
 {
-	u32 off, end;
+	uint32_t off, end;
 
 	if (xb.dumpMmc) {
 		off = 0x2ffc000;
@@ -806,7 +806,7 @@ static const char ir_452f44[] __attribute__((aligned(4))) = "*******************
    aren't predicted as negative returns (ce1 hoists the -1 above the tests);
    -6 goes through `lba != -6` (VRP then can't fold the small block's lba to
    0 on the `lba > 0` exit, as it does the big block's) */
-int checkBlock(u8 *b, int block, int numBlocks)
+int checkBlock(uint8_t *b, int block, int numBlocks)
 {
 	int lba, lba0, lba1;
 
@@ -819,7 +819,7 @@ int checkBlock(u8 *b, int block, int numBlocks)
 			if (lba >= numBlocks - 1)
 				lba = -3;
 			else if (!xb.muChecked) {
-				u8 m = b[524] & 0x3f;
+				uint8_t m = b[524] & 0x3f;
 				int t = m;
 
 				/* opaque int copy: the <= 0x29 test stays an int
@@ -847,7 +847,7 @@ int checkBlock(u8 *b, int block, int numBlocks)
 		if (b[517] == 0xff && b[8965] == 0xff) {
 			lba1 = b[513] + (b[514] & 0xf) * 256;
 			/* volatile: b[513] loaded again, as in the original */
-			lba0 = b[512] + (((volatile u8 *)b)[513] & 0xf) * 256;
+			lba0 = b[512] + (((volatile uint8_t *)b)[513] & 0xf) * 256;
 			if (xb.dumpBbController) {
 				if (block && block == lba0)
 					lba = -6;
@@ -877,11 +877,11 @@ int checkBlock(u8 *b, int block, int numBlocks)
 static const char ir_452f7c[] __attribute__((aligned(4))) = "block 0x%x was remapped to block 0x%x at remap instance %d\n";
 static const char ir_452fb8[] __attribute__((aligned(4))) = "block 0x%x was remapped to block 0x%x, entering remap instance %d\n";
 static const char ir_452ffc[] __attribute__((aligned(4))) = "MAX REMAPS of 32 exceeded, remapping disabled and image rejected as faulty!\n";
-int addRemap(u32 block, int dest, int numBlocks)
+int addRemap(uint32_t block, int dest, int numBlocks)
 {
-	u32 i;
+	uint32_t i;
 	int found = 0;
-	u32 b = block;	/* unused; puts block before the loads in compares */
+	uint32_t b = block;	/* unused; puts block before the loads in compares */
 
 	for (i = 0; i < xb.numBad; i++) {
 		if (block == xb.badBlocks[i] && xb.badRemap[i] == -1 && dest < numBlocks) {
@@ -907,7 +907,7 @@ int addRemap(u32 block, int dest, int numBlocks)
 int findFreeRemap(int numBlocks)
 {
 	int b, used;
-	u32 i;
+	uint32_t i;
 
 	for (b = numBlocks - 1; b >= numBlocks - 32; b--) {
 		used = 0;
@@ -928,7 +928,7 @@ static const char ir_45309c[] __attribute__((aligned(4))) = "block 0x%x had no r
 static const char ir_4530d4[] __attribute__((aligned(4))) = "block 0x%x had no need of remap, it's in the wear area\n";
 void remapBadBlocks(int numBlocks)
 {
-	u32 i;
+	uint32_t i;
 	int b;
 
 	log_printf(1, ir_453049);
@@ -969,7 +969,7 @@ unsigned long spareLbaOk(int pages)
 
 static const char ir_45310c[] __attribute__((aligned(4))) = "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n";
 /* ce1 would hoist ret = 1 above the branch (edge predicted 61%) */
-__attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
+__attribute__((optimize("no-if-conversion"))) uint32_t copyMmcImage(uint8_t *raw)
 {
 	xb.numBad = 0;
 	memcpy(xb.dump, raw, xb.dumpSize);
@@ -1030,14 +1030,14 @@ static const char ir_4534e9[] __attribute__((aligned(1))) = "--remap summary--\n
 static const char ir_4534fc[] __attribute__((aligned(1))) = "-----------------\n";
 static const char ir_453510[] __attribute__((aligned(4))) = "%d: source: 0x%04x dest: (NONE/BAD)\n";
 static const char ir_453538[] __attribute__((aligned(4))) = "%d: source: 0x%04x dest: 0x%04x\n";
-unsigned long parseDump(u8 *raw)
+unsigned long parseDump(uint8_t *raw)
 {
 	int ppb = xb.dumpBigBlock ? 256 : 32;
 	int blocks = xb.dumpPages / ppb;
 	int blk, dst, p, b2;
-	u32 n;
+	uint32_t n;
 	int i;
-	u8 *src;
+	uint8_t *src;
 
 	int rr = xb.dumpPages % ppb;
 
@@ -1141,11 +1141,11 @@ static const char ir_4535e4[] __attribute__((aligned(4))) = "could not seek to 0
 static const char ir_453610[] __attribute__((aligned(4))) = "could not allocate 0x%x byte buffer, not copying data..\n";
 static const char ir_453649[] __attribute__((aligned(1))) = "reading nanddump.bin...\n";
 static const char ir_453664[] __attribute__((aligned(4))) = "writing nanddump.bin MU area to output file...";
-u32 copyMuData(FILE *out, void *sha)
+uint32_t copyMuData(FILE *out, void *sha)
 {
 	char name[0x400];
 	FILE *fp;
-	u8 *buf;
+	uint8_t *buf;
 	int len;
 
 	if (dumpSize != dumpSize / 0x4200000 * 0x4200000) {
@@ -1193,10 +1193,10 @@ static const char ir_453708[] __attribute__((aligned(4))) = "***** WARNING: NAND
 static const char ir_453760[] __attribute__((aligned(4))) = "\tNAND dump is from a small block machine\n";
 static const char ir_45378c[] __attribute__((aligned(4))) = "\tNAND dump uses small block controller\n";
 static const char ir_4537b4[] __attribute__((aligned(4))) = "***** WARNING: NAND dump does not appear to have a good block at block 0, discarding dump!\n";
-int detectController(u8 *raw, int size)
+int detectController(uint8_t *raw, int size)
 {
 	int i, n;
-	u32 found;
+	uint32_t found;
 
 	if (size == 0x3000000) {
 		log_printf(1, ir_453694);
@@ -1232,7 +1232,7 @@ int detectController(u8 *raw, int size)
 	if (n > 1)
 		__asm__("" : "+a"(found));
 	for (i = 1; i < n; i++) {
-		u8 *b = raw + i * 16896;
+		uint8_t *b = raw + i * 16896;
 		int hi, lo;
 		__asm__("" : : "b"(i));
 
@@ -1285,8 +1285,8 @@ static const char ir_453d18[] __attribute__((aligned(4))) = "nanddump header che
 int checkHeader(const char *name, FILE *fp)
 {
 	struct flashhdr hdr;
-	u8 page[0x210];
-	u32 magic;
+	uint8_t page[0x210];
+	uint32_t magic;
 	long long size;
 
 	size = getFileSize64(fp);
@@ -1349,7 +1349,7 @@ badSysUpdate:
 		fseeko64(fp, 0x3000000, SEEK_SET);
 		fread(&magic, 4, 1, fp);
 		rewind(fp);
-		if (getBeU32((u8 *)&magic) == 0x58544146) {
+		if (getBeU32((uint8_t *)&magic) == 0x58544146) {
 			log_printf(1, ir_453bdc);
 			size = 0x3000000;
 		} else {
@@ -1384,49 +1384,49 @@ static const char ir_453fcc[] __attribute__((aligned(4))) = "**** Warning: error
 void getNonces(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
-	u32 off = SWAP32(h->cbOffset);
-	u8 *p;
+	uint32_t off = SWAP32(h->cbOffset);
+	uint8_t *p;
 
 	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453d3c);
 		return;
 	}
 	p = xb.dump + off;
-	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
+	if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4342) {
 		log_printf(1, ir_453d78);
 		return;
 	}
 	setInfoKey0(xb.dump + off + 16);
-	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	if (p[6] & 8) {
 		if (off >= xb.dumpSize) {
 			log_printf(1, ir_453db0);
 			return;
 		}
 		p = xb.dump + off;
-		if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
+		if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4342) {
 			log_printf(1, ir_453dec, off);
 			return;
 		}
 		setInfoKey1(xb.dump + off + 16);
-		off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+		off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	}
 	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453e2c);
 		return;
 	}
 	p = xb.dump + off;
-	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4344) {
+	if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4344) {
 		log_printf(1, ir_453e64, off);
 		return;
 	}
 	setInfoKey2(xb.dump + off + 16);
-	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453ea4);
 		return;
 	}
-	if ((ROT16(*(u16 *)(xb.dump + off)) & 0x43ff) != 0x4345) {
+	if ((ROT16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4345) {
 		log_printf(1, ir_453edc, off);
 		return;
 	}
@@ -1437,17 +1437,17 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4346) {
+	if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4346) {
 		log_printf(1, ir_453f54, off);
 		return;
 	}
 	setInfoKey4(xb.dump + off + 32);
-	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
+	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453f94);
 		return;
 	}
-	if ((ROT16(*(u16 *)(xb.dump + off)) & 0x43ff) != 0x4347) {
+	if ((ROT16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4347) {
 		log_printf(1, ir_453fcc, off);
 		return;
 	}
@@ -1464,14 +1464,14 @@ static const char ir_454114[] __attribute__((aligned(4))) = "Loading NAND dump (
 static const char ir_454138[] __attribute__((aligned(4))) = "******* ERROR loading '%s', unable to allocate user/spare memory\n";
 static const char ir_45417c[] __attribute__((aligned(4))) = "Detecting NAND controller type from dump data...\n";
 static const char ir_4541b0[] __attribute__((aligned(4))) = "******* ERROR loading '%s', unable to determine NAND controller type!\n";
-u32 loadDump(const char *path)
+uint32_t loadDump(const char *path)
 {
 	char name[0x400];
 	FILE *fp;
 	int size;
-	u32 ret;
-	u32 pages, rawSize;
-	u8 *raw;
+	uint32_t ret;
+	uint32_t pages, rawSize;
+	uint8_t *raw;
 
 	if (path)
 		strcpy(name, path);

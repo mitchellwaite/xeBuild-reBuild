@@ -35,17 +35,17 @@
 #include "mode_client.h"
 #include "net.h"
 
-/* TODO(prototype cast): net.c takes u16 block numbers; mode_client's calls
-   compile to the original's code only with u32 ones */
-int netEraseBlockU32(u32 block, int force) __asm__("_netEraseBlock");
-u8 *netReadBlocksU32(int *len, u32 start, u32 count) __asm__("_netReadBlocks");
-int netWriteBlocksU32(u8 *buf, int len, u32 start, u32 count) __asm__("_netWriteBlocks");
+/* TODO(prototype cast): net.c takes uint16_t block numbers; mode_client's calls
+   compile to the original's code only with uint32_t ones */
+int netEraseBlockU32(uint32_t block, int force) __asm__("_netEraseBlock");
+uint8_t *netReadBlocksU32(int *len, uint32_t start, uint32_t count) __asm__("_netReadBlocks");
+int netWriteBlocksU32(uint8_t *buf, int len, uint32_t start, uint32_t count) __asm__("_netWriteBlocks");
 
 void client_usage(int err, const char *arg) __attribute__((noreturn));
-int dumpKey(const char *name, const char *file, const u8 *key, size_t len, u32 sum);
-int checkPatches(u8 *buf, size_t *len, u32 type);
-void updatePatches(const char *file, u32 type);
-void patchNand(u8 *buf, int off, const u8 *data, int len);
+int dumpKey(const char *name, const char *file, const uint8_t *key, size_t len, uint32_t sum);
+int checkPatches(uint8_t *buf, size_t *len, uint32_t type);
+void updatePatches(const char *file, uint32_t type);
+void patchNand(uint8_t *buf, int off, const uint8_t *data, int len);
 
 /* the original object's .bss is 32 bytes, cinfo at its start */
 static struct consoleinfo *cinfo __attribute__((aligned(32)));
@@ -177,7 +177,7 @@ void clientInfo(const char *dir)
 	char path[1024];
 	const char *out = NULL;
 	int len;
-	u8 *bad;
+	uint8_t *bad;
 	int i;
 
 	if (dir) {
@@ -219,7 +219,7 @@ NOPROF
 int clientWrite(const char *file)
 {
 	size_t len;
-	u8 *buf;
+	uint8_t *buf;
 	int ret = 0;
 
 	netTimerStart();
@@ -261,9 +261,9 @@ static const char mc_44eda8[] __attribute__((aligned(4))) = "\n\n****** ERROR: u
 static const char mc_44ee04[] __attribute__((aligned(4))) = "dumping valid %s to file ./%s\n";
 static const char mc_44ee23[] __attribute__((aligned(1))) = "./";
 NOPROF
-int dumpKey(const char *name, const char *file, const u8 *key, size_t len, u32 sum)
+int dumpKey(const char *name, const char *file, const uint8_t *key, size_t len, uint32_t sum)
 {
-	u32 want = sum;
+	uint32_t want = sum;
 	int ret = 0;
 
 	log_printf(0, mc_44ed8d, name, file);
@@ -294,7 +294,7 @@ static const char mc_44ee94[] __attribute__((aligned(4))) = "\n\n****** ERROR: c
 NOPROF
 void clientKeys(void)
 {
-	if ((u8)cinfo->version > 1) {
+	if ((uint8_t)cinfo->version > 1) {
 		dumpKey(mc_44ee31, mc_44ee26, cinfo->key1bl, 16, 2435);
 		dumpKey(mc_44ee45, mc_44ee39, cinfo->pub1bl, 272, 31175);
 		dumpKey(mc_44ee62, mc_44ee55, cinfo->pubPirs, 272, 32976);
@@ -310,10 +310,10 @@ static const char mc_44ef7c[] __attribute__((aligned(4))) = "\n\n***** ERROR: pa
 /* patches are sections separated by 0xffffffff: JTAG has 4, glitch 3 and
    loses the first (glitch2 keeps 16 bytes of 0xff in its place) */
 NOPROF
-int checkPatches(u8 *buf, size_t *len, u32 type)
+int checkPatches(uint8_t *buf, size_t *len, uint32_t type)
 {
-	u32 marker = 0xffffffff;
-	u8 *p;
+	uint32_t marker = 0xffffffff;
+	uint8_t *p;
 	size_t n, i, off;
 
 	if (type > 1) {
@@ -360,10 +360,10 @@ static const char mc_44f0ec[] __attribute__((aligned(4))) = "\n\n***** ERROR: co
 static const char mc_44f118[] __attribute__((aligned(4))) = "sending update patches to console...";
 static const char mc_44f140[] __attribute__((aligned(4))) = "patches are already up to date!\n";
 NOPROF
-void updatePatches(const char *file, u32 type)
+void updatePatches(const char *file, uint32_t type)
 {
 	size_t len, cur;
-	u8 *buf, *patches;
+	uint8_t *buf, *patches;
 	int same;
 
 	buf = FileToBuffer(file, &len);
@@ -408,8 +408,8 @@ NOPROF
 void clientPatches(const char *file)
 {
 	char path[1024];
-	u32 type = 0;
-	u32 bs = cinfo->bootstrap;
+	uint32_t type = 0;
+	uint32_t bs = cinfo->bootstrap;
 
 	if (bs & 0x80000000)
 		type = 1;
@@ -425,13 +425,13 @@ void clientPatches(const char *file)
 			log_printf(0, mc_44f164, path);
 		} else {
 			if (bs & 0x80000000)
-				sprintf(path, mc_44f184, *(u16 *)((u8 *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
+				sprintf(path, mc_44f184, *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
 			else if (bs & 0x20000000)
-				sprintf(path, mc_44f19a, *(u16 *)((u8 *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
+				sprintf(path, mc_44f19a, *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
 			else if (bs & 0x10000000)
-				sprintf(path, mc_44f1b2, *(u16 *)((u8 *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
+				sprintf(path, mc_44f1b2, *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
 			else if (bs & 0x40000000)
-				sprintf(path, mc_44f1cb, *(u16 *)((u8 *)cinfo + 5));
+				sprintf(path, mc_44f1cb, *(uint16_t *)((uint8_t *)cinfo + 5));
 			log_printf(0, mc_44f1e4, path);
 		}
 		updatePatches(path, type);
@@ -450,10 +450,10 @@ static const char mc_44f384[] __attribute__((aligned(4))) = "\n\n***** ERROR: In
 NOPROF
 void clientReadBlocks(const char *file, const char *sstart, const char *scount)
 {
-	u32 start = myatoh32(sstart, -1);
-	u32 count = myatoh32(scount, -1);
+	uint32_t start = myatoh32(sstart, -1);
+	uint32_t count = myatoh32(scount, -1);
 	int len;
-	u8 *buf;
+	uint8_t *buf;
 
 	if (count != 0 && count != -1 && start != -1) {
 		if (start + count <= cinfo->nandSize / cinfo->blockSize) {
@@ -483,10 +483,10 @@ static const char mc_44f4e8[] __attribute__((aligned(4))) = "\n\n***** ERROR: Un
 NOPROF
 void clientWriteBlocks(const char *file, const char *sstart)
 {
-	u32 start = myatoh32(sstart, -1);
-	u32 n;
+	uint32_t start = myatoh32(sstart, -1);
+	uint32_t n;
 	int len;
-	u8 *buf;
+	uint8_t *buf;
 
 	if (start == -1) {
 		log_printf(0, mc_44f384);
@@ -514,9 +514,9 @@ void clientWriteBlocks(const char *file, const char *sstart)
 
 /* copy data into raw NAND pages (512 data + 16 spare) at logical offset off */
 NOPROF
-void patchNand(u8 *buf, int off, const u8 *data, int len)
+void patchNand(uint8_t *buf, int off, const uint8_t *data, int len)
 {
-	u8 *spare = buf + 512;
+	uint8_t *spare = buf + 512;
 
 	while (off >= 512) {
 		buf += 528;
@@ -557,13 +557,13 @@ static const char mc_44f684[] __attribute__((aligned(4))) = "\n\n***** ERROR: In
 NOPROF
 void clientBinPatch(const char *file, const char *soff)
 {
-	u32 size = cinfo->nandSize;
-	u32 bs = cinfo->blockSize;
-	u32 off, rem, start, count;
+	uint32_t size = cinfo->nandSize;
+	uint32_t bs = cinfo->blockSize;
+	uint32_t off, rem, start, count;
 	size_t len;
 	int rlen;
-	const u8 *data;
-	u8 *nand;
+	const uint8_t *data;
+	uint8_t *nand;
 
 	off = myatoh32(soff, -1);
 	if (cinfo->nandSize != 0x3000000) {
@@ -620,7 +620,7 @@ static const char mc_44f724[] __attribute__((aligned(4))) = "\n\n***** ERROR: Bl
 /* -eb <b> */
 void clientEraseBlock(const char *sblock)
 {
-	u32 block = myatoh32(sblock, -1);
+	uint32_t block = myatoh32(sblock, -1);
 
 	if (block != -1) {
 		if (block < cinfo->nandSize / cinfo->blockSize) {

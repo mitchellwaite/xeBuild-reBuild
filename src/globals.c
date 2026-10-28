@@ -28,9 +28,9 @@ static char pad479e88[24] PAD;
 struct xebuild xb A4;			/* 479ea0 */
 static char pad4c97b0[16] PAD;
 struct fsent fsFiles[256] A4;		/* 4c97c0 image_write */
-u16 fsTable[0x1000] A4;			/* 4cb7c0 */
+uint16_t fsTable[0x1000] A4;		/* 4cb7c0 */
 struct flashhdr hdrTemplate A4;		/* 4cd7c0 */
-u32 imgEnd A4;				/* 4cd840 */
+uint32_t imgEnd A4;			/* 4cd840 */
 time_t netStartTime A4;			/* 4cd844 net */
 static char pad4cd848[24] PAD;
 char unused4cd860[0x400] A4;		/* 4cd860 nothing references it */

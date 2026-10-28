@@ -15,25 +15,25 @@
 
 typedef struct {
 	char name[40];
-	u8 namelen:6;
-	u8 contig:1;
-	u8 dir:1;
-	u8 vb[3];
-	u8 ab[3];
-	u8 fb[3];
-	u16 idx;
-	u32 size;
-	u32 mtime;
-	u32 atime;
+	uint8_t namelen:6;
+	uint8_t contig:1;
+	uint8_t dir:1;
+	uint8_t vb[3];
+	uint8_t ab[3];
+	uint8_t fb[3];
+	uint16_t idx;
+	uint32_t size;
+	uint32_t mtime;
+	uint32_t atime;
 } stfsEnt;
 
-int stfsCheckHashes(stfs_t *c, u8 *hdr, int verbose)
+int stfsCheckHashes(stfs_t *c, uint8_t *hdr, int verbose)
 {
-	u8 hash[20];
-	u8 *ent;
-	u32 blk, n = 0;
-	u8 *l2 = 0;
-	u32 off = 24;
+	uint8_t hash[20];
+	uint8_t *ent;
+	uint32_t blk, n = 0;
+	uint8_t *l2 = 0;
+	uint32_t off = 24;
 	int i, more = 1;
 
 	XeCryptSha(c->data + 0x344, c->hdrSize - 0x344, 0, 0, 0, 0, hash, 20);
@@ -62,7 +62,7 @@ int stfsCheckHashes(stfs_t *c, u8 *hdr, int verbose)
 			more = 0;
 		else {
 			ent = c->data + blk;
-			if (*(u32 *)(ent + 20) == 0) {
+			if (*(uint32_t *)(ent + 20) == 0) {
 				XeCryptSha(ent, 0x1000, 0, 0, 0, 0, hash, 20);
 				if (memcmp(hdr + 0x381, hash, 20))
 					return 0;
@@ -107,21 +107,21 @@ void stfsListFiles(stfs_t *c)
 	}
 }
 
-int stfsCheckHeader(stfs_t *c, u32 magic, u32 id1, u32 id2, u8 *manifestHash, int verbose)
+int stfsCheckHeader(stfs_t *c, uint32_t magic, uint32_t id1, uint32_t id2, uint8_t *manifestHash, int verbose)
 {
-	u8 *hdr = c->data;
-	u32 ver;
+	uint8_t *hdr = c->data;
+	uint32_t ver;
 
-	c->hdrSize = (SWAP32(*(u32 *)(hdr + 0x340)) + 0xfff) & ~0xfff;
-	if (id1 && id1 != SWAP32(*(u32 *)(hdr + 0x344)))
+	c->hdrSize = (SWAP32(*(uint32_t *)(hdr + 0x340)) + 0xfff) & ~0xfff;
+	if (id1 && id1 != SWAP32(*(uint32_t *)(hdr + 0x344)))
 		return 0;
-	if (id2 && id2 != SWAP32(*(u32 *)(hdr + 0x360)))
+	if (id2 && id2 != SWAP32(*(uint32_t *)(hdr + 0x360)))
 		return 0;
-	if (magic && magic != SWAP32(*(u32 *)(hdr + 0x971a)))
+	if (magic && magic != SWAP32(*(uint32_t *)(hdr + 0x971a)))
 		return 0;
 	ver = 0;
-	if (SWAP32(*(u32 *)(hdr + 0x971a)) == 0x53555044)
-		ver = SWAP32(*(u32 *)(hdr + 0x9722));
+	if (SWAP32(*(uint32_t *)(hdr + 0x971a)) == 0x53555044)
+		ver = SWAP32(*(uint32_t *)(hdr + 0x9722));
 	c->blocks = malloc((c->size >> 12) * 4 + 4);
 	if (!c->blocks)
 		return 0;
@@ -145,12 +145,12 @@ int stfsCheckHeader(stfs_t *c, u32 magic, u32 id1, u32 id2, u8 *manifestHash, in
 	return 0;
 }
 
-int stfsGetFile(stfs_t *c, const char *name, u8 **out, u32 *len)
+int stfsGetFile(stfs_t *c, const char *name, uint8_t **out, uint32_t *len)
 {
 	int i = 0, done = 0;
 	int j, n, fb;
 	stfsEnt *e;
-	u8 *buf;
+	uint8_t *buf;
 
 	while (!done) {
 		if (checkZeros(c->fileTable + i * 64, 64))
@@ -203,10 +203,10 @@ void stfsFree(stfs_t *c)
 	c->blocks = 0;
 }
 
-u32 stfsLoad(stfs_t *c, const char *path, int magic, u32 id1, u32 id2, u8 *manifestHash, int verbose)
+uint32_t stfsLoad(stfs_t *c, const char *path, int magic, uint32_t id1, uint32_t id2, uint8_t *manifestHash, int verbose)
 {
-	u32 ret;
-	u8 *p;
+	uint32_t ret;
+	uint8_t *p;
 
 	if (FileExists(path)) {
 		if (verbose)

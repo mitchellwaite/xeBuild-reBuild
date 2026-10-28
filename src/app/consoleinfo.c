@@ -49,13 +49,13 @@ void optWrite(const char *name, const char *value)
 		fprintf(opts, "%s = %s;\n\n", name, value);
 }
 
-void optLdv(u8 ldv)
+void optLdv(uint8_t ldv)
 {
 	if (opts)
 		fprintf(opts, "cfldv = %d;\n\n", ldv);
 }
 
-void optHex(const char *name, const u8 *key)
+void optHex(const char *name, const uint8_t *key)
 {
 	int i;
 
@@ -126,10 +126,10 @@ void optButton(const char *name, int code)
 	}
 }
 
-int showImageType(int level, int bootstrap, u32 nandType, u32 unused)
+int showImageType(int level, int bootstrap, uint32_t nandType, uint32_t unused)
 {
 	char type[64];
-	u32 t = bootstrap & 0xf;
+	uint32_t t = bootstrap & 0xf;
 
 	strcpy(type, getConsoleTypeStr(t + 1));
 	switch (t + 1) {
@@ -140,7 +140,7 @@ int showImageType(int level, int bootstrap, u32 nandType, u32 unused)
 	case 4:
 	case 5:
 		if (nandType == 0x4200000) {
-			if (((u8 *)info)[4] == 8 || (((u8 *)info)[8] & 8))
+			if (((uint8_t *)info)[4] == 8 || (((uint8_t *)info)[8] & 8))
 				strcat(type, "bigffs");
 			else
 				strcat(type, "bb");
@@ -174,7 +174,7 @@ int showImageType(int level, int bootstrap, u32 nandType, u32 unused)
 int getFreebootOpts(int level, const char *dir)
 {
 	int i = findFile(22);
-	u8 *p;
+	uint8_t *p;
 	int flags;
 
 	log_printfInt(1, "retrieving USVR\\freeboot_bin...");
@@ -182,7 +182,7 @@ int getFreebootOpts(int level, const char *dir)
 	if (xb.files[i].data && xb.files[i].size) {
 		char sig[] = "[v0.08 - inspired by ikari]";
 
-		if (findInst(xb.files[i].data, xb.files[i].size, (u8 *)sig, 27)) {
+		if (findInst(xb.files[i].data, xb.files[i].size, (uint8_t *)sig, 27)) {
 			flags = xb.bootFlags;
 			log_printfInt(level, "parsing freeboot 0.08 core for opts\n");
 			p = xb.files[i].data + 2464;
@@ -220,12 +220,12 @@ int getFreebootOpts(int level, const char *dir)
 
 int getFlashHdrOpts(int level, const char *dir)
 {
-	int len;	/* int, not u32: the empty-header path returns len (0) */
-	u8 *hdr;
-	u8 flags;
+	int len;	/* int, not uint32_t: the empty-header path returns len (0) */
+	uint8_t *hdr;
+	uint8_t flags;
 	int ret;
 
-	hdr = netGetFile("flash_hdr", (u32 *)&len);
+	hdr = netGetFile("flash_hdr", (uint32_t *)&len);
 	if (!hdr)
 		return 0;
 	if (!len)
@@ -264,7 +264,7 @@ int getFlashHdrOpts(int level, const char *dir)
 
 int showInfoKeys(int level, const char *dir, int *update)
 {
-	u32 sum;
+	uint32_t sum;
 	int cpuOk;
 	int ret, ok;
 
@@ -350,11 +350,11 @@ int showInfoKeys(int level, const char *dir, int *update)
 
 void showCurrentInfo(int level, int *hdd)
 {
-	u32 k;
+	uint32_t k;
 
 	log_printfInt(level, "Console Current Info:\n");
 	k = info->kernel;
-	log_printfInt(level, "running kernel  : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf, (u16)(k >> 8), k & 0xf);
+	log_printfInt(level, "running kernel  : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf, (uint16_t)(k >> 8), k & 0xf);
 	log_printfInt(level, "bootstrap type  : %s\n", getConsoleTypeStr((info->bootstrap & 0xf) + 1));
 	log_printfInt(level, "hardware type   : %s\n", getConsoleTypeStr((info->hwFlags >> 28) + 1));
 	log_printfInt(level, "hardware flags  : 0x%08x\n", info->hwFlags);
@@ -387,7 +387,7 @@ int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update
 	info = netGetInfo();
 	log_printfInt(level, "\n------ parsing console info response ------\n");
 	showCurrentInfo(level, update);
-	if (update && (u8)info->version <= 1) {
+	if (update && (uint8_t)info->version <= 1) {
 		log_printfInt(0, "\n*****ERROR: console hv patches are not recent enough to support update mode!\n");
 		log_printfInt(0, "\n            update console patches and reboot before trying again.\n");
 		optClose();

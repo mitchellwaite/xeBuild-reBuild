@@ -5,45 +5,45 @@
 #include "xebuild.h"
 
 void keysInit(int random);
-void setCrlKey(u8 *key);
-void setDaeKey(u8 *key);
-void setSecdataKey(u8 *key);
-void setInfoKey0(u8 *key);
-void setInfoKey1(u8 *key);
-void setInfoKey2(u8 *key);
-void setInfoKey3(u8 *key);
-void setInfoKey4(u8 *key);
-void setInfoKey5(u8 *key);
-void setKvSalt(u8 *key);
-void setKvAltSalt(u8 *key);
-void setSmcKey(u8 *key);
-int setPairing(u32 pair);
-int checkCpuKey(int level, u8 *key);
+void setCrlKey(uint8_t *key);
+void setDaeKey(uint8_t *key);
+void setSecdataKey(uint8_t *key);
+void setInfoKey0(uint8_t *key);
+void setInfoKey1(uint8_t *key);
+void setInfoKey2(uint8_t *key);
+void setInfoKey3(uint8_t *key);
+void setInfoKey4(uint8_t *key);
+void setInfoKey5(uint8_t *key);
+void setKvSalt(uint8_t *key);
+void setKvAltSalt(uint8_t *key);
+void setSmcKey(uint8_t *key);
+int setPairing(uint32_t pair);
+int checkCpuKey(int level, uint8_t *key);
 int setCpuKeyStr(char *str);
-int setCpuKey(int level, u8 *key);
-void setFuseCpuKey(u8 *fuse);
-int set1blKey(u8 *key);
+int setCpuKey(int level, uint8_t *key);
+void setFuseCpuKey(uint8_t *fuse);
+int set1blKey(uint8_t *key);
 int checkKeys(char *str);
-int smcPrepare(u8 *smc, u8 *hash, u32 size);
-void cbaEncrypt(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
-void cbaEncryptZero(u8 *cb, u8 *key, u32 size);
-void cbaEncrypt2(u8 *salt, u8 *cb, u8 *key, u32 size, int zero);
-void cbbEncrypt(u8 *salt, u8 *cbb, u8 *cbaKey, u8 *cba, u8 *key, u32 size,
+int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size);
+void cbaEncrypt(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zero);
+void cbaEncryptZero(uint8_t *cb, uint8_t *key, uint32_t size);
+void cbaEncrypt2(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zero);
+void cbbEncrypt(uint8_t *salt, uint8_t *cbb, uint8_t *cbaKey, uint8_t *cba, uint8_t *key, uint32_t size,
 	int zero);
-void cdEncryptZero(u8 *cd, u8 *key, u32 size);
-void cdEncrypt(u8 *cd, u8 *prevKey, u8 *key, u32 size);
-void cdEncryptCpu(u8 *cd, u8 *prevKey, u8 *key, u32 size);
-void ceEncrypt(u8 *ce, u8 *prevKey, u8 *key, u32 size);
-u16 cfEncrypt(struct fileent *cf, u32 extra, u16 block, int keep, u32 max);
-void cgEncrypt(u8 *cg, u8 *prevKey, u8 *key, u32 size);
+void cdEncryptZero(uint8_t *cd, uint8_t *key, uint32_t size);
+void cdEncrypt(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size);
+void cdEncryptCpu(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size);
+void ceEncrypt(uint8_t *ce, uint8_t *prevKey, uint8_t *key, uint32_t size);
+uint16_t cfEncrypt(struct fileent *cf, uint32_t extra, uint16_t block, int keep, uint32_t max);
+void cgEncrypt(uint8_t *cg, uint8_t *prevKey, uint8_t *key, uint32_t size);
 void kvPrepare(struct fileent *kv, int alt);
 void extendedPrepare(struct fileent *ext);
-void secdataPrepare(struct fileent *sd, u8 *date);
-int shaCheck(u8 *buf, u32 size, u32 hashOff, u32 hashLen, u32 dataOff,
-	u8 *hashOut);
-void crlEncrypt(u8 *crl, u32 size, u8 *date);
-void daeEncrypt(u8 *buf, u32 size, u8 *date);
-void fcrtEncrypt(u8 *fcrt, u32 size);
-void shaHeader(u8 *buf);
+void secdataPrepare(struct fileent *sd, uint8_t *date);
+int shaCheck(uint8_t *buf, uint32_t size, uint32_t hashOff, uint32_t hashLen, uint32_t dataOff,
+	uint8_t *hashOut);
+void crlEncrypt(uint8_t *crl, uint32_t size, uint8_t *date);
+void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date);
+void fcrtEncrypt(uint8_t *fcrt, uint32_t size);
+void shaHeader(uint8_t *buf);
 
 #endif

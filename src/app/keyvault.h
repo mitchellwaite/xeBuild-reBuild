@@ -6,12 +6,12 @@
 
 int kvGetType(void);
 int kvIsLoaded(void);
-void kvSet(u8 *buf);
+void kvSet(uint8_t *buf);
 int kvGetGameRegion(void);
-u8 *kvGetDvdKey(void);
-u8 *kvGetConsoleId(void);
+uint8_t *kvGetDvdKey(void);
+uint8_t *kvGetConsoleId(void);
 int kvGetSerial(char *out);
-u8 *kvGetConsoleCert(void);
+uint8_t *kvGetConsoleCert(void);
 int kvGetMfgDate(char *out);
 int kvSetDvdKey(char *key);
 

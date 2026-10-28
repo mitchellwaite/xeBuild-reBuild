@@ -13,7 +13,7 @@
 #include "net.h"
 #include "stfs.h"
 
-/* TODO(prototype cast): netMount returns u32 (net.c); sendCompatData's code
+/* TODO(prototype cast): netMount returns uint32_t (net.c); sendCompatData's code
    wants an int */
 int netMountInt(const char *drive, const char *device) __asm__("_netMount");
 
@@ -23,44 +23,44 @@ int netMountInt(const char *drive, const char *device) __asm__("_netMount");
 
 /* system.manifest, big endian */
 struct mfEntry {
-	u32 nameOff;		/* 00 from the header */
-	u32 f04;
-	u32 size;		/* 08 */
-	u32 idOff;		/* 0c title id */
-	u32 f10, f14;
-	u32 type;		/* 18 2: stfs package, 3: file */
-	u32 f1c;
-	u32 pathOff;		/* 20 file name */
-	u8 stfsHash[20];	/* 24 */
-	u8 sha[20];		/* 38 */
-	u32 contentType;	/* 4c */
-	u32 titleId;		/* 50 */
-	u32 f54[3];
+	uint32_t nameOff;	/* 00 from the header */
+	uint32_t f04;
+	uint32_t size;		/* 08 */
+	uint32_t idOff;		/* 0c title id */
+	uint32_t f10, f14;
+	uint32_t type;		/* 18 2: stfs package, 3: file */
+	uint32_t f1c;
+	uint32_t pathOff;	/* 20 file name */
+	uint8_t stfsHash[20];	/* 24 */
+	uint8_t sha[20];	/* 38 */
+	uint32_t contentType;	/* 4c */
+	uint32_t titleId;	/* 50 */
+	uint32_t f54[3];
 };
 
 struct mfHeader {
-	u32 revision;		/* 00 */
-	u32 len;		/* 04 hashed length */
-	u32 f08, f0c;
-	u32 schema;		/* 10 */
-	u32 version;		/* 14 */
-	u32 f18[5];
-	u32 count;		/* 2c */
+	uint32_t revision;	/* 00 */
+	uint32_t len;		/* 04 hashed length */
+	uint32_t f08, f0c;
+	uint32_t schema;	/* 10 */
+	uint32_t version;	/* 14 */
+	uint32_t f18[5];
+	uint32_t count;		/* 2c */
 	struct mfEntry e[];	/* 30 */
 };
 
 struct mfFile {
-	u32 magic;		/* 000 */
-	u8 pad004[0x24 - 0x04];
-	u8 sha[20];		/* 024 */
-	u8 pad038[0x138 - 0x38];
+	uint32_t magic;		/* 000 */
+	uint8_t pad004[0x24 - 0x04];
+	uint8_t sha[20];	/* 024 */
+	uint8_t pad038[0x138 - 0x38];
 	struct mfHeader hdr;	/* 138 */
 };
 
-static u32 errCount;
-static u32 flashVer;
-static u32 titleIds[48];
-static u32 numTitleIds;
+static uint32_t errCount;
+static uint32_t flashVer;
+static uint32_t titleIds[48];
+static uint32_t numTitleIds;
 
 static const char *const sysexDirs[] = {
 	"%s:\\Content",
@@ -73,7 +73,7 @@ int createSysexDirs(void)
 {
 	char path[260];
 	int i;
-	u8 j;
+	uint8_t j;
 
 	for (i = 0; i < numTitleIds; i++) {
 		sprintf(path, "%s:\\%08X", SYSEX, titleIds[i]);
@@ -94,7 +94,7 @@ int createSysexDirs(void)
 	return 1;
 }
 
-void addTitleId(u32 id)
+void addTitleId(uint32_t id)
 {
 	int i;
 
@@ -107,8 +107,8 @@ void addTitleId(u32 id)
 
 int checkManifestHeader(struct mfFile *m)
 {
-	u32 v;
-	u8 hash[20];
+	uint32_t v;
+	uint8_t hash[20];
 	int ret;
 
 	if (SWAP32(m->hdr.schema) != 3) {
@@ -125,7 +125,7 @@ int checkManifestHeader(struct mfFile *m)
 		log_printf(1, "manifest magic 0x%08x != 0x584D4E50!\n", v);
 		return 0;
 	}
-	XeCryptSha((u8 *)m + 0x138, SWAP32(m->hdr.len), 0, 0, 0, 0, hash, 20);
+	XeCryptSha((uint8_t *)m + 0x138, SWAP32(m->hdr.len), 0, 0, 0, 0, hash, 20);
 	ret = 1;
 	if (memcmp(hash, m->sha, 20)) {
 		log_printf(1, "manifest checksum failed!\n");
@@ -134,10 +134,10 @@ int checkManifestHeader(struct mfFile *m)
 	return ret;
 }
 
-int readManifestString(const u8 *p, char *out)
+int readManifestString(const uint8_t *p, char *out)
 {
 	int len = 0;
-	u16 l = getBeU16(p);
+	uint16_t l = getBeU16(p);
 
 	if (l) {
 		len = l;
@@ -148,11 +148,11 @@ int readManifestString(const u8 *p, char *out)
 	return len;
 }
 
-void *loadFileChecked(const char *path, int size, const u8 *sha)
+void *loadFileChecked(const char *path, int size, const uint8_t *sha)
 {
 	size_t len;
-	u8 hash[20];
-	u8 *buf, *ret = 0;
+	uint8_t hash[20];
+	uint8_t *buf, *ret = 0;
 
 	if (size) {
 		buf = FileToBuffer(path, &len);
@@ -177,7 +177,7 @@ out:
 	return ret;
 }
 
-void *loadStfsChecked(const char *path, int size, u8 *hash)
+void *loadStfsChecked(const char *path, int size, uint8_t *hash)
 {
 	stfs_t s;
 
@@ -198,27 +198,27 @@ void *loadStfsChecked(const char *path, int size, u8 *hash)
 	return 0;
 }
 
-void parseManifestEntries(const char *dir, struct mfHeader *h, u32 len, u32 ver)
+void parseManifestEntries(const char *dir, struct mfHeader *h, uint32_t len, uint32_t ver)
 {
 	char name[512];
 	char path[1024];
 	struct mfEntry *e;
-	u32 i, id, type;
+	uint32_t i, id, type;
 
 	log_printf(1, "parsing %d entries in system.manifest\n", SWAP32(h->count));
 	for (i = 0; i < SWAP32(h->count) && manifest.count < 256; i++) {
 		e = &h->e[i];
 		id = SWAP32(e->idOff);
 		if (id)
-			id = getBeU32((u8 *)h + id);
+			id = getBeU32((uint8_t *)h + id);
 		if (!e->nameOff)
 			continue;
-		readManifestString((u8 *)h + SWAP32(e->nameOff), name);
+		readManifestString((uint8_t *)h + SWAP32(e->nameOff), name);
 		if (strcmp(name, "flash")) {
 			strcpy(path, dir);
 			strcat(path, name);
 			log_printf(1, "%03d: %s ", manifest.count + 1, path);
-			readManifestString((u8 *)h + SWAP32(e->pathOff), name);
+			readManifestString((uint8_t *)h + SWAP32(e->pathOff), name);
 			switch (SWAP32(e->type)) {
 			case 2:
 				manifest.e[manifest.count].data = loadStfsChecked(path, SWAP32(e->size), e->stfsHash);
@@ -246,7 +246,7 @@ void parseManifestEntries(const char *dir, struct mfHeader *h, u32 len, u32 ver)
 	}
 }
 
-u32 parseManifest(const char *dir, struct mfFile *m, u32 len, int ver)
+uint32_t parseManifest(const char *dir, struct mfFile *m, uint32_t len, int ver)
 {
 	if (len < 0x164 || len > 0x10000) {
 		log_printf(1, "manifest size error! len 0x%x\n", len);
@@ -255,7 +255,7 @@ u32 parseManifest(const char *dir, struct mfFile *m, u32 len, int ver)
 	if (checkManifestHeader(m)) {
 		flashVer = SWAP32(m->hdr.version);
 		log_printf(1, "header ok!\nManifest flash version: %d.%d.%d.%d\n", flashVer >> 28,
-			(flashVer >> 24) & 0xf, (u16)(flashVer >> 8), flashVer & 0xf);
+			(flashVer >> 24) & 0xf, (uint16_t)(flashVer >> 8), flashVer & 0xf);
 		if (flashVer != ver) {
 			log_printf(0, "\n\n***** ERROR: this system extended data is not the correct version!\n");
 			return 0;
@@ -286,7 +286,7 @@ void freeManifest(void)
 	}
 }
 
-int loadManifest(const char *dir, u32 ver)
+int loadManifest(const char *dir, uint32_t ver)
 {
 	char base[1024];
 	char path[1024];
@@ -335,10 +335,10 @@ int prepSysex(void)
 
 /* long, not int: uncprop then can't reuse the int netSendFile result for the
    manifest failure's 0 (it does for the loop failure, which assigns ret) */
-long sendAvatarData(const char *dir, u32 ver)
+long sendAvatarData(const char *dir, uint32_t ver)
 {
 	int i;
-	u32 k;
+	uint32_t k;
 	long ret;
 
 	netTimerStart();
@@ -359,7 +359,7 @@ long sendAvatarData(const char *dir, u32 ver)
 				do {
 					/* hint: hides k from scev, so ivopts keeps the
 					   imul instead of a pointer IV (no code) */
-					k = (u32)__builtin_assume_aligned((void *)i, 1);
+					k = (uint32_t)__builtin_assume_aligned((void *)i, 1);
 					log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, manifest.e[k].len,
 						manifest.e[k].len, manifest.e[k].path);
 					ret = netSendFile(manifest.e[k].path, manifest.e[k].data, manifest.e[k].len);
@@ -400,7 +400,7 @@ int sendDir(const char *src, const char *dst)
 	size_t len;
 	DIR *d;
 	struct dirent *de;
-	u8 *buf;
+	uint8_t *buf;
 
 	strcpy(pattern, src);
 	strcat(pattern, "//");
@@ -453,7 +453,7 @@ fail:
 	return 0;
 }
 
-u32 sendCompatData(const char *dir)
+uint32_t sendCompatData(const char *dir)
 {
 	int ret;
 

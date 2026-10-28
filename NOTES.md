@@ -220,7 +220,7 @@ salts, ...) are ours.
   (`kvHashOk`) inlined next to `kvEncrypt`: its `ver`/hash locals share stack
   slots with kvEncrypt's, which a function-scope local doesn't.
 - The SMC checksum's 64-bit rotates are written as
-  `(s << 29) | (u32)((u32)(s >> 32) >> 3)`: the original isn't a rotate
+  `(s << 29) | (uint32_t)((uint32_t)(s >> 32) >> 3)`: the original isn't a rotate
   (shift and or, no double `shld`).
 - `crlEncrypt` writes the success branch twice (CPU key, then the alternate
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
@@ -375,6 +375,10 @@ the program state `xb`, and `fileent`, `netfile`, `flashhdr`, `consoleinfo`,
 ...) and declares `src/globals.c`'s variables. Each object's functions (and
 data) that others use are in `src/app/<obj>.h`, which the object itself
 includes too; app files take XeCrypt's prototypes from `src/crypto/xecrypt.h`.
+Fixed-width integers are `<stdint.h>`'s (`uint8_t` ... `uint64_t`, included by
+`xebuild.h`): with this toolchain they are the same C types as the
+`unsigned char/short/int/long long` the files were matched with, so they
+change no code. XeCrypt keeps its own `u8`/`u32` (`xecryptTypes.h`).
 Two switches, defined before including `xebuild.h`, give a file the view of
 `xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
 and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
@@ -384,7 +388,7 @@ always agree with each other. Where a file still needs another typing than the
 header's to compile to the original's code, it says so in a comment marked
 `TODO(xebuild.h cast)` (a field read as another type) or `TODO(prototype cast)`
 (a function's argument or return type: a cast, or a declaration under another
-name bound to the same symbol with an asm label, e.g. `u32
+name bound to the same symbol with an asm label, e.g. `uint32_t
 FileExistsU32(const char *) __asm__("_FileExists")`), so a later pass can settle
 the types. `grep -rn 'TODO(' src/app` lists them.
 

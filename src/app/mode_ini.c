@@ -14,9 +14,9 @@
 #include "mode_ini.h"
 #include "sysupdate.h"
 
-/* TODO(prototype cast): suFirstFile read as u32 (iniWriteFlashfs then
+/* TODO(prototype cast): suFirstFile read as uint32_t (iniWriteFlashfs then
    returns a fresh 0, not its result); sysupdate.c's code needs the int */
-u32 suFirstFileU32(char *name, int *idx) __asm__("_suFirstFile");
+uint32_t suFirstFileU32(char *name, int *idx) __asm__("_suFirstFile");
 
 static char iniFile[1024];
 static char iniDir[1024];
@@ -66,13 +66,13 @@ void iniPrintf(const char *fmt, ...)
 	}
 }
 
-u32 iniWriteFlashfs(void)
+uint32_t iniWriteFlashfs(void)
 {
 	char name[44];
 	int idx;
-	u8 *data;
-	u32 len;
-	u32 crc;
+	uint8_t *data;
+	uint32_t len;
+	uint32_t crc;
 
 	iniPrintf("[flashfs]\n");
 	if (!suFirstFileU32(name, &idx))
@@ -106,10 +106,10 @@ unparsed:
 	return 0;
 }
 
-u32 iniWriteBl(void)
+uint32_t iniWriteBl(void)
 {
-	u8 *cf = 0, *cg = 0;
-	u32 cfLen, cgLen;
+	uint8_t *cf = 0, *cg = 0;
+	uint32_t cfLen, cgLen;
 	int ver, ret;
 
 	if (suGetCF(&cf, &cfLen)) {

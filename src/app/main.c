@@ -83,17 +83,17 @@ int verifyFlashFile(int i)
 					ok = 1;
 			} else if (!strnicmp(name, "crl.bin", 7)) {
 				if (verifyCrl(xb.flashBuf[i], xb.flashSize[i], 1)) {
-					setCrlKey((u8 *)xb.flashBuf[i] + 288);
+					setCrlKey((uint8_t *)xb.flashBuf[i] + 288);
 					ok = 1;
 				}
 			} else if (!strnicmp(name, "dae.bin", 7)) {
 				if (verifyDae(xb.flashBuf[i], xb.flashSize[i])) {
-					setDaeKey((u8 *)xb.flashBuf[i] + 288);
+					setDaeKey((uint8_t *)xb.flashBuf[i] + 288);
 					ok = 1;
 				}
 			} else if (!strnicmp(name, "secdata.bin", 11)) {
 				if (verifySecdata(xb.flashBuf[i], xb.flashSize[i])) {
-					setSecdataKey((u8 *)xb.flashBuf[i] + 16);
+					setSecdataKey((uint8_t *)xb.flashBuf[i] + 16);
 					ok = 1;
 				}
 			} else if (!strnicmp(name, "odd.bin", 7)) {
@@ -175,15 +175,15 @@ void logButton(int level, int code)
 void showConsoleInfo(void)
 {
 	char buf[64];
-	u8 *p;
+	uint8_t *p;
 	int i;
-	u32 k;
+	uint32_t k;
 
 	log_printf(0, separator);
 	k = xb.kernel;
 	if (k)
 		log_printf(0, "Kernel    : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf,
-			   (u16)(k >> 8), k & 0xf);
+			   (uint16_t)(k >> 8), k & 0xf);
 	log_printf(0, "Console   : ");
 	switch (xb.flags & 0x40000007) {
 	case 1:

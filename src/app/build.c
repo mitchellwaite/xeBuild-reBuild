@@ -36,10 +36,10 @@
 #include "timeutil.h"
 #include "xboxrom.h"
 
-void showSmcConfig(const u8 *smc);
+void showSmcConfig(const uint8_t *smc);
 
 /* .data, in this order (-fno-toplevel-reorder) */
-u8 defBl60[0x60] = {
+uint8_t defBl60[0x60] = {
 	0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x0f, 0x0f, 0x0f,
 	0x0f, 0x0f, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -49,7 +49,7 @@ u8 defBl60[0x60] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-u8 defPayload[0x200] = {
+uint8_t defPayload[0x200] = {
 	0x80, 0x13, 0x1d, 0xb0, 0x80, 0x13, 0x03, 0xa0, 0x00, 0x00, 0x00, 0x00,
 	0x02, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x80, 0x13, 0x03, 0x74,
 	0x80, 0x13, 0x03, 0x74, 0x80, 0x13, 0x03, 0x7c, 0x80, 0x13, 0x03, 0x7c,
@@ -94,7 +94,7 @@ u8 defPayload[0x200] = {
 	0x80, 0x07, 0x02, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90, 0x30,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-u8 defCore[0xd40] = {
+uint8_t defCore[0xd40] = {
 	0x3c, 0x20, 0x80, 0x00, 0x78, 0x21, 0x07, 0xc6, 0x64, 0x21, 0x1e, 0x00,
 	0x7f, 0xdf, 0xfa, 0xa6, 0x7b, 0xc4, 0x83, 0xe4, 0x7c, 0x24, 0x08, 0x50,
 	0x38, 0x21, 0xff, 0x80, 0x7c, 0x71, 0xfa, 0xa6, 0x38, 0x80, 0x00, 0x01,
@@ -380,24 +380,24 @@ u8 defCore[0xd40] = {
 	0x77, 0x61, 0x72, 0x65, 0x00, 0x00, 0x00, 0x00,
 };
 /* TODO(prototype cast): blCheckHash and blSign are int in xboxrom.c; as
-   u32 here verifyBlSigs' inlined findFile(11) counts from blCheckHash's 0
+   uint32_t here verifyBlSigs' inlined findFile(11) counts from blCheckHash's 0
    result instead of a new xor (uncprop) */
-u32 blSignU32(u8 *bl, unsigned int len, const void *pubKey, const void *prvKey,
-	      const u8 *salt) __asm__("_blSign");
-u32 blCheckHashU32(u8 *bl, unsigned int len, const u8 *expect) __asm__("_blCheckHash");
-/* TODO(prototype cast): image_write.c's imgAdd takes (..., u8 type, u16 next,
+uint32_t blSignU32(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey,
+	      const uint8_t *salt) __asm__("_blSign");
+uint32_t blCheckHashU32(uint8_t *bl, unsigned int len, const uint8_t *expect) __asm__("_blCheckHash");
+/* TODO(prototype cast): image_write.c's imgAdd takes (..., uint8_t type, uint16_t next,
    int pad) and imgAddRaw returns int; build.c's calls compile to the
    original's code only with these types */
-int imgAddInt(u32 off, const u8 *data, u32 len, int f3, int ecc, int f5) __asm__("_imgAdd");
-void imgAddRawVoid(const char *name, const void *data, u32 len, u32 off) __asm__("_imgAddRaw");
+int imgAddInt(uint32_t off, const uint8_t *data, uint32_t len, int f3, int ecc, int f5) __asm__("_imgAdd");
+void imgAddRawVoid(const char *name, const void *data, uint32_t len, uint32_t off) __asm__("_imgAddRaw");
 
-u32 patchSmcConfig(u8 *smc);
-int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 crc);
+uint32_t patchSmcConfig(uint8_t *smc);
+int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc);
 
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
    call argument it is computed at its store */
-#define SWAP16(x) ((u16)(((u32)(x) << 8) | ((u32)(x) >> 8)))
+#define SWAP16(x) ((uint16_t)(((uint32_t)(x) << 8) | ((uint32_t)(x) >> 8)))
 /* build.sh compiles src/app/build.c twice: plainly, and with -DBUILD_FDO, a
    crafted profile for loadBlFiles and the loadBl it inlines (dom2's FSM
    threader zeroes loadBlFiles' type-11 block, which no guessed profile places
@@ -425,7 +425,7 @@ static int nk_never1, nk_never2, nk_never3;
 #endif
 /* an SMC config fan byte */
 struct fan {
-	u8 speed:7, override:1;
+	uint8_t speed:7, override:1;
 };
 
 static const char bd_458ca4[] __attribute__((aligned(1))) = "rb";
@@ -514,7 +514,7 @@ static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, str
 }
 
 NOPROF
-u32 findFileOffset(int type)
+uint32_t findFileOffset(int type)
 {
 	int i;
 
@@ -525,7 +525,7 @@ u32 findFileOffset(int type)
 }
 
 NOPROF
-u32 findFileSize(int type)
+uint32_t findFileSize(int type)
 {
 	int i;
 
@@ -547,11 +547,11 @@ int findFile(int type)
 }
 
 NOPROF
-int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 crc)
+int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc)
 {
 	FILE *f;
 	size_t size;
-	u32 c;
+	uint32_t c;
 
 	f = fopen(name, bd_458ca4);
 	if (!f)
@@ -595,7 +595,7 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, u32 c
 }
 
 NOPROF
-int readMetaFile(const char *name, u8 *meta)
+int readMetaFile(const char *name, uint8_t *meta)
 {
 	FILE *f;
 
@@ -609,7 +609,7 @@ int readMetaFile(const char *name, u8 *meta)
 
 /* the build time as a big-endian FAT date and time */
 NOPROF
-void makeTimestamp(u8 *out, FILETIME *ft)
+void makeTimestamp(uint8_t *out, FILETIME *ft)
 {
 	SYSTEMTIME st;
 	FILETIME now;
@@ -633,14 +633,14 @@ void makeTimestamp(u8 *out, FILETIME *ft)
 }
 
 NOPROF
-int timestampToFileTime(const u16 *ts, FILETIME *ft)
+int timestampToFileTime(const uint16_t *ts, FILETIME *ft)
 {
 	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
 }
 
 /* the same with its timestamp from name.meta if there is one */
 NOPROF
-int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta)
+int loadBaseFileMeta(const char *name, struct fileent *e, uint8_t *meta)
 {
 	if (xb.baseDir[0]) {
 		char path[0x400];
@@ -660,7 +660,7 @@ int loadBaseFileMeta(const char *name, struct fileent *e, u8 *meta)
 }
 
 NOPROF
-int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta)
+int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, uint8_t *meta)
 {
 	char path[0x400];
 	int r;
@@ -680,13 +680,13 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *me
 
 NOPROF
 __attribute__((noclone))
-int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *meta,
+int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, uint8_t *meta,
 		  int su, int fs, int common)
 {
 	char path[0x400];
 	const char *base;
-	u32 c;
-	u32 r;
+	uint32_t c;
+	uint32_t r;
 
 	base = strrchr(name, '/');
 	if (!base)
@@ -729,7 +729,7 @@ int loadInputFile(const char *name, struct fileent *e, int pad, u32 crc, u8 *met
 	if (fs && r) {
 		/* scoped: its clobber keeps the fs-path join a real block, so the r = 0
 		   paths reach the common test at PRE (threaded late, not by vrp1/dom2) */
-		u32 ts;
+		uint32_t ts;
 
 		if (fsGetFile(base, &e->data, &e->size, &ts)) {
 			log_printf(1, bd_458df0, base, e->size);
@@ -813,9 +813,9 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 NOPROF
 void appendAddonPatches(struct fileent *e)
 {
-	u32 size = e->size - 4;
-	u8 *buf = malloc(0x4000);
-	u32 added = 0;
+	uint32_t size = e->size - 4;
+	uint8_t *buf = malloc(0x4000);
+	uint32_t added = 0;
 	struct fileent *a;
 	int i;
 
@@ -841,7 +841,7 @@ void appendAddonPatches(struct fileent *e)
 		} else
 			log_printf(0, bd_458ed0, xb.binDir, a->name);
 	}
-	*(u32 *)(buf + size) = 0xffffffff;
+	*(uint32_t *)(buf + size) = 0xffffffff;
 	setBeU32(added, buf + size + 4);
 	size += 8;
 	if (e->data)
@@ -854,10 +854,10 @@ void appendAddonPatches(struct fileent *e)
 }
 
 NOPROF
-void showSmcConfig(const u8 *smc)
+void showSmcConfig(const uint8_t *smc)
 {
-	u32 av;
-	u16 game;
+	uint32_t av;
+	uint16_t game;
 	int i;
 
 	log_printf(1, bd_458f80, smc[0x29], smc[0x2a], smc[0x2b]);
@@ -874,7 +874,7 @@ void showSmcConfig(const u8 *smc)
 		log_printf(1, bd_45900a);
 	log_printf(1, bd_459021);
 	showMac(1, smc + 0x220);
-	av = *(u32 *)(smc + 0x228);
+	av = *(uint32_t *)(smc + 0x228);
 	av = SWAP32(av);
 	switch (av) {
 	case 0x100:
@@ -893,7 +893,7 @@ void showSmcConfig(const u8 *smc)
 		log_printf(1, bd_4590b0, av);
 		break;
 	}
-	game = __builtin_bswap16(*(u16 *)(smc + 0x22c));
+	game = __builtin_bswap16(*(uint16_t *)(smc + 0x22c));
 	log_printf(1, bd_4590d1, game);
 	switch (game) {
 	case 0xff:
@@ -924,7 +924,7 @@ void showSmcConfig(const u8 *smc)
 		log_printf(1, bd_459134);
 		break;
 	}
-	log_printf(1, bd_45913f, SWAP32(*(u32 *)(smc + 0x234)));
+	log_printf(1, bd_45913f, SWAP32(*(uint32_t *)(smc + 0x234)));
 	log_printf(1, bd_459151);
 	for (i = 0; i < 4; i++)
 		log_printf(1, bd_459160, smc[0x238 + i]);
@@ -933,7 +933,7 @@ void showSmcConfig(const u8 *smc)
 
 /* an ini value is used if it is in range; 0 and -1 mean unset */
 NOPROF
-int iniRangeOk(const char *name, u32 v, u32 lo, u32 hi)
+int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 {
 	int ok = 1;
 
@@ -953,9 +953,9 @@ static void cb_hint(int *p)
 
 NOPROF
 __attribute__((optimize("no-early-inlining")))
-u32 patchSmcConfig(u8 *smc)
+uint32_t patchSmcConfig(uint8_t *smc)
 {
-	u32 patched = 0;
+	uint32_t patched = 0;
 	int i, dead;
 
 	log_printf(1, bd_45919c);
@@ -1010,21 +1010,21 @@ u32 patchSmcConfig(u8 *smc)
 	}
 gpudone:
 	if (xb.avRegion != 0xffffffff) {
-		*(u32 *)(smc + 0x228) = SWAP32(xb.avRegion);
+		*(uint32_t *)(smc + 0x228) = SWAP32(xb.avRegion);
 		patched = 1;
 	}
-	if (xb.gameRegion != 0xffffffff && (u16)xb.gameRegion) {
-		*(u16 *)(smc + 0x22c) = __builtin_bswap16(xb.gameRegion);
+	if (xb.gameRegion != 0xffffffff && (uint16_t)xb.gameRegion) {
+		*(uint16_t *)(smc + 0x22c) = __builtin_bswap16(xb.gameRegion);
 		patched = 1;
 	}
 	if (xb.dvdRegion != 0xffffffff) {
-		*(u32 *)(smc + 0x234) = SWAP32(xb.dvdRegion);
+		*(uint32_t *)(smc + 0x234) = SWAP32(xb.dvdRegion);
 		patched = 1;
 	}
-	if (!*(u32 *)(smc + 0x234)) {
+	if (!*(uint32_t *)(smc + 0x234)) {
 		log_printf(0, bd_459260);
 		log_printf(0, bd_4592d8);
-		*(u32 *)(smc + 0x234) = 0x1000000;
+		*(uint32_t *)(smc + 0x234) = 0x1000000;
 		patched = 1;
 	}
 	if (macidSet())
@@ -1034,9 +1034,9 @@ gpudone:
 			smc[0x220 + i] = xb.macid[i];
 		}
 	if (patched) {
-		u32 sum = calcConfigSum(smc);
+		uint32_t sum = calcConfigSum(smc);
 
-		*(u32 *)smc = SWAP32(sum);
+		*(uint32_t *)smc = SWAP32(sum);
 		log_printf(1, bd_459340);
 	} else
 		log_printf(1, bd_459355);
@@ -1048,9 +1048,9 @@ gpuwarn:
 }
 
 NOPROF
-__attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 size)
+__attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, uint32_t size)
 {
-	u32 i, j;
+	uint32_t i, j;
 	int found;
 
 	/* hints (wip/README.md): noinline keeps ipa-split off it once it has
@@ -1084,7 +1084,7 @@ __attribute__((noinline)) int extractSmcConfig(struct fileent *e, u8 *buf, u32 s
 	if (checkZeros(buf + i + 0x20c, 4)) {
 		log_printf(1, bd_459401);
 		if (__builtin_expect(size - i >= 0x400, 1)) {
-			u8 *src = buf + i;
+			uint8_t *src = buf + i;
 
 			/* buf live past src: no IRA copy buf-src, so the raw
 			   loop's eax doesn't push dst out of eax (wip/README) */
@@ -1121,9 +1121,9 @@ notfound2: __attribute__((hot));
 
 /* the build's kernel version is the highest of its bootloaders' */
 NOPROF
-void raiseKernel(u16 magic, u16 build, u16 qfe)
+void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
 {
-	u32 k = 0x20000000 | build << 8;
+	uint32_t k = 0x20000000 | build << 8;
 
 	if (k > xb.kernel)
 		xb.kernel = k;
@@ -1131,9 +1131,9 @@ void raiseKernel(u16 magic, u16 build, u16 qfe)
 
 NOPROF
 __attribute__((optimize("no-early-inlining")))
-int checkBl(u8 *bl, u32 size, int type, u32 crc)
+int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 {
-	u32 blsize, c;
+	uint32_t blsize, c;
 	int m, dead;
 
 	/* hints (none emit code): the original copies the epilogue into the
@@ -1294,10 +1294,10 @@ int verifyBlSigs(void)
 {
 	int ok = 1, sb, sd;
 	struct fileent *e;
-	u32 i;
-	const u8 *salt;
+	uint32_t i;
+	const uint8_t *salt;
 
-	for (i = 1; i < (u32)xb.nFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
 		switch (e->type) {
 		case 5:
@@ -1368,7 +1368,7 @@ static int loadBl60(struct fileent *e)
 		if (!e->data)
 			return 1;
 		{
-		u8 *p = e->data;
+		uint8_t *p = e->data;
 
 		__asm__("" : "+r"(p));
 		e->size = 0x60;
@@ -1379,7 +1379,7 @@ static int loadBl60(struct fileent *e)
 }
 
 /* load the input file e (xb.files[i]) by its type */
-static void loadBl(struct fileent *e, u32 i, u32 *pr)
+static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 {
 	int type;
 
@@ -1438,7 +1438,7 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			break;
 		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
 		if (!*pr) {
-			u32 r6 = checkBl(e->data, e->size, 6, e->crc);
+			uint32_t r6 = checkBl(e->data, e->size, 6, e->crc);
 
 			__asm__("" : "+r"(r6));
 			*pr = r6;
@@ -1556,7 +1556,7 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			*pr = 0;
 		}
 		{
-			u8 *d = xb.files[xb.nFlashFiles].data;
+			uint8_t *d = xb.files[xb.nFlashFiles].data;
 
 			__asm__("" : "+a"(d));
 			if (d)
@@ -1604,10 +1604,10 @@ fail:
 int loadBlFiles(void)
 {
 	struct fileent *e;
-	u32 i;
-	u32 r;
+	uint32_t i;
+	uint32_t r;
 
-	for (i = 1; i < (u32)xb.nFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
 		r = 0;
 		if (strnicmp(e->name, bd_459955, 4) || e->crc)
@@ -1630,9 +1630,9 @@ static const char bd_459d78[] __attribute__((aligned(4))) = "using smc binary fr
 static const char bd_459d98[] __attribute__((aligned(4))) = "\n***** ERROR!: acquiring smc binary data failed!\n";
 
 NOPROF
-static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e)
+static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct fileent *e)
 {
-	u32 r = 0;
+	uint32_t r = 0;
 	int type;
 
 	type = e->type;
@@ -1665,7 +1665,7 @@ static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e
 			break;
 		}
 		{
-			u8 *p = e->data;
+			uint8_t *p = e->data;
 
 			/* p's points-to unknown: the size store may alias the
 			   copy, so sched2 keeps it before the rep movsd setup */
@@ -1771,14 +1771,14 @@ NOPROF
 int loadConsoleBlFiles(void)
 {
 	struct fileent *e;
-	u32 i;
-	u32 r;
+	uint32_t i;
+	uint32_t r;
 
 	/* the cold label gives the shrink-wrapped return 0 frequency 0, so
 	   bb-reorder lays it out last */
-	if ((u32)xb.nFiles <= 1)
+	if ((uint32_t)xb.nFiles <= 1)
 		goto none;
-	for (i = 1; i < (u32)xb.nFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
 		if (strnicmp(e->name, bd_459955, 4) || e->crc)
 			r = loadConsoleBl(e);
@@ -1836,7 +1836,7 @@ static const char bd_45a428[] __attribute__((aligned(4))) = "wired controller (f
 NOPROF
 void patchHeaderOpts(void)
 {
-	u8 opts = 0;
+	uint8_t opts = 0;
 
 	xb.hdr[0x4b] = 1;
 	if (xb.bootFlags & 9) {
@@ -1870,26 +1870,26 @@ int blmodMissing(struct fileent *e)
 
 /* XeCryptRotSumSha, showing the sums */
 NOPROF
-void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen)
+void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen, uint8_t *out, uint32_t outlen)
 {
-	u8 sum[32];
+	uint8_t sum[32];
 	XECRYPT_SHA_STATE sha;
-	u32 i;
+	uint32_t i;
 
 	for (i = 0; i < 32; i++)
 		sum[i] = 0;
 	/* TODO(prototype cast): xecrypt.h's inputs aren't const */
-	XeCryptRotSum(sum, (u8 *)a, alen >> 3);
+	XeCryptRotSum(sum, (uint8_t *)a, alen >> 3);
 	log_printf(1, bd_459ed2);
 	display_buffer_hex(sum, 32, 1);
-	XeCryptRotSum(sum, (u8 *)b, blen >> 3);
+	XeCryptRotSum(sum, (uint8_t *)b, blen >> 3);
 	log_printf(1, bd_459ed8);
 	display_buffer_hex(sum, 32, 1);
 	XeCryptShaInit(&sha);
 	XeCryptShaUpdate(&sha, sum, 32);
 	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaUpdate(&sha, (u8 *)a, alen);
-	XeCryptShaUpdate(&sha, (u8 *)b, blen);
+	XeCryptShaUpdate(&sha, (uint8_t *)a, alen);
+	XeCryptShaUpdate(&sha, (uint8_t *)b, blen);
 	for (i = 0; i < 32; i++)
 		sum[i] = ~sum[i];
 	log_printf(1, bd_459ede);
@@ -1902,7 +1902,7 @@ void rotSumSha(const u8 *a, u32 alen, const u8 *b, u32 blen, u8 *out, u32 outlen
 }
 
 NOPROF
-int countBits(u8 v)
+int countBits(uint8_t v)
 {
 	int i, n = 0;
 
@@ -1919,8 +1919,8 @@ int patchBlsResign(void)
 {
 	int sb = findFile(11), cd = findFile(7), pt = findFile(23);
 	struct fileent *p = &xb.files[pt];
-	u8 *d = p->data;
-	u32 off, addr, len, i, t;
+	uint8_t *d = p->data;
+	uint32_t off, addr, len, i, t;
 	int n = 0, ok = 0;
 
 	log_printf(1, bd_459eea);
@@ -1986,8 +1986,8 @@ void patchBlsBlmod(const void *blmod, int size)
 {
 	int cd = findFile(7), cbb = findFile(6), pt = findFile(23);
 	struct fileent *p = &xb.files[pt];
-	u8 *d = p->data;
-	u32 off, addr, len, i, max, end, t;
+	uint8_t *d = p->data;
+	uint32_t off, addr, len, i, max, end, t;
 	int n = 0;
 
 	log_printf(1, bd_459eea);
@@ -2053,8 +2053,8 @@ NOPROF
 void fixupPatchSet(void)
 {
 	struct fileent *e = &xb.files[findFile(23)];
-	u8 *p = e->data;
-	u32 off, i, v, t;
+	uint8_t *p = e->data;
+	uint32_t off, i, v, t;
 	int n = 0;
 
 	log_printf(1, bd_459fa6);
@@ -2084,10 +2084,10 @@ void addBlsToImage(void)
 {
 	struct fileent *e;
 	int ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
-	u32 i;
+	uint32_t i;
 	int type, j, off = 0;
 
-	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
 		type = e->type;
 		if (e->offset != 0xffffffff)
@@ -2186,10 +2186,10 @@ void addUpdateBls(void)
 {
 	struct fileent *e;
 	int ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
-	u32 i;
+	uint32_t i;
 	int type, j, off = 0;
 
-	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
 		type = e->type;
 		if (!isUpdateBl(type))
@@ -2326,12 +2326,12 @@ static const char bd_45a94c[] __attribute__((aligned(1))) = "re-encoding %s size
 
 /* freeboot.bin: the kernel version string, boot options and buttons */
 NOPROF
-void patchFreeboot(u8 *buf, int len)
+void patchFreeboot(uint8_t *buf, int len)
 {
-	u32 opts = xb.bootFlags & 0xf;
+	uint32_t opts = xb.bootFlags & 0xf;
 	char pat[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-	u32 hold[4];		/* the hold address instructions; [2..3]: 9199's */
-	u32 *q;
+	uint32_t hold[4];	/* the hold address instructions; [2..3]: 9199's */
+	uint32_t *q;
 	char *p;
 
 	hold[0] = 0x80;
@@ -2360,7 +2360,7 @@ void patchFreeboot(u8 *buf, int len)
 	if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton ||
 	    logPowerButton(xb.dualButton, bd_45a71e))
 		xb.dualButton = 0;
-	p = (char *)findInst(buf, len, (u8 *)pat, 32);
+	p = (char *)findInst(buf, len, (uint8_t *)pat, 32);
 	if (p) {
 		log_printf(2, bd_45a728, p);
 		strncpy(p, xb.kernelStr, 32);
@@ -2371,7 +2371,7 @@ void patchFreeboot(u8 *buf, int len)
 		hold[2] = 0x80;
 		hold[3] = 0xf8ff1f00;
 		log_printf(1, bd_45a78c);
-		q = (u32 *)findInst(buf, len, (u8 *)hold, 8);
+		q = (uint32_t *)findInst(buf, len, (uint8_t *)hold, 8);
 		if (q)
 			memcpy(q, hold + 2, 8);
 	}
@@ -2379,14 +2379,14 @@ void patchFreeboot(u8 *buf, int len)
 
 /* payload.bin's `li r4, reps` (copy loop count in words) */
 NOPROF
-void patchPayloadSize(u8 *buf, int len, int size)
+void patchPayloadSize(uint8_t *buf, int len, int size)
 {
 	int pat = 0xffff8038;	/* li r4, (any) */
-	u8 *p;
-	u32 reps = (size + 3) >> 2;
+	uint8_t *p;
+	uint32_t reps = (size + 3) >> 2;
 
 	log_printf(1, bd_45a7c4, size, reps);
-	p = findInst(buf, len, (u8 *)&pat, 4);
+	p = findInst(buf, len, (uint8_t *)&pat, 4);
 	if (!p)
 		return;
 	log_printf(2, bd_45a7f8, p[2], p[3]);
@@ -2407,13 +2407,13 @@ static int findFileN(int type)
 }
 
 NOPROF
-int encodeBls(u8 *salt, int ldv)
+int encodeBls(uint8_t *salt, int ldv)
 {
 	struct fileent *e;
-	u32 i;
+	uint32_t i;
 	int type, zero, j;
 
-	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
 		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
 			continue;
@@ -2689,10 +2689,10 @@ NOPROF
 int encodeUpdateBls(int unused, int ldv)
 {
 	struct fileent *e;
-	u32 i;
+	uint32_t i;
 	int j;
 
-	for (i = 1; i < (u32)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
 		e = &xb.files[i];
 		if (!strnicmp(e->name, bd_459955, 4) && !e->crc)
 			continue;
@@ -2713,9 +2713,9 @@ int encodeUpdateBls(int unused, int ldv)
 }
 
 NOPROF
-u32 calcBlAreaSize(void)
+uint32_t calcBlAreaSize(void)
 {
-	u32 size, xs, x;
+	uint32_t size, xs, x;
 
 	if (xb.type == 2) {
 		x = findFile(5);
@@ -2780,13 +2780,13 @@ static void patchConsoleBlmod(void)
 NOPROF
 int buildFlash(void)
 {
-	u8 salt[16];
-	u32 ts;
+	uint8_t salt[16];
+	uint32_t ts;
 	FILETIME ft;
 	const char *name, *base;
-	u32 area, off, raw, save, a, b, k, crc, len, end;
+	uint32_t area, off, raw, save, a, b, k, crc, len, end;
 	int fuse, blocks, r, cf, cg, region, i;
-	u16 t;
+	uint16_t t;
 	char last;
 
 	memset(salt, 0, sizeof(salt));
@@ -2886,7 +2886,7 @@ int buildFlash(void)
 			cg = findFile(10);
 			log_printf(1, bd_45acf8);
 			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
-			makeTimestamp((u8 *)&ts, NULL);
+			makeTimestamp((uint8_t *)&ts, NULL);
 			imgAddFile(bd_45ad6c, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, bd_45abd8);
 		}
@@ -2897,7 +2897,7 @@ int buildFlash(void)
 			cg = findFile(21);
 			log_printf(1, bd_45ad7c);
 			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
-			makeTimestamp((u8 *)&ts, NULL);
+			makeTimestamp((uint8_t *)&ts, NULL);
 			imgAddFile(bd_45ad6c, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, bd_45abd8);
 		}
@@ -2906,7 +2906,7 @@ int buildFlash(void)
 			cg = findFile(10);
 			log_printf(1, bd_45adb4);
 			log_printf(1, bd_45ad3c, off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
-			makeTimestamp((u8 *)&ts, NULL);
+			makeTimestamp((uint8_t *)&ts, NULL);
 			imgAddFile(bd_45adf3, xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, bd_45abd8);
 		}
@@ -2923,7 +2923,7 @@ int buildFlash(void)
 			continue;
 		}
 		if (!xb.firmwareCrc[i])
-			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, 0, (u8 *)&ts, 0, 1, 0);
+			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, 0, (uint8_t *)&ts, 0, 1, 0);
 		else {
 			/* a patch (.xexp): the target's comes as .xexp1, a JTAG's as .xexp2 */
 			if (last == 'p') {
@@ -2932,13 +2932,13 @@ int buildFlash(void)
 				else
 					strcat(xb.firmware[i], "1");
 			}
-			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 1, 1, 1);
+			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (uint8_t *)&ts, 1, 1, 1);
 			if (r && last == 'p') {
 				strcat(f.name, "1");
-				r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 0, 1, 1);
+				r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (uint8_t *)&ts, 0, 1, 1);
 				if (r) {
 					f.name[strlen(f.name) - 1] = '2';
-					r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (u8 *)&ts, 0, 1, 1);
+					r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (uint8_t *)&ts, 0, 1, 1);
 				}
 			}
 		}
@@ -2968,12 +2968,12 @@ int buildFlash(void)
 		int found = 1;
 
 		memset(&xb.files[xb.nFlashFiles], 0, sizeof(struct fileent));
-		setBeU32(0, (u8 *)&ts);
+		setBeU32(0, (uint8_t *)&ts);
 		if (k)
 			log_printf(1, bd_458cf9);
 		name = xb.flashFiles[k];
 		log_printf(1, bd_45afbd, name);
-		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (u8 *)&ts)) {
+		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (uint8_t *)&ts)) {
 			found = 0;
 			if (!(xb.bootFlags & 0x1000000)) {
 				if (xb.files[xb.nFlashFiles].data)
@@ -2998,23 +2998,23 @@ int buildFlash(void)
 			}
 		}
 		if (found) {
-			if (!getBeU32((u8 *)&ts))
-				makeTimestamp((u8 *)&ts, &ft);
+			if (!getBeU32((uint8_t *)&ts))
+				makeTimestamp((uint8_t *)&ts, &ft);
 			else
-				timestampToFileTime((u16 *)&ts, &ft);
+				timestampToFileTime((uint16_t *)&ts, &ft);
 			if (!strcmp(name, bd_45b03b))
-				secdataPrepare(&xb.files[xb.nFlashFiles], (u8 *)&ft);
+				secdataPrepare(&xb.files[xb.nFlashFiles], (uint8_t *)&ft);
 			else if (!strcmp(name, bd_45b047))
 				extendedPrepare(&xb.files[xb.nFlashFiles]);
 			else if (!strcmp(name, bd_45b054))
-				daeEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (u8 *)&ft);
+				daeEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (uint8_t *)&ft);
 			else if (!strcmp(name, bd_45b05c))
-				crlEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (u8 *)&ft);
+				crlEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (uint8_t *)&ft);
 			else if (!strcmp(name, bd_45b064))
 				fcrtEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
 			else if (!strcmp(name, bd_45b06d)) {
 				if (xb.flashTime[k])
-					setBeU32(xb.flashTime[k], (u8 *)&ts);
+					setBeU32(xb.flashTime[k], (uint8_t *)&ts);
 			} else
 				log_printf(0, bd_45b078, xb.baseDir, name);
 			imgAddFileAs(name, xb.files[xb.nFlashFiles].data, &ts, xb.files[xb.nFlashFiles].size);
@@ -3067,8 +3067,8 @@ int buildFlash(void)
 			} else {
 				t = imgAddMobile(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, '1' + k);
 				if (t && k <= 8) {
-					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
-					setBeU16(xb.files[xb.nFlashFiles].size >= 0x4000 ? 0 : xb.files[xb.nFlashFiles].size, (u8 *)&xb.mobileTab[k].size);
+					setBeU16(t, (uint8_t *)&xb.mobileTab[k].type);
+					setBeU16(xb.files[xb.nFlashFiles].size >= 0x4000 ? 0 : xb.files[xb.nFlashFiles].size, (uint8_t *)&xb.mobileTab[k].size);
 				}
 			}
 		} else if (xb.mobile[k].data && xb.mobile[k].size) {
@@ -3080,8 +3080,8 @@ int buildFlash(void)
 			} else {
 				t = imgAddMobile(xb.mobile[k].data, xb.mobile[k].size, '1' + k);
 				if (t && k <= 8) {
-					setBeU16(t, (u8 *)&xb.mobileTab[k].type);
-					setBeU16(xb.mobile[k].size > 0x3fff ? 0 : xb.mobile[k].size, (u8 *)&xb.mobileTab[k].size);
+					setBeU16(t, (uint8_t *)&xb.mobileTab[k].type);
+					setBeU16(xb.mobile[k].size > 0x3fff ? 0 : xb.mobile[k].size, (uint8_t *)&xb.mobileTab[k].size);
 				}
 			}
 		}
@@ -3119,7 +3119,7 @@ int buildFlash(void)
 		log_printf(1, bd_45b378);
 		f.data = NULL;
 		for (k = 0; k < xb.nRawPatches; k++) {
-			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, (u8 *)&ts, 0, 0, 0);
+			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, (uint8_t *)&ts, 0, 0, 0);
 			if (!r) {
 				off = xb.rawPatch[k].offset;
 				end = off + f.size;

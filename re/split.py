@@ -414,7 +414,7 @@ SYMBOLS = {
     0x410240: '_setFlashBuild', 0x410290: '_smcSetLoad', 0x410360: '_setPatchSlot',
     0x410460: '_imgCfOffset', 0x410490: '_imgCfSize', 0x4104d0: '_imgSize',
     0x4104f0: '_imgBigBlock', 0x410500: '_imgAdd',
-    # the rest of app/image_write (names are ours).  0x4cb7c0 is a u16 per
+    # the rest of app/image_write (names are ours).  0x4cb7c0 is a uint16_t per
     # block from fsStart (479efc) to fsEnd (479ef8): the FS table build.s's
     # "Fixing up FS table..." / "Writing FS table to image" logs refer to.
     # imgWriteStart: regparm (src, len, fs type), copy to offset 0.  gcc's

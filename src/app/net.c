@@ -20,7 +20,7 @@
    netRecv's `*len = 0` after the netSock load (anti-dependence) */
 SOCKET netSock = INVALID_SOCKET;
 /* gcc emits the statics in reverse: netInfo ends up first in .bss */
-static u32 netEmpty;		/* returned for a zero-length reply */
+static uint32_t netEmpty;	/* returned for a zero-length reply */
 static struct consoleinfo *netInfo;
 time_t netStartTime;
 
@@ -96,14 +96,14 @@ void netFree(void *p)
 }
 
 /* wait for the console's UDP beacon; its address, or 0 */
-u32 netFindBeacon(void)
+uint32_t netFindBeacon(void)
 {
 	SOCKET s;
-	volatile u32 addr;
+	volatile uint32_t addr;
 	int one = 1;
 	struct sockaddr_in sa, from;
 	int fromLen;
-	u8 pkt[8];
+	uint8_t pkt[8];
 	fd_set fds;
 	struct timeval tv;
 	int r;
@@ -197,12 +197,12 @@ int netSendStr(const char *s)
    but then IPA-CP doesn't clone.  The asm (a use of got on the short-count
    path) puts got over IRA's caller-save threshold in the clone, which
    then allocates size/buf/got to ebx/esi/edi. */
-u8 *netRecvVerbose(int *len, u32 verbose)
+uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
 	struct timeval tv;
-	u8 hdr[4];
-	u8 *buf;
+	uint8_t hdr[4];
+	uint8_t *buf;
 	int size, got, r;
 
 	tv.tv_sec = 15;
@@ -225,7 +225,7 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 		return NULL;
 	if (size == 0) {
 		*len = 0;
-		return (u8 *)&netEmpty;
+		return (uint8_t *)&netEmpty;
 	}
 	buf = calloc(size, 1);
 	if (__builtin_expect(verbose, 0))
@@ -235,7 +235,7 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 		r = select(0, &fds, NULL, NULL, &tv);
 		if (r == SOCKET_ERROR || r == 0) {
 			log_printf(0, net_4574f4, WSAGetLastError());
-			if (buf != (u8 *)&netEmpty)
+			if (buf != (uint8_t *)&netEmpty)
 				free(buf);
 			return NULL;
 		}
@@ -244,7 +244,7 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 			if (verbose)
 				putchar('\n');
 			log_printf(0, net_457518, WSAGetLastError());
-			if (buf != (u8 *)&netEmpty)
+			if (buf != (uint8_t *)&netEmpty)
 				free(buf);
 			return NULL;
 		}
@@ -262,7 +262,7 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 		putchar('\n');
 	__asm__ ("" : : "g"(got));
 	log_printf(0, net_457544, got, size);
-	if (buf != (u8 *)&netEmpty)
+	if (buf != (uint8_t *)&netEmpty)
 		free(buf);
 	return NULL;
 }
@@ -270,10 +270,10 @@ u8 *netRecvVerbose(int *len, u32 verbose)
 #define netRecv(len) netRecvVerbose(len, 0)
 
 /* send a length-prefixed block */
-int netSendData(const u8 *buf, u32 len, int verbose)
+int netSendData(const uint8_t *buf, uint32_t len, int verbose)
 {
-	u8 hdr[4];
-	u32 sent, chunk;
+	uint8_t hdr[4];
+	uint32_t sent, chunk;
 	int r;
 
 	setBeU32(len, hdr);
@@ -306,7 +306,7 @@ int netSendData(const u8 *buf, u32 len, int verbose)
 int netCheckOk(void)
 {
 	int len, ok;
-	u8 *r = netRecv(&len);
+	uint8_t *r = netRecv(&len);
 
 	if (!r)
 		return 0;
@@ -317,7 +317,7 @@ int netCheckOk(void)
 	return ok;
 }
 
-int netOpenSocket(u32 addr)
+int netOpenSocket(uint32_t addr)
 {
 	struct sockaddr_in sa;
 
@@ -338,7 +338,7 @@ int netOpenSocket(u32 addr)
 
 int netReadInfo(void)
 {
-	u32 len;
+	uint32_t len;
 	struct consoleinfo *info;
 	int ok = 0;
 
@@ -377,14 +377,14 @@ int netReadInfo(void)
    netReadInfo: the branch's clobber block keeps phiopt off the readinfo
    test, ce2 speculates the 1 into both copies and jump2 crossjumps them;
    goto ok keeps the success block from following the test. */
-u32 netConnect(const char *ip)
+uint32_t netConnect(const char *ip)
 {
 	WSADATA wsa;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
 		if (ip == NULL) {
 			struct sockaddr_in server;
-			u32 addr;
+			uint32_t addr;
 
 			log_printf(0, net_4577c4);
 			addr = netFindBeacon();
@@ -410,7 +410,7 @@ u32 netConnect(const char *ip)
 		} else {
 			struct sockaddr_in sa, server;
 			int saLen = sizeof sa;
-			u32 addr;
+			uint32_t addr;
 
 			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0) {
 				log_printf(0, net_45784c,
@@ -458,7 +458,7 @@ void netDisconnect(void)
 	netClose();
 }
 
-u32 netMount(const char *drive, const char *device)
+uint32_t netMount(const char *drive, const char *device)
 {
 	char cmd[260];
 
@@ -472,7 +472,7 @@ u32 netMount(const char *drive, const char *device)
 	return 0;
 }
 
-u32 netUnmount(const char *drive)
+uint32_t netUnmount(const char *drive)
 {
 	char cmd[260];
 
@@ -486,7 +486,7 @@ u32 netUnmount(const char *drive)
 	return 0;
 }
 
-u8 *netGetFile(const char *name, int *len)
+uint8_t *netGetFile(const char *name, int *len)
 {
 	char cmd[260];
 
@@ -504,7 +504,7 @@ struct consoleinfo *netGetInfo(void)
 int netDumpNand(const char *path)
 {
 	int len;
-	u8 *buf;
+	uint8_t *buf;
 
 	netTimerStart();
 	log_printf(0, net_45796c);
@@ -525,14 +525,14 @@ int netDumpNand(const char *path)
 	return 0;
 }
 
-u8 *netGetBldrs(int *len)
+uint8_t *netGetBldrs(int *len)
 {
 	if (netSendStr(net_4579cb))
 		return netRecv(len);
 	return 0;
 }
 
-u32 netSendFlash(const u8 *buf, u32 len)
+uint32_t netSendFlash(const uint8_t *buf, uint32_t len)
 {
 	if (!buf || !netSendStr(net_4579d1))
 		return 0;
@@ -543,7 +543,7 @@ u32 netSendFlash(const u8 *buf, u32 len)
 	log_printf(0, net_4579d8);
 	{
 		int rlen;
-		u8 *r = netRecv(&rlen);
+		uint8_t *r = netRecv(&rlen);
 
 		if (r && rlen == 2 && getBeU16(r) == OK_REPLY) {
 			netFree(r);
@@ -557,7 +557,7 @@ u32 netSendFlash(const u8 *buf, u32 len)
 	return 1;
 }
 
-u8 *netReadBlocks(int *len, u16 start, u16 count)
+uint8_t *netReadBlocks(int *len, uint16_t start, uint16_t count)
 {
 	char cmd[32];
 
@@ -568,10 +568,10 @@ u8 *netReadBlocks(int *len, u16 start, u16 count)
 }
 
 __attribute__((optimize("no-crossjumping", "no-early-inlining")))
-int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
+int netWriteBlocks(const uint8_t *buf, uint32_t len, uint16_t start, uint16_t count)
 {
 	int rlen, ret;
-	u8 *r;
+	uint8_t *r;
 	char cmd[32];
 
 	sprintf(cmd, net_457a07, start, count);
@@ -591,10 +591,10 @@ int netWriteBlocks(const u8 *buf, u32 len, u16 start, u16 count)
 	return 0;
 }
 
-int netEraseBlock(u16 block, u16 count)
+int netEraseBlock(uint16_t block, uint16_t count)
 {
 	int ret;
-	u8 *r;
+	uint8_t *r;
 	char cmd[32];
 
 	sprintf(cmd, net_457a15, block, count);
@@ -614,7 +614,7 @@ int netEraseBlock(u16 block, u16 count)
 	return 0;
 }
 
-u8 *netGetBadBlocks(int *len)
+uint8_t *netGetBadBlocks(int *len)
 {
 	if (netSendStr(net_457a23))
 		return netRecv(len);
@@ -622,10 +622,10 @@ u8 *netGetBadBlocks(int *len)
 }
 
 __attribute__((optimize("no-crossjumping")))
-int netSendFile(const char *name, const void *buf, u32 len)
+int netSendFile(const char *name, const void *buf, uint32_t len)
 {
 	int rlen, ret;
-	u8 *r;
+	uint8_t *r;
 
 	/* the hint (with builtin-expect-probability=65, 55-65 work) makes the
 	   shared return-0 block frequent enough to be aligned */
@@ -658,7 +658,7 @@ int netSendFile(const char *name, const void *buf, u32 len)
 int netFormatSysex(void)
 {
 	int ret;
-	u8 *r;
+	uint8_t *r;
 
 	{
 		int len;
@@ -679,7 +679,7 @@ int netFormatSysex(void)
 int netFormatCompat(void)
 {
 	int ret;
-	u8 *r;
+	uint8_t *r;
 
 	{
 		int len;
@@ -701,7 +701,7 @@ __attribute__((optimize("no-crossjumping")))
 int netMkdir(const char *name)
 {
 	int rlen, ret;
-	u8 *r;
+	uint8_t *r;
 
 	if (name) {
 		char cmd[264] = "MKDR";
@@ -743,10 +743,10 @@ int netReboot(int how)
 }
 
 __attribute__((optimize("no-early-inlining")))
-int netWritePatches(const u8 *buf, u32 len)
+int netWritePatches(const uint8_t *buf, uint32_t len)
 {
 	int ret;
-	u8 *r;
+	uint8_t *r;
 
 	{
 		int rlen;

@@ -5,8 +5,8 @@
 #include "xebuild.h"
 
 void freeManifest(void);
-int loadManifest(const char *dir, u32 ver);
-long sendAvatarData(const char *dir, u32 ver);
-u32 sendCompatData(const char *dir);
+int loadManifest(const char *dir, uint32_t ver);
+long sendAvatarData(const char *dir, uint32_t ver);
+uint32_t sendCompatData(const char *dir);
 
 #endif

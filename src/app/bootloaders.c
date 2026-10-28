@@ -17,15 +17,15 @@
 #include "log.h"
 #include "xboxrom.h"
 
-int fcrtVerifySig(u8 *fcrt);
+int fcrtVerifySig(uint8_t *fcrt);
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
 
-int verifyExtended(u8 *buf, u32 size)
+int verifyExtended(uint8_t *buf, uint32_t size)
 {
-	u8 salt[2] = { 7, 0x12 };
-	u8 key[16];
+	uint8_t salt[2] = { 7, 0x12 };
+	uint8_t key[16];
 
 	XeCryptHmacSha(xb.cpuKey, 16, buf, 16, 0, 0, 0, 0, key, 16);
 	XeCryptRc4(key, 16, buf + 16, size - 16);
@@ -33,10 +33,10 @@ int verifyExtended(u8 *buf, u32 size)
 	return memcmp(buf, key, 16) == 0;
 }
 
-int unscramble(u8 *buf, u32 len)
+int unscramble(uint8_t *buf, uint32_t len)
 {
-	u8 s[4] = { 'B', 'u', 'N', 'y' };
-	u32 i, j = 0;
+	uint8_t s[4] = { 'B', 'u', 'N', 'y' };
+	uint32_t i, j = 0;
 	int t;
 
 	for (i = 0; i < len; i++) {
@@ -52,12 +52,12 @@ int unscramble(u8 *buf, u32 len)
 static const char msg_cbPairOk[] __attribute__((aligned(4))) = "CB decrypted OK, pairing bytes extracted as: 0x%08x\n";
 static const char msg_cbPairFail[] __attribute__((aligned(4))) = "***** WARNING: CB decrypt failed! Unable to get pairing data!\n";
 
-u32 cbGetPairing(u8 *cb)
+uint32_t cbGetPairing(uint8_t *cb)
 {
-	u32 pairing = 0;
-	u32 len;
-	u8 *buf;
-	u8 key[16];
+	uint32_t pairing = 0;
+	uint32_t len;
+	uint8_t *buf;
+	uint8_t key[16];
 
 	if (BL_MAGIC(cb, 'B')) {
 		len = BL_SIZE(cb);
@@ -75,10 +75,10 @@ u32 cbGetPairing(u8 *cb)
 	return pairing;
 }
 
-u32 cfGetPairing(u8 *cf, u32 size)
+uint32_t cfGetPairing(uint8_t *cf, uint32_t size)
 {
-	u32 len;
-	u8 key[16];
+	uint32_t len;
+	uint8_t key[16];
 
 	if (BL_MAGIC(cf, 'F')) {
 		len = BL_SIZE(cf);
@@ -96,11 +96,11 @@ u32 cfGetPairing(u8 *cf, u32 size)
 static const char msg_cfSlot0[] __attribute__((aligned(4))) = "CF slot 0 decrypted ok LDV 0x%02x Pairing: 0x%06x\n";
 static const char msg_cfSlot1[] __attribute__((aligned(4))) = "CF slot 1 decrypted ok LDV 0x%02x Pairing: 0x%06x\n";
 
-u32 cfBestPairing(u8 *data, u32 size)
+uint32_t cfBestPairing(uint8_t *data, uint32_t size)
 {
-	u8 *buf;
-	u32 p0, p1;
-	u8 ldv0 = 0, ldv1 = 0;
+	uint8_t *buf;
+	uint32_t p0, p1;
+	uint8_t ldv0 = 0, ldv1 = 0;
 
 	if (size > 0x20000)
 		return 0;
@@ -127,10 +127,10 @@ u32 cfBestPairing(u8 *data, u32 size)
 /* no DOM/VRP: they fold ok to 0 on the false edge and the result becomes a
    setne; the original keeps `ok` there and if-converts to cmovne */
 __attribute__((optimize("no-tree-dominator-opts", "no-tree-vrp")))
-int cfDecrypt(u8 *cf, u32 size)
+int cfDecrypt(uint8_t *cf, uint32_t size)
 {
-	u32 len;
-	u8 key[16];
+	uint32_t len;
+	uint8_t key[16];
 	int ok;
 
 	if (BL_MAGIC(cf, 'F')) {
@@ -147,19 +147,19 @@ int cfDecrypt(u8 *cf, u32 size)
 	return 0;
 }
 
-int cgDecrypt(u8 *cg, u8 *cfKey, u32 size)
+int cgDecrypt(uint8_t *cg, uint8_t *cfKey, uint32_t size)
 {
-	u8 key[16];
+	uint8_t key[16];
 
 	XeCryptHmacSha(cfKey, 16, cg + 16, 16, 0, 0, 0, 0, key, 16);
 	XeCryptRc4(key, 16, cg + 32, size - 32);
 	return getBeU32(cg + 32) == 0x120000;
 }
 
-int verifySecdata(u8 *buf, u32 size)
+int verifySecdata(uint8_t *buf, uint32_t size)
 {
-	u8 key[16];
-	u8 hash[16];
+	uint8_t key[16];
+	uint8_t hash[16];
 
 	memset(hash, 0, 16);
 	XeCryptHmacSha(xb.cpuKey, 16, buf, 16, 0, 0, 0, 0, key, 16);
@@ -171,7 +171,7 @@ int verifySecdata(u8 *buf, u32 size)
 static const char msg_sigGood[] __attribute__((aligned(1))) = "sig good! ";
 static const char msg_sigCheckFail[] __attribute__((aligned(1))) = "\nsignature check FAILED!\n";
 
-int crlVerifySig(u8 *crl, u8 *hash)
+int crlVerifySig(uint8_t *crl, uint8_t *hash)
 {
 	int ok;
 
@@ -187,11 +187,11 @@ int crlVerifySig(u8 *crl, u8 *hash)
 	return ok;
 }
 
-int verifyCrl(u8 *crl, u32 size, int perBox)
+int verifyCrl(uint8_t *crl, uint32_t size, int perBox)
 {
-	u8 key[16];
-	u8 iv[16];
-	u8 hash[20];
+	uint8_t key[16];
+	uint8_t iv[16];
+	uint8_t hash[20];
 	XECRYPT_AES_STATE aes;
 
 	if (perBox)
@@ -212,10 +212,10 @@ int verifyCrl(u8 *crl, u32 size, int perBox)
 }
 
 /* not cloned for verifyDae's perBox = 1 call */
-__attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
+__attribute__((noclone)) void daeDecrypt(uint8_t *dae, uint32_t size, int perBox)
 {
-	u8 *buf;
-	u8 iv[16];
+	uint8_t *buf;
+	uint8_t iv[16];
 	XECRYPT_AES_STATE aes;
 
 	buf = malloc(size);
@@ -239,10 +239,10 @@ static const char msg_daeSigFail[] __attribute__((aligned(1))) = "\nsig %d FAIL!
    probability; the hint call (PRED_CALL; once inlined, its store to a dead
    local goes) lowers it so the FAIL block comes before the !xb.pubPirs return */
 __attribute__((optimize("no-early-inlining")))
-int daeVerifySig(u8 *seg, u32 size, int n)
+int daeVerifySig(uint8_t *seg, uint32_t size, int n)
 {
-	u8 key[16];
-	u8 hash[20];
+	uint8_t key[16];
+	uint8_t hash[20];
 	int ok, dead;
 
 	if (!xb.pubPirs)
@@ -264,10 +264,10 @@ int daeVerifySig(u8 *seg, u32 size, int n)
 /* check and decrypt the two DAEP segments of a DAE file */
 /* daeVerifySig as verifyDae inlines it: `if (ok)` first, inlined before
    profile estimation (the standalone daeVerifySig tests !ok first) */
-static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, int n)
+static inline __attribute__((always_inline)) int daeSigCheck(uint8_t *seg, uint32_t size, int n)
 {
-	u8 key[16];
-	u8 hash[20];
+	uint8_t key[16];
+	uint8_t hash[20];
 	int ok;
 
 	if (!xb.pubPirs)
@@ -287,17 +287,17 @@ static inline __attribute__((always_inline)) int daeSigCheck(u8 *seg, u32 size, 
 static const char msg_daeHash[] __attribute__((aligned(4))) = "\n******* ERROR: dae hash incorrect, could not decrypt!\n";
 static const char msg_daeHeader[] __attribute__((aligned(4))) = "\n******* ERROR: dae segment does not have the expected header!\n";
 
-int verifyDae(u8 *buf, u32 size)
+int verifyDae(uint8_t *buf, uint32_t size)
 {
-	u32 off = 0;
-	u32 len;
-	u8 *seg;
+	uint32_t off = 0;
+	uint32_t len;
+	uint8_t *seg;
 	int n = 0;
 
 	while (off < size) {
 		seg = buf + off;
 		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
-			len = (u16)((buf[off + 4] << 8) + buf[off + 5]);
+			len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
 			n++;
 			daeSigCheck(seg, len, n);
 			daeDecrypt(seg, len, 1);
@@ -320,9 +320,9 @@ static const char msg_noPub[] __attribute__((aligned(4))) = "pub key to verify s
 
 /* inlined into verifyFcrt before profile estimation; the prototype above
    keeps the external definition */
-inline __attribute__((always_inline)) int fcrtVerifySig(u8 *fcrt)
+inline __attribute__((always_inline)) int fcrtVerifySig(uint8_t *fcrt)
 {
-	u8 hash[20];
+	uint8_t hash[20];
 	void *pub;
 	int ok;
 
@@ -346,12 +346,12 @@ static const char msg_fcrtDone[] __attribute__((aligned(1))) = "FCRT was already
 static const char msg_fcrtHash[] __attribute__((aligned(4))) = "\n******* ERROR: FCRT hash check failed, could not decrypt!\n";
 
 /* check an FCRT's signature, then decrypt it with the CPU key */
-int verifyFcrt(u8 *fcrt, u32 size)
+int verifyFcrt(uint8_t *fcrt, uint32_t size)
 {
-	u8 iv[16];
-	u8 hash[20];
+	uint8_t iv[16];
+	uint8_t hash[20];
 	XECRYPT_AES_STATE aes;
-	u32 off;
+	uint32_t off;
 
 	fcrtVerifySig(fcrt);
 	memcpy(iv, fcrt + 256, 16);
@@ -379,9 +379,9 @@ int verifyFcrt(u8 *fcrt, u32 size)
 	return 1;
 }
 
-int shaSelfCheck(u8 *p)
+int shaSelfCheck(uint8_t *p)
 {
-	u8 hash[20];
+	uint8_t hash[20];
 
 	XeCryptSha(p + 20, 492, 0, 0, 0, 0, hash, 20);
 	return memcmp(hash, p, 20) == 0;
@@ -395,16 +395,16 @@ static const char msg_cbMagic[] __attribute__((aligned(4))) = "***** WARNING: CB
 static const char msg_cbNoData[] __attribute__((aligned(4))) = "***** WARNING: CB/SB decrypt not provided with data!\n";
 
 /* decrypted copy of a CB/SB (free it), checked against the 1BL RSA key */
-u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey);
+uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey);
 /* stops DOM/uncprop and CSE proving buf == 0 on the calloc-fail path (the
    original keeps its `xor ebx,ebx` there); `if (buf)` first keeps
    postreload from learning it from the jump */
 __attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
-u8 *cbDecrypt(u8 *cb, u32 *outLen, u8 *outKey)
+uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 {
-	u8 *buf;
-	u32 len;
-	u8 key[16];
+	uint8_t *buf;
+	uint32_t len;
+	uint8_t key[16];
 
 	if (!cb) {
 		log_printf(0, msg_cbNoData);
@@ -450,15 +450,15 @@ static const char msg_cdMagic[] __attribute__((aligned(4))) = "***** WARNING: SC
 static const char msg_cdNoData[] __attribute__((aligned(4))) = "***** WARNING: SC/SD/CD decrypt not provided with data!\n";
 
 /* decrypted copy of an SC/SD/CD with hmacKey, signature checked if pubKey and salt */
-u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey,
-	u32 *outLen, u8 *outKey);
+uint8_t *cdDecrypt(uint8_t *bl, const void *pubKey, const uint8_t *salt, const uint8_t *hmacKey,
+	uint32_t *outLen, uint8_t *outKey);
 /* as cbDecrypt */
 __attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
-u8 *cdDecrypt(u8 *bl, const void *pubKey, const u8 *salt, const u8 *hmacKey, u32 *outLen, u8 *outKey)
+uint8_t *cdDecrypt(uint8_t *bl, const void *pubKey, const uint8_t *salt, const uint8_t *hmacKey, uint32_t *outLen, uint8_t *outKey)
 {
-	u8 *buf;
-	u32 len;
-	u8 key[16];
+	uint8_t *buf;
+	uint32_t len;
+	uint8_t key[16];
 
 	if (!bl || !hmacKey) {
 		log_printf(0, msg_cdNoData);
@@ -508,11 +508,11 @@ static const char msg_ceNoData[] __attribute__((aligned(4))) = "***** WARNING: S
    cbDecrypt, plus register pins (in a block jump threading removes) that
    keep IRA's original choice: bl ebp, hmacKey edi, len esi */
 __attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
-u8 *ceDecrypt(u8 *bl, u32 *outLen, const u8 *hmacKey, const u8 *hash)
+uint8_t *ceDecrypt(uint8_t *bl, uint32_t *outLen, const uint8_t *hmacKey, const uint8_t *hash)
 {
-	u8 *buf;
-	u32 len;
-	u8 key[16];
+	uint8_t *buf;
+	uint32_t len;
+	uint8_t key[16];
 
 	if (!bl || !hmacKey) {
 		log_printf(0, msg_ceNoData);

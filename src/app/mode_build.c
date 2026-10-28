@@ -103,11 +103,11 @@ int loadKeyFile(char *key, const char *dir, const char *name)
 	return 0;
 }
 
-void loadPubKey(const char *desc, const char *file, void **out, u32 size, u32 sum, int quiet)
+void loadPubKey(const char *desc, const char *file, void **out, uint32_t size, uint32_t sum, int quiet)
 {
 	char path[1024] = "./";
 	size_t len;
-	u32 s;
+	uint32_t s;
 
 	strcat(path, file);
 	if (!FileExists(path)) {
