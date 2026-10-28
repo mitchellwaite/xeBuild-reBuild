@@ -6,59 +6,9 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-typedef unsigned char u8;
-
-typedef unsigned int u32;
-
-struct fileent {
-	char name[0x400];
-	u32 crc;			/* 400 */
-	int type;			/* 404 */
-	u32 offset;			/* 408 */
-	u8 pad40c[0x42c - 0x40c];
-};
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 */
-	u32 type;			/* 008 */
-	u32 kernel;			/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	int cbb;			/* 018 build with a CB_B */
-	u8 pad01c[0x2ac - 0x01c];
-	char suffix[0x400];		/* 2ac -i */
-	char binDir[0x400];		/* 6ac */
-	char outName[0x400];		/* aac */
-	char baseDir[0x400];		/* eac */
-	char dataDir[0x400];		/* 12ac */
-	char commonDir[0x400];		/* 16ac */
-	char firmware[256][0x400];	/* 1aac the ini's firmware files */
-	u32 firmwareCrc[256];		/* 41aac */
-	u32 nFirmware;			/* 41eac */
-	struct fileent files[19];	/* 41eb0 35 of them; the bound sets the */
-	u8 padf[(35 - 19) * 0x42c];	/* files loop's guessed trip count */
-	char blSuffix[0x40];		/* 4b0b4 -r */
-	int nAddons;			/* 4b0f4 */
-	int nFiles;			/* 4b0f8 */
-	int nFlashFiles;		/* 4b0fc */
-	struct {
-		char name[0x400];
-		u32 offset;
-	} rawPatch[16];			/* 4b100 */
-	u32 nRawPatches;		/* 4f140 */
-	char flashFiles[10][22];	/* 4f144 security files */
-	u8 *flashBuf[10];		/* 4f220 */
-	u32 flashSize[10];		/* 4f248 */
-	u32 oddTime[10];		/* 4f270 */
-	u32 flashCrc[10];		/* 4f298 */
-	u32 nFlashFiles2;		/* 4f2c0 the security file count */
-	u8 pad4f2c4[0x4f4c4 - 0x4f2c4];
-	char kernelStr[0x40];		/* 4f4c4 the ini's kernel version string */
-	unsigned char *iniBuf;		/* 4f504 the ini file */
-	u8 pad4f508[0x4f90c - 0x4f508];
-	int iniSize;			/* 4f90c */
-};
-extern struct xebuild xb;
+/* the files loop's guessed trip count (xebuild.h) */
+#define XB_FILES_BOUND 19
+#include "xebuild.h"
 
 /* .data, in this order (-fno-toplevel-reorder) */
 /* the bl section's file order per build type (blOrder is one of them) */
@@ -143,7 +93,6 @@ void fixFileCase(void)
 	}
 	closedir(d);
 }
-
 
 /* strip comments and invalid characters; returns the new size.  Needs
    -fno-tree-loop-vectorize (with it, PRE drops the validChars loop's

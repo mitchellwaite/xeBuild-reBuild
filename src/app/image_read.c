@@ -3,89 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+#include "xebuild.h"
 
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define ROT16(x) ((u16)(((x) << 8) | ((x) >> 8)))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-
-struct netfile {
-	u8 *data;
-	int size;
-};
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 */
-	u32 type;			/* 008 build type */
-	u8 pad00c[0x020 - 0x00c];
-	int f020;			/* 020 */
-	u8 pad024[0x060 - 0x024];
-	u32 bootFlags;			/* 060 */
-	u8 pad064[0x075 - 0x064];
-	u8 cfLdv;			/* 075 */
-	u8 pad076[0x0ac - 0x076];
-	u8 *image;			/* 0ac user data, ECC stripped */
-	u8 *spare;			/* 0b0 spare data, 16 bytes a page */
-	u32 imageSize;			/* 0b4 */
-	u32 spareSize;			/* 0b8 */
-	u32 numPages;			/* 0bc */
-	int bigBlock;			/* 0c0 */
-	int bbController;		/* 0c4 */
-	int mmc;			/* 0c8 */
-	int nandMu;			/* 0cc */
-	int muChecked;			/* 0d0 */
-	u32 numBad;			/* 0d4 */
-	u32 badBlocks[32];		/* 0d8 */
-	int badRemap[32];		/* 158 */
-	u8 pad1d8[0x1ec - 0x1d8];
-	struct netfile mobile[11];	/* 1ec MobileB-J, Statistics, Manufacturing */
-	struct netfile smc;		/* 244 */
-	struct netfile kv;		/* 24c */
-	struct netfile kvAlt;		/* 254 */
-	struct netfile smcConfig;	/* 25c */
-	struct netfile netkd;		/* 264 */
-	u8 pad26c[0xeac - 0x26c];
-	char baseDir[0x400];		/* eac */
-	u8 pad12ac[0x4f144 - 0x12ac];
-	char flashFiles[10][22];	/* 4f144 */
-	u8 *flashBuf[10];		/* 4f220 */
-	u32 flashSize[10];		/* 4f248 */
-	u32 flashTime[10];		/* 4f270 */
-	u8 pad4f298[0x4f2c0 - 0x4f298];
-	u32 numFlashFiles;		/* 4f2c0 */
-};
-
-/* the flash header at the start of the image */
-struct flashhdr {
-	u16 magic;			/* 00 */
-	u16 build;			/* 02 */
-	u16 qfe;			/* 04 */
-	u16 flags;			/* 06 */
-	u32 entry;			/* 08 CB */
-	u32 size;			/* 0c */
-	u8 copyright[0x60 - 0x10];	/* 10 */
-	u32 kvSize;			/* 60 */
-	u32 sysUpdateAddr;		/* 64 CF */
-	u16 sysUpdateCount;		/* 68 */
-	u16 kvVersion;			/* 6a */
-	u32 kvAddr;			/* 6c */
-	u32 fsAddr;			/* 70 */
-	u32 smcConfigAddr;		/* 74 */
-	u32 smcBootSize;		/* 78 */
-	u32 smcBootAddr;		/* 7c */
-};
-
-/* a file system root entry */
-struct fsent {
-	char name[22];
-	u16 block;
-	u32 size;
-	u32 time;
-};
 
 struct fsroot {
 	u16 map[0x1000];
@@ -134,7 +56,6 @@ int isErased(u8 *buf, int len);
 u32 statisticsOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
 u32 manufacturingOffset(int bigBlock, int bbController, int mmc, u32 *page, u32 *spare);
 
-extern struct xebuild xb;
 extern char separator[];
 
 void buildCleanup(void);
@@ -202,13 +123,13 @@ void buildCleanup(void)
 	int i;
 
 	dumpSize = 0;
-	if (xb.spare)
-		free(xb.spare);
-	if (xb.image)
-		free(xb.image);
+	if (xb.dumpSpare)
+		free(xb.dumpSpare);
+	if (xb.dump)
+		free(xb.dump);
 	xb.numBad = 0;
-	xb.image = 0;
-	xb.spare = 0;
+	xb.dump = 0;
+	xb.dumpSpare = 0;
 	xb.nandMu = 0;
 	xb.muChecked = 0;
 	for (i = 0; i < sizeof(xb.mobile) / sizeof(xb.mobile[0]); i++)
@@ -219,8 +140,8 @@ void buildCleanup(void)
 			free((&xb.smc)[i].data);
 		(&xb.smc)[i].size = 0;
 	}
-	if (xb.netkd.data)
-		free(xb.netkd.data);
+	if (xb.netKd.data)
+		free(xb.netKd.data);
 }
 
 static const char ir_4521e0[] __attribute__((aligned(4))) = "Did not find a LDV value to use, setting it to 0 for devkit!\n";
@@ -231,16 +152,16 @@ static const char ir_4522e4[] __attribute__((aligned(4))) = "setting pairing dat
 static const char ir_45230f[] __attribute__((aligned(1))) = "LDV was already set to %d\n";
 void getImageLdv(void)
 {
-	struct flashhdr *h = (struct flashhdr *)xb.image;
-	u32 size = SWAP32(h->fsAddr);
+	struct flashhdr *h = (struct flashhdr *)xb.dump;
+	u32 size = SWAP32(h->patchSlotSize);
 	u32 pairing;
 	u32 ldv;
 
 	if (!size)
 		size = 0x10000;
-	pairing = cfBestPairing(xb.image + SWAP32(h->sysUpdateAddr), size);
+	pairing = cfBestPairing(xb.dump + SWAP32(h->sysUpdateAddr), size);
 	if (!pairing)
-		pairing = cbGetPairing(xb.image + SWAP32(h->kvAddr) + SWAP32(h->kvSize));
+		pairing = cbGetPairing(xb.dump + SWAP32(h->kvAddr) + SWAP32(h->kvSize));
 	if (pairing) {
 		if (!xb.cfLdv)
 			log_printf(1, ir_4522c4, pairing & 0xff);
@@ -275,7 +196,7 @@ static const char ir_452450[] __attribute__((aligned(4))) = "Wasn't able to allo
 static const char ir_452494[] __attribute__((aligned(4))) = "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n";
 __attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-merge"))) void getImageSmc(void)
 {
-	struct flashhdr *h = (struct flashhdr *)xb.image;
+	struct flashhdr *h = (struct flashhdr *)xb.dump;
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
 
@@ -301,11 +222,11 @@ bback:
 		}
 	} else
 		__asm__("" : "+D"(addr));
-	if (__builtin_expect(addr < 528 * xb.numPages, 0)) {
+	if (__builtin_expect(addr < 528 * xb.dumpPages, 0)) {
 		xb.smc.data = malloc(size);
 		if (xb.smc.data) {
 			xb.smc.size = size;
-			memcpy(xb.smc.data, xb.image + addr, size);
+			memcpy(xb.smc.data, xb.dump + addr, size);
 			log_printf(1, ir_4523bc, addr, size);
 			if (unscramble(xb.smc.data, xb.smc.size)) {
 				log_printf(1, ir_4523ec);
@@ -347,7 +268,7 @@ static const char ir_4526f0[] __attribute__((aligned(4))) = "alt KeyVault decryp
 static const char ir_45271c[] __attribute__((aligned(4))) = "Wasn't able to alloc 0x4000 bytes memory for alt KeyVault bin, not using...\n";
 void getImageKv(void)
 {
-	struct flashhdr *h = (struct flashhdr *)xb.image;
+	struct flashhdr *h = (struct flashhdr *)xb.dump;
 	int addr = SWAP32(h->kvAddr);
 	int size = SWAP32(h->kvSize);
 	int ok = 0;
@@ -360,12 +281,12 @@ void getImageKv(void)
 		log_printf(1, ir_452508, size);
 		size = 0x4000;
 	}
-	if (addr + size < 528 * xb.numPages) {
+	if (addr + size < 528 * xb.dumpPages) {
 		xb.kv.data = malloc(0x4000);
 		if (xb.kv.data) {
 			log_printf(1, ir_452538, addr, 0x4000);
 			xb.kv.size = 0x4000;
-			memcpy(xb.kv.data, xb.image + addr, 0x4000);
+			memcpy(xb.kv.data, xb.dump + addr, 0x4000);
 			ok = verifyExtended(xb.kv.data, xb.kv.size);
 			if (ok) {
 				log_printf(1, ir_45256c);
@@ -386,7 +307,7 @@ void getImageKv(void)
 		if (xb.kvAlt.data) {
 			log_printf(1, ir_452674, addr, 0x4000);
 			xb.kvAlt.size = 0x4000;
-			memcpy(xb.kvAlt.data, xb.image + addr, 0x4000);
+			memcpy(xb.kvAlt.data, xb.dump + addr, 0x4000);
 			if (verifyExtended(xb.kvAlt.data, xb.kvAlt.size)) {
 				log_printf(1, ir_4526ac);
 				setKvAltSalt(xb.kvAlt.data + 16);
@@ -426,29 +347,29 @@ void getImageMobiles(void)
 			log_printf(1, ir_4527a0,
 				   name, m->page, m->offset, m->len, m->len);
 			len = m->len;
-			memcpy(xb.mobile[i].data, xb.image + m->offset, len);
+			memcpy(xb.mobile[i].data, xb.dump + m->offset, len);
 			xb.mobile[i].size = len;
 		} else
 			log_printf(1, ir_45276c, name, m->len);
 	}
-	off = statisticsOffset(xb.bigBlock, 0, xb.mmc, 0, 0);
-	if (!isErased(xb.image + off, 0x1000)) {
+	off = statisticsOffset(xb.dumpBigBlock, 0, xb.dumpMmc, 0, 0);
+	if (!isErased(xb.dump + off, 0x1000)) {
 		log_printf(1, ir_4527e4, off, 0x1000, 0x1000);
 		xb.mobile[9].data = malloc(0x1000);
 		if (xb.mobile[9].data) {
-			memcpy(xb.mobile[9].data, xb.image + off, 0x1000);
+			memcpy(xb.mobile[9].data, xb.dump + off, 0x1000);
 			xb.mobile[9].size = 0x1000;
 		} else
 			log_printf(1, ir_452824, 0x1000);
 	}
-	off = manufacturingOffset(xb.bigBlock, 0, xb.mmc, 0, 0);
-	if (!isErased(xb.image + off, 0x1000)) {
+	off = manufacturingOffset(xb.dumpBigBlock, 0, xb.dumpMmc, 0, 0);
+	if (!isErased(xb.dump + off, 0x1000)) {
 		log_printf(1, ir_452864, off, 0x1000, 0x1000);
 		xb.mobile[10].data = malloc(0x1000);
 		if (!xb.mobile[10].data)
 			log_printf(1, ir_4528a4, 0x1000);
 		else {
-			memcpy(xb.mobile[10].data, xb.image + off, 0x1000);
+			memcpy(xb.mobile[10].data, xb.dump + off, 0x1000);
 			xb.mobile[10].size = 0x1000;
 		}
 	}
@@ -465,14 +386,14 @@ void getNetKd(void)
 	u8 *img, *p;
 	u32 ver;
 
-	xb.netkd.data = 0;
-	if (getBeU16(xb.image + 0x80) != 0xca4a)
+	xb.netKd.data = 0;
+	if (getBeU16(xb.dump + 0x80) != 0xca4a)
 		return;
-	img = xb.image;
+	img = xb.dump;
 	p = img + 0x80;
 	ver = getBeU32(img + 0x90);
-	xb.netkd.size = getBeU32(xb.image + 0x8c);
-	log_printf(1, ir_4528e1, xb.netkd.size);
+	xb.netKd.size = getBeU32(xb.dump + 0x8c);
+	log_printf(1, ir_4528e1, xb.netKd.size);
 	log_printf(1, ir_4528fe, ver);
 	if (ver == 1) {
 		log_printf(1, ir_452912, img[0x94], img[0x95], img[0x96], img[0x97]);
@@ -480,9 +401,9 @@ void getNetKd(void)
 		log_printf(1, ir_452958, getBeU16(img + 0x9e));
 		log_printf(1, ir_45296a, img[0xa0], img[0xa1], img[0xa2], img[0xa3]);
 	}
-	xb.netkd.data = malloc(xb.netkd.size);
-	if (xb.netkd.data)
-		memcpy(xb.netkd.data, p, xb.netkd.size);
+	xb.netKd.data = malloc(xb.netKd.size);
+	if (xb.netKd.data)
+		memcpy(xb.netKd.data, p, xb.netKd.size);
 }
 
 int loadFlashFile(int i, u32 block)
@@ -493,14 +414,14 @@ int loadFlashFile(int i, u32 block)
 
 	xb.flashBuf[i] = calloc(left, 1);
 	while (left > 0x4000) {
-		memcpy(xb.flashBuf[i] + done, xb.image + off, 0x4000);
+		memcpy(xb.flashBuf[i] + done, xb.dump + off, 0x4000);
 		left -= 0x4000;
 		done += 0x4000;
 		block = SWAP16(fs->map[block]) & 0x1fff;
 		off = fsOffset + (block << 14);
 	}
 	if (left)
-		memcpy(xb.flashBuf[i] + done, xb.image + off, left);
+		memcpy(xb.flashBuf[i] + done, xb.dump + off, left);
 	return verifyFlashFile(i);
 }
 
@@ -552,14 +473,14 @@ int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time)
 	left = len;
 	done = 0;
 	while (left > 0x4000) {
-		memcpy(p + done, xb.image + off, 0x4000);
+		memcpy(p + done, xb.dump + off, 0x4000);
 		left -= 0x4000;
 		done += 0x4000;
 		block = SWAP16(fs->map[block]) & 0x1fff;
 		off = fsOffset + (block << 14);
 	}
 	if (left)
-		memcpy(p + done, xb.image + off, left);
+		memcpy(p + done, xb.dump + off, left);
 	*buf = p;
 	*size = len;
 	*time = t;
@@ -579,14 +500,14 @@ int findAnchor(void)
 	u32 ok0, ok1;
 
 	log_printf(1, ir_4529d0);
-	v0 = getBeU32(xb.image + 0x2fe8018);
-	v1 = getBeU32(xb.image + 0x2fec018);
-	ok0 = shaSelfCheck(xb.image + 0x2fe8000);
+	v0 = getBeU32(xb.dump + 0x2fe8018);
+	v1 = getBeU32(xb.dump + 0x2fec018);
+	ok0 = shaSelfCheck(xb.dump + 0x2fe8000);
 	if (ok0)
 		log_printf(1, ir_4529f8, v0);
 	else
 		log_printf(1, ir_452a24);
-	ok1 = shaSelfCheck(xb.image + 0x2fec000);
+	ok1 = shaSelfCheck(xb.dump + 0x2fec000);
 	if (ok1)
 		log_printf(1, ir_452a4c, v1);
 	else {
@@ -595,12 +516,12 @@ int findAnchor(void)
 	}
 	if (__builtin_expect(ok0, 1) && (__builtin_expect(!ok1, 1) || v0 >= v1)) {
 		log_printf(1, ir_452acc, v0);
-		memcpy(anchor, xb.image + 0x2fe8000, 0x200);
+		memcpy(anchor, xb.dump + 0x2fe8000, 0x200);
 		return 1;
 	}
 	if (__builtin_expect(ok1, 1)) {
 		log_printf(1, ir_452a78, v1);
-		memcpy(anchor, xb.image + 0x2fec000, 0x200);
+		memcpy(anchor, xb.dump + 0x2fec000, 0x200);
 		return 1;
 	}
 	return 0;
@@ -636,9 +557,9 @@ u32 spareVersion(u8 *s)
 {
 	u32 lo;
 
-	if (xb.bigBlock)
+	if (xb.dumpBigBlock)
 		lo = s[5];
-	else if (xb.bbController)
+	else if (xb.dumpBbController)
 		lo = s[0];
 	else
 		lo = s[2];
@@ -655,16 +576,16 @@ static const char ir_452bd3[] __attribute__((aligned(1))) = "\n";
    len's and ivopts' names give the inner loop's `cmp ebx,esi` (wip/README.md) */
 void showMobilePages(void)
 {
-	struct flashhdr *h = (struct flashhdr *)xb.image;
+	struct flashhdr *h = (struct flashhdr *)xb.dump;
 	u32 page, end;
 	u32 off;
 	u8 fsType;
 
-	if (!xb.bigBlock) {
-		end = xb.numPages - 1152;
+	if (!xb.dumpBigBlock) {
+		end = xb.dumpPages - 1152;
 		fsType = 48;
 	} else {
-		end = xb.numPages - 9216;
+		end = xb.dumpPages - 9216;
 		fsType = 44;
 	}
 	log_printf(2, separator);
@@ -675,9 +596,9 @@ void showMobilePages(void)
 		page = (page & ~0x1f) + 32;
 	off = page * 512;
 	log_printf(2, ir_452b20,
-		   page, off, end, xb.numPages);
+		   page, off, end, xb.dumpPages);
 	for (; page < end; page++) {
-		u8 *s = xb.spare + page * 16;
+		u8 *s = xb.dumpSpare + page * 16;
 		u8 t = s[12] & 0x3f;
 		int letter, i;
 		u32 ver;
@@ -695,7 +616,7 @@ void showMobilePages(void)
 		log_printf(2, ir_452b6c,
 			   (u32)letter, ver, page << 9, page * 528, s[9], len, page);
 		for (i = 0; i < 16; i++)
-			log_printf(2, ir_452bc3, xb.spare[page * 16 + i]);
+			log_printf(2, ir_452bc3, xb.dumpSpare[page * 16 + i]);
 		if (len & 0x8000)
 			log_printf(2, ir_452bc9);
 		else
@@ -706,15 +627,15 @@ void showMobilePages(void)
 
 int scanMobiles(void)
 {
-	struct flashhdr *h = (struct flashhdr *)xb.image;
+	struct flashhdr *h = (struct flashhdr *)xb.dump;
 	u32 end, page, off;
 	u8 fsType;
 
-	if (!xb.bigBlock) {
-		end = xb.numPages - 1152;
+	if (!xb.dumpBigBlock) {
+		end = xb.dumpPages - 1152;
 		fsType = 48;
 	} else {
-		end = xb.numPages - 9216;
+		end = xb.dumpPages - 9216;
 		fsType = 44;
 	}
 	if (log_get_verbose() == 2) {
@@ -724,7 +645,7 @@ int scanMobiles(void)
 	page = SWAP32(h->sysUpdateAddr) >> 9;
 	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
 	while (page < end) {
-		u8 *s = xb.spare + page * 16;
+		u8 *s = xb.dumpSpare + page * 16;
 		u8 t = s[12] & 0x3f;
 		int n, i;
 		u16 len;
@@ -745,7 +666,7 @@ int scanMobiles(void)
 			log_printf(2, ir_452b6c,
 				   n + 'A', ver, off, page * 528, s[9], len, page);
 			for (i = 0; i < 16; i++)
-				log_printf(2, ir_452bc3, xb.spare[page * 16 + i]);
+				log_printf(2, ir_452bc3, xb.dumpSpare[page * 16 + i]);
 			if (len & 0x8000)
 				log_printf(2, ir_452bc9);
 			else
@@ -778,7 +699,7 @@ int scanMobiles(void)
 		if (len & 0x1ff)
 			page++;
 align:
-		if (xb.bigBlock)
+		if (xb.dumpBigBlock)
 			page = (page + 3) & ~3;
 		continue;
 next:
@@ -794,9 +715,9 @@ void setFsOffset(void)
 	u32 meta;
 
 	fsOffset = 0;
-	if (!xb.bigBlock)
+	if (!xb.dumpBigBlock)
 		return;
-	meta = xb.spare[mobiles[0].spare + 8] << 5;
+	meta = xb.dumpSpare[mobiles[0].spare + 8] << 5;
 	fsOffset = (3808 - meta) << 14;
 	log_printf(1, ir_452bd8,
 		   fsOffset, 3808 - meta, meta, 3808);
@@ -815,7 +736,7 @@ int findFsRoot(void)
 	
 
 	log_printf(1, ir_452c20);
-	if (xb.mmc)
+	if (xb.dumpMmc)
 		found = mmcFindMobiles();
 	else
 		found = scanMobiles();
@@ -834,7 +755,7 @@ int findFsRoot(void)
 				log_printf(1, ir_452c70, mobiles[i].version, mobiles[i].offset, mobiles[i].len, mobiles[i].page);
 		}
 	}
-	src = xb.image + mobiles[0].offset;
+	src = xb.dump + mobiles[0].offset;
 	for (i = 0; i < 16; i++) {
 		memcpy((u8 *)fsBuf.map + i * 512, src + i * 1024, 512);
 		memcpy((u8 *)fsBuf.ent + i * 512, src + i * 1024 + 512, 512);
@@ -850,7 +771,7 @@ inline void imgGetSecurityFiles(void)
 	u32 i, block;
 
 	log_printf(1, ir_452d33);
-	for (i = 0; i < xb.numFlashFiles; i++)
+	for (i = 0; i < xb.nFlashFiles2; i++)
 		if (xb.flashFiles[i][0] && fsFindFile(xb.flashFiles[i], &block, &xb.flashSize[i], &xb.flashTime[i], 0))
 			loadFlashFile(i, block);
 	log_printf(1, ir_452d4e);
@@ -864,14 +785,14 @@ void findSmcConfig(void)
 {
 	u32 off, end;
 
-	if (xb.mmc) {
+	if (xb.dumpMmc) {
 		off = 0x2ffc000;
 		end = 0x3000000;
-	} else if (xb.bigBlock) {
+	} else if (xb.dumpBigBlock) {
 		off = 0x3be0000;
 		end = 0x4000000;
 	} else {
-		end = xb.imageSize;
+		end = xb.dumpSize;
 		if (end == 0x1000000)
 			off = 0xf7c000;
 		else if (end == 0x4000000)
@@ -881,7 +802,7 @@ void findSmcConfig(void)
 	}
 	log_printf(1, ir_452d55);
 	for (; off < end; off += 512) {
-		if (!smcConfigOk(xb.image + off))
+		if (!smcConfigOk(xb.dump + off))
 			continue;
 		xb.smcConfig.data = malloc(0x400);
 		if (!xb.smcConfig.data) {
@@ -890,7 +811,7 @@ void findSmcConfig(void)
 			continue;
 		}
 		log_printf(1, ir_452d74, off);
-		memcpy(xb.smcConfig.data, xb.image + off, 0x400);
+		memcpy(xb.smcConfig.data, xb.dump + off, 0x400);
 		xb.smcConfig.size = 0x400;
 		off = end;
 	}
@@ -914,10 +835,10 @@ int checkBlock(u8 *b, int block, int numBlocks)
 {
 	int lba, lba0, lba1;
 
-	if (blockErased(b, xb.bigBlock))
+	if (blockErased(b, xb.dumpBigBlock))
 		return -2;
 	lba = -1;
-	if (xb.bigBlock) {
+	if (xb.dumpBigBlock) {
 		if (b[512] == 0xff && b[68096] == 0xff) {
 			lba = b[513] + (b[514] & 0xf) * 256;
 			if (lba >= numBlocks - 1)
@@ -952,7 +873,7 @@ int checkBlock(u8 *b, int block, int numBlocks)
 			lba1 = b[513] + (b[514] & 0xf) * 256;
 			/* volatile: b[513] loaded again, as in the original */
 			lba0 = b[512] + (((volatile u8 *)b)[513] & 0xf) * 256;
-			if (xb.bbController) {
+			if (xb.dumpBbController) {
 				if (block && block == lba0)
 					lba = -6;
 				else
@@ -972,7 +893,7 @@ int checkBlock(u8 *b, int block, int numBlocks)
 		}
 	}
 	if (lba != -1) {
-		if (!(xb.bootFlags & 0x80000000) && !blockEccOk(b, xb.bigBlock))
+		if (!(xb.bootFlags & 0x80000000) && !blockEccOk(b, xb.dumpBigBlock))
 			lba = -4;
 	}
 	return lba;
@@ -1058,7 +979,7 @@ void remapBadBlocks(int numBlocks)
 
 int notZeropair(void)
 {
-	return memcmp(zeropair, xb.image + 16, 14) != 0;
+	return memcmp(zeropair, xb.dump + 16, 14) != 0;
 }
 
 unsigned long spareLbaOk(int pages)
@@ -1066,7 +987,7 @@ unsigned long spareLbaOk(int pages)
 	int i;
 
 	for (i = 1; i < pages; i++)
-		if (memcmp(xb.spare, xb.spare + i * 16, 3))
+		if (memcmp(xb.dumpSpare, xb.dumpSpare + i * 16, 3))
 			return 0;
 	return 1;
 }
@@ -1076,7 +997,7 @@ static const char ir_45310c[] __attribute__((aligned(4))) = "\n\n***** ERROR: na
 __attribute__((optimize("no-if-conversion"))) u32 copyMmcImage(u8 *raw)
 {
 	xb.numBad = 0;
-	memcpy(xb.image, raw, xb.imageSize);
+	memcpy(xb.dump, raw, xb.dumpSize);
 	if (notZeropair())
 		return 1;
 	log_printf(0, ir_45310c);
@@ -1136,17 +1057,17 @@ static const char ir_453510[] __attribute__((aligned(4))) = "%d: source: 0x%04x 
 static const char ir_453538[] __attribute__((aligned(4))) = "%d: source: 0x%04x dest: 0x%04x\n";
 unsigned long parseDump(u8 *raw)
 {
-	int ppb = xb.bigBlock ? 256 : 32;
-	int blocks = xb.numPages / ppb;
+	int ppb = xb.dumpBigBlock ? 256 : 32;
+	int blocks = xb.dumpPages / ppb;
 	int blk, dst, p, b2;
 	u32 n;
 	int i;
 	u8 *src;
 
-	int rr = xb.numPages % ppb;
+	int rr = xb.dumpPages % ppb;
 
 	if (rr) {
-		log_printf(0, ir_453150, xb.numPages, ppb);
+		log_printf(0, ir_453150, xb.dumpPages, ppb);
 		return 0;
 	}
 	log_printf(1, ir_45318c);
@@ -1207,8 +1128,8 @@ rem: __attribute__((hot));
 			}
 		}
 		for (p = 0; p < ppb; p++) {
-			memcpy(xb.image + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
-			memcpy(xb.spare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
+			memcpy(xb.dump + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
+			memcpy(xb.dumpSpare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
 		}
 		if (blk >= blocks)
 			__builtin_unreachable();
@@ -1305,10 +1226,10 @@ int detectController(u8 *raw, int size)
 	if (size == 0x3000000) {
 		log_printf(1, ir_453694);
 		log_printf(1, ir_4536b8);
-		xb.bbController = 1;
-		xb.bigBlock = 0;
+		xb.dumpBbController = 1;
+		xb.dumpBigBlock = 0;
 		xb.muChecked = 1;
-		xb.mmc = 1;
+		xb.dumpMmc = 1;
 		return 1;
 	}
 	if (raw[512] == 0xff) {
@@ -1318,8 +1239,8 @@ int detectController(u8 *raw, int size)
 			log_printf(0, ir_453708);
 			return 0;
 		}
-		xb.bigBlock = 1;
-		xb.bbController = 1;
+		xb.dumpBigBlock = 1;
+		xb.dumpBbController = 1;
 		return 1;
 	}
 	if (raw[517] != 0xff) {
@@ -1328,7 +1249,7 @@ int detectController(u8 *raw, int size)
 	}
 	n = size / 16896;
 	log_printf(1, ir_453760);
-	xb.bigBlock = 0;
+	xb.dumpBigBlock = 0;
 	xb.muChecked = 1;
 	found = 0;
 	/* code-free hints: found in eax outside the loop (one head-merged xor
@@ -1347,7 +1268,7 @@ int detectController(u8 *raw, int size)
 		if (hi + lo == i) {
 			i = n;
 			log_printf(1, ir_4536b8);
-			xb.bbController = 1;
+			xb.dumpBbController = 1;
 			found = 1;
 		} else {
 			int lo2 = b[512];
@@ -1360,7 +1281,7 @@ int detectController(u8 *raw, int size)
 				__asm__("" : : "d"(lo2));
 				i = n;
 				log_printf(1, ir_45378c);
-				xb.bbController = 0;
+				xb.dumpBbController = 0;
 				found = 1;
 			}
 		}
@@ -1405,11 +1326,11 @@ int checkHeader(const char *name, FILE *fp)
 		log_printf(0, ir_45386c, name);
 		return 0;
 	}
-	if (size < SWAP32(hdr.entry)) {
+	if (size < SWAP32(hdr.cbOffset)) {
 		log_printf(0, ir_4538ac, name);
 		return 0;
 	}
-	if (size < SWAP32(hdr.size)) {
+	if (size < SWAP32(hdr.cfOffset)) {
 		log_printf(0, ir_4538ec, name);
 		return 0;
 	}
@@ -1422,7 +1343,7 @@ int checkHeader(const char *name, FILE *fp)
 	if (size < SWAP32(hdr.sysUpdateAddr))
 		goto badSysUpdate;
 	__asm__("");
-	if (SWAP32(hdr.size) > SWAP32(hdr.sysUpdateAddr)) {
+	if (SWAP32(hdr.cfOffset) > SWAP32(hdr.sysUpdateAddr)) {
 badSysUpdate:
 		log_printf(0, ir_45396c, name);
 		return 0;
@@ -1435,7 +1356,7 @@ badSysUpdate:
 		log_printf(0, ir_453a68, name);
 		return 0;
 	}
-	if (size < SWAP32(hdr.fsAddr)) {
+	if (size < SWAP32(hdr.patchSlotSize)) {
 		log_printf(0, ir_453aac, name);
 		return 0;
 	}
@@ -1487,76 +1408,76 @@ static const char ir_453f94[] __attribute__((aligned(4))) = "**** Warning: error
 static const char ir_453fcc[] __attribute__((aligned(4))) = "**** Warning: error getting CG Nonce, offset 0x%x aborting!\n";
 void getNonces(void)
 {
-	struct flashhdr *h = (struct flashhdr *)xb.image;
-	u32 off = SWAP32(h->entry);
+	struct flashhdr *h = (struct flashhdr *)xb.dump;
+	u32 off = SWAP32(h->cbOffset);
 	u8 *p;
 
-	if (off >= xb.imageSize) {
+	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453d3c);
 		return;
 	}
-	p = xb.image + off;
+	p = xb.dump + off;
 	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
 		log_printf(1, ir_453d78);
 		return;
 	}
-	setInfoKey0(xb.image + off + 16);
+	setInfoKey0(xb.dump + off + 16);
 	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
 	if (p[6] & 8) {
-		if (off >= xb.imageSize) {
+		if (off >= xb.dumpSize) {
 			log_printf(1, ir_453db0);
 			return;
 		}
-		p = xb.image + off;
+		p = xb.dump + off;
 		if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4342) {
 			log_printf(1, ir_453dec, off);
 			return;
 		}
-		setInfoKey1(xb.image + off + 16);
+		setInfoKey1(xb.dump + off + 16);
 		off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
 	}
-	if (off >= xb.imageSize) {
+	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453e2c);
 		return;
 	}
-	p = xb.image + off;
+	p = xb.dump + off;
 	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4344) {
 		log_printf(1, ir_453e64, off);
 		return;
 	}
-	setInfoKey2(xb.image + off + 16);
+	setInfoKey2(xb.dump + off + 16);
 	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
-	if (off >= xb.imageSize) {
+	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453ea4);
 		return;
 	}
-	if ((ROT16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4345) {
+	if ((ROT16(*(u16 *)(xb.dump + off)) & 0x43ff) != 0x4345) {
 		log_printf(1, ir_453edc, off);
 		return;
 	}
-	setInfoKey3(xb.image + off + 16);
+	setInfoKey3(xb.dump + off + 16);
 	off = SWAP32(h->sysUpdateAddr);
-	if (off >= xb.imageSize) {
+	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453f1c);
 		return;
 	}
-	p = xb.image + off;
+	p = xb.dump + off;
 	if ((ROT16(*(u16 *)p) & 0x43ff) != 0x4346) {
 		log_printf(1, ir_453f54, off);
 		return;
 	}
-	setInfoKey4(xb.image + off + 32);
+	setInfoKey4(xb.dump + off + 32);
 	off += (SWAP32(*(u32 *)(p + 12)) + 15) & ~15;
-	if (off >= xb.imageSize) {
+	if (off >= xb.dumpSize) {
 		log_printf(1, ir_453f94);
 		return;
 	}
-	if ((ROT16(*(u16 *)(xb.image + off)) & 0x43ff) != 0x4347) {
+	if ((ROT16(*(u16 *)(xb.dump + off)) & 0x43ff) != 0x4347) {
 		log_printf(1, ir_453fcc, off);
 		return;
 	}
-	setInfoKey5(xb.image + off + 16);
-	xb.f020 = 0;
+	setInfoKey5(xb.dump + off + 16);
+	xb.randomKeys = 0;
 }
 
 static const char ir_454009[] __attribute__((aligned(1))) = "\n------ Checking %s ------\n";
@@ -1597,7 +1518,7 @@ u32 loadDump(const char *path)
 	}
 	dumpSize = size;
 	if (size == 0x3000000) {
-		xb.numPages = 0x18000;
+		xb.dumpPages = 0x18000;
 		rawSize = 0x3000000;
 	} else if (size % 528) {
 		log_printf(1, ir_454098, name, size);
@@ -1617,7 +1538,7 @@ u32 loadDump(const char *path)
 				return 0;
 			}
 		}
-		xb.numPages = pages;
+		xb.dumpPages = pages;
 	}
 	raw = malloc(rawSize);
 	if (!raw) {
@@ -1629,18 +1550,18 @@ u32 loadDump(const char *path)
 	fread(raw, rawSize, 1, fp);
 	fclose(fp);
 	log_printf(1, ir_452d4e, name);
-	xb.imageSize = xb.numPages << 9;
-	xb.spareSize = xb.numPages * 16;
-	xb.image = malloc(xb.numPages << 9);
-	xb.spare = malloc(xb.numPages * 16);
-	if (!xb.image || !xb.spare) {
+	xb.dumpSize = xb.dumpPages << 9;
+	xb.dumpSpareSize = xb.dumpPages * 16;
+	xb.dump = malloc(xb.dumpPages << 9);
+	xb.dumpSpare = malloc(xb.dumpPages * 16);
+	if (!xb.dump || !xb.dumpSpare) {
 		log_printf(0, ir_454138, name);
 		buildCleanup();
 		free(raw);
 		return 0;
 	}
-	memset(xb.image, 0xff, xb.imageSize);
-	memset(xb.spare, 0xff, xb.spareSize);
+	memset(xb.dump, 0xff, xb.dumpSize);
+	memset(xb.dumpSpare, 0xff, xb.dumpSpareSize);
 	log_printf(1, ir_45417c);
 	if (detectController(raw, size)) {
 		/* copyMmcImage's body, written out: its optimize attribute keeps it
@@ -1648,9 +1569,9 @@ u32 loadDump(const char *path)
 		   (ce1 hoists ret = 1 only above 50%, the mmc trace takes the log
 		   block only within 10% of even): call 71% x hot label 15% x opcode
 		   nonequal 72% (the != against size == 0, folded by VRP) = 52.6% */
-		if (xb.mmc) {
+		if (xb.dumpMmc) {
 			xb.numBad = 0;
-			memcpy(xb.image, raw, xb.imageSize);
+			memcpy(xb.dump, raw, xb.dumpSize);
 			if (notZeropair() != (size == 0))
 				ret = 1;
 			else {

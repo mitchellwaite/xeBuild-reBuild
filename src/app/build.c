@@ -9,9 +9,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+/* xb.files' declared bound sets the files loops' trip count estimate. In
+   build.sh's profile compile (-DBUILD_FDO) loadBlFiles' loop gets it from the
+   crafted counts (11 iterations), which ivopts' cost model turns into a third
+   IV; 5 caps it as the guessed profile's 5 does */
+#ifdef BUILD_FDO
+#define XB_FILES_BOUND 5
+#else
+#define XB_FILES_BOUND 19
+#endif
+
+#include "xebuild.h"
 
 /* timeutil.c's cdecl ports of the Win32 time functions */
 typedef unsigned short WORD;
@@ -28,125 +36,6 @@ int SystemTimeToFileTime(const SYSTEMTIME *syst, FILETIME *ft);
 int FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime);
 int DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME *ft);
 void GetSystemTime(SYSTEMTIME *systime);
-
-/* xb.files' declared bound sets the files loops' trip count estimate. In
-   build.sh's profile compile (-DBUILD_FDO) loadBlFiles' loop gets it from the
-   crafted counts (11 iterations), which ivopts' cost model turns into a third
-   IV; 5 caps it as the guessed profile's 5 does */
-#ifdef BUILD_FDO
-#define FILES_BOUND 5
-#else
-#define FILES_BOUND 19
-#endif
-
-/* an input file of the image */
-struct fileent {
-	char name[0x400];
-	u32 crc;			/* 400 */
-	int type;			/* 404 */
-	u32 offset;			/* 408 */
-	u8 *data;			/* 40c */
-	u32 size;			/* 410 */
-	u8 key[16];			/* 414 its RC4 key once encoded */
-	u32 fsSize;			/* 424 the part that goes in the filesystem */
-	u32 fsOffset;			/* 428 where that part starts */
-};
-
-/* the parts of main.c's struct xebuild used here */
-struct xebuild {
-	int mode;			/* 000 */
-	u32 flags;			/* 004 */
-	u32 type;			/* 008 */
-	u32 kernel;			/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	u32 cbb;			/* 018 build with a CB_B */
-	u32 f01c;			/* 01c set when an SE replaces the CF */
-	int randomKeys;			/* 020 keysInit's argument */
-	int sysTime;			/* 024 use the system time for timestamps */
-	u8 pad028[0x038 - 0x028];
-	u8 *hdr;			/* 038 the flash image */
-	u32 userSize;			/* 03c its user (non-spare) size */
-	u8 pad040[0x050 - 0x040];
-	int bigBlock;			/* 050 */
-	u8 pad054[0x060 - 0x054];
-	u32 bootFlags;			/* 060 */
-	u8 pad064[0x068 - 0x064];
-	int xellButton;			/* 068 */
-	int xellAltButton;		/* 06c */
-	int dualButton;			/* 070 */
-	u8 pad074;
-	u8 cfLdv;			/* 075 */
-	u8 pad076[0x078 - 0x076];
-	u32 cpuTemp;			/* 078 smc_config overrides from the ini */
-	u32 gpuTemp;			/* 07c */
-	u32 edramTemp;			/* 080 */
-	u32 overCpuTemp;		/* 084 */
-	u32 overGpuTemp;		/* 088 */
-	u32 overEdramTemp;		/* 08c */
-	u32 cpuFan;			/* 090 */
-	u32 gpuFan;			/* 094 */
-	u32 avRegion;			/* 098 */
-	u32 gameRegion;			/* 09c */
-	u32 dvdRegion;			/* 0a0 */
-	u8 macid[6];			/* 0a4 */
-	u8 pad0aa[0x1d8 - 0x0aa];
-	u8 *consoleBlmod;		/* 1d8 blmod.bin from the console */
-	u32 consoleBlmodSize;		/* 1dc */
-	u8 pad1e0[0x1e8 - 0x1e0];
-	int fromConsole;		/* 1e8 bootloaders read from the console */
-	struct {
-		u8 *data;
-		int size;
-	} mobile[11];			/* 1ec Mobile*.dat etc. from a dump */
-	u8 *dumpSmc;			/* 244 files from the nand dump */
-	u32 dumpSmcSize;		/* 248 */
-	u8 *dumpKv;			/* 24c */
-	u32 dumpKvSize;			/* 250 */
-	u8 *dumpKvAlt;			/* 254 */
-	u32 dumpKvAltSize;		/* 258 */
-	u8 *dumpConfig;			/* 25c */
-	u32 dumpConfigSize;		/* 260 */
-	u8 pad264[0x27c - 0x264];
-	u8 cpuKey[16];			/* 27c */
-	u8 pad28c[0x29c - 0x28c];
-	u8 *pub1bl;			/* 29c the 1BL's public key */
-	u8 pad2a0[0x2a8 - 0x2a0];
-	u8 *prvKey;			/* 2a8 the ini's 2BL private key */
-	u8 pad2ac[0x6ac - 0x2ac];
-	char binDir[0x800];		/* 6ac */
-	char baseDir[0x400];		/* eac */
-	char dataDir[0x400];		/* 12ac */
-	char commonDir[0x400];		/* 16ac */
-	char firmware[256][0x400];	/* 1aac the ini's firmware files */
-	u32 firmwareCrc[256];		/* 41aac */
-	u32 nFirmware;			/* 41eac */
-	struct fileent files[FILES_BOUND];	/* 41eb0 35 of them, 19..34 addon patches; the */
-	u8 padf[(35 - FILES_BOUND) * 0x42c];	/* bound sets the files loops' guessed trip count */
-	u8 pad4b0b4[0x4b0f4 - 0x4b0b4];
-	int nAddons;			/* 4b0f4 */
-	int nFiles;			/* 4b0f8 */
-	int nFlashFiles;		/* 4b0fc */
-	struct {
-		char name[0x400];
-		u32 offset;
-	} rawPatch[16];			/* 4b100 */
-	u32 nRawPatches;		/* 4f140 */
-	char flashFiles[10][22];	/* 4f144 security files */
-	u8 *flashBuf[10];		/* 4f220 their data from a dump */
-	u32 flashSize[10];		/* 4f248 */
-	u32 oddTime[10];		/* 4f270 */
-	u8 pad4f298[0x4f2c0 - 0x4f298];
-	u32 nFlashFiles2;		/* 4f2c0 the security file count */
-	u8 anchor[0x1b];		/* 4f2c4 MMC anchor block */
-	u8 anchorNum;			/* 4f2df */
-	u8 pad4f2e0[0x4f2e4 - 0x4f2e0];
-	struct {
-		u16 type, size;
-	} mobileTab[9];			/* 4f2e4 */
-	u8 pad4f308[0x4f4c4 - 0x4f308];
-	char kernelStr[0x40];		/* 4f4c4 the ini's kernel version string */
-};
 
 void log_printf(int level, const char *fmt, ...);
 long getFileSize(FILE *f);
@@ -607,8 +496,6 @@ struct fan {
 	u8 speed:7, override:1;
 };
 
-extern struct xebuild xb;
-#define addons (&xb.files[19])
 
 int suGetFile(const char *name, u8 **data, u32 *len);
 int fsGetFile(const char *name, u8 **buf, u32 *size, u32 *time);
@@ -1007,8 +894,8 @@ void appendAddonPatches(struct fileent *e)
 
 	memset(buf, 0xff, 0x4000);
 	memcpy(buf, e->data, size);
-	if (xb.nAddons)
-	for (i = 0; i < xb.nAddons; i++) {
+	if (xb.numPatches)
+	for (i = 0; i < xb.numPatches; i++) {
 		a = &xb.files[19 + i];
 		if (!loadBinFile(a)) {
 			if (!(a->size & 3)) {
@@ -1034,9 +921,9 @@ void appendAddonPatches(struct fileent *e)
 		free(e->data);
 	e->data = buf;
 	e->size = size;
-	if (xb.nAddons)
+	if (xb.numPatches)
 		log_printf(1, bd_458f04,
-			   added, xb.nAddons, size);
+			   added, xb.numPatches, size);
 }
 
 NOPROF
@@ -1681,14 +1568,14 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			e->size = xb.files[xb.nFlashFiles].size;
 			xb.files[xb.nFlashFiles].data = NULL;
 			xb.files[xb.nFlashFiles].size = 0;
-		} else if (xb.dumpKv) {
+		} else if (xb.kv.data) {
 			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
 			if (e->data)
 				free(e->data);
-			e->data = xb.dumpKv;
-			e->size = xb.dumpKvSize;
-			xb.dumpKv = NULL;
-			xb.dumpKvSize = 0;
+			e->data = xb.kv.data;
+			e->size = xb.kv.size;
+			xb.kv.data = NULL;
+			xb.kv.size = 0;
 			*pr = 0;
 		}
 		break;
@@ -1702,14 +1589,14 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			e->size = xb.files[xb.nFlashFiles].size;
 			xb.files[xb.nFlashFiles].data = NULL;
 			xb.files[xb.nFlashFiles].size = 0;
-		} else if (xb.dumpKvAlt) {
+		} else if (xb.kvAlt.data) {
 			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
 			if (e->data)
 				free(e->data);
-			e->data = xb.dumpKvAlt;
-			e->size = xb.dumpKvAltSize;
-			xb.dumpKvAlt = NULL;
-			xb.dumpKvAltSize = 0;
+			e->data = xb.kvAlt.data;
+			e->size = xb.kvAlt.size;
+			xb.kvAlt.data = NULL;
+			xb.kvAlt.size = 0;
 			*pr = 0;
 		}
 		break;
@@ -1730,15 +1617,15 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 		if (__builtin_expect(type == 27, 1) && loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
 		    loadBaseFile(bd_459b8c, &xb.files[xb.nFlashFiles]) &&
 		    (*pr = loadBaseFile(bd_459b97, &xb.files[xb.nFlashFiles]))) {
-			if (!xb.dumpConfig)
+			if (!xb.smcConfig.data)
 				break;
 			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
 			if (xb.files[xb.nFlashFiles].data)
 				free(xb.files[xb.nFlashFiles].data);
-			xb.files[xb.nFlashFiles].data = xb.dumpConfig;
-			xb.dumpConfig = NULL;
-			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
-			xb.dumpConfigSize = 0;
+			xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
+			xb.smcConfig.data = NULL;
+			xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
+			xb.smcConfig.size = 0;
 			*pr = 0;
 		}
 		{
@@ -1759,15 +1646,15 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			xb.files[xb.nFlashFiles].data = NULL;
 			xb.files[xb.nFlashFiles].size = 0;
 		} else {
-			if (!xb.dumpSmc)
+			if (!xb.smc.data)
 				break;
 			log_printf(1, bd_459b04, xb.baseDir, e->name, e->name);
 			if (e->data)
 				free(e->data);
-			e->data = xb.dumpSmc;
-			e->size = xb.dumpSmcSize;
-			xb.dumpSmc = NULL;
-			xb.dumpSmcSize = 0;
+			e->data = xb.smc.data;
+			e->size = xb.smc.size;
+			xb.smc.data = NULL;
+			xb.smc.size = 0;
 			*pr = 0;
 		}
 		e->offset = smcSetLoad(e->size);
@@ -1872,28 +1759,28 @@ static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e
 		r = loadLocalFile(e);
 		break;
 	case 3:
-		if (xb.dumpKv) {
+		if (xb.kv.data) {
 			log_printf(1, bd_459c98);
 			if (e->data)
 				free(e->data);
-			e->data = xb.dumpKv;
-			e->size = xb.dumpKvSize;
-			xb.dumpKv = NULL;
-			xb.dumpKvSize = 0;
+			e->data = xb.kv.data;
+			e->size = xb.kv.size;
+			xb.kv.data = NULL;
+			xb.kv.size = 0;
 		} else {
 			log_printf(0, bd_459cbc);
 			r = -1;
 		}
 		break;
 	case 4:
-		if (xb.dumpKvAlt) {
+		if (xb.kvAlt.data) {
 			log_printf(1, bd_459cec);
 			if (e->data)
 				free(e->data);
-			e->data = xb.dumpKvAlt;
-			e->size = xb.dumpKvAltSize;
-			xb.dumpKvAlt = NULL;
-			xb.dumpKvAltSize = 0;
+			e->data = xb.kvAlt.data;
+			e->size = xb.kvAlt.size;
+			xb.kvAlt.data = NULL;
+			xb.kvAlt.size = 0;
 		} else {
 			log_printf(0, bd_459cbc);
 			r = -1;
@@ -1911,14 +1798,14 @@ static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e
 		appendAddonPatches(e);
 		break;
 	case 27:
-		if (xb.dumpConfig) {
+		if (xb.smcConfig.data) {
 			log_printf(1, bd_459d14);
 			if (xb.files[xb.nFlashFiles].data)
 				free(xb.files[xb.nFlashFiles].data);
-			xb.files[xb.nFlashFiles].data = xb.dumpConfig;
-			xb.files[xb.nFlashFiles].size = xb.dumpConfigSize;
-			xb.dumpConfig = NULL;
-			xb.dumpConfigSize = 0;
+			xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
+			xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
+			xb.smcConfig.data = NULL;
+			xb.smcConfig.size = 0;
 			r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
 		} else {
 			log_printf(0, bd_459d3c);
@@ -1930,14 +1817,14 @@ static inline __attribute__((always_inline)) u32 loadConsoleBl(struct fileent *e
 		   than the config one, so its trace comes after it */
 		if (__builtin_expect(type != 2, 0))
 			break;
-		if (xb.dumpSmc) {
+		if (xb.smc.data) {
 			log_printf(1, bd_459d78);
 			if (e->data)
 				free(e->data);
-			e->data = xb.dumpSmc;
-			e->size = xb.dumpSmcSize;
-			xb.dumpSmc = NULL;
-			xb.dumpSmcSize = 0;
+			e->data = xb.smc.data;
+			e->size = xb.smc.size;
+			xb.smc.data = NULL;
+			xb.smc.size = 0;
 			e->offset = smcSetLoad(e->size);
 			if (!e->offset)
 				r = -1;
@@ -2954,12 +2841,12 @@ u32 calcBlAreaSize(void)
 NOPROF
 static void patchConsoleBlmod(void)
 {
-	if (!xb.consoleBlmod || !xb.consoleBlmodSize) {
+	if (!xb.consoleBlmod.data || !xb.consoleBlmod.size) {
 		patchBlsBlmod(NULL, 0);
 		return;
 	}
-	patchBlsBlmod(xb.consoleBlmod, xb.consoleBlmodSize);
-	free(xb.consoleBlmod);
+	patchBlsBlmod(xb.consoleBlmod.data, xb.consoleBlmod.size);
+	free(xb.consoleBlmod.data);
 }
 
 NOPROF
@@ -3198,8 +3085,8 @@ int buildFlash(void)
 			else if (!strcmp(name, bd_45b064))
 				fcrtEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
 			else if (!strcmp(name, bd_45b06d)) {
-				if (xb.oddTime[k])
-					setBeU32(xb.oddTime[k], (u8 *)&ts);
+				if (xb.flashTime[k])
+					setBeU32(xb.flashTime[k], (u8 *)&ts);
 			} else
 				log_printf(0, bd_45b078, xb.baseDir, name);
 			imgAddFileAs(name, xb.files[xb.nFlashFiles].data, &ts, xb.files[xb.nFlashFiles].size);

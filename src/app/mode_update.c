@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
 
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))

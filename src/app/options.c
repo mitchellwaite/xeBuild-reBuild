@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
@@ -1140,7 +1141,8 @@ int parseRawPatch(char *pat)
 		}
 	}
 	if (len != strlen(pat)) {
-		if (xb.nRawPatches <= 15) {
+		/* TODO(xebuild.h cast): a signed test here, u32 in filelist_ini */
+		if ((int)xb.nRawPatches <= 15) {
 			strcpy(xb.rawPatch[xb.nRawPatches].name, pat);
 			n = xb.nRawPatches;
 			xb.rawPatch[n].offset = myatou32(val, -1);

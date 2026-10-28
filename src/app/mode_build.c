@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
 
 void log_printf(int level, const char *fmt, ...);
