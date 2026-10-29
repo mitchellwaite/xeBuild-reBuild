@@ -274,30 +274,30 @@ uint32_t parseIni(char *path)
 			len = sizeof(xb.kernelStr) - 1;
 		strncpy(xb.kernelStr, (char *)&buf[off], len);
 		log_printf(1, "ini version %s\n", xb.kernelStr);
-		if (xb.type == 2) {
+		if (xb.type == BUILD_JTAG) {
 			xb.nFiles = 19;
 			blOrder = blJtag;
 			nbl = 9;
 			sprintf(tmp, "%s_jtag_%s.bin", xb.kernelStr, xb.outName);
 		} else {
-			if (xb.type == 6 || xb.type == 7) {
+			if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
 				xb.nFiles = 11;
 				blOrder = blDevk;
 				sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
 				if (off < -1)
 					buf[0] = 1;
-			} else if (xb.type == 8 || xb.type == 9) {
+			} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
 				xb.nFiles = 12;
 				blOrder = blTestk;
 				sprintf(tmp, "%s_testk_%s.bin", xb.kernelStr, xb.outName);
 			} else {
 				xb.nFiles = 14;
-				if (xb.type == 4 || xb.type == 5) {
+				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 					blOrder = blDevgl;
 					sprintf(tmp, "%s_devgl_%s.bin", xb.kernelStr, xb.outName);
 				} else {
 					blOrder = blRetail;
-					if (xb.type == 1)
+					if (xb.type == BUILD_RETAIL)
 						sprintf(tmp, "%s_retail_%s.bin", xb.kernelStr, xb.outName);
 					else if (xb.glitch2mfg)
 						sprintf(tmp, "%s_g2m_%s.bin", xb.kernelStr, xb.outName);
@@ -321,16 +321,16 @@ uint32_t parseIni(char *path)
 	/* the files this build type uses */
 	for (i = 0; i < xb.nFiles; i++) {
 		e = &xb.files[i];
-		if (xb.type == 2) {
+		if (xb.type == BUILD_JTAG) {
 			e->type = locJtag[i].type;
 			e->offset = locJtag[i].offset;
-		} else if (xb.type == 6 || xb.type == 7) {
+		} else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
 			e->type = locDevk[i].type;
 			e->offset = locDevk[i].offset;
-		} else if (xb.type == 4 || xb.type == 5) {
+		} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 			e->type = locDevgl[i].type;
 			e->offset = locDevgl[i].offset;
-		} else if (xb.type == 8 || xb.type == 9) {
+		} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
 			e->type = locTestk[i].type;
 			e->offset = locTestk[i].offset;
 		} else {
@@ -359,23 +359,23 @@ uint32_t parseIni(char *path)
 			break;
 		case 23:
 			strcpy(e->name, fnPatches);
-			if (xb.type == 2)
-				strcat(e->name, consoleNames[xb.flags & 7]);
+			if (xb.type == BUILD_JTAG)
+				strcat(e->name, consoleNames[xb.flags & CONSOLE_MASK]);
 			else if (xb.glitch2) {
 				if (xb.glitch2mfg)
 					strcat(e->name, "g2m");
 				else
 					strcat(e->name, "g2");
-				strcat(e->name, consoleNames[xb.flags & 7]);
-			} else if (xb.type == 4 || xb.type == 5) {
+				strcat(e->name, consoleNames[xb.flags & CONSOLE_MASK]);
+			} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 				strcat(e->name, "g2m");
-				strcat(e->name, consoleNames[xb.flags & 7]);
+				strcat(e->name, consoleNames[xb.flags & CONSOLE_MASK]);
 			} else {
-				if ((xb.flags & 7) == 5)
+				if ((xb.flags & CONSOLE_MASK) == CONSOLE_TRINITY)
 					strcat(e->name, "trinity");
-				else if ((xb.flags & 7) == 6)
+				else if ((xb.flags & CONSOLE_MASK) == CONSOLE_CORONA)
 					strcat(e->name, "corona");
-				else if ((xb.flags & 7) == 7)
+				else if ((xb.flags & CONSOLE_MASK) == CONSOLE_WINCHESTER)
 					strcat(e->name, "winchester");
 				else
 					strcat(e->name, "fat");
@@ -389,7 +389,7 @@ uint32_t parseIni(char *path)
 			strcpy(e->name, fnFuses);
 			break;
 		case 25:
-			if (xb.type == 2)
+			if (xb.type == BUILD_JTAG)
 				strcpy(e->name, fnXell2f);
 			else
 				strcpy(e->name, fnXellGg);
@@ -402,9 +402,9 @@ uint32_t parseIni(char *path)
 
 	/* [<console>bl<blSuffix>]: the bootloaders' names and crcs */
 	if (xb.blSuffix[0])
-		sprintf(label, "[%sbl%s]", consoleNames[xb.flags & 7], xb.blSuffix);
+		sprintf(label, "[%sbl%s]", consoleNames[xb.flags & CONSOLE_MASK], xb.blSuffix);
 	else
-		sprintf(label, "[%sbl]", consoleNames[xb.flags & 7]);
+		sprintf(label, "[%sbl]", consoleNames[xb.flags & CONSOLE_MASK]);
 	off = memFindStr(buf, size, label, 1);
 	if (off >= 0) {
 		log_printf(1, "\nini: label %s found\n", label);
@@ -467,7 +467,7 @@ uint32_t parseIni(char *path)
 		free(buf);
 		return 0;
 	}
-	if (xb.type != 2 && xb.type <= 5) {
+	if (xb.type != BUILD_JTAG && xb.type <= BUILD_DEVGL16) {
 		if (strnicmp(xb.files[4].name, "none", 4) == 0)
 			xb.cbb = 0;
 		else {

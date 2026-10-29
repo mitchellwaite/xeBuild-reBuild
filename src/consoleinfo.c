@@ -147,10 +147,10 @@ int showImageType(int level, int bootstrap, uint32_t nandType, uint32_t unused)
 	}
 	log_printfInt(level, "Image Type      : %s (", type);
 	if (bootstrap < 0) {
-		xb.type = 2;
+		xb.type = BUILD_JTAG;
 		log_printfInt(level, "JTAG");
 	} else {
-		xb.type = 3;
+		xb.type = BUILD_GLITCH;
 		if (bootstrap & 0x20000000) {
 			xb.glitch2 = 1;
 			log_printfInt(level, "Glitch2");
@@ -230,7 +230,7 @@ int getFlashHdrOpts(int level, const char *dir)
 		return 0;
 	flags = hdr[77];
 	xb.bootFlags |= flags & 7;
-	if (xb.type == 2) {
+	if (xb.type == BUILD_JTAG) {
 		if (hdr[75] != 1) {
 			ret = getFreebootOpts(level, dir);
 			netFree(hdr);

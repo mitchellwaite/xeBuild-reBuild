@@ -1259,7 +1259,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		   >5 edge (else its setFlashBuild copy has frequency 0 and final
 		   aligns the type-11 block after it); the hot label keeps the SE
 		   copy's <=5 edge the likely one (jbe) */
-		if (xb.type <= 5) {
+		if (xb.type <= BUILD_DEVGL16) {
 		t5le: __attribute__((hot));
 			if (__builtin_expect(*pr != 0, 0))
 				goto fail;
@@ -1280,9 +1280,9 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		}
 		break;
 	case 24:
-		if (xb.type == 2 || xb.glitch2mfg)
+		if (xb.type == BUILD_JTAG || xb.glitch2mfg)
 			*pr = loadBl60(e);
-		if (xb.type == 4 || xb.type == 5)
+		if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 			*pr = loadBl60(e);
 		break;
 	case 1:
@@ -1310,7 +1310,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		memcpy(e->data, defCore, 0xd40);
 		break;
 	case 25:
-		if (xb.type == 1 || xb.type > 5)
+		if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
 			break;
 		if (!loadBaseFile(e->name, e))
 			break;
@@ -1363,7 +1363,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		}
 		break;
 	case 23:
-		if (xb.type == 1)
+		if (xb.type == BUILD_RETAIL)
 			break;
 		*pr = loadBinFile(e);
 		if (*pr)
@@ -1438,7 +1438,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		break;
 	}
 	return;
-	/* one -1 block for the patch size, SMC and (xb.type <= 5) signature
+	/* one -1 block for the patch size, SMC and (xb.type <= BUILD_DEVGL16) signature
 	   failures: the asm keeps it a block of its own (else the -1 is appended
 	   to the size log, which crossjump can't then share) */
 fail:
@@ -1510,7 +1510,7 @@ static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct filee
 		}
 		break;
 	case 25:
-		if (xb.type == 1 || xb.type > 5)
+		if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
 			break;
 		if (!loadBaseFile(e->name, e))
 			break;
@@ -1638,7 +1638,7 @@ void patchHeaderOpts(void)
 		log_printf(1, "\tPatching header for slower demon/cygnos UART speed\n");
 		opts = 1;
 	}
-	if (xb.type == 2) {
+	if (xb.type == BUILD_JTAG) {
 		opts |= xb.bootFlags & 7;
 		if (xb.bootFlags & 8)
 			opts |= 1;
@@ -1882,7 +1882,7 @@ void addBlsToImage(void)
 			off = e->offset;
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
-		if (xb.type == 2) {
+		if (xb.type == BUILD_JTAG) {
 			if (type == 14) {
 				off += e->size;
 				continue;
@@ -1911,15 +1911,15 @@ void addBlsToImage(void)
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
 				off += 0x60;
-			else if (xb.type == 4 || xb.type == 5)
+			else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 				off += 0x60;
 			else
 				off += 0x10;
 		}
-		if (xb.type == 1 && (type == 23 || type == 25)) {
+		if (xb.type == BUILD_RETAIL && (type == 23 || type == 25)) {
 			log_printf(1, "retail image, skipping %s\n", e->name);
 			continue;
-		} else if (xb.type > 5) {
+		} else if (xb.type > BUILD_DEVGL16) {
 			if (type == 23 || type == 25) {
 				log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
 				continue;
@@ -1945,7 +1945,7 @@ void addBlsToImage(void)
 			if (xb.cbb)
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
 		} else if (type == 24) {
-			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
+			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
@@ -2011,7 +2011,7 @@ void addUpdateBls(void)
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAddInt(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		} else if (type == 24) {
-			if (xb.glitch2mfg || xb.type == 4 || xb.type == 5) {
+			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAddInt(off, e->data, e->size, 0, ecc, 1);
@@ -2047,31 +2047,31 @@ int logPowerButton(int reason, const char *use)
 		log_printf(1, "    - wireless controller powering on console is being used to %s \n", use);
 		break;
 	case 0x59:
-		if ((xb.flags & 7) > 4)
+		if IS_SLIM
 			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
 		else
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		break;
 	case 0x58:
-		if ((xb.flags & 7) > 4)
+		if IS_SLIM
 			log_printf(1, "wired controller (rear middle usb port) is being used to %s \n", use);
 		else
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		break;
 	case 0x5a:
-		if ((xb.flags & 7) > 4)
+		if IS_SLIM
 			log_printf(1, "wired controller (rear bottom usb port) is being used to %s \n", use);
 		else
 			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
 		break;
 	case 0x56:
-		if ((xb.flags & 7) > 4)
+		if IS_SLIM
 			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
 		else
 			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
 		break;
 	case 0x57:
-		if ((xb.flags & 7) > 4)
+		if IS_SLIM
 			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
 		else
 			log_printf(1, "wired controller (front bottom usb port) is being used to %s \n", use);
@@ -2174,7 +2174,7 @@ int encodeBls(uint8_t *salt, int ldv)
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
 			continue;
 		type = e->type;
-		if (xb.type == 2) {
+		if (xb.type == BUILD_JTAG) {
 			log_printf(1, "encoding %s size 0x%x (JTAG)\n", e->name, e->size);
 			switch (type) {
 			case 1:
@@ -2232,7 +2232,7 @@ int encodeBls(uint8_t *salt, int ldv)
 					log_printf(0, "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n");
 				break;
 			}
-		} else if (xb.type > 3) {
+		} else if (xb.type > BUILD_GLITCH) {
 			if (type != 24)
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			switch (type) {
@@ -2263,9 +2263,9 @@ int encodeBls(uint8_t *salt, int ldv)
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 11:
-				if (xb.type == 4 || xb.type == 5) {
+				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 					j = findFile(24);
-					if ((xb.flags & 7) > 4)
+					if IS_SLIM
 						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.f01c);
 					else
 						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.f01c);
@@ -2326,7 +2326,7 @@ int encodeBls(uint8_t *salt, int ldv)
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
-				if (xb.type != 1)
+				if (xb.type != BUILD_RETAIL)
 					cbaEncryptZero(e->data, e->key, e->size);
 				else
 					cbaEncrypt(salt, e->data, e->key, e->size, 0);
@@ -2353,7 +2353,7 @@ int encodeBls(uint8_t *salt, int ldv)
 					cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				} else {
 					j = findFile(5);
-					if (xb.type != 1)
+					if (xb.type != BUILD_RETAIL)
 						cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 					else
 						cdEncryptCpu(e->data, xb.files[j].key, e->key, e->size);
@@ -2415,7 +2415,7 @@ uint32_t calcBlAreaSize(void)
 {
 	uint32_t size, xs, x;
 
-	if (xb.type == 2) {
+	if (xb.type == BUILD_JTAG) {
 		x = findFile(5);
 		size = findFileOffset(5) + xb.files[x].size;
 		x = findFile(7);
@@ -2424,7 +2424,7 @@ uint32_t calcBlAreaSize(void)
 			x = findFile(14);
 			size += xb.files[x].size;
 		}
-	} else if (xb.type > 5) {
+	} else if (xb.type > BUILD_DEVGL16) {
 		x = findFile(11);
 		size = findFileOffset(11) + xb.files[x].size;
 		x = findFile(12);
@@ -2443,7 +2443,7 @@ uint32_t calcBlAreaSize(void)
 		size += findFileSize(6);
 		size += findFileSize(7);
 		size += findFileSize(8);
-		if (xb.type != 1) {
+		if (xb.type != BUILD_RETAIL) {
 			x = findFile(25);
 			if (xb.files[x].offset > size) {
 				xs = xb.files[x].size;
@@ -2487,9 +2487,9 @@ int buildFlash(void)
 
 	memset(salt, 0, sizeof(salt));
 	fuse = 1;
-	if (xb.type != 2) {
+	if (xb.type != BUILD_JTAG) {
 		fuse = xb.glitch2mfg != 0;
-		if (__builtin_expect(xb.type == 4 || xb.type == 5, 0))
+		if (__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0))
 			fuse = 1;
 	}
 	if (!xb.fromConsole) {
@@ -2522,7 +2522,7 @@ int buildFlash(void)
 		blocks = area >> 14;
 	else
 		area = blocks << 14;
-	if (xb.type == 3) {
+	if (xb.type == BUILD_GLITCH) {
 		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (xb.fromConsole)
 			fixupPatchSet();
@@ -2536,12 +2536,12 @@ int buildFlash(void)
 			} else
 				patchConsoleBlmod();
 		}
-	} else if (xb.type == 4 || xb.type == 5) {
+	} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (!patchBlsResign())
 			return 1;
 	}
-	if (!xb.fromConsole && !(xb.type == 1 || xb.type > 5)) {
+	if (!xb.fromConsole && !(xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)) {
 		log_printf(1, "\n------ Patching boot reasons and options into flash header ------\n");
 		patchHeaderOpts();
 	}
@@ -2550,7 +2550,7 @@ int buildFlash(void)
 	if (fuse) {
 		struct fileent *e = &xb.files[findFile(24)];
 		setFuseCpuKey(e->data);
-		if (xb.type != 2)
+		if (xb.type != BUILD_JTAG)
 			e->offset = imgCfOffset() + imgCfSize();
 	}
 	if (!xb.fromConsole) {
@@ -2575,7 +2575,7 @@ int buildFlash(void)
 		imgSetSize(fsStartBlock() << 14);
 
 	/* the CG's patch slot overflow goes in the filesystem */
-	if (xb.type != 2) {
+	if (xb.type != BUILD_JTAG) {
 		if (xb.files[findFile(9)].fsSize) {
 			off = imgSize();
 			cf = findFile(9);
@@ -2623,7 +2623,7 @@ int buildFlash(void)
 		else {
 			/* a patch (.xexp): the target's comes as .xexp1, a JTAG's as .xexp2 */
 			if (last == 'p') {
-				if (xb.type == 2)
+				if (xb.type == BUILD_JTAG)
 					strcat(xb.firmware[i], "2");
 				else
 					strcat(xb.firmware[i], "1");
@@ -2718,7 +2718,7 @@ int buildFlash(void)
 			region = kvGetGameRegion();
 			if (region) {
 				log_printf(0, "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n", name);
-				if (xb.type != 1 && xb.type <= 5) {
+				if (xb.type != BUILD_RETAIL && xb.type <= BUILD_DEVGL16) {
 					if (region == 1)
 						log_printf(0, "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n");
 					else {
@@ -2743,11 +2743,11 @@ int buildFlash(void)
 		switch (k) {
 		case 9:
 			strcpy(f.name, "Statistics.settings");
-			raw = statisticsOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
+			raw = statisticsOffset(xb.bigBlock, xb.type > BUILD_DEVGL16, (xb.flags & NAND_MMC) != 0, NULL, NULL);
 			break;
 		case 10:
 			strcpy(f.name, "Manufacturing.data");
-			raw = manufacturingOffset(xb.bigBlock, xb.type > 5, (xb.flags & 0x10000000) != 0, NULL, NULL);
+			raw = manufacturingOffset(xb.bigBlock, xb.type > BUILD_DEVGL16, (xb.flags & NAND_MMC) != 0, NULL, NULL);
 			break;
 		default:
 			strcpy(f.name, "MobileA.dat");
@@ -2795,7 +2795,7 @@ int buildFlash(void)
 	log_printf(1, "done!\nWriting FS table to image ");
 	writeFsTable(b);
 	log_printf(1, "done!\n");
-	if (xb.flags & 0x10000000) {
+	if (xb.flags & NAND_MMC) {
 		/* MMC: two anchor blocks */
 		xb.anchorNum = 1;
 		shaHeader(xb.anchor);

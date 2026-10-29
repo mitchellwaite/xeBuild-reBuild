@@ -88,82 +88,82 @@ int iniConsoleType(void)
 {
 	if (perboxExists("xenon")) {
 		log_printf(1, "Using xenon ctype (perbox file)\n");
-		xb.flags |= 1;
+		xb.flags |= CONSOLE_XENON;
 		strcat(xb.outName, "xenon");
 	} else if (perboxExists("zephyr")) {
 		log_printf(1, "Using zephyr ctype (perbox file)\n");
-		xb.flags |= 2;
+		xb.flags |= CONSOLE_ZEPHYR;
 		strcat(xb.outName, "zephyr");
 	} else if (perboxExists("falcon")) {
 		log_printf(1, "Using falcon ctype (perbox file)\n");
-		xb.flags |= 3;
+		xb.flags |= CONSOLE_FALCON;
 		strcat(xb.outName, "falcon");
 	} else if (perboxExists("jasper") | perboxExists("jasperbc")) {
 		log_printf(1, "Using jasper ctype (perbox file)\n");
-		xb.flags |= 0x80000004;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
 	} else if (perboxExists("jaspersb")) {
 		log_printf(1, "Using jasper smallblock ctype (perbox file)\n");
-		xb.flags |= 4;
+		xb.flags |= CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
 	} else if (perboxExists("jasperbb")) {
 		log_printf(1, "Using jasper big block ctype (perbox file)\n");
-		xb.flags |= 0x40000004;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasperbb");
 	} else if (perboxExists("jasper256")) {
 		log_printf(1, "Using jasper big block ctype (perbox file)\n");
-		xb.flags |= 0x40000004;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper256");
 	} else if (perboxExists("jasper512")) {
 		log_printf(1, "Using jasper big block ctype (perbox file)\n");
-		xb.flags |= 0x40000004;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper512");
 	} else if (perboxExists("trinity")) {
 		log_printf(1, "Using trinity ctype (perbox file)\n");
-		xb.flags |= 0x80000005;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinity");
 	} else if (perboxExists("trinitybb")) {
 		log_printf(1, "Using trinity big block ctype (perbox file)\n");
-		xb.flags |= 0x40000005;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybb");
 	} else if (perboxExists("trinitybigffs")) {
 		log_printf(1, "Using trinity big block big file system ctype (perbox file)\n");
-		xb.flags |= 0x60000005;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybigffs");
 	} else if (perboxExists("corona")) {
 		log_printf(1, "Using corona ctype (perbox file)\n");
-		xb.flags |= 0x80000006;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_CORONA;
 		strcat(xb.outName, "corona");
 	} else if (perboxExists("coronabb")) {
 		log_printf(1, "Using corona big block ctype (perbox file)\n");
-		xb.flags |= 0x40000006;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabb");
 	} else if (perboxExists("coronabigffs")) {
 		log_printf(1, "Using corona big block big file system ctype (perbox file)\n");
-		xb.flags |= 0x60000006;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabigffs");
 	} else if (perboxExists("corona4g")) {
 		log_printf(1, "Using corona MMC ctype (perbox file)\n");
-		xb.flags |= 0x90000006;
+		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_CORONA;
 		strcat(xb.outName, "corona4g");
 	} else if (perboxExists("winchester")) {
 		log_printf(1, "Using winchester ctype (perbox file)\n");
-		xb.flags |= 0x80000007;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester");
 	} else if (perboxExists("winchester4g")) {
 		log_printf(1, "Using winchester MMC ctype (perbox file)\n");
-		xb.flags |= 0x90000007;
+		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester4g");
 	} else if (perboxExists("winchesterbb")) {
 		log_printf(1, "Using winchester big block ctype (perbox file)\n");
-		xb.flags |= 0x40000007;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbb");
 	} else if (perboxExists("winchesterbigffs")) {
 		log_printf(1, "Using winchester big block big file system ctype (perbox file)\n");
-		xb.flags |= 0x60000007;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbigffs");
 	}
-	return (xb.flags & 7) != 0;
+	return (xb.flags & CONSOLE_MASK) != 0;
 }
 
 int setConsoleType(const char *name)
@@ -171,102 +171,102 @@ int setConsoleType(const char *name)
 	if (!name || !*name)
 		return 0;
 	if (!stricmp(name, "xenon")) {
-		xb.flags |= 1;
+		xb.flags |= CONSOLE_XENON;
 		strcat(xb.outName, "xenon");
 		return 1;
 	}
 	if (!stricmp(name, "zephyr")) {
-		xb.flags |= 2;
+		xb.flags |= CONSOLE_ZEPHYR;
 		strcat(xb.outName, "zephyr");
 		return 1;
 	}
 	if (!stricmp(name, "falcon")) {
-		xb.flags |= 3;
+		xb.flags |= CONSOLE_FALCON;
 		strcat(xb.outName, "falcon");
 		return 1;
 	}
 	if (!stricmp(name, "jasper") || !stricmp(name, "jasperbc")) {
-		xb.flags |= 0x80000004;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
 		return 1;
 	}
 	if (!stricmp(name, "jaspersb")) {
-		xb.flags |= 4;
+		xb.flags |= CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
 		return 1;
 	}
 	if (!stricmp(name, "jasperbb")) {
-		xb.flags |= 0x40000004;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasperbb");
 		return 1;
 	}
 	if (!stricmp(name, "jasper256")) {
-		xb.flags |= 0x40000004;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper256");
 		return 1;
 	}
 	if (!stricmp(name, "jasper512")) {
-		xb.flags |= 0x40000004;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper512");
 		return 1;
 	}
 	if (!stricmp(name, "jasperbigffs")) {
-		xb.flags |= 0x60000004;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_JASPER;
 		strcat(xb.outName, "jasperbigffs");
 		return 1;
 	}
 	if (!stricmp(name, "trinity")) {
-		xb.flags |= 0x80000005;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinity");
 		return 1;
 	}
 	if (!stricmp(name, "trinitybb")) {
-		xb.flags |= 0x40000005;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybb");
 		return 1;
 	}
 	if (!stricmp(name, "trinitybigffs")) {
-		xb.flags |= 0x60000005;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybigffs");
 		return 1;
 	}
 	if (!stricmp(name, "corona")) {
-		xb.flags |= 0x80000006;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_CORONA;
 		strcat(xb.outName, "corona");
 		return 1;
 	}
 	if (!stricmp(name, "coronabb")) {
-		xb.flags |= 0x40000006;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabb");
 		return 1;
 	}
 	if (!stricmp(name, "coronabigffs")) {
-		xb.flags |= 0x60000006;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabigffs");
 		return 1;
 	}
 	if (!stricmp(name, "corona4g")) {
-		xb.flags |= 0x90000006;
+		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_CORONA;
 		strcat(xb.outName, "corona4g");
 		return 1;
 	}
 	if (!stricmp(name, "winchester")) {
-		xb.flags |= 0x80000007;
+		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester");
 		return 1;
 	}
 	if (!stricmp(name, "winchester4g")) {
-		xb.flags |= 0x90000007;
+		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester4g");
 		return 1;
 	}
 	if (!stricmp(name, "winchesterbb")) {
-		xb.flags |= 0x40000007;
+		xb.flags |= NAND_BIG_BLOCK | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbb");
 		return 1;
 	}
 	if (!stricmp(name, "winchesterbigffs")) {
-		xb.flags |= 0x60000007;
+		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbigffs");
 		return 1;
 	}
@@ -874,7 +874,7 @@ void applyIniOptions(void)
 			}
 		}
 	}
-	if (xb.type - 2 <= 3) {
+	if (xb.type - BUILD_JTAG <= 3) {
 		OPT("cygnos", 1, 0);
 		OPT("demon", 8, 0);
 		OPT("patchsmc", 0x8000000, 0);
@@ -897,7 +897,7 @@ void applyIniOptions(void)
 	}
 	/* outside the block above: VRP threads its range test past this one
 	   (a switch it can't), and smcnoblink's paths reload the type */
-	if (xb.type == 2) {
+	if (xb.type == BUILD_JTAG) {
 		OPT("nodvd", 2, 4);
 		/* OPT("olddvd", 0, 4) with dead edges: Q (olddvd_q) merges into
 		   the iniBoolInvalid block and leaves it its count, olddvd_set

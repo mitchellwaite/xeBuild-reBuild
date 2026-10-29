@@ -366,7 +366,7 @@ NOPROF uint32_t getSecurityFiles(const char *dir)
 
 NOPROF uint32_t checkBadBlocks(void)
 {
-	if (xb.flags & 0x10000000)
+	if (xb.flags & NAND_MMC)
 		return 1;
 	return getBadBlocks();
 }
@@ -374,7 +374,7 @@ NOPROF uint32_t checkBadBlocks(void)
 NOPROF uint32_t getBootloaders(const char *dir)
 {
 	log_printf(1, "\n------ getting bootloaders ------\n");
-	if (xb.type == 3) {
+	if (xb.type == BUILD_GLITCH) {
 		log_printf(1, "reading bootloader data...");
 		xb.bl.data = netGetBldrs(&xb.bl.size);
 		if (xb.bl.data && xb.bl.size) {
@@ -629,20 +629,20 @@ int mode_update(int argc, char **argv)
 
 		info = netGetInfo();
 		if (parseConsoleInfo(1, dumpDir, dumpDir, &hasHdd)) {
-			if (xb.type == 1)
+			if (xb.type == BUILD_RETAIL)
 				strcat(ini, "_retail");
-			else if (xb.type == 2)
+			else if (xb.type == BUILD_JTAG)
 				strcat(ini, "_jtag");
-			else if (xb.type == 3) {
+			else if (xb.type == BUILD_GLITCH) {
 				if (xb.glitch2mfg)
 					strcat(ini, "_glitch2m");
 				else if (xb.glitch2)
 					strcat(ini, "_glitch2");
 				else
 					strcat(ini, "_glitch");
-			} else if (xb.type == 6 || xb.type == 7)
+			} else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16)
 				strcat(ini, "_devkit");
-			else if (xb.type == 8 || xb.type == 9)
+			else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16)
 				strcat(ini, "_testkit");
 			strcat(ini, xb.suffix);
 			strcat(ini, ".ini");

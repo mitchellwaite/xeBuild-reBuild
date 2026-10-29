@@ -183,32 +183,32 @@ void showConsoleInfo(void)
 		log_printf(0, "Kernel    : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf,
 			   (uint16_t)(k >> 8), k & 0xf);
 	log_printf(0, "Console   : ");
-	switch (xb.flags & 0x40000007) {
-	case 1:
+	switch (xb.flags & (NAND_BIG_BLOCK | CONSOLE_MASK)) {
+	case CONSOLE_XENON:
 		log_printf(0, "Xenon\n");
 		break;
-	case 2:
+	case CONSOLE_ZEPHYR:
 		log_printf(0, "Zephyr\n");
 		break;
-	case 3:
+	case CONSOLE_FALCON:
 		log_printf(0, "Falcon\n");
 		break;
-	case 4:
+	case CONSOLE_JASPER:
 		log_printf(0, "Jasper\n");
 		break;
-	case 5:
+	case CONSOLE_TRINITY:
 		log_printf(0, "Trinity\n");
 		break;
-	case 0x40000005:
+	case NAND_BIG_BLOCK | CONSOLE_TRINITY:
 		log_printf(0, "Trinity (big block)\n");
 		break;
-	case 6:
+	case CONSOLE_CORONA:
 		log_printf(0, "Corona\n");
 		break;
-	case 7:
+	case CONSOLE_WINCHESTER:
 		log_printf(0, "Winchester\n");
 		break;
-	case 0x40000004:
+	case NAND_BIG_BLOCK | CONSOLE_JASPER:
 		log_printf(0, "Jasper (big block)\n");
 		break;
 	default:
@@ -216,16 +216,16 @@ void showConsoleInfo(void)
 		break;
 	}
 	log_printf(0, "NAND size : ");
-	if (xb.flags & 0x10000000) {
+	if (xb.flags & NAND_MMC) {
 		log_printf(0, "48MiB MMC (system only)");
-	} else if (xb.flags & 0x40000000) {
+	} else if (xb.flags & NAND_BIG_BLOCK) {
 		if (xb.nandMu)
 			log_printf(0, "64MiB + NAND MU area");
 		else
 			log_printf(0, "64MiB (system only)");
-		if (xb.flags & 0x20000000)
+		if (xb.flags & NAND_BIG_FFS)
 			log_printf(0, " (extended size FFS)");
-	} else if (xb.type == 6 || xb.type == 8) {
+	} else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT) {
 		log_printf(0, "64MiB (small block)");
 	} else {
 		log_printf(0, "16MiB");
@@ -233,10 +233,10 @@ void showConsoleInfo(void)
 	log_printf(0, "\n");
 	log_printf(0, "Build     : ");
 	switch (xb.type) {
-	case 2:
+	case BUILD_JTAG:
 		log_printf(0, "JTAG\n");
 		break;
-	case 3:
+	case BUILD_GLITCH:
 		if (xb.glitch2mfg)
 			log_printf(0, "Glitch (v2 mfg)\n");
 		else if (xb.glitch2)
@@ -244,36 +244,36 @@ void showConsoleInfo(void)
 		else
 			log_printf(0, "Glitch\n");
 		break;
-	case 1:
+	case BUILD_RETAIL:
 		log_printf(0, "Retail\n");
 		break;
-	case 6:
+	case BUILD_DEVKIT:
 		log_printf(0, "Devkit\n");
 		break;
-	case 7:
+	case BUILD_DEVKIT16:
 		log_printf(0, "Devkit16\n");
 		break;
-	case 4:
+	case BUILD_DEVGL:
 		log_printf(0, "Devgl\n");
 		break;
-	case 5:
+	case BUILD_DEVGL16:
 		log_printf(0, "Devgl16\n");
 		break;
-	case 8:
+	case BUILD_TESTKIT:
 		log_printf(0, "Testkit\n");
 		break;
-	case 9:
+	case BUILD_TESTKIT16:
 		log_printf(0, "Testkit16\n");
 		break;
 	}
-	if (xb.type >= 3 && xb.type <= 5) {
+	if (xb.type >= BUILD_GLITCH && xb.type <= BUILD_DEVGL16) {
 		log_printf(0, "Xell      : power on console with ");
 		logButton(0, xb.xellButton);
 		if (xb.xellAltButton) {
 			log_printf(0, "XellAlt   : power on console with ");
 			logButton(0, xb.xellAltButton);
 		}
-	} else if (xb.type == 2) {
+	} else if (xb.type == BUILD_JTAG) {
 		if (!(xb.bootFlags & 4)) {
 			log_printf(0, "Xell      : starts if tray is ");
 			if (!(xb.bootFlags & 2))
@@ -293,7 +293,7 @@ void showConsoleInfo(void)
 			logButton(0, xb.dualButton);
 		}
 	}
-	if ((xb.type == 2 || xb.type == 3) && (xb.bootFlags & 9))
+	if ((xb.type == BUILD_JTAG || xb.type == BUILD_GLITCH) && (xb.bootFlags & 9))
 		log_printf(0, "UART      : cygnos/demon speed set\n");
 	p = kvGetConsoleId();
 	if (p) {
@@ -323,7 +323,7 @@ void showConsoleInfo(void)
 		for (i = 0; i < 16; i++)
 			log_printf(0, "%02X", p[i]);
 		if (xb.bootFlags & 0x2000000) {
-			if (xb.type == 1)
+			if (xb.type == BUILD_RETAIL)
 				log_printf(0, " (retail - not patched!)");
 			else
 				log_printf(0, " (patched)");

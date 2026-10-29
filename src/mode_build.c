@@ -166,40 +166,40 @@ int mode_build(int argc, char **argv)
 			}
 			if (!strnicmp(argv[i], "retail", 6)) {
 				log_printf(0, "building retail image\n");
-				xb.type = 1;
+				xb.type = BUILD_RETAIL;
 			} else if (!strnicmp(argv[i], "jtag", 4)) {
 				log_printf(0, "building jtag image\n");
-				xb.type = 2;
+				xb.type = BUILD_JTAG;
 			} else if (!strnicmp(argv[i], "glitch2m", 8)) {
 				log_printf(0, "building glitch2 mfg image\n");
 				xb.glitch2mfg = 1;
 				xb.glitch2 = 1;
-				xb.type = 3;
+				xb.type = BUILD_GLITCH;
 			} else if (!strnicmp(argv[i], "glitch2", 7)) {
 				log_printf(0, "building glitch2 image\n");
 				xb.glitch2 = 1;
-				xb.type = 3;
+				xb.type = BUILD_GLITCH;
 			} else if (!strnicmp(argv[i], "glitch", 6)) {
 				log_printf(0, "building glitch image\n");
-				xb.type = 3;
+				xb.type = BUILD_GLITCH;
 			} else if (!strnicmp(argv[i], "devkit16", 8)) {
 				log_printf(0, "building devkit16 image\n");
-				xb.type = 7;
+				xb.type = BUILD_DEVKIT16;
 			} else if (!strnicmp(argv[i], "devkit", 6)) {
 				log_printf(0, "building devkit image\n");
-				xb.type = 6;
+				xb.type = BUILD_DEVKIT;
 			} else if (!strnicmp(argv[i], "testkit16", 9)) {
 				log_printf(0, "building testkit16 image\n");
-				xb.type = 9;
+				xb.type = BUILD_TESTKIT16;
 			} else if (!strnicmp(argv[i], "testkit", 7)) {
 				log_printf(0, "building testkit image\n");
-				xb.type = 8;
+				xb.type = BUILD_TESTKIT;
 			} else if (!strnicmp(argv[i], "devgl16", 7)) {
 				log_printf(0, "building devgl16 image\n");
-				xb.type = 5;
+				xb.type = BUILD_DEVGL16;
 			} else if (!strnicmp(argv[i], "devgl", 5)) {
 				log_printf(0, "building devgl image\n");
-				xb.type = 4;
+				xb.type = BUILD_DEVGL;
 			} else {
 				log_printf(0, "\n\n***** ERROR: option flag -t on command line followed by unknown argument '%s'!\n", argv[i]);
 				build_usage();
@@ -323,7 +323,7 @@ int mode_build(int argc, char **argv)
 
 	if (!xb.type) {
 		log_printf(0, "*****WARNING: image type not provided, defaulting to build a retail image\n");
-		xb.type = 1;
+		xb.type = BUILD_RETAIL;
 	}
 	if (!(have & 4)) {
 		have |= 4;
@@ -333,7 +333,7 @@ int mode_build(int argc, char **argv)
 	loadUserIni();
 	if (xb.iniSize)
 		log_printf(1, "User options.ini loaded, 0x%x bytes in memory\n", xb.iniSize);
-	if (!(xb.flags & 7) && !iniConsoleType() && !setConsoleType(getIniValue("type"))) {
+	if (!(xb.flags & CONSOLE_MASK) && !iniConsoleType() && !setConsoleType(getIniValue("type"))) {
 		log_printf(0, "ERROR: you need to specify console type!\n");
 		build_usage();
 	}
@@ -364,26 +364,26 @@ int mode_build(int argc, char **argv)
 		}
 	}
 
-	if (xb.type == 1)
+	if (xb.type == BUILD_RETAIL)
 		strcat(ini, "_retail");
-	else if (xb.type == 2)
+	else if (xb.type == BUILD_JTAG)
 		strcat(ini, "_jtag");
-	else if (xb.type == 3) {
+	else if (xb.type == BUILD_GLITCH) {
 		if (xb.glitch2mfg)
 			strcat(ini, "_glitch2m");
 		else if (xb.glitch2)
 			strcat(ini, "_glitch2");
 		else
 			strcat(ini, "_glitch");
-	} else if (xb.type == 6)
+	} else if (xb.type == BUILD_DEVKIT)
 		strcat(ini, "_devkit");
-	else if (xb.type == 7)
+	else if (xb.type == BUILD_DEVKIT16)
 		strcat(ini, "_devkit16");
-	else if (xb.type == 8)
+	else if (xb.type == BUILD_TESTKIT)
 		strcat(ini, "_testkit");
-	else if (xb.type == 9)
+	else if (xb.type == BUILD_TESTKIT16)
 		strcat(ini, "_testkit16");
-	else if (xb.type == 4 || xb.type == 5)
+	else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 		strcat(ini, "_devgl");
 	strcat(ini, xb.suffix);
 	strcat(ini, ".ini");
@@ -400,10 +400,10 @@ int mode_build(int argc, char **argv)
 	} else
 		log_printf(1, "auto image name used: %s\n\n", xb.outName);
 	log_set_name(xb.outName);
-	if ((xb.type == 6 || xb.type == 8) && (xb.flags & 0x40000000)) {
-		if (!(xb.flags & 0x20000000)) {
+	if ((xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT) && (xb.flags & NAND_BIG_BLOCK)) {
+		if (!(xb.flags & NAND_BIG_FFS)) {
 			log_printf(1, "building jasper devkit/testkit image requires bigffs, forcing option enable\n");
-			xb.flags |= 0x20000000;
+			xb.flags |= NAND_BIG_FFS;
 		}
 	}
 	loadPubKeys();

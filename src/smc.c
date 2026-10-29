@@ -46,11 +46,11 @@ int smcCheck(uint8_t *smc, int len, int type)
 	}
 	log_printf(1, "unknown SMC found, type: %s v%d.%d(%d.%02d)\n", getConsoleTypeStr(ver),
 		smc[0x100] >> 4, smc[0x100] & 15, smc[0x101], smc[0x102]);
-	if (type == 3)
+	if (type == BUILD_GLITCH)
 		return smcFindResetLimit(smc, len) == 0;
-	if (type == 2)
+	if (type == BUILD_JTAG)
 		goto patches;
-	if (type == 1 || type > 5) {
+	if (type == BUILD_RETAIL || type > BUILD_DEVGL16) {
 		if (!smcFindResetLimit(smc, len))
 			return 1;
 patches:

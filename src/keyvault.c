@@ -65,7 +65,7 @@ void kvSet(uint8_t *buf)
 	kv = kvBuf;
 	log_printf(1, "decrypted keyvault has been set for reference\n");
 	if (dvdKeySet) {
-		if (xb.type != 1) {
+		if (xb.type != BUILD_RETAIL) {
 			memcpy(buf + 0x100, dvdKey, 16);
 			memcpy(kv + 0x100, dvdKey, 16);
 			log_printf(1, "dvd key patched into keyvault\n");

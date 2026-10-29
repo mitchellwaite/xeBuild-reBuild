@@ -31,8 +31,48 @@
 #define SWAP32_KEYS(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 #define SWAP16_KEYS(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
+/* ---- xb.flags and xb.type ----
+
+   xb.flags: the console type in the low 3 bits and NAND bits at the top,
+   set together from the -c name or perbox file (options.c's
+   setConsoleType/iniConsoleType):
+     xenon, zephyr, falcon            CONSOLE_x
+     jasper, jasperbc, trinity, corona, winchester
+                                      NAND_BB_CONTROLLER | CONSOLE_x
+     jaspersb                         CONSOLE_JASPER
+     <x>bb, jasper256, jasper512      NAND_BIG_BLOCK | CONSOLE_x
+     <x>bigffs                        NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_x
+     corona4g, winchester4g           NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_x */
+#define CONSOLE_MASK 7
+#define CONSOLE_XENON 1
+#define CONSOLE_ZEPHYR 2
+#define CONSOLE_FALCON 3
+#define CONSOLE_JASPER 4
+#define CONSOLE_TRINITY 5		/* slims from here on */
+#define CONSOLE_CORONA 6
+#define CONSOLE_WINCHESTER 7
+#define NAND_MMC 0x10000000		/* 48MiB eMMC (system only) */
+#define NAND_BIG_FFS 0x20000000	/* extended size FFS (with NAND_BIG_BLOCK) */
+#define NAND_BIG_BLOCK 0x40000000	/* 64MiB big block NAND */
+#define NAND_BB_CONTROLLER 0x80000000	/* 16MiB small block NAND on a big block controller */
+
+/* xb.type: the build type (-t, or from the dump's bootstrap in
+   consoleinfo.c).  BUILD_GLITCH covers glitch, glitch2 and glitch2m
+   (xb.glitch2, xb.glitch2mfg); devgl and devgl16 share an ini.  Above
+   BUILD_DEVGL16 are the kit builds: devkit and testkit for a 64MiB NAND
+   (small block unless NAND_BIG_BLOCK), their 16 variants for 16MiB. */
+#define BUILD_RETAIL 1
+#define BUILD_JTAG 2
+#define BUILD_GLITCH 3
+#define BUILD_DEVGL 4
+#define BUILD_DEVGL16 5
+#define BUILD_DEVKIT 6
+#define BUILD_DEVKIT16 7
+#define BUILD_TESTKIT 8
+#define BUILD_TESTKIT16 9
+
 /* a slim console (xb.flags' console type) */
-#define IS_SLIM ((xb.flags & 7) > 4)
+#define IS_SLIM ((xb.flags & CONSOLE_MASK) > CONSOLE_JASPER)
 
 /* in an object compiled with a profile (mode_update.c, mode_client.c), the
    functions that keep gcc's guessed profile, and .text; a file may define

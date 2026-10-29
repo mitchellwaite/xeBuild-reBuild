@@ -129,10 +129,10 @@ void getImageLdv(void)
 	if (!pairing)
 		pairing = cbGetPairing(xb.dump + SWAP32(h->kvAddr) + SWAP32(h->kvSize));
 	if (!pairing) {
-		if (xb.type == 6 || xb.type == 7) {
+		if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
 			log_printf(1, "Did not find a LDV value to use, setting it to 0 for devkit!\n");
 			ldv = 0;
-		} else if (xb.type == 8 || xb.type == 9) {
+		} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
 			log_printf(1, "Did not find a LDV value to use, setting it to 0 for testkit!\n");
 			ldv = 0;
 		} else {

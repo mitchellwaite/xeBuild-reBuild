@@ -418,7 +418,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 	}
 	if (checkZeros(buf + size - 4, 4)) {
 		bad = smcCheck(smc, size, xb.type);
-		if (xb.type == 1) {
+		if (xb.type == BUILD_RETAIL) {
 			if (bad) {
 				log_printf(0, "\n******* ERROR: hacked or unknown SMC binary found? you should use a clean SMC binary for a retail image!\n\n");
 				if (!(xb.bootFlags & 0x200000))
@@ -426,25 +426,25 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 			} else
 				log_printf(1, "known/clean SMC binary found! type 0x%x\n", 1);
 			xb.bootFlags &= 0xf73fffff;
-		} else if (xb.type > 5) {
+		} else if (xb.type > BUILD_DEVGL16) {
 			if (bad)
 				log_printf(0, "\n******* WARNING: hacked or unknown SMC binary found? Just a warning, there are a lot of different SMC binaries for devkits!\n\n");
 			else
 				log_printf(1, "known/clean SMC binary found!\n");
 			xb.bootFlags &= 0xf73fffff;
 		} else if (bad) {
-			if (xb.type == 3) {
+			if (xb.type == BUILD_GLITCH) {
 				log_printf(1, "glitch hack found in SMC binary!\n");
 				xb.bootFlags &= ~0x8000000;
-			} else if (xb.type == 4 || xb.type == 5)
+			} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 				log_printf(1, "\n******* WARNING: hacked or unknown SMC binary found!\n");
 			else
 				log_printf(1, "jtag hack found in SMC binary!\n");
 		} else {
-			if (xb.type == 3) {
+			if (xb.type == BUILD_GLITCH) {
 				if (!(xb.bootFlags & 0x8000000))
 					log_printf(0, "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for glitch images.\n\n");
-			} else if (xb.type == 4 || xb.type == 5)
+			} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 				log_printf(1, "known/clean SMC binary found!\n");
 			else {
 				log_printf(0, "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for JTAG images.\n\n");
@@ -605,7 +605,7 @@ uint16_t cfEncrypt(struct fileent *cf, uint32_t extra, uint16_t block, int keep,
 	if (!keep) {
 		buf = cf->data;
 		memset(buf + 32, 0, 528);
-		if (xb.type == 2)
+		if (xb.type == BUILD_JTAG)
 			cf->data[539] = 1;
 		else
 			cf->data[539] = 0;

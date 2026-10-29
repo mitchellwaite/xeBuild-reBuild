@@ -150,15 +150,15 @@ int buildImage(void)
 	int bigBlock;
 	uint8_t *spare, *hdr;
 
-	if (xb.type == 1)
+	if (xb.type == BUILD_RETAIL)
 		xb.files[findFile(9)].offset = xb.files[findFile(25)].offset;
-	if (xb.flags & 0x40000000) {
+	if (xb.flags & NAND_BIG_BLOCK) {
 		xb.blocks = 0x1000;
 		xb.smcConfigOffset = 0x3be0000;
 		xb.bigBlock = 1;
 		xb.spare9 = 4;
 		xb.spare7 = 0x10;
-		if (xb.flags & 0x20000000) {
+		if (xb.flags & NAND_BIG_FFS) {
 			xb.fsStart = 0x2e0;
 			xb.fsEnd = 0xee0;
 			userSize = 0x4000000;
@@ -174,8 +174,8 @@ int buildImage(void)
 		spareSize = 0x200000;
 		bigBlock = 1;
 		rawSize = 0x4200000;
-	} else if (xb.type != 6 && xb.type != 8) {
-		if (xb.flags & 0x10000000) {
+	} else if (xb.type != BUILD_DEVKIT && xb.type != BUILD_TESTKIT) {
+		if (xb.flags & NAND_MMC) {
 			xb.blocks = 0xc00;
 			xb.smcConfigOffset = 0x2ffc000;
 			userSize = 0x3000000;
@@ -222,7 +222,7 @@ int buildImage(void)
 	hdrTemplate.magic = 0x4fff;
 	hdrTemplate.build = 0x6007;
 	memset(xb.mmcAnchor, 0, sizeof(xb.mmcAnchor));
-	if (xb.type == 2) {
+	if (xb.type == BUILD_JTAG) {
 		hdrTemplate.cbOffset = 0x800000;
 		hdrTemplate.cfOffset = 0x700;
 		hdrTemplate.kvSize = 0x400000;
@@ -232,8 +232,8 @@ int buildImage(void)
 		hdrTemplate.smcBootSize = 0x300000;
 		hdrTemplate.smcBootAddr = 0x100000;
 		imgEnd = 0x8000;
-		if ((xb.flags & 7) == 4) {
-			if (xb.flags & 0x80000000) {
+		if ((xb.flags & CONSOLE_MASK) == CONSOLE_JASPER) {
+			if (xb.flags & NAND_BB_CONTROLLER) {
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
 			}
@@ -241,33 +241,34 @@ int buildImage(void)
 			if (bigBlock)
 				hdrTemplate.patchSlotSize = 0x100;
 			copyright[10] = '8';
-		} else if ((xb.flags & 7) == 1 || (xb.flags & 7) == 2) {
+		} else if ((xb.flags & CONSOLE_MASK) == CONSOLE_XENON ||
+			   (xb.flags & CONSOLE_MASK) == CONSOLE_ZEPHYR) {
 			copyright[10] = '5';
 			hdrTemplate.kvSize = 0;
 		} else
 			copyright[10] = '7';
 	} else {
-		hdrTemplate.cbOffset = xb.type - 8 < 2 ? 0xc00000 : 0x800000;
+		hdrTemplate.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
 		cf = SWAP32_IMAGE_WRITE(findFileOffset(9));
 		hdrTemplate.patchSlots = 0x12070200;
 		hdrTemplate.kvAddr = 0x400000;
 		hdrTemplate.smcBootSize = 0x300000;
 		hdrTemplate.smcBootAddr = 0x100000;
 		imgEnd = 0x8000;
-		hdrTemplate.kvSize = xb.type - 8 < 2 ? 0x800000 : 0x400000;
+		hdrTemplate.kvSize = xb.type - BUILD_TESTKIT < 2 ? 0x800000 : 0x400000;
 		hdrTemplate.cfOffset = cf;
 		hdrTemplate.sysUpdateAddr = cf;
-		switch (xb.flags & 7) {
-		case 1:
-		case 2:
+		switch (xb.flags & CONSOLE_MASK) {
+		case CONSOLE_XENON:
+		case CONSOLE_ZEPHYR:
 			copyright[10] = '5';
 			hdrTemplate.kvSize = 0;
 			break;
-		case 3:
+		case CONSOLE_FALCON:
 			copyright[10] = '7';
 			break;
-		case 4:
-			if (xb.flags & 0x80000000) {
+		case CONSOLE_JASPER:
+			if (xb.flags & NAND_BB_CONTROLLER) {
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
 			}
@@ -277,14 +278,14 @@ int buildImage(void)
 				hdrTemplate.patchSlotSize = 0x200;
 			copyright[10] = '9';
 			break;
-		case 5:
+		case CONSOLE_TRINITY:
 			xb.bbController = 1;
 			hdrTemplate.patchSlotSize = 0x100;
 			copyright[9] = '1';
 			copyright[10] = '0';
 			break;
-		case 6:
-		case 7:
+		case CONSOLE_CORONA:
+		case CONSOLE_WINCHESTER:
 			xb.bbController = 1;
 			hdrTemplate.patchSlotSize = 0x100;
 			copyright[9] = '1';
@@ -294,19 +295,19 @@ int buildImage(void)
 			break;
 		}
 	}
-	if (xb.type > 5) {
+	if (xb.type > BUILD_DEVGL16) {
 		copyright[9] = '1';
 		hdrTemplate.qfe = 0x80;
 		copyright[10] = '0';
 		hdrTemplate.patchSlotSize = xb.bigBlock ? 0x200 : 0x100;
 	} else if (!checkZeros(xb.cpuKey, 16) && !xb.cfLdv) {
 		log_printf(0, "***** WARNING: cfldv was not set anywhere, setting it to 1\n");
-		if (xb.type != 2)
+		if (xb.type != BUILD_JTAG)
 			log_printf(0, "      please set it in ini or on command line and rebuild!\n");
 		xb.cfLdv = 1;
 	}
 	memcpy(hdrTemplate.copyright, copyright, sizeof(copyright));
-	if (xb.type != 1) {
+	if (xb.type != BUILD_RETAIL) {
 		xb.hdr[0x49] = 0;
 		xb.hdr[0x4a] = 0;
 	}
@@ -518,7 +519,7 @@ uint32_t setPatchSlot(uint32_t off)
 		off = imgEnd;
 	if (xb.bigBlock) {
 		off = (off + 0x1ffff) & ~0x1ffff;
-		if (xb.type == 1) {
+		if (xb.type == BUILD_RETAIL) {
 			uint32_t cf = SWAP32_IMAGE_WRITE(h[28]);
 
 			xb.spare7 = (off + (cf ? cf * 2 : 0x20000)) >> 17;
@@ -818,13 +819,13 @@ void fixupEmptyFsBlocks(uint32_t off)
 	for (b = off >> 14; b < xb.fsEnd; b++)
 		fsTable[b - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffe);
 	if (!xb.bigBlock) {
-		n = (xb.flags & 0x10000000) ? 6 : 4;
-		if (xb.type > 5)
+		n = (xb.flags & NAND_MMC) ? 6 : 4;
+		if (xb.type > BUILD_DEVGL16)
 			n = xb.blocks - xb.fsEnd;
 		for (i = 0; i < n; i++)
 			fsTable[xb.fsEnd + i] = SWAP16_IMAGE_WRITE(0x1ffb);
 	}
-	if (xb.type == 2) {
+	if (xb.type == BUILD_JTAG) {
 		xb.spare[26] = 3;
 		xb.spare[27] = 0x50;
 	}
@@ -971,7 +972,7 @@ int spareUsed(const uint8_t *s)
 
 uint8_t *imageGetBuffer(uint32_t *size)
 {
-	if (xb.flags & 0x10000000) {
+	if (xb.flags & NAND_MMC) {
 		*size = 0x3000000;
 		return xb.hdr;
 	}
@@ -988,7 +989,7 @@ int writeImage(char *name)
 	if (!f)
 		return -2;
 	log_printf(1, "writing file '%s' to disk...", name);
-	if (xb.flags & 0x10000000) {
+	if (xb.flags & NAND_MMC) {
 		if (fwrite(xb.hdr, 0x3000000, 1, f) != 1) {
 			log_printf(1, "failed!\n");
 			log_printf(0, "\n***** ERROR: was not able to write %d bytes to the file %s!\n", 0x3000000, name);
@@ -1048,7 +1049,7 @@ int finalizeImage(void)
 	uint8_t *raw, *s, *spare;
 	void *mem;
 
-	if (xb.flags & 0x10000000)
+	if (xb.flags & NAND_MMC)
 		return 0;
 	xb.raw = (uint8_t *)(mem = xmalloc(xb.rawSize));
 	if (!mem)
@@ -1114,7 +1115,7 @@ int finalizeImage(void)
 				blocks = 0x200;
 			} else {
 				size = 0x4200;
-				blocks = xb.type == 6 || xb.type == 8 ? 0x1000 : 0x400;
+				blocks = xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT ? 0x1000 : 0x400;
 			}
 			for (i = 0; i < xb.numBad; i++) {
 				uint32_t from = xb.badBlocks[i];
