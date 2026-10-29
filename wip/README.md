@@ -1358,6 +1358,32 @@ and frequency next to mcvar's WANT position).
   gotos) out of the plain build unless their guessed 1/(k+1) split is
   compensated too.
 
+Design-driven pass, how to start (set up and checked 2026-10-28):
+1. `python wip/mc/s19/mkslot.py src/mode_client.c build/v/mc19/slot_plain`
+   makes an s18 slot (m.c.274r.bbro, m.c.267r.compgotos, fdo.s) from the
+   plain compile; `python wip/mc/s18/analyze.py <slot>` gives the round-4
+   order and each block's P/f in s18's sp numbering (49 -ip, 103 usage(2),
+   112/115 HDD avatar/compat, 55 -r, 126 Block, 125 Failed, 127 Invalid, 61
+   -w, 117 patches(NULL), 130 info(NULL), 29/33/35/42/53/77/79 usage(3/4/5)
+   variants, 67/73/81/86/91 -e/-c/-i/-p/-v, 93 usage(1); case heads 107..
+   132). Plain: inv 23, every case head P4/f4, the tail all f 0..2.
+2. `python wip/mc/s18/hsim.py <slot> b=f/P ...` replays that real history
+   with design keys (reproduces inv 23 unchanged; `112=5/0 115=5/0` puts
+   the HDD errors before usage(2), inv 27). `hanneal.py <slot> EVALS SEED`
+   anneals f/P; for the plain build only f is free (no asm-goto
+   priorities: run with RXEV unset and LOCK on the P values, or patch
+   hanneal to keep P as measured), FMAX 10 (round-3 threshold).
+3. Realize a design: per block, an injection (`wip/mc/s19/search.py`'s
+   make(): target index, source rok/fail/after/top/ebtop, weight) whose
+   added frequency is the design's delta; raise sendAvatarData (39) /
+   sendCompatData (41) with the HDD logs (40/42) or the case trace
+   follows the error. Re-slot the realized variant, re-run analyze: the
+   insertion history moves with the frequencies, so iterate (anneal on the
+   new history, re-realize) until hsim's order is real.
+4. Check fncmp 0 (FNCMP=1 `python wip/mc/mcvar.py`), then clientEraseBlock
+   too (its out-of-line copy gets any ebtop injection), then the build
+   with mode_client's fprof/ffns removed from build.sh.
+
 ## net.c
 
 Built entirely from `src/net.c` (no .s) since 2026-10-27; this draft is
