@@ -1,10 +1,11 @@
 /* xebuild.h: types and structures shared by the app's objects.
 
    struct xebuild is the program's state, the global xb (defined in
-   src/globals.c).  Names follow the files that use each field; offsets are
-   in the comments.  Where a file reads a field as another type than the one
-   here, its use carries a cast marked TODO, so that the type can be settled
-   in a later pass without breaking the match. */
+   src/globals.c).  Names follow the files that use each field.  gcc's
+   natural alignment gives the original's layout, so there are no padding
+   members.  Where a file reads a field as another type than the one here,
+   its use carries a cast marked TODO, so that the type can be settled in a
+   later pass without breaking the match. */
 #ifndef XEBUILD_H
 #define XEBUILD_H
 
@@ -92,72 +93,72 @@ struct netfile {
 /* an input file of the image: xb.files */
 struct fileent {
 	char name[0x400];
-	uint32_t crc;			/* 400 */
-	int type;			/* 404 */
-	uint32_t offset;		/* 408 */
-	uint8_t *data;			/* 40c */
-	uint32_t size;			/* 410 */
-	uint8_t key[16];		/* 414 its RC4 key once encoded */
-	uint32_t fsSize;		/* 424 the part that goes in the filesystem */
-	uint32_t fsOffset;		/* 428 where that part starts */
+	uint32_t crc;
+	int type;
+	uint32_t offset;
+	uint8_t *data;
+	uint32_t size;
+	uint8_t key[16];		/* its RC4 key once encoded */
+	uint32_t fsSize;		/* the part that goes in the filesystem */
+	uint32_t fsOffset;		/* where that part starts */
 };
 
 /* an entry of the flash filesystem's file table */
 struct fsent {
 	char name[22];
-	uint16_t block;			/* 16 */
-	uint32_t size;			/* 18 */
-	uint32_t time;			/* 1c */
+	uint16_t block;
+	uint32_t size;
+	uint32_t time;
 };
 
 /* the flash image's header (big endian) */
 struct flashhdr {
-	uint16_t magic;			/* 00 */
-	uint16_t build;			/* 02 */
-	uint16_t qfe;			/* 04 */
-	uint16_t flags;			/* 06 */
-	uint32_t cbOffset;		/* 08 entry: the CB */
-	uint32_t cfOffset;		/* 0c */
-	char copyright[0x40];		/* 10 */
-	uint8_t reserved[0x10];		/* 50 */
-	uint32_t kvSize;		/* 60 */
-	uint32_t sysUpdateAddr;		/* 64 the CF */
-	uint16_t sysUpdateCount;	/* 68 */
-	uint16_t kvVersion;		/* 6a */
-	uint32_t kvAddr;		/* 6c */
-	uint32_t patchSlotSize;		/* 70 */
-	uint32_t smcConfigAddr;		/* 74 */
-	uint32_t smcBootSize;		/* 78 */
-	uint32_t smcBootAddr;		/* 7c */
+	uint16_t magic;
+	uint16_t build;
+	uint16_t qfe;
+	uint16_t flags;
+	uint32_t cbOffset;		/* entry: the CB */
+	uint32_t cfOffset;
+	char copyright[0x40];
+	uint8_t reserved[0x10];
+	uint32_t kvSize;
+	uint32_t sysUpdateAddr;		/* the CF */
+	uint16_t sysUpdateCount;
+	uint16_t kvVersion;
+	uint32_t kvAddr;
+	uint32_t patchSlotSize;
+	uint32_t smcConfigAddr;
+	uint32_t smcBootSize;
+	uint32_t smcBootAddr;
 };
 
 /* an RSA public key as the console keeps it */
 struct rsapub {
 	uint32_t cqw;
 	uint32_t exp;
-	uint64_t reserved;		/* 08 */
-	uint8_t mod[256];		/* 10 */
+	uint64_t reserved;
+	uint8_t mod[256];
 };
 
 /* what xeBuild's client (the console side) reports */
 struct consoleinfo {
-	uint32_t version;		/* 000 updsvr version; low byte: hv patches */
-	uint32_t kernel;		/* 004 */
-	uint32_t f008;			/* 008 2: has blmod, 4: has addons */
-	uint32_t bootstrap;		/* 00c hack type in the top bits */
-	uint32_t hwFlags;		/* 010 console type in the top 4 bits; 0x20: has HDD */
-	uint32_t nandSize;		/* 014 system area */
-	uint32_t blockSize;		/* 018 */
-	uint32_t pairing;		/* 01c ldv in the low byte */
-	uint8_t cpuKey[16];		/* 020 */
-	uint8_t dvdKey[16];		/* 030 */
-	uint8_t fuses[96];		/* 040 */
-	uint8_t vfuses[96];		/* 0a0 */
-	uint8_t key1bl[16];		/* 100 */
-	struct rsapub pub1bl;		/* 110 */
-	struct rsapub pubPirs;		/* 220 */
-	struct rsapub pubMaster;	/* 330 */
-	uint8_t keys[6][16];		/* 440 */
+	uint32_t version;		/* updsvr version; low byte: hv patches */
+	uint32_t kernel;
+	uint32_t f008;			/* 2: has blmod, 4: has addons */
+	uint32_t bootstrap;		/* hack type in the top bits */
+	uint32_t hwFlags;		/* console type in the top 4 bits; 0x20: has HDD */
+	uint32_t nandSize;		/* system area */
+	uint32_t blockSize;
+	uint32_t pairing;		/* ldv in the low byte */
+	uint8_t cpuKey[16];
+	uint8_t dvdKey[16];
+	uint8_t fuses[96];
+	uint8_t vfuses[96];
+	uint8_t key1bl[16];
+	struct rsapub pub1bl;
+	struct rsapub pubPirs;
+	struct rsapub pubMaster;
+	uint8_t keys[6][16];
 };
 
 /* console_hdd's file manifest */
@@ -188,137 +189,135 @@ struct manifest {
 #define XB_ADDONS 19
 
 struct xebuild {
-	int mode;			/* 000 */
-	uint32_t flags;			/* 004 console type (& 7), NAND flags */
-	uint32_t type;			/* 008 build type */
-	uint32_t kernel;		/* 00c */
-	int glitch2;			/* 010 */
-	int glitch2mfg;			/* 014 */
-	uint32_t cbb;			/* 018 build with a CB_B */
-	uint32_t seReplacesCf;		/* 01c an SE was loaded where the CF goes */
-	int randomKeys;			/* 020 keysInit's argument (random nonces) */
-	int sysTime;			/* 024 use the system time for timestamps */
-	uint32_t muBlocks;		/* 028 end of the MU area (big block) */
-	uint8_t spare9;			/* 02c spare bytes of system blocks */
-	uint8_t spare8;			/* 02d */
-	uint8_t spare7;			/* 02e */
-	uint8_t pad02f;
-	uint8_t *spare;			/* 030 16 spare bytes per 512-byte page */
-	uint32_t spareSize;		/* 034 */
-	uint8_t *hdr;			/* 038 the flash image (user data) */
-	uint32_t userSize;		/* 03c */
-	uint8_t *raw;			/* 040 data and spare interleaved */
-	uint32_t blocks;		/* 044 16K blocks */
-	uint32_t rawSize;		/* 048 */
-	uint32_t smcConfigOffset;	/* 04c */
-	int bigBlock;			/* 050 */
-	int bbController;		/* 054 big block controller, small block NAND */
-	uint32_t fsEnd;			/* 058 FS area, in 16K blocks */
-	uint32_t fsStart;		/* 05c */
-	uint32_t bootFlags;		/* 060 options turned on */
-	uint32_t bootFlagsOff;		/* 064 options turned off */
-	int xellButton;			/* 068 */
+	int mode;
+	uint32_t flags;			/* console type (& 7), NAND flags */
+	uint32_t type;			/* build type */
+	uint32_t kernel;
+	int glitch2;
+	int glitch2mfg;
+	uint32_t cbb;			/* build with a CB_B */
+	uint32_t seReplacesCf;		/* an SE was loaded where the CF goes */
+	int randomKeys;			/* keysInit's argument (random nonces) */
+	int sysTime;			/* use the system time for timestamps */
+	uint32_t muBlocks;		/* end of the MU area (big block) */
+	uint8_t spare9;			/* spare bytes of system blocks */
+	uint8_t spare8;
+	uint8_t spare7;
+	uint8_t *spare;			/* 16 spare bytes per 512-byte page */
+	uint32_t spareSize;
+	uint8_t *hdr;			/* the flash image (user data) */
+	uint32_t userSize;
+	uint8_t *raw;			/* data and spare interleaved */
+	uint32_t blocks;		/* 16K blocks */
+	uint32_t rawSize;
+	uint32_t smcConfigOffset;
+	int bigBlock;
+	int bbController;		/* big block controller, small block NAND */
+	uint32_t fsEnd;			/* FS area, in 16K blocks */
+	uint32_t fsStart;
+	uint32_t bootFlags;		/* options turned on */
+	uint32_t bootFlagsOff;		/* options turned off */
+	int xellButton;
 	/* uint32_t (unlike xellButton): options.c's applyIniOptions' tests of them
 	   don't get reused for parseButton's 0 */
-	uint32_t xellAltButton;		/* 06c */
-	uint32_t dualButton;		/* 070 */
-	uint8_t cbLdv;			/* 074 */
-	uint8_t cfLdv;			/* 075 */
-	uint8_t pad076[2];
-	uint32_t cpuTemp;		/* 078 smc_config overrides from the ini */
-	uint32_t gpuTemp;		/* 07c */
-	uint32_t edramTemp;		/* 080 */
-	uint32_t overCpuTemp;		/* 084 */
-	uint32_t overGpuTemp;		/* 088 */
-	uint32_t overEdramTemp;		/* 08c */
-	uint32_t cpuFan;		/* 090 */
-	uint32_t gpuFan;		/* 094 */
-	uint32_t avRegion;		/* 098 */
-	uint32_t gameRegion;		/* 09c */
-	uint32_t dvdRegion;		/* 0a0 */
-	uint8_t macid[6];		/* 0a4 */
-	uint8_t pad0aa[2];
-	uint8_t *dump;			/* 0ac the nand dump's user data, ECC stripped */
-	uint8_t *dumpSpare;		/* 0b0 its spare data, 16 bytes a page */
-	uint32_t dumpSize;		/* 0b4 */
-	uint32_t dumpSpareSize;		/* 0b8 */
-	uint32_t dumpPages;		/* 0bc */
-	int dumpBigBlock;		/* 0c0 */
-	int dumpBbController;		/* 0c4 */
-	int dumpMmc;			/* 0c8 */
-	int nandMu;			/* 0cc */
-	int muChecked;			/* 0d0 */
-	uint32_t numBad;		/* 0d4 bad blocks of the dump */
-	uint32_t badBlocks[32];		/* 0d8 */
-	uint32_t badRemap[32];		/* 158 */
-	struct netfile consoleBlmod;	/* 1d8 blmod.bin from the console */
-	struct netfile bl;		/* 1e0 the bootloaders (raw, glitch) */
-	int fromConsole;		/* 1e8 bootloaders read from the console */
-	struct netfile mobile[11];	/* 1ec MobileB-J, Statistics, Manufacturing */
-	struct netfile smc;		/* 244 files from the nand dump */
-	struct netfile kv;		/* 24c */
-	struct netfile kvAlt;		/* 254 */
-	struct netfile smcConfig;	/* 25c */
-	struct netfile netKd;		/* 264 */
-	uint8_t key1bl[16];		/* 26c */
-	uint8_t cpuKey[16];		/* 27c */
-	uint8_t xexKey[16];		/* 28c calcXexKey's (CRL/DAE key) */
-	struct rsapub *pub1bl;		/* 29c */
-	struct rsapub *masterPub;	/* 2a0 */
-	struct rsapub *pubPirs;		/* 2a4 */
-	void *prvKey;			/* 2a8 the ini's 2BL private key (SB) */
-	char suffix[0x400];		/* 2ac -i */
-	char binDir[0x400];		/* 6ac */
-	char outName[0x400];		/* aac */
-	char baseDir[0x400];		/* eac -d */
-	char dataDir[0x400];		/* 12ac -f */
-	char commonDir[0x400];		/* 16ac */
-	char firmware[256][0x400];	/* 1aac the ini's firmware files */
-	uint32_t firmwareCrc[256];	/* 41aac */
-	uint32_t nFirmware;		/* 41eac */
+	uint32_t xellAltButton;
+	uint32_t dualButton;
+	uint8_t cbLdv;
+	uint8_t cfLdv;
+	uint32_t cpuTemp;		/* smc_config overrides from the ini */
+	uint32_t gpuTemp;
+	uint32_t edramTemp;
+	uint32_t overCpuTemp;
+	uint32_t overGpuTemp;
+	uint32_t overEdramTemp;
+	uint32_t cpuFan;
+	uint32_t gpuFan;
+	uint32_t avRegion;
+	uint32_t gameRegion;
+	uint32_t dvdRegion;
+	uint8_t macid[6];
+	uint8_t *dump;			/* the nand dump's user data, ECC stripped */
+	uint8_t *dumpSpare;		/* its spare data, 16 bytes a page */
+	uint32_t dumpSize;
+	uint32_t dumpSpareSize;
+	uint32_t dumpPages;
+	int dumpBigBlock;
+	int dumpBbController;
+	int dumpMmc;
+	int nandMu;
+	int muChecked;
+	uint32_t numBad;		/* bad blocks of the dump */
+	uint32_t badBlocks[32];
+	uint32_t badRemap[32];
+	struct netfile consoleBlmod;	/* blmod.bin from the console */
+	struct netfile bl;		/* the bootloaders (raw, glitch) */
+	int fromConsole;		/* bootloaders read from the console */
+	struct netfile mobile[11];	/* MobileB-J, Statistics, Manufacturing */
+	struct netfile smc;		/* files from the nand dump */
+	struct netfile kv;
+	struct netfile kvAlt;
+	struct netfile smcConfig;
+	struct netfile netKd;
+	uint8_t key1bl[16];
+	uint8_t cpuKey[16];
+	uint8_t xexKey[16];		/* calcXexKey's (CRL/DAE key) */
+	struct rsapub *pub1bl;
+	struct rsapub *masterPub;
+	struct rsapub *pubPirs;
+	void *prvKey;			/* the ini's 2BL private key (SB) */
+	char suffix[0x400];		/* -i */
+	char binDir[0x400];
+	char outName[0x400];
+	char baseDir[0x400];		/* -d */
+	char dataDir[0x400];		/* -f */
+	char commonDir[0x400];
+	char firmware[256][0x400];	/* the ini's firmware files */
+	uint32_t firmwareCrc[256];
+	uint32_t nFirmware;
 #ifdef XB_PATCHES
 	union {
-		struct fileent files[XB_FILES_BOUND];	/* 41eb0 */
+		struct fileent files[XB_FILES_BOUND];
 		struct {
-			uint8_t pad41eb0[XB_ADDONS * sizeof(struct fileent)];
-			char patches[16][sizeof(struct fileent)];	/* 46df4 the addons' names */
+			uint8_t padPatches[XB_ADDONS * sizeof(struct fileent)];
+			char patches[16][sizeof(struct fileent)];	/* the addons' names */
 		};
 	};
 #else
-	struct fileent files[XB_FILES_BOUND];	/* 41eb0 */
+	struct fileent files[XB_FILES_BOUND];
 	uint8_t padFiles[(35 - XB_FILES_BOUND) * sizeof(struct fileent)];
 #endif
-	char blSuffix[0x40];		/* 4b0b4 -r */
-	int numPatches;			/* 4b0f4 addons (files[XB_ADDONS...]) */
-	int nFiles;			/* 4b0f8 */
-	int nFlashFiles;		/* 4b0fc */
+	char blSuffix[0x40];		/* -r */
+	int numPatches;			/* addons (files[XB_ADDONS...]) */
+	int nFiles;
+	int nFlashFiles;
 	struct {
 		char name[0x400];
 		uint32_t offset;
-	} rawPatch[16];			/* 4b100 */
-	uint32_t nRawPatches;		/* 4f140 */
-	char flashFiles[10][22];	/* 4f144 security files */
-	uint8_t *flashBuf[10];		/* 4f220 their data from a dump */
-	uint32_t flashSize[10];		/* 4f248 */
-	uint32_t flashTime[10];		/* 4f270 */
-	uint32_t flashCrc[10];		/* 4f298 */
-	uint32_t nFlashFiles2;		/* 4f2c0 the security file count */
+	} rawPatch[16];
+	uint32_t nRawPatches;
+	char flashFiles[10][22];	/* security files */
+	uint8_t *flashBuf[10];		/* their data from a dump */
+	uint32_t flashSize[10];
+	uint32_t flashTime[10];
+	uint32_t flashCrc[10];
+	uint32_t nFlashFiles2;		/* the security file count */
 	union {
-		uint32_t mmcAnchor[0x80];	/* 4f2c4 MMC anchor block */
+		uint32_t mmcAnchor[0x80];	/* MMC anchor block */
 		struct {
-			uint8_t anchor[0x1b];	/* 4f2c4 */
-			uint8_t anchorNum;	/* 4f2df */
-			uint8_t pad4f2e0[4];
+			uint8_t anchor[0x1b];
+			uint8_t anchorNum;
+			uint16_t fsBlock;	/* writeFsTable's block (big endian) */
+			uint16_t fsReserved;	/* written as 0 */
 			struct {
 				uint16_t type, size;
-			} mobileTab[9];		/* 4f2e4 */
+			} mobileTab[9];
 		};
 	};
-	char kernelStr[0x40];		/* 4f4c4 the ini's kernel version string */
-	uint8_t *iniBuf;		/* 4f504 the ini file */
-	char sha1File[0x400];		/* 4f508 */
-	int sha1Write;			/* 4f908 */
-	int iniSize;			/* 4f90c */
+	char kernelStr[0x40];		/* the ini's kernel version string */
+	uint8_t *iniBuf;		/* the ini file */
+	char sha1File[0x400];
+	int sha1Write;
+	int iniSize;
 };
 
 /* ---- Globals (src/globals.c) ---- */

@@ -948,8 +948,8 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 small:
 	imgAdd(off, buf, i * 0x400, 0x30, 0x1ffd, 0);
 done:
-	setBeU16(blk, (uint8_t *)xb.mmcAnchor + 0x1c);
-	setBeU16(0, (uint8_t *)xb.mmcAnchor + 0x1e);
+	setBeU16(blk, (uint8_t *)&xb.fsBlock);
+	setBeU16(0, (uint8_t *)&xb.fsReserved);
 	free(buf);
 }
 
