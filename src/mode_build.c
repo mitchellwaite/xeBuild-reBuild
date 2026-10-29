@@ -132,9 +132,10 @@ void loadPubKey(const char *desc, const char *file, void **out, uint32_t size, u
 
 void loadPubKeys(void)
 {
-	loadPubKey("1BL RSA pub key", "1BL_pub.bin", &xb.pub1bl, 272, 0x79c7, 0);
-	loadPubKey("PIRS RSA pub key", "PIRS_pub.bin", &xb.pubPirs, 272, 0x80d0, 0);
-	loadPubKey("MASTER RSA pub key", "MAST_pub.bin", &xb.masterPub, 272, 0x843c, 0);
+	/* TODO(prototype cast): loadPubKey fills a void * (prvKey's too) */
+	loadPubKey("1BL RSA pub key", "1BL_pub.bin", (void **)&xb.pub1bl, 272, 0x79c7, 0);
+	loadPubKey("PIRS RSA pub key", "PIRS_pub.bin", (void **)&xb.pubPirs, 272, 0x80d0, 0);
+	loadPubKey("MASTER RSA pub key", "MAST_pub.bin", (void **)&xb.masterPub, 272, 0x843c, 0);
 	loadPubKey("SC/SD RSA priv key", "SB_priv.bin", &xb.prvKey, 912, 0x1ca16, 1);
 }
 

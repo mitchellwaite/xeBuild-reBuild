@@ -4,8 +4,8 @@
 
 #include "xebuild.h"
 
-int kvVerifySig(uint8_t *kv, const void *pubKey, const uint8_t *hmacKey);
-int cbVerifySig(uint8_t *bl, const void *pubKey);
+int kvVerifySig(uint8_t *kv, const struct rsapub *pubKey, const uint8_t *hmacKey);
+int cbVerifySig(uint8_t *bl, const struct rsapub *pubKey);
 int blVerifySig(uint8_t *bl, unsigned int len, const void *pubKey, const uint8_t *salt);
 int blSign(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey,
 	const uint8_t *salt);

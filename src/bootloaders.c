@@ -166,7 +166,8 @@ int crlVerifySig(uint8_t *crl, uint8_t *hash)
 		return 1;
 	if (getBeU32(crl) != 0x43524c50)	/* "CRLP" */
 		return 1;
-	ok = XeKeysPkcs1Verify(hash, crl + 32, xb.pubPirs);
+	/* TODO(prototype cast): xecrypt.h types the keys as its XECRYPT_RSA header */
+	ok = XeKeysPkcs1Verify(hash, crl + 32, (const XECRYPT_RSA *)xb.pubPirs);
 	if (ok)
 		log_printf(1, "sig good! ");
 	else
@@ -237,7 +238,7 @@ int daeVerifySig(uint8_t *seg, uint32_t size, int n)
 	}
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pubPirs);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, (const XECRYPT_RSA *)xb.pubPirs);
 	/* the original's .rdata has "good" before "FAIL" (verifyDae's order) */
 	__asm__("" :: "i"("sig %d good! "));
 	if (!ok)
@@ -262,7 +263,7 @@ static inline __attribute__((always_inline)) int daeSigCheck(uint8_t *seg, uint3
 		return 1;
 	memset(key, 0, 16);
 	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pubPirs);
+	ok = XeKeysPkcs1Verify(hash, seg + 32, (const XECRYPT_RSA *)xb.pubPirs);
 	if (ok)
 		log_printf(1, "sig %d good! ", n);
 	else
@@ -303,13 +304,13 @@ int verifyDae(uint8_t *buf, uint32_t size)
 inline __attribute__((always_inline)) int fcrtVerifySig(uint8_t *fcrt)
 {
 	uint8_t hash[20];
-	void *pub;
+	struct rsapub *pub;
 	int ok;
 
 	pub = (getBeU32(fcrt + 272) & 0x80000000) ? xb.pubPirs : xb.masterPub;
 	if (pub) {
 		XeCryptHmacSha(xb.cpuKey, 16, fcrt + 256, 64, 0, 0, 0, 0, hash, 20);
-		ok = XeKeysPkcs1Verify(hash, fcrt, pub);
+		ok = XeKeysPkcs1Verify(hash, fcrt, (const XECRYPT_RSA *)pub);
 		if (ok)
 			log_printf(1, "sig good! ");
 		else

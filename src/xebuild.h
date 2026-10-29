@@ -263,9 +263,9 @@ struct xebuild {
 	uint8_t key1bl[16];		/* 26c */
 	uint8_t cpuKey[16];		/* 27c */
 	uint8_t key28c[16];		/* 28c */
-	void *pub1bl;			/* 29c */
-	void *masterPub;		/* 2a0 */
-	void *pubPirs;			/* 2a4 */
+	struct rsapub *pub1bl;		/* 29c */
+	struct rsapub *masterPub;	/* 2a0 */
+	struct rsapub *pubPirs;		/* 2a4 */
 	void *prvKey;			/* 2a8 the ini's 2BL private key (SB) */
 	char suffix[0x400];		/* 2ac -i */
 	char binDir[0x400];		/* 6ac */

@@ -8,15 +8,16 @@
 
 char romSalts[3][12] = { "XBOX_ROM_4", "XBOX_ROM_3", "XBOX_ROM_B" };
 
-int kvVerifySig(uint8_t *kv, const void *pubKey, const uint8_t *hmacKey)
+int kvVerifySig(uint8_t *kv, const struct rsapub *pubKey, const uint8_t *hmacKey)
 {
 	uint8_t hash[20];
 
 	XeCryptHmacSha(hmacKey, 16, kv + 0x1c, 0xd4, kv + 0x100, 0x1cf8, kv + 0x1ef8, 0x2108, hash, 20);
-	return XeKeysPkcs1Verify(hash, kv + 0x1df8, pubKey);
+	/* TODO(prototype cast): xecrypt.h types the key as its XECRYPT_RSA header */
+	return XeKeysPkcs1Verify(hash, kv + 0x1df8, (const XECRYPT_RSA *)pubKey);
 }
 
-int cbVerifySig(uint8_t *bl, const void *pubKey)
+int cbVerifySig(uint8_t *bl, const struct rsapub *pubKey)
 {
 	uint8_t hash[20];
 	unsigned int len = (getBeU32(bl + 12) + 15) & ~15;
