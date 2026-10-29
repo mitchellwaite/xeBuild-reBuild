@@ -227,7 +227,8 @@ int buildImage(void)
 		hdrTemplate.cfOffset = 0x700;
 		hdrTemplate.kvSize = 0x400000;
 		hdrTemplate.sysUpdateAddr = 0x700;
-		hdrTemplate.patchSlots = 0x12070200;
+		hdrTemplate.sysUpdateCount = 0x0200;
+		hdrTemplate.kvVersion = 0x1207;
 		hdrTemplate.kvAddr = 0x400000;
 		hdrTemplate.smcBootSize = 0x300000;
 		hdrTemplate.smcBootAddr = 0x100000;
@@ -250,7 +251,8 @@ int buildImage(void)
 	} else {
 		hdrTemplate.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
 		cf = SWAP32_IMAGE_WRITE(findFileOffset(9));
-		hdrTemplate.patchSlots = 0x12070200;
+		hdrTemplate.sysUpdateCount = 0x0200;
+		hdrTemplate.kvVersion = 0x1207;
 		hdrTemplate.kvAddr = 0x400000;
 		hdrTemplate.smcBootSize = 0x300000;
 		hdrTemplate.smcBootAddr = 0x100000;

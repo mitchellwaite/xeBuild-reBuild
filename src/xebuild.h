@@ -122,13 +122,8 @@ struct flashhdr {
 	uint8_t reserved[0x10];		/* 50 */
 	uint32_t kvSize;		/* 60 */
 	uint32_t sysUpdateAddr;		/* 64 the CF */
-	union {
-		uint32_t patchSlots;	/* 68 both halves at once */
-		struct {
-			uint16_t sysUpdateCount;	/* 68 */
-			uint16_t kvVersion;	/* 6a */
-		};
-	};
+	uint16_t sysUpdateCount;	/* 68 */
+	uint16_t kvVersion;		/* 6a */
 	uint32_t kvAddr;		/* 6c */
 	uint32_t patchSlotSize;		/* 70 */
 	uint32_t smcConfigAddr;		/* 74 */
