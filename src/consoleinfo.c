@@ -312,21 +312,21 @@ int showInfoKeys(int level, const char *dir, int *update)
 		if (dir)
 			writeFileIn(dir, "1BL_pub.bin", &info->pub1bl, 272);
 	}
-	ok = sumBytes(info->pubPirs, 272) == 0x80d0;
+	ok = sumBytes((const uint8_t *)&info->pubPirs, 272) == 0x80d0;
 	log_printfInt(level, "PIRS RSA pub    : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
-			xb.pubPirs = info->pubPirs;
+			xb.pubPirs = &info->pubPirs;
 		if (dir)
-			writeFileIn(dir, "PIRS_pub.bin", info->pubPirs, 272);
+			writeFileIn(dir, "PIRS_pub.bin", &info->pubPirs, 272);
 	}
-	ok = sumBytes(info->pubMaster, 272) == 0x843c;
+	ok = sumBytes((const uint8_t *)&info->pubMaster, 272) == 0x843c;
 	log_printfInt(level, "MASTER RSA pub  : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
-			xb.masterPub = info->pubMaster;
+			xb.masterPub = &info->pubMaster;
 		if (dir)
-			writeFileIn(dir, "MAST_pub.bin", info->pubMaster, 272);
+			writeFileIn(dir, "MAST_pub.bin", &info->pubMaster, 272);
 	}
 	if (dir) {
 		if (!checkZeros(info->fuses, 96))

@@ -229,8 +229,8 @@ void clientKeys(void)
 	if ((uint8_t)cinfo->version > 1) {
 		dumpKey("1BL key", "1blkey.txt", cinfo->key1bl, 16, 2435);
 		dumpKey("1BL RSA pub key", "1BL_pub.bin", (const uint8_t *)&cinfo->pub1bl, 272, 31175);
-		dumpKey("PIRS RSA pub key", "PIRS_pub.bin", cinfo->pubPirs, 272, 32976);
-		dumpKey("MASTER RSA pub key", "MAST_pub.bin", cinfo->pubMaster, 272, 33852);
+		dumpKey("PIRS RSA pub key", "PIRS_pub.bin", (const uint8_t *)&cinfo->pubPirs, 272, 32976);
+		dumpKey("MASTER RSA pub key", "MAST_pub.bin", (const uint8_t *)&cinfo->pubMaster, 272, 33852);
 	} else
 		log_printf(0, "\n\n****** ERROR: console patches need to be updated to support this operation!\n");
 }
