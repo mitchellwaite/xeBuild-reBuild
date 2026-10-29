@@ -2,17 +2,19 @@
 
 Status: plan only, nothing implemented.
 
-Goal: a new build switch, `-cbx <file>`, makes a glitch2 or glitch2m build
-put a CB_X between the CB_A and the CB_B, in one pass:
+Goal: a new build switch, `-cbx`, makes a glitch2 or glitch2m build put a
+CB_X between the CB_A and the CB_B, in one pass. xeBuild carries a built-in
+CB_X (1024 bytes); `-cbxfile <file>` uses a custom one instead:
 
 ```
-xeBuild -t glitch2 -c jasper -d files -cbx cbx.bin out.bin
+xeBuild -t glitch2 -c jasper -d files -cbx out.bin
+xeBuild -t glitch2m -c falcon -d files -cbxfile mycbx.bin out.bin
 ```
 
 gives the chain
 
 ```
-0x8000  CB_A   encrypted as today (1BL key)
+0x8000  CB_A   the ini's, encrypted as today (1BL key)
         CB_X   encrypted the way a CB_B is (key from the CB_A)
         CB_B   plaintext, its RC4 key at +0x10
         CD     encrypted from the CB_B's key, as today
@@ -30,9 +32,10 @@ flash header (0x08) on:
 
 1. Takes the CB_A and the CB_X ("rgh3Payload") from an RGH3 ECC file. The
    CB_X is stored there encrypted as a CB_B with the **zero** CPU key.
-   If its word at 0x354 is `0x646A0002`, it decrypts it, patches four
-   instructions (0x354, 0x368, 0x370, 0x37c), re-encrypts it with the same
-   key and zeroes the nonce at +0x10.
+   The ECC's CB_A is 10918, a mfg CB_A, and a mfg CB_A derives the next
+   stage's key with the zero key, so the ECC's CB_X works on any console.
+   (JRunner also patches four words at 0x354 of an older CB_X; current
+   CB_X files don't need it, and this plan doesn't do it.)
 2. Decrypts the image's CB_A (`DecryptCBA`: key = HMAC(1BL key, +0x10)) and
    then its CB_B with the console's CPU key (`DecryptCBB`: key =
    HMAC(CB_A key, CB_B +0x10, CPU key)). `DecryptCBB` returns the header,
@@ -44,21 +47,23 @@ flash header (0x08) on:
    difference; the CD and CE themselves are untouched. Xell (0x70000) and
    the patch slots after it don't move.
 
-So, as the request says:
+So:
 
 - the CB_X is encrypted like a CB_B: the CB_A derives its key from its own
-  key, the CB_X's nonce and a CPU key;
+  key, the CB_X's nonce and a CPU key (the zero key for a mfg CB_A);
 - the real CB_B is stored in plaintext, with its own RC4 key where the nonce
   was (that's how a CB_A leaves a decrypted CB_B in memory, and how the CB_B
   then finds the key it chains the CD from);
 - the CD and later stages are encrypted exactly as with an encrypted CB_B:
   the CD's key comes from the CB_B's key, which doesn't change.
 
-Two things JRunner's tool does that this switch should **not** do: it
-replaces the image's CB_A with the RGH3 CB_A (here the CB_A stays the one
-the ini names, as requested: the CB_X goes *between* the CB_A and the
-CB_B), and, with `patchSMC`, the SMC (the SMC stays the per-build
-`smc.bin` as usual). See Open questions for both.
+What `-cbx` does differently from JRunner:
+
+- **The CB_A stays the ini's.** RGH3 doesn't need a special CB_A; JRunner
+  swaps in 10918 only because, being mfg, it lets the post-build step ship
+  one pre-encrypted CB_X. xeBuild encrypts the CB_X itself, so it keys it
+  against whatever CB_A the build uses.
+- **The SMC stays the per-build `smc.bin`.** `patchSMC` isn't part of this.
 
 ## Where it fits in xeBuild today
 
@@ -83,10 +88,15 @@ the ini's CB_B line not being `none`), in `buildFlash` (src/build.c):
 - `addBlsToImage` writes each file at a running `off` (fixed offsets reset
   it), so the bootloaders are contiguous from 0x8000.
 
-The CB_X therefore needs: loading, a key from the CB_A (as `cbbEncrypt`
-derives it), room in `calcBlAreaSize`, and a place in `addBlsToImage`
-right before the CB_B. The CB_B needs its RC4 undone after `cbbEncrypt`
-and its key written to +0x10. Nothing after the CB_B changes.
+Built-in defaults already exist for other files: `defPayload`, `defCore`
+and `defBl60` are byte arrays at the top of src/build.c, used when no file
+is found (`loadBl` cases 1, 22, 24). The built-in CB_X follows that
+pattern.
+
+The CB_X therefore needs: a source (built-in or file), a key from the CB_A
+(as `cbbEncrypt` derives it), room in `calcBlAreaSize`, and a place in
+`addBlsToImage` right before the CB_B. The CB_B needs its RC4 undone after
+`cbbEncrypt` and its key written to +0x10. Nothing after the CB_B changes.
 
 ### Why not a new slot in the layout tables
 
@@ -109,84 +119,112 @@ still end with
 `encodeBls`, `calcBlAreaSize`, `addBlsToImage`, `buildFlash` and
 `mode_build` are matched with code-free hints, so add separate `#ifdef`
 blocks and `static` helpers rather than reshaping their code. New
-functions in src/keys.c go at the end of the file, new state in build.c
-after its existing data, all inside the `#ifdef`. Don't add fields to
-`xb` (its layout is the original's).
+functions in src/keys.c go at the end of the file, new data in build.c
+after its existing data (after `defCore` and the other tables), all inside
+the `#ifdef`. Don't add fields to `xb` (its layout is the original's).
 
 ## Changes
 
-### 1. The switch (src/mode_build.c, src/build.h)
+### 1. The switches (src/mode_build.c, src/build.h)
 
 In src/build.h:
 
 ```c
 #ifdef XEBUILD_EXT
-/* -cbx: a CB_X to put between the CB_A and the CB_B */
+/* -cbx: put a CB_X between the CB_A and the CB_B; -cbxfile: a custom one
+   instead of the built-in defCbx */
+extern int cbxOn;
 extern char cbxName[0x400];
 #endif
 ```
 
-In `mode_build`'s argument loop, under `XEBUILD_EXT`, a branch **before**
-the `-c` one (the loop compares prefixes, so `-c` would take `-cbx`):
+In `mode_build`'s argument loop, under `XEBUILD_EXT`, two branches
+**before** the `-c` one, `-cbxfile` first (the loop compares prefixes, so
+`-c` would take both and `-cbx` would take `-cbxfile`):
 
 ```c
-		} else if (!strnicmp(argv[i], "-cbx", 4)) {
+		} else if (!strnicmp(argv[i], "-cbxfile", 8)) {
 			if (!argv[++i] || i == argc || argv[i][0] == '-') {
-				log_printf(0, "\n\n***** ERROR: CB_X flag -cbx on command line but no argument provided!\n");
+				log_printf(0, "\n\n***** ERROR: CB_X file flag -cbxfile on command line but no argument provided!\n");
 				build_usage();
 			}
+			cbxOn = 1;
 			strcpy(cbxName, argv[i]);
-			log_printf(1, "CB_X '%s' goes between the CB_A and the CB_B\n", cbxName);
+			log_printf(1, "CB_X from '%s' goes between the CB_A and the CB_B\n", cbxName);
+		} else if (!strnicmp(argv[i], "-cbx", 4)) {
+			cbxOn = 1;
+			log_printf(1, "built-in CB_X goes between the CB_A and the CB_B\n");
 ```
 
-After the loop (once `-t` is known), under `XEBUILD_EXT`: if `cbxName[0]`
-and not `xb.type == BUILD_GLITCH && xb.glitch2`, error ("-cbx needs
--t glitch2 or glitch2m") and `build_usage()`.
+`-cbx` takes no argument, so it can't swallow the output name. `-cbxfile`
+implies `-cbx`; giving both is fine.
+
+After the loop (once `-t` is known), under `XEBUILD_EXT`: if `cbxOn` and
+not `xb.type == BUILD_GLITCH && xb.glitch2`, error ("-cbx needs -t glitch2
+or glitch2m") and `build_usage()`.
 
 In `build_usage`, under `XEBUILD_EXT`, after the `-8` line:
 
 ```
-   -cbx <file>: glitch2/glitch2m: put CB_X <file> between the CB_A and the CB_B (the CB_B is stored in plaintext)
+   -cbx     : glitch2/glitch2m: put a CB_X between the CB_A and the CB_B (the CB_B is stored in plaintext)
+   -cbxfile <file>: as -cbx, with a custom decrypted CB_X instead of the built-in one
 ```
 
-Only `mode_build` gets the switch. `mode_update` (`-u`) rewrites only the
+Only `mode_build` gets the switches. `mode_update` (`-u`) rewrites only the
 CF and CG from the console's own bootloaders (`xb.fromConsole`), so it has
 nothing to insert.
 
-### 2. Loading the CB_X (src/build.c)
+### 2. The built-in CB_X and loading (src/build.c)
 
 After the existing build.c data, under `XEBUILD_EXT`:
 
 ```c
+/* the built-in CB_X, decrypted, nonce zero (-cbx without -cbxfile) */
+const uint8_t defCbx[0x400] = {
+	...
+};
+
+int cbxOn;
 char cbxName[0x400];
 static struct fileent cbx;
 ```
+
+`defCbx` is written out like `defCore` (16 bytes a line, hex), from the
+decrypted 1024-byte CB_X the user provides; its header size at +12 must be
+0x400. A small `tools/bin2c.py <file> <name>` that prints the array keeps
+that reproducible; the source file isn't committed unless wanted.
 
 A `static int loadCbx(void)`:
 
 - `!xb.cbb`: error "this console's bl section has no CB_B, a CB_X needs
   one" and fail. (Single-CB glitch2 sections can't take a CB_X.)
-- load `cbxName` as given (`loadFileCrc(cbxName, &cbx, 1, 1, 0)`: relative
-  to the working directory, or absolute), else through
+- `cbxName[0]` (`-cbxfile`): load it as given
+  (`loadFileCrc(cbxName, &cbx, 1, 1, 0)`: relative to the working
+  directory, or absolute), else through
   `loadInputFile(cbxName, &cbx, 1, 0, NULL, 0, 0, 1)` (data dir, then
-  common dir, like the bootloaders). Neither found: error.
-- validate as `checkBl` would for a CB_B, without its crc (there is no ini
-  crc for it): `(d[0] & 0x43) == 0x43 && d[1] == 'B'`, the header size at
-  +12 non-zero, a multiple of 16 and not larger than the file. Then set
-  `cbx.size` to the header size (the next loader is found at CB_X + header
-  size, so trailing bytes in the file must not be written), with a warning
-  if the file was longer.
+  common dir, like the bootloaders). Neither found: error. No fallback to
+  the built-in: asking for a file that isn't there is a mistake.
+- otherwise: `cbx.data = malloc(0x400)`, copy `defCbx`, `cbx.size =
+  0x400`, log "using built-in CB_X (0x400 bytes)". It's copied because
+  step 3 encrypts in place.
+- validate either source as `checkBl` would for a CB_B, without its crc
+  (there is no ini crc for it): `(d[0] & 0x43) == 0x43 && d[1] == 'B'`,
+  the header size at +12 non-zero, a multiple of 16 and not larger than
+  the data. Then set `cbx.size` to the header size (the next loader is
+  found at CB_X + header size, so trailing bytes in a file must not be
+  written), with a warning if the file was longer.
 - zero the nonce, +0x10..+0x20 (step 3 derives the key from it, so the
-  output doesn't depend on what the file had there; JRunner leaves its
-  CB_X with a zero nonce). Leave +0x20 on as supplied.
-- log `"loaded CB_X %s, version %d (0x%x bytes)\n"` (version at +2).
+  output doesn't depend on what a file had there). Leave +0x20 on as
+  supplied.
+- log `"loaded CB_X %s, version %d (0x%x bytes)\n"` (version at +2;
+  "built-in" for the name).
 
 In `buildFlash`, under `XEBUILD_EXT`, after `loadBlFiles`/`verifyBlSigs`
 succeed and before `calcBlAreaSize` (which needs the size):
 
 ```c
 #ifdef XEBUILD_EXT
-	if (cbxName[0] && loadCbx())
+	if (cbxOn && loadCbx())
 		return -1;
 #endif
 ```
@@ -239,7 +277,7 @@ the `cbbEncrypt(...)` call (`j` is the CB_A there):
 ```c
 #ifdef XEBUILD_EXT
 			if (cbx.data) {
-				log_printf(1, "encoding CB_X %s size 0x%x\n", cbxName, cbx.size);
+				log_printf(1, "encoding CB_X size 0x%x\n", cbx.size);
 				cbxEncrypt(cbx.data, xb.files[j].key, xb.files[j].data, cbx.key, cbx.size);
 				log_printf(1, "storing %s in plaintext behind the CB_X\n", e->name);
 				cbbStorePlain(e->data, e->key, e->size);
@@ -252,9 +290,11 @@ are in the unencrypted header, which is what `cbbEncrypt` already relies
 on. `e->key` (the CB_B's key) is unchanged, so `case 7` encrypts the CD
 exactly as today, and the CE, CF and CG after it.
 
-With a mfg CB_A (glitch2m) the CB_X is keyed with the zero key, as
-JRunner's RGH3 CB_X is. With a retail CB_A (glitch2) it is keyed with the
-CPU key, because that's how that CB_A decrypts whatever follows it.
+Which key the CB_X gets follows from the ini's CB_A: a mfg CB_A
+(glitch2m, or 10918 as in the RGH3 ECC) keys it with the zero key; a
+retail CB_A (glitch2) keys it with the CPU key, because that's how that
+CB_A decrypts whatever follows it. Either way the built-in CB_X is the same
+plaintext; only its encryption differs.
 
 ### 4. Image layout (src/build.c)
 
@@ -268,8 +308,8 @@ CPU key, because that's how that CB_A decrypts whatever follows it.
   ```c
   #ifdef XEBUILD_EXT
   		if (type == 6 && xb.cbb && cbx.data) {
-  			log_printf(1, "adding CB_X %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
-  				   cbxName, off, cbx.size, off + cbx.size);
+  			log_printf(1, "adding CB_X at raw offset 0x%08x len 0x%x (end 0x%x)\n",
+  				   off, cbx.size, off + cbx.size);
   			imgAddInt(off, cbx.data, cbx.size, 0, ecc, 1);
   			off += cbx.size;
   		}
@@ -282,8 +322,8 @@ CPU key, because that's how that CB_A decrypts whatever follows it.
   `addBlsToImage()`: the bootloaders' end (CB_A offset + CB_X + types 5–8,
   after `patchBlsBlmod` has grown the CB_B) must not pass the xell offset
   (type 25, 0x70000); otherwise error "CB_X doesn't fit before xell".
-  xeBuild doesn't check this today because without a CB_X it can't happen;
-  a CB_X makes it possible.
+  The built-in 0x400 bytes won't trigger it on any stock layout; a large
+  custom CB_X could.
 
 ### 5. Build the variant (build.sh)
 
@@ -298,23 +338,23 @@ remove the ECC, and walk the chain:
 
 - CB_A: key = HMAC(1BL key, +0x10), RC4 from +0x20;
 - CB_X: key from the CB_A as above (CB_A flags bit 0 picks the zero key,
-  0x1000 adds the header), RC4, magic `?B`;
+  0x1000 adds the header), RC4, magic `?B`; with `--cbx <file>`, compare
+  the decrypted CB_X (nonce aside) with that file or with the built-in;
 - CB_B: plaintext, `?B` magic, `XBOX_ROM` (or zeros) at 0x392 as JRunner
-  checks, and its +0x10 equals what `cbbEncrypt` derives (not checkable
-  without the nonce, so instead:)
+  checks;
 - CD: key = HMAC(CB_B +0x10, CD +0x10) decrypts to `?D`; CE from the CD's
   key to `?E`; CF from the 1BL key as today.
 
 The same script with `--inject <cbx.bin>` applies JRunner's transform
 *without* replacing the CB_A or the SMC (decrypt the CB_B with the CPU key,
-encrypt the CB_X with a zero nonce, splice, re-ECC), for verification step
-3.
+encrypt the CB_X with a zero nonce against the image's CB_A, splice,
+re-ECC), for verification step 3.
 
 ### 7. Document it
 
-- README.md: in the `XEBUILD_EXT` section, `-cbx`, what the image then
-  contains, the errors, and that the CB_X file is a decrypted CB_X taken as
-  is (xeBuild doesn't patch it).
+- README.md: in the `XEBUILD_EXT` section, `-cbx` and `-cbxfile`, what the
+  image then contains, the errors, and that a custom CB_X is a decrypted
+  CB_X taken as is.
 - NOTES.md: point to this plan from Status.
 
 ## Verification
@@ -325,38 +365,38 @@ encrypt the CB_X with a zero nonce, splice, re-ECC), for verification step
    inputs, `-norandom`).
 3. Ext build with `-cbx`, `-norandom`, glitch2 (retail CB_A, real CPU key)
    and glitch2m (mfg CB_A):
-   - the log shows "encoding CB_X", "storing ... in plaintext" and
-     `adding CB_X ... at raw offset 0x...` right after the CB_A's end;
-   - `tools/cbx_check.py` walks the whole chain;
-   - the same build without `-cbx`, put through `cbx_check.py --inject`,
-     matches the `-cbx` image byte for byte;
-   - if an RGH3 ECC is at hand: build with its CB_A in the ini (`-r`), feed
-     the ECC's decrypted CB_X to `-cbx`, and compare against JRunner's real
+   - the log shows "using built-in CB_X", "encoding CB_X", "storing ... in
+     plaintext" and `adding CB_X at raw offset 0x...` right after the
+     CB_A's end;
+   - `tools/cbx_check.py` walks the whole chain and finds the built-in
+     CB_X;
+   - the same build without `-cbx`, put through `cbx_check.py --inject`
+     with the built-in's bytes, matches the `-cbx` image byte for byte;
+   - with 10918 as the ini's CB_A and the RGH3 ECC's CB_X decrypted to a
+     file: `-cbxfile` against JRunner's real
      `ConvertRgh2ToRgh3(..., patchSMC: false)` on the plain build. They
      should match except the CB_X's nonce, if the ECC's isn't zero.
-4. Zeropaired build (CPU key all zeros): the CB_X is keyed with the zero
+4. `-cbxfile` with a copy of the built-in gives the same image as `-cbx`.
+5. Zeropaired build (CPU key all zeros): the CB_X is keyed with the zero
    key and the CF's pairing is the same as without `-cbx`.
-5. Errors: `-cbx` with `-t retail`, `jtag`, `glitch`; a console whose bl
-   section has `none` for the CB_B; a missing file; a file that isn't `?B`;
-   a header size bigger than the file; a CB_X too large to fit before xell.
-6. Hardware, if available: the image boots on a glitched console.
+6. Errors: `-cbx` with `-t retail`, `jtag`, `glitch`; a console whose bl
+   section has `none` for the CB_B; `-cbxfile` with a missing file, a file
+   that isn't `?B`, a header size bigger than the file, a CB_X too large to
+   fit before xell.
+7. Hardware, if available: the image boots on a glitched console, both
+   glitch2 and glitch2m.
 
-Needs the user's real inputs (a CB_X, a CPU key, the bootloaders), which
-the repo doesn't have.
+Needs the user's real inputs (the 1024-byte CB_X for `defCbx`, a CPU key,
+the bootloaders), which the repo doesn't have.
 
 ## Open questions
 
-- **Which CB_A.** JRunner swaps the CB_A for the RGH3 ECC's, and the RGH3
-  CB_X is encrypted against that CB_A with the zero key. This plan keeps
-  the ini's CB_A and encrypts the CB_X against it. If a CB_X only works
-  behind a particular CB_A, that's chosen through the ini (`-r`), not by
-  the switch. Confirm that's the intended use.
-- **CB_X input form.** The plan takes a decrypted CB_X. Accepting an
+- **The built-in's bytes.** `defCbx` needs the decrypted CB_X (the user
+  has it). Confirm its magic is `?B` (`CB`) and its header size field is
+  0x400; if the magic differs, `loadCbx`'s check changes to match.
+- **Encrypted input.** `-cbxfile` takes a decrypted CB_X. Accepting an
   encrypted one (or a whole RGH3 ECC, decrypting its CB_A and CB_X as
   JRunner does) would be an extension of `loadCbx`.
-- **JRunner's 0x354 fix.** JRunner patches four words of the RGH3 CB_X
-  when 0x354 holds `0x646A0002`. This plan doesn't patch the file; it could
-  log a warning when it sees that word, if that fix is always wanted.
 - **Pairing data in the CB_X.** The plan leaves +0x20..+0x40 of the CB_X as
   supplied (JRunner does too). If a CB_X ever expects pairing/LDV there,
   as a CB_B does, use `cbbEncrypt`'s writes for it (without touching the
@@ -365,9 +405,7 @@ the repo doesn't have.
   depends only on the CB_A's key and the CPU key. Using `infoKey1` (the
   CB_B's random nonce) instead would also work but would give the CB_X and
   CB_B the same key.
-- **The SMC.** `patchSMC` in JRunner swaps in the RGH3 SMC. Not part of
-  `-cbx`; the per-build `smc.bin` is used as usual.
 - **Reading such an image back.** `image_read`, `mode_extract` and
-  `mode_update`'s `checkBootImage` expect an encrypted CB_B right after the
-  CB_A. Using a CB_X image as `nanddump.bin`, or updating it with `-u`, is
-  out of scope here.
+  `buildFlash`'s `checkBootImage` (the `-u` path) expect an encrypted CB_B
+  right after the CB_A. Using a CB_X image as `nanddump.bin`, or updating
+  it with `-u`, is out of scope here.
