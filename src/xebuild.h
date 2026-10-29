@@ -11,9 +11,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* ---- Shared macros ----
+
+   Used by more than one object.  A macro's spelling can change the code
+   gcc emits, so a file whose code was matched with another spelling
+   #undefs it and redefines its own (build.c, image_write.c and keys.c
+   for the byte swaps). */
+
 /* byte swaps for the console's big-endian data (gcc's bswap pass folds them) */
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
+
+/* a slim console (xb.flags' console type) */
+#define IS_SLIM ((xb.flags & 7) > 4)
 
 /* in an object compiled with a profile (mode_update.c, mode_client.c), the
    functions that keep gcc's guessed profile, and .text; a file may define
@@ -21,6 +31,8 @@
 #ifndef NOPROF
 #define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
 #endif
+
+/* ---- Types ---- */
 
 /* a file and its size (netGetFile's, a dump's) */
 struct netfile {
@@ -268,10 +280,9 @@ struct xebuild {
 	int iniSize;			/* 4f90c */
 };
 
-/* src/globals.c */
+/* ---- Globals (src/globals.c) ---- */
 extern int *blOrder;			/* filelist_ini: one of the bl* tables */
 extern struct xebuild xb;
-#define IS_SLIM ((xb.flags & 7) > 4)
 extern struct fsent fsFiles[256];	/* image_write */
 extern uint16_t fsTable[0x1000];
 extern struct flashhdr hdrTemplate;
