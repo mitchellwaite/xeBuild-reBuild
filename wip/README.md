@@ -2138,13 +2138,15 @@ only shows in `sh build.sh`.
   - Un-draining c11: a fifth entry into dom2's FSM region head X (vrp1's
     shared checkBl joiner copy) whose `type` PHI arg is not a literal, so
     no FSM thread takes it and X keeps a fraction: c11 ends at c11 x
-    f5 / X instead of 0. The entry is dead but only folds after the loop
-    passes: `if ((char *)__builtin_constant_p(i) == (char *)1 && (char
+    f5 / X instead of 0. The entry is dead but survives into dom2: `if
+    ((char *)__builtin_constant_p(i) == (char *)1 && (char
     *)__builtin_constant_p(type) == (char *)1) { type = (type & 1) + 18;
-    goto chk; }` in loadBl's default case. __builtin_constant_p stays a
-    call until fab (pass 174, after dom3/vrp2; ccp leaves it, only fab
-    folds it to 0); on a pointer argument it folds to 0 before IPA (no dead
-    edge). The value's range ([18,19]; [6,7] and [12,15] work too) lets
+    goto chk; }` in loadBl's default case. ccp leaves __builtin_constant_p
+    alone; DOM resolves it to 0 (tree-ssa-dom.c), but dom2's threads are
+    applied before its cfg cleanup removes the edge, and the frequencies
+    stay (corrected in the nineteenth mode_client session: not fab); on a
+    pointer argument, or a parameter's default def, it folds earlier (no
+    dead edge). The value's range ([18,19]; [6,7] and [12,15] work too) lets
     vrp1 put the entry into the same joiner copy. The two pointer compares
     (PRED_TREE_POINTER, 15% each) set the weight: c11 = 31 (one `==
     const` test 57, expect 4; the window is between the sigfail trace head

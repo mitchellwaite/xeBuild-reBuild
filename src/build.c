@@ -1429,8 +1429,8 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		break;
 	default:
 		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
-		/* never taken, but only known after the loop passes (gcc folds
-		   __builtin_constant_p in fab): an entry into vrp1's shared checkBl
+		/* never taken, but the edge lasts until dom2 resolves
+		   __builtin_constant_p: an entry into vrp1's shared checkBl
 		   copy whose type isn't a constant, so dom2's jump threads don't
 		   scale the type == 11 test's frequency down to 0 (the original
 		   places it by a frequency of ~25). The pointer compares set its
