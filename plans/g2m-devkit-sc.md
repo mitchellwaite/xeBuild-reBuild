@@ -251,34 +251,27 @@ Today, for a g2m build:
 - So the vfuses carry the console's LDV (or the guessed 1), which an SE
   chain doesn't boot with.
 
-xeBuild's own SE case, `f01c`, avoids this by setting `xb.cfLdv = 0` in
-`loadBl` (after `buildImage`'s fallback, before `setFuseCpuKey`). Do the
-same for `blSc`, under `XEBUILD_EXT`, in `buildFlash`:
+xeBuild's own SE case, `f01c`, sets `xb.cfLdv = 0` in `loadBl`, which
+also changes the LDV that secdata, CRL and DAE get later in `buildFlash`.
+This plan doesn't: like XDKbuild, it changes only the vfuses, and
+`xb.cfLdv` (and every other file that carries it) stays as it is.
 
-- right after `loadBlFiles` succeeds:
+In `buildFlash`'s `if (fuse)` block, after `setFuseCpuKey(e->data)`, under
+`XEBUILD_EXT`:
 
-  ```c
-  #ifdef XEBUILD_EXT
-  	if (blSc) {
-  		xb.cfLdv = 0;
-  		log_printf(1, "SE boot chain, LDV set to 0\n");
-  	}
-  #endif
-  ```
+```c
+#ifdef XEBUILD_EXT
+	if (blSc) {
+		/* an SE chain boots with no LDV in the vfuses (lines 7-11) */
+		memset(e->data + 56, 0, 40);
+		log_printf(1, "SE boot chain, fuse LDV lines cleared\n");
+	}
+#endif
+```
 
-  `setFuseLdv(fuse, 0)` then zeroes lines 7 and 8, and everything after it
-  that writes the LDV (secdata, CRL, DAE) agrees with the fuses, as for
-  `f01c`;
-- in the `if (fuse)` block, after `setFuseCpuKey(e->data)`:
-
-  ```c
-  #ifdef XEBUILD_EXT
-  	if (blSc)
-  		memset(e->data + 72, 0, 24);	/* lines 9-11, for a user fuses.bin */
-  #endif
-  ```
-
-  so all of lines 7–11 are zero, as XDKbuild leaves them.
+`setFuseCpuKey` has already logged the LDV it wrote ("Fuse CF LDV set
+to"), so the second line says it was cleared. Clearing all 40 bytes also
+covers a user `fuses.bin` with data in lines 9–11.
 
 Lines 0–2 stay as today: `encodeBls` case 6 writes them from the SB's
 header through `showExpectedFuses(..., xb.files[24].data, xb.f01c)`, and
@@ -308,7 +301,8 @@ one.
 
 - README.md: in the `XEBUILD_EXT` section, the 7-line bl section for
   glitch2m, with the example above, the warning/errors, and that the
-  vfuses' LDV lines are zeroed for it (so `cfldv` is ignored).
+  vfuses' LDV lines are zeroed for it (`cfldv` still applies to
+  everything else).
 - NOTES.md: point to this plan from Status.
 
 ## Verification
@@ -336,7 +330,8 @@ one.
    - the vfuses sit at header 0x0c + header 0x70 (where XDKbuild looks
      first), lines 7–11 are zero, and lines 0–6 match the 6-line build's.
      Repeat with `cfldv=5` and with a `fuses.bin` whose lines 9–11 aren't
-     zero: still zero.
+     zero: still zero. Everything outside the vfuses (secdata, CRL, DAE)
+     matches the 6-line build's.
 4. Errors: a g2m 7-line ini with a CD (not an SC) third (magic error from
    `checkBl`), and with `none` in the SB line.
 5. The same ini through `mode_update` (`-u`), which also goes through
@@ -357,12 +352,7 @@ an image from the current post-build step), which the repo doesn't have.
   `showExpectedFuses`, which sets line 1 to the devkit pattern and zeroes
   line 2 (the CB sequence). XDKbuild leaves both as the g2m build wrote
   them and those images boot, so this plan does too. If an SE chain turns
-  out to need them cleared, pass `xb.f01c || blSc` in `encodeBls` case 6.
-- **The LDV elsewhere.** Step 6 zeroes `xb.cfLdv` for the whole build, as
-  `f01c` does, so secdata/CRL/DAE also get LDV 0. XDKbuild only touches
-  the vfuses. If those files should keep the console's LDV, zero only the
-  fuse bytes (`memset(e->data + 56, 0, 40)`) and leave `xb.cfLdv` alone.
-- **The CB_B slot isn't checked for an SB.** A g2m 7-line ini with a retail
+  out to need them cleared, pass `xb.f01c || blSc` in `encodeBls` case 6.- **The CB_B slot isn't checked for an SB.** A g2m 7-line ini with a retail
   CB_B and an SC would build, and wouldn't boot. Checking it would mean a
   magic test on a loaded file, which this plan avoids; `cbbEncrypt`'s "CBB
   crypto method set to work with mfg CBA" log at least shows the CB_A is a
