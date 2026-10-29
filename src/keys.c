@@ -22,12 +22,6 @@ int verifyFcrt(uint8_t *fcrt, uint32_t size) __attribute__((pure));
 /* external copy of the always_inline cfPatchSlots */
 short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max);
 
-/* xebuild.h's swaps, spelled as keys.c's code needs them */
-#undef SWAP32
-#undef SWAP16
-#define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
-#define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
-
 uint8_t secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
 uint8_t daeKey[32] = {
 	0xa1, 0xb2, 0x69, 0x50, 0x58, 0xf4, 0xed, 0x05, 0xe5, 0x80, 0xc7, 0xee, 0x18, 0x9a, 0x27, 0xb5,
@@ -366,7 +360,7 @@ static inline void smcSum(uint32_t *buf, uint8_t *out, uint32_t count)
 	uint32_t i, v;
 
 	for (i = 0; i < count; i++) {
-		v = SWAP32(buf[i]);
+		v = SWAP32_KEYS(buf[i]);
 		sum1 += v;
 		sum2 -= v;
 		sum1 = (sum1 << 29) | (uint32_t)((uint32_t)(sum1 >> 32) >> 3);
@@ -380,7 +374,7 @@ static inline void smcSum(uint32_t *buf, uint8_t *out, uint32_t count)
 
 /* smcPrepare inlines smcSum with the object's flags; the standalone copy
    skips the late forwprop (it would put the loop bound first in the exit
-   cmp) and reassoc (SWAP32's first add) */
+   cmp) and reassoc (SWAP32_KEYS's first add) */
 __attribute__((optimize("no-tree-forwprop", "no-tree-reassoc")))
 void smcChecksum(uint32_t *buf, uint8_t *out, uint32_t count)
 {
@@ -588,15 +582,15 @@ inline short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, ui
 		cf->fsOffset = max - cf->size;
 		cf->fsSize = over;
 		for (i = 1; over > 0x4000; i++, over -= 0x4000) {
-			tbl[i] = SWAP16(block + i - 1);
+			tbl[i] = SWAP16_KEYS(block + i - 1);
 			n++;
 		}
 		if (over) {
-			tbl[i] = SWAP16(block + i - 1);
+			tbl[i] = SWAP16_KEYS(block + i - 1);
 			n++;
 		}
 	}
-	tbl[0] = SWAP16(n);
+	tbl[0] = SWAP16_KEYS(n);
 	return n;
 }
 

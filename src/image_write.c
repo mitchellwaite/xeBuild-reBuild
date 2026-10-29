@@ -15,12 +15,6 @@
 #include "image_write.h"
 #include "log.h"
 
-/* xebuild.h's swaps, spelled as image_write.c's code needs them */
-#undef SWAP16
-#undef SWAP32
-#define SWAP16(x) ((((x) << 8) & 0xff00) + (((x) >> 8) & 0xff))
-#define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-
 /* a bootloader's header */
 struct blhdr {
 	uint16_t magic;
@@ -77,12 +71,12 @@ static uint8_t smcPage[0x1000];
 	if ((next) != 0xf1f1) { \
 		for (i_ = 0; i_ < (n); i_++) { \
 			if ((next) != 0 && (next) != 0xffff) \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE(next); \
 			else \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16((start) - xb.fsStart + i_ + 1); \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE((start) - xb.fsStart + i_ + 1); \
 		} \
 		if ((next) == 0xffff) \
-			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff); \
 	} \
 } while (0)
 
@@ -92,12 +86,12 @@ static uint8_t smcPage[0x1000];
 	if ((next) != 0xf1f1) { \
 		for (i_ = 0; i_ < (n); i_++) { \
 			if ((next) == 0 || (next) == 0xffff) \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16((start) - xb.fsStart + i_ + 1); \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE((start) - xb.fsStart + i_ + 1); \
 			else \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16(next); \
+				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE(next); \
 		} \
 		if ((next) == 0xffff) \
-			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16(0x1fff); \
+			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff); \
 	} \
 } while (0)
 
@@ -254,7 +248,7 @@ int buildImage(void)
 			copyright[10] = '7';
 	} else {
 		hdrTemplate.cbOffset = xb.type - 8 < 2 ? 0xc00000 : 0x800000;
-		cf = SWAP32(findFileOffset(9));
+		cf = SWAP32_IMAGE_WRITE(findFileOffset(9));
 		hdrTemplate.patchSlots = 0x12070200;
 		hdrTemplate.kvAddr = 0x400000;
 		hdrTemplate.smcBootSize = 0x300000;
@@ -492,8 +486,8 @@ void setFlashBuild(uint16_t build)
 {
 	uint16_t *p = (uint16_t *)(xb.hdr + 2);
 
-	*p = SWAP16(build);
-	log_printf(1, "flash header build version set to v.%d\n", SWAP16(*p));
+	*p = SWAP16_IMAGE_WRITE(build);
+	log_printf(1, "flash header build version set to v.%d\n", SWAP16_IMAGE_WRITE(*p));
 }
 
 uint32_t smcSetLoad(uint32_t size)
@@ -504,9 +498,9 @@ uint32_t smcSetLoad(uint32_t size)
 		log_printf(0, "\n***** ERROR: SMC size 0x%x not supported!!!\n\n", size);
 		return 0;
 	}
-	h[30] = SWAP32(size);
-	h[31] = SWAP32(0x4000 - size);
-	log_printf(1, "reset smc load address to 0x%x size 0x%x\n", SWAP32(h[31]), SWAP32(h[30]));
+	h[30] = SWAP32_IMAGE_WRITE(size);
+	h[31] = SWAP32_IMAGE_WRITE(0x4000 - size);
+	log_printf(1, "reset smc load address to 0x%x size 0x%x\n", SWAP32_IMAGE_WRITE(h[31]), SWAP32_IMAGE_WRITE(h[30]));
 	return 0x4000 - size;
 }
 
@@ -525,16 +519,16 @@ uint32_t setPatchSlot(uint32_t off)
 	if (xb.bigBlock) {
 		off = (off + 0x1ffff) & ~0x1ffff;
 		if (xb.type == 1) {
-			uint32_t cf = SWAP32(h[28]);
+			uint32_t cf = SWAP32_IMAGE_WRITE(h[28]);
 
 			xb.spare7 = (off + (cf ? cf * 2 : 0x20000)) >> 17;
 		}
 	} else
 		off = (off + 0x3fff) & ~0x3fff;
-	v = SWAP32(off);
+	v = SWAP32_IMAGE_WRITE(off);
 	h[25] = v;
 	h[3] = v;
-	log_printf(1, "patch slot offset reset to: 0x%x\n", SWAP32(v));
+	log_printf(1, "patch slot offset reset to: 0x%x\n", SWAP32_IMAGE_WRITE(v));
 	return off;
 }
 
@@ -542,13 +536,13 @@ uint32_t imgCfOffset(void)
 {
 	uint32_t *h = (uint32_t *)xb.hdr;
 
-	return SWAP32(h[25]);
+	return SWAP32_IMAGE_WRITE(h[25]);
 }
 
 uint32_t imgCfSize(void)
 {
 	uint32_t *h = (uint32_t *)xb.hdr;
-	uint32_t v = SWAP32(h[28]);
+	uint32_t v = SWAP32_IMAGE_WRITE(h[28]);
 
 	return v ? v : 0x10000;
 }
@@ -698,15 +692,15 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			if (x > first + 0x4000)
 				blocks++;
 			if (next != 0 && next != 0xffff) {
-				fsTable[start - xb.fsStart + i] = SWAP16(next);
+				fsTable[start - xb.fsStart + i] = SWAP16_IMAGE_WRITE(next);
 			} else {
-				fsTable[start - xb.fsStart + i] = SWAP16(start - xb.fsStart + i + 1);
+				fsTable[start - xb.fsStart + i] = SWAP16_IMAGE_WRITE(start - xb.fsStart + i + 1);
 			}
 		}
 		if (x + 0x4000 < first)
 			start++;
 		if (next == 0xffff) {
-			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16(0x1fff);
+			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff);
 		}
 	}
 	if ((len & 0x3fff) > 0x3fff)
@@ -747,8 +741,8 @@ void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32
 			c1: __attribute__((cold));
 			name++;
 		}
-		fsFiles[nFsFiles].block = SWAP16((uint16_t)(off >> 14) - xb.fsStart);
-		fsFiles[nFsFiles].size = SWAP32(len);
+		fsFiles[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
+		fsFiles[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
 		strcpy(fsFiles[nFsFiles].name, name);
 		fsFiles[nFsFiles].time = *time;
 		if (!xb.bigBlock)
@@ -813,8 +807,8 @@ void fixupFsTable(uint32_t off)
 	uint32_t i;
 
 	for (i = 0; i < off >> 14; i++)
-		if (fsTable[i - xb.fsStart] != SWAP16(0x1ffb))
-			fsTable[i - xb.fsStart] = SWAP16(0x1ffb);
+		if (fsTable[i - xb.fsStart] != SWAP16_IMAGE_WRITE(0x1ffb))
+			fsTable[i - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffb);
 }
 
 void fixupEmptyFsBlocks(uint32_t off)
@@ -822,13 +816,13 @@ void fixupEmptyFsBlocks(uint32_t off)
 	uint32_t b, i, n;
 
 	for (b = off >> 14; b < xb.fsEnd; b++)
-		fsTable[b - xb.fsStart] = SWAP16(0x1ffe);
+		fsTable[b - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffe);
 	if (!xb.bigBlock) {
 		n = (xb.flags & 0x10000000) ? 6 : 4;
 		if (xb.type > 5)
 			n = xb.blocks - xb.fsEnd;
 		for (i = 0; i < n; i++)
-			fsTable[xb.fsEnd + i] = SWAP16(0x1ffb);
+			fsTable[xb.fsEnd + i] = SWAP16_IMAGE_WRITE(0x1ffb);
 	}
 	if (xb.type == 2) {
 		xb.spare[26] = 3;
@@ -868,51 +862,51 @@ long checkBootImage(int write)
 	uint32_t off, size;
 	uint16_t magic, build;
 
-	off = (SWAP32(h->kvAddr) + SWAP32(h->kvSize) + 15) & ~15;
+	off = (SWAP32_IMAGE_WRITE(h->kvAddr) + SWAP32_IMAGE_WRITE(h->kvSize) + 15) & ~15;
 	b = (struct blhdr *)(xb.bl.data + off);
-	magic = SWAP16(b->magic);
-	build = SWAP16(b->build);
-	size = SWAP32(b->size);
+	magic = SWAP16_IMAGE_WRITE(b->magic);
+	build = SWAP16_IMAGE_WRITE(b->build);
+	size = SWAP32_IMAGE_WRITE(b->size);
 	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CB)\n", magic >> 8, magic & 0xff, build, off, size);
 	if ((magic & 0x43ff) != 0x4342)
 		return -1;
 	off = (off + size + 15) & ~15;
-	if (SWAP16(b->flags) & 0x800) {
+	if (SWAP16_IMAGE_WRITE(b->flags) & 0x800) {
 		b = (struct blhdr *)(xb.bl.data + off);
-		magic = SWAP16(b->magic);
-		build = SWAP16(b->build);
-	build = SWAP16(b->build);
-		size = SWAP32(b->size);
+		magic = SWAP16_IMAGE_WRITE(b->magic);
+		build = SWAP16_IMAGE_WRITE(b->build);
+	build = SWAP16_IMAGE_WRITE(b->build);
+		size = SWAP32_IMAGE_WRITE(b->size);
 		log_printf(1, "%c%c v%d at 0x%x size 0x%x (dual CB)\n", magic >> 8, magic & 0xff, build, off, size);
 		if ((magic & 0x43ff) != 0x4342)
 			return -1;
 		off = (off + size + 15) & ~15;
 	} else if (magic & 0x1000) {
 		b = (struct blhdr *)(xb.bl.data + off);
-		magic = SWAP16(b->magic);
-		build = SWAP16(b->build);
-	build = SWAP16(b->build);
-		size = SWAP32(b->size);
+		magic = SWAP16_IMAGE_WRITE(b->magic);
+		build = SWAP16_IMAGE_WRITE(b->build);
+	build = SWAP16_IMAGE_WRITE(b->build);
+		size = SWAP32_IMAGE_WRITE(b->size);
 		log_printf(1, "%c%c v%d at 0x%x size 0x%x (devkit CC)\n", magic >> 8, magic & 0xff, build, off, size);
 		if ((magic & 0x43ff) != 0x4343)
 			return -1;
 		off = (off + size + 15) & ~15;
 	}
 	b = (struct blhdr *)(xb.bl.data + off);
-	magic = SWAP16(b->magic);
-	build = SWAP16(b->build);
-	size = SWAP32(b->size);
+	magic = SWAP16_IMAGE_WRITE(b->magic);
+	build = SWAP16_IMAGE_WRITE(b->build);
+	size = SWAP32_IMAGE_WRITE(b->size);
 	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CD)\n", magic >> 8, magic & 0xff, build, off, size);
 	if ((magic & 0x43ff) != 0x4344)
 		return -1;
 	off = (off + size + 15) & ~15;
 	b = (struct blhdr *)(xb.bl.data + off);
-	magic = SWAP16(b->magic);
-	build = SWAP16(b->build);
-	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CE)\n", magic >> 8, magic & 0xff, build, off, SWAP32(b->size));
+	magic = SWAP16_IMAGE_WRITE(b->magic);
+	build = SWAP16_IMAGE_WRITE(b->build);
+	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CE)\n", magic >> 8, magic & 0xff, build, off, SWAP32_IMAGE_WRITE(b->size));
 	if ((magic & 0x43ff) != 0x4345)
 		return -1;
-	xb.bl.size = (off + SWAP32(b->size) + 15) & ~15;
+	xb.bl.size = (off + SWAP32_IMAGE_WRITE(b->size) + 15) & ~15;
 	log_printf(1, "final truncated bootloader size 0x%x\n", xb.bl.size);
 	if (write) {
 		if (xb.bigBlock)
@@ -934,7 +928,7 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 		off = (off + 0x20000) & ~0x1ffff;
 		blk = off >> 14;
 	}
-	fsTable[blk - xb.fsStart] = SWAP16(0x1ffd);
+	fsTable[blk - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffd);
 	buf = malloc(0x4000);
 	p = buf;
 	for (i = 0; i < 16; i++) {

@@ -386,14 +386,6 @@ void imgAddRawVoid(const char *name, const void *data, uint32_t len, uint32_t of
 uint32_t patchSmcConfig(uint8_t *smc);
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc);
 
-/* xebuild.h's swaps, spelled as build.c's code needs them */
-#undef SWAP32
-#undef SWAP16
-#define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
-/* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
-   call argument it is computed at its store */
-#define SWAP16(x) ((uint16_t)(((uint32_t)(x) << 8) | ((uint32_t)(x) >> 8)))
-
 /* an SMC config fan byte */
 struct fan {
 	uint8_t speed:7, override:1;
@@ -527,7 +519,7 @@ void makeTimestamp(uint8_t *out, FILETIME *ft)
 
 int timestampToFileTime(const uint16_t *ts, FILETIME *ft)
 {
-	return DosDateTimeToFileTime(SWAP16(ts[0]), SWAP16(ts[1]), ft);
+	return DosDateTimeToFileTime(SWAP16_BUILD(ts[0]), SWAP16_BUILD(ts[1]), ft);
 }
 
 /* the same with its timestamp from name.meta if there is one */
@@ -759,7 +751,7 @@ void showSmcConfig(const uint8_t *smc)
 	log_printf(1, "MAC Address : ");
 	showMac(1, smc + 0x220);
 	av = *(uint32_t *)(smc + 0x228);
-	av = SWAP32(av);
+	av = SWAP32_BUILD(av);
 	switch (av) {
 	case 0x100:
 		log_printf(1, "\nAVRegion    : 0x%08x (NTSC-M)\n", av);
@@ -808,7 +800,7 @@ void showSmcConfig(const uint8_t *smc)
 		log_printf(1, "(Unknown)\n");
 		break;
 	}
-	log_printf(1, "DVDRegion   : %d\n", SWAP32(*(uint32_t *)(smc + 0x234)));
+	log_printf(1, "DVDRegion   : %d\n", SWAP32_BUILD(*(uint32_t *)(smc + 0x234)));
 	log_printf(1, "resetKey    : ");
 	for (i = 0; i < 4; i++)
 		log_printf(1, "%c", smc[0x238 + i]);
@@ -891,7 +883,7 @@ uint32_t patchSmcConfig(uint8_t *smc)
 	}
 gpudone:
 	if (xb.avRegion != 0xffffffff) {
-		*(uint32_t *)(smc + 0x228) = SWAP32(xb.avRegion);
+		*(uint32_t *)(smc + 0x228) = SWAP32_BUILD(xb.avRegion);
 		patched = 1;
 	}
 	if (xb.gameRegion != 0xffffffff && (uint16_t)xb.gameRegion) {
@@ -899,7 +891,7 @@ gpudone:
 		patched = 1;
 	}
 	if (xb.dvdRegion != 0xffffffff) {
-		*(uint32_t *)(smc + 0x234) = SWAP32(xb.dvdRegion);
+		*(uint32_t *)(smc + 0x234) = SWAP32_BUILD(xb.dvdRegion);
 		patched = 1;
 	}
 	if (!*(uint32_t *)(smc + 0x234)) {
@@ -917,7 +909,7 @@ gpudone:
 	if (patched) {
 		uint32_t sum = calcConfigSum(smc);
 
-		*(uint32_t *)smc = SWAP32(sum);
+		*(uint32_t *)smc = SWAP32_BUILD(sum);
 		log_printf(1, "smc config patched!\n");
 	} else
 		log_printf(1, "smc config was not patched\n");

@@ -441,8 +441,10 @@ and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
 It also holds the shared macros: `SWAP16`/`SWAP32`, `IS_SLIM` and `NOPROF`
 (which mode_client.c defines empty first outside its profile compile). The
 spelling of a byte swap changes code even though the bswap pass folds it, so
-build.c, image_write.c and keys.c `#undef` the swaps and redefine them as
-they were matched; each needs both of its own (either alone still differs).
+build.c, image_write.c and keys.c use their own spellings, also in
+`xebuild.h` with the object's name as a suffix (`SWAP16_BUILD`,
+`SWAP32_IMAGE_WRITE`, `SWAP16_KEYS`, ...); each needs both of its own
+(either alone still differs).
 
 The files' code was matched against their own declarations, which did not
 always agree with each other. Where a file still needs another typing than the

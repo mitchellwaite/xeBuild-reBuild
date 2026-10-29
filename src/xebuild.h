@@ -14,13 +14,22 @@
 /* ---- Shared macros ----
 
    Used by more than one object.  A macro's spelling can change the code
-   gcc emits, so a file whose code was matched with another spelling
-   #undefs it and redefines its own (build.c, image_write.c and keys.c
-   for the byte swaps). */
+   gcc emits, so where an object's code was matched with its own spelling
+   of one, that spelling is here too, suffixed with the object's name
+   (SWAP32_KEYS); either of an object's two swap spellings alone still
+   changes its code. */
 
 /* byte swaps for the console's big-endian data (gcc's bswap pass folds them) */
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
+#define SWAP32_BUILD(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+/* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
+   call argument it is computed at its store */
+#define SWAP16_BUILD(x) ((uint16_t)(((uint32_t)(x) << 8) | ((uint32_t)(x) >> 8)))
+#define SWAP16_IMAGE_WRITE(x) ((((x) << 8) & 0xff00) + (((x) >> 8) & 0xff))
+#define SWAP32_IMAGE_WRITE(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
+#define SWAP32_KEYS(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
+#define SWAP16_KEYS(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 
 /* a slim console (xb.flags' console type) */
 #define IS_SLIM ((xb.flags & 7) > 4)
