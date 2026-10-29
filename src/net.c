@@ -283,7 +283,7 @@ int netReadInfo(void)
 		info = (struct consoleinfo *)netRecv((int *)&len);
 	}
 	if (info && len >= sizeof *info) {
-		info->pub1blKey.reserved = 0;
+		info->pub1bl.reserved = 0;
 		netInfo = info;
 		info->version = SWAP32(info->version);
 		info->kernel = SWAP32(info->kernel);

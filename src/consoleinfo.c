@@ -304,13 +304,13 @@ int showInfoKeys(int level, const char *dir, int *update)
 		log_printfInt(level, "not present\n");
 	/* one log call per key; gcc's jump threading splits it into the
 	   good/bad calls (and puts their strings after vfuses.txt) */
-	ok = sumBytes(info->pub1bl, 272) == 0x79c7;
+	ok = sumBytes((const uint8_t *)&info->pub1bl, 272) == 0x79c7;
 	log_printfInt(level, "1BL RSA pub     : %s\n", ok ? "good" : "bad");
 	if (ok) {
 		if (update)
-			xb.pub1bl = info->pub1bl;
+			xb.pub1bl = &info->pub1bl;
 		if (dir)
-			writeFileIn(dir, "1BL_pub.bin", info->pub1bl, 272);
+			writeFileIn(dir, "1BL_pub.bin", &info->pub1bl, 272);
 	}
 	ok = sumBytes(info->pubPirs, 272) == 0x80d0;
 	log_printfInt(level, "PIRS RSA pub    : %s\n", ok ? "good" : "bad");

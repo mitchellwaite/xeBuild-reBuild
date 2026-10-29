@@ -154,10 +154,7 @@ struct consoleinfo {
 	uint8_t fuses[96];		/* 040 */
 	uint8_t vfuses[96];		/* 0a0 */
 	uint8_t key1bl[16];		/* 100 */
-	union {
-		uint8_t pub1bl[272];	/* 110 */
-		struct rsapub pub1blKey;
-	};
+	struct rsapub pub1bl;		/* 110 */
 	uint8_t pubPirs[272];		/* 220 */
 	uint8_t pubMaster[272];		/* 330 */
 	uint8_t keys[6][16];		/* 440 */
