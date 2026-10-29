@@ -16,8 +16,6 @@
    consoleinfo's int levels changes showInfoKeys' code */
 void log_printfInt(int level, const char *fmt, ...) __asm__("_log_printf");
 
-#define IS_SLIM ((xb.flags & 7) > 4)
-
 /* gcc emits these in reverse: opts comes first in .bss */
 static struct consoleinfo *info;
 static FILE *opts;

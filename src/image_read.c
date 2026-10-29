@@ -18,9 +18,7 @@
    findAnchor's code wants a uint32_t */
 uint32_t shaSelfCheckU32(uint8_t *p) __asm__("_shaSelfCheck");
 
-#define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define ROT16(x) ((uint16_t)(((x) << 8) | ((x) >> 8)))
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 struct fsroot {
 	uint16_t map[0x1000];

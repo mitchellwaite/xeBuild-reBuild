@@ -11,7 +11,6 @@
 #include "log.h"
 #include "net.h"
 
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 
 #define BEACON_MAGIC	0x4e537672	/* "NSvr" */
 #define OK_REPLY	0x4f4b	/* "OK" */

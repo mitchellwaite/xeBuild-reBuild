@@ -386,10 +386,14 @@ void imgAddRawVoid(const char *name, const void *data, uint32_t len, uint32_t of
 uint32_t patchSmcConfig(uint8_t *smc);
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc);
 
+/* xebuild.h's swaps, spelled as build.c's code needs them */
+#undef SWAP32
+#undef SWAP16
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 /* folds to a rotate (not the bswap pass's __builtin_bswap16 call), so as a
    call argument it is computed at its store */
 #define SWAP16(x) ((uint16_t)(((uint32_t)(x) << 8) | ((uint32_t)(x) >> 8)))
+
 /* an SMC config fan byte */
 struct fan {
 	uint8_t speed:7, override:1;

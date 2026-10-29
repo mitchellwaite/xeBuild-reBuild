@@ -15,6 +15,9 @@
 #include "image_write.h"
 #include "log.h"
 
+/* xebuild.h's swaps, spelled as image_write.c's code needs them */
+#undef SWAP16
+#undef SWAP32
 #define SWAP16(x) ((((x) << 8) & 0xff00) + (((x) >> 8) & 0xff))
 #define SWAP32(x) ((((x) & 0xff) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 

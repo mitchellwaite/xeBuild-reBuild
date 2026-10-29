@@ -438,6 +438,11 @@ change no code. XeCrypt keeps its own `u8`/`u32` (`xecryptTypes.h`).
 Two switches, defined before including `xebuild.h`, give a file the view of
 `xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
 and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
+It also holds the shared macros: `SWAP16`/`SWAP32`, `IS_SLIM` and `NOPROF`
+(which mode_client.c defines empty first outside its profile compile). The
+spelling of a byte swap changes code even though the bswap pass folds it, so
+build.c, image_write.c and keys.c `#undef` the swaps and redefine them as
+they were matched; each needs both of its own (either alone still differs).
 
 The files' code was matched against their own declarations, which did not
 always agree with each other. Where a file still needs another typing than the

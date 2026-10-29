@@ -11,6 +11,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* byte swaps for the console's big-endian data (gcc's bswap pass folds them) */
+#define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
+#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
+
+/* in an object compiled with a profile (mode_update.c, mode_client.c), the
+   functions that keep gcc's guessed profile, and .text; a file may define
+   it empty before including this */
+#ifndef NOPROF
+#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
+#endif
+
 /* a file and its size (netGetFile's, a dump's) */
 struct netfile {
 	uint8_t *data;
@@ -260,6 +271,7 @@ struct xebuild {
 /* src/globals.c */
 extern int *blOrder;			/* filelist_ini: one of the bl* tables */
 extern struct xebuild xb;
+#define IS_SLIM ((xb.flags & 7) > 4)
 extern struct fsent fsFiles[256];	/* image_write */
 extern uint16_t fsTable[0x1000];
 extern struct flashhdr hdrTemplate;

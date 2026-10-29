@@ -22,6 +22,9 @@ int verifyFcrt(uint8_t *fcrt, uint32_t size) __attribute__((pure));
 /* external copy of the always_inline cfPatchSlots */
 short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max);
 
+/* xebuild.h's swaps, spelled as keys.c's code needs them */
+#undef SWAP32
+#undef SWAP16
 #define SWAP32(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))
 #define SWAP16(x) ((((x) & 0xff) << 8) + (((x) & 0xff00) >> 8))
 

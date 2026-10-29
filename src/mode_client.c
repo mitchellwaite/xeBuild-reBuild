@@ -7,7 +7,8 @@
    mode_client), and with -DBUILD_FDO and a crafted profile
    (src/mode_client.prof) for mode_client and the clientEraseBlock it
    inlines; mode_client comes from that compile (re/splice.py --whole).
-   Under BUILD_FDO the other functions keep the guessed profile (NOPROF),
+   Under BUILD_FDO the other functions keep the guessed profile (NOPROF,
+   from xebuild.h),
    and mode_client's blocks get labels (AT) reached by empty asm gotos
    (JUMP): dead edges whose only effect is bb-reorder's priority keys and
    the frequencies of the blocks they enter (wip/mc/s18/NOTES.md); the
@@ -17,7 +18,6 @@
    block order; two empty asm "i" hints fix that order where the shape
    alone doesn't. */
 #ifdef BUILD_FDO
-#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
 #define AT(l) l:
 #define JUMP(...) __asm__ goto ("" :::: __VA_ARGS__)
 #define NO_MODE_ARG(m, a) (!(m) || ({ __asm__(""); 0; }) || !(a))

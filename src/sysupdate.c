@@ -14,9 +14,6 @@
    paths (stfs.c's stfsLoad needs the int) */
 uint32_t FileExistsU32(const char *name) __asm__("_FileExists");
 
-
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-
 static char suPath[1024];
 static char suDir[1024];
 static stfs_t su;

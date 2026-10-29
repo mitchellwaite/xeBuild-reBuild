@@ -9,8 +9,6 @@
 #include "log.h"
 #include "stfs.h"
 
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-#define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define LE24(p) ((p)[0] + ((p)[1] << 8) + ((p)[2] << 16))
 
 typedef struct {

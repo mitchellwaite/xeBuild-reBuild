@@ -17,8 +17,6 @@
    wants an int */
 int netMountInt(const char *drive, const char *device) __asm__("_netMount");
 
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-
 #define SYSEX "SSEP"
 
 /* system.manifest, big endian */

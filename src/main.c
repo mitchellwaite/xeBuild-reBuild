@@ -113,8 +113,6 @@ int verifyFlashFile(int i)
 	return 0;
 }
 
-#define IS_SLIM ((xb.flags & 7) > 4)
-
 void logButton(int level, int code)
 {
 	switch (code) {

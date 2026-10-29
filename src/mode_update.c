@@ -24,12 +24,8 @@
    code wants a uint32_t */
 uint32_t verifyExtendedU32(void *buf, int size) __asm__("_verifyExtended");
 
-#define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
-
 uint32_t getSecurityFiles(const char *dir);
 
-/* the other functions keep gcc's guessed profile, and .text */
-#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
 int useConsoleAddons = 1;
 
 /* .bss in the original's order (-fno-toplevel-reorder emits definition
