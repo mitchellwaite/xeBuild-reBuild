@@ -227,7 +227,7 @@ NOPROF uint32_t getMobileFiles(const char *dir)
 				log_printf(1, "not available\n", path);
 		}
 	}
-	if (info->f008 & 2) {
+	if (info->usvrFlags & 2) {
 		log_printf(1, "retrieving USVR\\blmod...");
 		xb.consoleBlmod.data = netGetFile("blmod", &xb.consoleBlmod.size);
 		if (xb.consoleBlmod.data && xb.consoleBlmod.size)
@@ -239,7 +239,7 @@ NOPROF uint32_t getMobileFiles(const char *dir)
 		xb.consoleBlmod.data = NULL;
 	} else
 		log_printf(1, "console has no available blmod\n");
-	if (info->f008 & 4) {
+	if (info->usvrFlags & 4) {
 		if (useConsoleAddons == 1) {
 			log_printf(1, "retrieving USVR\\addons...");
 			getAddons();

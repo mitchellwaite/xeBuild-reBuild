@@ -19,7 +19,7 @@ typedef unsigned long long u64;
 struct consoleinfo {
 	u32 version;			/* 000 updsvr version; low byte: peek version */
 	u32 kernel;			/* 004 */
-	u32 f008;			/* 008 */
+	u32 usvrFlags;		/* 008 */
 	u32 bootstrap;			/* 00c */
 	u32 hwFlags;			/* 010 console type in the top 4 bits */
 	u32 nandSize;			/* 014 */
@@ -323,7 +323,7 @@ int netReadInfo(void)
 	netInfo = info;
 	info->version = SWAP32(info->version);
 	info->kernel = SWAP32(info->kernel);
-	info->f008 = SWAP32(info->f008);
+	info->usvrFlags = SWAP32(info->usvrFlags);
 	info->bootstrap = SWAP32(info->bootstrap);
 	info->hwFlags = SWAP32(info->hwFlags);
 	info->nandSize = SWAP32(info->nandSize);

@@ -144,7 +144,7 @@ struct rsapub {
 struct consoleinfo {
 	uint32_t version;		/* updsvr version; low byte: hv patches */
 	uint32_t kernel;
-	uint32_t f008;			/* 2: has blmod, 4: has addons */
+	uint32_t usvrFlags;		/* files USVR offers: 2 blmod, 4 addons */
 	uint32_t bootstrap;		/* hack type in the top bits */
 	uint32_t hwFlags;		/* console type in the top 4 bits; 0x20: has HDD */
 	uint32_t nandSize;		/* system area */

@@ -61,7 +61,7 @@ struct xebuild {
 struct consoleinfo {
 	u32 version;			/* 000 */
 	u32 kernel;			/* 004 */
-	u32 f008;			/* 008 2: has blmod, 4: has addons */
+	u32 usvrFlags;		/* 008 USVR has 2: blmod, 4: addons */
 	u32 bootstrap;			/* 00c */
 	u32 hwFlags;			/* 010 */
 	u32 nandType;			/* 014 */
@@ -305,7 +305,7 @@ u32 getMobileFiles(const char *dir)
 				log_printf(1, "not available\n", path);
 		}
 	}
-	if (info->f008 & 2) {
+	if (info->usvrFlags & 2) {
 		log_printf(1, "retrieving USVR\\blmod...");
 		xb.blmod.data = netGetFile("blmod", &xb.blmod.size);
 		if (xb.blmod.data && xb.blmod.size)
@@ -317,7 +317,7 @@ u32 getMobileFiles(const char *dir)
 		xb.blmod.data = NULL;
 	} else
 		log_printf(1, "console has no available blmod\n");
-	if (info->f008 & 4) {
+	if (info->usvrFlags & 4) {
 		if (useConsoleAddons == 1) {
 			log_printf(1, "retrieving USVR\\addons...");
 			getAddons();

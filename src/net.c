@@ -287,7 +287,7 @@ int netReadInfo(void)
 		netInfo = info;
 		info->version = SWAP32(info->version);
 		info->kernel = SWAP32(info->kernel);
-		info->f008 = SWAP32(info->f008);
+		info->usvrFlags = SWAP32(info->usvrFlags);
 		info->bootstrap = SWAP32(info->bootstrap);
 		info->hwFlags = SWAP32(info->hwFlags);
 		info->nandSize = SWAP32(info->nandSize);
