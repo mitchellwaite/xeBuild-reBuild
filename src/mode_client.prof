@@ -1,7 +1,7 @@
-# mode_client's crafted profile: re/gcda.py overrides in profile_estimate bb
+# mode_client's crafted profile: tools/re/gcda.py overrides in profile_estimate bb
 # numbers of src/mode_client.c compiled with -DBUILD_FDO (mode_client and
 # the clientEraseBlock it inlines). Found by the bb-reorder priority-key
-# searches in wip/mc/s18 (NOTES.md; match/overrides.txt).
+# searches in tools/wip/mc/s18 (NOTES.md; match/overrides.txt).
 clientEraseBlock:2>8=7.7745
 clientEraseBlock:3>7=23.7375
 clientEraseBlock:4>6=10.9608

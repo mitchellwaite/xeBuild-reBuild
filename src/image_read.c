@@ -501,7 +501,7 @@ uint32_t spareVersion(uint8_t *s)
 }
 
 /* (uint32_t)letter: PRE hoists the cast into both arms, so letter's PHI dies with
-   len's and ivopts' names give the inner loop's `cmp ebx,esi` (wip/README.md) */
+   len's and ivopts' names give the inner loop's `cmp ebx,esi` (tools/wip/README.md) */
 void showMobilePages(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Disassemble an exe into GTIRB and print the address-annotated GNU listing
-# that re/ddfix.py consumes.  Run inside WSL from the repo root:
+# that tools/re/ddfix.py consumes.  Run inside WSL from the repo root:
 #   wsl -d Ubuntu -- bash tools/ddisasm/disasm.sh xeBuild.exe build
 set -e
 EXE=$1; OUT=${2:-build}

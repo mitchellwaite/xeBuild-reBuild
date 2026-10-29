@@ -925,7 +925,7 @@ __attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, 
 	uint32_t i, j;
 	int found;
 
-	/* hints (wip/README.md): noinline keeps ipa-split off it once it has
+	/* hints (tools/wip/README.md): noinline keeps ipa-split off it once it has
 	   C callers (loadConsoleBlFiles); &size makes size SSA late (next <= size in
 	   both loops); the bound expects make found the rotated exit; the pin
 	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
@@ -959,7 +959,7 @@ __attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, 
 			uint8_t *src = buf + i;
 
 			/* buf live past src: no IRA copy buf-src, so the raw
-			   loop's eax doesn't push dst out of eax (wip/README) */
+			   loop's eax doesn't push dst out of eax (tools/wip/README) */
 			__asm__("" : "+r"(src) : "r"(buf));
 			memcpy(e->data, src, 0x400);
 		}
@@ -1430,7 +1430,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		   copy whose type isn't a constant, so dom2's jump threads don't
 		   scale the type == 11 test's frequency down to 0 (the original
 		   places it by a frequency of ~25). The pointer compares set its
-		   weight (wip/README.md, build.c, eleventh pass) */
+		   weight (tools/wip/README.md, build.c, eleventh pass) */
 		if ((char *)__builtin_constant_p(i) == (char *)1 && (char *)__builtin_constant_p(type) == (char *)1) {
 			type = (type & 1) + 18;
 			goto chk;

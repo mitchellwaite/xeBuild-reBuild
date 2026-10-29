@@ -6,12 +6,12 @@
 /* build.sh compiles this file twice: plainly (every function but
    mode_client), and with -DBUILD_FDO and a crafted profile
    (src/mode_client.prof) for mode_client and the clientEraseBlock it
-   inlines; mode_client comes from that compile (re/splice.py --whole).
+   inlines; mode_client comes from that compile (tools/re/splice.py --whole).
    Under BUILD_FDO the other functions keep the guessed profile (NOPROF,
    from xebuild.h),
    and mode_client's blocks get labels (AT) reached by empty asm gotos
    (JUMP): dead edges whose only effect is bb-reorder's priority keys and
-   the frequencies of the blocks they enter (wip/mc/s18/NOTES.md); the
+   the frequencies of the blocks they enter (tools/wip/mc/s18/NOTES.md); the
    empty asm in NO_MODE_ARG splits the test the same way.  Without
    BUILD_FDO they expand to the plain source.  String literals land in
    .rdata in function order (-fno-toplevel-reorder) and, within one, in

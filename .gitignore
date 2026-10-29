@@ -18,4 +18,4 @@ build/
 # Python
 __pycache__/
 *.pyc
-wip/mc/var/
+tools/wip/mc/var/

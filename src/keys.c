@@ -666,7 +666,7 @@ static int kvHashOk(uint8_t *kv, uint32_t size)
 /* The size check comes after the 0x3ff0 fix-up (profile estimated before
    jump threading: a colder main path makes alt a caller-saved ecx).  The
    hints and labels give bb-reorder the original's trace order and LRA
-   its spill-slot order (wip/README.md). */
+   its spill-slot order (tools/wip/README.md). */
 void kvPrepare(struct fileent *kv, int alt)
 {
 	const char *file = "kv.bin", *name = "kv";

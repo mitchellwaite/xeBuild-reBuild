@@ -50,9 +50,9 @@ tricks some functions needed to match, and the checks behind each step.
 | `src/crypto/` | XeCrypt (AES, RC4, SHA-1, MD5, DES, RSA/BigDigits) |
 | `src/globals.c` | the program's uninitialized globals |
 | `build.sh` | builds everything and checks the result |
-| `re/` | reverse-engineering and verification scripts |
+| `tools/re/` | reverse-engineering and verification scripts |
 | `tools/` | the toolchain's packages and setup, and ddisasm setup |
-| `wip/` | experiments and notes from the matching work |
+| `tools/wip/` | experiments and notes from the matching work |
 
 ## Building
 

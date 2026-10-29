@@ -43,21 +43,21 @@ src/crypto/              XeCrypt, all C, laid out as its source tree: the XeCryp
                          base64), with its licence files
 src/globals.c            the program's COMMON (uninitialized global) block, in
                          address order
-re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
-re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
-re/units.py              objects from .eh_frame CIEs; profile of each for naming
-re/gcda.py               crafted .gcda for mode_update's profile build (build.sh)
-re/objcmp.py             section-by-section compare of a .o against the exe
-re/execmp.py             header/section/byte compare of two exes
-re/stamp.py              set PE timestamp and recompute checksum
-re/progress.py           regenerate the Progress section of NOTES.md
-re/audit.py              symbolization audit against IDA's pointer analysis
-re/shifttest.py          relink with everything moved, check every pointer followed
-re/single.ld             link script for the single-file build/xeBuild.s (shift test)
-re/ida_dump.py           IDA export of instructions/address fields/imports (JSON)
-re/ida_export_asm.py     IDA's own MASM-style listing (reference only)
-re/mapparse.py           GNU ld -Map parser
-re/runtime_syms.json     names of mingw runtime functions found in the exe
+tools/re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
+tools/re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
+tools/re/units.py              objects from .eh_frame CIEs; profile of each for naming
+tools/re/gcda.py               crafted .gcda for mode_update's profile build (build.sh)
+tools/re/objcmp.py             section-by-section compare of a .o against the exe
+tools/re/execmp.py             header/section/byte compare of two exes
+tools/re/stamp.py              set PE timestamp and recompute checksum
+tools/re/progress.py           regenerate the Progress section of NOTES.md
+tools/re/audit.py              symbolization audit against IDA's pointer analysis
+tools/re/shifttest.py          relink with everything moved, check every pointer followed
+tools/re/single.ld             link script for the single-file build/xeBuild.s (shift test)
+tools/re/ida_dump.py           IDA export of instructions/address fields/imports (JSON)
+tools/re/ida_export_asm.py     IDA's own MASM-style listing (reference only)
+tools/re/mapparse.py           GNU ld -Map parser
+tools/re/runtime_syms.json     names of mingw runtime functions found in the exe
 tools/fetch_toolchain.sh verify + unpack the 2016 MSYS2 toolchain, rebuild 2 import libs
 tools/packages/          those MSYS2 packages (.pkg.tar.xz) and their SHA256SUMS
 tools/mingw-w64/         mingw-w64's kernel32/msvcrt .def files at e05f3e8 (+ COPYING)
@@ -99,15 +99,15 @@ with the gcc driver, as the original was: its crt2.o/crtbegin.o/crtend.o,
 default libraries (plus `-lws2_32`) and default manifest, ld's default link
 script, image base, entry point and subsystem, and `-s
 --no-insert-timestamp`; `globals.o` goes after the libraries (Runtime below).
-Then it writes the original link time (`0x5DCAB029`) and recomputes the PE checksum (`re/stamp.py`; ld 2.27 can't
+Then it writes the original link time (`0x5DCAB029`) and recomputes the PE checksum (`tools/re/stamp.py`; ld 2.27 can't
 take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA256.
 
 ## Regenerating `src/`
 
 ```bash
 wsl -d Ubuntu -- bash tools/ddisasm/disasm.sh xeBuild.exe build
-python re/ddfix.py xeBuild.exe build/xeBuild.dbg.s build/xeBuild.s
-python re/split.py xeBuild.exe build/xeBuild.lines.json src
+python tools/re/ddfix.py xeBuild.exe build/xeBuild.dbg.s build/xeBuild.s
+python tools/re/split.py xeBuild.exe build/xeBuild.lines.json src
 sh build.sh
 ```
 
@@ -130,13 +130,13 @@ pulled log's strings into console_hdd).
 (History: every object is whole C now, and `build.sh` no longer assembles
 `.s` files or splices C functions into them; `splice.py --whole` is still
 used for `mode_client`'s second-compile function; `build` compiles plainly
-since the eleventh pass in wip/README.md.)
+since the eleventh pass in tools/wip/README.md.)
 
 An object doesn't have to move to C all at once. Functions listed in
 `split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.
 The `.s` is still generated, with a `#@C _name` marker in place of each such
 function's FDE range. `build.sh` sees both files, compiles the C with `-S
--fno-asynchronous-unwind-tables`, and `re/splice.py` puts each function's
+-fno-asynchronous-unwind-tables`, and `tools/re/splice.py` puts each function's
 code in place of its marker, between `.att_syntax`/`.intel_syntax`. Data,
 the ident and `.eh_frame` (including the C functions' FDEs) stay in the `.s`.
 The padding after each function is already in the `.s`, so gcc's `.p2align`
@@ -179,7 +179,7 @@ does nothing.
 - When every function is in C, move the data into the `.c`, drop the
   object's `C_FUNCS` entries and let `split.py` skip the `.s` as usual.
 
-`python re/fncmp.py src/<obj>.c <name> [gcc flags]` diffs one function's
+`python tools/re/fncmp.py src/<obj>.c <name> [gcc flags]` diffs one function's
 gcc output against the original instructions (`build/xeBuild.lines.json`),
 with ddisasm's and gcc's spellings normalised. It ignores padding and
 encodings, so `sh build.sh` has the last word. It reports MATCH for every
@@ -207,11 +207,11 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
 - gcc emits the functions in source order, so applyIniOptions sits after
   parseCmdOptions as in the original.
 - `applyIniOptions` is built with a crafted profile (`src/options.prof`,
-  written by `wip/aiodesign.py`; the other functions keep gcc's guessed
+  written by `tools/wip/aiodesign.py`; the other functions keep gcc's guessed
   one). Its label alignment needs stale block counts, which tests of
   never-written statics (`aio_never*`) give: IPA folds them after the
   profile is read and the counts of their dead edges stay behind
-  (wip/README.md, options.c).
+  (tools/wip/README.md, options.c).
 - `strcat(xb.outName, "name")` is expanded inline: short names become
   immediate stores, longer ones copy from the (merged) literal, as in the
   original, so it stays a plain strcat.
@@ -241,9 +241,9 @@ salts, ...) are ours.
 And `mode_update` (whole object in C).
 `mode_update` itself only matches when built with a profile: its cold
 blocks are placed by bb-reorder's Fibonacci-heap ties, and no guessed
-profile we found gives the original's (wip/README.md has the search,
-`wip/fibsolve.py`). build.sh compiles the object with
-`-fbranch-probabilities` and a `.gcda` from `re/gcda.py`: counts for
+profile we found gives the original's (tools/wip/README.md has the search,
+`tools/wip/fibsolve.py`). build.sh compiles the object with
+`-fbranch-probabilities` and a `.gcda` from `tools/re/gcda.py`: counts for
 `mode_update` and its inlined `updateNand` only, gcc's guessed profile with
 11 edges changed. The edges are a fit to the layout, not the original's
 profile. The other functions are `optimize("no-branch-probabilities",
@@ -271,7 +271,7 @@ builtin-expect-probability=50`, default top-level order).
 - Dead `if (...) blocks++;`-style tests in imgAdd keep the off-0 clone's
   ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
   recycled, i.e. the compare operand orders in the clones and inlined
-  copies; their layout was found by a search (wip/README.md).
+  copies; their layout was found by a search (tools/wip/README.md).
 - imgAddFile computes imgFits' limit and end itself before a dead `len++`
   (the end kept by a code-free asm), and the dead test in its body is
   `cold`, so VRP1's jump threading neither renumbers those values nor
@@ -320,11 +320,11 @@ labels on their IAT slots, plus `__IAT_start__`/`__IAT_end__`/`__tls_used`
 (ld fills the IAT and TLS data directories from them).
 
 It writes `build/xeBuild.lines.json` (every line with its original address) and
-a single-file `build/xeBuild.s` that links with `re/single.ld` (used by the
+a single-file `build/xeBuild.s` that links with `tools/re/single.ld` (used by the
 shift test; it needs `$zz` tail sections to get the section sizes right, which
 the per-object build gets naturally).
 
-### How the objects were recovered (`re/split.py`)
+### How the objects were recovered (`tools/re/split.py`)
 
 - **.text and .eh_frame, exact.** Every gcc object contributes one CIE plus
   its FDEs to `.eh_frame`, in link order, so the 94 CIEs give the objects and
@@ -511,11 +511,11 @@ doesn't contain it, so builds distributed after bug fixes should add it.
 Two independent checks that code and data can move without breaking pointers:
 
 ```bash
-python re/audit.py xeBuild.exe build/xeBuild.dbg.s build/ida_dump.json build/audit.txt
-python re/shifttest.py xeBuild.exe build/xeBuild.s build
+python tools/re/audit.py xeBuild.exe build/xeBuild.dbg.s build/ida_dump.json build/audit.txt
+python tools/re/shifttest.py xeBuild.exe build/xeBuild.s build
 ```
 
-`build/ida_dump.json` comes from `python re/ida_dump.py build/ida/xeBuild.exe
+`build/ida_dump.json` comes from `python tools/re/ida_dump.py build/ida/xeBuild.exe
 build/ida_dump.json` (IDA 9.x, on a copy of the exe).
 
 **audit.py** compares the source with IDA's pointer analysis (operands it
@@ -548,11 +548,11 @@ Remaining caveats when editing:
   (harmless, but they lose 16-byte alignment).
 
 <!-- progress:begin -->
-<!-- generated by re/progress.py; edit that, not this -->
+<!-- generated by tools/re/progress.py; edit that, not this -->
 
 ## Progress
 
-Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime (crt objects, libgcc, libmingw32/ex, import libraries) comes from the toolchain itself; the program's COMMON globals near the end of `.bss` are C, in `src/globals.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
+Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matching drafts in `tools/wip/` that the build doesn't use yet); 66 of 66 objects fully built from C. The runtime (crt objects, libgcc, libmingw32/ex, import libraries) comes from the toolchain itself; the program's COMMON globals near the end of `.bss` are C, in `src/globals.c`. Function lists come from the reference exe's `.eh_frame`; names are the C or `SYMBOLS` names, else ddisasm's `FUN_<va>`.
 
 | Component | Objects in C | Functions in C |
 |---|---|---|
@@ -561,7 +561,7 @@ Program functions in matching C: **617 of 617** (617 built from `src/`, 0 matchi
 
 ### In progress
 
-Objects with functions or data still in assembly (a `src/<obj>.s` or top-level asm in the `.c`). Per-function status in address order: ✅ built from C, ☑️ matching C draft in `wip/`, ⬜ assembly. "Functions in C" counts both ✅ and ☑️.
+Objects with functions or data still in assembly (a `src/<obj>.s` or top-level asm in the `.c`). Per-function status in address order: ✅ built from C, ☑️ matching C draft in `tools/wip/`, ⬜ assembly. "Functions in C" counts both ✅ and ☑️.
 
 | Object | State | Functions in C |
 |---|---|---|

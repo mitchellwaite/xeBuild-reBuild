@@ -15,7 +15,7 @@ ccp() {
     "$ROOT/$TC/gcc.exe" -S "$@" -I"$ROOT/src/$(dirname "$f")" -x c - -o -)
 }
 # fdo <gcda.py args> <gcc flags>: profile build of src/$f.c, assembly to stdout.
-# An instrumented compile gives the .gcno and the guessed profile, re/gcda.py
+# An instrumented compile gives the .gcno and the guessed profile, tools/re/gcda.py
 # the .gcda. All compiles run in $p with `-o -`: the .gcda name and static
 # functions' profile ids come from the aux name
 fdo() {
@@ -25,12 +25,12 @@ fdo() {
   pa=$1; shift
   ccp $cflags "$@" -fprofile-arcs -ftest-coverage \
     -fdump-tree-profile_estimate-blocks-details >/dev/null
-  python re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
+  python tools/re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
     $pa --src="src/$f.c" >/dev/null
   ccp $cflags "$@" -fbranch-probabilities -fprofile-dir="$pw"
 }
 # The program's objects in the original's link order (its .eh_frame CIE
-# order; re/split.py's NAMES has the evidence for each).  ld lays out
+# order; tools/re/split.py's NAMES has the evidence for each).  ld lays out
 # .text/.rdata/.data in this order.
 objects="
   bootloaders mode_update stfs mode_client filelist_ini
@@ -75,9 +75,9 @@ for f in $objects globals; do
            cflags="-O3 --param align-threshold=200" ;;
     # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
     # mode_update's cold blocks are laid out by frequency ties that no
-    # guessed profile we found gives (wip/README.md), so it and the static
+    # guessed profile we found gives (tools/wip/README.md), so it and the static
     # updateNand it inlines are built with a crafted profile: gcc's guessed
-    # one with these edges changed (profile_estimate bb numbers; re/gcda.py).
+    # one with these edges changed (profile_estimate bb numbers; tools/re/gcda.py).
     # The other functions are optimize("no-branch-probabilities") and keep
     # the guessed profile; -fno-ipa-profile keeps their hot test, and
     # -fno-reorder-functions keeps mode_update out of .text.hot.
@@ -101,7 +101,7 @@ for f in $objects globals; do
     # parseOption's setBoolOption and vlen hints (82 and 84 lay out the
     # done/incomplete blocks differently). applyIniOptions has a crafted
     # profile like mode_update (src/options.prof, from
-    # wip/aiodesign.py); the rest keep the guessed one
+    # tools/wip/aiodesign.py); the rest keep the guessed one
     options) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=83 -fno-ipa-profile -fno-reorder-functions"
            prof="@src/options.prof --only=applyIniOptions" ;;
@@ -124,7 +124,7 @@ for f in $objects globals; do
     # which only the default order emits first (as the original)
     net) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=65" ;;
-    # loadFileCrc's verbose hint (92-99); 98 for wip/'s checkBl draft.
+    # loadFileCrc's verbose hint (92-99); 98 for tools/wip/'s checkBl draft.
     # -fno-toplevel-reorder emits the functions, strings and .data in
     # definition order
     build) orig="$f.c"
@@ -132,7 +132,7 @@ for f in $objects globals; do
     # mode_client's layout comes from a second compile (fprof) with
     # -DBUILD_FDO: empty asm-goto edges and a crafted profile for it and
     # the clientEraseBlock it inlines (src/mode_client.c's head
-    # comment; wip/mc/s18/NOTES.md); align-loop-iterations=100 aligns its
+    # comment; tools/wip/mc/s18/NOTES.md); align-loop-iterations=100 aligns its
     # loop like the original. -fno-toplevel-reorder emits the functions
     # (and so their literals) and data in definition order
     mode_client) orig="$f.c"
@@ -163,7 +163,7 @@ for f in $objects globals; do
   fi
   if [ -n "$fprof" ]; then
     # whole object: the $ffns functions from the second compile
-    python re/splice.py --whole "$OBJ/$f.c.s" "$OBJ/$f.s" $fs
+    python tools/re/splice.py --whole "$OBJ/$f.c.s" "$OBJ/$f.s" $fs
     "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
   elif [ -n "$prof" ]; then
     "$TC/as.exe" --32 "$OBJ/$f.c.s" -o "$OBJ/$f.o"
@@ -184,6 +184,6 @@ libs="-lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt -lpthread
 "$TC/gcc.exe" -s -o build/xeBuild.exe $objs -lws2_32 $libs $OBJ/globals.o \
   -Wl,--no-insert-timestamp,-Map,build/xeBuild.map
 # original link time; ld 2.27 can't take a fixed timestamp itself
-python re/stamp.py build/xeBuild.exe 0x5DCAB029
-python re/execmp.py xeBuild.exe build/xeBuild.exe
+python tools/re/stamp.py build/xeBuild.exe 0x5DCAB029
+python tools/re/execmp.py xeBuild.exe build/xeBuild.exe
 sha256sum build/xeBuild.exe
