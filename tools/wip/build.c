@@ -56,7 +56,7 @@ struct xebuild {
 	int glitch2;			/* 010 */
 	int glitch2mfg;			/* 014 */
 	u32 cbb;			/* 018 build with a CB_B */
-	u32 f01c;			/* 01c set when an SE replaces the CF */
+	u32 seReplacesCf;			/* 01c set when an SE replaces the CF */
 	int randomKeys;			/* 020 keysInit's argument */
 	int sysTime;			/* 024 use the system time for timestamps */
 	u8 pad028[0x038 - 0x028];
@@ -1330,7 +1330,7 @@ static void loadBl(struct fileent *e, u32 i, u32 *pr)
 			/* an SE where the CF goes */
 			e->type = type = 14;
 			xb.cfLdv = 0;
-			xb.f01c = 1;
+			xb.seReplacesCf = 1;
 		}
 	chk:
 		*pr = checkBl(e->data, e->size, type, e->crc);
@@ -1952,7 +1952,7 @@ void addBlsToImage(void)
 			imgAdd(off, e->data, e->size, 0, ecc, 1);
 		off += e->size;
 	}
-	if (xb.f01c) {
+	if (xb.seReplacesCf) {
 		j = findFile(14);
 		log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
@@ -2106,7 +2106,7 @@ u32 calcBlAreaSize(void)
 		size = findFileOffset(5) + xb.files[x].size;
 		x = findFile(7);
 		size += xb.files[x].size;
-		if (xb.f01c) {
+		if (xb.seReplacesCf) {
 			x = findFile(14);
 			size += xb.files[x].size;
 		}
@@ -2191,7 +2191,7 @@ int encodeBls(u8 *salt, int ldv)
 				break;
 			case 5:
 				j = findFile(24);
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.f01c);
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
 				cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				break;
 			case 7:
@@ -2207,7 +2207,7 @@ int encodeBls(u8 *salt, int ldv)
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 17:
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				cbaEncrypt2(salt, e->data, e->key, e->size, 1);
 				break;
 			case 18:
@@ -2267,15 +2267,15 @@ int encodeBls(u8 *salt, int ldv)
 				if (xb.type == 4 || xb.type == 5) {
 					j = findFile(24);
 					if ((xb.flags & 7) > 4)
-						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.f01c);
+						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 					else
-						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.f01c);
+						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 					log_printf(1, "zeropairing SB\n");
 					setFuseCpuKey(xb.files[j].data);
 					cbaEncryptZero(e->data, e->key, e->size);
 					break;
 				}
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (checkZeros(cpuKey, 16)) {
 					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
 					xb.cfLdv = 0;
@@ -2326,7 +2326,7 @@ int encodeBls(u8 *salt, int ldv)
 					cbaEncrypt(salt, e->data, e->key, e->size, 1);
 					break;
 				}
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (xb.type != 1)
 					cbaEncryptZero(e->data, e->key, e->size);
 				else
@@ -2338,9 +2338,9 @@ int encodeBls(u8 *salt, int ldv)
 				zero = checkZeros(cpuKey, 16);
 				j = findFile(24);
 				if (xb.glitch2mfg)
-					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.f01c);
+					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
 				else
-					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.f01c);
+					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (zero) {
 					log_printf(1, "CPU key is all zeros, zeropairing CB_B\n");
 					xb.cfLdv = 0;
@@ -2375,7 +2375,7 @@ int encodeBls(u8 *salt, int ldv)
 			}
 		}
 	}
-	if (xb.f01c) {
+	if (xb.seReplacesCf) {
 		/* the SE that replaced the CF follows the CD */
 		e = &xb.files[findFile(14)];
 		j = findFile(7);

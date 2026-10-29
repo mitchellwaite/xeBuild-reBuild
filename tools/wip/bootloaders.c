@@ -33,7 +33,7 @@ int fcrtVerifySig(u8 *fcrt);
 
 extern u8 key1bl[16];
 extern u8 cpuKey[16];
-extern u8 key28c[16];
+extern u8 xexKey[16];
 extern void *pub1bl;
 extern void *masterPub;
 extern void *pub2a4;
@@ -206,7 +206,7 @@ int verifyCrl(u8 *crl, u32 size, int perBox)
 	if (perBox)
 		XeCryptAesKey(&aes, cpuKey);
 	else
-		XeCryptAesKey(&aes, key28c);
+		XeCryptAesKey(&aes, xexKey);
 	XeCryptAesEcb(&aes, crl + 304, key, 0);
 	memcpy(crl + 304, key, 16);
 	XeCryptAesKey(&aes, key);
@@ -233,7 +233,7 @@ __attribute__((noclone)) void daeDecrypt(u8 *dae, u32 size, int perBox)
 	if (perBox)
 		XeCryptAesKey(&aes, cpuKey);
 	else
-		XeCryptAesKey(&aes, key28c);
+		XeCryptAesKey(&aes, xexKey);
 	XeCryptAesCbc(&aes, buf + 304, size - 304, dae + 304, iv, 0);
 	free(buf);
 }

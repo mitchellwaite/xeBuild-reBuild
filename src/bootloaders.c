@@ -185,7 +185,7 @@ int verifyCrl(uint8_t *crl, uint32_t size, int perBox)
 	if (perBox)
 		XeCryptAesKey(&aes, xb.cpuKey);
 	else
-		XeCryptAesKey(&aes, xb.key28c);
+		XeCryptAesKey(&aes, xb.xexKey);
 	XeCryptAesEcb(&aes, crl + 304, key, 0);
 	memcpy(crl + 304, key, 16);
 	XeCryptAesKey(&aes, key);
@@ -212,7 +212,7 @@ __attribute__((noclone)) void daeDecrypt(uint8_t *dae, uint32_t size, int perBox
 	if (perBox)
 		XeCryptAesKey(&aes, xb.cpuKey);
 	else
-		XeCryptAesKey(&aes, xb.key28c);
+		XeCryptAesKey(&aes, xb.xexKey);
 	XeCryptAesCbc(&aes, buf + 304, size - 304, dae + 304, iv, 0);
 	free(buf);
 }

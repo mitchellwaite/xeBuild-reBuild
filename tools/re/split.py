@@ -357,7 +357,7 @@ SYMBOLS = {
     0x44a644: '_kvAltSalt', 0x44a64c: '_kvSalt', 0x44a654: '_infoKey5', 0x44a664: '_infoKey4',
     0x44a674: '_infoKey3', 0x44a684: '_infoKey2', 0x44a694: '_infoKey1', 0x44a6a4: '_infoKey0',
     0x479560: '_zeroKey', 0x479570: '_pairing',
-    0x47a10c: '_key1bl', 0x47a12c: '_key28c', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
+    0x47a10c: '_key1bl', 0x47a12c: '_xexKey', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
     # mode_update (src/mode_update.c) and what it calls; names are ours
     0x4030b0: '_getBadBlocks', 0x4031d0: '_update_usage', 0x403460: '_wantFile',
     0x4034f0: '_parseAddonIdx', 0x403700: '_getAddons', 0x403820: '_getMobileFiles',

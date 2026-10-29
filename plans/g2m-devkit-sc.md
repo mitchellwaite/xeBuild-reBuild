@@ -33,9 +33,9 @@ Everything is decided up front, before any file is loaded. `-t` sets
 count (`blRetail`, `blDevk`, `blDevgl`, `blTestk`, or `blJtag` with 9
 lines), the slots' types and offsets (`locRetail`, `locDevk`, ...), and the
 output name. `xb.cbb` also comes from the ini: the CB_B line is `none` or
-not. File contents only validate (`checkBl`). The one exception is `f01c`
+not. File contents only validate (`checkBl`). The one exception is `seReplacesCf`
 (`loadBl` retypes an `SE` found in the CF slot after loading), which is why
-`encodeBls`, `addBls` and `calcBlAreaSize` each end with an `if (xb.f01c)`
+`encodeBls`, `addBls` and `calcBlAreaSize` each end with an `if (xb.seReplacesCf)`
 tail.
 
 A new `-t` type would be the most xeBuild-like way to do this, but adding
@@ -44,7 +44,7 @@ parser picks the layout in the same place it picks every other table,
 nothing is re-slotted after loading, and file contents only validate, as
 for every other type. Detecting a CB_A + SB by magic would mean choosing
 the layout after loading (the bootloaders can come from the SUPD, so the
-parser can't see them) and moving slots around mid-load, as `f01c` does.
+parser can't see them) and moving slots around mid-load, as `seReplacesCf` does.
 
 ## How the 6-line g2m build works today
 
@@ -62,7 +62,7 @@ types from `locRetail` (shared by retail and every glitch build):
 
 `nbl` is 6, so a seventh line is never read. With the 7-line ini above,
 today's xeBuild puts the SC in the CD slot, the SD in the CE slot and the
-SE in the CF slot (where `f01c` kicks in). That chain is wrong (SC keyed
+SE in the CF slot (where `seReplacesCf` kicks in). That chain is wrong (SC keyed
 from the CB_B, SE keyed from the SC), which is why the post-build step
 exists.
 
@@ -190,7 +190,7 @@ Nothing to add. `loadBlFiles` walks `xb.nFiles` slots, and `loadBl`
 already loads type 12 through `loadInputFile` and `checkBl(..., 12, crc)`.
 That check is what catches a wrong third line: a retail CB_A > CB_B ini
 with a stray 7th line has a CD there, which fails the `?C` magic check.
-The `f01c` path isn't reached: the CF slot holds the 6th line (`none`).
+The `seReplacesCf` path isn't reached: the CF slot holds the 6th line (`none`).
 
 ### 4. Encrypting (src/build.c, `encodeBls`)
 
@@ -251,7 +251,7 @@ Today, for a g2m build:
 - So the vfuses carry the console's LDV (or the guessed 1), which an SE
   chain doesn't boot with.
 
-xeBuild's own SE case, `f01c`, sets `xb.cfLdv = 0` in `loadBl`, which
+xeBuild's own SE case, `seReplacesCf`, sets `xb.cfLdv = 0` in `loadBl`, which
 also changes the LDV that secdata, CRL and DAE get later in `buildFlash`.
 This plan doesn't: like XDKbuild, it changes only the vfuses, and
 `xb.cfLdv` (and every other file that carries it) stays as it is.
@@ -274,7 +274,7 @@ to"), so the second line says it was cleared. Clearing all 40 bytes also
 covers a user `fuses.bin` with data in lines 9–11.
 
 Lines 0–2 stay as today: `encodeBls` case 6 writes them from the SB's
-header through `showExpectedFuses(..., xb.files[24].data, xb.f01c)`, and
+header through `showExpectedFuses(..., xb.files[24].data, xb.seReplacesCf)`, and
 XDKbuild doesn't touch them.
 
 XDKbuild also searches for the vfuses (`C0FFFFFFFFFFFFFF`) when they aren't
@@ -348,11 +348,11 @@ an image from the current post-build step), which the repo doesn't have.
 - **A new `-t` type later.** If one is added (e.g. `glitch2mdev`), step 2's
   count check becomes "this type picks `blRetailSc`/`locRetailSc`", and
   steps 3–7 stay as they are.
-- **Lines 1–2 of the vfuses.** `f01c` also passes `clear` to
+- **Lines 1–2 of the vfuses.** `seReplacesCf` also passes `clear` to
   `showExpectedFuses`, which sets line 1 to the devkit pattern and zeroes
   line 2 (the CB sequence). XDKbuild leaves both as the g2m build wrote
   them and those images boot, so this plan does too. If an SE chain turns
-  out to need them cleared, pass `xb.f01c || blSc` in `encodeBls` case 6.- **The CB_B slot isn't checked for an SB.** A g2m 7-line ini with a retail
+  out to need them cleared, pass `xb.seReplacesCf || blSc` in `encodeBls` case 6.- **The CB_B slot isn't checked for an SB.** A g2m 7-line ini with a retail
   CB_B and an SC would build, and wouldn't boot. Checking it would mean a
   magic test on a loaded file, which this plan avoids; `cbbEncrypt`'s "CBB
   crypto method set to work with mfg CBA" log at least shows the CB_A is a

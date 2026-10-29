@@ -293,9 +293,9 @@ uint32_t calcXexKey(void)
 
 	memcpy(junk, "thisisjustajunky", 16);
 	XeCryptHmacSha(junk, 16, xb.key1bl, 16, NULL, 0, NULL, 0, hash, 16);
-	memcpy(xb.key28c, key, 16);
-	XeCryptRc4(hash, 16, xb.key28c, 16);
-	return sumBytes(xb.key28c, 16);
+	memcpy(xb.xexKey, key, 16);
+	XeCryptRc4(hash, 16, xb.xexKey, 16);
+	return sumBytes(xb.xexKey, 16);
 }
 
 int check1blKey(void)
@@ -308,7 +308,7 @@ int check1blKey(void)
 		showKey(1, xb.key1bl);
 		log_printf(1, " sum: 0x%x (expects: 0x983)\n", sum1);
 		log_printf(1, "xex Key set to  : 0x");
-		showKey(1, xb.key28c);
+		showKey(1, xb.xexKey);
 		log_printf(1, " sum: 0x%x (expects: 0x800)\n", sum2);
 		return 1;
 	}

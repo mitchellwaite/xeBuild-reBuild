@@ -195,7 +195,7 @@ struct xebuild {
 	int glitch2;			/* 010 */
 	int glitch2mfg;			/* 014 */
 	uint32_t cbb;			/* 018 build with a CB_B */
-	uint32_t f01c;			/* 01c set when an SE replaces the CF */
+	uint32_t seReplacesCf;		/* 01c an SE was loaded where the CF goes */
 	int randomKeys;			/* 020 keysInit's argument (random nonces) */
 	int sysTime;			/* 024 use the system time for timestamps */
 	uint32_t muBlocks;		/* 028 end of the MU area (big block) */
@@ -262,7 +262,7 @@ struct xebuild {
 	struct netfile netKd;		/* 264 */
 	uint8_t key1bl[16];		/* 26c */
 	uint8_t cpuKey[16];		/* 27c */
-	uint8_t key28c[16];		/* 28c */
+	uint8_t xexKey[16];		/* 28c calcXexKey's (CRL/DAE key) */
 	struct rsapub *pub1bl;		/* 29c */
 	struct rsapub *masterPub;	/* 2a0 */
 	struct rsapub *pubPirs;		/* 2a4 */

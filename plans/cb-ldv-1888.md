@@ -133,7 +133,7 @@ static int cbCarriesLdv(void)
 	struct fileent *e;
 	int i, j;
 
-	if (xb.type != BUILD_RETAIL || xb.f01c)
+	if (xb.type != BUILD_RETAIL || xb.seReplacesCf)
 		return 0;
 	j = findFile(8);
 	if (!j || !xb.files[j].data || getBeU16(xb.files[j].data + 2) != 1888)
@@ -174,8 +174,8 @@ Notes:
 - The CE's build number at offset 2 is in the plaintext part of the
   header.
 - `findFile` returns 0 when a type is missing, which counts as no CF/CG.
-- `xb.f01c` (an SE loaded where the CF goes) is a dev-kernel setup. It
-  also renames type 9 to 14, so without the `f01c` test it would look like
+- `xb.seReplacesCf` (an SE loaded where the CF goes) is a dev-kernel setup. It
+  also renames type 9 to 14, so without the `seReplacesCf` test it would look like
   "no CF".
 - Returning 1 from `encodeBls` makes `buildFlash` return -4 before
   anything is written.
