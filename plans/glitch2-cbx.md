@@ -21,6 +21,19 @@ gives the chain
         CE     as today
 ```
 
+The same goes for glitch2m images with the devkit chain behind the mfg
+CB_A: the CB_X goes between the CB_A and the SB, which takes the CB_B's
+place (see "Glitch2m with an SB" below):
+
+```
+0x8000  CB_A   mfg, encrypted as today
+        CB_X   encrypted the way a CB_B is (zero key: mfg CB_A)
+        SB     plaintext, its RC4 key at +0x10
+        SC     zero key, as in plans/g2m-devkit-sc.md (7-line ini only)
+        SD     from the SC's key (7-line) or the SB's key (6-line), as without -cbx
+        SE     from the SD's key
+```
+
 Today this needs a normal xeBuild image and then a post-build step (JRunner's
 `RGH2to3.ConvertRgh2ToRgh3` with `patchSMC = false`: "we're only injecting
 the CB_X"). This plan moves that step into xeBuild.
@@ -106,9 +119,57 @@ command line, so it doesn't need a slot in `xb.files[]`: a separate
 `struct fileent` in build.c, added at the three places above, keeps
 `parseIni` (matched with hints, `-fno-toplevel-reorder`), the `blRetail`
 tables, the `xb.files[4]` CB_B test and every `findFile` lookup as they
-are. It also composes with the SC plan: with the SB in the CB_B slot, the
-CB_X goes in front of the SB the same way, which is the XDKbuild-style
-chain (CB_A > CB_X > SB > SC > SD > SE) JRunner also handles.
+are. It also leaves the SC plan's `locRetailSc` layout alone, so the two
+features combine without either knowing the other's table.
+
+### Glitch2m with an SB (devkit chain)
+
+Two glitch2m layouts put a devkit SB behind the mfg CB_A. In both the SB
+sits in the CB_B slot (index 4, type 6), so `xb.cbb` is 1 and every hook
+in this plan that keys on type 6 applies to the SB unchanged:
+
+| ini | slots (type) | SD keyed from | today |
+|---|---|---|---|
+| 6 lines: CB_A, SB, SD, SE, none, none | 5, 6, 7, 8 | the SB (`case 7`, `xb.cbb`) | built by xeBuild |
+| 7 lines: CB_A, SB, SC, SD, SE, none, none | 5, 6, 12, 7, 8 (`locRetailSc`) | the SC (plans/g2m-devkit-sc.md step 4) | needs the SC plan |
+
+Going through each step with an SB in the CB_B slot:
+
+- **Loading.** `checkBl(..., 6, ...)` takes the SB (it only checks the `B`).
+  `loadCbx` runs after `loadBlFiles`, so it sees the same `xb.cbb`. No
+  change.
+- **The CB_X's key.** 9188 mfg and the other mfg CB_As have flags bit 0,
+  so `cbxEncrypt` uses the zero key, as `cbbEncrypt` already does for the
+  SB ("CBB crypto method set to work with mfg CBA").
+- **The SB in plaintext.** `cbbStorePlain` runs on whatever `case 6`
+  encrypted, so the SB is stored decrypted with its key at +0x10, as
+  JRunner's XDKbuild-style path does (its `flashCbb` is the loader after
+  the CB_A, here the SB). `e->key` is unchanged, so:
+  - 6-line: the SD is keyed from the SB's key exactly as today;
+  - 7-line: the SC doesn't use the SB's key at all (`cdEncryptZero`), the
+    SD is keyed from the SC and the SE from the SD, as in the SC plan.
+- **Order in `encodeBls`.** `case 6` (index 4) runs before the SC (index
+  5, `case 12`) and the SD, so the CB_X step in `case 6` is done before
+  anything after the SB is encrypted. Nothing after the SB depends on the
+  CB_X.
+- **Signatures.** `verifyBlSigs` runs before `encodeBls`, while the SB is
+  still the plaintext input file; the SC plan's step 7 (SC checked against
+  the SB's key at +616) reads the same bytes as without `-cbx`.
+- **Layout.** `addBlsToImage` adds the CB_X before type 6, so it lands
+  between the CB_A and the SB, and the SC, SD and SE follow at the running
+  offset. `calcBlAreaSize` gets both additions: `cbx.size` (step 4 here)
+  and the SC's size (the SC plan's step 5).
+- **Virtual fuses.** The g2m vfuses (type 24) go at
+  `imgCfOffset() + imgCfSize()`, which `calcBlAreaSize` sets after the
+  bootloaders, so the CB_X just pushes the patch slots along when it
+  crosses a 0x10000 boundary. The SC plan's LDV clearing doesn't look at
+  the CB_X.
+- **The built-in CB_X.** It only loads the next loader at CB_X + its size
+  and jumps to it, so the same `defCbx` works in front of a CB_B or an SB
+  (JRunner uses one CB_X for both).
+
+The error when `xb.cbb` is 0 names both: "a CB_X needs a CB_B (or an SB in
+the CB_B slot)".
 
 ## Matching
 
@@ -197,7 +258,8 @@ that reproducible; the source file isn't committed unless wanted.
 A `static int loadCbx(void)`:
 
 - `!xb.cbb`: error "this console's bl section has no CB_B, a CB_X needs
-  one" and fail. (Single-CB glitch2 sections can't take a CB_X.)
+  a CB_B (or an SB in the CB_B slot)" and fail. (Single-CB glitch2
+  sections can't take a CB_X.)
 - `cbxName[0]` (`-cbxfile`): load it as given
   (`loadFileCrc(cbxName, &cbx, 1, 1, 0)`: relative to the working
   directory, or absolute), else through
@@ -319,11 +381,15 @@ plaintext; only its encryption differs.
   The CB_B, CD and CE then follow at the running offset, as JRunner's
   splice leaves them.
 - Overflow check, `buildFlash`, under `XEBUILD_EXT`, right before
-  `addBlsToImage()`: the bootloaders' end (CB_A offset + CB_X + types 5–8,
-  after `patchBlsBlmod` has grown the CB_B) must not pass the xell offset
-  (type 25, 0x70000); otherwise error "CB_X doesn't fit before xell".
-  The built-in 0x400 bytes won't trigger it on any stock layout; a large
-  custom CB_X could.
+  `addBlsToImage()`: a `static uint32_t blChainEnd(void)` that walks
+  `xb.files[]` from the CB_A as `addBlsToImage` does (running offset,
+  skipping `none` entries and the CB_B slot when `!xb.cbb`, plus
+  `cbx.size` before type 6) and stops at the first fixed offset after it
+  (xell, type 25, 0x70000). If the end passes that offset: error "CB_X
+  doesn't fit before xell". Walking the files, rather than summing types
+  5–8, also counts the SC in a 7-line g2m build (type 12), and runs after
+  `patchBlsBlmod` has grown the CB_B/SB. The built-in 0x400 bytes won't
+  trigger it on any stock layout; a large custom CB_X could.
 
 ### 5. Build the variant (build.sh)
 
@@ -340,10 +406,14 @@ remove the ECC, and walk the chain:
 - CB_X: key from the CB_A as above (CB_A flags bit 0 picks the zero key,
   0x1000 adds the header), RC4, magic `?B`; with `--cbx <file>`, compare
   the decrypted CB_X (nonce aside) with that file or with the built-in;
-- CB_B: plaintext, `?B` magic, `XBOX_ROM` (or zeros) at 0x392 as JRunner
-  checks;
-- CD: key = HMAC(CB_B +0x10, CD +0x10) decrypts to `?D`; CE from the CD's
-  key to `?E`; CF from the 1BL key as today.
+- CB_B or SB: plaintext, `?B` magic, `XBOX_ROM` (or zeros) at 0x392 as
+  JRunner checks;
+- then by the next loader's magic:
+  - `?C` (SC, 7-line g2m): key = HMAC(zero key, SC +0x10), then the SD
+    from the SC's key;
+  - `?D` (CD, or the SD of a 6-line g2m): key = HMAC(CB_B/SB +0x10,
+    +0x10);
+  - the CE/SE from the CD/SD's key to `?E`; CF from the 1BL key as today.
 
 The same script with `--inject <cbx.bin>` applies JRunner's transform
 *without* replacing the CB_A or the SMC (decrypt the CB_B with the CPU key,
@@ -376,15 +446,27 @@ re-ECC), for verification step 3.
      file: `-cbxfile` against JRunner's real
      `ConvertRgh2ToRgh3(..., patchSMC: false)` on the plain build. They
      should match except the CB_X's nonce, if the ECC's isn't zero.
-4. `-cbxfile` with a copy of the built-in gives the same image as `-cbx`.
-5. Zeropaired build (CPU key all zeros): the CB_X is keyed with the zero
+4. Glitch2m with an SB, `-cbx`, `-norandom`:
+   - 6-line ini (CB_A 9188 mfg, SB, SD, SE): the log shows the CB_X added
+     right after the CB_A and the SB right after the CB_X; `cbx_check.py`
+     walks CB_A > CB_X > SB > SD > SE; the image without `-cbx` through
+     `--inject` matches byte for byte (this is JRunner's XDKbuild-style
+     path, CB_X before the SB);
+   - 7-line ini, once the SC plan is in: `cbx_check.py` walks CB_A > CB_X
+     > SB > SC > SD > SE, the SE hash checks against the SD (`+588`), and
+     the vfuses' LDV lines are still cleared;
+   - in both, everything after the SB matches the build without `-cbx`
+     apart from its offset (same keys, same contents).
+5. `-cbxfile` with a copy of the built-in gives the same image as `-cbx`.
+6. Zeropaired build (CPU key all zeros): the CB_X is keyed with the zero
    key and the CF's pairing is the same as without `-cbx`.
-6. Errors: `-cbx` with `-t retail`, `jtag`, `glitch`; a console whose bl
-   section has `none` for the CB_B; `-cbxfile` with a missing file, a file
+7. Errors: `-cbx` with `-t retail`, `jtag`, `glitch`; a console whose bl
+   section has `none` for the CB_B/SB; `-cbxfile` with a missing file, a file
    that isn't `?B`, a header size bigger than the file, a CB_X too large to
    fit before xell.
-7. Hardware, if available: the image boots on a glitched console, both
-   glitch2 and glitch2m.
+8. Hardware, if available: the image boots on a glitched console:
+   glitch2, glitch2m with a CB_B, and glitch2m with the SB devkit chain
+   (to the devkit kernel).
 
 Needs the user's real inputs (the 1024-byte CB_X for `defCbx`, a CPU key,
 the bootloaders), which the repo doesn't have.
