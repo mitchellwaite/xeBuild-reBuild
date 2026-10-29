@@ -1320,6 +1320,44 @@ For a future session (state on 2026-10-27, commit 852133f):
   plus `-fno-toplevel-reorder` for the string order), and README's
   Progress section is regenerated with `re/progress.py`.
 
+Profile-free, nineteenth session (2026-10-28, after build.c went
+profile-free; negative so far, tools in `wip/mc/s19/`, scratch output in
+build/v/mc19): the plain compile of src/mode_client.c is fncmp 56, inv 23
+(`wip/mc/mckeys.py <file> <flags>` prints each round-4 block's heap key
+and frequency next to mcvar's WANT position).
+- Frequency injection: `if (<cond on __builtin_constant_p(v)>) goto L;`
+  with `L:` before a cold statement adds the dead edge's flow to L's block
+  at profile_estimate. DOM resolves every `__builtin_constant_p` it visits
+  to 0 (tree-ssa-dom.c, may_optimize_p), so the edge lives until dom2's
+  cfg cleanup; dom2's own threads still see it (that is why build.c's
+  works), and the target keeps the stale frequency to bb-reorder. v must
+  not be a parameter's default def (`argc`: folded at once); each
+  injection needs its own argument (`mode + 10`, `mode + 20`) or FRE
+  merges the tests and only the first survives. `__builtin_expect` is 50%
+  in this object, so weights come from pointer (15%) and `== const` (34%)
+  tests chained with `&&`.
+- Sources matter: a dead test upstream of a target's rivals (the switch
+  prologue) drains them (case heads drop to 1). Usable: before the
+  post-loop split (`after`), the cold reboot-only path (`rok`), the fail
+  block, the loop top (for targets in the loop), clientEraseBlock's top.
+- The HDD errors can now beat usage(2) (4), but only if the send calls
+  rise too: an HDD log hotter than sendAvatarData/sendCompatData makes the
+  case-head trace continue into it (key = the case head's). With all four
+  injected from `rok` at `qq` (~11%) round 4 starts `-ip, avatar, compat,
+  usage(2), -r` (prefix 5, first time), inv 27, fncmp 70.
+- Greedy single-injection search (`search.py`: 58 call-statement targets x
+  sources x weights, score fncmp + 2 inv + 10 per block missing from round
+  4) stalls after one or two steps: from scratch inv 21 / fncmp 54
+  (run2.txt), from the four-injection start fncmp 46 / inv 28 (run3.txt).
+  Most round-4 blocks are at frequency 0-1, so the rest is heap ties that
+  single injections can't steer.
+- Next: drive injections from a design instead of greedy steps. s18's
+  `hsim.py`/`hanneal.py` give target frequencies on a real history; realize
+  them with injections per block (one source and weight each, checked
+  with `mckeys.py`), keeping the -DBUILD_FDO priority edges (JUMP asm
+  gotos) out of the plain build unless their guessed 1/(k+1) split is
+  compensated too.
+
 ## net.c
 
 Built entirely from `src/net.c` (no .s) since 2026-10-27; this draft is

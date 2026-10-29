@@ -1,0 +1,6 @@
+start [] inv 23 pre 1 fncmp 56
+step 0 (11, 'top', 'pq') client_usage(5, argv[i]); inv 23 pre 1 fncmp 54
+    strnicmp:-ip usage:2 log:cannot send avatar d log:cannot send xbox com strnicmp:-r log:Block 0x%x is outsid log:Invalid arguments sp strnicmp:-w clientInfo:0 clientPatches:0 log:Failed to erase bloc usage:5:cx usage:4:cx usage:3:cx strnicmp:-e usage:5:ax usage:5:dx usage:3:dx usage:3:ax strnicmp:-c strnicmp:-i strnicmp:-p strnicmp:-v usage:1
+step 1 (44, 'rok', 'p') clientPatches(arg); } inv 21 pre 1 fncmp 54
+    strnicmp:-ip usage:2 log:cannot send avatar d log:cannot send xbox com strnicmp:-r log:Block 0x%x is outsid log:Invalid arguments sp strnicmp:-w clientInfo:0 log:Failed to erase bloc usage:5:cx usage:4:cx usage:3:cx clientPatches:0 strnicmp:-e usage:5:ax usage:5:dx usage:3:dx usage:3:ax strnicmp:-c strnicmp:-i strnicmp:-p strnicmp:-v usage:1
+no improvement
