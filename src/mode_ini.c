@@ -66,15 +66,16 @@ int iniWriteFlashfs(void)
 {
 	char name[44];
 	int idx;
-	uint8_t *data;
-	uint32_t len;
-	uint32_t crc;
 
 	iniPrintf("[flashfs]\n");
 	if (!suFirstFile(name, &idx))
 		goto unparsed;
 	idx = 0;
 	while (suNextFile(name, &idx)) {
+		uint8_t *data;
+		uint32_t len;
+		uint32_t crc;
+
 		if (!suGetFile(name, &data, &len))
 			continue;
 		if (!strnicmp(name, "$flash_", 7)) {
@@ -85,7 +86,6 @@ int iniWriteFlashfs(void)
 				iniPrintf("xenonjklatin.xtt,dde4a14c; added by xebuild\n");
 			else if (!strnicmp(name + 7, "ximedic.xexp", 16))
 				iniPrintf("ximedic.xex,1d992bfb; added by xebuild\n");
-			__asm__("" : : "D"(&data));
 			if (!strnicmp(name + 7, "systemupdate", 12))
 				iniPrintf(";%s,%08x; commented by xebuild\n", name + 7, crc);
 			else if (!strnicmp(name + 7, "oddupd", 6))
@@ -95,7 +95,6 @@ int iniWriteFlashfs(void)
 		} else
 			iniPrintf(";%s,%08x; commented by xebuild\n", name, crc32(data, len));
 	}
-	__asm__("" : : "r"(&len));
 	return 1;
 unparsed:
 	log_printf(0, "***** ERROR SU seems loaded, but is unparsed!\n");
