@@ -160,7 +160,81 @@ scope gives the original's register allocation. `iniWriteFlashfs` and
 </details>
 
 <details>
-<summary><b>12. stfs</b>: 2 tricks, hard</summary>
+<summary><b>12. consoleinfo</b>: 0 tricks, done</summary>
+
+Calls `log_printf` directly with its `int` levels. Removing the `log_printfInt`
+alias or `__builtin_unreachable` alone breaks the match, but removing both
+matches, and `--param align-threshold` isn't needed once they're gone.
+
+</details>
+
+<details>
+<summary><b>13. fileutil</b>: 7 tricks, moderate</summary>
+
+- `--param builtin-expect-probability=65`
+- All in `readFileIn`: 2 `__builtin_expect`, 1 register pin on three variables
+  (`edi`, `ebx`, `esi`), 1 guarded `rf_hint()` call, and `optimize("no-early-inlining")`
+- 1 dead test: the `'X'` comparison in `myatou32`, which can never match but
+  changes the branch estimate
+
+Only one function is really at stake, but that function took a long search.
+Removing any subset of `readFileIn`'s hints fails, and six early-return and flag
+shapes were no closer. The `myatou32` test may well be in the original, so it may
+not need replacing.
+
+</details>
+
+<details>
+<summary><b>14. console_hdd</b>: 7 tricks, moderate</summary>
+
+- `--param builtin-expect-probability=80` and `--param align-loop-iterations=3`
+- 2 `__builtin_expect`, 1 literal-order `asm` and 1 pin, in `prepSysex` and
+  `sendAvatarData`
+- `__builtin_assume_aligned`, which hides the loop index from scev so ivopts
+  keeps the `imul`
+
+All of these are for `sendAvatarData`, whose loop form has to defeat ivopts and
+if-conversion. Loop forms and a helper holding the loop were no closer. `sendDir`
+matches by declaring its per-entry locals in the loop body, and `sendCompatData`
+returns `long`.
+
+</details>
+
+<details>
+<summary><b>15. net</b>: 8 tricks, moderate</summary>
+
+- `--param builtin-expect-probability=65`
+- 3 per-function `optimize` attributes: `no-crossjumping` on two functions and
+  `no-early-inlining` on two (`netWriteBlocks` has both)
+- 2 `__builtin_expect`, on `netRecvVerbose` and `netSendFile`
+- 2 pins, on `got` and `buf`
+
+Each function needs only a small fix. The exception is `netRecvVerbose`, whose
+IPA-CP clone (`netRecv`) and register choice both depend on its hints. Scoping
+`rlen` in a block removed `netMkdir`'s attribute, but the same shape leaves
+`netSendFile` 4 lines off and `netWriteBlocks` 6. `netWritePatches` is 10 lines
+off without its attribute, and a helper holding the reply check was further off.
+
+</details>
+
+<details>
+<summary><b>16. bootloaders</b>: 9 tricks, moderate</summary>
+
+- 5 `optimize` attributes: `no-tree-dominator-opts`, `no-tree-vrp`,
+  `no-cse-follow-jumps` and `no-early-inlining`, on `cfDecrypt`, `cbDecrypt`,
+  `cdDecrypt`, `ceDecrypt` and `daeVerifySig`
+- 1 `always_inline`, on `daeSigCheck`
+- 1 guarded `hint()` call, 1 literal-order `asm` and 1 register pin
+
+The three `*Decrypt` attributes each come down to one `xor ebx,ebx` on the
+`calloc` failure path, which gcc drops because it knows `buf` is 0 there. Return
+types, a separate variable for `calloc`'s result and scoping `key` were no
+closer. `cfDecrypt` is 20 lines off without its attribute.
+
+</details>
+
+<details>
+<summary><b>17. stfs</b>: 2 tricks, hard</summary>
 
 - 1 `__builtin_expect` and 1 register pin (`fb` in `esi`), both on the loop guard
   in `stfsGetFile`
@@ -171,81 +245,6 @@ best reaches 26 differing lines, only swapping `esi` and `ecx`. IRA colours `fb`
 before the `c->blocks` pseudo, so `fb` takes `ecx`. Changing the guard's
 probability didn't fix it, and low values change the layout too. A match
 probably needs something that makes `ecx` unavailable to `fb`.
-
-</details>
-
-<details>
-<summary><b>13. consoleinfo</b>: 3 tricks, moderate</summary>
-
-- `--param align-threshold=200`, because `showInfoKeys` aligns a block at
-  frequency 61 of 9412
-- 1 `__builtin_unreachable`, which shifts dom2's block numbers and so sets
-  which copy gets duplicated first
-- 1 asm-label prototype: `log_printfInt`
-
-There are few tricks, but the alignment means finding a shape that gives that
-block the right estimated frequency.
-
-</details>
-
-<details>
-<summary><b>14. fileutil</b>: 7 tricks, moderate</summary>
-
-- `--param builtin-expect-probability=65`
-- All in `readFileIn`: 2 `__builtin_expect`, 1 register pin on three variables
-  (`edi`, `ebx`, `esi`), 1 guarded `rf_hint()` call, and `optimize("no-early-inlining")`
-- 1 dead test: the `'X'` comparison in `myatou32`, which can never match but
-  changes the branch estimate
-
-Only one function is really at stake, but that function took a long search. The
-`myatou32` test may well be in the original, so it may not need replacing.
-
-</details>
-
-<details>
-<summary><b>15. console_hdd</b>: 9 tricks, moderate</summary>
-
-- `--param builtin-expect-probability=80` and `--param align-loop-iterations=3`
-- 2 `__builtin_expect`, 1 literal-order `asm` and 1 pin, in `prepSysex` and
-  `sendAvatarData`
-- `__builtin_assume_aligned`, which hides the loop index from scev so ivopts
-  keeps the `imul`
-- `__builtin_prefetch(0)`, which keeps `sendDir`'s `fail:` as its own GIMPLE block
-- 1 asm-label prototype: `netMountInt`
-
-`sendAvatarData` is the difficult part: its loop form has to defeat ivopts and
-if-conversion without any hints.
-
-</details>
-
-<details>
-<summary><b>16. net</b>: 9 tricks, moderate</summary>
-
-- `--param builtin-expect-probability=65`
-- 4 per-function `optimize` attributes: `no-crossjumping` on three functions
-  and `no-early-inlining` on two (`netWriteBlocks` has both)
-- 2 `__builtin_expect`, on `netRecvVerbose` and `netSendFile`
-- 2 pins, on `got` and `buf`
-
-Each function needs only a small fix. The exception is `netRecvVerbose`, whose
-IPA-CP clone (`netRecv`) and register choice both depend on its hints. Blocking
-crossjumping without the attribute takes differences between the blocks.
-
-</details>
-
-<details>
-<summary><b>17. bootloaders</b>: 11 tricks, moderate</summary>
-
-- 5 `optimize` attributes: `no-tree-dominator-opts`, `no-tree-vrp`,
-  `no-cse-follow-jumps` and `no-early-inlining`, on `cfDecrypt`, `cbDecrypt`,
-  `cdDecrypt`, `ceDecrypt` and `daeVerifySig`
-- 3 inlining and cloning attributes: `noclone` on `daeDecrypt`, `always_inline`
-  on `daeSigCheck` and `fcrtVerifySig`
-- 1 guarded `hint()` call, 1 literal-order `asm` and 1 register pin
-
-The disabled passes suggest the original kept a value alive differently, such
-as `ok` or `buf` on a failure path. Finding that shape would likely fix all
-three `*Decrypt` functions at once.
 
 </details>
 
