@@ -46,7 +46,7 @@ src/globals.c            the program's COMMON (uninitialized global) block, in
 tools/re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
 tools/re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
 tools/re/units.py              objects from .eh_frame CIEs; profile of each for naming
-tools/re/gcda.py               crafted .gcda for mode_update's profile build (build.sh)
+tools/re/gcda.py               crafted .gcda for a profile build (unused by build.sh now)
 tools/re/objcmp.py             section-by-section compare of a .o against the exe
 tools/re/execmp.py             header/section/byte compare of two exes
 tools/re/stamp.py              set PE timestamp and recompute checksum
@@ -157,7 +157,7 @@ does nothing.
   function success-first (error in an else, or after the main path) and
   the literals line up, usually with identical code (bootloaders, keys,
   mode_update, filelist_ini, net, options, image_read, build). Where the
-  shape is pinned by layout or a crafted profile, an empty
+  shape is pinned by layout, an empty
   `__asm__("" :: "i"("literal"))` pulls a literal earlier without
   touching codegen (it makes no SSA names; mode_client needs only two).
   A function spliced from a second compile can use literals too:
@@ -235,16 +235,11 @@ salts, ...) are ours.
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
 
 And `mode_update` (whole object in C).
-`mode_update` itself only matches when built with a profile: its cold
-blocks are placed by bb-reorder's Fibonacci-heap ties, and no guessed
-profile we found gives the original's (tools/wip/README.md has the search,
-`tools/wip/fibsolve.py`). build.sh compiles the object with
-`-fbranch-probabilities` and a `.gcda` from `tools/re/gcda.py`: counts for
-`mode_update` and its inlined `updateNand` only, gcc's guessed profile with
-11 edges changed. The edges are a fit to the layout, not the original's
-profile. The other functions are `optimize("no-branch-probabilities",
-"no-reorder-functions")` (`NOPROF`), so they keep the guessed profile and
-`.text`. getBadBlocks is written success-first (no early-return predictor),
+`mode_update` is a plain compile with no profile: its cold blocks are placed
+by bb-reorder's Fibonacci-heap ties, which dead zero-byte hints set (one dummy
+heap entry and three keys, tools/wip/mu/p1/NOTES.md). No object is built with a
+profile now.
+getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the
 original's is. Its strings are plain literals: the functions whose
 literals came out of order are written success-first (errors in an else
@@ -434,8 +429,7 @@ change no code. XeCrypt keeps its own `u8`/`u32` (`xecryptTypes.h`).
 Two switches, defined before including `xebuild.h`, give a file the view of
 `xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
 and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
-It also holds the shared macros: `SWAP16`/`SWAP32`, `IS_SLIM` and `NOPROF`
-(mode_update.c uses it for the functions outside its profile). The
+It also holds the shared macros: `SWAP16`/`SWAP32` and `IS_SLIM`. The
 spelling of a byte swap changes code even though the bswap pass folds it, so
 build.c, image_write.c and keys.c use their own spellings, also in
 `xebuild.h` with the object's name as a suffix (`SWAP16_BUILD`,

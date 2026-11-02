@@ -6,29 +6,8 @@
 set -e
 TC=tools/toolchain-4745/mingw32/bin
 OBJ=build/obj
-ROOT=$PWD
 # gcc finds cc1/as and their DLLs through PATH
 PATH="$PWD/$TC:$PATH"
-# ccp <gcc flags>: compile src/$f.c (as $orig) in $p, assembly to stdout
-ccp() {
-  (cd "$p" && { printf '#line 1 "%s"\n' "$orig"; cat "$ROOT/src/$f.c"; } |
-    "$ROOT/$TC/gcc.exe" -S "$@" -I"$ROOT/src/$(dirname "$f")" -x c - -o -)
-}
-# fdo <gcda.py args> <gcc flags>: profile build of src/$f.c, assembly to stdout.
-# An instrumented compile gives the .gcno and the guessed profile, tools/re/gcda.py
-# the .gcda. All compiles run in $p with `-o -`: the .gcda name and static
-# functions' profile ids come from the aux name
-fdo() {
-  p="$OBJ/$f.fdo"
-  mkdir -p "$p"
-  pw=$(cd "$p" && { pwd -W 2>/dev/null || pwd; })
-  pa=$1; shift
-  ccp $cflags "$@" -fprofile-arcs -ftest-coverage \
-    -fdump-tree-profile_estimate-blocks-details >/dev/null
-  python tools/re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" \
-    $pa --src="src/$f.c" >/dev/null
-  ccp $cflags "$@" -fbranch-probabilities -fprofile-dir="$pw"
-}
 # The program's objects in the original's link order (its .eh_frame CIE
 # order; tools/re/split.py's NAMES has the evidence for each).  ld lays out
 # .text/.rdata/.data in this order.
@@ -56,7 +35,6 @@ objs=
 for f in $objects globals; do
   mkdir -p "$OBJ/$(dirname "$f")"
   [ -f "src/$f.c" ] || { echo "build.sh: no src/$f.c" >&2; exit 1; }
-  prof=
   case "$f" in
     # original build path, for __FILE__ in assert(); fed through stdin so
     # the #line can name it (gcc 6 has no -ffile-prefix-map)
@@ -74,19 +52,10 @@ for f in $objects globals; do
     consoleinfo) orig="$f.c"
            cflags="-O3 --param align-threshold=200" ;;
     # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
-    # mode_update's cold blocks are laid out by frequency ties that no
-    # guessed profile we found gives (tools/wip/README.md), so it and the static
-    # updateNand it inlines are built with a crafted profile: gcc's guessed
-    # one with these edges changed (profile_estimate bb numbers; tools/re/gcda.py).
-    # The other functions are optimize("no-branch-probabilities") and keep
-    # the guessed profile; -fno-ipa-profile keeps their hot test, and
-    # -fno-reorder-functions keeps mode_update out of .text.hot.
+    # mode_update's cold layout comes from dead hints in the source
+    # (tools/wip/mu/p1/NOTES.md); -fno-toplevel-reorder keeps its data order
     mode_update) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=68 -fno-ipa-profile -fno-reorder-functions"
-           prof="mode_update:59>3=97.9 mode_update:65>66=16 mode_update:67>68=16
-                 mode_update:69>70=30 mode_update:75>76=21 mode_update:79>80=80.5
-                 mode_update:80>82=17 updateNand:2>3=49.5 updateNand:13>18=27
-                 updateNand:19>20=60 updateNand:24>25=14.5 --only=mode_update,updateNand" ;;
+           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=68" ;;
     # fcrtEncrypt's offset hint needs 60 (and setFuseCpuKey's NULL hint
     # then aligns that block; align-threshold=200 would also align
     # smcChecksum's count == 0 block, which the original doesn't);
@@ -141,13 +110,8 @@ for f in $objects globals; do
     *) orig="$f.c"
        cflags="-O3" ;;
   esac
-  if [ -n "$prof" ]; then
-    fdo "$prof" > "$OBJ/$f.c.s"
-    "$TC/as.exe" --32 "$OBJ/$f.c.s" -o "$OBJ/$f.o"
-  else
-    { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
-      "$TC/gcc.exe" -c $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.o"
-  fi
+  { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
+    "$TC/gcc.exe" -c $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.o"
   [ "$f" = globals ] || objs="$objs $OBJ/$f.o"
 done
 # Link as gcc does: crt2.o and crtbegin.o, the program, the libraries (gcc's

@@ -1,5 +1,5 @@
 /* mode_update: `xeBuild update`, rebuilds and reflashes a console over the network.
-   mode_update and updateNand are built with a crafted profile (build.sh). */
+   Layout hints in mode_update and updateNand are zero-byte and never run: see tools/wip/mu/p1/NOTES.md. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +19,8 @@
 #include "mode_update.h"
 #include "net.h"
 #include "smc.h"
+
+#define cp __builtin_constant_p
 
 /* TODO(prototype cast): verifyExtended returns int (bootloaders.c); getKv's
    code wants a uint32_t */
@@ -44,7 +46,7 @@ struct consoleinfo *info = 0;
    getKv, getBootloaders, getConsoleFiles and updateGetFile test for
    success and log their errors after it. */
 
-NOPROF uint32_t getBadBlocks(void)
+uint32_t getBadBlocks(void)
 {
 	uint8_t *list;
 	int len, i;
@@ -74,7 +76,7 @@ NOPROF uint32_t getBadBlocks(void)
 	return 0;
 }
 
-NOPROF void update_usage(void)
+void update_usage(void)
 {
 	log_printf(0, separator);
 	log_printf(0, "Usage   :\n   %s update <switch> [<option>]\n\n", "xeBuild");
@@ -112,7 +114,7 @@ NOPROF void update_usage(void)
 	exit(1);
 }
 
-NOPROF int wantFile(const char *name)
+int wantFile(const char *name)
 {
 	int ret = 1;
 
@@ -126,7 +128,7 @@ NOPROF int wantFile(const char *name)
 	return ret;
 }
 
-NOPROF void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, size_t idxLen)
+void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, size_t idxLen)
 {
 	uint32_t e, i, n;
 	uint32_t off = 4;
@@ -169,7 +171,7 @@ NOPROF void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, si
 	}
 }
 
-NOPROF void getAddons(void)
+void getAddons(void)
 {
 	uint8_t *addons, *idx;
 	int len;
@@ -196,7 +198,7 @@ NOPROF void getAddons(void)
 		log_printf(0, "\n\n***** WARNING: Unable to retrieve addons.bin from console!\n");
 }
 
-NOPROF uint32_t getMobileFiles(const char *dir)
+uint32_t getMobileFiles(const char *dir)
 {
 	uint8_t i;
 	char name[64];
@@ -264,7 +266,7 @@ NOPROF uint32_t getMobileFiles(const char *dir)
 	return 0;
 }
 
-NOPROF uint8_t *bldrGetKv(int *size)
+uint8_t *bldrGetKv(int *size)
 {
 	uint8_t *bl = xb.bl.data;
 	uint32_t len = SWAP32(*(uint32_t *)(bl + 96));
@@ -275,7 +277,7 @@ NOPROF uint8_t *bldrGetKv(int *size)
 	return kv;
 }
 
-NOPROF uint8_t *bldrGetSmc(int *size)
+uint8_t *bldrGetSmc(int *size)
 {
 	uint8_t *bl = xb.bl.data;
 	uint32_t len = SWAP32(*(uint32_t *)(bl + 120));
@@ -286,7 +288,7 @@ NOPROF uint8_t *bldrGetSmc(int *size)
 	return smc;
 }
 
-NOPROF static uint32_t getSmc(const char *dir)
+static uint32_t getSmc(const char *dir)
 {
 	if (!xb.fromConsole) {
 		log_printf(1, "retrieving USVR\\smc_enc...");
@@ -311,7 +313,7 @@ NOPROF static uint32_t getSmc(const char *dir)
 	return 0;
 }
 
-NOPROF static uint32_t getKv(const char *dir)
+static uint32_t getKv(const char *dir)
 {
 	uint32_t ret;
 
@@ -338,7 +340,7 @@ NOPROF static uint32_t getKv(const char *dir)
 	return 0;
 }
 
-NOPROF uint32_t getSecurityFiles(const char *dir)
+uint32_t getSecurityFiles(const char *dir)
 {
 	uint32_t i;
 
@@ -364,14 +366,14 @@ NOPROF uint32_t getSecurityFiles(const char *dir)
 	return getSmc(dir);
 }
 
-NOPROF uint32_t checkBadBlocks(void)
+uint32_t checkBadBlocks(void)
 {
 	if (xb.flags & NAND_MMC)
 		return 1;
 	return getBadBlocks();
 }
 
-NOPROF uint32_t getBootloaders(const char *dir)
+uint32_t getBootloaders(const char *dir)
 {
 	log_printf(1, "\n------ getting bootloaders ------\n");
 	if (xb.type == BUILD_GLITCH) {
@@ -391,7 +393,7 @@ NOPROF uint32_t getBootloaders(const char *dir)
 	return 1;
 }
 
-NOPROF int getConsoleFiles(const char *dir)
+int getConsoleFiles(const char *dir)
 {
 	if (checkBadBlocks()) {
 		if (__builtin_expect(netMount("usv", "\\SystemRoot"), 1)) {
@@ -412,7 +414,7 @@ NOPROF int getConsoleFiles(const char *dir)
 	return 0;
 }
 
-NOPROF int updateGetFile(const char *name, uint8_t **data, int *size)
+int updateGetFile(const char *name, uint8_t **data, int *size)
 {
 	char *p;
 	uint8_t *buf;
@@ -489,7 +491,7 @@ static void updateNand(char *dumpDir, int *pret)
 					sendAvatarData(xb.dataDir, xb.kernel);
 			} else
 				log_printf(1, "avatar data skipped, no HDD detected\n");
-			if (!noReboot) {
+			if (__builtin_expect(!noReboot, 1)) {
 				if (!ret)
 					netReboot(2);
 				else {
@@ -500,8 +502,12 @@ static void updateNand(char *dumpDir, int *pret)
 			}
 			if (dumpDir) {
 				r = writeImage(xb.outName);
+				if (cp(r + 1) && cp(r + 2) && cp(r + 3) && cp(r + 4))
+					goto werr;
 				if (r)
+				werr:
 					log_printf(0, "\n\n***** ERROR: %i writing to file %s\n\n", r, xb.outName);
+			wok: __attribute__((hot, unused));
 				log_printf(0, separator);
 			}
 			log_printf(0, "%s image built, info:\n", xb.outName);
@@ -531,14 +537,20 @@ int mode_update(int argc, char **argv)
 	for (i = 0; i < argc; i++) {
 		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2)
 		    || !strnicmp(argv[i], "/?", 2))
+		{
+		hu:
 			update_usage();
+		}
 		if (!strnicmp(argv[i], "-noenter", 8)) {
 			log_printf(1, "<enter> key on completion suppressed\n");
 			promptEnter = 0;
 		} else if (!strnicmp(argv[i], "-ip", 3)) {
 			i++;
 			ip = argv[i];
+			if (cp(i + 101))
+				goto iperr;
 			if (i == argc || !ip || *ip == '-') {
+			iperr:
 				log_printf(0, "\n\n***** ERROR: option flag -ip on command line but no argument provided!\n");
 				update_usage();
 			}
@@ -586,7 +598,21 @@ int mode_update(int argc, char **argv)
 			i++;
 			noAvatar = 1;
 			log_printf(1, "-noava: avatar data, if available, will not be sent to console\n");
+			if (cp(argc + 104))
+				goto dn;
+			if (cp(argc + 105))
+				goto dn;
+			__asm__ goto ("" :::: dn);
+			if (0) {
+			dn:
+				__asm__ volatile ("" :: "r"(i));
+				if (cp(argc + 103))
+					continue;
+				__builtin_unreachable();
+			}
 		} else if (!strnicmp(argv[i], "-noreeb", 6)) {
+			__builtin_memset(argv, 0, cp(i + 106));
+			__asm__ goto ("" :::: hu);
 			i++;
 			noReboot = 1;
 			log_printf(1, "-noreeb: console will not reboot after writes are done\n");

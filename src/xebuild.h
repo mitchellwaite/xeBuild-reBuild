@@ -75,12 +75,6 @@
 /* a slim console (xb.flags' console type) */
 #define IS_SLIM ((xb.flags & CONSOLE_MASK) > CONSOLE_JASPER)
 
-/* in an object compiled with a profile (mode_update.c), the functions that
-   keep gcc's guessed profile, and .text */
-#ifndef NOPROF
-#define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
-#endif
-
 /* ---- Types ---- */
 
 /* a file and its size (netGetFile's, a dump's) */
