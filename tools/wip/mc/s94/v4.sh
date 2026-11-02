@@ -1,0 +1,13 @@
+B=n1.c
+W='if (i + 1 == argc || ({__asm__ goto("" :::: w5x); 0;}) || !a || *a == '"'-'"')'
+sh r.sh v34 $B "$W" 'if (({__asm__ goto("" :::: w5x); 0;}) || i + 1 == argc || !a || *a == '"'-'"')'
+sh r.sh v35 $B "$W" 'if (i + 1 == argc || !a || ({__asm__ goto("" :::: w5x); 0;}) || *a == '"'-'"')'
+sh r.sh v36 $B "$W" 'if (i + 1 == argc || !a || *a == '"'-'"' || ({__asm__ goto("" :::: w5x); 0;}))'
+sh r.sh v37 $B "$W" 'if (i + 1 == argc || !a || *a == '"'-'"')'
+sh r.sh v38 $B "$W" 'if (i + 1 == argc || ({__asm__ goto("" :::: w5x, wb3); 0;}) || !a || *a == '"'-'"')'
+sh r.sh v39 $B 'k61l: if (!strnicmp(argv[i], "-w", 2)) {' 'k61l: if (!strnicmp(argv[i], "-w", 2)) { if (__builtin_constant_p(i + 700)) goto w5x;'
+sh r.sh v40 $B 'k61l: if (!strnicmp(argv[i], "-w", 2)) {' 'k61l: if (!strnicmp(argv[i], "-w", 2)) { if (__builtin_constant_p(i + 700)) goto wb3;'
+sh r.sh v41 $B 'k61l: if (' 'k61l: __attribute__((hot)); if ('
+sh r.sh v42 $B 'if (mode) { w5x: client_usage(5, argv[i]); }' 'if (mode) { w5x: __attribute__((cold)); client_usage(5, argv[i]); }'
+sh r.sh v43 $B 'mode = 2;' 'mode = 2; if (__builtin_constant_p(i + 701)) goto w5x;'
+sh r.sh v44 $B '{ wb3: client_usage(3, argv[i]); }' '{ wb3: __attribute__((cold)); client_usage(3, argv[i]); }'

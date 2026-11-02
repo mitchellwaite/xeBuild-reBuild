@@ -1,0 +1,216 @@
+2 old 2 T1r1 f 4946 L580 *LC119 log_set_name
+3 old 137 T1r1 f 8498 L592
+4 old 138 T1r1 f 4248 L723
+5 old 139 T1r1 f 2740 L723
+6 old 140 T2r1 f 3018 L726
+7 old 141 T2r1 f 1504 L727 netConnect
+8 old 227 T7r2 f 1266 *LC158 L802 log_printf
+9 old 26 T17r3 f 362 L621 *LC130 strnicmp
+10 old 29 T23r4 f 181 L625 *LC132 strnicmp
+11 old 30 T23r4 f 90 L626
+12 old 31 T23r4 f 90 L628
+13 old 32 T23r4 f 90 L628
+14 old 34 T23r4 f 90 L630
+15 old 35 T23r4 f 90 L633
+16 old 36 T23r4 f 90 L633
+17 old 38 T23r4 f 90 L635
+18 old 40 T23r4 f 181 L638 *LC133 log_printf
+19 old 5 T23r4 f 91 L641
+20 old 6 T3r1 f 5000 L595 *LC120 strnicmp
+21 old 8 T3r1 f 4997 L595 *LC121 strnicmp
+22 old 9 T3r1 f 4995 L595 *LC122 strnicmp
+23 old 10 T3r1 f 4993 L597 *LC123 strnicmp
+24 old 11 T3r1 f 2496 *LC124 L598 log_printf promptEnter
+25 old 136 T3r1 f 4295 L592
+26 old 12 T4r1 f 2496 L600 *LC125 strnicmp
+27 old 13 T5r2 f 1772 L601
+28 old 15 T5r2 f 1772 *LC127 L603 log_printf
+29 old 119 T88r4 f 0 L712
+30 old 152 T88r4 f 0 L592
+31 old 155 T6r2 f 1450 L736 netConnect
+32 old 156 T6r2 f 1456 L737
+33 old 157 T6r2 f 884 netGetInfo L738 cinfo
+34 old 158 T10r3 f 850 L745
+35 old 205 T32r4 f 145 L528 myatoh32
+36 old 206 T32r4 f 145 cinfo L533
+37 old 207 T32r4 f 88 *LC115 L535 log_printf *_netEraseBlock
+38 old 208 T32r4 f 44 *LC116 L538 log_printf
+39 old 224 T8r2 f 3880 L796
+40 old 226 T8r2 f 851 netDisconnect L798
+41 old 27 T18r3 f 354 L622 getArgs *LC131 log_printf
+42 old 130 T24r4 f 177 L723
+43 old 131 T24r4 f 126 L726
+44 old 132 T24r4 f 63 L727 netConnect
+45 old 133 T24r4 f 18 netGetInfo L729 cinfo
+46 old 146 T24r4 f 1 L624
+47 old 147 T24r4 f 10 L730
+48 old 148 T24r4 f 0 L740
+49 old 225 T9r2 f 1956 L797 netReboot
+50 old 16 T11r3 f 724 L605 *LC128 strnicmp
+51 old 17 T11r3 f 362 L606
+52 old 18 T11r3 f 362 L606
+53 old 19 T11r3 f 362 L606
+54 old 20 T11r3 f 362 L608
+55 old 21 T11r3 f 362 L612
+56 old 22 T11r3 f 361 L612
+57 old 23 T11r3 f 361 L614
+58 old 24 T11r3 f 710 L617 *LC129 log_printf
+59 old 3 T11r3 f 355 L620
+60 old 142 T12r3 f 430 netGetInfo L729 cinfo
+61 old c0 T? f 17 
+62 old 213 T13r3 f 417 L783
+63 old 214 T13r3 f 417 L783
+64 old 217 T14r3 f 464 L786 clientInfo
+65 old 178 T62r4 f 3 L620
+66 old 181 T15r3 f 814 L758
+67 old 182 T15r3 f 271 L758 sendCompatData
+68 old 197 T75r4 f 1 L620
+69 old 200 T16r3 f 443 L774 clientWriteBlocks
+70 old c0 T? f 0 
+71 old 108 T19r3 f 355 L723
+72 old 109 T19r3 f 252 L726
+73 old 110 T19r3 f 126 L727 netConnect
+74 old 111 T37r4 f 36 netGetInfo L729 cinfo
+75 old 144 T37r4 f 1 L620
+76 old 172 T20r3 f 306 L752
+77 old 173 T21r3 f 305 L752 sendAvatarData
+78 old 223 T21r3 f 375 L790
+79 old c0 T? f 188 
+80 old 185 T22r4 f 0 L766 clientPatches
+81 old 4 T25r4 f 177 L624
+82 old 216 T26r4 f 0 L784 clientInfo
+83 old 113 T43r4 f 89 netGetInfo L738 cinfo
+84 old 212 T27r4 f 246 L780 clientBinPatch
+85 old 171 T28r4 f 164 L751
+86 old 174 T28r4 f 178 *LC155 L754 log_printf
+87 old 159 T64r4 f 3 L620
+88 old 162 T29r4 f 164 L742 netDumpNand
+89 old 222 T29r4 f 245 L790
+90 old c0 T? f 123 
+91 old 175 T30r4 f 157 L757
+92 old 176 T30r4 f 78 L757
+93 old 183 T30r4 f 214 *LC156 L760 log_printf
+94 old 165 T63r4 f 3 L620
+95 old 168 T31r4 f 146 L748
+96 old 169 T31r4 f 37 clientKeys L748
+97 old c0 T? f 19 
+98 old 184 T33r4 f 144 L765
+99 old 186 T33r4 f 224 L768 clientPatches
+100 old 187 T76r4 f 1 L620
+101 old 190 T34r4 f 98 L771 clientReadBlocks
+102 old c0 T? f 0 
+103 old 164 T35r4 f 97 L745 clientWrite
+104 old 129 T55r4 f 19 netGetInfo L738 cinfo
+105 old 192 T36r4 f 90 L774 clientWriteBlocks
+106 old 202 T36r4 f 30 L774
+107 old 203 T36r4 f 178 L775
+108 old c0 T? f 89 
+109 old 218 T74r4 f 1 L620
+110 old 221 T38r4 f 74 *LC157 L793 log_printf
+111 old 14 T39r4 f 243 *LC126 L602 log_printf
+112 old 151 T40r4 f 103 L723
+113 old 124 T41r4 f 90 L723
+114 old 125 T41r4 f 64 L726
+115 old 126 T41r4 f 32 L727 netConnect
+116 old 127 T41r4 f 9 netGetInfo L729 cinfo
+117 old 145 T41r4 f 0 L641
+118 old 42 T42r4 f 90 L642 *LC134 strnicmp
+119 old 43 T42r4 f 45 L643
+120 old 44 T42r4 f 45 L643
+121 old 45 T42r4 f 45 L643
+122 old 46 T42r4 f 45 L645
+123 old 47 T42r4 f 91 L647 *LC135 log_printf
+124 old c0 T? f 46 
+125 old 59 T44r4 f 80 L670 *LC142 strnicmp
+126 old 60 T44r4 f 40 L671
+127 old 61 T44r4 f 40 L672
+128 old 62 T44r4 f 40 L672
+129 old 63 T44r4 f 40 L672
+130 old 64 T44r4 f 40 L674
+131 old 65 T44r4 f 83 L675 *LC143 log_printf
+132 old c0 T? f 42 
+133 old 210 T45r4 f 56 *LC118 L542 log_printf
+134 old 194 T46r4 f 52 *LC155 L754 log_printf
+135 old c0 T? f 26 
+136 old 196 T47r4 f 197 netGetInfo L738 cinfo
+137 old 154 T48r4 f 51 L723
+138 old 49 T49r4 f 45 L650 *LC136 strnicmp
+139 old 50 T49r4 f 32 L653
+140 old 52 T49r4 f 12 *LC138 L656 log_printf
+141 old 209 T50r4 f 44 L540 *LC117 log_printf
+142 old 67 T51r4 f 40 L678 *LC144 strnicmp
+143 old 68 T51r4 f 20 L679
+144 old 69 T51r4 f 20 L680
+145 old 70 T51r4 f 20 L680
+146 old 71 T51r4 f 20 L680
+147 old 73 T51r4 f 20 L682
+148 old 75 T51r4 f 37 L683 *LC145 log_printf
+149 old c0 T? f 19 
+150 old 135 T52r4 f 37 netGetInfo L738 cinfo
+151 old 153 T53r4 f 26 L723
+152 old 77 T54r4 f 20 L686 *LC146 strnicmp
+153 old 78 T54r4 f 10 L687
+154 old 79 T54r4 f 10 L687
+155 old 80 T54r4 f 10 L687
+156 old 81 T54r4 f 10 L689
+157 old 82 T54r4 f 19 L691 *LC147 log_printf
+158 old c0 T? f 10 
+159 old 53 T56r4 f 13 L659 *LC139 strnicmp
+160 old 122 T56r4 f 18 L592
+161 old c0 T? f 9 
+162 old 84 T57r4 f 10 L694 *LC148 strnicmp
+163 old 85 T57r4 f 5 L695
+164 old 86 T57r4 f 5 L695
+165 old 87 T57r4 f 5 L695
+166 old 89 T57r4 f 5 L697
+167 old 91 T57r4 f 9 L699 *LC149 log_printf
+168 old c0 T? f 5 
+169 old 7 T58r4 f 6 L596 client_usage
+170 old 93 T59r4 f 5 L702 *LC150 strnicmp
+171 old 94 T59r4 f 4 L703
+172 old 95 T59r4 f 3 L703
+173 old 96 T59r4 f 2 L703
+174 old 114 T59r4 f 0 L592
+175 old c0 T? f 0 
+176 old 54 T60r4 f 4 L662 *LC140 strnicmp
+177 old 55 T60r4 f 2 L663
+178 old 56 T60r4 f 2 L663
+179 old 57 T60r4 f 2 L663
+180 old 58 T60r4 f 2 L668 *LC141 log_printf
+181 old 51 T61r4 f 4 *LC137 L654 log_printf
+182 old 180 T65r4 f 3 L624
+183 old 161 T66r4 f 3 L624
+184 old 167 T67r4 f 3 L624
+185 old 150 T68r4 f 2 L734 client_usage
+186 old 99 T69r4 f 1 L710 *LC152 strnicmp
+187 old 100 T69r4 f 1 L711
+188 old 101 T69r4 f 1 L711
+189 old 102 T69r4 f 1 L711
+190 old 103 T69r4 f 0 L715 *LC153 log_printf
+191 old c0 T? f 0 
+192 old 97 T70r4 f 1 L706 *LC151 log_printf
+193 old c0 T? f 1 
+194 old 199 T71r4 f 1 L624
+195 old 220 T72r4 f 1 L624
+196 old 189 T73r4 f 1 L624
+197 old 72 T77r4 f 0 L681 client_usage
+198 old 88 T78r4 f 0 L696 client_usage
+199 old 33 T79r4 f 0 L629 client_usage
+200 old 116 T80r4 f 0 L592
+201 old 74 T81r4 f 0 L682 client_usage
+202 old 179 T82r4 f 0 L641
+203 old 160 T83r4 f 0 L641
+204 old 219 T84r4 f 0 L641
+205 old 188 T85r4 f 0 L641
+206 old 166 T86r4 f 0 L641
+207 old 198 T87r4 f 0 L641
+208 old 121 T89r4 f 0 L592
+209 old 117 T90r4 f 0 L592
+210 old c0 T? f 0 
+211 old 105 T91r4 f 0 L718 *LC154 strnicmp
+212 old 106 T91r4 f 0 L719 log_verbose_flag
+213 old 211 T92r4 f 0 *LC114 L544 log_printf
+214 old 39 T93r4 f 0 L637 client_usage
+215 old 37 T94r4 f 0 L634 client_usage
+216 old 90 T95r4 f 0 L698 client_usage
+217 old 107 T96r4 f 0 L721 client_usage

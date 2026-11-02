@@ -1,0 +1,316 @@
+@@ e00 baseline (same as best)
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+			else
+				{ efail: log_printf(0, MF, block); }
+		} else
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}
+@@ e01 early-return chain
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); return; }
+	if (block >= cinfo->nandSize / cinfo->blockSize)
+		{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; return; }
+	eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+	if (!netEraseBlockU32(block, 1))
+		{ efail: log_printf(0, MF, block); return; }
+	esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout;
+}
+@@ e02 nested, inverted outer polarity
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+	else if (block < cinfo->nandSize / cinfo->blockSize) {
+		eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+		if (netEraseBlockU32(block, 1))
+			{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+		else
+			{ efail: log_printf(0, MF, block); }
+	} else
+		{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+}
+@@ e03 inverted inner range
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block >= cinfo->nandSize / cinfo->blockSize)
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+		else {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+			else
+				{ efail: log_printf(0, MF, block); }
+		}
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}
+@@ e04 inverted net polarity
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			if (!netEraseBlockU32(block, 1))
+				{ efail: log_printf(0, MF, block); }
+			else
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+		} else
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}
+@@ e05 shared error exit, msg variable
+static void clientEraseBlockI(const char *sblock)
+{
+	const char *msg;
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); return; }
+	if (block < cinfo->nandSize / cinfo->blockSize) {
+		log_printf(0, "erasing block 0x%x...", block);
+		if (netEraseBlockU32(block, 1))
+			{ log_printf(0, "Success!\n"); return; }
+		msg = MF;
+	} else
+		msg = MO;
+	log_printf(0, msg, block);
+}
+@@ e06 goto error labels at end
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1) goto einv;
+	if (block >= cinfo->nandSize / cinfo->blockSize) goto eout;
+	eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+	if (!netEraseBlockU32(block, 1)) goto efail;
+	esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout;
+	return;
+efail:	log_printf(0, MF, block); return;
+eout:	log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; return;
+einv:	__attribute__((cold)); log_printf(0, MI);
+}
+@@ e07 goto error labels, einv before eout
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1) goto einv;
+	if (block >= cinfo->nandSize / cinfo->blockSize) goto eout;
+	eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+	if (netEraseBlockU32(block, 1)) { esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; return; }
+	efail: log_printf(0, MF, block); return;
+einv:	__attribute__((cold)); log_printf(0, MI); return;
+eout:	log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv;
+}
+@@ e08 else-if chain, out-of-range second
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+	else if (block >= cinfo->nandSize / cinfo->blockSize)
+		{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	else {
+		eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+		if (netEraseBlockU32(block, 1))
+			{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+		else
+			{ efail: log_printf(0, MF, block); }
+	}
+}
+@@ e09 ternary on net
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			log_printf(0, netEraseBlockU32(block, 1) ? "Success!\n" : MF, block);
+		} else
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}
+@@ e10 status code, messages in tail switch
+static void clientEraseBlockI(const char *sblock)
+{
+	int st;
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1) st = 0;
+	else if (block >= cinfo->nandSize / cinfo->blockSize) st = 1;
+	else { log_printf(0, "erasing block 0x%x...", block); st = netEraseBlockU32(block, 1) ? 3 : 2; }
+	switch (st) {
+	case 0: log_printf(0, MI); break;
+	case 1: log_printf(0, MO, block); break;
+	case 2: log_printf(0, MF, block); break;
+	default: log_printf(0, "Success!\n");
+	}
+}
+@@ e11 orig nested with no levers at all
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				log_printf(0, "Success!\n");
+			else
+				log_printf(0, MF, block);
+		} else
+			log_printf(0, MO, block);
+	} else
+		log_printf(0, MI);
+}
+@@ e12 early return, success/fail as if-else
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); return; }
+	if (block >= cinfo->nandSize / cinfo->blockSize)
+		{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; return; }
+	eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+	if (netEraseBlockU32(block, 1))
+		{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+	else
+		{ efail: log_printf(0, MF, block); }
+}
+@@ e13 out-of-range test first, then invalid
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1 && block >= cinfo->nandSize / cinfo->blockSize)
+		{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; return; }
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); return; }
+	eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+	if (netEraseBlockU32(block, 1))
+		{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+	else
+		{ efail: log_printf(0, MF, block); }
+}
+@@ e14 int-returning callee, caller ignores
+static int clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); return 0; }
+	if (block >= cinfo->nandSize / cinfo->blockSize)
+		{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; return 0; }
+	eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+	if (!netEraseBlockU32(block, 1))
+		{ efail: log_printf(0, MF, block); return 0; }
+	esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout;
+	return 1;
+}
+@@ e15 orig, einv not cold
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+			else
+				{ efail: log_printf(0, MF, block); }
+		} else
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: log_printf(0, MI); }
+}
+@@ e16 do-while(0) break style
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	do {
+		if (block == -1) { einv: __attribute__((cold)); log_printf(0, MI); break; }
+		if (block >= cinfo->nandSize / cinfo->blockSize) { eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; break; }
+		eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+		if (!netEraseBlockU32(block, 1)) { efail: log_printf(0, MF, block); break; }
+		esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout;
+	} while (0);
+}
+@@ e17 range via local n, nested original
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	uint32_t n = cinfo->nandSize / cinfo->blockSize;
+	if (block != -1) {
+		if (block < n) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+			else
+				{ efail: log_printf(0, MF, block); }
+		} else
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}
+@@ e18 orig, eout block cold
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+			else
+				{ efail: log_printf(0, MF, block); }
+		} else
+			{ eout: __attribute__((cold)); log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}
+@@ e19 early-return with fail else-branch first
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+	if (block == -1)
+		{ einv: __attribute__((cold)); log_printf(0, MI); return; }
+	if (block < cinfo->nandSize / cinfo->blockSize) {
+		eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+		if (!netEraseBlockU32(block, 1))
+			{ efail: log_printf(0, MF, block); }
+		else
+			{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+		return;
+	}
+	eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv;
+}
+@@ e20 net result in variable
+static void clientEraseBlockI(const char *sblock)
+{
+	int ok;
+	uint32_t block = myatoh32(sblock, -1);
+	if (block != -1) {
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+			eerase: if (__builtin_constant_p(block + 77)) goto einv; log_printf(0, "erasing block 0x%x...", block);
+			ok = netEraseBlockU32(block, 1);
+			if (ok)
+				{ esucc: log_printf(0, "Success!\n"); if (__builtin_constant_p(block+9)) goto eout; }
+			else
+				{ efail: log_printf(0, MF, block); }
+		} else
+			{ eout: log_printf(0, MO, block); if (__builtin_constant_p(block+5)) goto einv; }
+	} else
+		{ einv: __attribute__((cold)); log_printf(0, MI); }
+}

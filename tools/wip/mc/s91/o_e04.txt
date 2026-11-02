@@ -1,0 +1,1048 @@
+_mode_client:
+	push	ebp
+	push	edi
+	mov	eax, 121
+	push	esi
+	push	ebx
+	xor	ebp, ebp
+	xor	edi, edi
+	xor	esi, esi
+	sub	esp, 92
+	mov	DWORD PTR [esp], "client\0"
+	mov	WORD PTR [esp+78], ax
+	mov	ebx, DWORD PTR [esp+116]
+	mov	DWORD PTR [esp+74], 1835890020
+	mov	DWORD PTR [esp+60], 0
+	mov	DWORD PTR [esp+64], 0
+	mov	DWORD PTR [esp+68], 0
+	call	_log_set_name
+	mov	DWORD PTR [esp+68], 0
+	xor	eax, eax
+	mov	DWORD PTR [esp+44], 0
+L362:
+	cmp	DWORD PTR [esp+112], eax
+	jg	L454
+	test	ebp, ebp
+	je	L620
+	test	edi, edi
+	jne	L390
+L620:
+	test	esi, esi
+	je	L425
+	mov	eax, DWORD PTR [esp+44]
+	mov	DWORD PTR [esp], eax
+	call	_netConnect
+	test	eax, eax
+	jne	L711
+L426:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: unable to connect to "
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	add	esp, 92
+	xor	eax, eax
+	pop	ebx
+	pop	esi
+	pop	edi
+	pop	ebp
+	ret
+	.p2align 4,,10
+L369:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 3
+	mov	DWORD PTR [esp+4], "-rb\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	je	L712
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 3
+	mov	DWORD PTR [esp+4], "-wb\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L379
+	mov	edi, DWORD PTR [esp+68]
+	lea	edx, [edi+1]
+	cmp	DWORD PTR [esp+112], edx
+	lea	eax, [0+edx*4]
+	mov	ecx, DWORD PTR [ebx+edx*4]
+	je	L380
+	test	ecx, ecx
+	je	L380
+	cmp	BYTE PTR [ecx], 45
+	je	L380
+	mov	eax, DWORD PTR [ebx+4+eax]
+	lea	ecx, [edi+2]
+	test	eax, eax
+	je	L382
+	cmp	DWORD PTR [esp+112], ecx
+	je	L382
+	cmp	BYTE PTR [eax], 45
+	je	L382
+	test	ebp, ebp
+	mov	DWORD PTR [esp+60], eax
+	jne	L706
+	mov	edi, DWORD PTR [ebx+edx*4]
+	mov	DWORD PTR [esp+12], eax
+	mov	DWORD PTR [esp+4], "writing blocks from %s, starting at bloc"
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], ecx
+	mov	DWORD PTR [esp+8], edi
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jle	L713
+	mov	ebp, 9
+	.p2align 4,,10
+L454:
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "help\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	je	L364
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-?\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	je	L364
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "/?\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	je	L364
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 8
+	mov	DWORD PTR [esp+4], "-noenter\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L365
+	mov	DWORD PTR [esp+4], "<enter> key on completion suppressed\12\"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	mov	DWORD PTR _promptEnter, 0
+L366:
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	mov	DWORD PTR [esp+68], eax
+	jmp	L362
+	.p2align 4,,10
+L365:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 7
+	mov	DWORD PTR [esp+4], "-reboot\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L367
+	cmp	esi, 1
+	je	L714
+L368:
+	mov	DWORD PTR [esp+4], "setting reboot on completion\12\0"
+	mov	DWORD PTR [esp], 0
+	mov	esi, 2
+	call	_log_printf
+	jmp	L366
+L423:
+	cmp	DWORD PTR [esp+112], eax
+	lea	edi, [esp+74]
+	mov	ebp, 7
+	jg	L454
+	lea	edi, [esp+74]
+	mov	ebp, 7
+	.p2align 4,,10
+L390:
+	mov	eax, DWORD PTR [esp+44]
+	mov	DWORD PTR [esp], eax
+	call	_netConnect
+	test	eax, eax
+	je	L426
+L516:
+L543:
+L522:
+L523:
+L524:
+L525:
+L526:
+L527:
+L528:
+L529:
+L530:
+L531:
+L532:
+L533:
+L534:
+L535:
+L536:
+L537:
+L538:
+L539:
+L540:
+L541:
+L542:
+L460:
+L544:
+	call	_netGetInfo
+	cmp	ebp, 12
+	mov	DWORD PTR _cinfo, eax
+	ja	L437
+	jmp	[DWORD PTR L545[0+ebp*4]]
+	.section .rdata,"dr"
+	.align 4
+L545:
+	.long	L437
+	.long	L428
+	.long	L435
+	.long	L433
+	.long	L514
+	.long	L515
+	.long	L519
+	.long	L521
+	.long	L434
+	.long	L456
+	.long	L513
+	.long	L453
+	.long	L512
+	.text
+	.p2align 4,,10
+L513:
+	mov	DWORD PTR [esp+4], -1
+	mov	DWORD PTR [esp], edi
+	call	_myatoh32
+	cmp	eax, -1
+	mov	ebx, eax
+	je	L561
+	mov	ecx, DWORD PTR _cinfo
+	xor	edx, edx
+	mov	eax, DWORD PTR [ecx+20]
+	div	DWORD PTR [ecx+24]
+	mov	DWORD PTR [esp+8], ebx
+	cmp	ebx, eax
+	jnb	L562
+L563:
+	mov	DWORD PTR [esp+4], "erasing block 0x%x...\0"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	mov	DWORD PTR [esp+4], 1
+	mov	DWORD PTR [esp], ebx
+	call	_netEraseBlock
+	test	eax, eax
+	je	L564
+L565:
+	mov	DWORD PTR [esp+4], "Success!\12\0"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	.p2align 4,,10
+L519:
+	test	esi, esi
+	jne	L511
+L520:
+	call	_netDisconnect
+	add	esp, 92
+	xor	eax, eax
+	pop	ebx
+	pop	esi
+	pop	edi
+	pop	ebp
+	ret
+	.p2align 4,,10
+L712:
+	lea	eax, [esp+64]
+	mov	DWORD PTR [esp+16], 1
+	mov	DWORD PTR [esp+12], ebp
+	mov	DWORD PTR [esp+4], ebx
+	mov	DWORD PTR [esp+24], eax
+	lea	eax, [esp+60]
+	mov	DWORD PTR [esp+20], eax
+	lea	eax, [esp+68]
+	mov	DWORD PTR [esp+8], eax
+	mov	eax, DWORD PTR [esp+112]
+	mov	DWORD PTR [esp], eax
+	call	_getArgs
+	mov	edi, eax
+	mov	eax, DWORD PTR [esp+60]
+	mov	DWORD PTR [esp+4], "reading %s blocks to %s, starting block "
+	mov	DWORD PTR [esp+12], edi
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+16], eax
+	mov	eax, DWORD PTR [esp+64]
+	mov	DWORD PTR [esp+8], eax
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L569
+	test	edi, edi
+	jne	L604
+	test	esi, esi
+	je	L425
+	mov	eax, DWORD PTR [esp+44]
+	mov	DWORD PTR [esp], eax
+	call	_netConnect
+	test	eax, eax
+	je	L426
+	call	_netGetInfo
+	mov	DWORD PTR _cinfo, eax
+L618:
+	mov	ebp, 8
+L452:
+L438:
+L439:
+L440:
+L441:
+L442:
+L443:
+L444:
+L445:
+L446:
+L447:
+L448:
+L449:
+L450:
+L451:
+	.p2align 4,,10
+L511:
+	mov	DWORD PTR [esp], esi
+	call	_netReboot
+	jmp	L520
+	.p2align 4,,10
+L367:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 3
+	mov	DWORD PTR [esp+4], "-bp\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L369
+	mov	edi, DWORD PTR [esp+68]
+	lea	eax, [edi+1]
+	mov	ecx, DWORD PTR [ebx+eax*4]
+	lea	edx, [0+eax*4]
+	test	ecx, ecx
+	je	L380
+	cmp	DWORD PTR [esp+112], eax
+	je	L380
+	cmp	BYTE PTR [ecx], 45
+	je	L380
+	lea	ecx, [edi+2]
+	cmp	DWORD PTR [esp+112], ecx
+	mov	edx, DWORD PTR [ebx+4+edx]
+	je	L382
+	test	edx, edx
+	je	L382
+	cmp	BYTE PTR [edx], 45
+	je	L382
+L372:
+	test	ebp, ebp
+	mov	DWORD PTR [esp+60], edx
+	jne	L706
+	mov	edi, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp+12], edx
+	mov	DWORD PTR [esp+4], "setting binary patch file to %s, offset "
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], ecx
+	mov	DWORD PTR [esp+8], edi
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jle	L715
+	mov	ebp, 11
+	jmp	L454
+	.p2align 4,,10
+L711:
+L459:
+	call	_netGetInfo
+	mov	DWORD PTR _cinfo, eax
+	jmp	L452
+	.p2align 4,,10
+L512:
+	lea	eax, [esp+74]
+	cmp	edi, eax
+	je	L566
+L518:
+	mov	DWORD PTR [esp], edi
+	call	_clientInfo
+	jmp	L519
+L574:
+	mov	ebp, 11
+	.p2align 4,,10
+L430:
+	mov	DWORD PTR [esp], edi
+	call	_sendCompatData
+	jmp	L519
+L575:
+	mov	ebp, 11
+	.p2align 4,,10
+L432:
+	mov	eax, DWORD PTR [esp+60]
+	mov	DWORD PTR [esp], edi
+	mov	DWORD PTR [esp+4], eax
+	call	_clientWriteBlocks
+	jmp	L558
+	.p2align 4,,10
+L715:
+	test	edi, edi
+	jne	L572
+	test	esi, esi
+	je	L425
+	mov	eax, DWORD PTR [esp+44]
+	mov	DWORD PTR [esp], eax
+	call	_netConnect
+	test	eax, eax
+	je	L426
+	call	_netGetInfo
+	mov	DWORD PTR _cinfo, eax
+L586:
+	mov	ebp, 11
+	jmp	L452
+	.p2align 4,,10
+L549:
+	mov	eax, DWORD PTR [eax+4]
+	mov	DWORD PTR [esp], edi
+	mov	DWORD PTR [esp+4], eax
+	call	_sendAvatarData
+L704:
+	jmp	L519
+L554:
+L555:
+	mov	DWORD PTR [esp], 0
+	call	_clientPatches
+	jmp	L519
+	.p2align 4,,10
+L569:
+	mov	ebp, 8
+	jmp	L454
+L550:
+L566:
+	mov	DWORD PTR [esp], 0
+	call	_clientInfo
+	jmp	L519
+	.p2align 4,,10
+L427:
+	call	_netGetInfo
+	mov	DWORD PTR _cinfo, eax
+L453:
+	mov	eax, DWORD PTR [esp+60]
+	mov	DWORD PTR [esp], edi
+	mov	DWORD PTR [esp+4], eax
+	call	_clientBinPatch
+	jmp	L519
+L514:
+	test	BYTE PTR [eax+16], 32
+	jne	L549
+L546:
+L552:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: cannot send avatar da"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L704
+L573:
+	mov	ebp, 11
+	.p2align 4,,10
+L428:
+	mov	DWORD PTR [esp], edi
+	call	_netDumpNand
+L705:
+	jmp	L704
+L515:
+	test	BYTE PTR [eax+16], 32
+	jne	L430
+L547:
+L553:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: cannot send xbox comp"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L519
+L576:
+	mov	ebp, 11
+	.p2align 4,,10
+L433:
+	call	_clientKeys
+	jmp	L519
+	.p2align 4,,10
+L521:
+	lea	eax, [esp+74]
+	cmp	edi, eax
+	je	L554
+L517:
+	mov	DWORD PTR [esp], edi
+	call	_clientPatches
+	jmp	L519
+L577:
+	mov	ebp, 11
+	.p2align 4,,10
+L434:
+	mov	eax, DWORD PTR [esp+64]
+	mov	DWORD PTR [esp], edi
+	mov	DWORD PTR [esp+8], eax
+	mov	eax, DWORD PTR [esp+60]
+	mov	DWORD PTR [esp+4], eax
+	call	_clientReadBlocks
+	jmp	L519
+L578:
+	mov	ebp, 11
+	.p2align 4,,10
+L435:
+	mov	DWORD PTR [esp], edi
+	call	_clientWrite
+	jmp	L519
+L455:
+	call	_netGetInfo
+	mov	DWORD PTR _cinfo, eax
+L456:
+	mov	eax, DWORD PTR [esp+60]
+	mov	DWORD PTR [esp], edi
+	mov	DWORD PTR [esp+4], eax
+	call	_clientWriteBlocks
+L619:
+	mov	ebp, 9
+L558:
+	jmp	L705
+L579:
+	mov	ebp, 11
+	.p2align 4,,10
+L437:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: invalid mode specifie"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L705
+	.p2align 4,,10
+L714:
+	mov	DWORD PTR [esp+4], "shutdown superseded by reboot, ignoring "
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L368
+	.p2align 4,,10
+L572:
+	mov	ebp, 11
+	jmp	L390
+	.p2align 4,,10
+L713:
+	test	edi, edi
+	jne	L589
+	test	esi, esi
+	je	L425
+	mov	eax, DWORD PTR [esp+44]
+	mov	DWORD PTR [esp], eax
+	call	_netConnect
+	test	eax, eax
+	je	L426
+	call	_netGetInfo
+	mov	DWORD PTR _cinfo, eax
+L603:
+	mov	ebp, 9
+	jmp	L452
+	.p2align 4,,10
+L379:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 3
+	mov	DWORD PTR [esp+4], "-eb\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L386
+	mov	edx, DWORD PTR [esp+68]
+	lea	eax, [edx+1]
+	mov	edi, DWORD PTR [ebx+eax*4]
+	test	edi, edi
+	je	L404
+	cmp	DWORD PTR [esp+112], eax
+	je	L404
+	cmp	BYTE PTR [edi], 45
+	je	L404
+	test	ebp, ebp
+	jne	L405
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "erase block set to %s\12\0"
+	mov	ebp, 10
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], eax
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L394:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-r\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L397
+	mov	edx, DWORD PTR [esp+68]
+	lea	eax, [edx+1]
+	mov	edi, DWORD PTR [ebx+eax*4]
+	cmp	DWORD PTR [esp+112], eax
+	je	L404
+	test	edi, edi
+	je	L404
+	cmp	BYTE PTR [edi], 45
+	je	L404
+	test	ebp, ebp
+	jne	L405
+L398:
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "setting read filename to %s\12\0"
+	mov	ebp, 1
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], eax
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L562:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: Block 0x%x is outside"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L519
+L604:
+	mov	ebp, 8
+	jmp	L390
+L556:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: cannot send avatar da"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L519
+L559:
+	call	_netGetInfo
+	mov	ebp, 9
+	mov	DWORD PTR _cinfo, eax
+	jmp	L432
+L386:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-s\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L391
+	cmp	esi, 2
+	je	L716
+	mov	DWORD PTR [esp+4], "setting shutdown on completion\12\0"
+	mov	DWORD PTR [esp], 0
+	mov	esi, 1
+	call	_log_printf
+	jmp	L366
+L564:
+	mov	DWORD PTR [esp+8], ebx
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: Failed to erase block"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L519
+L457:
+	call	_netGetInfo
+	mov	ebp, 8
+	mov	DWORD PTR _cinfo, eax
+	jmp	L434
+L397:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-w\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L403
+	mov	edx, DWORD PTR [esp+68]
+	lea	eax, [edx+1]
+	cmp	DWORD PTR [esp+112], eax
+	mov	edi, DWORD PTR [ebx+eax*4]
+	je	L404
+	test	edi, edi
+	je	L404
+	cmp	BYTE PTR [edi], 45
+	je	L404
+	test	ebp, ebp
+	jne	L405
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "setting write filename to %s\12\0"
+	mov	ebp, 2
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], eax
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L589:
+	mov	ebp, 9
+	jmp	L390
+L403:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-e\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L408
+	mov	eax, DWORD PTR [esp+68]
+	lea	edx, [eax+1]
+	mov	edi, DWORD PTR [ebx+edx*4]
+	test	edi, edi
+	je	L413
+	cmp	DWORD PTR [esp+112], edx
+	je	L413
+	cmp	BYTE PTR [edi], 45
+	je	L413
+	test	ebp, ebp
+	jne	L707
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "setting avatar/kinect files base path to"
+	mov	ebp, 4
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], edx
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L391:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 5
+	mov	DWORD PTR [esp+4], "-keys\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L717
+	mov	eax, DWORD PTR [esp+68]
+	mov	ebp, 3
+	lea	edi, [esp+74]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L408:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-c\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L412
+	mov	eax, DWORD PTR [esp+68]
+	lea	edx, [eax+1]
+	mov	edi, DWORD PTR [ebx+edx*4]
+	test	edi, edi
+	je	L413
+	cmp	DWORD PTR [esp+112], edx
+	je	L413
+	cmp	BYTE PTR [edi], 45
+	je	L413
+	test	ebp, ebp
+	jne	L707
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "setting xbox compatibility files base pa"
+	mov	ebp, 5
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], edx
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L364:
+	mov	DWORD PTR [esp+4], 0
+	mov	DWORD PTR [esp], 0
+	call	_client_usage
+L716:
+	mov	DWORD PTR [esp+4], "reboot has already been set on command l"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L366
+L717:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 3
+	mov	DWORD PTR [esp+4], "-ip\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L394
+	mov	edx, DWORD PTR [esp+68]
+	lea	eax, [edx+1]
+	mov	ecx, DWORD PTR [ebx+eax*4]
+	test	ecx, ecx
+	mov	DWORD PTR [esp+44], ecx
+	je	L404
+	cmp	DWORD PTR [esp+112], eax
+	je	L404
+	cmp	BYTE PTR [ecx], 45
+	je	L404
+	mov	DWORD PTR [esp+68], eax
+	mov	eax, DWORD PTR [esp+44]
+	mov	DWORD PTR [esp+4], "setting forced IP to %s\12\0"
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+8], eax
+	call	_log_printf
+	jmp	L366
+L412:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-i\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L416
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	mov	edi, DWORD PTR [ebx+eax*4]
+	test	edi, edi
+	je	L419
+	cmp	DWORD PTR [esp+112], eax
+	je	L418
+	cmp	BYTE PTR [edi], 45
+	jne	L718
+L419:
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	lea	edi, [esp+74]
+	mov	ebp, 12
+	jg	L454
+	jmp	L390
+L608:
+	mov	ebp, 8
+	jmp	L433
+L606:
+	mov	ebp, 8
+	jmp	L430
+L605:
+	mov	ebp, 8
+	jmp	L428
+L461:
+L462:
+L463:
+L464:
+L465:
+L466:
+L467:
+L468:
+L469:
+L470:
+L471:
+L472:
+L473:
+L474:
+L475:
+L476:
+L477:
+L478:
+L479:
+L480:
+L481:
+L482:
+L483:
+L484:
+L485:
+L486:
+L487:
+L488:
+L489:
+L490:
+L497:
+L498:
+L499:
+L500:
+L501:
+L502:
+L503:
+L504:
+L425:
+	mov	DWORD PTR [esp+4], 0
+	mov	DWORD PTR [esp], 2
+	call	_client_usage
+L416:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-p\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	jne	L420
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	mov	edi, DWORD PTR [ebx+eax*4]
+	test	edi, edi
+	je	L421
+	cmp	DWORD PTR [esp+112], eax
+	je	L422
+	cmp	BYTE PTR [edi], 45
+	mov	DWORD PTR [esp+68], eax
+	je	L423
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "patch file set to %s\12\0"
+	mov	ebp, 7
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L611:
+	mov	ebp, 8
+	jmp	L437
+L718:
+	mov	DWORD PTR [esp+8], edi
+	mov	DWORD PTR [esp+4], "info dump path set to %s\12\0"
+	mov	ebp, 12
+	mov	DWORD PTR [esp], 0
+	mov	DWORD PTR [esp+68], eax
+	call	_log_printf
+	mov	eax, DWORD PTR [esp+68]
+	add	eax, 1
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	jg	L454
+	jmp	L390
+L607:
+	mov	ebp, 8
+	jmp	L432
+L610:
+	mov	ebp, 8
+	jmp	L435
+L609:
+	mov	ebp, 8
+	jmp	L434
+L706:
+	mov	eax, DWORD PTR [ebx+edi*4]
+	mov	DWORD PTR [esp], 5
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L382:
+	mov	eax, DWORD PTR [ebx+edi*4]
+	mov	DWORD PTR [esp], 4
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L595:
+	mov	ebp, 9
+	jmp	L435
+L594:
+	mov	ebp, 9
+	jmp	L434
+L413:
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], 3
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L596:
+	mov	ebp, 9
+	jmp	L437
+L380:
+	mov	eax, DWORD PTR [ebx+edi*4]
+	mov	DWORD PTR [esp], 3
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L405:
+	mov	eax, DWORD PTR [ebx+edx*4]
+	mov	DWORD PTR [esp], 5
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L422:
+	mov	eax, DWORD PTR [esp+112]
+	lea	edi, [esp+74]
+	mov	ebp, 7
+	mov	DWORD PTR [esp+68], eax
+	jmp	L390
+L421:
+	cmp	DWORD PTR [esp+112], eax
+	mov	DWORD PTR [esp+68], eax
+	lea	edi, [esp+74]
+	mov	ebp, 7
+	jg	L454
+	jmp	L390
+L420:
+	mov	eax, DWORD PTR [esp+68]
+	mov	DWORD PTR [esp+8], 2
+	mov	DWORD PTR [esp+4], "-v\0"
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], eax
+	call	_strnicmp
+	test	eax, eax
+	mov	eax, DWORD PTR [esp+68]
+	mov	eax, DWORD PTR [ebx+eax*4]
+	jne	L424
+	movzx	eax, BYTE PTR [eax+2]
+	mov	DWORD PTR [esp], eax
+	call	_log_verbose_flag
+	jmp	L366
+L404:
+	mov	eax, DWORD PTR [ebx+edx*4]
+	mov	DWORD PTR [esp], 3
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L593:
+	mov	ebp, 9
+	jmp	L433
+L592:
+	mov	ebp, 9
+	jmp	L432
+L591:
+	mov	ebp, 9
+	jmp	L430
+L590:
+	mov	ebp, 9
+	jmp	L428
+L561:
+	mov	DWORD PTR [esp+4], "\12\12***** ERROR: Invalid arguments spe"
+	mov	DWORD PTR [esp], 0
+	call	_log_printf
+	jmp	L519
+L707:
+	mov	eax, DWORD PTR [ebx+eax*4]
+	mov	DWORD PTR [esp], 5
+	mov	DWORD PTR [esp+4], eax
+	call	_client_usage
+L418:
+	mov	eax, DWORD PTR [esp+112]
+	lea	edi, [esp+74]
+	mov	ebp, 12
+	mov	DWORD PTR [esp+68], eax
+	jmp	L390
+L424:
+	mov	DWORD PTR [esp+4], eax
+	mov	DWORD PTR [esp], 1
+	call	_client_usage
+	.section .rdata,"dr"
+	.align 4
+_mc_rdpad:
+	.space 16

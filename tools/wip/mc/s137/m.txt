@@ -1,0 +1,66 @@
+test ecx,ecx
+mov dword ptr [44+esp],ecx
+je l
+cmp esi,eax
+je l
+cmp byte ptr [ecx],45
+je l
+mov dword ptr [68+esp],eax
+mov eax,dword ptr [44+esp]
+mov dword ptr [4+esp],offset l
+mov dword ptr [esp],0
+mov dword ptr [8+esp],eax
+call _log_printf
+mov eax,dword ptr [68+esp]
+add eax,1
+jmp l
+mov dword ptr [4+esp],0
+mov dword ptr [esp],2
+call l
+mov dword ptr [4+esp],offset l
+mov dword ptr [esp],0
+call _log_printf
+jmp l
+mov dword ptr [8+esp],ebx
+mov dword ptr [4+esp],offset l
+mov dword ptr [esp],0
+call _log_printf
+jmp l
+mov eax,dword ptr [68+esp]
+mov dword ptr [8+esp],2
+mov dword ptr [4+esp],offset l
+mov eax,dword ptr [eax*4+ebx]
+mov dword ptr [esp],eax
+call _strnicmp
+test eax,eax
+jne l
+mov eax,dword ptr [68+esp]
+lea edx,[1+eax]
+cmp esi,edx
+mov ebp,dword ptr [ebx+edx*4]
+je l
+test ebp,ebp
+je l
+cmp byte ptr [ebp],45
+je l
+mov ecx,dword ptr [40+esp]
+test ecx,ecx
+jne l
+mov dword ptr [8+esp],ebp
+mov dword ptr [4+esp],offset l
+mov dword ptr [esp],0
+mov dword ptr [68+esp],edx
+call _log_printf
+mov eax,dword ptr [68+esp]
+mov dword ptr [40+esp],1
+add eax,1
+jmp l
+mov dword ptr [4+esp],offset l
+mov dword ptr [esp],0
+call _log_printf
+jmp l
+mov dword ptr [4+esp],offset l
+mov dword ptr [esp],0
+call _log_printf
+jmp l
+mov eax,dword ptr [68+esp]

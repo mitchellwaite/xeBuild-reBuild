@@ -1,0 +1,21 @@
+static void clientEraseBlockI(const char *sblock)
+{
+	uint32_t block = myatoh32(sblock, -1);
+
+
+
+	if (block == -1) goto einv;
+		if (block < cinfo->nandSize / cinfo->blockSize) {
+
+			eerase: log_printf(0, "erasing block 0x%x...", block);
+			if (netEraseBlockU32(block, 1))
+				{ 
+esucc:  log_printf(0, "Success!\n"); }
+			else
+				{ AT(efail) log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
+		} else
+			{ eout: log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block); JUMP(efail); }
+	return;
+		{ einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
+}
+

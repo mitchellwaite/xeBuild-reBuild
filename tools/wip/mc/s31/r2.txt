@@ -1,0 +1,16 @@
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1,hdd4
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1,hdd4,hdd5
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12,c1/sig:hdd4,hdd5,c2
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=sig:c12
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=sig:c12,c1
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c1
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1,hdd4,hdd5,c2,c8,c9,c10
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12,c1/sig:hdd4,hdd5,c2,c8
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1/rbs:hdd4
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1/nent:hdd4
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1/sset:hdd4
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1/bp:hdd4
+rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12/sig:c1/rbt:hdd4

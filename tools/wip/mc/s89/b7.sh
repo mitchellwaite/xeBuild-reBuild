@@ -1,0 +1,10 @@
+B=$1; P=$2
+N='if (netEraseBlockU32(block, 1))'
+sh r.sh ${P}1 $B "$N" 'if (__builtin_expect(netEraseBlockU32(block, 1), 1))'
+sh r.sh ${P}2 $B "$N" 'if (E(netEraseBlockU32(block, 1)))'
+sh r.sh ${P}3 $B "$N" 'if (__builtin_expect(!!netEraseBlockU32(block, 1), 0))'
+sh r.sh ${P}4 $B 'if (block < cinfo->nandSize' 'if (__builtin_expect(block < cinfo->nandSize / cinfo->blockSize, 1)) if (1'
+sh r.sh ${P}5 $B 'if (block != -1) {' 'if (__builtin_expect(block != -1, 1)) {'
+sh r.sh ${P}6 $B 'esucc: ' 'esucc: if (__builtin_constant_p(block + 9) && __builtin_constant_p(block + 10) && __builtin_constant_p(block + 11)) goto efail; '
+sh r.sh ${P}7 $B 'esucc: ' 'esucc: if (__builtin_constant_p(block + 9) && __builtin_constant_p(block + 10) && __builtin_constant_p(block + 11)) goto einv; '
+sh r.sh ${P}8 $B 'esucc: ' 'esucc: if (__builtin_constant_p(block + 9) && __builtin_constant_p(block + 10) && __builtin_constant_p(block + 11)) goto eout; '

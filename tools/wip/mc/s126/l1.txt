@@ -1,0 +1,10 @@
+n5 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,5 E=ks2,3,30 E=krb,1,60 E=ks2,1,40
+n6 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,6 E=ks2,3,30 E=krb,1,60 E=ks2,1,40
+n8 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,8 E=ks2,3,30 E=krb,1,60 E=ks2,1,40
+n10 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,10 E=ks2,3,30 E=krb,1,60 E=ks2,1,40
+n5m Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,5 E=ks2,3,30 E=krb,2,60 E=ks2,1,40
+n6m Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,6 E=ks2,3,30 E=krb,2,60 E=ks2,1,40
+n8m Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,8 E=ks2,3,30 E=krb,2,60 E=ks2,1,40
+n5h Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,5 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Hk
+n6h Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,6 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Hk
+n8h Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,8 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Hk

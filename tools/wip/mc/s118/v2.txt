@@ -1,0 +1,14 @@
+a7~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(t5)  if (cinfo->hwFlags & 0x20)~~AT(t5)  if ((cinfo->hwFlags & 0x20) || ({JMP(s4); 0;}))
+a8~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(t5)  if (cinfo->hwFlags & 0x20)~~AT(t5)  if (({JMP(s4); 0;}) || (cinfo->hwFlags & 0x20))
+c3~~({__asm__ goto("" :::: w5x); 0;}) || ~~
+c5~~__asm__ goto("" :::: r5x, r3x)~~__asm__ goto("" :::: r3x, r5x)~~({__asm__ goto("" :::: w5x); 0;}) || ~~
+b11~~if (reboot) {~~if (reboot || ({JMP(u2); 0;})) {
+b17~~log_printf(0, "reboot has already been set on command line, ignoring -s\n");~~{ log_printf(0, "reboot has already been set on command line, ignoring -s\n"); JMP(u2); }
+a11~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(t4)  if (cinfo->hwFlags & 0x20)~~AT(t4)  if ((cinfo->hwFlags & 0x20) || ({JMP(t5); 0;}))
+a12~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12,hdd4); sendCompatData
+a13~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12,hdd5); sendCompatData
+a14~~{ JMP(s4,c12); sendCompatData~~{ JMP(s4,c12,s4); sendCompatData
+a15~~{ JMP(s4,c12); sendCompatData~~{ JMP(s4); JMP(c12); sendCompatData
+c18~~({__asm__ goto("" :::: w5x); 0;}) || ~~({__asm__ goto("" :::: w5x); 0;}) || ({__asm__ goto("" :::: w5x); 0;}) || 
+c19~~if (({__asm__ goto("" :::: r5x, r3x); 0;}) || i + 1 == argc~~if (i + 1 == argc || ({__asm__ goto("" :::: r5x, r3x); 0;})
+c20~~if (({__asm__ goto("" :::: r5x, r3x); 0;}) || i + 1 == argc~~if (({__asm__ goto("" :::: r3x); 0;}) || ({__asm__ goto("" :::: r5x); 0;}) || i + 1 == argc

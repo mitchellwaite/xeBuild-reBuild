@@ -1,0 +1,27 @@
+0@@{ AT(p0) { p0c: __attribute__((cold)); } clientPatches(NULL); JUMP(i0); }@@{ AT(p0) { p0c: __attribute__((cold)); } clientPatches(NULL); JMP(i0); }
+0@@{ AT(p0) { p0c: __attribute__((cold)); } clientPatches(NULL); JUMP(i0); }@@{ AT(p0) { p0c: __attribute__((cold)); } JMP(i0); clientPatches(NULL); }
+0@@{ AT(p0) { p0c: __attribute__((cold)); } clientPatches(NULL); JUMP(i0); }@@{ AT(p0) { JMP(i0); p0c: __attribute__((cold)); } clientPatches(NULL); }
+0@@{ AT(i0) { i0_c: __attribute__((cold)); } clientInfo(NULL); }@@{ AT(i0) clientInfo(NULL); }
+0@@{ AT(i0) { i0_c: __attribute__((cold)); } clientInfo(NULL); }@@{ AT(i0) { i0_c: __attribute__((cold)); } clientInfo(NULL); JMP(p0); }
+0@@{ AT(i0) { i0_c: __attribute__((cold)); } clientInfo(NULL); }@@{ AT(i0) { i0_c: __attribute__((cold)); } JMP(p0); clientInfo(NULL); }
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (arg == dummy || ({JMP(p0,i0); 0;}))
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (arg == dummy || ({JMP(i0,p0); 0;}))
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (({JMP(i0); 0;}) || arg == dummy || ({JMP(p0); 0;}))
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}) || ({JMP(i0); 0;}))
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}) || ({JMP(p0); 0;}))
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (arg == dummy)
+0@@AT(c12) if (arg == dummy || ({JMP(p0); 0;}))@@AT(c12) if (arg == dummy || ({JMP(p0); 0;})) ;; 0@@{ AT(p0) { p0c: __attribute__((cold)); } clientPatches(NULL); JUMP(i0); }@@{ AT(p0) { p0c: __attribute__((cold)); } clientPatches(NULL); JMP(i0); JMP(i0); }
+0@@AT(c7)  if (arg == dummy@@AT(c7)  if (({JMP(i0); 0;}) || arg == dummy
+0@@AT(c7)  if (arg == dummy@@AT(c7)  if (arg == dummy || ({JMP(i0); 0;})
+0@@{ AT(p1) clientPatches(arg); }@@{ AT(p1) { clientPatches(arg); JMP(i0); } }
+0@@{ AT(i1) clientInfo(arg); }@@{ AT(i1) { clientInfo(arg); JMP(i0); } }
+0@@{ AT(i1) clientInfo(arg); }@@{ AT(i1) { JMP(i0); clientInfo(arg); } }
+0@@AT(c8) { clientReadBlocks(arg, start, count); JMP(p1,cdef); }@@AT(c8) { clientReadBlocks(arg, start, count); JMP(p1,cdef,i0); }
+0@@{ AT(hdd4) { hc4: __attribute__((cold)); }@@{ AT(hdd4) { hc4: __attribute__((cold)); JMP(i0); }
+0@@{ AT(hdd5) { hdd5_c: __attribute__((cold)); }@@{ AT(hdd5) { hdd5_c: __attribute__((cold)); JMP(i0); }
+0@@goto u2; @@goto u2; if (__builtin_constant_p(mode + 7777)) goto i0; 
+0@@goto u2; @@goto u2; if (__builtin_constant_p(mode + 7777) && __builtin_constant_p(mode + 57777)) goto i0; 
+0@@goto u2; @@goto u2; if (__builtin_constant_p(mode + 7777) && __builtin_constant_p(mode + 57777) && __builtin_constant_p(mode + 107777)) goto i0; 
+0@@goto c11; @@goto c11; if (__builtin_constant_p(mode + 7778)) goto i0; 
+0@@goto c11; @@goto c11; if (__builtin_constant_p(mode + 7778) && __builtin_constant_p(mode + 57778)) goto i0; 
+0@@goto c11; @@goto c11; if (__builtin_constant_p(mode + 7778) && __builtin_constant_p(mode + 57778) && __builtin_constant_p(mode + 107778) && __builtin_constant_p(mode + 157778)) goto i0; 

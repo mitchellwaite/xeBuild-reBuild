@@ -1,0 +1,4 @@
+b0 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,4 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Li E=kipt,3,80 'R=JMP(dsp)|JMP(dsp,c1)'
+d1 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,4 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Li E=kipt,3,80 'R=JMP(dsp)|JMP(dsp,c1)' 'R=dsp: cinfo|dsp: dhl: __attribute__((hot)); cinfo'
+d2 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,4 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Li E=kipt,3,80 'R=JMP(dsp)|JMP(dsp,c1)' 'R=if (netConnect(ip)) {|if (netConnect(ip)) { dhl: __attribute__((hot));'
+d3 Hs Lk Ls2 'R=if (reboot == 2)|krb: if (reboot == 2)' E=kky,4 E=ks2,3,30 E=krb,1,60 E=ks2,1,40 Li E=kipt,3,80 'R=JMP(dsp)|JMP(dsp,c1)' 'R=goto fail;\n\t}|{ fcl: __attribute__((cold)); goto fail; }\n\t}'

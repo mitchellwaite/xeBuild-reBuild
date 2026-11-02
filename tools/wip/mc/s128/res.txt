@@ -1,0 +1,98 @@
+a0 176 
+a2 188 J1=
+a1 50 J1= J2=
+a3 90 J2=
+a4 128 F=0
+a5 154 F=1
+a6 154 F=2
+a7 168 F=3
+a8 180 F=5
+a10 168 Fr=2
+a9 148 Fr=0
+a11 166 Fu=0
+a15 118 F=0 J1=
+a13 176 Hd
+a12 166 Fu=2
+a14 178 Cr
+a16 114 F=0 J2=
+a17 90 F=2 J2=
+a18 164 F=2 J1=
+a19 90 Fr=0 J2=
+b1 96 J1= J2= F=0
+b2 60 J1= J2= F=2
+b4 50 J1= J2= Fr=0
+b3 60 J1= J2= F=4
+b5 50 J1= J2= Fr=3
+b7 188 J1= J2= Fu=3
+b6 188 J1= J2= Fu=0
+b8 50 J1= J2= Hd
+b12 80 J1=u2 J2=
+b9 102 J1= J2= Cr
+b13 96 J1=c1 J2=
+b14 74 J1=c12,c11 J2=
+b15 126 J1= J2=c1
+b16 148 J1= J2=cdef
+b17 84 J1=u2,cdef J2=
+b18 182 J1= J2=i1,p1
+b20 188 J1= J2= Fr=1 Fu=1
+b19 188 J1= J2= F=1 Fu=1
+c1 42 P
+c2 106 P F=0
+c3 56 P F=2
+c4 56 P F=4
+c5 54 P Fr=0
+c6 184 P Fu=0
+c7 60 P Hd
+c8 48 P F=1
+c9 56 P F=3
+c10 60 P F=6
+c11 60 P Fr=2
+c12 184 P Fu=3
+d1 54 P Ef=hot
+d2 52 P Ef=cold
+d3 84 P Eo=cold
+d4 92 P Eo=hot
+d7 9999 P Ek=5
+d8 9999 P Es=eout
+d5 51 P Ei=cold
+d6 92 P Ei=hot
+d9 9999 P Es=einv
+d10 9999 P Es=efail
+d12 42 P Uh=cold
+d11 42 P Uh=hot
+d14 9999 P Ek=5 Ei=cold
+d13 65 P Ef=hot Ei=cold
+d15 60 J1= J2= Ef=hot
+d16 83 J1= J2= Ei=cold
+e3 9999 P Es=eout
+e2 62 P Ek=5
+e0 42 P
+e1 42 P Ec
+e4 9999 P Es=einv
+e5 84 P Es=efail
+e6 55 P Ek=5 Ei=cold
+e7 51 P Es=einv Ei=cold
+e8 63 P Ef=cold Ei=cold
+e11 9999 P Es=eout Ek=5
+e9 60 P Ef=cold Eo=cold
+e10 74 P Ek=5 Ef=cold
+f1 126 P G=c10,0
+f2 86 P G=c10,2
+f3 78 P G=c10,4
+f4 56 P G=u2,0
+f5 56 P G=u2,2
+f6 56 P G=u2,4
+f7 56 P G=c12,2
+f8 56 P G=c7,2
+f11 84 P G=c9,2
+f10 72 P G=p0,2
+f9 62 P G=i0,2
+f12 84 P G=c11,2
+f13 88 P G=c8,2
+f14 80 P G=hdd4,2
+f15 72 P G=hdd5,2
+f16 84 P G=c3,2
+f18 84 P G=c2,2
+f17 82 P G=c1,2
+f19 60 P G=c10,6
+f20 60 P G=u2,6

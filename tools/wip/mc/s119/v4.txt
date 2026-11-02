@@ -1,0 +1,17 @@
+b1~~{ JMP(s4,c12); sendCompatData~~{ __asm__ goto("" :: "r"(cinfo) :: s4,c12); sendCompatData
+b2~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(t5)  if (cinfo->hwFlags & 0x20)~~AT(t5)  if (cinfo->hwFlags & 0x20 ~~~~ ({__asm__ goto("" :: "a"(cinfo) :: s4); 0;}))
+b3~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~{ AT(hdd5) { hdd5_c~~{ JMP(s4); AT(hdd5) { hdd5_c
+b4~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~{ AT(hdd4) { hc4~~{ JMP(s4); AT(hdd4) { hc4
+b5~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c3)  { JMP(hdd4,s5,hdd5);~~AT(c3)  { JMP(hdd4,s5,hdd5,s4);
+b6~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c9)JMP(s5);~~AT(c9)JMP(s5,s4);
+b7~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c1) netDumpNand(arg);~~AT(c1) netDumpNand(arg); JMP(s4);
+b8~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c11) clientBinPatch(arg, start);~~AT(c11) clientBinPatch(arg, start); JMP(s4);
+b9~~{ JMP(s4,c12); sendCompatData~~{ JMP(s4); JMP(c12); sendCompatData
+b10~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c8) { clientReadBlocks(arg, start, count); JMP(p1,cdef); }~~AT(c8) { clientReadBlocks(arg, start, count); JMP(p1,cdef,s4); }
+b11~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c2) clientWrite(arg);~~AT(c2) clientWrite(arg); JMP(s4);
+b12~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c10)JMP(c10);~~AT(c10)JMP(c10,s4);
+b13~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(c12) if (arg == dummy~~AT(c12) JMP(s4); if (arg == dummy
+b14~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~AT(cdef)JMP(i1);~~AT(cdef)JMP(i1,s4);
+b15~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~{ AT(p1) clientPatches(arg); }~~{ AT(p1) clientPatches(arg); JMP(s4); }
+b16~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12,s4); __asm__ volatile("" :: "a"(cinfo)); sendCompatData
+b17~~{ JMP(s4,c12); sendCompatData~~{ JMP(c12); sendCompatData~~{ AT(i1) clientInfo(arg); }~~{ AT(i1) clientInfo(arg); JMP(s4); }

@@ -1,0 +1,12 @@
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; JMP(efail); }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; JMP(esucc); }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; JMP(eerase); }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5) && __builtin_constant_p(block+50005)) goto einv; }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; if (__builtin_constant_p(block+6)) goto efail; }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; if (__builtin_constant_p(block+6) && __builtin_constant_p(block+50006)) goto efail; }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; }
+0@@if (__builtin_constant_p(block+5)) goto einv; JUMP(efail); }@@if (__builtin_constant_p(block+5)) goto einv; if (__builtin_constant_p(block+6)) goto eout; }
+0@@{ eout: log_printf@@{ eout: __asm__ volatile (""); log_printf
+0@@if (__builtin_constant_p(block+9)) goto eout; }@@if (__builtin_constant_p(block+9) && __builtin_constant_p(block+50009)) goto eout; }
+0@@if (__builtin_constant_p(block+9)) goto eout; }@@}
+0@@if (__builtin_constant_p(block + 77)) goto einv;@@if (__builtin_constant_p(block + 77)) goto einv; if (__builtin_constant_p(block + 78)) goto eout;

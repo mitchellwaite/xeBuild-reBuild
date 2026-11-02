@@ -1,0 +1,86 @@
+p10 52 c0 N=10 G=__builtin_constant_p(argc) \&\& argc == 7
+p100 42 c0 N=100 G=__builtin_constant_p(argc) \&\& argc == 7
+p1000 42 c0 N=1000 G=__builtin_constant_p(argc) \&\& argc == 7
+p10000 42 c0 N=10000 G=__builtin_constant_p(argc) \&\& argc == 7
+q1 62 c0 N=10000 G=__builtin_constant_p(argc)
+c0a2 50 c0 M=2 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a3 106 c0 M=3 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a6 142 c0 M=6 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a5 136 c0 M=5 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a4 110 c0 M=4 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a10 130 c0 M=10 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a8 154 c0 M=8 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a12 224 c0 M=12 G=__builtin_constant_p(argc) \&\& argc == 7
+c0a16 142 c0 M=16 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a4 130 b18 M=4 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a2 22 b18 M=2 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a10 144 b18 M=10 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a3 116 b18 M=3 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a8 154 b18 M=8 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a5 94 b18 M=5 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a6 82 b18 M=6 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a16 150 b18 M=16 G=__builtin_constant_p(argc) \&\& argc == 7
+b18a12 202 b18 M=12 G=__builtin_constant_p(argc) \&\& argc == 7
+c0e2 42 c0 callee N=2 G=__builtin_constant_p(sblock)
+c0e1 42 c0 callee N=1 G=__builtin_constant_p(sblock)
+c0e100 42 c0 callee N=100 G=__builtin_constant_p(sblock)
+c0e5 42 c0 callee N=5 G=__builtin_constant_p(sblock)
+c0e20 42 c0 callee N=20 G=__builtin_constant_p(sblock)
+c0e1000 42 c0 callee N=1000 G=__builtin_constant_p(sblock)
+b18e20 18 b18 callee N=20 G=__builtin_constant_p(sblock)
+b18e100 18 b18 callee N=100 G=__builtin_constant_p(sblock)
+b18e2 18 b18 callee N=2 G=__builtin_constant_p(sblock)
+b18e5 18 b18 callee N=5 G=__builtin_constant_p(sblock)
+b18e1000 18 b18 callee N=1000 G=__builtin_constant_p(sblock)
+b18e1 18 b18 callee N=1 G=__builtin_constant_p(sblock)
+c0f1 111 c0 callee N=1 G=__builtin_constant_p(block)
+c0f2 111 c0 callee N=2 G=__builtin_constant_p(block)
+c0f5 111 c0 callee N=5 G=__builtin_constant_p(block)
+c0f100 111 c0 callee N=100 G=__builtin_constant_p(block)
+b18f1 18 b18 callee N=1 G=__builtin_constant_p(block)
+b18f2 18 b18 callee N=2 G=__builtin_constant_p(block)
+b18f5 18 b18 callee N=5 G=__builtin_constant_p(block)
+b18f100 18 b18 callee N=100 G=__builtin_constant_p(block)
+t10_12 92 c0 T=10 N=12 G=__builtin_constant_p(argc)
+b18t9 58 b18 T=10 N=9 G=__builtin_constant_p(argc)
+b18t10 112 b18 T=10 N=10 G=__builtin_constant_p(argc)
+b18t11 110 b18 T=10 N=11 G=__builtin_constant_p(argc)
+b18t16 121 b18 T=10 N=16 G=__builtin_constant_p(argc)
+b18t14 72 b18 T=10 N=14 G=__builtin_constant_p(argc)
+b18t13 124 b18 T=10 N=13 G=__builtin_constant_p(argc)
+b18t20 91 b18 T=10 N=20 G=__builtin_constant_p(argc)
+b18t18 79 b18 T=10 N=18 G=__builtin_constant_p(argc)
+b18t35 200 b18 T=10 N=35 G=__builtin_constant_p(argc)
+b18t23 142 b18 T=10 N=23 G=__builtin_constant_p(argc)
+b18t26 186 b18 T=10 N=26 G=__builtin_constant_p(argc)
+b18t30 142 b18 T=10 N=30 G=__builtin_constant_p(argc)
+b18t40 232 b18 T=10 N=40 G=__builtin_constant_p(argc)
+c0t13 94 c0 T=10 N=13 G=__builtin_constant_p(argc)
+c0t10 88 c0 T=10 N=10 G=__builtin_constant_p(argc)
+c0t9 72 c0 T=10 N=9 G=__builtin_constant_p(argc)
+c0t18 108 c0 T=10 N=18 G=__builtin_constant_p(argc)
+c0t11 112 c0 T=10 N=11 G=__builtin_constant_p(argc)
+c0t14 94 c0 T=10 N=14 G=__builtin_constant_p(argc)
+c0t30 122 c0 T=10 N=30 G=__builtin_constant_p(argc)
+c0t23 172 c0 T=10 N=23 G=__builtin_constant_p(argc)
+c0t20 108 c0 T=10 N=20 G=__builtin_constant_p(argc)
+c0t26 242 c0 T=10 N=26 G=__builtin_constant_p(argc)
+c0t16 98 c0 T=10 N=16 G=__builtin_constant_p(argc)
+c0t35 216 c0 T=10 N=35 G=__builtin_constant_p(argc)
+c0t40 200 c0 T=10 N=40 G=__builtin_constant_p(argc)
+b18u8_12 102 b18 T=8 N=12 G=__builtin_constant_p(argc)
+b18u9_10 64 b18 T=9 N=10 G=__builtin_constant_p(argc)
+b18u8_10 18 b18 T=8 N=10 G=__builtin_constant_p(argc)
+b18u7_15 116 b18 T=7 N=15 G=__builtin_constant_p(argc)
+b18u8_13 112 b18 T=8 N=13 G=__builtin_constant_p(argc)
+b18u3_3 18 b18 T=3 N=3 G=__builtin_constant_p(argc)
+b18u9_12 84 b18 T=9 N=12 G=__builtin_constant_p(argc)
+b18u5_2 18 b18 T=5 N=2 G=__builtin_constant_p(argc)
+c0u8_10 52 c0 T=8 N=10 G=__builtin_constant_p(argc)
+c0u8_12 72 c0 T=8 N=12 G=__builtin_constant_p(argc)
+c0u9_10 48 c0 T=9 N=10 G=__builtin_constant_p(argc)
+c0u9_12 90 c0 T=9 N=12 G=__builtin_constant_p(argc)
+c0u5_2 42 c0 T=5 N=2 G=__builtin_constant_p(argc)
+c0u7_15 84 c0 T=7 N=15 G=__builtin_constant_p(argc)
+c0u3_3 48 c0 T=3 N=3 G=__builtin_constant_p(argc)
+c0u8_13 88 c0 T=8 N=13 G=__builtin_constant_p(argc)

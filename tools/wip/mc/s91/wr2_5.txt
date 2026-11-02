@@ -1,0 +1,5 @@
+3 3 extra ins 29(k-1) by 141@99 ; extra ins 80(k1) by 55@0 ; pre ('push', 53, 0)->before ('get', 48)
+3 3 extra ins 138(k-3) by 118@0 ; extra ins 80(k1) by 55@0 ; pre ('push', 53, 0)->before ('get', 131)
+3 4 extra ins 138(k-1) by 134@0 ; extra ins 29(k-1) by 118@99 ; extra ins 78(k1) by 104@99 ; pre ('push', 35, 0)->before ('get', 131)
+3 4 extra ins 139(k-2) by 122@0 ; extra ins 80(k1) by 55@0 ; key 33=-2 ; pre ('push', 42, 0)->before ('get', 129)
+3 3 extra ins 138(k-1) by 134@0 ; extra ins 78(k0) by 131@99 ; pre ('push', 53, 0)->before ('visit', 95)

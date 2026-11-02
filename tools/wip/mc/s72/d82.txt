@@ -1,0 +1,144 @@
+--- original
++++ tools/wip/mc/s71/best82.c
+@@ -199,9 +199,9 @@
+ cmp byte ptr [ebp],45
+ je l
++lea ebp,[2+ecx]
+ mov eax,dword ptr [4+eax+ebx]
+-lea ebp,[2+ecx]
+-test eax,eax
+-je l
+ cmp esi,ebp
++je l
++test eax,eax
+ je l
+ cmp byte ptr [eax],45
+@@ -305,16 +305,18 @@
+ jne l
+ call _netdisconnect
+-add esp,92
+-xor eax,eax
+-pop ebx
+-pop esi
+-pop edi
+-pop ebp
+-ret
++jmp l
+ call _netgetinfo
++lea edx,[56+esp]
+ mov dword ptr [l],eax
++lea ecx,[59+esp]
+ mov dword ptr [esp],edi
+ call _netreboot
+ jmp l
++call l
++jmp l
++mov dword ptr [4+esp],offset l
++mov dword ptr [esp],0
++call _log_printf
++jmp l
+ mov eax,dword ptr [68+esp]
+ mov dword ptr [8+esp],5
+@@ -348,6 +350,4 @@
+ call _netdumpnand
+ jmp l
+-call l
+-jmp l
+ test byte ptr [16+eax],32
+ je l
+@@ -391,4 +391,14 @@
+ mov dword ptr [esp],0
+ call _log_printf
++jmp l
++mov dword ptr [4+esp],offset l
++mov dword ptr [esp],0
++call _log_printf
++jmp l
++mov dword ptr [4+esp],0
++mov dword ptr [esp],2
++call l
++mov dword ptr [esp],0
++call l
+ jmp l
+ mov eax,dword ptr [68+esp]
+@@ -423,11 +433,4 @@
+ call _log_printf
+ jmp l
+-mov dword ptr [4+esp],offset l
+-mov dword ptr [esp],0
+-call _log_printf
+-jmp l
+-mov dword ptr [4+esp],0
+-mov dword ptr [esp],2
+-call l
+ mov eax,dword ptr [68+esp]
+ mov dword ptr [8+esp],2
+@@ -459,13 +462,4 @@
+ add eax,1
+ jmp l
+-mov dword ptr [4+esp],offset l
+-mov dword ptr [esp],0
+-call _log_printf
+-jmp l
+-mov dword ptr [8+esp],ebx
+-mov dword ptr [4+esp],offset l
+-mov dword ptr [esp],0
+-call _log_printf
+-jmp l
+ mov eax,dword ptr [68+esp]
+ mov dword ptr [8+esp],2
+@@ -497,12 +491,28 @@
+ add eax,1
+ jmp l
++mov dword ptr [8+esp],ebx
++mov dword ptr [4+esp],offset l
++mov dword ptr [esp],0
++call _log_printf
++jmp l
+ mov eax,dword ptr [ebx+ecx*4]
+ mov dword ptr [esp],4
+ mov dword ptr [4+esp],eax
+ call l
++mov dword ptr [esp],0
++call l
++jmp l
+ mov eax,dword ptr [ebx+ecx*4]
+ mov dword ptr [esp],3
+ mov dword ptr [4+esp],eax
+ call l
++mov dword ptr [4+esp],offset l
++mov dword ptr [esp],0
++call _log_printf
++jmp l
++mov eax,dword ptr [ebx+ecx*4]
++mov dword ptr [esp],5
++mov dword ptr [4+esp],eax
++call l
+ mov eax,dword ptr [68+esp]
+ mov dword ptr [8+esp],2
+@@ -534,15 +544,5 @@
+ add eax,1
+ jmp l
+-mov dword ptr [4+esp],offset l
+-mov dword ptr [esp],0
+-call _log_printf
+-jmp l
+-mov dword ptr [esp],0
+-call l
+-jmp l
+-mov dword ptr [esp],0
+-call l
+-jmp l
+-mov eax,dword ptr [ebx+ecx*4]
++mov eax,dword ptr [eax*4+ebx]
+ mov dword ptr [esp],5
+ mov dword ptr [4+esp],eax
+@@ -558,8 +558,4 @@
+ mov eax,dword ptr [eax*4+ebx]
+ mov dword ptr [esp],3
+-mov dword ptr [4+esp],eax
+-call l
+-mov eax,dword ptr [eax*4+ebx]
+-mov dword ptr [esp],5
+ mov dword ptr [4+esp],eax
+ call l

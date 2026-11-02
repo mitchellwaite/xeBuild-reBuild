@@ -1,0 +1,17 @@
+B=$1; P=$2
+U='if (__builtin_constant_p(i + 320) && __builtin_constant_p(i + 321)) goto u2;'
+sh r.sh ${P}u1 $B "$U" 'if (__builtin_constant_p(i + 320)) goto u2;'
+sh r.sh ${P}u3 $B "$U" 'if (__builtin_constant_p(i + 320) && __builtin_constant_p(i + 321) && __builtin_constant_p(i + 322)) goto u2;'
+K2='if (__builtin_constant_p(i + 35) && __builtin_constant_p(i + 36) && __builtin_constant_p(i + 37)) goto k55l;'
+sh r.sh ${P}k4 $B "$K2" 'if (__builtin_constant_p(i + 35) && __builtin_constant_p(i + 36) && __builtin_constant_p(i + 37) && __builtin_constant_p(i + 38)) goto k55l;'
+sh r.sh ${P}kk $B "$K2" "$K2 $K2"
+sh r.sh ${P}f1 $B '"" :::: p1, i1, dtg, ndl,' '"" :::: i1, p1, dtg, ndl,'
+sh r.sh ${P}f2 $B '"" :::: p1, i1, dtg, ndl,' '"" :::: p1, dtg, i1, ndl,'
+sh r.sh ${P}f3 $B '"" :::: p1, i1, dtg, ndl,' '"" :::: p1, i1, ndl, dtg,'
+sh r.sh ${P}f4 $B '"" :::: p1, i1, dtg, ndl,' '"" :::: dtg, p1, i1, ndl,'
+sh r.sh ${P}j1 $B 'JMP(hdd4,s5,hdd5)' 'JMP(s5,hdd4,hdd5)'
+sh r.sh ${P}j2 $B 'JMP(hdd4,s5,hdd5)' 'JMP(hdd4,hdd5,s5)'
+sh r.sh ${P}j3 $B 'JMP(s4,c12)' 'JMP(c12,s4)'
+sh r.sh ${P}j4 $B 'JMP(p1,cdef)' 'JMP(cdef,p1)'
+sh r.sh ${P}j5 $B 'JMP(hdd4,hdd5); }' 'JMP(hdd5,hdd4); }'
+sh r.sh ${P}j6 $B 'JMP(i0); sendAvatar' 'JMP(i0,p0); sendAvatar'

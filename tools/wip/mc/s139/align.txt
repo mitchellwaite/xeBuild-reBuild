@@ -1,0 +1,170 @@
+= P   2 T1r1    f  215 | V   2 T1r1    f  219 *f *LC119 log_set_name
+= P   3 T1r1    f  211 | V   3 T1r1    f  216 *f 
+= P   4 T1r1    f 4894 | V   4 T1r1    f 4893 *f *LC124 log_printf promptEnter
+= P   5 T1r1    f 6310 | V   5 T1r1    f 6307 *f 
+= P   6 T1r1    f 9800 | V   6 T1r1    f 9800 *LC120 strnicmp
+= P   7 T1r1    f 9796 | V   7 T1r1    f 9793 *f *LC121 strnicmp
+= P   8 T1r1    f 9792 | V   8 T1r1    f 9789 *f *LC122 strnicmp
+= P   9 T1r1    f 9788 | V   9 T1r1    f 9785 *f *LC123 strnicmp
+= P  10 T2r1    f 4894 | V  10 T2r1    f 4893 *f *LC125 strnicmp
+= P  11 T2r1    f 3475 | V  11 T2r1    f 3474 *f 
+= P  12 T2r1    f 3475 | V  12 T2r1    f 3474 *f *LC127 log_printf
+= P  13 T7r1    f  196 | V  13 T7r1    f  196 
+= P  14 T7r1    f  175 | V  14 T7r1    f  127 *f 
+= P  15 T8r1    f  109 | V  15 T8r1    f  138 *f 
+= P  16 T8r1    f  110 | V  16 T8r1    f   71 *f netConnect
+= P  17 T13r2   f   73 | V  17 T13r2   f   51 *f *LC158 log_printf
+= P  18 T3r1    f 1419 | V  18 T3r1    f 1419 *LC128 strnicmp
+= P  19 T3r1    f  710 | V  19 T3r1    f  709 *f 
+= P  20 T3r1    f  709 | V  20 T3r1    f  709 
+= P  21 T3r1    f  709 | V  21 T3r1    f  709 
+= P  22 T3r1    f  709 | V  22 T3r1    f  709 
+= P  23 T3r1    f  709 | V  23 T3r1    f  709 
+= P  24 T3r1    f  709 | V  24 T3r1    f  708 *f 
+= P  25 T3r1    f  708 | V  25 T3r1    f  708 
+= P  26 T3r1    f  708 | V  26 T3r1    f  708 *LC129 log_printf
+= P  27 T4r1    f  710 | V  27 T4r1    f  709 *f *LC130 strnicmp
+= P  28 T4r1    f  355 | V  28 T4r1    f  355 getArgs *LC131 log_printf
+= P  29 T5r1    f  476 | V  29 T5r1    f  476 *LC126 log_printf
+= P  30 T6r1    f  355 | V  30 T6r1    f  355 *LC132 strnicmp
+= P  31 T6r1    f  177 | V  31 T6r1    f  177 
+= P  32 T6r1    f  177 | V  32 T6r1    f  177 
+= P  33 T6r1    f  177 | V  33 T6r1    f  177 
+= P  34 T6r1    f  177 | V  34 T6r1    f  177 
+= P  35 T6r1    f  177 | V  35 T6r1    f  177 
+= P  36 T6r1    f  177 | V  36 T6r1    f  177 
+= P  37 T6r1    f  177 | V  37 T6r1    f  177 
+= P  38 T6r1    f  177 | V  38 T6r1    f  177 *LC133 log_printf
+= P  39 T9r1    f  177 | V  39 T9r1    f  177 *LC134 strnicmp
+= P  40 T11r2   f   89 | V  40 T11r2   f   89 
+= P  41 T11r2   f   89 | V  41 T11r2   f   89 
+= P  42 T11r2   f   89 | V  42 T11r2   f   89 
+= P  43 T11r2   f   89 | V  43 T11r2   f   89 
+= P  44 T11r2   f   88 | V  44 T11r2   f   89 *f *LC135 log_printf
+= P  45 T10r2   f   89 | V  45 T10r2   f   89 *LC136 strnicmp
+= P  46 T10r2   f   73 | V  46 T10r2   f   63 *f 
+= P  47 T10r2   f   60 | V  47 T10r2   f   44 *f *LC138 log_printf
+= P  48 T12r2   f   87 | V  48 T12r2   f   58 *f netConnect
+= P  49 T12r2   f   87 | V  49 T12r2   f   58 *f 
+= P  50 T12r2   f   87 | V  50 T14r2   f   47 *f netGetInfo cinfo
+= P  51 T12r2   f   86 | V  51 T14r2   f   45 *f 
++                          V  52 T15r2   f   62 
+= P  52 T29r4   f    7 | V  53 T23r4   f    6 *f myatoh32
+= P  53 T29r4   f    7 | V  54 T23r4   f    6 *f cinfo
+= P  54 T29r4   f    5 | V  55 T23r4   f    4 *f *LC115 log_printf *_netEraseBlock
+= P  55 T29r4   f    4 | V  56 T23r4   f    2 *f *LC116 log_printf
+= P  56 T14r2   f  114 | V  57 T17r2   f   77 *f 
+= P  57 T14r2   f  122 | V  58 T16r2   f  114 *f netDisconnect
+= P  58 T16r3   f   37 | V  59 T19r3   f   20 *f netGetInfo cinfo
++                          V  60 T36r4   f    0 
++                          V  61 T36r4   f    0 
+= P  59 T15r2   f   61 | V  62 T18r3   f   39 *f netReboot
++                          V  63 T?      f   20 
+= P  60 T17r3   f   15 | V  64 T20r3   f   26 *f *LC139 strnicmp
+= P  61 T21r4   f    9 | V  65 T20r3   f   18 *f 
+= P  62 T18r3   f   13 | V  66 T21r3   f   17 *f *LC137 log_printf
+= P  63 T19r3   f   12 | V  67 T22r3   f   12 client_usage
+= P  64 T20r4   f   10 | V  68 T24r4   f    7 *f 
++                          V  69 T24r4   f    7 
+= P  65 T20r4   f    9 | V  70 T24r4   f    4 *f clientInfo
+= P  66 T22r4   f    9 | V  71 T25r4   f    6 *f netDumpNand
++                          V  72 T25r4   f    3 
++                          V  73 T25r4   f   13 
++                          V  74 T?      f    7 
++                          V  75 T26r4   f    6 
+= P  67 T23r4   f    9 | V  76 T26r4   f    1 *f clientKeys
++                          V  77 T?      f    1 
+= P  68 T24r4   f    8 | V  78 T27r4   f    6 *f 
+= P  69 T24r4   f    8 | V  79 T27r4   f    9 *f sendAvatarData
+= P  70 T25r4   f    8 | V  80 T28r4   f    6 *f 
++                          V  81 T28r4   f    8 
++                          V  82 T28r4   f    4 cinfo
+= P  71 T25r4   f    7 | V  83 T28r4   f    1 *f sendCompatData
+= P  72 T26r4   f    9 | V  84 T29r4   f    5 *f clientWrite
+= P  73 T27r4   f    9 | V  85 T31r4   f    4 *f clientReadBlocks
+- P  74 T28r4   f    8 clientWriteBlocks
++                          V  86 T30r4   f    4 
++                          V  87 T?      f    2 
+= P  75 T30r4   f   10 | V  88 T32r4   f    9 *f clientBinPatch
+= P  76 T31r4   f    9 | V  89 T33r4   f    8 *f 
++                          V  90 T33r4   f    2 clientWriteBlocks
++                          V  91 T33r4   f    1 
++                          V  92 T33r4   f    2 
++                          V  93 T?      f    1 
++                          V  94 T34r4   f    6 
+= P  77 T31r4   f    8 | V  95 T34r4   f    9 *f clientPatches
++                          V  96 T35r4   f    4 
+= P  78 T32r4   f    8 | V  97 T35r4   f    2 *f *LC157 log_printf
+= P  79 T33r4   f    7 | V  98 T37r4   f    7 *LC140 strnicmp
+= P  80 T33r4   f    3 | V  99 T37r4   f    5 *f 
+= P  81 T33r4   f    3 | V 100 T37r4   f    5 *f 
+= P  82 T33r4   f    3 | V 101 T37r4   f    5 *f 
+= P  83 T33r4   f    3 | V 102 T37r4   f    5 *f *LC141 log_printf
+- P  84 T34r4   f    4 *LC156 log_printf
+- P  85 T35r4   f    3 *LC155 log_printf
+= P  86 T36r4   f    5 | V 103 T38r4   f    3 *f client_usage
++                          V 104 T39r4   f    3 *LC118 log_printf
+= P  87 T37r4   f    3 | V 105 T40r4   f    2 *f *LC142 strnicmp
+= P  88 T37r4   f    2 | V 106 T40r4   f    1 *f 
+= P  89 T37r4   f    2 | V 107 T40r4   f    0 *f 
+= P  90 T37r4   f    2 | V 108 T40r4   f    0 *f 
+= P  91 T37r4   f    2 | V 109 T40r4   f    0 *f 
++                          V 110 T40r4   f    0 
+= P  92 T37r4   f    2 | V 111 T40r4   f    0 *f *LC143 log_printf
+- P  93 T38r4   f    2 *LC118 log_printf
+- P  94 T?      f    1 
+- P  95 T39r4   f    1 *LC117 log_printf
++                          V 112 T41r4   f    2 *LC156 log_printf
++                          V 113 T42r4   f    2 *LC155 log_printf
+= P  96 T40r4   f    2 | V 114 T43r4   f    2 *LC144 strnicmp
+= P  97 T40r4   f    1 | V 115 T43r4   f    1 
+= P  98 T40r4   f    1 | V 116 T43r4   f    1 
+= P  99 T40r4   f    1 | V 117 T43r4   f    1 
+= P 100 T40r4   f    1 | V 118 T43r4   f    1 
++                          V 119 T43r4   f    1 
+= P 101 T40r4   f    1 | V 120 T43r4   f    1 *LC145 log_printf
++                          V 121 T44r4   f    2 *LC117 log_printf
+= P 102 T41r4   f    1 | V 122 T45r4   f    1 client_usage
+= P 103 T42r4   f    1 | V 123 T46r4   f    1 client_usage
+= P 104 T43r4   f    1 | V 124 T47r4   f    1 *LC146 strnicmp
+= P 105 T43r4   f    0 | V 125 T47r4   f    0 
+= P 106 T43r4   f    0 | V 126 T47r4   f    0 
+= P 107 T43r4   f    0 | V 127 T47r4   f    0 
+= P 108 T43r4   f    0 | V 128 T47r4   f    0 
+= P 109 T43r4   f    0 | V 129 T47r4   f    0 *LC147 log_printf
++                          V 130 T48r4   f    0 client_usage
+= P 110 T44r4   f    1 | V 131 T49r4   f    0 *f *LC114 log_printf
+- P 111 T45r4   f    1 clientPatches
+- P 112 T?      f    1 
++                          V 132 T50r4   f    0 client_usage
+= P 113 T46r4   f    0 | V 133 T51r4   f    0 clientInfo
+= P 114 T47r4   f    0 | V 134 T52r4   f    0 client_usage
+= P 115 T48r4   f    0 | V 135 T53r4   f    0 client_usage
+= P 116 T49r4   f    0 | V 136 T54r4   f    0 client_usage
+- P 117 T50r4   f    0 client_usage
+- P 118 T51r4   f    0 client_usage
++                          V 137 T55r4   f    0 clientPatches
+= P 119 T52r4   f    0 | V 138 T56r4   f    0 *LC148 strnicmp
+= P 120 T52r4   f    0 | V 139 T56r4   f    0 
+= P 121 T52r4   f    0 | V 140 T56r4   f    0 
+= P 122 T52r4   f    0 | V 141 T56r4   f    0 
+= P 123 T52r4   f    0 | V 142 T56r4   f    0 
+= P 124 T52r4   f    0 | V 143 T56r4   f    0 *LC149 log_printf
+= P 125 T53r4   f    0 | V 144 T57r4   f    0 *LC150 strnicmp
+= P 126 T53r4   f    0 | V 145 T57r4   f    0 
+= P 127 T53r4   f    0 | V 146 T57r4   f    0 
+= P 128 T53r4   f    0 | V 147 T57r4   f    0 
+= P 129 T53r4   f    0 | V 148 T57r4   f    0 *LC151 log_printf
+= P 130 T54r4   f    0 | V 149 T58r4   f    0 *LC152 strnicmp
+= P 131 T54r4   f    0 | V 150 T58r4   f    0 
+= P 132 T54r4   f    0 | V 151 T58r4   f    0 
+= P 133 T54r4   f    0 | V 152 T58r4   f    0 
+= P 134 T54r4   f    0 | V 153 T58r4   f    0 *LC153 log_printf
+= P 135 T55r4   f    0 | V 154 T59r4   f    0 
+= P 136 T55r4   f    0 | V 155 T59r4   f    0 
+= P 137 T56r4   f    0 | V 156 T60r4   f    0 
+= P 138 T57r4   f    0 | V 157 T61r4   f    0 
+= P 139 T58r4   f    0 | V 158 T62r4   f    0 
+= P 140 T59r4   f    0 | V 159 T63r4   f    0 *LC154 strnicmp
+= P 141 T59r4   f    0 | V 160 T63r4   f    0 log_verbose_flag
+= P 142 T60r4   f    0 | V 161 T64r4   f    0 client_usage

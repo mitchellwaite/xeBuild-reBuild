@@ -1,0 +1,9 @@
+v34|d2L|{ hdd5_c: __attribute__((cold)); }|{ hdd5_c: __attribute__((cold)); JMP(cu3l); }
+v35|d2L|{ hdd5_c: __attribute__((cold)); }|{ hdd5_c: __attribute__((cold)); JMP(cu5l); }
+v36|z3L|{ AT(u2) client_usage(2, NULL); }|{ AT(u2) JMP(cu3l); client_usage(2, NULL); }
+v37|z3L|{ AT(u2) client_usage(2, NULL); }|{ AT(u2) JMP(cu5l); client_usage(2, NULL); }
+v38|d2L|{ AT(u2) client_usage(2, NULL); }|{ AT(u2) JMP(cu3l); client_usage(2, NULL); }
+v39|z3L|goto ndl; log_printf(0, "\n\n***** ERROR: invalid mode|goto ndl; JMP(cu3l); log_printf(0, "\n\n***** ERROR: invalid mode
+v40|z3L|{ wb3: client_usage(3, argv[i]); }|{ wb3: JMP(cu3l); client_usage(3, argv[i]); }
+v41|z3L|{ wb3: client_usage(3, argv[i]); }|{ wb3: JMP(cu5l); client_usage(3, argv[i]); }
+v42|d2L|{ wb3: client_usage(3, argv[i]); }|{ wb3: JMP(cu3l); client_usage(3, argv[i]); }

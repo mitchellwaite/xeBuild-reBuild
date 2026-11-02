@@ -1,0 +1,16 @@
+d1 P Ef=hot
+d2 P Ef=cold
+d3 P Eo=cold
+d4 P Eo=hot
+d5 P Ei=cold
+d6 P Ei=hot
+d7 P Ek=5
+d8 P Es=eout
+d9 P Es=einv
+d10 P Es=efail
+d11 P Uh=hot
+d12 P Uh=cold
+d13 P Ef=hot Ei=cold
+d14 P Ek=5 Ei=cold
+d15 J1= J2= Ef=hot
+d16 J1= J2= Ei=cold

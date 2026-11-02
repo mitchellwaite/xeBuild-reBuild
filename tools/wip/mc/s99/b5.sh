@@ -1,0 +1,12 @@
+B=b08x.c
+F='efail: log_printf'
+sh r.sh g01 $B "$F" 'efail: __attribute__((cold)); log_printf'
+sh r.sh g02 $B "$F" 'efail: __asm__ goto ("" :::: einv); log_printf'
+sh r.sh g03 $B "$F" 'efail: __asm__ goto ("" :::: eout); log_printf'
+sh r.sh g04 $B "$F" 'efail: if (__builtin_constant_p(block + 88)) goto einv; log_printf'
+sh r.sh g05 $B "$F" 'efail: if (__builtin_constant_p(block + 88)) goto eout; log_printf'
+sh r.sh g06 $B 'eout: log_printf' 'eout: __asm__ goto ("" :::: efail); log_printf'
+sh r.sh g07 $B 'esucc:  log_printf' 'esucc:  __asm__ goto ("" :::: efail); log_printf'
+sh r.sh g08 $B 'goto einv; log_printf(0, "erasing' 'goto einv; __asm__ goto ("" :::: efail); log_printf(0, "erasing'
+sh r.sh g09 $B 'if (__builtin_constant_p(block + 77)) goto einv;' 'if (__builtin_constant_p(block + 77)) goto efail;'
+sh r.sh g10 $B 'if (__builtin_constant_p(block + 77)) goto einv;' 'if (__builtin_constant_p(block + 77)) goto einv; if (__builtin_constant_p(block + 78)) goto efail;'

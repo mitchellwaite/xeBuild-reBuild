@@ -1,0 +1,11 @@
+B=$1; P=$2
+R='if (({__asm__ goto("" :::: r5x); 0;}) || i + 1 == argc'
+C12='AT(c12) if (arg == dummy || ({JMP(p0); 0;}))'
+sh r.sh ${P}1 $B '__asm__ goto ("" :::: p1, i1, dtg' '__asm__ goto ("" :::: i1, p1, dtg'
+sh r.sh ${P}2 $B "$R" 'if (i + 1 == argc || ({__asm__ goto("" :::: r5x); 0;})'
+sh r.sh ${P}3 $B "$R" 'if (i + 1 == argc'
+sh r.sh ${P}4 $B "$C12" 'AT(c12) if (arg == dummy)'
+sh r.sh ${P}5 $B "$C12" 'AT(c12) if (({JMP(p0); 0;}) || arg == dummy)'
+sh r.sh ${P}6 $B "$C12" 'AT(c12) if (arg == dummy || ({JMP(p0); 0;}) || ({JMP(i0); 0;}))'
+sh r.sh ${P}7 $B '__asm__ goto ("" :::: p1, i1, dtg' '__asm__ goto ("" :::: p1, dtg, i1'
+sh r.sh ${P}8 $B 'if (mode) { w5x:' 'if (mode) { r5y: JMP(r5x); w5x:'

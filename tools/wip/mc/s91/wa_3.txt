@@ -1,0 +1,18 @@
+3 2 extra ins 138(k-1) by 134@0 ; pre ('push', 53, 0)->before ('push', 131, -1000308)
+1 5 extra ins 107(k-2) by 104@0 ; extra ins 138(k-2) by 134@0 ; extra ins 78(k0) by 141@0 ; pre ('push', 107, -3)->before ('push', 142, -1000507) ; pre ('push', 42, 0)->before ('ins', 'next', 123, -3)
+3 4 extra ins 33(k-2) by 147@0 ; extra ins 53(k0) by 49@99 ; extra ins 53(k1) by 115@99 ; extra ins 80(k1) by 55@0
+3 2 extra ins 138(k-1) by 134@0 ; pre ('push', 53, 0)->before ('get', 141)
+2 3 extra ins 138(k-3) by 122@0 ; extra ins 80(k0) by 55@0 ; pre ('push', 53, 0)->before ('get', 147)
+0 5 extra ins 138(k-1) by 107@0 ; extra ins 55(k-1) by 134@99 ; extra ins 78(k0) by 129@0 ; pre ('push', 107, -3)->before ('chg', 104, -1000100) ; pre ('push', 53, 0)->before ('push', 35, 0)
+3 3 extra ins 138(k-1) by 134@0 ; extra ins 78(k0) by 107@99 ; pre ('push', 35, 0)->before ('get', 131)
+3 4 extra ins 138(k-2) by 134@0 ; extra ins 53(k0) by 125@99 ; extra ins 53(k1) by 129@99 ; pre ('push', 29, -1)->before ('get', 42)
+3 2 extra ins 138(k-1) by 134@0 ; pre ('push', 53, 0)->before ('get', 48)
+3 4 extra ins 53(k0) by 147@0 ; extra ins 53(k1) by 141@99 ; extra ins 80(k0) by 55@0 ; pre ('push', 29, -1)->before ('get', 53)
+2 5 extra ins 53(k0) by 138@0 ; extra ins 53(k1) by 121@0 ; extra ins 61(k-1) by 141@0 ; extra ins 61(k0) by 104@0 ; extra ins 80(k1) by 33@0
+2 3 extra ins 138(k-1) by 134@0 ; extra ins 80(k0) by 55@0 ; pre ('push', 53, 0)->before ('get', 141)
+3 5 extra ins 138(k-3) by 118@99 ; extra ins 61(k0) by 122@0 ; extra ins 80(k-1) by 104@99 ; pre ('push', 107, -3)->before ('chg', 104, -1000100) ; pre ('push', 35, 0)->before ('get', 42)
+3 6 extra ins 139(k-1) by 118@0 ; extra ins 35(k0) by 55@99 ; extra ins 35(k1) by 55@0 ; extra ins 61(k-1) by 131@99 ; pre ('ins', 'next', 49, -7)->before ('push', 107, -3) ; pre ('push', 29, -1)->before ('push', 35, 0)
+3 3 extra ins 138(k-2) by 134@0 ; extra ins 78(k1) by 131@0 ; pre ('ins', 'next', 49, -7)->before ('chg', 142, -1000507)
+3 2 extra ins 80(k1) by 55@0 ; pre ('push', 53, 0)->before ('get', 48)
+2 4 extra ins 138(k-1) by 134@0 ; extra ins 61(k-2) by 104@99 ; extra ins 78(k0) by 134@99 ; pre ('push', 29, -1)->before ('chg', 104, -1000100)
+3 2 extra ins 138(k-3) by 122@0 ; pre ('push', 53, 0)->before ('get', 131)

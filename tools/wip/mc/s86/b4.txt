@@ -1,0 +1,10 @@
+v21|z3L|:::: p1, i1, dtg,|:::: cu3l, p1, i1, dtg,
+v22|z3L|:::: p1, i1, dtg,|:::: p1, i1, dtg, cu3l,
+v23|z3L|fa19, fa20);|fa19, fa20, cu3l);
+v24|z3L|:::: p1, i1, dtg,|:::: cu5l, p1, i1, dtg,
+v25|z3L|:::: dsp, c1, c12,|:::: cu3l, dsp, c1, c12,
+v26|z3L|rk12, rk13);|rk12, rk13, cu3l);
+v27|z3L|{ hc4: __attribute__((cold)); }|{ hc4: __attribute__((cold)); JMP(cu3l); }
+v28|z3L|{ hdd5_c: __attribute__((cold)); }|{ hdd5_c: __attribute__((cold)); JMP(cu3l); }
+v29|z3L|{ hdd5_c: __attribute__((cold)); }|{ hdd5_c: __attribute__((cold)); JMP(cu5l); }
+v30|z3L|{ hc4: __attribute__((cold)); }|{ hc4: __attribute__((cold)); JMP(cu5l); }

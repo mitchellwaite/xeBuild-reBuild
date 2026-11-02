@@ -1,0 +1,12 @@
+e0 P
+e1 P Ec
+e2 P Ek=5
+e3 P Es=eout
+e4 P Es=einv
+e5 P Es=efail
+e6 P Ek=5 Ei=cold
+e7 P Es=einv Ei=cold
+e8 P Ef=cold Ei=cold
+e9 P Ef=cold Eo=cold
+e10 P Ek=5 Ef=cold
+e11 P Es=eout Ek=5

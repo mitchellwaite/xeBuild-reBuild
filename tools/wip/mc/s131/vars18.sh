@@ -1,0 +1,6 @@
+BEK='R=@Tuint32_t block = myatoh32(sblock, -1);@N@N@N@N@Tif (block != -1) {#|#@Tuint32_t block = myatoh32(sblock, -1);@N@Tint k = __builtin_constant_p(block);@N@N@N@N@Tif (block != -1) {'
+BEK2='R=@T} else@N@T@T{ einv:#|#@T} else if (!k)@N@T@T{ einv:'
+BK7='R=AT(c7)  if (arg == dummy)#|#AT(c7)  if (arg == dummy && !k)'
+BK12='R=AT(c12) if (arg == dummy ||#|#AT(c12) if ((arg == dummy && !k) ||'
+BUL='R={ AT(u2) client_usage(2, NULL); }#|#{ AT(u2) u2l: client_usage(2, NULL); }'
+BFI='R=clientInfo(NULL); }#|#clientInfo(NULL); __asm__ goto("" :::: u2l); }'

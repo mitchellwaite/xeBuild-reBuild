@@ -1,0 +1,11 @@
+A=$'\n\n\n\tif (block != -1) {\n\t\tif (block < cinfo->nandSize / cinfo->blockSize) {\n\n\t\t\teerase'
+E=$'\n\tif (__builtin_constant_p(block + 79) && __builtin_constant_p(block + 80)) goto efail;\n\n\n\tif (block != -1) {\n\t\tif (block < cinfo->nandSize / cinfo->blockSize) {\n\n\t\t\teerase'
+S='if (__builtin_constant_p(block+9)) goto eout; }'
+sh r.sh a00 b0.c "$A" "$E"
+sh r.sh a01 b0.c "$A" "$E" "$S" 'if (__builtin_constant_p(block+9)) goto eout; if (__builtin_constant_p(block+19)) goto efail; }'
+sh r.sh a02 b0.c "$A" "$E" "$S" 'if (__builtin_constant_p(block+19)) goto efail; if (__builtin_constant_p(block+9)) goto eout; }'
+sh r.sh a03 b0.c "$A" "$E" "$S" 'if (__builtin_constant_p(block+9)) goto eout; if (__builtin_constant_p(block+19) && __builtin_constant_p(block+20)) goto efail; }'
+sh r.sh a04 b0.c "$A" "$E" 'goto einv; log_printf(0, "erasing' 'goto einv; if (__builtin_constant_p(block + 19)) goto efail; log_printf(0, "erasing'
+sh r.sh a05 b0.c "$A" "$E" 'esucc:  log_printf(0, "Success!\n");' 'esucc: if (__builtin_constant_p(block + 19)) goto efail; log_printf(0, "Success!\n");'
+sh r.sh a06 b0.c "$A" "$E" 'goto einv; JUMP(efail)' 'goto einv; if (__builtin_constant_p(block + 19)) goto efail;'
+sh r.sh a07 b0.c "$A" "$E" 'goto einv; JUMP(efail)' 'goto einv; JMP(efail);'
