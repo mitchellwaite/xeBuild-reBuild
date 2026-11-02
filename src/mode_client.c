@@ -649,7 +649,7 @@ ip = argv[++i];
 			arg = argv[++i];
 			log_printf(0, "setting write filename to %s\n", arg);
 			mode = 2;
-		} else { k67l: if (E(!strnicmp(argv[i], "-e", 2))) {
+		} else { k67l: if (!strnicmp(argv[i], "-e", 2)) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
@@ -657,7 +657,7 @@ ip = argv[++i];
 			arg = argv[++i];
 			log_printf(0, "setting avatar/kinect files base path to %s\n", arg); JMP(dz);
 			mode = 4;
-		} else if (E(!strnicmp(argv[i], "-c", 2))) {
+		} else if (!strnicmp(argv[i], "-c", 2)) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
@@ -717,7 +717,7 @@ ip = argv[++i];
 				AT(t4)  if (cinfo->hwFlags & 0x20)
 					s4: { sendAvatarData(arg, cinfo->kernel); }
 				else
-					{ if (kk) goto S761; { AT(hdd4) { hc4: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n"); } }
+					{  { AT(hdd4) { hc4: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n"); } }
 				break;
 			case 5:
 				AT(t5)  if (cinfo->hwFlags & 0x20)

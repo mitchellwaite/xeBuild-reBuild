@@ -64,37 +64,6 @@ static uint8_t smcPage[0x1000];
 	} \
 } while (0)
 
-/* the FS table entries of blocks start .. start + n: `next` for each
-   (0xf1f1: leave them), or a chain (0: open, 0xffff: closed) */
-#define setFsTable(start, n, next) do { \
-	uint32_t i_; \
-	if ((next) != 0xf1f1) { \
-		for (i_ = 0; i_ < (n); i_++) { \
-			if ((next) != 0 && (next) != 0xffff) \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE(next); \
-			else \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE((start) - xb.fsStart + i_ + 1); \
-		} \
-		if ((next) == 0xffff) \
-			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff); \
-	} \
-} while (0)
-
-/* the same with the chain test first */
-#define setFsTableB(start, n, next) do { \
-	uint32_t i_; \
-	if ((next) != 0xf1f1) { \
-		for (i_ = 0; i_ < (n); i_++) { \
-			if ((next) == 0 || (next) == 0xffff) \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE((start) - xb.fsStart + i_ + 1); \
-			else \
-				fsTable[(start) - xb.fsStart + i_] = SWAP16_IMAGE_WRITE(next); \
-		} \
-		if ((next) == 0xffff) \
-			fsTable[(start) + (n) - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff); \
-	} \
-} while (0)
-
 /* imgWriteStart for big-block NAND (no FS table) */
 static int imgWriteHdr(const void *src, uint32_t len)
 {
@@ -119,8 +88,6 @@ static int imgWriteHdr(const void *src, uint32_t len)
 		tail = rem < 0x4000 ? rem : rem % 0x4000;
 		blocks = rem / 0x4000;
 		if (tail)
-			blocks++;
-		if (first)
 			blocks++;
 	}
 	memcpy(xb.hdr + off, src, len);
@@ -705,8 +672,6 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff);
 		}
 	}
-	if ((len & 0x3fff) > 0x3fff)
-		blocks += 2;
 	imgEnd = off + len;
 	return 0;
 }

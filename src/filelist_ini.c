@@ -446,8 +446,6 @@ uint32_t parseIni(char *path)
 					strncpy(tmp, (char *)&buf[pos], 8);
 					tmp[8] = 0;
 					xb.files[blOrder[i]].crc = myatox32(tmp, 0);
-					if (n < -1)
-						n = 0;
 				}
 				pos = pos + n + 1;
 			} else
