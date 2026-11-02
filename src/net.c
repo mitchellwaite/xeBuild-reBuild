@@ -503,24 +503,24 @@ uint32_t netSendFlash(const uint8_t *buf, uint32_t len)
 	return 1;
 }
 
-uint8_t *netReadBlocks(int *len, uint16_t start, uint16_t count)
+uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 {
 	char cmd[32];
 
-	sprintf(cmd, "RBLK%04x%04x\n", start, count);
+	sprintf(cmd, "RBLK%04x%04x\n", (uint16_t)start, (uint16_t)count);
 	if (netSendStr(cmd))
 		return netRecvVerbose(len, log_get_verbose() != 0);
 	return 0;
 }
 
 __attribute__((optimize("no-crossjumping", "no-early-inlining")))
-int netWriteBlocks(const uint8_t *buf, uint32_t len, uint16_t start, uint16_t count)
+int netWriteBlocks(const uint8_t *buf, uint32_t len, uint32_t start, uint32_t count)
 {
 	int rlen, ret;
 	uint8_t *r;
 	char cmd[32];
 
-	sprintf(cmd, "WBLK%04x%04x\n", start, count);
+	sprintf(cmd, "WBLK%04x%04x\n", (uint16_t)start, (uint16_t)count);
 	if (!netSendStr(cmd))
 		return 0;
 	if (!netSendData(buf, len, log_get_verbose() != 0))
@@ -537,13 +537,13 @@ int netWriteBlocks(const uint8_t *buf, uint32_t len, uint16_t start, uint16_t co
 	return 0;
 }
 
-int netEraseBlock(uint16_t block, uint16_t count)
+int netEraseBlock(uint32_t block, uint32_t count)
 {
 	int ret;
 	uint8_t *r;
 	char cmd[32];
 
-	sprintf(cmd, "ERBL%04x%04x\n", block, count);
+	sprintf(cmd, "ERBL%04x%04x\n", (uint16_t)block, (uint16_t)count);
 	{
 		int rlen;
 

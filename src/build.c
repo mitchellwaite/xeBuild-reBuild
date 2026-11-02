@@ -372,10 +372,8 @@ uint8_t defCore[0xd40] = {
 	0x77, 0x61, 0x72, 0x65, 0x00, 0x00, 0x00, 0x00,
 };
 /* TODO(prototype cast): image_write.c's imgAdd takes (..., uint8_t type, uint16_t next,
-   int pad) and imgAddRaw returns int; build.c's calls compile to the
-   original's code only with these types */
+   int pad); build.c's calls compile to the original's code only with these types */
 int imgAddInt(uint32_t off, const uint8_t *data, uint32_t len, int f3, int ecc, int f5) __asm__("_imgAdd");
-void imgAddRawVoid(const char *name, const void *data, uint32_t len, uint32_t off) __asm__("_imgAddRaw");
 
 uint32_t patchSmcConfig(uint8_t *smc);
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc);
@@ -2751,7 +2749,7 @@ int buildFlash(void)
 			log_printf(1, "%s found, adding from file\n", f.name, xb.files[xb.nFlashFiles].size, '1' + k);
 			if (raw) {
 				save = imgSize();
-				imgAddRawVoid(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
+				imgAddRaw(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
 				imgSetSize(save);
 			} else {
 				t = imgAddMobile(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, '1' + k);
@@ -2764,7 +2762,7 @@ int buildFlash(void)
 			log_printf(1, "%s found, adding from previous parse\n", f.name);
 			if (raw) {
 				save = imgSize();
-				imgAddRawVoid(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
+				imgAddRaw(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
 				imgSetSize(save);
 			} else {
 				t = imgAddMobile(xb.mobile[k].data, xb.mobile[k].size, '1' + k);

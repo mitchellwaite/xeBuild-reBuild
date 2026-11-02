@@ -26,11 +26,6 @@
 #include "mode_client.h"
 #include "net.h"
 
-/* TODO(prototype cast): net.c takes uint16_t block numbers; mode_client's calls
-   compile to the original's code only with uint32_t ones */
-int netEraseBlockU32(uint32_t block, int force) __asm__("_netEraseBlock");
-uint8_t *netReadBlocksU32(int *len, uint32_t start, uint32_t count) __asm__("_netReadBlocks");
-int netWriteBlocksU32(uint8_t *buf, int len, uint32_t start, uint32_t count) __asm__("_netWriteBlocks");
 
 void client_usage(int err, const char *arg) __attribute__((noreturn));
 int dumpKey(const char *name, const char *file, const uint8_t *key, size_t len, uint32_t sum);
@@ -337,7 +332,7 @@ void clientReadBlocks(const char *file, const char *sstart, const char *scount)
 	if (count != 0 && count != -1 && start != -1) {
 		if (start + count <= cinfo->nandSize / cinfo->blockSize) {
 			log_printf(0, "Reading 0x%x (%d) blocks from console starting at block 0x%x (%d)...\n", count, count, start, start);
-			buf = netReadBlocksU32(&len, start, count);
+			buf = netReadBlocks(&len, start, count);
 			if (buf && len > 0) {
 				log_printf(0, "Done!\nWriting 0x%x (%d) bytes to %s...\n", len, len, file);
 				if (writeFile(file, buf, len))
@@ -380,7 +375,7 @@ void clientWriteBlocks(const char *file, const char *sstart)
 	if (!(len % cinfo->blockSize)) {
 		if (start + n <= cinfo->nandSize / cinfo->blockSize) {
 			log_printf(0, "Writing 0x%x (%d) blocks to console starting at block 0x%x (%d)...\n", n, n, start, start);
-			if (netWriteBlocksU32(buf, len, start, n))
+			if (netWriteBlocks(buf, len, start, n))
 				log_printf(0, "Done! Wrote 0x%x (%d) bytes to console flash!\n", len, len);
 			else
 				log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
@@ -450,7 +445,7 @@ void clientBinPatch(const char *file, const char *soff)
 				if ((len + rem) % bs)
 					count++;
 				log_printf(0, "Reading 0x%x blocks from console starting at block 0x%x (%d)...\n", count, start, start);
-				nand = netReadBlocksU32(&rlen, start, count);
+				nand = netReadBlocks(&rlen, start, count);
 				if (nand && rlen) {
 					log_printf(0, "Success!\nPatching in binary data...");
 					switch (cinfo->nandSize) {
@@ -468,7 +463,7 @@ void clientBinPatch(const char *file, const char *soff)
 					log_printf(0, "Done!\n");
 					log_printf(0, "Writing 0x%x blocks from console starting at block 0x%x...\n", count, start);
 					__asm__("" :: "r"(count));
-					if (netWriteBlocksU32(nand, rlen, start, count))
+					if (netWriteBlocks(nand, rlen, start, count))
 						log_printf(0, "Success! Completed patching NAND!\n");
 					else
 						log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
@@ -491,7 +486,7 @@ void clientEraseBlock(const char *sblock)
 	if (block != -1) {
 		if (block < cinfo->nandSize / cinfo->blockSize) {
 			log_printf(0, "erasing block 0x%x...", block);
-			if (netEraseBlockU32(block, 1))
+			if (netEraseBlock(block, 1))
 				log_printf(0, "Success!\n");
 			else
 				{ AT(efail) log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
@@ -509,7 +504,7 @@ static void clientEraseBlockI(const char *sblock)
 		JMP(efail); if (block < cinfo->nandSize / cinfo->blockSize) {
 
 			eerase:  if (__builtin_constant_p(block + 900)) goto dy; ybk:;  log_printf(0, "erasing block 0x%x...", block);
-			if (netEraseBlockU32(block, 1))
+			if (netEraseBlock(block, 1))
 				{ 
 esucc: ; log_printf(0, "Success!\n"); }
 			else

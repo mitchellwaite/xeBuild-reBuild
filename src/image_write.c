@@ -1257,10 +1257,11 @@ uint32_t manufacturingOffset(int bigBlock, int big, int mmc, uint32_t *page, uin
 	return 0xf74000;
 }
 
-int imgAddRaw(const char *name, const void *data, uint32_t len, uint32_t off)
+void imgAddRaw(const char *name, const void *data, uint32_t len, uint32_t off)
 {
 	log_printf(1, "\tadding %s at raw offset 0x%x len 0x%x (end 0x%x)\n", name, off, len, off + len);
 	if (xb.bigBlock)
-		return imgAdd(off, data, 0x1000, 1, 0xf1f1, 0);
-	return imgAdd(off, data, 0x1000, 1, 0x1ffb, 0);
+		imgAdd(off, data, 0x1000, 1, 0xf1f1, 0);
+	else
+		imgAdd(off, data, 0x1000, 1, 0x1ffb, 0);
 }

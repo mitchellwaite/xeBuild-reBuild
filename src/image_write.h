@@ -37,6 +37,6 @@ int finalizeImage(void);
 uint32_t fsStartBlock(void);
 uint32_t statisticsOffset(int bigBlock, int big, int mmc, uint32_t *page, uint32_t *sector);
 uint32_t manufacturingOffset(int bigBlock, int big, int mmc, uint32_t *page, uint32_t *sector);
-int imgAddRaw(const char *name, const void *data, uint32_t len, uint32_t off);
+void imgAddRaw(const char *name, const void *data, uint32_t len, uint32_t off);
 
 #endif
