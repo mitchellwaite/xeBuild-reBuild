@@ -10,8 +10,8 @@ Status is `open`, `MATCH` (draft matches, not landed) or `landed <commit>`.
 
 | # | Object | Function | Tricks to remove | Status |
 |---|--------|----------|------------------|--------|
-| 1 | fileutil | readFileIn | 2 expect, pin on edi/ebx/esi, rf_hint, no-early-inlining | landed |
-| 2 | fileutil | myatou32 | dead `'X'` test | open |
+| 1 | fileutil | readFileIn | 2 expect, pin on edi/ebx/esi, rf_hint, no-early-inlining | landed 454b47d |
+| 2 | fileutil | myatou32 | dead `'X'` test | landed |
 | 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | open |
 | 4 | net | netRecvVerbose (netRecv is its clone) | expect, `got` pin | open |
 | 5 | net | netWriteBlocks | no-crossjumping, no-early-inlining | open |

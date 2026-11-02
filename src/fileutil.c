@@ -302,20 +302,24 @@ char myatol(char c)
 }
 
 // converts a decimal or 0x-prefixed hex string into a uint32_t
-// (opt_idx's myatou32; this build also tests for an upper case 'X' after
-// myatol, which can never match but changes gcc's branch estimate)
+// (opt_idx's myatou32, which tests the prefix in one condition; this build's
+// layout needs the 'x' result in a flag, see tools/wip/dehint/notes)
 uint32_t myatou32(const char* dat, uint32_t defValue)
 {
-	if(((dat[0]&0xFF) == '0')&&((myatol(dat[1]&0xFF) == 'x')||(myatol(dat[1]&0xFF) == 'X')))
+	if((dat[0]&0xFF) == '0')
 	{
-		if(validateString(&dat[2]))
-			return myatox32(&dat[2], defValue);
+		BOOL hex = FALSE;
+		if(myatol(dat[1]&0xFF) == 'x')
+			hex = TRUE;
+		if(hex)
+		{
+			if(validateString(&dat[2]))
+				return myatox32(&dat[2], defValue);
+			return defValue;
+		}
 	}
-	else
-	{
-		if(validateString(dat))
-			return atoi((const char*)dat);
-	}
+	if(validateString(dat))
+		return atoi((const char*)dat);
 	return defValue;
 }
 
