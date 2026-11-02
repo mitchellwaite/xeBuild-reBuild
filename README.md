@@ -48,10 +48,10 @@ gcc and that the original source almost certainly didn't contain. This list
 ranks the 25 files from easiest to hardest to match with source shape alone:
 ordinary C, the same `-O3` as the rest, and none of these hints.
 
-The ranking is an estimate from reading the source and the matching notes. No
-hint-free version has been tried. Trick count isn't the only factor: a single
-hint can be harder to replace than several others if it sets something like
-register ties or bb-reorder's heap order.
+Past `stfs`, the ranking is an estimate from reading the source and the matching
+notes, and no hint-free version has been tried. Trick count isn't the only
+factor: a single hint can be harder to replace than several others if it sets
+something like register ties or bb-reorder's heap order.
 
 **How tricks are counted:** one for each non-default gcc option in `build.sh`,
 and one for each use of a hint in the source (macro uses count individually).
@@ -124,56 +124,53 @@ Needs no hints. One loop sets 13 `xb` fields as an array, marked
 </details>
 
 <details>
-<summary><b>8. mode_build</b>: 1 trick, easy</summary>
+<summary><b>8. mode_build</b>: 0 tricks, done</summary>
 
-- 1 declaration: `XB_PATCHES`, a union view of `xb.files`
-
-This probably reflects how the original declared the struct, so settling the
-shared header should remove it, as long as the other files that need a
-different view still match.
+Reaches the addon names with `(xb.files + xb.numPatches + XB_ADDONS)->name`, so
+it no longer needs the `XB_PATCHES` union. Indexing `xb.files[...]` gives
+different code.
 
 </details>
 
 <details>
-<summary><b>9. sysupdate</b>: 1 trick, easy</summary>
+<summary><b>9. sysupdate</b>: 0 tricks, done</summary>
 
-- 1 asm-label prototype: `FileExistsU32`, which reads `FileExists` as `uint32_t`
-
-`stfs` needs the `int` version. A separate declaration in each file should
-replace the alias, for example a plain local prototype.
+`FileExists`, `suLoad`, `suGetCF` and `suGetCG` return `uint32_t`, `stfsLoad`
+returns `int`, and `cfLen` and `cgLen` are `int`. uncprop only reuses a compared
+0 when the types agree, so these types decide where the original has a fresh
+`xor`.
 
 </details>
 
 <details>
-<summary><b>10. stfs</b>: 2 tricks, easy</summary>
+<summary><b>10. mode_ini</b>: 0 tricks, done</summary>
+
+`iniWriteFlashfs` declares `data`, `len` and `crc` in its loop body, and that
+scope gives the original's register allocation. `iniWriteFlashfs` and
+`iniWriteBl` return `int`, `mode_ini` returns `uint32_t`.
+
+</details>
+
+<details>
+<summary><b>11. keyvault</b>: 0 tricks, done</summary>
+
+`kvCheckHash` checks the signature inside its scan loop rather than after a
+`goto`, which sets both the block layout and the literal order at plain `-O3`.
+
+</details>
+
+<details>
+<summary><b>12. stfs</b>: 2 tricks, hard</summary>
 
 - 1 `__builtin_expect` and 1 register pin (`fb` in `esi`), both on the loop guard
   in `stfsGetFile`
 
-This is one register choice in one function, so it should be a matter of trying
-local variable and loop shapes.
-
-</details>
-
-<details>
-<summary><b>11. mode_ini</b>: 3 tricks, easy</summary>
-
-- 2 pins on `&data` and `&len` in `iniWriteFlashfs`
-- 1 asm-label prototype: `suFirstFileU32`
-
-The file is small, and the pins probably stand in for the original's local
-variables.
-
-</details>
-
-<details>
-<summary><b>12. keyvault</b>: 3 tricks, easy</summary>
-
-- `--param builtin-expect-probability=55`
-- 1 `__builtin_expect` and 1 cold label, both in `kvCheckHash`
-
-The weak hint range (51-60 match) suggests the original got a similar small
-bias from its branch shape.
+This was ranked easy, but over 900 source shapes didn't remove either hint: loop
+forms, local types and scopes, helpers, and the copy inside the scan loop. The
+best reaches 26 differing lines, only swapping `esi` and `ecx`. IRA colours `fb`
+before the `c->blocks` pseudo, so `fb` takes `ecx`. Changing the guard's
+probability didn't fix it, and low values change the layout too. A match
+probably needs something that makes `ecx` unavailable to `fb`.
 
 </details>
 

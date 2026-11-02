@@ -441,9 +441,12 @@ always agree with each other. Where a file still needs another typing than the
 header's to compile to the original's code, it says so in a comment marked
 `TODO(xebuild.h cast)` (a field read as another type) or `TODO(prototype cast)`
 (a function's argument or return type: a cast, or a declaration under another
-name bound to the same symbol with an asm label, e.g. `uint32_t
-FileExistsU32(const char *) __asm__("_FileExists")`), so a later pass can settle
-the types. `grep -n 'TODO(' src/*.c` lists them.
+name bound to the same symbol with an asm label, e.g. `int netMountInt(...)
+__asm__("_netMount")`), so a later pass can settle the types. `grep -n 'TODO('
+src/*.c` lists them. Settling them means choosing return types across files:
+uncprop reuses a compared 0 only when the compared value and the return have the
+same type, which is how `FileExistsU32` and `suFirstFileU32` went away (the
+return types in `sysupdate`, `stfs`, `mode_ini` and `console_hdd`).
 
 ### XeCrypt in C
 
