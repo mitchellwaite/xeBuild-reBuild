@@ -13,10 +13,6 @@
 #include "net.h"
 #include "stfs.h"
 
-/* TODO(prototype cast): netMount returns uint32_t (net.c); sendCompatData's code
-   wants an int */
-int netMountInt(const char *drive, const char *device) __asm__("_netMount");
-
 #define SYSEX "SSEP"
 
 /* system.manifest, big endian */
@@ -323,7 +319,7 @@ int prepSysex(void)
 {
 	if (netFormatSysex()) {
 		/* hint: makes the mount failure cold where sendAvatarData inlines this */
-		if (__builtin_expect(netMountInt(SYSEX, "\\SEP"), 1))
+		if (__builtin_expect(netMount(SYSEX, "\\SEP"), 1))
 			return createSysexDirs();
 		log_printf(0, "ERROR: unable to mount sysex partition!\n");
 	} else
@@ -451,15 +447,15 @@ fail:
 	return 0;
 }
 
-uint32_t sendCompatData(const char *dir)
+long sendCompatData(const char *dir)
 {
-	int ret;
+	long ret;
 
 	if (FileExistsIn(dir, "index")) {
 		log_printf(0, "formatting compatibility partition...");
 		if (netFormatCompat()) {
 			log_printf(0, "success!\n");
-			if (netMountInt("XCOM", "\\Device\\Harddisk0\\SystemPartition")) {
+			if (netMount("XCOM", "\\Device\\Harddisk0\\SystemPartition")) {
 				if (sendDir(dir, "XCOM:")) {
 					ret = 1;
 					log_printf(0, "sent files to partition OK!\n");
