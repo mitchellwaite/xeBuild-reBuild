@@ -387,14 +387,9 @@ out:
 
 int sendDir(const char *src, const char *dst)
 {
-	char dstPath[260];
 	char pattern[1024];
-	char srcPath[1024];
-	struct stat st;
-	size_t len;
 	DIR *d;
 	struct dirent *de;
-	uint8_t *buf;
 
 	strcpy(pattern, src);
 	strcat(pattern, "//");
@@ -402,6 +397,12 @@ int sendDir(const char *src, const char *dst)
 	if (!d)
 		goto fail;
 	while ((de = readdir(d))) {
+		char dstPath[260];
+		char srcPath[1024];
+		struct stat st;
+		size_t len;
+		uint8_t *buf;
+
 		strcpy(dstPath, dst);
 		strcat(dstPath, "\\");
 		strcat(dstPath, de->d_name);
@@ -441,9 +442,6 @@ int sendDir(const char *src, const char *dst)
 	closedir(d);
 	return 1;
 fail:
-	/* no code on i686; keeps this a block of its own until RTL, where
-	   cross-jumping shares its xor with the failure paths as in the original */
-	__builtin_prefetch(0);
 	return 0;
 }
 
