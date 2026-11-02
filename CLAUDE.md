@@ -31,6 +31,9 @@ NOTES.md has the findings, layout and the pipeline.
   is generated; change `tools/re/progress.py`, not the NOTES.md text between the
   `progress:begin/end` markers. Update the
   "Move functions to C" row in NOTES.md's Status by hand when the totals move.
+- README.md's "Compiler tricks by component" lists only components that still
+  have tricks. When a component reaches 0 tricks, remove its entry, renumber the
+  list and update the count of listed files, in the same commit as the change.
 - To match a function before a full build: `python tools/re/fncmp.py src/<obj>.c
   <name> [flags]` (MATCH or a diff against the original). For a whole file,
   compare its `.text` against `build/obj/<obj>.o` from the last matching

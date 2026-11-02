@@ -43,10 +43,11 @@ tricks some functions needed to match, and the checks behind each step.
 
 ## Compiler tricks by component
 
-The application files match, but many only match because of hints that steer
+The application files match, but some only match because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 25 files from easiest to hardest to match with source shape alone:
-ordinary C, the same `-O3` as the rest, and none of these hints.
+ranks the 13 files that still have them from easiest to hardest to match with
+source shape alone: ordinary C, the same `-O3` as the rest, and none of these
+hints. The other 12 application files build with no tricks.
 
 Past `stfs`, the ranking is an estimate from reading the source and the matching
 notes, and no hint-free version has been tried. Trick count isn't the only
@@ -72,104 +73,7 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. crc32</b>: 0 tricks, done</summary>
-
-Gary S. Brown's table and `UPDC32` loop, compiled as written.
-
-</details>
-
-<details>
-<summary><b>2. mode_extract</b>: 0 tricks, done</summary>
-
-Usage text, loading a NAND dump and listing its files, in plain C.
-
-</details>
-
-<details>
-<summary><b>3. smc</b>: 0 tricks, done</summary>
-
-Plain C.
-
-</details>
-
-<details>
-<summary><b>4. log</b>: 0 tricks, done</summary>
-
-Needs no hints. One shape detail: the verbose-flag switch writes the `'\0'`
-case as its own copy of the level-1 body, which sets the block order.
-
-</details>
-
-<details>
-<summary><b>5. xboxrom</b>: 0 tricks, done</summary>
-
-Its only oddities are four casts to `xecrypt.h`'s types, marked
-`TODO(prototype cast)`.
-
-</details>
-
-<details>
-<summary><b>6. timeutil</b>: 0 tricks, done</summary>
-
-Wine's time conversion code, compiled as written.
-
-</details>
-
-<details>
-<summary><b>7. main</b>: 0 tricks, done</summary>
-
-Needs no hints. One loop sets 13 `xb` fields as an array, marked
-`TODO(xebuild.h cast)`.
-
-</details>
-
-<details>
-<summary><b>8. mode_build</b>: 0 tricks, done</summary>
-
-Reaches the addon names with `(xb.files + xb.numPatches + XB_ADDONS)->name`, so
-it no longer needs the `XB_PATCHES` union. Indexing `xb.files[...]` gives
-different code.
-
-</details>
-
-<details>
-<summary><b>9. sysupdate</b>: 0 tricks, done</summary>
-
-`FileExists`, `suLoad`, `suGetCF` and `suGetCG` return `uint32_t`, `stfsLoad`
-returns `int`, and `cfLen` and `cgLen` are `int`. uncprop only reuses a compared
-0 when the types agree, so these types decide where the original has a fresh
-`xor`.
-
-</details>
-
-<details>
-<summary><b>10. mode_ini</b>: 0 tricks, done</summary>
-
-`iniWriteFlashfs` declares `data`, `len` and `crc` in its loop body, and that
-scope gives the original's register allocation. `iniWriteFlashfs` and
-`iniWriteBl` return `int`, `mode_ini` returns `uint32_t`.
-
-</details>
-
-<details>
-<summary><b>11. keyvault</b>: 0 tricks, done</summary>
-
-`kvCheckHash` checks the signature inside its scan loop rather than after a
-`goto`, which sets both the block layout and the literal order at plain `-O3`.
-
-</details>
-
-<details>
-<summary><b>12. consoleinfo</b>: 0 tricks, done</summary>
-
-Calls `log_printf` directly with its `int` levels. Removing the `log_printfInt`
-alias or `__builtin_unreachable` alone breaks the match, but removing both
-matches, and `--param align-threshold` isn't needed once they're gone.
-
-</details>
-
-<details>
-<summary><b>13. fileutil</b>: 7 tricks, moderate</summary>
+<summary><b>1. fileutil</b>: 7 tricks, moderate</summary>
 
 - `--param builtin-expect-probability=65`
 - All in `readFileIn`: 2 `__builtin_expect`, 1 register pin on three variables
@@ -185,7 +89,7 @@ not need replacing.
 </details>
 
 <details>
-<summary><b>14. console_hdd</b>: 7 tricks, moderate</summary>
+<summary><b>2. console_hdd</b>: 7 tricks, moderate</summary>
 
 - `--param builtin-expect-probability=80` and `--param align-loop-iterations=3`
 - 2 `__builtin_expect`, 1 literal-order `asm` and 1 pin, in `prepSysex` and
@@ -201,7 +105,7 @@ returns `long`.
 </details>
 
 <details>
-<summary><b>15. net</b>: 8 tricks, moderate</summary>
+<summary><b>3. net</b>: 8 tricks, moderate</summary>
 
 - `--param builtin-expect-probability=65`
 - 3 per-function `optimize` attributes: `no-crossjumping` on two functions and
@@ -218,7 +122,7 @@ off without its attribute, and a helper holding the reply check was further off.
 </details>
 
 <details>
-<summary><b>16. bootloaders</b>: 9 tricks, moderate</summary>
+<summary><b>4. bootloaders</b>: 9 tricks, moderate</summary>
 
 - 5 `optimize` attributes: `no-tree-dominator-opts`, `no-tree-vrp`,
   `no-cse-follow-jumps` and `no-early-inlining`, on `cfDecrypt`, `cbDecrypt`,
@@ -234,7 +138,7 @@ closer. `cfDecrypt` is 20 lines off without its attribute.
 </details>
 
 <details>
-<summary><b>17. stfs</b>: 2 tricks, hard</summary>
+<summary><b>5. stfs</b>: 2 tricks, hard</summary>
 
 - 1 `__builtin_expect` and 1 register pin (`fb` in `esi`), both on the loop guard
   in `stfsGetFile`
@@ -249,7 +153,7 @@ probably needs something that makes `ecx` unavailable to `fb`.
 </details>
 
 <details>
-<summary><b>18. mode_update</b>: 22 tricks, hard</summary>
+<summary><b>6. mode_update</b>: 22 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=68`
 - Dead layout hints in `mode_update` and `updateNand`: 9 `__builtin_constant_p`,
@@ -266,7 +170,7 @@ approach that helped `options` hasn't been tried here.
 </details>
 
 <details>
-<summary><b>19. image_write</b>: 21 tricks, hard</summary>
+<summary><b>7. image_write</b>: 21 tricks, hard</summary>
 
 - `--param builtin-expect-probability=50`
 - 9 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
@@ -284,7 +188,7 @@ search.
 </details>
 
 <details>
-<summary><b>20. keys</b>: 25 tricks, hard</summary>
+<summary><b>8. keys</b>: 25 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=60`
 - 12 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
@@ -300,7 +204,7 @@ must differ from the inlined one, which is hard to get from one source.
 </details>
 
 <details>
-<summary><b>21. filelist_ini</b>: 27 tricks, hard</summary>
+<summary><b>9. filelist_ini</b>: 27 tricks, hard</summary>
 
 - 4 options: `-fno-toplevel-reorder`, `-fno-tree-loop-vectorize`,
   `--param builtin-expect-probability=65` and
@@ -317,7 +221,7 @@ options with no direct source equivalent.
 </details>
 
 <details>
-<summary><b>22. image_read</b>: 35 tricks, hard</summary>
+<summary><b>10. image_read</b>: 35 tricks, hard</summary>
 
 - `-fno-toplevel-reorder`
 - 10 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
@@ -335,7 +239,7 @@ thing to get from shape alone.
 </details>
 
 <details>
-<summary><b>23. build</b>: 63 tricks, very hard</summary>
+<summary><b>11. build</b>: 63 tricks, very hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=98`
 - 22 `__builtin_expect`, 10 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
@@ -354,7 +258,7 @@ only ever fitted function by function.
 </details>
 
 <details>
-<summary><b>24. options</b>: 80 tricks, very hard</summary>
+<summary><b>12. options</b>: 80 tricks, very hard</summary>
 
 - 3 options: `--param builtin-expect-probability=83`, `-fno-ipa-profile` and
   `-fno-reorder-functions`
@@ -375,7 +279,7 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>25. mode_client</b>: 250 tricks, very hard</summary>
+<summary><b>13. mode_client</b>: 250 tricks, very hard</summary>
 
 - 4 options: `-fno-toplevel-reorder`, `-fno-ipa-profile`,
   `-fno-reorder-functions` and `--param builtin-expect-probability=50`
