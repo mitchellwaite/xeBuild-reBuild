@@ -144,10 +144,11 @@ int kvHashIsOk(void)
 	return kvHashOk;
 }
 
-int kvSetDvdKey(char *key)
+uint32_t kvSetDvdKey(char *key)
 {
 	int len = strlen(key);
-	int i, r;
+	int i;
+	uint32_t r;
 
 	if (len == 32) {
 		r = validateString(key);

@@ -32,7 +32,7 @@ uint32_t myatox32(const char* dat, uint32_t defValue);
 char myatol(char c);
 uint32_t myatou32(const char* dat, uint32_t defValue);
 uint32_t myatoh32(const char* dat, uint32_t defValue);
-int validateString(const char* nString);
+uint32_t validateString(const char* nString);
 int checkZeros(const unsigned char *p, unsigned int len);
 void memcpyrev(unsigned char *dst, const unsigned char *src, int len);
 long getFileSize(FILE *f);

@@ -192,10 +192,11 @@ int checkCpuKey(int level, uint8_t *key)
 	return wok && ecd;
 }
 
-int setCpuKeyStr(char *str)
+uint32_t setCpuKeyStr(char *str)
 {
 	int len = strlen(str);
-	int i, ret;
+	int i;
+	uint32_t ret;
 
 	if (len == 32) {
 		ret = validateString(str);
@@ -324,7 +325,7 @@ int set1blKey(uint8_t *key)
 	return 0;
 }
 
-int checkKeys(char *str)
+uint32_t checkKeys(char *str)
 {
 	int len = strlen(str);
 	char *p;

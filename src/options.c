@@ -16,8 +16,6 @@
 #include "log.h"
 #include "options.h"
 
-/* TODO(prototype cast): validateString read as uint32_t here */
-uint32_t validateStringU32(const char *nString) __asm__("_validateString");
 
 uint32_t parseOption(char *opt);
 /* parseCmdOptions matches only when it sees an int return */
@@ -899,7 +897,7 @@ uint32_t parseOption(char *opt)
 		if (!stricmp(opt, "macid")) {
 			stripColons(val);
 			if (strlen(val) == 12) {
-				if (validateStringU32(val)) {
+				if (validateString(val)) {
 					log_printf(1, "Using MACID option address: ");
 					xb.macid[0] = myatox8(val);
 					val += 2;
@@ -1011,7 +1009,7 @@ void applyIniOptions(void)
 				log_printf(0, "***** WARNING: invalid length macid '");
 				showHexPairs(0, s);
 				log_printf(0, "' provided in ini file! Discarding!\n", s);
-			} else if (!validateStringU32(s)) {
+			} else if (!validateString(s)) {
 				__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));
 				__asm__ goto ("" :::: dzc1);
 				log_printf(0, "***** WARNING: invalid characters in macid '");

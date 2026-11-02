@@ -13,6 +13,6 @@ uint8_t *kvGetConsoleId(void);
 int kvGetSerial(char *out);
 uint8_t *kvGetConsoleCert(void);
 int kvGetMfgDate(char *out);
-int kvSetDvdKey(char *key);
+uint32_t kvSetDvdKey(char *key);
 
 #endif

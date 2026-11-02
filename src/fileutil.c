@@ -331,7 +331,7 @@ uint32_t myatoh32(const char* dat, uint32_t defValue)
 }
 
 // checks chars are valid
-BOOL validateString(const char* nString)
+uint32_t validateString(const char* nString)
 {
 	int i, len;
 	if(nString == NULL)
