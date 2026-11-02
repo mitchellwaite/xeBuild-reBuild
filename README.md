@@ -49,9 +49,10 @@ ranks the 13 files that still have them from easiest to hardest to match with
 source shape alone: ordinary C, the same `-O3` as the rest, and none of these
 hints. The other 12 application files build with no tricks.
 
-Past `stfs`, the ranking is an estimate from reading the source and the matching
-notes, and no hint-free version has been tried. Trick count isn't the only
-factor: a single hint can be harder to replace than several others if it sets
+Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
+removes any that no longer change the code, but past `stfs` no hint-free source
+has been attempted, so the ranking there is an estimate. Trick count isn't the
+only factor: a single hint can be harder to replace than several others if it sets
 something like register ties or bb-reorder's heap order.
 
 **How tricks are counted:** one for each non-default gcc option in `build.sh`,
@@ -153,66 +154,65 @@ probably needs something that makes `ecx` unavailable to `fb`.
 </details>
 
 <details>
-<summary><b>6. mode_update</b>: 22 tricks, hard</summary>
+<summary><b>6. mode_update</b>: 16 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=68`
-- Dead layout hints in `mode_update` and `updateNand`: 9 `__builtin_constant_p`,
-  2 `asm goto`, 1 `__builtin_unreachable`, 1 `if (0)` dummy block, 1 dead
-  `__builtin_memset`, 1 pin and 1 hot label
-- 2 `__builtin_expect`, on `getConsoleFiles` and `updateNand`
-- 1 asm-label prototype (`verifyExtendedU32`) and `XB_PATCHES`
+- Dead layout hints in `mode_update` and `updateNand`: 7 `__builtin_constant_p`,
+  1 `asm goto`, 1 `__builtin_unreachable`, 1 `if (0)` dummy block, 1 pin and 1
+  hot label
+- 1 `__builtin_expect`, on `updateNand`
+- `XB_PATCHES`
 
 Without the dead hints, the only difference was cold-block order in the last
 bb-reorder round, with no register changes, so the target is narrow. It is still
-a Fibonacci-heap tie, which needs the exact frequencies. The natural-source
-approach that helped `options` hasn't been tried here.
+a Fibonacci-heap tie, which needs the exact frequencies.
 
 </details>
 
 <details>
-<summary><b>7. image_write</b>: 21 tricks, hard</summary>
+<summary><b>7. image_write</b>: 18 tricks, hard</summary>
 
 - `--param builtin-expect-probability=50`
-- 9 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
-- 5 register and slot pins, across `buildImage`, `imgAdd`, `imgAddFile` and
-  `finalizeImage`
+- 7 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
+- 4 register and slot pins, across `buildImage`, `imgAdd` and `finalizeImage`
 - 2 `__builtin_expect`, 2 hot and cold labels, and
   `optimize("no-tree-scev-cprop")` on `writeFsTable`
-- 1 asm-label prototype: `xmalloc`, which stops CCP assuming `malloc`'s alignment
+- 1 asm-label prototype: `xmalloc`, which stops CCP assuming `malloc`'s alignment.
+  `-fno-builtin-malloc` doesn't replace it
 
 The dead tests set `imgAdd`'s IPA-CP value and which SSA names get recycled.
 Those decide three clones and the compare operand order throughout, so a
-hint-free source would have to land on the same numbers. The layout was found by
-search.
+hint-free source would have to land on the same numbers.
 
 </details>
 
 <details>
-<summary><b>8. keys</b>: 25 tricks, hard</summary>
+<summary><b>8. keys</b>: 20 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=60`
-- 12 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
+- 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
   `daeEncrypt`, which set trace order and LRA's spill-slot order
-- 2 `pure` redeclarations (`getBeU32`, `verifyFcrt`), which only this file can use
-- `optimize("no-tree-forwprop", "no-tree-reassoc")` on `smcChecksum`
-- 2 `always_inline` and 2 pins (`off` in `daeEncrypt`)
+- 1 `pure` redeclaration (`getBeU32`), which only this file can use
+- `optimize("no-tree-forwprop", "no-tree-reassoc")` on `smcChecksum`, 2 lines off
+  without it
+- 2 pins (`off` in `daeEncrypt`)
 
 The hints are spread over several functions, and `kvPrepare` depends on several
 of them together. The `smcChecksum` attribute exists because its standalone copy
-must differ from the inlined one, which is hard to get from one source.
+must differ from the inlined one.
 
 </details>
 
 <details>
-<summary><b>9. filelist_ini</b>: 27 tricks, hard</summary>
+<summary><b>9. filelist_ini</b>: 23 tricks, hard</summary>
 
 - 4 options: `-fno-toplevel-reorder`, `-fno-tree-loop-vectorize`,
   `--param builtin-expect-probability=65` and
   `--param lra-inheritance-ebb-probability-cutoff=60`
-- 13 dead tests (`< -1` and `< 0` stores, a `strlen` block), whose freed SSA
+- 12 dead tests (`< -1` and `< 0` stores, a `strlen` block), whose freed SSA
   names set compare order and pseudo numbers
-- 3 literal-order `asm`, 3 pins and 1 `__builtin_unreachable` in `findKey`
-- 1 `__builtin_expect`, `optimize("ira-region=one")` and `XB_FILES_BOUND`
+- 3 literal-order `asm`, 1 pin and 1 `__builtin_unreachable` in `findKey`
+- 1 `__builtin_expect` and `optimize("ira-region=one")`
 
 The SSA-numbering hints are the problem. Their effects are indirect, and each
 source change disturbs the rest. Vectorization and LRA's cutoff are global
@@ -221,54 +221,51 @@ options with no direct source equivalent.
 </details>
 
 <details>
-<summary><b>10. image_read</b>: 35 tricks, hard</summary>
+<summary><b>10. image_read</b>: 32 tricks, hard</summary>
 
 - `-fno-toplevel-reorder`
-- 10 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
+- 8 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
 - 5 `__builtin_expect`, 5 hot labels, 4 `__builtin_unreachable` and 3 empty `asm`
   barriers
 - 2 `optimize` attributes (`no-if-conversion` and related), on `getImageSmc` and
   `copyMmcImage`
-- 2 literal-order `asm`, 1 `volatile` cast (`b[513]` loaded twice), `noinline`
-  and 1 asm-label prototype
+- 2 literal-order `asm`, 1 `if (0)` block and `noinline`
 
 There's no single hard knot like the other hard files, but many functions each
-need their own solution. The pins fix register allocation, which is the hardest
-thing to get from shape alone.
+need their own solution. Several hints are only 3 or 4 lines from going, so this
+is probably the best of the hard files to work through next.
 
 </details>
 
 <details>
-<summary><b>11. build</b>: 63 tricks, very hard</summary>
+<summary><b>11. build</b>: 54 tricks, very hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=98`
-- 22 `__builtin_expect`, 10 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
+- 19 `__builtin_expect`, 9 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
   across `loadFileCrc`, `extractSmcConfig`, `patchSmcConfig`, `loadBl` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
-- 3 `no-early-inlining` attributes, 4 inlining and cloning attributes, and 2
+- 3 `no-early-inlining` attributes, 3 inlining and cloning attributes, and 2
   `__builtin_assume_aligned`
-- 4 asm-label prototypes, `XB_FILES_BOUND`, 1 literal-order `asm` and 1 barrier
+- 1 asm-label prototype (`imgAddInt`), `XB_FILES_BOUND` and 1 literal-order `asm`
 
-It's the largest file at 2,843 lines. The expect probability has to sit in a
+It's the largest file at 2,800 lines. The expect probability has to sit in a
 narrow, unusually high range (92-99), and the dom2 entry is there to keep one
-frequency from scaling to 0. The file is also long enough that the source was
-only ever fitted function by function.
+frequency from scaling to 0.
 
 </details>
 
 <details>
-<summary><b>12. options</b>: 80 tricks, very hard</summary>
+<summary><b>12. options</b>: 70 tricks, very hard</summary>
 
-- 3 options: `--param builtin-expect-probability=83`, `-fno-ipa-profile` and
-  `-fno-reorder-functions`
-- 32 `__builtin_constant_p`, 17 `__builtin_expect`, 3 `asm goto`, 3
-  `__builtin_unreachable` and 3 dead blocks, nearly all setting the cold layout
-  of `applyIniOptions` (three dummy heap entries among them)
-- 2 `po_hint()` calls and 2 `no-early-inlining` attributes, for `parseOption`
+- `--param builtin-expect-probability=83`
+- 30 `__builtin_constant_p`, 16 `__builtin_expect`, 3 `asm goto`, 3
+  `__builtin_unreachable` and 2 `if (0)` blocks, nearly all setting the cold
+  layout of `applyIniOptions`
+- 2 `po_hint()` calls and 1 `no-early-inlining` attribute, for `parseOption`
 - `_parseButton.part.0`, written by hand as a global `cold` function in
   `.text.startup` rather than coming from gcc's own function split
-- 3 asm-label prototypes, `XB_PATCHES`, 3 hot and cold labels, 3 pins, 1
+- 1 asm-label prototype (`parseOptionInt`), `XB_PATCHES`, 1 cold label, 3 pins, 1
   literal-order `asm`, 1 barrier and `always_inline`
 
 The main clue that this can work is that natural source (`optIniBool` inlined,
@@ -279,23 +276,21 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>13. mode_client</b>: 250 tricks, very hard</summary>
+<summary><b>13. mode_client</b>: 142 tricks, very hard</summary>
 
-- 4 options: `-fno-toplevel-reorder`, `-fno-ipa-profile`,
-  `-fno-reorder-functions` and `--param builtin-expect-probability=50`
-- 159 `__builtin_constant_p` feeds and 31 `asm goto` edges to dead labels, which
+- `-fno-toplevel-reorder` and `--param builtin-expect-probability=50`
+- 89 `__builtin_constant_p` feeds and 19 `asm goto` edges to dead labels, which
   set bb-reorder's heap keys
-- 18 pins, including ones that only raise LRA's `edi` usage
-- 10 hot and cold labels, 6 expects, 6 empty-struct scopes, 4 dummy blocks and
-  feeds, and 3 `__builtin_unreachable`
-- 3 asm-label prototypes (`net.c`'s block numbers as `uint32_t`), 3 data
-  attributes for `.bss` and `.rdata` padding, 2 literal-order `asm` and 1 barrier
+- 10 pins, including ones that only raise LRA's `edi` usage
+- 7 hot and cold labels, 6 expects, 3 `if (0)` blocks, 3 `__builtin_unreachable`
+  and 2 literal-order `asm`
 
 The source was fitted to a simulated heap by search, over more than 130
-attempts, and is nowhere near readable. `clientEraseBlock` is even inlined by
-hand so its labels can be reached. `mode_client` itself is one long option loop
-and switch, so nearly every change moves the rest of the layout. Rewriting it
-from scratch is probably the only way to find the natural shape.
+attempts, and is nowhere near readable, though about 40% of its hints turned out
+not to matter. `clientEraseBlock` is even inlined by hand so its labels can be
+reached. `mode_client` itself is one long option loop and switch, so nearly every
+change moves the rest of the layout. Rewriting it from scratch is probably the
+only way to find the natural shape.
 
 </details>
 

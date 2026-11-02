@@ -3,6 +3,10 @@
 C ports that don't match yet, kept out of `src/` so `build.sh` still uses
 the generated asm (and still reproduces the SHA256).
 
+`hintsearch.py <obj> [ifs] [pairs]` removes each hint in `src/<obj>.c` in turn,
+keeps the removals that leave the object unchanged and lists the closest misses.
+Its docstring says what to check before copying the result back.
+
 ## console_hdd.c
 
 All 14 functions match and are built from `src/console_hdd.c` with
