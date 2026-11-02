@@ -201,9 +201,9 @@ void stfsFree(stfs_t *c)
 	c->blocks = 0;
 }
 
-uint32_t stfsLoad(stfs_t *c, const char *path, int magic, uint32_t id1, uint32_t id2, uint8_t *manifestHash, int verbose)
+int stfsLoad(stfs_t *c, const char *path, int magic, uint32_t id1, uint32_t id2, uint8_t *manifestHash, int verbose)
 {
-	uint32_t ret;
+	int ret;
 	uint8_t *p;
 
 	if (FileExists(path)) {

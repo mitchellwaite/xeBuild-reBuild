@@ -417,7 +417,7 @@ long long getFileSize64Name(const char *name)
 	return size;
 }
 
-int FileExists(const char *name)
+uint32_t FileExists(const char *name)
 {
 	FILE *f = fopen(name, "rb");
 

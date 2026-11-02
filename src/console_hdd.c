@@ -284,7 +284,7 @@ void freeManifest(void)
 	}
 }
 
-int loadManifest(const char *dir, uint32_t ver)
+uint32_t loadManifest(const char *dir, uint32_t ver)
 {
 	char base[1024];
 	char path[1024];

@@ -4,6 +4,6 @@
 
 #include "xebuild.h"
 
-int mode_ini(int argc, char **argv);
+uint32_t mode_ini(int argc, char **argv);
 
 #endif

@@ -12,7 +12,6 @@
 /* TODO(prototype cast): FileExists read as uint32_t, not int: with an int, gcc
    returns FileExists' 0 instead of a fresh xor in suLoad/suLoadDir's failure
    paths (stfs.c's stfsLoad needs the int) */
-uint32_t FileExistsU32(const char *name) __asm__("_FileExists");
 
 static char suPath[1024];
 static char suDir[1024];
@@ -20,8 +19,8 @@ static stfs_t su;
 static int suLoaded;
 static uint8_t *cf;
 static uint8_t *cg;
-static uint32_t cfLen;
-static uint32_t cgLen;
+static int cfLen;
+static int cgLen;
 
 const char *suGetPath(void)
 {
@@ -92,7 +91,7 @@ void suExtractBl(void)
 	suFreeBl();
 }
 
-int suGetCF(uint8_t **data, uint32_t *len)
+uint32_t suGetCF(uint8_t **data, uint32_t *len)
 {
 	if (!cf || !cfLen)
 		return 0;
@@ -103,7 +102,7 @@ int suGetCF(uint8_t **data, uint32_t *len)
 	return 1;
 }
 
-int suGetCG(uint8_t **data, uint32_t *len)
+uint32_t suGetCG(uint8_t **data, uint32_t *len)
 {
 	if (!cg || !cgLen)
 		return 0;
@@ -156,7 +155,7 @@ int suLoadDir(const char *dir)
 	strcpy(suPath, dir);
 	strcpy(suDir, dir);
 	strcat(suPath, "su20076000_00000000");
-	found = FileExistsU32(suPath);
+	found = FileExists(suPath);
 	log_printf(1, "\n------ loading system update container ------\n");
 	if (!found) {
 		log_printf(1, "system update container not found at %s, trying alt\n", suPath);
@@ -164,7 +163,7 @@ int suLoadDir(const char *dir)
 		strcat(suPath, "$SystemUpdate/");
 		strcpy(suDir, suPath);
 		strcat(suPath, "su20076000_00000000");
-		found = FileExistsU32(suPath);
+		found = FileExists(suPath);
 	}
 	if (found) {
 		stfsInit(&su);
@@ -178,26 +177,26 @@ int suLoadDir(const char *dir)
 	return 0;
 }
 
-int suLoad(const char *path)
+uint32_t suLoad(const char *path)
 {
 	char *p;
 	int found;
 
 	strcpy(suPath, path);
 	strcpy(suDir, suPath);
-	found = FileExistsU32(suPath);
+	found = FileExists(suPath);
 	if (!found) {
 		if (suPath[strlen(path) - 1] != '\\')
 			if (suPath[strlen(path) - 1] != '/')
 				strcat(suPath, "/");
 		strcpy(suDir, suPath);
 		strcat(suPath, "su20076000_00000000");
-		found = FileExistsU32(suPath);
+		found = FileExists(suPath);
 		if (!found) {
 			strcat(suDir, "$SystemUpdate/");
 			strcpy(suPath, suDir);
 			strcat(suPath, "su20076000_00000000");
-			found = FileExistsU32(suPath);
+			found = FileExists(suPath);
 		}
 	} else {
 		p = strrchr(suDir, '/');

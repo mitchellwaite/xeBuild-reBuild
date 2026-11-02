@@ -37,7 +37,7 @@ int checkZeros(const unsigned char *p, unsigned int len);
 void memcpyrev(unsigned char *dst, const unsigned char *src, int len);
 long getFileSize(FILE *f);
 long long getFileSize64(FILE *f);
-int FileExists(const char *name);
+uint32_t FileExists(const char *name);
 int FileExistsIn(const char *dir, const char *name);
 void *FileToBuffer(const char *name, size_t *psize);
 unsigned int calcConfigSum(const unsigned char *p);
