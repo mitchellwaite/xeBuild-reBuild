@@ -75,9 +75,8 @@
 /* a slim console (xb.flags' console type) */
 #define IS_SLIM ((xb.flags & CONSOLE_MASK) > CONSOLE_JASPER)
 
-/* in an object compiled with a profile (mode_update.c, mode_client.c), the
-   functions that keep gcc's guessed profile, and .text; a file may define
-   it empty before including this */
+/* in an object compiled with a profile (mode_update.c), the functions that
+   keep gcc's guessed profile, and .text */
 #ifndef NOPROF
 #define NOPROF __attribute__((optimize("no-branch-probabilities", "no-reorder-functions")))
 #endif

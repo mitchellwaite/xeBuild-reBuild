@@ -56,7 +56,7 @@ objs=
 for f in $objects globals; do
   mkdir -p "$OBJ/$(dirname "$f")"
   [ -f "src/$f.c" ] || { echo "build.sh: no src/$f.c" >&2; exit 1; }
-  prof= fprof= ffns= fflags=
+  prof=
   case "$f" in
     # original build path, for __FILE__ in assert(); fed through stdin so
     # the #line can name it (gcc 6 has no -ffile-prefix-map)
@@ -129,17 +129,12 @@ for f in $objects globals; do
     # definition order
     build) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=98" ;;
-    # mode_client's layout comes from a second compile (fprof) with
-    # -DBUILD_FDO: empty asm-goto edges and a crafted profile for it and
-    # the clientEraseBlock it inlines (src/mode_client.c's head
-    # comment; tools/wip/mc/s18/NOTES.md); align-loop-iterations=100 aligns its
-    # loop like the original. -fno-toplevel-reorder emits the functions
-    # (and so their literals) and data in definition order
+    # mode_client's layout comes from dead hints in the source, no profile
+    # (src/mode_client.c's head comment; tools/wip/mc/s150/NOTES.md).
+    # -fno-toplevel-reorder emits the functions (and so their literals) and
+    # data in definition order
     mode_client) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param builtin-expect-probability=50"
-           fprof="@src/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64"
-           fflags="-DBUILD_FDO --param align-loop-iterations=100"
-           ffns=_mode_client ;;
+           cflags="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param builtin-expect-probability=50" ;;
     # the COMMON block in address order (src/globals.c's head comment)
     globals) orig="$f.c"
            cflags="-O3 -fno-common -fno-toplevel-reorder" ;;
@@ -150,22 +145,6 @@ for f in $objects globals; do
   esac
   if [ -n "$prof" ]; then
     fdo "$prof" > "$OBJ/$f.c.s"
-  elif [ -n "$fprof" ]; then
-    { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
-      "$TC/gcc.exe" -S $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.c.s"
-  fi
-  # a second compile with the case's $fflags and a profile for the functions
-  # in $ffns
-  fs=
-  if [ -n "$fprof" ]; then
-    fdo "$fprof" $fflags > "$OBJ/$f.fdo.s"
-    for n in $ffns; do fs="$fs $n=$OBJ/$f.fdo.s"; done
-  fi
-  if [ -n "$fprof" ]; then
-    # whole object: the $ffns functions from the second compile
-    python tools/re/splice.py --whole "$OBJ/$f.c.s" "$OBJ/$f.s" $fs
-    "$TC/as.exe" --32 "$OBJ/$f.s" -o "$OBJ/$f.o"
-  elif [ -n "$prof" ]; then
     "$TC/as.exe" --32 "$OBJ/$f.c.s" -o "$OBJ/$f.o"
   else
     { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |

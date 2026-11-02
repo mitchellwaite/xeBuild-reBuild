@@ -128,9 +128,9 @@ pulled log's strings into console_hdd).
 #### Mixed objects: moving a file to C one function at a time
 
 (History: every object is whole C now, and `build.sh` no longer assembles
-`.s` files or splices C functions into them; `splice.py --whole` is still
-used for `mode_client`'s second-compile function; `build` compiles plainly
-since the eleventh pass in tools/wip/README.md.)
+`.s` files or splices C functions into them, so `tools/re/splice.py` is unused;
+`build` compiles plainly since the eleventh pass in tools/wip/README.md, and
+`mode_client` since tools/wip/mc/s150/NOTES.md.)
 
 An object doesn't have to move to C all at once. Functions listed in
 `split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.
@@ -439,7 +439,7 @@ Two switches, defined before including `xebuild.h`, give a file the view of
 `xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
 and `XB_PATCHES` (options.c, mode_build.c, mode_update.c); the header says why.
 It also holds the shared macros: `SWAP16`/`SWAP32`, `IS_SLIM` and `NOPROF`
-(which mode_client.c defines empty first outside its profile compile). The
+(mode_update.c uses it for the functions outside its profile). The
 spelling of a byte swap changes code even though the bswap pass folds it, so
 build.c, image_write.c and keys.c use their own spellings, also in
 `xebuild.h` with the object's name as a suffix (`SWAP16_BUILD`,
