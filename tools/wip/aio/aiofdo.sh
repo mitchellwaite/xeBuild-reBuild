@@ -11,7 +11,7 @@ if [ ! -f "$d/-.gcno" ] || [ "$d/a.c" -nt "$d/-.gcno" ]; then
   (cd "$d" && PATH="$R/tools/toolchain-4745/mingw32/bin:$PATH" gcc -S -I "$R/wip" -I "$R/src" $FL \
     -fprofile-arcs -ftest-coverage -fdump-tree-profile_estimate-blocks-details "$d/a.c" -o - >/dev/null)
 fi
-python tools/re/gcda.py "$d/-.gcno" "$d/a.c.042t.profile_estimate" "$d/-.gcda" "$@" --only=$ONLY >/dev/null
+python tools/wip/gcda.py "$d/-.gcno" "$d/a.c.042t.profile_estimate" "$d/-.gcda" "$@" --only=$ONLY >/dev/null
 python tools/wip/blk.py "$d/a.c" applyIniOptions $FL -fbranch-probabilities "-fprofile-dir=$d" > "$d/blk.diff" 2>&1 || true
 FNCMP_LITERALS=1 python tools/re/fncmp.py "$d/a.c" applyIniOptions $FL -fbranch-probabilities "-fprofile-dir=$d" > "$d/fdo.diff" 2>&1 || true
 echo "blk $(grep -c '^[-+][^-+]' "$d/blk.diff") fncmp $(grep -c '^[-+][^-+]' "$d/fdo.diff")"

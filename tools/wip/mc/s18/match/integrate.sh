@@ -3,7 +3,7 @@
 #  2. plain compile of the whole C (-O3 -fno-toplevel-reorder, param 50) -> plain.s
 #  3. FDO compile of the FDO whole C (mcfdo flags, NOPROF on the other functions, gcda.py with
 #     overrides.txt) -> fdo.s
-#  4. tools/re/splice.py --whole plain.s out.s _mode_client=fdo.s ; as ; compare with build/obj/mode_client.o
+#  4. tools/wip/splice.py --whole plain.s out.s _mode_client=fdo.s ; as ; compare with build/obj/mode_client.o
 set -e
 cd "$(dirname "$0")/../../../../.."
 ROOT=$(cygpath -w "$PWD")
@@ -30,13 +30,13 @@ FL="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param bu
 # 3. FDO (same aux name/dir handling as tools/wip/mcfdo.py: compiles of m.c in its dir with -o -)
 export EXTRA='--param builtin-expect-probability=50'
 python -c "import sys;sys.path.insert(0,'tools/wip');import mcfdo;mcfdo.prep(r'$ROOT\\build\\mcint\\fdo','build/mcint/fdo_whole.c')"
-python tools/re/gcda.py $O/fdo/-.gcno $O/fdo/m.c.042t.profile_estimate $O/fdo/-.gcda $(cat tools/wip/mc/s18/match/overrides.txt | tr -d '\r') \
+python tools/wip/gcda.py $O/fdo/-.gcno $O/fdo/m.c.042t.profile_estimate $O/fdo/-.gcda $(cat tools/wip/mc/s18/match/overrides.txt | tr -d '\r') \
   --only=mode_client,clientEraseBlock --threshold=64 >/dev/null
 (cd $O/fdo && "$OLDPWD/$TC/gcc.exe" -S -O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions \
    --param builtin-expect-probability=50 $FDOX -I"$OLDPWD/wip" \
    -fbranch-probabilities -fprofile-dir=. "$ROOT\\build\\mcint\\fdo\\m.c" -o - > ../fdo.s)
 # 4. splice + assemble + compare
-python tools/re/splice.py --whole $O/plain.s $O/out.s _mode_client=$O/fdo.s
+python tools/wip/splice.py --whole $O/plain.s $O/out.s _mode_client=$O/fdo.s
 $TC/as.exe --32 $O/out.s -o $O/mode_client.o
 $TC/objdump.exe -d --no-show-raw-insn $O/mode_client.o | sed -n '/^Disassembly/,$p' | sed -E 's/^ *[0-9a-f]+:\t//' > $O/new.dis
 $TC/objdump.exe -d --no-show-raw-insn build/obj/mode_client.o | sed -n '/^Disassembly/,$p' | sed -E 's/^ *[0-9a-f]+:\t//' > $O/ref.dis

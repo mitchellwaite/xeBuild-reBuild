@@ -491,7 +491,7 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
     ('recvfrom', 24), ('select', 20), ('send', 16), ('setsockopt', 20), ('socket', 12))})
 # Functions already in C inside objects that are otherwise still assembly
 # (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
-# build.sh fills from `gcc -S` of src/<obj>.c (tools/re/splice.py); data, the
+# build.sh fills from `gcc -S` of src/<obj>.c (tools/wip/splice.py); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = set()
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
@@ -850,7 +850,7 @@ def main():
               irename.sub(lambda m: IAT_NAMES[m.group(1)], l) for l in ls]
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
 
-    # a C function's jump tables: gcc writes its own, which tools/re/splice.py puts
+    # a C function's jump tables: gcc writes its own, which tools/wip/splice.py puts
     # at the `#@J name k n` marker (the function's k-th table, n entries)
     jt_count = collections.Counter()
     LONG = re.compile(r'^\s*\.long\s+([\w$.@]+)\s*$')
@@ -916,7 +916,7 @@ def main():
             continue
         out =['# %s.s -- %s' % (f, info[f]), '#']
         if f in mixed:
-            out += ['# mixed: `#@C name` lines are functions from %s.c (tools/re/splice.py)' %
+            out += ['# mixed: `#@C name` lines are functions from %s.c (tools/wip/splice.py)' %
                     os.path.basename(f), '#']
         out.append('# original placement:')
         for pc in sorted(mine, key=lambda x: (x[0], x[1])):

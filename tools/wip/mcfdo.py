@@ -1,4 +1,4 @@
-"""mode_client with a crafted profile (tools/re/gcda.py), like tools/wip/mufdo.sh for mode_update.
+"""mode_client with a crafted profile (tools/wip/gcda.py), like tools/wip/mufdo.sh for mode_update.
 
 python tools/wip/mcfdo.py <dir> <draft.c> [fn:src>dst=prob ...]
 Copies the draft to <dir>/m.c with NOPROF on every function but PROF's

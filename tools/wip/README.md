@@ -222,7 +222,7 @@ Findings:
   CFG shape, so only the profile is left to find.
 - 2026-10-22, crafted profile (like mode_update): src/options.c
   builds applyIniOptions with a profile (build.sh), `src/options.prof`
-  its edge overrides (tools/re/gcda.py, `@file` accepted), written by
+  its edge overrides (tools/wip/gcda.py, `@file` accepted), written by
   `python tools/wip/aiodesign.py <profile_estimate dump>`.  The code matched
   first, then the block layout, then (below) the label alignment padding.
   What it took:
@@ -395,7 +395,7 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   `PHI <'A', validChars[j+1]>` of the validChars loop), and validChars as C data ([0] is
   folded to 'A'). Built from src since the third 2026-10-21 session: the mixed C keeps a
   `static const` string copy of validChars (74 chars, so gcc emits `.ascii` with no NUL;
-  a brace list gives `.byte`s, which tools/re/splice.py refuses), split.py names the .s's
+  a brace list gives `.byte`s, which tools/wip/splice.py refuses), split.py names the .s's
   label `_validChars`, and splice.py drops gcc's copy. Object flags in build.sh.
   - setne order (fixed): the original's loop body tests `'\n'` first and its ch2 header
     copy 0xff first. `&` operands sort by SSA version, the body keeps the source order
@@ -427,7 +427,7 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 - parseIni (409430-40aa10, 5.6 KB) drafted in tools/wip/filelist_ini.c (from a Hex-Rays
   decompile; its tables/names are still `extern`). 486 of 1241 normalized lines equal
   (fncmp with full context, FNCMP_LITERALS=1), 549 with
-  `--param max-jump-thread-duplication-stmts=12`. It has a jump table (L_4501e8); tools/re/splice.py
+  `--param max-jump-thread-duplication-stmts=12`. It has a jump table (L_4501e8); tools/wip/splice.py
   places gcc's tables at the .s's `#@J` markers, so it can join the mixed file once it
   matches (its strings need extern names or splice-dropped static copies). Findings:
   - Errors are `log; free(buf); return 0;` at each site (gcc crossjumps the tails), not
@@ -843,7 +843,7 @@ Still off:
   `continue` (50%) and `goto` (none) add no usable predictor in gcc 6.
 - Crafted profile (2026-10-20): `sh tools/wip/mufdo.sh <dir> [overrides]` builds
   mode_update with `-fbranch-probabilities` and a `.gcda` from
-  `tools/re/gcda.py` that reproduces the guessed profile exactly (no overrides:
+  `tools/wip/gcda.py` that reproduces the guessed profile exactly (no overrides:
   the same 30-line diff) with counts only for mode_update and updateNand.
   Overrides set single edge probabilities with no source change and leave
   getConsoleFiles' param alone: `mode_update:39>40=62` (the `-noreeb` match)
@@ -954,7 +954,7 @@ its two allocation-failure blocks swapped). `tools/wip/irlit.py`'s `externize()`
 turns the draft into that form.
 
 The statics that a C function writes (fsBuf, fsValid, fsOffset, anchor,
-mobiles) stay `static` in the mixed file and `tools/re/splice.py` drops their
+mobiles) stay `static` in the mixed file and `tools/wip/splice.py` drops their
 `.lcomm`, so the alias analysis is the original's (as externs, memcpy
 clobbers fsOffset and loadFlashFile reloads it). dumpSize stays extern
 (it used to be written only by the .s's code, and as a static gcc would
@@ -1200,7 +1200,7 @@ compile) can raise the cases but distinct case probabilities also change
 which case trace connect_traces puts after the dispatch (all case edges
 tie at 1/13 and the 4-block erase trace wins by length), the round-3
 threshold (10) builds cases >= 10 early, and the inlined clientEraseBlock
-needs `--mult`.  tools/re/gcda.py now applies several overrides on one source
+needs `--mult`.  tools/wip/gcda.py now applies several overrides on one source
 block as a group (needed for switch edges).  Score a variant with
 `python tools/wip/mc/mcvar.py <file.c>` (inversions and matching prefix of the
 cold order, FNCMP=1 adds the fncmp count); `tools/wip/mc/bbsum.py` lists a
@@ -1255,7 +1255,7 @@ Source-shape search (2026-10-27, second session), negative:
 Crafted profile (2026-10-27, third session), also negative, but the tooling
 now works for this object:
 
-- Profile-build mechanics learned on the way (all in `tools/re/gcda.py` now):
+- Profile-build mechanics learned on the way (all in `tools/wip/gcda.py` now):
   gcc 6 inlines a global callee with its gcda counts *unscaled* (the clone's
   count is the callee's, not the call site's), so `--entry=fn:caller:bb`
   ties the callee's entry count to the call block's; the callee's empty
@@ -1580,7 +1580,7 @@ The last two (2026-10-27):
 Since 2026-10-28 `src/build.c` uses string literals (patchFreeboot
 success-first, one `asm "i"` hint in checkBl), loadBlFiles' too:
 `splice.py --whole` maps the FDO compile's literal labels to the main
-compile's by contents. (tools/re/gcda.py reads the profile_estimate dump as
+compile's by contents. (tools/wip/gcda.py reads the profile_estimate dump as
 latin-1, so literals with bytes like `\370` are fine.) The
 `bd_<address>` history below predates that.
 
@@ -2054,7 +2054,7 @@ only shows in `sh build.sh`.
     region by (X - e)/X in counts or frequencies, so c11 ends at 0 in every
     regime (zero-count entries keep it, but then the 9/10/SE paths are
     cold: 190-225). No pass after dom2 rebuilds frequencies (only inlining
-    and versioning do). Counts can't be inconsistent at read (tools/re/gcda.py
+    and versioning do). Counts can't be inconsistent at read (tools/wip/gcda.py
     `--consistent` makes exact integer flows so 0% overrides don't solve
     to -1).
   - Counts for loadBlFiles+loadBl (PROFILE_READ): with b4.c and `9>10=0
@@ -2372,7 +2372,7 @@ only shows in `sh build.sh`.
   first user), strings as static arrays in .rdata order before the first
   function using them, `aligned(4)` from 31 bytes else `aligned(1)`, .data
   arrays defined in order, all under `-fno-toplevel-reorder`. loadBlFiles
-  still comes from the -DBUILD_FDO compile, spliced in with `tools/re/splice.py
+  still comes from the -DBUILD_FDO compile, spliced in with `tools/wip/splice.py
   --whole` (function chunk to .cfi_endproc, so its jump table and FDE come
   along). That compile needs `-ftoplevel-reorder`: under
   -fno-toplevel-reorder the NK_DEAD statics aren't read-only to

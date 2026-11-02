@@ -1,6 +1,6 @@
 """Write a .gcda that reproduces gcc's guessed profile (for -fbranch-probabilities).
 
-python tools/re/gcda.py <x.gcno> <x.c.042t.profile_estimate> <out.gcda>
+python tools/wip/gcda.py <x.gcno> <x.c.042t.profile_estimate> <out.gcda>
                    [fn:src>dst=prob ... | @file] [--only=fn,fn] [--src=file.c]
                    [--threshold=N]
 

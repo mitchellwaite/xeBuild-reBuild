@@ -1,4 +1,4 @@
-"""Debug tools/re/gcda.py's view of one function: its gcno arcs (tree/fake flags), the gcno->dump block
+"""Debug tools/wip/gcda.py's view of one function: its gcno arcs (tree/fake flags), the gcno->dump block
 map, the arc and block flows (entry = 1) after overrides, and the counters written to a .gcda.
 python tools/wip/mc/gcdadbg.py <-.gcno> <m.c.042t.profile_estimate> <-.gcda> <function> [fn:src>dst=p ...]
 (the first two live in the directory tools/wip/mcfdo.py prepared, the .gcda in one of its slot dirs)"""

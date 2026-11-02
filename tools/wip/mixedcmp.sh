@@ -12,7 +12,7 @@ obj=$1 c=$2 good=$3; shift 3
 d=$(mktemp -d)
 { printf '#line 1 "%s"\n' "$obj.c"; cat "$c"; } |
   "$TC/gcc.exe" -S -O3 "$@" -fno-asynchronous-unwind-tables -I"src/$(dirname "$obj")" -x c - -o "$d/t.c.s" || exit 1
-python tools/re/splice.py "src/$obj.s" "$d/t.c.s" "$d/t.s" || exit 1
+python tools/wip/splice.py "src/$obj.s" "$d/t.c.s" "$d/t.s" || exit 1
 "$TC/as.exe" --32 "$d/t.s" -o "$d/t.o" || exit 1
 "$TC/objdump.exe" -d -M intel --no-show-raw-insn "$d/t.o" | sed 1,6d | cut -f2- > "$d/t.dis"
 "$TC/objdump.exe" -d -M intel --no-show-raw-insn "$good" | sed 1,6d | cut -f2- > "$d/g.dis"

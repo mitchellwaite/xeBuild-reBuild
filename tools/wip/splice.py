@@ -1,7 +1,7 @@
 """Fill a mixed object's `#@C name` markers with gcc's code for those functions.
 
-python tools/re/splice.py <src/obj.s> <gcc -S output> <out.s> [_name=<other -S output> ...]
-python tools/re/splice.py --whole <gcc -S output> <out.s> _name=<other -S output> ...
+python tools/wip/splice.py <src/obj.s> <gcc -S output> <out.s> [_name=<other -S output> ...]
+python tools/wip/splice.py --whole <gcc -S output> <out.s> _name=<other -S output> ...
 (an object all in C, with some functions from a second compile)
 
 --whole: each function is taken from the other compile from its `.p2align`

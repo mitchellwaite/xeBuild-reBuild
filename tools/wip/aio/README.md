@@ -13,7 +13,7 @@ After a source change regenerate the overrides from the new dump first
 overrides the compile flags of aiofdo.sh and dumps.sh.
 
 - `aiofdo.sh <dir> [overrides]`: instrumented compile (.gcno + profile_estimate
-  dump), tools/re/gcda.py, then tools/wip/blk.py and tools/re/fncmp.py on the profile build.
+  dump), tools/wip/gcda.py, then tools/wip/blk.py and tools/re/fncmp.py on the profile build.
 - `run.sh <dir> <overrides file>`: aiofdo.sh, dumps.sh, `lab.txt` (role-labeled
   block order vs the original, `*` = mismatch) and `trl.txt` (STC traces with
   rounds, frequencies and roles).

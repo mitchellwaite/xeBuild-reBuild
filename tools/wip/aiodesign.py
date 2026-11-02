@@ -10,7 +10,7 @@ frequency instead, in the original's order, within the band of the STC
 round it belongs to (tools/wip/README.md, options.c).  Blocks are found by
 content; TARGET gives block frequencies (BB_FREQ_MAX scale, entry 1815), and
 the edge into each target block gets the probability that yields it, solved
-to a fixpoint on gcc's guessed profile (tools/re/gcda.py's numbers).
+to a fixpoint on gcc's guessed profile (tools/wip/gcda.py's numbers).
 """
 import os, re, sys
 sys.stdout.reconfigure(newline='\n')   # LF on Windows too
@@ -250,7 +250,7 @@ for it in range(50):
         OVER[(a, b)] = round(min(99.99, max(0.01, t * 100 / F[a])), 4)
     if worst < 0.01:
         break
-print("# applyIniOptions' edge probabilities (%) for its crafted profile: tools/re/gcda.py")
+print("# applyIniOptions' edge probabilities (%) for its crafted profile: tools/wip/gcda.py")
 print('# overrides in profile_estimate bb numbers of src/options.c.')
 print('# Generated: python tools/wip/aiodesign.py build/obj/options.fdo/-.042t.profile_estimate')
 for (a, d), p in sorted(OVER.items()):

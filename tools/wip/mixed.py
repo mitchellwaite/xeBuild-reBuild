@@ -118,7 +118,7 @@ def main():
     head = head.replace(
         cfg['note'],
         cfg['note'][:-3] + '.\n   Mixed object: the functions here are spliced into %s.s\n'
-        '   (tools/re/splice.py), which still holds the rest and the data, so strings\n'
+        '   (tools/wip/splice.py), which still holds the rest and the data, so strings\n'
         "   name the .s's (splice.py drops gcc's copies; static arrays rather\n"
         '   than externs so that gcc still folds strlen of them).\n'
         '   tools/wip/%s.c is the whole draft; tools/wip/mixed.py makes this file\n'

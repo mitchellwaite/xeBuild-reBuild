@@ -8,7 +8,7 @@ CF="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param bu
 ccp() { (cd $p && { printf '#line 1 "mode_client.c"\n'; cat $R/src/mode_client.c; } | gcc -S "$@" -I$R/src -x c - -o -); }
 cd $R
 ccp $CF -fprofile-arcs -ftest-coverage -fdump-tree-profile_estimate-blocks-details >/dev/null
-python tools/re/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" @src/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64 --src=src/mode_client.c >/dev/null
+python tools/wip/gcda.py "$p/-.gcno" "$p/-.042t.profile_estimate" "$p/-.gcda" @src/mode_client.prof --only=mode_client,clientEraseBlock --threshold=64 --src=src/mode_client.c >/dev/null
 ccp $CF -fbranch-probabilities -fprofile-dir="$pw" -fdump-rtl-bbro-details -fdump-rtl-cprop_hardreg-blocks-details > $p/x.s
 for k in cprop_hardreg bbro; do F=$(ls $p/*.$k | grep -v "mc.$k$"); n=$(grep -n "^;; Function mode_client" $F | cut -d: -f1); tail -n +$n $F > $p/mc.$k; done
 python $R/tools/wip/mc/s101/bbinfo2.py $p/mc.bbro > $p/bbinfo.txt
