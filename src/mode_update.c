@@ -396,7 +396,7 @@ uint32_t getBootloaders(const char *dir)
 int getConsoleFiles(const char *dir)
 {
 	if (checkBadBlocks()) {
-		if (__builtin_expect(netMount("usv", "\\SystemRoot"), 1)) {
+		if (netMount("usv", "\\SystemRoot")) {
 			if (!getBootloaders(dir)) {
 				log_printf(0, "\n***** ERROR: getting raw boot loaders failed!\n");
 				return 0;
@@ -598,10 +598,7 @@ int mode_update(int argc, char **argv)
 			i++;
 			noAvatar = 1;
 			log_printf(1, "-noava: avatar data, if available, will not be sent to console\n");
-			if (cp(argc + 104))
-				goto dn;
-			if (cp(argc + 105))
-				goto dn;
+
 			__asm__ goto ("" :::: dn);
 			if (0) {
 			dn:
@@ -612,7 +609,6 @@ int mode_update(int argc, char **argv)
 			}
 		} else if (!strnicmp(argv[i], "-noreeb", 6)) {
 			__builtin_memset(argv, 0, cp(i + 106));
-			__asm__ goto ("" :::: hu);
 			i++;
 			noReboot = 1;
 			log_printf(1, "-noreeb: console will not reboot after writes are done\n");

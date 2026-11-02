@@ -1121,7 +1121,6 @@ int detectController(uint8_t *raw, int size)
 		for (i = 1; i < n; i++) {
 			uint8_t *b = raw + i * 16896;
 			int hi, lo;
-			__asm__("" : : "b"(i));
 
 			if (b[517] != 0xff || b[513] == 0xff)
 				continue;
@@ -1135,10 +1134,9 @@ int detectController(uint8_t *raw, int size)
 			} else {
 				int lo2 = b[512];
 
-				/* lo and lo2 kept live past their adds, so each sum takes
-				   hi's register (ebp, ecx) */
+				/* lo kept live past its add, so the sum takes hi's
+				   register (ebp) */
 				__asm__("" : : "a"(lo));
-				__asm__("" : : "d"(lo2));
 				if (lo2 + (b[513] & 0xf) * 256 == i) {
 					__asm__("" : : "d"(lo2));
 					i = n;

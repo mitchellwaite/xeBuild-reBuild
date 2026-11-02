@@ -524,7 +524,7 @@ bx: ;
 			b = 0x20;
 		else if (!strnicmp(s, "remox", 5))
 			b = 0x22;
-		else if (__builtin_expect(!strnicmp(s, "winbutton", 9), 1))
+		else if (!strnicmp(s, "winbutton", 9))
 			b = 0x24;
 		else
 			b = parseButtonPart(s);
@@ -561,7 +561,6 @@ int parseButton(const char *s)
 	return b;
 }
 
-
 /* applyIniOptions' copies of the functions above: a function with other
    optimize options can't be inlined into it (always_inline is, early) */
 static inline __attribute__((always_inline)) int optIniIntI(const char *name, int def)
@@ -577,7 +576,6 @@ static inline __attribute__((always_inline)) int optIniIntI(const char *name, in
 }
 
 #define OPT(name, set, clear) if (!(xb.bootFlags & (set))) optIniBool(name, set, clear, 0)
-
 
 void stripColons(char *s)
 {
@@ -755,7 +753,7 @@ int setBoolOption(const char *name, const char *val)
    The return is uint32_t (int keeps it in esi); parseCmdOptions calls it
    through parseOptionInt.  po_hint gets parseOption's options too, or it
    can't be inlined there. */
-__attribute__((optimize("no-early-inlining")))
+
 static void po_hint(int *p) { *p = 1; }
 
 __attribute__((optimize("no-early-inlining")))
@@ -959,7 +957,6 @@ int parseCmdOptions(const char *opts)
 	return 1;
 }
 
-
 /* options from perbox files and options.ini that the command line didn't
    set.  The cold block layout comes from the hints in the head comment. */
 void applyIniOptions(void)
@@ -1080,10 +1077,9 @@ b1: ;
 b2: ;
 		}
 	}
-	if (0) { dzc1: __attribute__((cold)); goto dz1; dz1: __asm__ volatile ("" :: "i"(1)); if (__builtin_constant_p(xb.blSuffix[1] + 3)) goto b1; __builtin_unreachable(); }
-	if (0) { dzc2: __attribute__((cold)); goto dz2; dz2: __asm__ volatile ("" :: "i"(4)); if (__builtin_constant_p(xb.blSuffix[1] + 9)) goto b2; __builtin_unreachable(); }
+	if (0) { dzc1: ; goto dz1; dz1: __asm__ volatile ("" :: "i"(1));  __builtin_unreachable(); }
+	if (0) { dzc2: ; goto dz2; dz2: __asm__ volatile ("" :: "i"(4));  __builtin_unreachable(); }
 }
-
 
 int parseRawPatch(char *pat)
 {

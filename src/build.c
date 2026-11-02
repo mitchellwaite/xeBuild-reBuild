@@ -392,7 +392,7 @@ struct fan {
 };
 
 /* read baseDir/name into e */
-static __attribute__((noinline, noclone)) int loadBaseFile(const char *name, struct fileent *e)
+static int loadBaseFile(const char *name, struct fileent *e)
 {
 	if (xb.baseDir[0]) {
 		char path[0x400];
@@ -1085,7 +1085,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		if (bl[1] != 'C')
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
-		if (__builtin_expect(crc == 0xffffffff, 0))
+		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
 		if (__builtin_expect(crc != c, 0))
@@ -1095,7 +1095,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		if (bl[1] != 'D')
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
-		if (__builtin_expect(crc == 0xffffffff, 0))
+		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
 		if (__builtin_expect(crc != c, 0))
@@ -1110,7 +1110,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
+		if (crc != c)
 			goto bad;
 		break;
 	default:
@@ -1275,7 +1275,6 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		if (!*pr) {
 			uint32_t r6 = checkBl(e->data, e->size, 6, e->crc);
 
-			__asm__("" : "+r"(r6));
 			*pr = r6;
 		}
 		break;

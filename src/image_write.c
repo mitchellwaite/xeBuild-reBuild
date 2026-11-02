@@ -238,7 +238,6 @@ int buildImage(void)
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
 			}
-			__asm__("" :: "d"(bigBlock));
 			if (bigBlock)
 				hdrTemplate.patchSlotSize = 0x100;
 			copyright[10] = '8';
@@ -690,7 +689,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	}
 #undef BLK
 	if (next != 0xf1f1) {
-		
+
 		for (i = 0; i < blocks; i++) {
 			if (x > first + 0x4000)
 				blocks++;

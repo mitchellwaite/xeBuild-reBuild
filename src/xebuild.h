@@ -171,7 +171,7 @@ struct manifest {
 /* xb.files has 35 entries, 19..34 the addon patches (-a).  Two switches a
    file may define before including this change how it sees them:
    XB_FILES_BOUND declares fewer files, as the bound sets gcc's trip count
-   estimate for loops over them (build.c, filelist_ini.c).  XB_PATCHES adds
+   estimate for loops over them (build.c).  XB_PATCHES adds
    xb.patches, the addons' names as an array over xb.files in a union
    (options.c, mode_update.c): mode_update's loop over it only
    compiles to the original's code that way, but the union changes alias

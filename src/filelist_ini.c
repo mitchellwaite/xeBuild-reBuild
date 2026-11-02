@@ -6,8 +6,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-/* the files loop's guessed trip count (xebuild.h) */
-#define XB_FILES_BOUND 19
 #include "xebuild.h"
 #include "filelist_ini.h"
 #include "fileutil.h"
@@ -748,9 +746,8 @@ static int findKey(unsigned char *buf, const char *key)
 					j = len + 1;
 			if (j == len) {
 				unsigned char *q = &buf[i + len];
-				int d;
-				__asm__("" : "=r"(d) : "b"(q));
-				if (d)
+
+				if (q == 0)
 					__builtin_unreachable();
 				if (*q != 0)
 					return i + len;
@@ -770,7 +767,6 @@ long getIniBool(const char *key, int def)
 	if (off == -1)
 		return def;
 	val = (char *)&xb.iniBuf[off];
-	__asm__("" :: "b"(val));
 	if (strnicmp(val, "true", 4) == 0)
 		return 1;
 	if (strnicmp(val, "false", 5) == 0)

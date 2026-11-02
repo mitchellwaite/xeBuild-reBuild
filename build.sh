@@ -64,7 +64,7 @@ for f in $objects globals; do
     # done/incomplete blocks differently); applyIniOptions' layout comes
     # from dead hints in the source (tools/wip/aio/p1/NOTES.md)
     options) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=83 -fno-ipa-profile -fno-reorder-functions" ;;
+           cflags="-O3 --param builtin-expect-probability=83" ;;
     # iniPreParse: vectorization makes PRE drop a PHI; its ';' hint (65-66)
     # makes its memcpy block hot enough to be aligned; parseIni needs
     # LRA's EBBs to stop at a 50% fallthrough (51-70 work);
@@ -94,7 +94,7 @@ for f in $objects globals; do
     # -fno-toplevel-reorder emits the functions (and so their literals) and
     # data in definition order
     mode_client) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder -fno-ipa-profile -fno-reorder-functions --param builtin-expect-probability=50" ;;
+           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=50" ;;
     # the COMMON block in address order (src/globals.c's head comment)
     globals) orig="$f.c"
            cflags="-O3 -fno-common -fno-toplevel-reorder" ;;

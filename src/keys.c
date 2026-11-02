@@ -13,13 +13,11 @@
 #include "log.h"
 #include "smc.h"
 
-/* getBeU32 and verifyFcrt redeclared pure (only here: in the headers it
-   changes other objects' code): fcrtEncrypt's block order needs them left
-   out of the call heuristic (with its off < 0x4000 hint at
-   builtin-expect-probability 60) */
+/* getBeU32 redeclared pure (only here: in the headers it changes other
+   objects' code): fcrtEncrypt's block order needs it left out of the call
+   heuristic (with its off < 0x4000 hint at builtin-expect-probability 60) */
 uint32_t getBeU32(const uint8_t *p) __attribute__((pure));
-int verifyFcrt(uint8_t *fcrt, uint32_t size) __attribute__((pure));
-/* external copy of the always_inline cfPatchSlots */
+/* external copy of the inline cfPatchSlots */
 short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max);
 
 uint8_t secdataKey[8] = { 0x5a, 0xa4, 0xd1, 0xd2, 0x7d, 0xe4, 0x45, 0x3e };
@@ -270,7 +268,7 @@ void setFuseCpuKey(uint8_t *fuse)
 {
 	int i;
 
-	if (__builtin_expect(fuse != NULL, 1)) {
+	if (fuse != NULL) {
 		memcpy(fuse + 24, xb.cpuKey, 8);
 		memcpy(fuse + 32, xb.cpuKey, 16);
 		memcpy(fuse + 48, xb.cpuKey + 8, 8);
@@ -352,7 +350,6 @@ int checkKeys(char *str)
 /* the sums are copied to a type they can't be coalesced with (signed vs
    unsigned), so the value after the loop is its own pseudo: in registers
    there (xor'd on the count == 0 path) while the loop's sums stay in memory */
-__attribute__((always_inline))
 static inline void smcSum(uint32_t *buf, uint8_t *out, uint32_t count)
 {
 	uint64_t s1 = 0, s2 = 0;
@@ -567,7 +564,6 @@ void ceEncrypt(uint8_t *ce, uint8_t *prevKey, uint8_t *key, uint32_t size)
 /* The slot index i and the count n are separate (the original computes
    the last index as trips + 2 but n as (trips + 1) + 1); n is 16-bit, so
    its add isn't CSE'd with the index's. */
-__attribute__((always_inline))
 inline short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max)
 {
 	uint8_t *buf = cf->data;
@@ -577,7 +573,7 @@ inline short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, ui
 	uint32_t i;
 	uint16_t *tbl = (uint16_t *)(buf + 48);
 
-	if (__builtin_expect(end > max, 1)) {
+	if (end > max) {
 		over = end - max;
 		cf->fsOffset = max - cf->size;
 		cf->fsSize = over;
