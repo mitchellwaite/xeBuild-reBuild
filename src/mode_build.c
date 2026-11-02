@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
 #include "filelist_ini.h"
 #include "fileutil.h"
@@ -245,8 +244,8 @@ int mode_build(int argc, char **argv)
 				build_usage();
 			}
 			if (xb.numPatches < 16) {
-				strcpy(xb.patches[xb.numPatches], argv[i]);
-				strcat(xb.patches[xb.numPatches], ".bin");
+				strcpy((xb.files + xb.numPatches + XB_ADDONS)->name, argv[i]);
+				strcat((xb.files + xb.numPatches + XB_ADDONS)->name, ".bin");
 				xb.numPatches++;
 			} else
 				log_printf(0, "***** WARNING: exceeded total number of optional patches with -a %s!\n", argv[i]);

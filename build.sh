@@ -44,9 +44,6 @@ for f in $objects globals; do
     # readFileIn's __builtin_expect hints are tuned to this probability
     fileutil) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=65" ;;
-    # kvCheckHash's __builtin_expect needs a weak hint (51-60 match)
-    keyvault) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=55" ;;
     # showInfoKeys aligns a block at frequency 61 of 9412 (default 100
     # would need 95); 155 and up match
     consoleinfo) orig="$f.c"

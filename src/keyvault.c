@@ -37,25 +37,21 @@ int kvCheckHash(void)
 		return 0;
 	for (i = 0; i < 16; i++) {
 		v = getBeU32(kv + 0x1df8 + i * 4);
-		if (v != 0 && v != 0xffffffff)
-			goto found;
+		if (v != 0 && v != 0xffffffff) {
+			if (!xb.masterPub) {
+				log_printf(1, "Master RSA pub not available, not checking hash\n");
+				kvType = 1;
+			} else if (kvVerifySig(kvBuf, xb.masterPub, xb.cpuKey)) {
+				kvType = 3;
+				log_printf(1, "Keyvault hash is good!\n");
+			} else {
+				kvType = 2;
+				log_printf(0, "***** WARNING: Keyvault hash is not good! Keyvault may be corrupt or does not belong to this CPU key!\n");
+			}
+			return 1;
+		}
 	}
 	return 0;
-found:
-	if (!xb.masterPub) {
-		nomaster: __attribute__((cold));
-		log_printf(1, "Master RSA pub not available, not checking hash\n");
-		kvType = 1;
-		return 1;
-	}
-	if (__builtin_expect(kvVerifySig(kvBuf, xb.masterPub, xb.cpuKey), 1)) {
-		kvType = 3;
-		log_printf(1, "Keyvault hash is good!\n");
-		return 1;
-	}
-	kvType = 2;
-	log_printf(0, "***** WARNING: Keyvault hash is not good! Keyvault may be corrupt or does not belong to this CPU key!\n");
-	return 1;
 }
 
 void kvSet(uint8_t *buf)
