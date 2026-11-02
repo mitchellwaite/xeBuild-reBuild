@@ -44,10 +44,6 @@ for f in $objects globals; do
     # readFileIn's __builtin_expect hints are tuned to this probability
     fileutil) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=65" ;;
-    # showInfoKeys aligns a block at frequency 61 of 9412 (default 100
-    # would need 95); 155 and up match
-    consoleinfo) orig="$f.c"
-           cflags="-O3 --param align-threshold=200" ;;
     # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
     # mode_update's cold layout comes from dead hints in the source
     # (tools/wip/mu/p1/NOTES.md); -fno-toplevel-reorder keeps its data order
