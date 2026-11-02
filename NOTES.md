@@ -195,23 +195,19 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
 
 - Its strings are literals in the original's `.rdata` order:
   parseOption's macid branch is written success-first, and
-  applyIniOptions' macid test has one `asm "i"` hint (reshaping it would
-  renumber the blocks `src/options.prof` is keyed by).
+  applyIniOptions' macid test has one `asm "i"` hint.
 - `baseFileExists` is ipa-split; its `.part.0` (4236f0) is in `C_FUNCS`
   under gcc's name.
-- `parseButton`'s split part (449640) is gcc's `.text.unlikely`. A profile
-  build doesn't split, so it is written out as a `cold` function in
+- `parseButton`'s split part (449640) is gcc's `.text.unlikely`. It is
+  written out as a `cold` function in
   `.text.startup` under gcc's name (`_parseButton.part.0`). It is global
   (with `regparm(1)`, the static's convention) and defined first, so its
   FDE comes right after the split `baseFileExists.part.0`'s.
 - gcc emits the functions in source order, so applyIniOptions sits after
   parseCmdOptions as in the original.
-- `applyIniOptions` is built with a crafted profile (`src/options.prof`,
-  written by `tools/wip/aiodesign.py`; the other functions keep gcc's guessed
-  one). Its label alignment needs stale block counts, which tests of
-  never-written statics (`aio_never*`) give: IPA folds them after the
-  profile is read and the counts of their dead edges stay behind
-  (tools/wip/README.md, options.c).
+- `applyIniOptions` is a plain compile with no profile: its option guards
+  call an inlined `optIniBool`, which gives the hot layout, and dead zero-byte
+  hints set the cold layout and label alignment (tools/wip/aio/p1/NOTES.md).
 - `strcat(xb.outName, "name")` is expanded inline: short names become
   immediate stores, longer ones copy from the (merged) literal, as in the
   original, so it stays a plain strcat.

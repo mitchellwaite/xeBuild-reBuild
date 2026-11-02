@@ -99,12 +99,10 @@ for f in $objects globals; do
     console_hdd) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3" ;;
     # parseOption's setBoolOption and vlen hints (82 and 84 lay out the
-    # done/incomplete blocks differently). applyIniOptions has a crafted
-    # profile like mode_update (src/options.prof, from
-    # tools/wip/aiodesign.py); the rest keep the guessed one
+    # done/incomplete blocks differently); applyIniOptions' layout comes
+    # from dead hints in the source (tools/wip/aio/p1/NOTES.md)
     options) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=83 -fno-ipa-profile -fno-reorder-functions"
-           prof="@src/options.prof --only=applyIniOptions" ;;
+           cflags="-O3 --param builtin-expect-probability=83 -fno-ipa-profile -fno-reorder-functions" ;;
     # iniPreParse: vectorization makes PRE drop a PHI; its ';' hint (65-66)
     # makes its memcpy block hot enough to be aligned; parseIni needs
     # LRA's EBBs to stop at a 50% fallthrough (51-70 work);

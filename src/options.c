@@ -2,8 +2,9 @@
    line, options.ini and perbox files, optional patches.  gcc emits the
    string literals in the order it expands their blocks, which gives the
    original's .rdata order (one asm hint in applyIniOptions).
-   applyIniOptions is built with a crafted profile (build.sh,
-   src/options.prof); everything else keeps gcc's guessed one. */
+   applyIniOptions' cold layout is set by dead zero-byte hints (dead
+   __builtin_constant_p arms and feeds, dummy heap entries), with no
+   profile; tools/wip/aio/p1/NOTES.md has each one. */
 #include <stdio.h>
 #include <string.h>
 
@@ -22,16 +23,8 @@ uint32_t parseOption(char *opt);
 /* parseCmdOptions matches only when it sees an int return */
 int parseOptionInt(char *opt) __asm__("_parseOption");
 
-/* the object is compiled with -fbranch-probabilities and a .gcda that has
-   counts for applyIniOptions only; the rest keep the guessed profile (a
-   function without counts would be compiled as never executed) */
-#pragma GCC push_options
-#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
-
 /* parseButton after its first four names: gcc's ipa-split part in the
-   original, called from applyIniOptions' copies of the first tests.  A
-   profile build doesn't split (feedback fnsplit refuses every function),
-   so it is written out; cold, and in the original's .text.startup.  Global
+   original.  Written out; cold, and in the original's .text.startup.  Global
    and first: gcc emits split parts (baseFileExists') first, then the
    functions in source order, which puts its FDE second as in the
    original.  regparm(1) is the convention gcc gave the static part */
@@ -279,6 +272,74 @@ _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
 
+	if (xb.bootFlags & set) {
+		if (__builtin_constant_p(xb.bootFlags + 1))
+			goto r;
+		return 0;
+	}
+	if (xb.bootFlagsOff & set) {
+		if (__builtin_constant_p(xb.bootFlagsOff + 1))
+			goto r;
+		return 0;
+	}
+	if (perboxExists(name)) {
+		log_printf(1, "Using %s option (perbox file)\n", name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (!bad) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
+			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+			return 0;
+		}
+	}
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
+	return 1;
+}
+
+static _Bool optN(const char *name, uint32_t set, uint32_t clear, int def)
+{
+	char *bad;
+
+	if (__builtin_expect(__builtin_constant_p(xb.bootFlags + 2), 0)) return 0;
+	if (xb.bootFlags & set) {
+		if (__builtin_constant_p(xb.bootFlags + 1))
+			goto r;
+		return 0;
+	}
+	if (xb.bootFlagsOff & set) {
+		if (__builtin_constant_p(xb.bootFlagsOff + 1))
+			goto r;
+		return 0;
+	}
+	if (perboxExists(name)) {
+		log_printf(1, "Using %s option (perbox file)\n", name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (__builtin_expect(!bad, 0)) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
+			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+			return 0;
+		}
+	}
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
+	return 1;
+}
+
+static _Bool optO(const char *name, uint32_t set, uint32_t clear, int def)
+{
+	char *bad;
+
+	if (__builtin_expect(__builtin_constant_p(xb.bootFlags + 7), 0)) goto r; if (__builtin_constant_p(xb.bootFlags + 8) && __builtin_constant_p(xb.bootFlags + 9)) goto r;
 	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
 		return 0;
 	if (perboxExists(name)) {
@@ -294,12 +355,141 @@ _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 			return 0;
 		}
 	}
-	{
-		/* the original ORs into eax (so `return 1` isn't hoisted) */
-		uint32_t f = (xb.bootFlags & ~clear) | set;
-		__asm__("" : "+a" (f));
-		xb.bootFlags = f;
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
+	return 1;
+}
+
+static _Bool optE(const char *name, uint32_t set, uint32_t clear, int def)
+{
+	char *bad;
+
+	if (xb.bootFlags & set) {
+		if (__builtin_constant_p(xb.bootFlags + 1))
+			goto r;
+		return 0;
 	}
+	if (xb.bootFlagsOff & set) {
+		if (__builtin_constant_p(xb.bootFlagsOff + 1))
+			goto r;
+		return 0;
+	}
+	if (perboxExists(name)) {
+		log_printf(1, "Using %s option (perbox file)\n", name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (__builtin_expect(!bad, 0)) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
+			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+			return 0;
+		}
+	}
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
+	return 1;
+}
+
+static _Bool optC(const char *name, uint32_t set, uint32_t clear, int def)
+{
+	char *bad;
+
+	if (xb.bootFlags & set) {
+		if (__builtin_constant_p(xb.bootFlags + 1))
+			goto r;
+		return 0;
+	}
+	if (xb.bootFlagsOff & set) {
+		if (__builtin_constant_p(xb.bootFlagsOff + 1))
+			goto r;
+		return 0;
+	}
+	if (perboxExists(name)) {
+		log_printf(1, "Using %s option (perbox file)\n", name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (__builtin_expect(!bad, 0)) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
+			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+			return 0;
+		}
+	}
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
+	return 1;
+}
+
+static _Bool optS(const char *name, uint32_t set, uint32_t clear, int def)
+{
+	char *bad;
+
+	if (xb.bootFlags & set) {
+		if (__builtin_constant_p(xb.bootFlags + 1))
+			goto r;
+		return 0;
+	}
+	if (xb.bootFlagsOff & set) {
+		if (__builtin_constant_p(xb.bootFlagsOff + 1))
+			goto r;
+		return 0;
+	}
+	if (perboxExists(name)) {
+		log_printf(1, "Using %s option (perbox file)\n", name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (__builtin_expect(!bad, 0)) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
+			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+			return 0;
+		}
+	}
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
+	return 1;
+}
+
+static _Bool optU(const char *name, uint32_t set, uint32_t clear, int def)
+{
+	char *bad;
+
+	if (xb.bootFlags & set) {
+		if (__builtin_constant_p(xb.bootFlags + 1))
+			goto r;
+		return 0;
+	}
+	if (xb.bootFlagsOff & set) {
+		if (__builtin_constant_p(xb.bootFlagsOff + 1))
+			goto r;
+		return 0;
+	}
+	if (perboxExists(name)) {
+		log_printf(1, "Using %s option (perbox file)\n", name);
+	} else {
+		bad = iniBoolInvalid(name);
+		if (__builtin_expect(!bad, 0)) {
+			if (!getIniBool(name, def))
+				return 0;
+			log_printf(1, "Using %s option (ini file)\n", name);
+		} else {
+			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+			return 0;
+		}
+	}
+r:
+	xb.bootFlags &= ~clear;
+		xb.bootFlags |= set;
 	return 1;
 }
 
@@ -313,6 +503,41 @@ int optIniInt(const char *name, int def)
 		return def;
 	}
 	return getIniU32(name, def);
+}
+
+static int parseButtonX(const char *s)
+{
+	int b = 0;
+
+	if (!s) {
+z:
+		return 0;
+	}
+	if (__builtin_expect(!strnicmp(s, "power", 5), 1)) {
+		b = 0x11;
+		if (__builtin_expect(__builtin_constant_p(xb.xellButton + 5), 1)) goto dx;
+bx: ;
+	} else {
+		__asm__ goto ("" :::: dxc);
+		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2)) goto z; if (__builtin_constant_p(xb.xellButton + 3)) goto z; }
+		if (!strnicmp(s, "remopower", 9))
+			b = 0x20;
+		else if (!strnicmp(s, "remox", 5))
+			b = 0x22;
+		else if (__builtin_expect(!strnicmp(s, "winbutton", 9), 1))
+			b = 0x24;
+		else
+			b = parseButtonPart(s);
+	}
+	return b;
+dxc: __attribute__((cold));
+	goto dx;
+dx:
+	__asm__ volatile ("" :: "i"(3));
+	b = 0x11;
+	if (__builtin_constant_p(xb.xellButton + 6))
+		goto bx;
+	__builtin_unreachable();
 }
 
 int parseButton(const char *s)
@@ -336,7 +561,6 @@ int parseButton(const char *s)
 	return b;
 }
 
-#pragma GCC pop_options
 
 /* applyIniOptions' copies of the functions above: a function with other
    optimize options can't be inlined into it (always_inline is, early) */
@@ -352,74 +576,8 @@ static inline __attribute__((always_inline)) int optIniIntI(const char *name, in
 	return getIniU32(name, def);
 }
 
-/* never written: IPA marks them read-only after the profile is read, and
-   the tests on them fold away in ccp2.  The counts the profile gave their
-   dead edges stay on the blocks around them (gcc doesn't update counts
-   when an edge goes), the stale frequencies the original's alignment
-   padding needs (see tools/wip/README.md, options.c) */
-static int aio_never, aio_never2, aio_never3, aio_never4;
+#define OPT(name, set, clear) if (!(xb.bootFlags & (set))) optIniBool(name, set, clear, 0)
 
-static inline __attribute__((always_inline)) int parseButtonI(const char *s, int skip)
-{
-	if (!s)
-		return 0;
-	if (!strnicmp(s, "power", 5) && !skip)
-		return 0x11;
-	if (!strnicmp(s, "remopower", 9))
-		return 0x20;
-	if (!strnicmp(s, "remox", 5))
-		return 0x22;
-	if (!strnicmp(s, "winbutton", 9))
-		return 0x24;
-	return parseButtonPart(s);
-}
-
-static inline __attribute__((always_inline)) int macidSetI(void)
-{
-	int i;
-
-	for (i = 0; i < 6; i++)
-		if (xb.macid[i] != 0xff)
-			return 1;
-	return 0;
-}
-
-static inline __attribute__((always_inline)) void stripColonsI(char *s)
-{
-	int i, j, len;
-
-	len = strlen(s) + 1;
-	for (i = 0, j = 0; i < len; i++)
-		if (s[i] != ':')
-			s[j++] = s[i];
-}
-
-/* optIniBool's body in the caller (the profile gives each copy its own
-   edge counts) */
-#define OPT(name, set, clear) do { \
-		if (xb.bootFlags & (set)) \
-			break; \
-		if (xb.bootFlagsOff & (set)) \
-			break; \
-		if (perboxExists(name)) { \
-			log_printf(1, "Using %s option (perbox file)\n", name); \
-		} else { \
-			s = iniBoolInvalid(name); \
-			if (!s) { \
-				if (!getIniBool(name, 0)) \
-					break; \
-				log_printf(1, "Using %s option (ini file)\n", name); \
-			} else { \
-				log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, s); \
-				break; \
-			} \
-		} \
-		xb.bootFlags &= ~(clear); \
-		xb.bootFlags |= (set); \
-	} while (0)
-
-#pragma GCC push_options
-#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
 
 void stripColons(char *s)
 {
@@ -596,8 +754,7 @@ int setBoolOption(const char *name, const char *val)
      epilogue-copy threshold.
    The return is uint32_t (int keeps it in esi); parseCmdOptions calls it
    through parseOptionInt.  po_hint gets parseOption's options too, or it
-   can't be inlined there (the pragma above gives both an optimize
-   attribute). */
+   can't be inlined there. */
 __attribute__((optimize("no-early-inlining")))
 static void po_hint(int *p) { *p = 1; }
 
@@ -802,11 +959,9 @@ int parseCmdOptions(const char *opts)
 	return 1;
 }
 
-#pragma GCC pop_options
 
 /* options from perbox files and options.ini that the command line didn't
-   set.  The block layout comes from the profile: src/options.prof sets
-   the edges (see tools/wip/README.md for how its frequencies were chosen) */
+   set.  The cold block layout comes from the hints in the head comment. */
 void applyIniOptions(void)
 {
 	char *s;
@@ -814,9 +969,9 @@ void applyIniOptions(void)
 
 	OPT("nomobile", 0x20000000, 0);
 	OPT("noremap", 0x40000000, 0);
-	OPT("noecdremap", 0x80000000, 0);
-	OPT("nandmu", 0x10000000, 0);
-	OPT("nosecurity", 0x4000000, 0);
+	if (!(xb.bootFlags & 0x80000000)) optN("noecdremap", 0x80000000, 0, 0);
+	if (!(xb.bootFlags & (0x10000000))) optU("nandmu", 0x10000000, 0, 0);
+	if (!(xb.bootFlags & (0x4000000))) optS("nosecurity", 0x4000000, 0, 0);
 	OPT("nosusecurity", 0x1000000, 0);
 	OPT("smcnocheck", 0x200000, 0);
 	if (!xb.cfLdv) {
@@ -848,19 +1003,20 @@ void applyIniOptions(void)
 		xb.gameRegion = optIniIntI("gameregion", -1);
 	if (xb.dvdRegion == -1)
 		xb.dvdRegion = optIniIntI("dvdregion", -1);
-	if (!macidSetI()) {
+	if (!macidSet()) {
 		s = getIniValue("macid");
 		if (s) {
-			stripColonsI(s);
+			stripColons(s);
 			/* the original's .rdata has these before the length error (its
-			   tests were likely the other way round, but that reshape would
-			   renumber the blocks src/options.prof is keyed by) */
+			   tests were likely the other way round) */
 			__asm__("" :: "i"("***** WARNING: invalid characters in macid '"), "i"("' provided in ini file! Discarding!\n"));
 			if (strlen(s) != 12) {
 				log_printf(0, "***** WARNING: invalid length macid '");
 				showHexPairs(0, s);
 				log_printf(0, "' provided in ini file! Discarding!\n", s);
 			} else if (!validateStringU32(s)) {
+				__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));
+				__asm__ goto ("" :::: dzc1);
 				log_printf(0, "***** WARNING: invalid characters in macid '");
 				showHexPairs(0, s);
 				log_printf(0, "' provided in ini file! Discarding!\n", s);
@@ -875,11 +1031,11 @@ void applyIniOptions(void)
 		}
 	}
 	if (xb.type - BUILD_JTAG <= 3) {
-		OPT("cygnos", 1, 0);
+		if (!(xb.bootFlags & (1))) optC("cygnos", 1, 0, 0);
 		OPT("demon", 8, 0);
 		OPT("patchsmc", 0x8000000, 0);
 		if (!xb.xellButton && (xb.bootFlags & 4)) {
-			xb.xellButton = parseButtonI(getIniValue("xellbutton"), 0);
+			xb.xellButton = parseButtonX(getIniValue("xellbutton"));
 			if (!xb.xellButton) {
 				log_printf(1, "default console DVD eject button is being used to start xell\n");
 				xb.xellButton = 0x12;
@@ -888,77 +1044,46 @@ void applyIniOptions(void)
 		if (!xb.xellAltButton && (xb.bootFlags & 4)) {
 			/* a dead edge into the remopower test: its block keeps a
 			   count above its edge's */
-			xb.xellAltButton = parseButtonI(getIniValue("xellbutton2"), aio_never);
+			xb.xellAltButton = parseButton(getIniValue("xellbutton2"));
 			if (!xb.xellButton)
 				log_printf(1, "alternate xell button is disabled\n");
 		}
-		OPT("smcnoeject", 0x400000, 0);
+		if (!(xb.bootFlags & (0x400000))) optE("smcnoeject", 0x400000, 0, 0);
 		OPT("smcnoblink", 0x800000, 0);
 	}
 	/* outside the block above: VRP threads its range test past this one
 	   (a switch it can't), and smcnoblink's paths reload the type */
 	if (xb.type == BUILD_JTAG) {
 		OPT("nodvd", 2, 4);
-		/* OPT("olddvd", 0, 4) with dead edges: Q (olddvd_q) merges into
-		   the iniBoolInvalid block and leaves it its count, olddvd_set
-		   merges into the `and ~4` block */
-		do {
-			if (perboxExists("olddvd")) {
-				log_printf(1, "Using %s option (perbox file)\n", "olddvd");
-			} else {
-olddvd_q:
-				if (aio_never)
-					break;
-				s = iniBoolInvalid("olddvd");
-				if (!s) {
-					if (!getIniBool("olddvd", 0))
-						break;
-					log_printf(1, "Using %s option (ini file)\n", "olddvd");
-				} else {
-					log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", "olddvd", s);
-					break;
-				}
-			}
-olddvd_set:
-			if (aio_never)
-				break;
-			xb.bootFlags &= ~4;
-		} while (0);
+		if (!(xb.bootFlags & 0)) optO("olddvd", 0, 4, 0);
 		if (!xb.dualButton) {
-			xb.dualButton = parseButtonI(getIniValue("dualboot"), 0);
+			xb.dualButton = parseButton(getIniValue("dualboot"));
 			if (xb.xellButton == xb.dualButton) {
 				log_printf(1, "dualboot setting ignored!\n");
+				__asm__ goto ("" :::: dzc2);
 				xb.dualButton = 0;
 			}
 		}
-	} else if (aio_never) {		/* dead flow for the blocks above */
-		goto olddvd_set;
-	} else if (aio_never2) {
-		goto olddvd_q;
-	} else if (aio_never4) {
-		goto tail;
 	}
 	if (!(xb.bootFlags & 0x2000000)) {
 		s = getIniValue("dvdkey");
 		if (s && kvSetDvdKey(s))
 			xb.bootFlags |= 0x2000000;
 	}
-blsuffix:
 	if (!xb.blSuffix[0]) {
 		s = getIniValue("rev");
-		if (s)
+		if (s) {
 			sprintf(xb.blSuffix, "_%s", s);
+			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 1), 0)) { if (__builtin_constant_p(xb.blSuffix[1] + 2)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 4), 1)) goto dz1; } }
+b1: ;
+			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_constant_p(xb.blSuffix[1] + 16)) { if (__builtin_constant_p(xb.blSuffix[1] + 17)) { if (__builtin_constant_p(xb.blSuffix[1] + 18)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 19), 1)) goto dz2; } } } }
+b2: ;
+		}
 	}
-	/* a dead cycle through the blSuffix test (irreducible: the goto tail
-	   above enters it too) leaves that block the count that sets
-	   freq_max, and with it the alignment threshold */
-tail:
-	if (aio_never3)
-		goto blsuffix;
+	if (0) { dzc1: __attribute__((cold)); goto dz1; dz1: __asm__ volatile ("" :: "i"(1)); if (__builtin_constant_p(xb.blSuffix[1] + 3)) goto b1; __builtin_unreachable(); }
+	if (0) { dzc2: __attribute__((cold)); goto dz2; dz2: __asm__ volatile ("" :: "i"(4)); if (__builtin_constant_p(xb.blSuffix[1] + 9)) goto b2; __builtin_unreachable(); }
 }
 
-#pragma GCC push_options
-#pragma GCC optimize ("no-branch-probabilities", "no-reorder-functions")
 
 int parseRawPatch(char *pat)
 {
