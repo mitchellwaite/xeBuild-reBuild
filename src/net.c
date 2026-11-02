@@ -643,10 +643,9 @@ int netFormatCompat(void)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
 int netMkdir(const char *name)
 {
-	int rlen, ret;
+	int ret;
 	uint8_t *r;
 
 	if (name) {
@@ -654,15 +653,19 @@ int netMkdir(const char *name)
 
 		strcpy(cmd + 4, name);
 		strcat(cmd, "\n");
-		if (!netSendStr(cmd))
-			return 0;
-		r = netRecv(&rlen);
-		if (!r)
-			return 0;
-		ret = 0;
-		if (rlen == 2 && getBeU16(r) == OK_REPLY)
-			ret = 1;
-		netFree(r);
+		{
+			int rlen;
+
+			if (!netSendStr(cmd))
+				return 0;
+			r = netRecv(&rlen);
+			if (!r)
+				return 0;
+			ret = 0;
+			if (rlen == 2 && getBeU16(r) == OK_REPLY)
+				ret = 1;
+			netFree(r);
+		}
 		if (ret)
 			return 1;
 		return 0;
