@@ -199,8 +199,7 @@ int verifyCrl(uint8_t *crl, uint32_t size, int perBox)
 	return 0;
 }
 
-/* not cloned for verifyDae's perBox = 1 call */
-__attribute__((noclone)) void daeDecrypt(uint8_t *dae, uint32_t size, int perBox)
+void daeDecrypt(uint8_t *dae, uint32_t size, int perBox)
 {
 	uint8_t *buf;
 	uint8_t iv[16];
@@ -299,9 +298,7 @@ int verifyDae(uint8_t *buf, uint32_t size)
 	return n == 2;
 }
 
-/* inlined into verifyFcrt before profile estimation; the prototype above
-   keeps the external definition */
-inline __attribute__((always_inline)) int fcrtVerifySig(uint8_t *fcrt)
+int fcrtVerifySig(uint8_t *fcrt)
 {
 	uint8_t hash[20];
 	struct rsapub *pub;
