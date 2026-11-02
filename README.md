@@ -74,18 +74,14 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. fileutil</b>: 7 tricks, moderate</summary>
+<summary><b>1. fileutil</b>: 1 trick, moderate</summary>
 
-- `--param builtin-expect-probability=65`
-- All in `readFileIn`: 2 `__builtin_expect`, 1 register pin on three variables
-  (`edi`, `ebx`, `esi`), 1 guarded `rf_hint()` call, and `optimize("no-early-inlining")`
 - 1 dead test: the `'X'` comparison in `myatou32`, which can never match but
   changes the branch estimate
 
-Only one function is really at stake, but that function took a long search.
-Removing any subset of `readFileIn`'s hints fails, and six early-return and flag
-shapes were no closer. The `myatou32` test may well be in the original, so it may
-not need replacing.
+The test may well be in the original, so it may not need replacing. `readFileIn`
+now builds with no hints: it has no `if (size)`, because `readFileTo` already
+handles 0, and `path` is scoped to the `if (dir && name)` block.
 
 </details>
 

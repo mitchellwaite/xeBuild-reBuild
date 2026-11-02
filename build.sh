@@ -41,9 +41,6 @@ for f in $objects globals; do
     # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
     crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
               cflags="-O3 -Isrc/crypto" ;;
-    # readFileIn's __builtin_expect hints are tuned to this probability
-    fileutil) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=65" ;;
     # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
     # mode_update's cold layout comes from dead hints in the source
     # (tools/wip/mu/p1/NOTES.md); -fno-toplevel-reorder keeps its data order

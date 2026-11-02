@@ -4,8 +4,6 @@
  * Many helpers follow the author's util.c from cOzInABox/XeBuild
  * (tools/opt_idx/opt_idx/util.cpp, tools/su_check/su_check/util.c):
  * MIT License, Copyright (c) 2026 [cOz].
- *
- * readFileIn needs compiler hints to match (see the comment above it).
  */
 
 #include <errno.h>
@@ -463,10 +461,10 @@ void *FileToBuffer(const char *name, size_t *psize)
 	return buf;
 }
 
-size_t readFileTo(const char *name, void *buf, size_t size)
+int readFileTo(const char *name, void *buf, size_t size)
 {
 	FILE *f;
-	int ret = 0;
+	size_t ret = 0;
 
 	if (name && buf && size) {
 		f = fopen(name, "rb");
@@ -493,58 +491,46 @@ uint32_t readFileInTo(const char *dir, const char *name, void *buf, int size)
 }
 
 /*
- * readFileIn: the plain C (one ok flag, a single return of buf) gives the
- * reference control flow, but gcc's branch estimates and register choices
- * differ.  The hints below only steer those; none of them emits code:
- * - rf_hint() is a guarded call at profile_estimate time (PRED_CALL), which
- *   cancels the call heuristic from log_printf on the alloc-failure edge.
- *   It is inlined later (hence no-early-inlining) and its store to the
- *   write-only rf_sink is deleted with the variable.
- * - __builtin_expect probabilities come from build.sh's
- *   --param builtin-expect-probability for this file.
- * - The empty asm ties size/buf/alloc to edi/ebx/esi as in the reference.
+ * readFileIn: no compiler hints.  Three things in the source decide the code:
+ * - readFileTo's size_t ret keeps the compare against size free of casts, so
+ *   gcc threads every read outcome past it, and its int return type keeps the
+ *   whole function out of line until IPA inlining (no early split).
+ * - That call in the read arm's first block cancels the call heuristic from
+ *   log_printf on the alloc-failure edge.
+ * - path scoped to the if block keeps free's NULL in an inner PHI, out of reach
+ *   of the null-return prediction.
  */
-static int rf_sink;
-static void rf_hint(void) { rf_sink = 1; }
-
-__attribute__((optimize("no-early-inlining")))
 void *readFileIn(const char *dir, const char *name, size_t *psize, size_t align)
 {
-	char path[1024];
 	void *buf = NULL;
 	size_t size, alloc;
-	int ok = 0;
 
-	if (dir == NULL || name == NULL)
-		return NULL;
-	sprintf(path, "%s%s", dir, name);
-	size = getFileSizeName(path);
-	alloc = size;
-	if (align) {
-		alloc = size + align - 1;
-		alloc &= -align;
-	}
-	buf = calloc(alloc, 1);
-	if (buf == NULL)
-		log_printf(1, "unable to allocate file buffer of 0x%x size!\n", alloc);
-	else {
-		__asm__("" : : "D" (size), "b" (buf), "S" (alloc));
-		rf_hint();
-		if (__builtin_expect(size != 0, 0)) {
-			if (readFileTo(path, buf, size) == size)
-				ok = 1;
-		} else
-			ok = 1;
-	}
-	if (psize) {
-		if (ok)
-			*psize = alloc;
-		else
-			*psize = 0;
-	}
-	if (__builtin_expect(!ok && buf, 0)) {
-		free(buf);
-		buf = NULL;
+	if (dir && name) {
+		char path[1024];
+
+		sprintf(path, "%s%s", dir, name);
+		size = getFileSizeName(path);
+		alloc = size;
+		if (align) {
+			alloc = size + align - 1;
+			alloc &= -align;
+		}
+		buf = calloc(alloc, 1);
+		if (buf) {
+			if (readFileTo(path, buf, size) == size) {
+				if (psize)
+					*psize = alloc;
+			} else {
+				if (psize)
+					*psize = 0;
+				free(buf);
+				buf = NULL;
+			}
+		} else {
+			log_printf(1, "unable to allocate file buffer of 0x%x size!\n", alloc);
+			if (psize)
+				*psize = 0;
+		}
 	}
 	return buf;
 }
