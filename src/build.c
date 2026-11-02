@@ -371,12 +371,6 @@ uint8_t defCore[0xd40] = {
 	0x00, 0x00, 0x00, 0x00, 0x61, 0x6c, 0x74, 0x20, 0x66, 0x69, 0x72, 0x6d,
 	0x77, 0x61, 0x72, 0x65, 0x00, 0x00, 0x00, 0x00,
 };
-/* TODO(prototype cast): blCheckHash and blSign are int in xboxrom.c; as
-   uint32_t here verifyBlSigs' inlined findFile(11) counts from blCheckHash's 0
-   result instead of a new xor (uncprop) */
-uint32_t blSignU32(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey,
-	      const uint8_t *salt) __asm__("_blSign");
-uint32_t blCheckHashU32(uint8_t *bl, unsigned int len, const uint8_t *expect) __asm__("_blCheckHash");
 /* TODO(prototype cast): image_write.c's imgAdd takes (..., uint8_t type, uint16_t next,
    int pad) and imgAddRaw returns int; build.c's calls compile to the
    original's code only with these types */
@@ -1157,7 +1151,7 @@ int verifyBlSigs(void)
 				else if (xb.prvKey) {
 					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 						log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
-						if (!blSignU32(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
+						if (!blSign(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
 							log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
 							ok = 0;
 						} else
@@ -1172,7 +1166,7 @@ int verifyBlSigs(void)
 		case 14:
 			sd = findFile(13);
 			if (sd) {
-				if (!blCheckHashU32(e->data, e->size, xb.files[sd].data + 588)) {
+				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588)) {
 					if (xb.prvKey) {
 						sb = findFile(11);
 						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
@@ -1749,7 +1743,7 @@ int patchBlsResign(void)
 			if (xb.prvKey) {
 				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 					log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
-					if (!blSignU32(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
+					if (!blSign(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
 						log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
 					else {
 						log_printf(1, "%s resigned successfully!\n", xb.files[cd].name);

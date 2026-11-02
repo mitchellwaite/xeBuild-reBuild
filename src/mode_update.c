@@ -22,9 +22,6 @@
 
 #define cp __builtin_constant_p
 
-/* TODO(prototype cast): verifyExtended returns int (bootloaders.c); getKv's
-   code wants a uint32_t */
-uint32_t verifyExtendedU32(void *buf, int size) __asm__("_verifyExtended");
 
 uint32_t getSecurityFiles(const char *dir);
 
@@ -326,7 +323,7 @@ static uint32_t getKv(const char *dir)
 	}
 	if (xb.kv.data && xb.kv.size > 0x3fff) {
 		log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.kv.size);
-		ret = verifyExtendedU32(xb.kv.data, xb.kv.size);
+		ret = verifyExtended(xb.kv.data, xb.kv.size);
 		if (ret) {
 			log_printf(1, "keyvault is good!\n");
 			setKvSalt(xb.kv.data + 16);

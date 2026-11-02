@@ -18,7 +18,7 @@ int fcrtVerifySig(uint8_t *fcrt);
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
 
-int verifyExtended(uint8_t *buf, uint32_t size)
+uint32_t verifyExtended(uint8_t *buf, uint32_t size)
 {
 	uint8_t salt[2] = { 7, 0x12 };
 	uint8_t key[16];
@@ -352,7 +352,7 @@ int verifyFcrt(uint8_t *fcrt, uint32_t size)
 	return 1;
 }
 
-int shaSelfCheck(uint8_t *p)
+uint32_t shaSelfCheck(uint8_t *p)
 {
 	uint8_t hash[20];
 

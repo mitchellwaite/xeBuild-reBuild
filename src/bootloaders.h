@@ -4,7 +4,7 @@
 
 #include "xebuild.h"
 
-int verifyExtended(uint8_t *buf, uint32_t size);
+uint32_t verifyExtended(uint8_t *buf, uint32_t size);
 int unscramble(uint8_t *buf, uint32_t len);
 uint32_t cbGetPairing(uint8_t *cb);
 uint32_t cfBestPairing(uint8_t *data, uint32_t size);
@@ -15,6 +15,6 @@ int verifyCrl(uint8_t *crl, uint32_t size, int perBox);
 void daeDecrypt(uint8_t *dae, uint32_t size, int perBox);
 int verifyDae(uint8_t *buf, uint32_t size);
 int verifyFcrt(uint8_t *fcrt, uint32_t size);
-int shaSelfCheck(uint8_t *p);
+uint32_t shaSelfCheck(uint8_t *p);
 
 #endif

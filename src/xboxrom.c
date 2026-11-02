@@ -38,7 +38,7 @@ int blVerifySig(uint8_t *bl, unsigned int len, const void *pubKey, const uint8_t
 	return XeCryptBnQwBeSigVerify((XECRYPT_SIG *)(bl + 0x20), hash, salt, (XECRYPT_RSA *)pubKey);
 }
 
-int blSign(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey, const uint8_t *salt)
+uint32_t blSign(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey, const uint8_t *salt)
 {
 	struct {
 		char salt[16];
@@ -60,7 +60,7 @@ int blSign(uint8_t *bl, unsigned int len, const void *pubKey, const void *prvKey
 	return 1;
 }
 
-int blCheckHash(uint8_t *bl, unsigned int len, const uint8_t *expect)
+uint32_t blCheckHash(uint8_t *bl, unsigned int len, const uint8_t *expect)
 {
 	uint8_t hash[20];
 

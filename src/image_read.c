@@ -14,9 +14,6 @@
 #include "main.h"
 #include "smc.h"
 
-/* TODO(prototype cast): shaSelfCheck returns int (bootloaders.c);
-   findAnchor's code wants a uint32_t */
-uint32_t shaSelfCheckU32(uint8_t *p) __asm__("_shaSelfCheck");
 
 #define ROT16(x) ((uint16_t)(((x) << 8) | ((x) >> 8)))
 
@@ -433,7 +430,7 @@ int findAnchor(void)
 	log_printf(1, "attempting to find valid anchor block\n");
 	v0 = getBeU32(xb.dump + 0x2fe8018);
 	v1 = getBeU32(xb.dump + 0x2fec018);
-	ok0 = shaSelfCheckU32(xb.dump + 0x2fe8000);
+	ok0 = shaSelfCheck(xb.dump + 0x2fe8000);
 	if (ok0)
 		log_printf(1, "anchor block v %d at 0x2fe8000 is valid\n", v0);
 	else {
@@ -441,7 +438,7 @@ int findAnchor(void)
 		/* code-free: emits these two (threaded copies, expanded last) in the original's order */
 		__asm__("" : : "i"("anchor block v %d at 0x2fec000 is valid\n"), "i"("anchor block v %d at 0x2fec000 is selected\n"));
 	}
-	ok1 = shaSelfCheckU32(xb.dump + 0x2fec000);
+	ok1 = shaSelfCheck(xb.dump + 0x2fec000);
 	if (ok1)
 		log_printf(1, "anchor block v %d at 0x2fec000 is valid\n", v1);
 	else {
