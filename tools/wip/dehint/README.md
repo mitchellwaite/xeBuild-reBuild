@@ -13,7 +13,7 @@ Status is `open`, `MATCH` (draft matches, not landed) or `landed <commit>`.
 | 1 | fileutil | readFileIn | 2 expect, pin on edi/ebx/esi, rf_hint, no-early-inlining | landed 454b47d |
 | 2 | fileutil | myatou32 | dead `'X'` test | landed b17d678 |
 | 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | landed at the user's request; retry for natural code later (see its notes) |
-| 4 | net | netRecvVerbose (netRecv is its clone) | expect, `got` pin | open |
+| 4 | net | netRecvVerbose (netRecv is its clone) | `got` pin (expect removed) | open |
 | 5 | net | netWriteBlocks | no-crossjumping, no-early-inlining | open |
 | 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | open |
 | 7 | net | netWritePatches | no-early-inlining | open |

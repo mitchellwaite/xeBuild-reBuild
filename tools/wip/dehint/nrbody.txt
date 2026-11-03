@@ -1,0 +1,21 @@
+
+		@SEL@
+			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
+			if (buf != (uint8_t *)&netEmpty)
+				free(buf);
+			return NULL;
+		}
+		r = recv(netSock, (char *)buf + got, size - got, 0);
+		if (r == SOCKET_ERROR) {
+			if (verbose)
+				putchar('\n');
+			log_printf(0, "could not receive data on socket, error %d\n",
+				   WSAGetLastError());
+			if (buf != (uint8_t *)&netEmpty)
+				free(buf);
+			return NULL;
+		}
+		got += r;
+		if (verbose)
+			printf("received 0x%08x of 0x%08x\r", got, size);
+	

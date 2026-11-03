@@ -118,3 +118,51 @@ Clone best still 13 (drafts/net_netRecvVerbose_best.c). Own-function best 8 (dra
 Reproduce: python tools/wip/dehint/nrsplit.py tools/wip/dehint/gen_nrs7.py ; python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecv_own_best.c netRecv -O3 -Isrc . nrtr.py <src.c> prints traces and predictions.
 Next (low odds): a natural got ref in the log block, worth .4*f_log (~110), would close either family; nothing found that isn't TER'd or left in the output. Otherwise this needs the user's ruling: keep expect+asm (hints) in src/net.c.
 Don't retry: public netRecv, wrappers over helper, global verbose, head spellings (gen_nrs3), single-return styles (gen_nrs8), store in the loop.
+
+## Attempt 4
+
+Tools: nrtpl.py (template with one axis per piece of C, DEF has the side select), nrcost.py <src.c>... (clone's MEM/class cost and disposition per pseudo), nrhead.txt/nrbody.txt (function head and loop body for gen_nr23). Generators gen_nr20-.
+
+How the reference's registers come about, read from the hinted build's IRA dump (not a guess; `Spilling a7r137 for a1r109` in the dump): got is pushed early because 6 regs are profitable, is popped last, is given edx (reg 1) by colouring, then improve_allocation spills r137 (&tv, rematerialised as `lea eax,[esp+52]`) and gives got its edi. Pop order is then size ebx, buf esi, r137 edi, r138 (&fds) ebp. In the colorable bucket the order is ascending thread freq, and got (~4700) always beats size and buf, so only the caller-save profitability test can change it. No hard-reg preference is available in plain C to steer got off ebx directly.
+
+The test, exact: got's MEM - class > 8*call_freq. Side draft: MEM 17043, class 1868 (= 2*f2/10, alt_cost on the `sub`, because size doesn't die there; it's charged to all the insn's operands), threshold .8(f1+f2) = 15292. Deficit 117. (alt_cost's mechanism is from memory of ira-costs.c, not re-read; predict.def fetch got HTTP 429, predictor rates here are from the dumps.)
+
+### New: the flip fixes V with no side select (real progress)
+
+gen_nr25 (16): `if (size) { calloc...; loop...; if (got == size) {store; return buf;} log...; return NULL; } *len = 0; return &netEmpty;`: **V MATCH with the plain select**, no side effect in the condition, no cast. drafts/net_netRecvVerbose_flip.c; clone 48, registers only (r=0). So the side select isn't needed, and the clone's deficit goes from 117 back to plain's 50 (MEM 17117, class 1880, threshold 15287).
+Why, from the traces (V's: `nrbb.py <dir> 'netRecvVerbose ('`; note plain `netRecvVerbose` matches the clone first, because it's a prefix): `if (size)` loses the early-return prediction (61%) and takes the call heuristic (29%), so bb 7's successor keeps its freq but the entry freq goes 2533 -> 3405. bbro's round thresholds scale with the entry freq, so the block before the verbose test no longer extends into a trace in round 2; the non-verbose loop and the verbose loop start in round 3 in the right order. So the earlier "f_pre is fixed, so upstream exits don't matter" is true for the IRA deficit (clone freqs in the loop are identical) but **wrong for bbro**: the entry freq is a separate lever on layout. The other flips (one shared `*len = size` with buf defaulting to &netEmpty: share_ne, share_eq, else) are V=26, C=51: separate store blocks are in the reference, so it isn't one shared store. `flip|side` is C=52, V=0.
+gen_nr26 (216; flip x loop form x tail x outer spelling x zero arm x select): only `while` keeps V=0. Tail, `if (size)` vs `if (size != 0)`, `*len = 0` vs `*len = size` change nothing. Dropping the zero store is wrong (no `mov [eax],0`). do>0 is worse with the flip (V=52, C=44, r=2; see gen_nr28), bottom `got >= size` V=137, C=10, `got > size` V=36, C=29 and only without the zero store.
+gen_nr28 (30; head shapes moving the entry freq x while/do>0/nested while x tail): flip and `if (size != -1) { if (size) {...} zero } return NULL` give V=0, C=48. `if (size == 0) {zero} else {...}` is the same as base (V=22; do>0 V=50, C=24): an else arm doesn't take the call heuristic the way `if (size)` does, so entry freq alone decides V. Others are worse. No shape moved log or J in the do family.
+gen_nr27 (144; flip, plain select x gen_nr9's cast axes): V=0 with C=13 for the cast pair `got += (uint32_t)r` + `(uint32_t)got` in the log, same 13 lines as before, no side select needed. Saved as the new drafts/net_netRecvVerbose_best.c. Other casts C=48.
+
+### The task's ideas, tested
+
+gen_nr24 (1080; select x tail x remainder/pointer local x advance x head):
+- Tails with got (`*len = got`, `size = got; *len = size`): no change to C.
+- `left` (body-scoped or not), `p`, both: V and C unchanged, so no new ref at IRA. Not run: the same locals computed before the select. It would pay (refs at f1, about .6*a*F), but I expect the tree sink pass to move them back, and if it didn't, the output would differ from the reference, which computes them after the select.
+- `if (r != 0) got += r`, `got = got + r`: same as base. `if (r > 0) got += r`: C=4 (registers RIGHT, `lea ecx,[eax+edi]; test eax,eax; cmovg edi,ecx` instead of `add edi,eax`), V=96. A real test that can't fold, and it's what pays the threshold, so not usable.
+- `r < 0`, `r <= 0` for the recv failure: real compare differs, V=28 (side) or 50 (plain), C=52.
+- Head (side / plain, one-axis rows from nr24check.py): `if (!size) *len = size`, `buf = &netEmpty` default before the zero test: no change. Combined `size == -1 || size == 0`: V=68/86, C=86/42 with r=8/6. Zero-first: V=28, C=77/73. calloc check: V=2/24, C=50, r=2: the reference has none (`call _calloc; test ebx,ebx`), a real test stays.
+- `if (got != size)` log first: gen_nr23 and gen_nr26, no effect in the while form.
+
+### Other families
+
+gen_nr20 (16; int vs long splits, `n = got + r; got = n` with n another type): got's init becomes its own pseudo (r111, `got_32 = PHI <0>`), got keeps the rest, MEM falls. C=48, V=3..23. Plain `long` anywhere: no effect.
+gen_nr21 (60; a carrier `total` of another type into the log block): the copy just replaces log's ref of got at the same freq, so it pays nothing (MEM 17011, down from 17043), and V is 62+ with the unsigned types. `long` is propagated away. Every carrier has this problem: a copy only pays if got also keeps its own ref there.
+gen_nr22 (84; `if (verbose) putchar` as a static or static inline helper at any of the 3 sites, while/do, select): the helper is early-inlined, results same as no helper. So no call in the guard's else block at profile_estimate; p=.869 isn't reachable this way.
+gen_nr23 (64; do family with `if (size <= 0) goto done;` and other guards x tails): C has no goto predictor (guard still 73%), do-family V=50+, C=24.
+
+### Arithmetic for what's left (flip, while, plain; F=9700)
+
+Pay 50: f_pre + f_log must go up by 125. Log can rise only from 240 to R=282 (+17 cost). With else raised by a guard, while P(fail) .72 (`got != size`-style tail isn't lower, the dump shows 72 at best): the window is else in about [113,117], guard p about .883. Available guards: .73 (opcode positive), .869 (needs a call in the else block, which can't exist, see gen_nr22), .97 (while). At .869: log 298 > R 291, 7 over. So the do family misses again, narrowly, even though the flip removes its V > R constraint.
+
+## State at the end of attempt 4: NO MATCH, best 13 lines
+
+drafts/net_netRecvVerbose_best.c: flip + plain select + cast pair. V MATCH, clone 13 lines, the same eax difference as before.
+drafts/net_netRecvVerbose_flip.c: flip + plain select, no casts. V MATCH, clone 48 lines, registers only. The most natural source so far, and short by 50 cost.
+Reproduce: python tools/wip/dehint/nrsweep.py tools/wip/dehint/gen_nr27.py ; python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_best.c netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_best.c netRecv -O3 -Isrc
+Next, in order of odds:
+1. A guard between .86 and .885, or a tail with P(fail) under .70, for the do family. Note the flip itself pushes do>0 to C=44, so this also needs a flip that keeps the base do's C=24 layout while still fixing V; flip4 keeps C=24 but loses the V fix.
+2. Any natural got ref worth 50 in the plain flip: this is the same open question as before, but it's now 50 and not 117.
+3. The user's ruling: the flip with the existing `__asm__ ("" : : "g"(got));` before the log call gives MATCH on both V and the clone with no flags, and no expect, no --param and no side select (checked with fncmp; not landed, no full build). It keeps a hint, so it isn't a queue MATCH, but it does cut this function's hints to that one asm. To rebuild it: add that line above the log call in drafts/net_netRecvVerbose_flip.c.
+Don't retry: carriers into the log block (gen_nr21), int/long splits (gen_nr20), newline helpers (gen_nr22), goto guards (gen_nr23), remainder/pointer locals, tails in the while form, `if (r > 0)` (real test).

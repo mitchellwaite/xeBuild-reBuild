@@ -157,16 +157,14 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	size = getBeU32(hdr);
 	if (size == -1)
 		return NULL;
-	if (size == 0) {
-		*len = 0;
-		return (uint8_t *)&netEmpty;
-	}
+if (size) {
 	buf = calloc(size, 1);
 	if (verbose)
 		printf("waiting for 0x%x bytes\n", size);
 	got = 0;
 	while (got < size) {
-		if ((r = select(0, &fds, NULL, NULL, &tv)) == SOCKET_ERROR || r == 0) {
+		r = select(0, &fds, NULL, NULL, &tv);
+		if (r == SOCKET_ERROR || r == 0) {
 			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
 			if (buf != (uint8_t *)&netEmpty)
 				free(buf);
@@ -189,15 +187,18 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	if (verbose)
 		putchar('\n');
 	if (got == size) {
-		*len = size;
-		return buf;
+	*len = size;
+	return buf;
 	}
 	if (verbose)
 		putchar('\n');
 	log_printf(0, "received only %x of %x bytes! fail\n", (uint32_t)got, size);
 	if (buf != (uint8_t *)&netEmpty)
-				free(buf);
+		free(buf);
 	return NULL;
+	}
+	*len = 0;
+	return (uint8_t *)&netEmpty;
 }
 
 #define netRecv(len) netRecvVerbose(len, 0)

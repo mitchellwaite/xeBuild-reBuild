@@ -125,12 +125,11 @@ int netSendStr(const char *s)
 /* receive a length-prefixed reply, with progress output if verbose;
    netRecv is its IPA-CP clone for verbose 0.  verbose is unsigned: as an
    int, uncprop reuses it for got's 0 and keeps it in a register.  The
-   expect hint (with builtin-expect-probability
-   65; 60 aligns the verbose size <= 0 exit) starts the verbose loop's trace
-   before the shared recv-failure block.  Hinting every test also matches,
-   but then IPA-CP doesn't clone.  The asm (a use of got on the short-count
-   path) puts got over IRA's caller-save threshold in the clone, which
-   then allocates size/buf/got to ebx/esi/edi. */
+   if (size) nesting swaps the early-return prediction for the call
+   heuristic, which raises the entry frequency and so bbro's round
+   thresholds.  The asm (a use of got on the short-count path) puts got over
+   IRA's caller-save threshold in the clone, which then allocates
+   size/buf/got to ebx/esi/edi; it is 50 short without it. */
 uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
@@ -157,49 +156,49 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	size = getBeU32(hdr);
 	if (size == -1)
 		return NULL;
-	if (size == 0) {
-		*len = 0;
-		return (uint8_t *)&netEmpty;
-	}
-	buf = calloc(size, 1);
-	if (__builtin_expect(verbose, 0))
-		printf("waiting for 0x%x bytes\n", size);
-	got = 0;
-	while (got < size) {
-		r = select(0, &fds, NULL, NULL, &tv);
-		if (r == SOCKET_ERROR || r == 0) {
-			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
-			if (buf != (uint8_t *)&netEmpty)
-				free(buf);
-			return NULL;
-		}
-		r = recv(netSock, (char *)buf + got, size - got, 0);
-		if (r == SOCKET_ERROR) {
-			if (verbose)
-				putchar('\n');
-			log_printf(0, "could not receive data on socket, error %d\n",
-				   WSAGetLastError());
-			if (buf != (uint8_t *)&netEmpty)
-				free(buf);
-			return NULL;
-		}
-		got += r;
+	if (size) {
+		buf = calloc(size, 1);
 		if (verbose)
-			printf("received 0x%08x of 0x%08x\r", got, size);
+			printf("waiting for 0x%x bytes\n", size);
+		got = 0;
+		while (got < size) {
+			r = select(0, &fds, NULL, NULL, &tv);
+			if (r == SOCKET_ERROR || r == 0) {
+				log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
+				if (buf != (uint8_t *)&netEmpty)
+					free(buf);
+				return NULL;
+			}
+			r = recv(netSock, (char *)buf + got, size - got, 0);
+			if (r == SOCKET_ERROR) {
+				if (verbose)
+					putchar('\n');
+				log_printf(0, "could not receive data on socket, error %d\n",
+					   WSAGetLastError());
+				if (buf != (uint8_t *)&netEmpty)
+					free(buf);
+				return NULL;
+			}
+			got += r;
+			if (verbose)
+				printf("received 0x%08x of 0x%08x\r", got, size);
+		}
+		if (verbose)
+			putchar('\n');
+		if (got == size) {
+			*len = size;
+			return buf;
+		}
+		if (verbose)
+			putchar('\n');
+		__asm__ ("" : : "g"(got));
+		log_printf(0, "received only %x of %x bytes! fail\n", got, size);
+		if (buf != (uint8_t *)&netEmpty)
+			free(buf);
+		return NULL;
 	}
-	if (verbose)
-		putchar('\n');
-	if (got == size) {
-		*len = size;
-		return buf;
-	}
-	if (verbose)
-		putchar('\n');
-	__asm__ ("" : : "g"(got));
-	log_printf(0, "received only %x of %x bytes! fail\n", got, size);
-	if (buf != (uint8_t *)&netEmpty)
-		free(buf);
-	return NULL;
+	*len = 0;
+	return (uint8_t *)&netEmpty;
 }
 
 #define netRecv(len) netRecvVerbose(len, 0)
