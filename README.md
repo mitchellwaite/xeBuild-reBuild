@@ -91,15 +91,14 @@ choice, and eight attempts without it didn't match. `<= 0` on the first send, wi
 </details>
 
 <details>
-<summary><b>2. bootloaders</b>: 3 tricks, moderate</summary>
+<summary><b>2. bootloaders</b>: 2 tricks, moderate</summary>
 
-- 2 `optimize` attributes: `no-tree-dominator-opts` and `no-cse-follow-jumps`, on
-  `cdDecrypt` and `ceDecrypt`
-- 1 register pin, on `ceDecrypt`
+- 1 `optimize` attribute, with `no-tree-dominator-opts` and `no-cse-follow-jumps`,
+  and 1 register pin, both on `ceDecrypt`
 
-Both attributes come down to one `xor ebx,ebx` on the `calloc` failure path, which
-gcc drops because it knows `buf` is 0 there. `cbDecrypt` lost its attribute by
-declaring `key`, `buf` and `len` in the magic block and letting the failure paths
+The attribute comes down to one `xor ebx,ebx` on the `calloc` failure path, which
+gcc drops because it knows `buf` is 0 there. `cbDecrypt` and `cdDecrypt` lost theirs
+by declaring `key`, `buf` and `len` in the magic block and letting the failure paths
 fall out to the final `return 0`.
 
 </details>

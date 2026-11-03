@@ -20,7 +20,7 @@ Status is `open`, `MATCH` (draft matches, not landed), `landed <commit>` or `par
 | 8 | bootloaders | cfDecrypt | no-tree-dominator-opts, no-tree-vrp | landed (`key` scoped, `return 1` inside its block) |
 | 9 | bootloaders | daeVerifySig (inlines daeSigCheck where used) | no-early-inlining, hint(), literal asm, always_inline on daeSigCheck | landed (one function; `ok = 1`, key/hash scoped; daeSigCheck gone) |
 | 10 | bootloaders | cbDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | landed (locals in the magic block; good arms return, failures fall out to `return 0`) |
-| 11 | bootloaders | cdDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | open |
+| 11 | bootloaders | cdDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | landed (same shape as cbDecrypt) |
 | 12 | bootloaders | ceDecrypt | no-tree-dominator-opts, no-cse-follow-jumps, pin on len/hmacKey | open |
 
 When the last hint in an object goes, its `--param` options in `build.sh` go too
