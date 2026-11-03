@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define XB_PATCHES		/* xb.patches (xebuild.h) */
 #include "xebuild.h"
 #include "filelist_ini.h"
 #include "fileutil.h"
@@ -1149,12 +1148,12 @@ void addPatch(const char *name)
 
 		sprintf(path, "%s.bin", name);
 		for (i = 0; i < xb.numPatches; i++) {
-			if (!stricmp(path, xb.patches[i])) {
+			if (!stricmp(path, (&xb.files[i] + XB_ADDONS)->name)) {
 				log_printf(1, "***** WARNING: %s was provided both on command line and in ini, filtered duplicate!\n", name);
 				return;
 			}
 		}
-		strcpy(xb.patches[xb.numPatches], path);
+		strcpy((&xb.files[xb.numPatches] + XB_ADDONS)->name, path);
 		xb.numPatches++;
 	} else
 		log_printf(0, "***** WARNING: exceeded total number of optional patches with ini  %s!\n", name);

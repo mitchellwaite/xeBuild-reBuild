@@ -168,13 +168,9 @@ struct manifest {
 	} e[256];
 };
 
-/* xb.files has 35 entries, 19..34 the addon patches (-a).  Two switches a
-   file may define before including this change how it sees them:
-   XB_FILES_BOUND declares fewer files, as the bound sets gcc's trip count
-   estimate for loops over them (build.c).  XB_PATCHES adds
-   xb.patches, the addons' names as an array over xb.files in a union
-   (options.c); the union changes alias analysis for every xb.files
-   access, which build.c's code shows */
+/* xb.files has 35 entries, 19..34 the addon patches (-a).  A file may define
+   XB_FILES_BOUND before including this to declare fewer files, as the bound
+   sets gcc's trip count estimate for loops over them (build.c) */
 #ifndef XB_FILES_BOUND
 #define XB_FILES_BOUND 35
 #endif
@@ -266,18 +262,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* the ini's firmware files */
 	uint32_t firmwareCrc[256];
 	uint32_t nFirmware;
-#ifdef XB_PATCHES
-	union {
-		struct fileent files[XB_FILES_BOUND];
-		struct {
-			uint8_t padPatches[XB_ADDONS * sizeof(struct fileent)];
-			char patches[16][sizeof(struct fileent)];	/* the addons' names */
-		};
-	};
-#else
 	struct fileent files[XB_FILES_BOUND];
 	uint8_t padFiles[(35 - XB_FILES_BOUND) * sizeof(struct fileent)];
-#endif
 	char blSuffix[0x40];		/* -r */
 	int numPatches;			/* addons (files[XB_ADDONS...]) */
 	int nFiles;

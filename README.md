@@ -156,7 +156,7 @@ frequency from scaling to 0.
 </details>
 
 <details>
-<summary><b>6. options</b>: 70 tricks, very hard</summary>
+<summary><b>6. options</b>: 69 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 30 `__builtin_constant_p`, 16 `__builtin_expect`, 3 `asm goto`, 3
@@ -165,8 +165,8 @@ frequency from scaling to 0.
 - 2 `po_hint()` calls and 1 `no-early-inlining` attribute, for `parseOption`
 - `_parseButton.part.0`, written by hand as a global `cold` function in
   `.text.startup` rather than coming from gcc's own function split
-- 1 asm-label prototype (`parseOptionInt`), `XB_PATCHES`, 1 cold label, 3 pins, 1
-  literal-order `asm`, 1 barrier and `always_inline`
+- 1 asm-label prototype (`parseOptionInt`), 1 cold label, 3 pins, 1 literal-order
+  `asm`, 1 barrier and `always_inline`
 
 The main clue that this can work is that natural source (`optIniBool` inlined,
 plain calls) already gives the whole hot layout. The cold layout is the unsolved

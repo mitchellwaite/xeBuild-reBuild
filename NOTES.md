@@ -427,9 +427,9 @@ Fixed-width integers are `<stdint.h>`'s (`uint8_t` ... `uint64_t`, included by
 `xebuild.h`): with this toolchain they are the same C types as the
 `unsigned char/short/int/long long` the files were matched with, so they
 change no code. XeCrypt keeps its own `u8`/`u32` (`xecryptTypes.h`).
-Two switches, defined before including `xebuild.h`, give a file the view of
-`xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c)
-and `XB_PATCHES` (options.c); the header says why.
+One switch, defined before including `xebuild.h`, gives a file the view of
+`xb.files` its code was matched with: `XB_FILES_BOUND` (build.c, filelist_ini.c);
+the header says why.
 It also holds the shared macros: `SWAP16`/`SWAP32` and `IS_SLIM`. The
 spelling of a byte swap changes code even though the bswap pass folds it, so
 build.c, image_write.c and keys.c use their own spellings, also in
