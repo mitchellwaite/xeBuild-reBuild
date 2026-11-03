@@ -1,12 +1,9 @@
-# Retrying what's left
+# Retrying a function
 
-`sendAvatarData` is done: attempt 6 found a plain `for` loop. `netRecvVerbose` is
-settled for now, with a dead test the user chose over the asm; retry it only with a
-new idea. Attempts run one at a time and continue from the function's notes.
-
-| Function | Notes | Done means |
-|----------|-------|------------|
-| `netRecvVerbose` in `src/net.c`, with its clone `netRecv` | `notes/net_netRecvVerbose.md` | The dead `if (!len)` is gone and the full build's SHA256 matches |
+The moderate queue is done, and every function in it is landed with no counted
+trick. Retry one only with a new idea or if the user rejects its landed shape.
+`README.md` here lists the shapes flagged for review. Attempts run one at a time and
+continue from the function's notes in `notes/`.
 
 ## For each attempt
 
@@ -27,7 +24,7 @@ new idea. Attempts run one at a time and continue from the function's notes.
   one file from the official repo at tag `releases/gcc-6.2.0`, as CLAUDE.md says.
 - Don't commit or push; the session running the attempts does that.
 - Don't touch other functions' code or `build.sh`. Leave `src/` unchanged unless
-  the result is a match, or for `sendAvatarData` strictly more natural with the same bytes.
+  the result is a match, or strictly more natural with the same bytes.
 - Write generators with the Write tool and change source with the Edit tool:
   heredocs mangle backslashes.
 - Natural code wins. Live but redundant code that reads naturally lands, flagged for
@@ -37,4 +34,4 @@ new idea. Attempts run one at a time and continue from the function's notes.
   differing `.p2align` may emit no bytes and fncmp ignores jump targets.
 - On a match: update the comment above the function, run `sh build.sh`, and confirm
   the SHA256 is `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
-  Leave the top-level README.md alone.
+  Leave the top-level README.md to the session running the attempts.

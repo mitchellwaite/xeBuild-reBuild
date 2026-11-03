@@ -125,12 +125,15 @@ int netSendStr(const char *s)
 /* receive a length-prefixed reply, with progress output if verbose;
    netRecv is its IPA-CP clone for verbose 0.  verbose is unsigned: as an
    int, uncprop reuses it for got's 0 and keeps it in a register.  The
-   expect hint (with builtin-expect-probability
-   65; 60 aligns the verbose size <= 0 exit) starts the verbose loop's trace
-   before the shared recv-failure block.  Hinting every test also matches,
-   but then IPA-CP doesn't clone.  The asm (a use of got on the short-count
-   path) puts got over IRA's caller-save threshold in the clone, which
-   then allocates size/buf/got to ebx/esi/edi. */
+   if (size) nesting swaps the early-return prediction for the call
+   heuristic, which raises the entry frequency and so bbro's round
+   thresholds.  The loop's failure arms set a value and rejoin, and a test after
+   each one leaves the loop.  Those tests thread away after profile_estimate,
+   so the arms keep their own frequencies (R above J and the log), and the
+   break reaches the post-loop test, whose stale share puts got over IRA's
+   caller-save threshold in the clone: size/buf/got go to ebx/esi/edi.  status
+   is compared with 1, not 0, since only that gets an opcode prediction: it
+   keeps the store under the clone's alignment threshold. */
 uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
@@ -138,6 +141,7 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	uint8_t hdr[4];
 	uint8_t *buf;
 	int size, got, r;
+	int status = 1;
 
 	tv.tv_sec = 15;
 	tv.tv_usec = 0;
@@ -157,45 +161,51 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	size = getBeU32(hdr);
 	if (size == -1)
 		return NULL;
-if (size) {
-	buf = calloc(size, 1);
-	if (verbose)
-		printf("waiting for 0x%x bytes\n", size);
-	got = 0;
-	while (got < size) {
-		r = select(0, &fds, NULL, NULL, &tv);
-		if (r == SOCKET_ERROR || r == 0) {
-			log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
-			if (buf != (uint8_t *)&netEmpty)
-				free(buf);
-			return NULL;
-		}
-		r = recv(netSock, (char *)buf + got, size - got, 0);
-		if (r == SOCKET_ERROR) {
-			if (verbose)
-				putchar('\n');
-			log_printf(0, "could not receive data on socket, error %d\n",
-				   WSAGetLastError());
-			if (buf != (uint8_t *)&netEmpty)
-				free(buf);
-			return NULL;
-		}
-		got += (uint32_t)r;
+	if (size) {
+		buf = calloc(size, 1);
 		if (verbose)
-			printf("received 0x%08x of 0x%08x\r", got, size);
-	}
-	if (verbose)
-		putchar('\n');
-	if (got == size) {
-	*len = size;
-	return buf;
-	}
-	if (verbose)
-		putchar('\n');
-	log_printf(0, "received only %x of %x bytes! fail\n", (uint32_t)got, size);
-	if (buf != (uint8_t *)&netEmpty)
-		free(buf);
-	return NULL;
+			printf("waiting for 0x%x bytes\n", size);
+		got = 0;
+		while (got < size) {
+			r = select(0, &fds, NULL, NULL, &tv);
+			if (r == SOCKET_ERROR || r == 0) {
+				log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
+				if (buf != (uint8_t *)&netEmpty)
+					free(buf);
+				size = got;
+			}
+			if (got >= size)
+				return NULL;
+			r = recv(netSock, (char *)buf + got, size - got, 0);
+			if (r == SOCKET_ERROR) {
+				if (verbose)
+					putchar('\n');
+				log_printf(0, "could not receive data on socket, error %d\n",
+					   WSAGetLastError());
+				if (buf != (uint8_t *)&netEmpty)
+					free(buf);
+				status = 0;
+			}
+			if (status != 1)
+				break;
+			got += r;
+			if (verbose)
+				printf("received 0x%08x of 0x%08x\r", got, size);
+		}
+		if (status != 1)
+			return NULL;
+		if (verbose)
+			putchar('\n');
+		if (got == size) {
+			*len = size;
+			return buf;
+		}
+		if (verbose)
+			putchar('\n');
+		log_printf(0, "received only %x of %x bytes! fail\n", got, size);
+		if (buf != (uint8_t *)&netEmpty)
+			free(buf);
+		return NULL;
 	}
 	*len = 0;
 	return (uint8_t *)&netEmpty;
@@ -512,25 +522,31 @@ uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping", "no-early-inlining")))
+/* rlen's scope ends before the tail, so its clobber keeps the two `mov eax,1`
+   from being head-merged. `<= 0` takes the opcode predictor (`!` takes none),
+   which lifts the free block over bbro's copy threshold for the epilogue. */
 int netWriteBlocks(const uint8_t *buf, uint32_t len, uint32_t start, uint32_t count)
 {
-	int rlen, ret;
+	int ret;
 	uint8_t *r;
 	char cmd[32];
 
 	sprintf(cmd, "WBLK%04x%04x\n", (uint16_t)start, (uint16_t)count);
-	if (!netSendStr(cmd))
+	if (netSendStr(cmd) <= 0)
 		return 0;
 	if (!netSendData(buf, len, log_get_verbose() != 0))
 		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int rlen;
+
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = 0;
+		if (rlen == 2 && getBeU16(r) == OK_REPLY)
+			ret = 1;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
@@ -566,37 +582,41 @@ uint8_t *netGetBadBlocks(int *len)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
+/* The `ok` flag is threaded away, but the test that sets it guards no call, so
+   it stays 50/50: frequent enough for bbro to place the return-0 block after
+   the send, and few enough uses of buf to leave it on the stack. `<= 0` takes
+   the opcode predictor (`!` takes none), which lifts netSendData's block far
+   enough for the return-0 block to be aligned. rlen's scope ends before the
+   tail, so its clobber keeps the two `mov eax,1` from being head-merged. */
 int netSendFile(const char *name, const void *buf, uint32_t len)
 {
-	int rlen, ret;
+	int ret, ok = 0;
 	uint8_t *r;
 
-	/* the hint (with builtin-expect-probability=65, 55-65 work) makes the
-	   shared return-0 block frequent enough to be aligned */
-	if (__builtin_expect(!name, 0))
-		return 0;
-	if (!buf)
-		return 0;
-	/* buf's uses are just over IRA's callee-saved threshold */
-	__asm__("" : : "m"(buf));
-	char cmd[264] = "SNDF";
+	if (name && buf)
+		ok = 1;
+	if (ok) {
+		char cmd[264] = "SNDF";
 
-	strcpy(cmd + 4, name);
-	strcat(cmd, "\n");
-	if (!netSendStr(cmd))
+		strcpy(cmd + 4, name);
+		strcat(cmd, "\n");
+		if (netSendStr(cmd) <= 0)
+			return 0;
+		if (!netSendData(buf, len, log_get_verbose() != 0))
+			return 0;
+		{
+			int rlen;
+
+			r = netRecv(&rlen);
+			if (!r)
+				return 0;
+			ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+			netFree(r);
+		}
+		if (ret)
+			return 1;
 		return 0;
-	if (!netSendData(buf, len, log_get_verbose() != 0))
-		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
-	if (ret)
-		return 1;
+	}
 	return 0;
 }
 
@@ -690,7 +710,10 @@ int netReboot(int how)
 	return 1;
 }
 
-__attribute__((optimize("no-early-inlining")))
+/* `<= 0` takes the opcode predictor while netSendStr is still a call at
+   profile_estimate (`!` takes none) and folds away once it's inlined. That lifts
+   the free block above 10% of the entry, so bbro copies the epilogue after it
+   instead of a jmp, as in netWriteBlocks. */
 int netWritePatches(const uint8_t *buf, uint32_t len)
 {
 	int ret;
@@ -699,7 +722,7 @@ int netWritePatches(const uint8_t *buf, uint32_t len)
 	{
 		int rlen;
 
-		if (!netSendStr("WBPT\n") || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
+		if (netSendStr("WBPT\n") <= 0 || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
 			return 0;
 		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);

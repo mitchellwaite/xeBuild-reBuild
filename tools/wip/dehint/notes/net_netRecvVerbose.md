@@ -1,10 +1,10 @@
 # net netRecvVerbose (queue 4)
 
-**Current state:** `src/net.c` has no asm. It uses attempt 10's dead test, `if (!len) { netFree(buf); return NULL; }`
-after the calloc, which the user chose over the `got` asm because natural C leaves fewer impediments to future
-changes. The test isn't real logic: `*len = 0` runs earlier and VRP folds it after profile_estimate, leaving the
-frequency that the clone's registers need (margin +5 in a window about 13 wide). A form that doesn't steer at all
-would still be better; attempts 10 and 11 below say what's been tried.
+**Current state:** matched, landed with no dead test and no asm (attempt 12, at the end of this file; SHA256 matches,
+not committed). The loop's two failure arms assign and rejoin, and a test after each leaves the loop: `size = got;`
+then `if (got >= size) return NULL;`, and `status = 0;` then `if (status != 1) break;`, with `if (status != 1) return NULL;`
+after the loop. Every test is live, but `size = got` and `status != 1` are there for the bytes, so it's flagged for
+the user's review. Attempt 10's `if (!len)` is gone. Older sections' "current" descriptions of `src/net.c` are out of date.
 
 Tools: `tools/wip/dehint/nrsweep.py <gen.py>` (compiles the file, compares netRecvVerbose and the
 clone; outputs in build/nr/<gen>/), generators `gen_nr*.py`. NR_DIAG="--param ..." for diagnostics only.
@@ -463,3 +463,62 @@ Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr100.py (also 
 
 Next: the user's ruling on attempt 10's candidate or the asm. Otherwise, any natural source that lowers log alone by 1-2 units in helperlen's shape, though that only swaps one dead test for another.
 Don't retry: `if (len)` on any store in any shape (gen_nr100, 103); `size && len`, `size == -1 || !len` (one test at GENERIC, gen_nr101); no zero arm with threading (gen_nr102); tests of fds/tv (real, gen_nr107); `r != SOCKET_ERROR` in the loop condition (gen_nr107); `*len = got` in the helper (gen_nr106); more `!len` arms (gen_nr105, 108).
+
+## Attempt 12: loop ended by assignment. MATCH, landed, no dead test
+
+Tools: nrobj.py <file.c>... (text and data against build/obj/net.o; needed, see below), nrobjbest.py <gen> [N] (nrobj on rows of build/nr/<gen>.txt, written from `NR_TAGS=1 NR_TOP=300 nrdef.py`), generators gen_nr110-120. `-fdump-rtl-alignments-details` prints compute_alignments' freq, fall and branch per block.
+
+src/net.c: fncmp MATCH for netRecvVerbose and the clone with no flags, nrobj text 0 data 0, `sh build.sh` SHA256 10dac648...971c. drafts/net_netRecvVerbose_best.c is a copy.
+
+    int status = 1;
+    ...
+    while (got < size) {
+        r = select(...);
+        if (r == SOCKET_ERROR || r == 0) { log; free; size = got; }
+        if (got >= size)
+            return NULL;
+        r = recv(...);
+        if (r == SOCKET_ERROR) { newline; log; free; status = 0; }
+        if (status != 1)
+            break;
+        got += r;
+        if (verbose) printf(...);
+    }
+    if (status != 1)
+        return NULL;
+    (tail as before)
+
+### How it was found
+
+- gen_nr110 (504; the idea as given: arms assign, `else` or `continue` skips the rest, marker tested after the loop): V+C 173 at best. Arms no longer exit, so PRED_LOOP_EXIT doesn't apply and the opcode's 27% does: f [9100, 6643], margin -3012. A positive margin only came with `got = size + 1`, where a real compare stays. margin = f3 - .2f2 - .8f1 + ..., so f2/f1 must be near .97. Don't retry: an arm whose only way out is the head.
+- gen_nr111 (162): the arm assigns and rejoins, and a separate test right after it leaves the loop. The exit keeps its 3%, so f is the plain [9700, 9409], but the arm has its own edge at estimate and R is 847, not 282. **That frees the old R >= J, R >= log constraint**, which is what capped the margin in attempts 4-11. `ok|sr|return|bot` V=4, C=0, margin +111; bot is `if (got >= size) break;` at the bottom, a 4th exit.
+- gen_nr112 (700): `int ok = 1` in the loop body fixes the last V difference: fncmp V=0, C=0. **Not a match:** nrobj text 53. BB27 (V's tail newline) loses its .p2align: the 4 exits make it 2.25% * 2720 = 61, under V's freq_max/100 = 69 (the reference needs 3%: 79). fncmp can't see this. So 3 exits.
+- gen_nr114 (108): 3 exits, one arm `break`, one arm `return`, post-loop `if (!ok) return NULL;`: V=4, C=0, margin +22. The break's flow reaches the post-loop test, and J's stale frequency pays the margin that the 4th exit did. Both arms `break`: V=8, C=6 (J stale too high, store 156 passes the head failures).
+- V=4 is the verbose latch `cmp`. From the dumps: unswitch's copy gives the add a name off the free list, got_7, below size_46, so dom3 swaps to `got_7 < size_46`. The top of the free list is the flag PHIs that vrp1's threads create and dce2 kills. gen_nr115 (1728; locals, decl order, cast spellings) moves none of this: all V=4. Don't retry those. gen_nr116 (143; a different stop per arm): `size = got` on the select arm with `if (got >= size) return NULL;` is V=0, because no PHI of the flag is threaded there. Only `size|ok|rb` and `size|failed|rb` get it; that's the user's idea landing on one arm.
+- nrobj on that: text 13, one .p2align on the clone's store block: 104, over freq_max/100 = 97. gen_nr117, 118: post-loop spellings, free or log moved after the loop: no effect, or worse (margin -14 to -54, C=60+).
+- gen_nr119 (108): store = .199 * (stale J + else) = .199 * 523. Needs under 487, and margin needs about 400. `!ok` gets only the null return's 10%; `ok != 1` adds the opcode's 72% against it, P(stay) .78 by DS, stale J + else 452. **Store 90, text 0 data 0.** The prediction came first and the row agreed. `ok < 1` isn't enough. Comparisons with 0 getting no opcode prediction is from memory of predict.c and fits: `!ok` had a pure 10%.
+- gen_nr120 (240): scope and init of the flag, loop-side test (`!= 1`, `!`, `== 0`), select test (`>=`, `==`, `<=`, `!(<)`), `while` or `for`: all text 0 data 0, so the shape isn't fragile in spelling. Only the post-loop `!= 1` is needed; I used it in the loop too so the two read alike. Margin reads -2 in nrdef, yet the registers are right: its formula truncates, so -2 here is not a failure.
+
+### Clone, measured (trace order 2, 17 / 8, 19, 20, 9 / 10, 16 / 12 / 21, 15 / 3 / 5 / 14)
+
+R 847, J 427, log 363, store 90, heads 134 and 129. f [9700, 9409], MEM 17165, class 1880.
+
+### What each part does, and how far it can be defended
+
+- `status = 0;` then `if (status != 1) break;`: same pattern as myatou32's approved `hex` flag, one `if` sets and the next tests. Needed: recv arm plain `return` is C=48 (margin -50, gen_nr116 `size|none|rr`) or V=92, C=36 with the select arm plain.
+- `if (status != 1) return NULL;` after the loop: live. `!= 1` rather than `!`: **borderline**, reads fine, but it's there for the prediction. `!status` is one .p2align off (text 13).
+- `size = got;` then `if (got >= size) return NULL;`: **borderline**. Live, but it's an odd way to write a return. Its job is the free list (V's latch cmp): a flag here is V=4, text 4. It's the part most likely to get a reviewer's question.
+- `int status = 1` beside the other locals: fine.
+
+Behaviour: same. Select failure: log, free, NULL, and `size` is only overwritten on that path. Recv failure: newline, log, free, NULL. `*len` stays 0 on both, as before. recv returning 0 still loops.
+
+### Evidence
+
+Frequencies, predictions, chains, SSA names and alignment numbers are from dumps. Alignment's freq_max/100 threshold is inferred from the dumps' `jump alignment added` lines and rows on both sides. The free list's order is inferred from names across passes (ok_7, ok_3, ok_111.. at vrp1, gone at dce2, reused in order at unswitch), and I didn't dump the free list itself. Why the `size` arm avoids the problem is inferred from V=0 and is not traced further.
+
+Note for later generators: gen_nr110-120 cut src/net.c around `buf = calloc` and still build, but gen_nr1-108 expect the text before this attempt (commit b8d48e6's src/net.c); nrflip's strings won't all be found now.
+
+Reproduce: python tools/re/fncmp.py src/net.c netRecvVerbose ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py src/net.c netRecv ; python tools/wip/dehint/nrobj.py src/net.c ; sh build.sh ; NR_TAGS=1 NR_TOP=300 python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr119.py > build/nr/gen_nr119.txt ; python tools/wip/dehint/nrobjbest.py gen_nr119 8
+
+If `size = got` is rejected, try next: another way to change what's on the free list at unswitch with a plain select arm or a flag on it, starting from gen_nr119's `ok-ret|!|!=1|brk|ret` (text 4, only V's latch cmp).
+Don't retry: arms that only leave through the head (gen_nr110); a bottom `got >= size` exit (4 exits lose V's .p2align, gen_nr112); locals and casts for the free list (gen_nr115); moving the free or the log after the loop (gen_nr118). Check every fncmp MATCH with nrobj: two in this attempt were .p2align off.

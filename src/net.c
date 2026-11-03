@@ -127,10 +127,13 @@ int netSendStr(const char *s)
    int, uncprop reuses it for got's 0 and keeps it in a register.  The
    if (size) nesting swaps the early-return prediction for the call
    heuristic, which raises the entry frequency and so bbro's round
-   thresholds.  The !len test is dead (*len = 0 above; VRP folds it after
-   profile_estimate), but the block before the loop keeps its pre-test
-   frequency, which puts got over IRA's caller-save threshold in the clone, so
-   it allocates size/buf/got to ebx/esi/edi. */
+   thresholds.  The loop's failure arms set a value and rejoin, and a test after
+   each one leaves the loop.  Those tests thread away after profile_estimate,
+   so the arms keep their own frequencies (R above J and the log), and the
+   break reaches the post-loop test, whose stale share puts got over IRA's
+   caller-save threshold in the clone: size/buf/got go to ebx/esi/edi.  status
+   is compared with 1, not 0, since only that gets an opcode prediction: it
+   keeps the store under the clone's alignment threshold. */
 uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
@@ -138,6 +141,7 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	uint8_t hdr[4];
 	uint8_t *buf;
 	int size, got, r;
+	int status = 1;
 
 	tv.tv_sec = 15;
 	tv.tv_usec = 0;
@@ -159,10 +163,6 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 		return NULL;
 	if (size) {
 		buf = calloc(size, 1);
-		if (!len) {
-			netFree(buf);
-			return NULL;
-		}
 		if (verbose)
 			printf("waiting for 0x%x bytes\n", size);
 		got = 0;
@@ -172,8 +172,10 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 				log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
 				if (buf != (uint8_t *)&netEmpty)
 					free(buf);
-				return NULL;
+				size = got;
 			}
+			if (got >= size)
+				return NULL;
 			r = recv(netSock, (char *)buf + got, size - got, 0);
 			if (r == SOCKET_ERROR) {
 				if (verbose)
@@ -182,12 +184,16 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 					   WSAGetLastError());
 				if (buf != (uint8_t *)&netEmpty)
 					free(buf);
-				return NULL;
+				status = 0;
 			}
+			if (status != 1)
+				break;
 			got += r;
 			if (verbose)
 				printf("received 0x%08x of 0x%08x\r", got, size);
 		}
+		if (status != 1)
+			return NULL;
 		if (verbose)
 			putchar('\n');
 		if (got == size) {

@@ -45,9 +45,9 @@ tricks some functions needed to match, and the checks behind each step.
 
 The application files match, but some only match because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 10 files that still have them from easiest to hardest to match with
+ranks the 9 files that still have them from easiest to hardest to match with
 source shape alone: ordinary C, the same `-O3` as the rest, and none of these
-hints. The other 15 application files build with no tricks.
+hints. The other 16 application files build with no tricks.
 
 Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
 removes any that no longer change the code, but past `stfs` no hint-free source
@@ -74,22 +74,7 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. net</b>: 1 trick, moderate</summary>
-
-- 1 dead test, `if (!len)` after the `calloc` in `netRecvVerbose`
-
-The test can't be true, because `*len = 0` runs earlier and VRP folds it, but the
-frequency it leaves behind gives `netRecv`, its IPA-CP clone, the right registers.
-It replaced an empty `asm` on purpose: plain C leaves fewer impediments to future
-changes. It's the last thing to replace here, and it's narrow: other failure arms
-in the same place don't match. `<= 0` on the first send, with `rlen` scoped in a
-block, removed the attributes from `netWriteBlocks` and `netWritePatches`, and
-`netSendFile` also needed an `ok` flag.
-
-</details>
-
-<details>
-<summary><b>2. stfs</b>: 2 tricks, hard</summary>
+<summary><b>1. stfs</b>: 2 tricks, hard</summary>
 
 - 1 `__builtin_expect` and 1 register pin (`fb` in `esi`), both on the loop guard
   in `stfsGetFile`
@@ -104,7 +89,7 @@ probably needs something that makes `ecx` unavailable to `fb`.
 </details>
 
 <details>
-<summary><b>3. mode_update</b>: 16 tricks, hard</summary>
+<summary><b>2. mode_update</b>: 16 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=68`
 - Dead layout hints in `mode_update` and `updateNand`: 7 `__builtin_constant_p`,
@@ -120,7 +105,7 @@ a Fibonacci-heap tie, which needs the exact frequencies.
 </details>
 
 <details>
-<summary><b>4. image_write</b>: 18 tricks, hard</summary>
+<summary><b>3. image_write</b>: 18 tricks, hard</summary>
 
 - `--param builtin-expect-probability=50`
 - 7 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
@@ -137,7 +122,7 @@ hint-free source would have to land on the same numbers.
 </details>
 
 <details>
-<summary><b>5. keys</b>: 20 tricks, hard</summary>
+<summary><b>4. keys</b>: 20 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=60`
 - 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
@@ -154,7 +139,7 @@ must differ from the inlined one.
 </details>
 
 <details>
-<summary><b>6. filelist_ini</b>: 23 tricks, hard</summary>
+<summary><b>5. filelist_ini</b>: 23 tricks, hard</summary>
 
 - 4 options: `-fno-toplevel-reorder`, `-fno-tree-loop-vectorize`,
   `--param builtin-expect-probability=65` and
@@ -171,7 +156,7 @@ options with no direct source equivalent.
 </details>
 
 <details>
-<summary><b>7. image_read</b>: 32 tricks, hard</summary>
+<summary><b>6. image_read</b>: 32 tricks, hard</summary>
 
 - `-fno-toplevel-reorder`
 - 8 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
@@ -188,7 +173,7 @@ is probably the best of the hard files to work through next.
 </details>
 
 <details>
-<summary><b>8. build</b>: 54 tricks, very hard</summary>
+<summary><b>7. build</b>: 54 tricks, very hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=98`
 - 19 `__builtin_expect`, 9 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
@@ -206,7 +191,7 @@ frequency from scaling to 0.
 </details>
 
 <details>
-<summary><b>9. options</b>: 70 tricks, very hard</summary>
+<summary><b>8. options</b>: 70 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 30 `__builtin_constant_p`, 16 `__builtin_expect`, 3 `asm goto`, 3
@@ -226,7 +211,7 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>10. mode_client</b>: 142 tricks, very hard</summary>
+<summary><b>9. mode_client</b>: 142 tricks, very hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=50`
 - 89 `__builtin_constant_p` feeds and 19 `asm goto` edges to dead labels, which
