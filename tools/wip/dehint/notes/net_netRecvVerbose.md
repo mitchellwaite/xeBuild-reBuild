@@ -360,3 +360,47 @@ src/net.c and build.sh unchanged (flip + asm). No new best: drafts/net_netRecvVe
 Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr80.py (NR80_LOOP=do NR80_SIDE=1 for the 892); also gen_nr81.py, gen_nr82.py; NR_TAGS=1 lists tags.
 Next: nothing from scoping. Still open from attempt 8, and not scoping: a natural P(eq) of about .30 in the helper (pointer compare + call would be .30, needs odd helper parameters; still not compiled, as this attempt was limited to scoping), or a natural dead loop exit.
 Don't retry: any scope of fds, tv, hdr or the scalars for the margin; a second fd_set/timeval (the reference doesn't re-init); fds/tv blocks excluding the zero arm (head goes hot); tail outside the fds block.
+
+## Attempt 10: declarations, then a test folded after profile_estimate. Bytes match with no asm; it's a dead test, so a candidate
+
+### The families asked for (nrdef.py margin; flip base, -50)
+
+- Log call (gen_nr92 `proto|*`, plus gen_nr32's forms from attempt 5): no macro form exists in `src/` (grep), `log.h` has one prototype. int return, K&R, `int level`, `char *fmt`, format attribute, do-while macro wrapper: all V=0, C=48, margin -50. So the asm's memory-capable operand has no natural equivalent here.
+- Declaration (gen_nr90, 61): len as int/uint/long/ulong/size_t/u32/void/char pointer, return u8/uchar/void/char/int/u32, verbose u32/uint/ulong/size_t/DWORD/BOOL/long/int: **margin -50 in every row with a clone, MEM 17117.** Non-int len: V=2 for the unsigned ones. Return other than u8/uchar: V=130, C=68 (cause not looked at). verbose int: V=31 (known). Narrow verbose (u8, char, schar, u16, short, _Bool): V=10, **no clone** (why not looked at), so they're out.
+- size and getBeU32 (gen_nr91, 154): long, int32_t, INT, LONG, ssize_t and `(int)`, inline test, `uint32_t` temp, `!~size`, `size + 1 == 0`, static helper: margin -50, V=0, C=48. Unsigned size with no casts: V=121+, class 0 only because got is another pseudo (margin -3887). `uint32_t size` with `got < (int)size`: **V=126, C=5, margin +31, registers right**, the same extra compare as `uint32_t got` (gen_nr5): the J compare survives cse_cc and that compare is the ref that pays, so it stays in the output.
+- FD_SET (gen_nr92 `fd|*`): hand-written, reversed, winsock.h's old macro, pointer, helper, local SOCKET, written-out loop: margin -50, V=0, C=48, so the macro's loop changes nothing. tv after fds: V=2. memset: V=26, C=62, r=(8,4).
+- Globals (gen_nr92 `glob|*`): volatile netEmpty, int/char[4]/u8[4] netEmpty, int netSock: margin -50, V=0, C=48. volatile netSock: V=24, C=58.
+
+None of these moves got's costs, except by adding a real instruction.
+
+### The lever: a stale block before the loop
+
+The one odd row in gen_nr91, `int|u-temp3` (`n` unsigned, `if (!n) {zero}`, `size = n; if (size) {...}`), had margin +801. nrtr.py on it: block 8 (calloc, guard) is 3011 where the flip has 873. The inner `if (size)` is on the converted name, FRE can't fold it, so it's still there at profile_estimate, and VRP folds it after IPA. The folded test's block merges with what follows and keeps its own freq. The loop's freq was estimated with that exit taken out, so the sum no longer holds: this is the stale pre-loop frequency that attempts 4 to 9's conservation arithmetic ruled out (their "f_pre is fixed by the exits" is only true without an exit that later goes away).
+
+Why it pays: got's two inits sit on the guard's edges, so MEM goes up .36 per unit of f_pre and nothing else in the loop changes (f stays [9700, 9409]).
+
+The window (measured, gen_nr94-96; a test placed after the calloc, so the outer `if` keeps its .29 call heuristic):
+- margin > 0: f_pre >= about 1010, so P(stay) <= .864.
+- bbro: edge 10->11 (R's free test, .7 * 291 = 204) must reach round 3's threshold, 5% of the entry freq (threshold from memory of bb-reorder.c; fits entry 4251 failing, 212 > 204, and 4006 passing, 200 < 204), or 10 and 11 are separate traces and 12 isn't copied (`xor reg,reg` shared rather than copied: V=6, C=12). Entry = 3.89 * f_pre, so f_pre <= about 1048, P(stay) >= .833.
+- So P(stay) in about [.833, .864], margin about 0 to +13.
+- This also corrects attempt 8: f_pre above block 12 (1030 vs 966) is fine, connect_traces gives the same order. What it blamed on that is this threshold.
+
+Results: gen_nr94/95, one test on the converted name, P is the wrong size: m1-empty .80 (+29, V=6, C=12), z-empty .61 (+165, V=34, C=6), z-null .911 (-19), before the calloc V=44 (outer `if` loses the call heuristic, entry falls). gen_nr96: two tests, `!size` + `size == -1`, each `return NULL`: **V=0, C=0, margin +1**, the first asm-free match.
+
+### The candidate: gen_nr97/98, a test on len
+
+`*len = 0` at the top lets VRP infer len != NULL, later than profile_estimate; nothing folds it earlier. So no conversions are needed and the types stay plain. Arm x test (gen_nr98): `if (!len) { netFree(buf); return NULL; }` right after the calloc gives **V=0, C=0, margin +5**, P(stay) .848, f_pre 1030, entry 4006. Same result for `len == NULL`, `len == 0`, and with the arm written `if (buf != &netEmpty) free(buf); return NULL;`. Other arms miss: plain `return NULL` -51, `return buf` -19, `free(buf)` alone -43/-55.
+drafts/net_netRecvVerbose_candidate.c, patch drafts/net_netRecvVerbose_candidate.patch. fncmp MATCH on both with no flags. Its object is byte-identical (cmp) to build/obj/net.o from the matching build, built as build.sh does, so the link can't differ. The full build itself wasn't run with it (src/ unchanged).
+
+Why it isn't a queue MATCH: README's list has dead tests, and this one is dead: len was dereferenced 16 lines earlier. It reads as ordinary defensive code (a null check after a deref is a common pattern) but it has no reason to be right there, and it does nothing except move a frequency. Behaviour is the same, since a NULL len would already have faulted at the top. The user's ruling: this, or the existing asm. It's the same class as the dead hints mode_client and mode_update carry, but with no asm or builtin.
+
+The margin is thin: +5, in a window 13 wide, so it depends on this exact arm.
+
+Other rows, not better: `r == SOCKET_ERROR` (r known from the head's test) with the log + free arm V=0, C=0, margin +1, but it's a re-test of a stale r. Rejoining tests (`if (len) *len = size`): no lever, as expected, flow is conserved (margin -62, or -50 for the zero arm's). `size == 0 || size == -1` on the plain name: -46, V=53+ (not looked at).
+
+## State at the end of attempt 10: CANDIDATE, bytes match with no asm, needs the user's ruling
+
+src/net.c and build.sh unchanged (flip + asm).
+Reproduce: python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_candidate.c netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_candidate.c netRecv -O3 -Isrc ; python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr98.py (also 90-97); python tools/wip/dehint/nrtr.py tools/wip/dehint/drafts/net_netRecvVerbose_candidate.c netRecvVerbose.constprop
+Next: a test with the same effect and a reason to be there. Anything that exits between the calloc and the loop at profile_estimate and is gone by the output must be false at compile time, so it is dead in some sense; the only question left is which spelling the user accepts. A loop exit that folds (attempt 8's four-exit model) now looks doable with the same VRP trick, but it can't read better than this.
+Don't retry: declaration types, log prototypes, FD_SET forms and global declarations for the margin (all -50); narrow verbose (no clone); tests before the calloc (outer `if` loses the call heuristic, V=44); `uint32_t size` (real compare stays).
