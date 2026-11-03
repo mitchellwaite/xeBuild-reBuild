@@ -91,17 +91,17 @@ choice, and eight attempts without it didn't match. `<= 0` on the first send, wi
 </details>
 
 <details>
-<summary><b>2. bootloaders</b>: 8 tricks, moderate</summary>
+<summary><b>2. bootloaders</b>: 4 tricks, moderate</summary>
 
-- 4 `optimize` attributes: `no-tree-dominator-opts`, `no-cse-follow-jumps` and
-  `no-early-inlining`, on `cbDecrypt`, `cdDecrypt`, `ceDecrypt` and `daeVerifySig`
-- 1 `always_inline`, on `daeSigCheck`
-- 1 guarded `hint()` call, 1 literal-order `asm` and 1 register pin
+- 3 `optimize` attributes: `no-tree-dominator-opts` and `no-cse-follow-jumps`, on
+  `cbDecrypt`, `cdDecrypt` and `ceDecrypt`
+- 1 register pin, on `ceDecrypt`
 
-The three `*Decrypt` attributes each come down to one `xor ebx,ebx` on the
-`calloc` failure path, which gcc drops because it knows `buf` is 0 there. Return
-types and a separate variable for `calloc`'s result were no closer. Moving `key`
-into the innermost block removed `cfDecrypt`'s attribute, so scope may help here.
+The three attributes each come down to one `xor ebx,ebx` on the `calloc` failure
+path, which gcc drops because it knows `buf` is 0 there. Return types and a
+separate variable for `calloc`'s result were no closer. Scoping locals to the
+innermost block removed the tricks from `cfDecrypt` and `daeVerifySig`, so it may
+help here.
 
 </details>
 

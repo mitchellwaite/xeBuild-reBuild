@@ -18,7 +18,7 @@ Status is `open`, `MATCH` (draft matches, not landed), `landed <commit>` or `par
 | 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | landed (borderline: `ok` flag, `netSendStr(cmd) <= 0`) |
 | 7 | net | netWritePatches | no-early-inlining | landed (borderline: `netSendStr(...) <= 0`) |
 | 8 | bootloaders | cfDecrypt | no-tree-dominator-opts, no-tree-vrp | landed (`key` scoped, `return 1` inside its block) |
-| 9 | bootloaders | daeVerifySig (inlines daeSigCheck where used) | no-early-inlining, hint(), literal asm, always_inline on daeSigCheck | open |
+| 9 | bootloaders | daeVerifySig (inlines daeSigCheck where used) | no-early-inlining, hint(), literal asm, always_inline on daeSigCheck | landed (one function; `ok = 1`, key/hash scoped; daeSigCheck gone) |
 | 10 | bootloaders | cbDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | open |
 | 11 | bootloaders | cdDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | open |
 | 12 | bootloaders | ceDecrypt | no-tree-dominator-opts, no-cse-follow-jumps, pin on len/hmacKey | open |

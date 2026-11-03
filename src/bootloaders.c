@@ -214,60 +214,29 @@ void daeDecrypt(uint8_t *dae, uint32_t size, int perBox)
 	free(buf);
 }
 
-static void hint(int *p) { *p = 1; }
-
-/* check one DAE segment's signature (1 if no key or too short).  ifcombine
-   merges the size test with !xb.pubPirs and the pair keeps the size test's
-   probability; the hint call (PRED_CALL; once inlined, its store to a dead
-   local goes) lowers it so the FAIL block comes before the !xb.pubPirs return */
-__attribute__((optimize("no-early-inlining")))
+/* check one DAE segment's signature (1 if no key or too short) */
+/* key and hash's scope matters: their clobbers end the block, so the good arm
+   isn't next to the return block and no early-return prediction goes against it */
 int daeVerifySig(uint8_t *seg, uint32_t size, int n)
 {
-	uint8_t key[16];
-	uint8_t hash[20];
-	int ok, dead;
+	int ok = 1;
 
-	if (!xb.pubPirs)
-		return 1;
-	if (size < 288) {
-		hint(&dead);
-		return 1;
+	if (xb.pubPirs && size >= 288) {
+		uint8_t key[16];
+		uint8_t hash[20];
+
+		memset(key, 0, 16);
+		XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
+		ok = XeKeysPkcs1Verify(hash, seg + 32, (const XECRYPT_RSA *)xb.pubPirs);
+		if (ok)
+			log_printf(1, "sig %d good! ", n);
+		else
+			log_printf(1, "\nsig %d FAIL! ", n);
 	}
-	memset(key, 0, 16);
-	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, (const XECRYPT_RSA *)xb.pubPirs);
-	/* the original's .rdata has "good" before "FAIL" (verifyDae's order) */
-	__asm__("" :: "i"("sig %d good! "));
-	if (!ok)
-		log_printf(1, "\nsig %d FAIL! ", n);
-	else
-		log_printf(1, "sig %d good! ", n);
 	return ok;
 }
 
 /* check and decrypt the two DAEP segments of a DAE file */
-/* daeVerifySig as verifyDae inlines it: `if (ok)` first, inlined before
-   profile estimation (the standalone daeVerifySig tests !ok first) */
-static inline __attribute__((always_inline)) int daeSigCheck(uint8_t *seg, uint32_t size, int n)
-{
-	uint8_t key[16];
-	uint8_t hash[20];
-	int ok;
-
-	if (!xb.pubPirs)
-		return 1;
-	if (size < 288)
-		return 1;
-	memset(key, 0, 16);
-	XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-	ok = XeKeysPkcs1Verify(hash, seg + 32, (const XECRYPT_RSA *)xb.pubPirs);
-	if (ok)
-		log_printf(1, "sig %d good! ", n);
-	else
-		log_printf(1, "\nsig %d FAIL! ", n);
-	return ok;
-}
-
 int verifyDae(uint8_t *buf, uint32_t size)
 {
 	uint32_t off = 0;
@@ -280,7 +249,7 @@ int verifyDae(uint8_t *buf, uint32_t size)
 		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
 			len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
 			n++;
-			daeSigCheck(seg, len, n);
+			daeVerifySig(seg, len, n);
 			daeDecrypt(seg, len, 1);
 			if (!shaCheck(seg, len, 12, 20, 336, 0)) {
 				log_printf(1, "\n******* ERROR: dae hash incorrect, could not decrypt!\n");
