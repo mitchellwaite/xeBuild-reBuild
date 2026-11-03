@@ -324,3 +324,39 @@ src/net.c and build.sh unchanged (flip + asm). Line counts, no flags (V, clone):
 Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr72.py (also 70, 71, 73, 74, 75, 76); NR_TAGS=1 lists every tag per group. python tools/re/fncmp.py <draft> netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py <draft> netRecv -O3 -Isrc ; python tools/wip/dehint/nrtr.py <src.c> netRecvVerbose (predictions) ; python tools/wip/dehint/nrbb.py build/nr/tr/<dir> 'netRecvVerbose.constprop' (traces).
 Next: a natural P(eq) of about .30 at the helper's test, or a natural dead exit (four-exit model). If neither, keep the asm: this family only shows other ways to miss by a few units.
 Don't retry: shared tail after the transfer (gen_nr70, shared store), guard + while (gen_nr74), recv helper with an out parameter (gen_nr75), caller test spellings on a status helper (gen_nr76, same bytes), thread_freq route to the same registers.
+
+## Attempt 9: scoping locals (clobbers)
+
+Reference first (0x41ee30): fds at esp+0x3c and tv at esp+0x34 in both the head's select and the loop's (`lea eax,[esp+0x3c]`, `mov [esp+0x10],ebp` with ebp = &tv), no second FD_ZERO, no second tv write. So there's one fds and one tv, live from the head through the loop: a second `fd_set`/`timeval` for the loop isn't the original (it would need its own init). Their scope can only be function level, or a block holding head and transfer, ending before what's outside it (zero arm or tail).
+
+gen_nr80 (223 plain+while, 892 with do and side; hn neg/pos/rpos x hdr fn/blk/blk1/rest x fds fn/blk/tailout x head flip/old/else/nest x tail ret/fall/ne/var; invalid tailout+fall-through dropped): **f stays [9700, 9409] in every while+plain row**, MEM never rises above 17117 (-62, -122 where it changes). hdr's own block changes nothing (x50 rows have the flip's numbers; `blk1`, with the -1 test in the block, is V=20, C=48, same margin).
+gen_nr82 (64; r per use and in the loop body, got and buf in if (size), size at its getBeU32, hdr at its recv, plain/side): every row is the flip or side result, margin -50 / -117. Scalars have no clobbers, so this was expected.
+
+### Where the clobbers land, and what they change (drafts built from gen_nr80.src; dumps build/nr/n9/{flip,fb})
+
+Flip at uncprop1: `_27 = PHI <0B(3), 0B(5), 0B(7), &netEmpty(22), 0B(13), 0B(21), 0B(16), buf_14(19)>`, then fds, tv, hdr clobbers and `return _27` in that one block. All 0B args are already direct, so there's no cb-style uncprop effect to gain here: nothing reuses a known 0, and the reference keeps its `xor edi,edi`.
+
+fds/tv block with the zero arm outside it (`neg|fn|blk|flip|ret`): a clobber copy with an inner `_30 = PHI <0B..., buf_14>`, then `_27 = PHI <&netEmpty(21), _30(23)>`, then hdr's clobber and the return. Profile_estimate shows what that costs:
+- every null-return prediction goes (cb's item 4): head tests 4.0% -> 27.0%, size == -1 95.9 -> 72, so the head failures are far too hot. V=113, C=107, r=17. The reference has them last, so **the head's returns reach the real return's PHI: fds/tv aren't in a block that excludes the zero arm.**
+- J's early return goes: P(eq) .199 -> .28 (like the `ne` tail).
+- the loop's exits don't change: first match, 3% each.
+Nested head with fall-out, or a zero arm inside the block: x50 no-ops when all paths share one clobber copy; V=28+, C=66+ when not, and some fall-out rows lose the clone altogether (`neg|fn|blk|old|fall`, V=130, no clone). Tail outside the block (`tailout`, valid only with the old head): V=130, C=92, r=(46,42), margin -50.
+`pos|rest|blk|old|ret` V=0, C=70, r=(0,8), margin -62: another V fix without the flip, worse in the clone, no margin.
+
+### Why it can't pay the margin (while form)
+
+margin needs f_pre, log+store, else or the exit shares to move. LOOP_EXIT is first match on all 3 exits and n_exits counts edges, so a clobber can't move f1/f2/f3 or f_pre. log + store = J + else whatever J's prediction is, and scope doesn't touch else (the 97% guard). So the only scoping effect on got's MEM is losing a ref (-12, -72). Measured, not just argued: no row in 223 is above -50.
+
+### Do family: one real effect, not enough
+
+gen_nr81 (210; attempt 8's tail helper x 3 callers x 10 scope shapes). **Scope does change the guard:** `return netRecvDone(...)` is g .912 at function level because of the early return; with fds/tv round it the return is two blocks, no early return, g .869. So `if (netRecvDone(...)) return buf;`, the odd spelling attempt 8 needed for .869, isn't needed: `eq|ret|posfb` (g .869, P .199) margin +22, log 332; `ne|ret|posfb` (P .28) margin +6, log 298.
+But those are the same numbers as `eq|ifnot|base`, `ne|ifnot|base`: the window needs P(eq) in [.297, .319] at g .869, and the helper's P is estimated in the helper, which has no aggregate, so scope can't touch it. Also the shapes that get this are worse: posfb V=50, C=22, r=(8,8); fb V=92, C=74, because the head failures lose their shared return path or their null return. Rows unchanged from attempt 8: `eq|ifnot|base` and `ne|ifnot|base` V=16, C=24; `ne|ret|base` V=0, C=52, margin -26; `eqs|ifnot|base` V=0, C=54, margin -10.
+Raising the head failures to free `store <= head` (the idea behind gen_nr81, for g .73, P >= .52) fails on arithmetic, not compiled at g .73: store 362 would pass R 291 too, and a P(eq) over .5 makes store J's fallthrough.
+Direct do form (gen_nr80, no helper): flip|do V=52, C=44; old|do V=50, C=24, margin +158, log far over R; side|do V=26, C=43, r=(0,3), margin +91; `pos|rest|fn|flip|ret|side|do` V=59, C=20, r=(1,2). None beats the existing drafts.
+
+## State at the end of attempt 9: NO MATCH without the asm. Scoping doesn't move it.
+
+src/net.c and build.sh unchanged (flip + asm). No new best: drafts/net_netRecvVerbose_best.c still 0, 13; drafts/net_netRecvVerbose_flip.c 0, 48, margin -50. No candidate.
+Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr80.py (NR80_LOOP=do NR80_SIDE=1 for the 892); also gen_nr81.py, gen_nr82.py; NR_TAGS=1 lists tags.
+Next: nothing from scoping. Still open from attempt 8, and not scoping: a natural P(eq) of about .30 in the helper (pointer compare + call would be .30, needs odd helper parameters; still not compiled, as this attempt was limited to scoping), or a natural dead loop exit.
+Don't retry: any scope of fds, tv, hdr or the scalars for the margin; a second fd_set/timeval (the reference doesn't re-init); fds/tv blocks excluding the zero arm (head goes hot); tail outside the fds block.
