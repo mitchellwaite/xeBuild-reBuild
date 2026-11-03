@@ -84,3 +84,37 @@ Next ideas, untested, low odds:
 - A 33-36% first verbose test: partner 55-58% is PRED_CONTINUE's range (hitrate from memory, 56, not re-read). `continue` needs an enclosing loop around the first test; nothing natural found, and it only moves to the plain deficit of 50, which then still needs +50.
 - If either lands: a coalesced copy in the log block (+72) would also be needed for the plain while form.
 Don't retry (adds to attempt 1's list): tail spellings in the while form (no effect), `(uint32_t)got` alone (TER), `continue` in the loop, shared fail label (3 compares in the original), err/ok flags in the loop, repairing the best draft's eax (r108 conflict is structural).
+
+## Attempt 3: is netRecv its own source function?
+
+Tools: nrsplit.py <gen.py> (netRecv before netFree, no macro, V from drafts/_side.c; N/V lines, r= regs erased), gen_nrs*.py.
+No FNCMP_GCCSYM. V stays MATCH in every case: no constant caller left, so no clone, V's code doesn't depend on it.
+
+gen_nrs1: V's text with the verbose tests removed, `static`: N=52, r=0 (registers size/buf/got esi/edi/ebx again, plus store block `*len=size` before the two head-failure blocks instead of last). Non-static: N=67, r=9 (IPA-RA call-clobber differences in callers don't matter here; N differs through inline/frame).
+gen_nrs2 (744; loop form x select x recv x tail x decl): best doguard `if (size > 0) do {...} while`: N=22, r=2 registers RIGHT; `u` (uint32_t got): 19, r=3.
+gen_nrs3 (384; head select/recv spellings): `r<=0` and side-effect head tests change code (r=5..16). `!r ||` same as plain. Not useful.
+gen_nrs4 (24; wrappers over one helper): `inline` helper is inlined EARLY, verbose 0 folds before profile_estimate, so same as gen_nrs1 (N=52). `static inline` helper is not inlined at all (recvReply + its own constprop clone, 144+).
+gen_nrs5 (size <= 0 skips the got == size test: nested `if (size > 0) { do..while; if (got == size) {store; return buf;} } log; free; return NULL`, or goto): N=24, r=0, registers RIGHT. J (got == size) P(eq) 19.9% (call heuristic gone: log block has 2 preds, as in the clone) and guard 86.9% (opcode 73 + call 71). Left: log block f 358 > R 291, J 282, pops early.
+gen_nrs6: `if (size > 0) do..while; if (size <= 0 || got != size) {log...; return NULL;} store`: N=14, r=0 registers right. Non-short-circuit OR: P(fail) 29% (call only), J falls through to store rather than log. Polarity is the problem. goto_ok form: N=24, P(eq) 28%, log 335.
+Layout model (own function), order R, J+log, W, W, store needs: log < J and log < R; J->log edge >= 5% entry (exec_th, round 3); store < W (~.04 entry). Registers need f_pre + f_log >= ~.1325*F (deficit = .053F - .4(f_pre+f_log)). While form: else 26, f_pre 873 too low (deficit 74). Nested do: f_pre 1005 OK if log <= 282, needs else <= ~52 i.e. guard >= 95% (have 86.9).
+gen_nrs7 (24; store inside loop, nested while, redundant `size > 0 &&`): best do_and|side, saved as drafts/net_netRecv_own_best.c: `if (size > 0) do {...} while (got < size); if (size > 0 && got == size) {store; return buf;} log...`, side select: N=8, r=2, registers right, J falls through to store instead of log (P(store) 61%). `if (got && got == size)` while form: N=9 but a real extra test stays. Store inside the loop: extra je in the loop, N=24.
+gen_nrs8 (48; ret variable, goto out, nested): no better than 22.
+
+### Evidence: clone or separate function? Clone.
+
+For a clone:
+- Every other function in the object is public (`T` in nm), even those used only here (netCheckOk, netSendStr, netOpenSocket, netReadInfo, netClose...): the author doesn't write `static` in net.c. netRecv alone uses the local-function convention: `len` in eax (`lea eax,[esp+28]; call 41e800`, `mov edx,eax` on entry), 13 call sites. V takes stack args. A public own netRecv can't match (gen_nrs1: N=67, r=9). A hand-written netRecv would have to be the file's only `static`; a gcc clone is local by construction.
+- Position: netRecv is first in .text, at 0x41e800, before netFree, with V in the middle at 0x41ee30. gcc emits the clone first with no help; a source function would have to be the file's first, far from its twin.
+- Layout: the clone's frequencies give the reference's block order with no help in the plain form (r=0, only registers). store 45 < W 96 because V's `if (verbose) putchar` block between J and log removes the call heuristic and the else share. An own function has to reproduce those stale numbers from nothing, and the model below says it can't.
+Neutral: .rdata (shared strings at netRecv's position, V-only ones at V's): same for both. Both verbose callers pass `log_get_verbose() != 0`, all 13 netRecv calls are in net.
+Linux xeBuild64: no net strings ("waiting for 0x", "timeout waiting for data" both 0 hits; no such code in v1.16), no cross-check possible. Upstream cOzInABox/XeBuild tree (read in full via the GitHub API): no net/recv/socket/client path, no xeBuild app source. tmp/dashlaunch: no match.
+Task's other ideas refuted by the binary: verbose as global/static: callers pass it as stack arg (`movzx eax,al; mov [esp+4],eax`). V as thin wrapper: V at 41ee30 holds the whole body, no call. Wrappers over a helper: gen_nrs4 (`inline` folds early, `static inline` isn't inlined).
+
+### Why the own-function family fails (nested do, the best family; F=10000)
+Let p = guard, P(eq) at J. f_pre = 873/p, else = 873(1-p)/p, J 282, R 291, W ~115. Need log = (1-P(eq))*282 + else <= 282, store = P(eq)*282 < 115, f_pre + log >= 1325 (registers). From store: P(eq) < .41, so log's J share >= 167, so else <= 115, so p >= .884, so f_pre + log <= 987 + 282 = 1269: short by 56 refs freq, .4*56 = 22 cost. Natural predictor values miss by more: p=.869,P(eq)=.378: log 307 > J by 25; p=.912 (no such guard found): registers short by 44. While form: f_pre 873 + log <= 274 against 1285: short by 55 in cost, always.
+
+## State at the end of attempt 3: NO MATCH
+Clone best still 13 (drafts/net_netRecvVerbose_best.c). Own-function best 8 (drafts/net_netRecv_own_best.c, plain types but side select and a redundant `size > 0 &&`), though the evidence says the original isn't that shape.
+Reproduce: python tools/wip/dehint/nrsplit.py tools/wip/dehint/gen_nrs7.py ; python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecv_own_best.c netRecv -O3 -Isrc . nrtr.py <src.c> prints traces and predictions.
+Next (low odds): a natural got ref in the log block, worth .4*f_log (~110), would close either family; nothing found that isn't TER'd or left in the output. Otherwise this needs the user's ruling: keep expect+asm (hints) in src/net.c.
+Don't retry: public netRecv, wrappers over helper, global verbose, head spellings (gen_nrs3), single-return styles (gen_nrs8), store in the loop.
