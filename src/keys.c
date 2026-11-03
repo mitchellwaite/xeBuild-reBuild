@@ -348,12 +348,8 @@ uint32_t checkKeys(char *str)
 	return 0;
 }
 
-/* the sums are copied to a type they can't be coalesced with (signed vs
-   unsigned), so the value after the loop is its own pseudo: in registers
-   there (xor'd on the count == 0 path) while the loop's sums stay in memory */
-static inline void smcSum(uint32_t *buf, uint8_t *out, uint32_t count)
+void smcChecksum(uint32_t *buf, uint8_t *out, uint32_t count)
 {
-	uint64_t s1 = 0, s2 = 0;
 	long long sum1 = 0, sum2 = 0;
 	uint32_t i, v;
 
@@ -363,20 +359,9 @@ static inline void smcSum(uint32_t *buf, uint8_t *out, uint32_t count)
 		sum2 -= v;
 		sum1 = (sum1 << 29) | (uint32_t)((uint32_t)(sum1 >> 32) >> 3);
 		sum2 = (sum2 << 31) | (uint32_t)((uint32_t)(sum2 >> 32) >> 1);
-		s1 = sum1;
-		s2 = sum2;
 	}
-	setBeU64(s1, out);
-	setBeU64(s2, out + 8);
-}
-
-/* smcPrepare inlines smcSum with the object's flags; the standalone copy
-   skips the late forwprop (it would put the loop bound first in the exit
-   cmp) and reassoc (SWAP32_KEYS's first add) */
-__attribute__((optimize("no-tree-forwprop", "no-tree-reassoc")))
-void smcChecksum(uint32_t *buf, uint8_t *out, uint32_t count)
-{
-	smcSum(buf, out, count);
+	setBeU64(sum1, out);
+	setBeU64(sum2, out + 8);
 }
 
 void smcEncrypt(uint8_t *buf, uint32_t len)
@@ -457,7 +442,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 		smcEncrypt(smc, size);
 	}
 	memcpy(buf, smc, size);
-	smcSum((uint32_t *)buf, hash, size / 4);
+	smcChecksum((uint32_t *)buf, hash, size / 4);
 	free(buf);
 	return 0;
 }

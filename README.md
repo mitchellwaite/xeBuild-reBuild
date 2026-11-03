@@ -122,19 +122,16 @@ hint-free source would have to land on the same numbers.
 </details>
 
 <details>
-<summary><b>4. keys</b>: 20 tricks, hard</summary>
+<summary><b>4. keys</b>: 19 tricks, hard</summary>
 
 - `-fno-toplevel-reorder` and `--param builtin-expect-probability=60`
 - 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
   `daeEncrypt`, which set trace order and LRA's spill-slot order
 - 1 `pure` redeclaration (`getBeU32`), which only this file can use
-- `optimize("no-tree-forwprop", "no-tree-reassoc")` on `smcChecksum`, 2 lines off
-  without it
 - 2 pins (`off` in `daeEncrypt`)
 
 The hints are spread over several functions, and `kvPrepare` depends on several
-of them together. The `smcChecksum` attribute exists because its standalone copy
-must differ from the inlined one.
+of them together.
 
 </details>
 
@@ -173,16 +170,16 @@ is probably the best of the hard files to work through next.
 </details>
 
 <details>
-<summary><b>7. build</b>: 54 tricks, very hard</summary>
+<summary><b>7. build</b>: 52 tricks, very hard</summary>
 
-- `-fno-toplevel-reorder` and `--param builtin-expect-probability=98`
+- `--param builtin-expect-probability=98`
 - 19 `__builtin_expect`, 9 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
   across `loadFileCrc`, `extractSmcConfig`, `patchSmcConfig`, `loadBl` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
 - 3 `no-early-inlining` attributes, 3 inlining and cloning attributes, and 2
   `__builtin_assume_aligned`
-- 1 asm-label prototype (`imgAddInt`), `XB_FILES_BOUND` and 1 literal-order `asm`
+- `XB_FILES_BOUND` and 1 literal-order `asm`
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
 narrow, unusually high range (92-99), and the dom2 entry is there to keep one
@@ -211,9 +208,9 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>9. mode_client</b>: 142 tricks, very hard</summary>
+<summary><b>9. mode_client</b>: 141 tricks, very hard</summary>
 
-- `-fno-toplevel-reorder` and `--param builtin-expect-probability=50`
+- `--param builtin-expect-probability=50`
 - 89 `__builtin_constant_p` feeds and 19 `asm goto` edges to dead labels, which
   set bb-reorder's heap keys
 - 10 pins, including ones that only raise LRA's `edi` usage

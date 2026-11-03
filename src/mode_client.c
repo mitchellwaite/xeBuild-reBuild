@@ -9,9 +9,8 @@
    and only change priority keys and the frequencies of the blocks they enter.
    clientEraseBlockI is clientEraseBlock inlined by hand so its labels can be
    reached (tools/wip/mc/s150/NOTES.md has the levers, the wip/mc attempts
-   before it the search).  String literals land in .rdata in function order
-   (-fno-toplevel-reorder) and, within one, in block order; two empty asm "i"
-   hints fix that order where the shape alone doesn't. */
+   before it the search).  String literals land in .rdata in block order; two
+   empty asm "i" hints fix that order where the shape alone doesn't. */
 #define AT(l) l:
 #define JMP(...) __asm__ goto ("" :::: __VA_ARGS__)
 #define NO_MODE_ARG(m, a) (!((m) && (a)))
@@ -769,6 +768,7 @@ fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin
 	return 0;
 }
 
-/* 16 zero bytes end the original object's .rdata */
-static const char mc_rdpad[16]  = {0};
+/* 16 zero bytes end the original object's .rdata (global: gcc drops an unused
+   static) */
+const char mc_rdpad[16] = {0};
 
