@@ -234,3 +234,39 @@ Next:
 3. `off`-derived in-loop values for a2/a5: something that isn't merged by FRE1 but merges with start after ipa-cp.
 4. pin_hdr's 104-line form (`h1cu8`): needs hdr pushed after r196/r260/r261; pin_t and hdr both want a use that reaches IRA and emits no code; none known.
 Don't retry: near3 forms (done, a6 removal solved it), pointer-type reload for hdr, end++/lim-- bodies (gen_iw62), abort elsewhere in the arm (gen_iw61).
+
+## Attempt 5
+
+Written as I go. New tools: `iw5.py singles|subsets|show` (the 14 tricks of 8b2855b3 as named edits, `IW5BASE=` other base), `iw5d.py <file> [-np] [fn..]` (diff with jump and call targets blanked: real instruction differences only; a layout flip reads as moved blocks).
+
+- **Breakthrough: imgFits written with an `if`** (`if (a >= b) return 1; return 0;`). Its own code is unchanged, but the PHI of constants survives early inlining (no early phiopt in gcc 6), so its callers get the original's probabilities and threading. imgAddMobile needs no expect and no param once its big arm is `if (imgFits(off, len)) { adding...; return ret; } error; return 0;` (error string after: `if (!imgFits)` first flips .rdata). drafts/image_write_a5.c: exp_mob gone, identical (13). gen_iw69 (imgFits forms), 70, 71 (mobile forms).
+- **imgAddFile natural:** `if (imgFits(off, len)) {...} else {error}` with the if-form imgFits has the head right; one compare left in the big copy (`npages > p`, flips loop layout, 116 lines; build/iw/a5/m1.c). One dead `if ((len & 0x3fff) > 0x3fff) len++;` before it flips the compare: IDENTICAL with no flags (gen_iw78 `L`, drafts/image_write_a5.c). So exp_mob, exp_file, param, ab and `end < off` are gone: 14 -> 9.
+- Why the compare moves: `_Bool partial; partial = 0; if (...) partial = 1;` on m1 also gets imgAddFile and writeFsTable right with no dead test in imgAddFile, leaving 8 lines in imgAdd (build/iw/a5/m3.c, gen_iw73 `_Bool+pa`). The 8 are t's `lea`: PRE inserts the loop's invariants on the preheader by value id, and value ids follow SSA versions (run_scc_vn walks versions), so `len <= 16383`, popped at ifcombine, must get a version below t's. With `int partial` the copy `partial_68 = iftmp` is released after release_ssa and ifcombine pops 68, below t_69; in the _Bool form it pops 75, above t_68.
+- Family without any dead test in imgAddFile: `_Bool partial; int small; small = type != 0 && type != '0'; if (small && len < 0x4000) partial = 1; else partial = 0;` + `i = blk - xb.fsStart; fsTable[i] = ...` in writeFsTable: build/iw/a5/c12.c, only 2 compares of writeFsTable's big copy (6 lines). Gets there via gen_iw80 (`_Boolint+c10`), probe (`wst0`), gen_iw81 (`f2+i`). gen_iw39 (writeFsTable forms) on c11: stays at 8.
+- Mechanism of the last compare in c13 (`ivtmp.433_71 != _176` where the reference has `_174 != ivtmp.434_405`): the copy in split-paths pops a free name. In the reference the top of the free list is 405 (a temporary made and released after ivopts, in no dump), in c13 it's 71, `b_71`, the outer loop's iv that ivopts released. So the free list wants one more late-released high name. `build/iw/a5/ns2.py <dumpdir>` lists split-paths' new names, `ns3.py <dumpdir> <ver>` a version by pass.
+- Singles on the a5 draft: `opt`: still the 2 small-copy compares, 4 lines. pin_t 10. lnp2le 12 (npages/off+len slots 0x30/0x34 swap). lnp2 183, xmalloc 180, pin_hdr 243, a2 and a5 alone lose the off-0 clone (10000+), c4 alone 140 and lenp alone 138 (each the imgAddFile compare; in the c1x family they cost far less, see below). Shape probes (one trick x one shape) on a5 find nothing for opt, pin_t, lnp2le.
+
+### Attempt 5 result: MATCH, 14 -> 9
+
+`drafts/image_write_a5.c`, compiled with plain `-O3` (no --param), .o byte-identical to build/obj/image_write.o. build.sh's image_write case must become `cflags="-O3"` and lose its comment about imgAddMobile's hint.
+
+Removed: both `__builtin_expect`, the --param, `(end & 0x3fff) > 0x3fff` abort test, `end < off` conjunct. Left: dead 4 (imgAdd loop `x > first + 0x4000` and `(len & 0x3fff) > 0x3fff`, FS loop `x > first + 0x4000`, imgAddFile `(len & 0x3fff) > 0x3fff`), pins 2 (t, xb.hdr), hot label lnp2, optimize on writeFsTable, xmalloc = 9. Source changes: imgFits has an if; imgAddMobile's big arm is `if (imgFits) {...; return ret;} error; return 0;`; imgAddFile uses imgFits, no lim, no end, unused locals dropped.
+
+Closest to 8: `drafts/image_write_near5.c` (build/iw/a5/c13.c, no dead test in imgAddFile): `_Bool small; int partial; small = 0; if (type != 0 && type != '0') small = 1; partial = small && len < 0x4000;` and `i = blk - xb.fsStart; fsTable[i] = ...`: **one flipped compare**, writeFsTable's big copy, 2 lines. Not reached in: gen_iw83 (1215: dead bodies, small's test, t, lengths), gen_iw84 (432: small and partial forms), gen_iw85 (512: dead conditions), gen_iw39 (1440: writeFsTable forms), annealing seed 504 (1100 states).
+
+Others: build/iw/a5/m3.c (`_Bool` partial, imgAdd's t 8 lines). `iw5cross.py` on m3, c10-c13, a5: c1x with len++ kept and c4 gone is 6 lines (constprop.1 2, writeFsTable 4): would also be 8.
+
+Scripts (repo root unless stated): `IW5NP=1 IW5BASE=<file> python tools/wip/dehint/iw5.py singles|subsets a,b|show a,b [-o f]`; `python tools/wip/dehint/iw5d.py <file> -np [fn]` (the diff to read first); `python tools/wip/dehint/iw5cross.py <files>` (from anywhere, paths as given; c4, opt, pin_t subsets with and without len++); `IW3BASE=<file> python tools/wip/dehint/iw3anneal.py 0 0 param --probe '{"param":true}'` still works with param as the fixed name (no --param then). Generators (iwsweep.py, `PYTHONPATH=tools/wip/dehint` for 69, 71, 72): 68 natural imgAddFile, 69 imgFits forms, 70 mobile forms, 71 exp_mob only (`if1+Bif+S0`), 72 imgAddFile-only forms (480, no effect on the compare), 73 partial type and form, 74, 75 t position, 76 straight-line partial, 77 t and partial forms, 78 the dead test in imgAddFile (`L` is the hit), 79 broad cross, 80 extra copy (`_Boolint+c10`), 81 (`f2+i`), 82 (`s5+p7+pi+sb`, c13), 83-85 around c13. Generators read base files in build/iw/a5/: m1 = gen_iw70 `Bif+S0` on if1 (gen_iw69 `if1+fits+mob`), m3 = gen_iw73 `_Bool+pa`, c10 = gen_iw80, c11 = wst0 on c10, c12 = gen_iw81 `f2+i`, c13 = gen_iw82.
+
+Lessons:
+1. **Look at helpers' shape first.** `return a >= b` vs `if (a >= b) return 1; return 0;` compile to the same function but differ a lot when inlined early: this one change replaced 2 expects, the param, 2 dead conditions. Worth trying wherever a small helper is inlined and hints sit around its callers (other objects too).
+2. Literal order: `if (imgFits) {adding} error` puts error's string after, which is what .rdata wanted.
+3. PRE's preheader insertions follow SSA version order (run_scc_vn walks versions), so an ifcombine-popped name above a later statement's version reorders hoisted code, hence RA.
+4. A copy from a COND_EXPR temp (`int partial = a && b`) survives until release_ssa and is freed later: it decides which low name ifcombine pops.
+
+Next:
+1. near5's compare: a form that leaves one more name released after ivopts in writeFsTable's big copy.
+2. Same `if`-shape thinking for what the rest hide: pageErased/spareUsed/calcPageEcc forms for pin_hdr (finalizeImage inlines them), imgSizeAligned for imgAdd's callers.
+3. a2/a5 (off-0 clone): still needs a natural time benefit for off in the loops; look for a real expression, a test of the kind that folds when off is 0.
+4. lnp2: needs p >= .78 for `partial <= 0` or a change in r136's references.
+Don't retry: imgAddFile-only forms for the compare (gen_iw72), dead conditions on c13 (gen_iw85), t position on `_Bool` (gen_iw74, 75).

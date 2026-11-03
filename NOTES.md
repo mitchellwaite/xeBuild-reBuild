@@ -248,8 +248,8 @@ or after the main path), which gives the original's `.rdata` order. The
 variables are zero-initialized globals in reverse `.bss` order, as gcc emits
 data last to first.
 
-And `image_write` (whole object in C, no `.s`; `-O3 --param
-builtin-expect-probability=50`, default top-level order).
+And `image_write` (whole object in C, no `.s`; plain `-O3`, default top-level
+order).
 
 - `imgAdd` (copy to the image, set the spare bytes, chain the FS table) is
   the only writer: the image's imgWriteStart, imgWritePage and imgWriteAt
@@ -264,12 +264,10 @@ builtin-expect-probability=50`, default top-level order).
   ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
   recycled, i.e. the compare operand orders in the clones and inlined
   copies; their layout was found by a search (tools/wip/README.md).
-- imgAddFile computes imgFits' limit and end itself before a dead `len++`
-  (`end < off` in its test keeps end alive until DOM2), and the dead test in
-  its body calls `abort()`, whose noreturn prediction works like
-  a `cold` label, so VRP1's jump threading neither renumbers that value nor
-  leaves the error edge at 75%. The call is removed before expansion, so the
-  object has no `_abort` reference.
+- imgFits is an `if` returning 1 or 0, not `return a >= b`: it compiles to the
+  same function, but the form it inlines with gives imgAddFile and
+  imgAddMobile their branch probabilities and head registers. A dead `len++`
+  in imgAddFile sets the SSA order of the inlined big copy's `npages > p`.
 - String literals are emitted in statement order with each function, and
   the buildImage jump table after its strings, which is the `.rdata`
   order; finalizeImage's arms are written in the order that gives it.

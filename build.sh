@@ -57,9 +57,8 @@ for f in $objects globals; do
     filelist_ini) orig="$f.c"
            cflags="-O3 -fno-tree-loop-vectorize --param builtin-expect-probability=65
                    --param lra-inheritance-ebb-probability-cutoff=60" ;;
-    # imgAddMobile's 50/50 imgFits hint
     image_write) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=50" ;;
+           cflags="-O3" ;;
     # its data is defined in the original's .data/.bss order, reversed
     image_read) orig="$f.c"
            cflags="-O3" ;;

@@ -670,35 +670,26 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	return 0;
 }
 
+/* an `if`, not `return a >= b`: gcc 6 has no early phiopt, so the PHI of 1 and 0
+   survives early inlining, which gives its callers their branch probabilities
+   and the threading of the head block */
 int imgFits(uint32_t off, uint32_t len)
 {
-	return (xb.fsEnd - 1) * 0x4000 >= off + len;
+	if ((xb.fsEnd - 1) * 0x4000 >= off + len)
+		return 1;
+	return 0;
 }
 
 void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32_t len)
 {
 	uint32_t off = imgSizeAligned();
-	uint32_t start, b, p, pages, npages, first, rem, tail, blocks;
-	uint16_t blk;
-	uint8_t *s;
-	/* imgFits by hand, its limit before the dead len++: VRP1's threading
-	   of the two dead tests copies the block after len++ (which gives the
-	   original's head registers), so names defined there are renumbered
-	   high.  lim (one use, expanded at the test) keeps a low number:
-	   `lim < end` then comes out in the original's operand order.  end lives
-	   to DOM2 through `end < off` (the dead test's first half), which then
-	   replaces off + len by it: `end > rawSize` in the original's order too */
-	uint32_t lim = (xb.fsEnd - 1) * 0x4000;
-	uint32_t end = off + len;
 
-	if (end < off && (len & 0x3fff) > 0x3fff)
+	/* dead (VRP1 removes it): it only sets which SSA names get recycled, which
+	   gives the inlined big-block copy its `npages > p` compare and so its loop
+	   layout */
+	if ((len & 0x3fff) > 0x3fff)
 		len++;
-	if (__builtin_expect(lim >= off + len, 1)) {
-		/* dead; the noreturn call predicts it not taken, so the threading
-		   that removes it doesn't leave the error edge at 75% (the error
-		   block is then laid out after the big-block path) */
-		if ((end & 0x3fff) > 0x3fff)
-			abort();
+	if (imgFits(off, len)) {
 		fsFiles[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
 		fsFiles[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
 		strcpy(fsFiles[nFsFiles].name, name);
@@ -733,22 +724,22 @@ uint32_t imgAddMobile(const void *data, uint32_t len, uint8_t type)
 		} else if ((mobileOffset & ~0x1ffff) + 0x20000 < mobileOffset + len)
 			mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
 		off = mobileOffset;
-		if (!imgFits(off, len)) {
-			log_printf(0, "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n",
-				type + 17);
-			return 0;
+		if (imgFits(off, len)) {
+			log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
+				type + 17, type, off, len, off + len);
+			imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
+			ret = mobileOffset >> 17;
+			mobileOffset += len;
+			if (mobileOffset & 0x7ff)
+				mobileOffset = (mobileOffset + 0x800) & ~0x7ff;
+			return ret;
 		}
-		log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
-			type + 17, type, off, len, off + len);
-		imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
-		ret = mobileOffset >> 17;
-		mobileOffset += len;
-		if (mobileOffset & 0x7ff)
-			mobileOffset = (mobileOffset + 0x800) & ~0x7ff;
-		return ret;
+		log_printf(0, "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n",
+			type + 17);
+		return 0;
 	}
 	mobileOffset = off = imgSizeAligned();
-	if (__builtin_expect(imgFits(off, len), 1)) {
+	if (imgFits(off, len)) {
 		log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
 			type + 17, type, off, len, off + len);
 		ret = mobileOffset >> 14;
