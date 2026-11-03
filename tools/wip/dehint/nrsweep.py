@@ -97,7 +97,7 @@ def main():
     def show(r):
         rr = (r[7], r[8]) if len(r) > 7 else ''
         print(r[0] if r[0] < 10 ** 5 else 'X', 'V=%s C=%s r=%s' % (r[1], r[2] if r[2] < 10 ** 5 else 'X', rr), r[3], os.path.basename(r[6]))
-    for r in res[:20]:
+    for r in res[:int(os.environ.get("NR_TOP", "20"))]:
         show(r)
     print('best V:')
     for r in sorted(res, key=lambda r: r[1])[:8]:
