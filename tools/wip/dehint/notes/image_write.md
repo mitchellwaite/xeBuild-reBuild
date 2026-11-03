@@ -270,3 +270,49 @@ Next:
 3. a2/a5 (off-0 clone): still needs a natural time benefit for off in the loops; look for a real expression, a test of the kind that folds when off is 0.
 4. lnp2: needs p >= .78 for `partial <= 0` or a change in r136's references.
 Don't retry: imgAddFile-only forms for the compare (gen_iw72), dead conditions on c13 (gen_iw85), t position on `_Bool` (gen_iw74, 75).
+
+## Attempt 6
+
+Written as I go. New tools: `iw6cp.py <file.c>` (ipa-cp's evaluations: is the off-0 clone made, by what margin). Base is plain -O3; sweeps set `FLAGS = []`.
+
+- **Breakthrough: `pg = start * 32;` as a local in the inner loop** (`s = xb.spare + (pg + p + b * 32) * 16;`) replaces a2/a5's job. ipa-cp's time benefit counts statements whose operands all derive from params, so an `off`-only value computed in the loop is what the off-0 clone needed (evaluation 557 with the dead tests; 757 with `start * 32` and no dead tests; threshold 500). Forms that fold back to `(start + b) * 32` at parse time (`(start * 32 + b * 32 + p)`) have no effect: it has to be a separate statement. Ruled out for this job: `start` computed per loop (gen_iw86: benefit is there but `sub/shr` in place of the head's `shr`, 1300 lines).
+- With it all four dead tests can go: gen_iw88 `noc4+nolp+pd` 91 lines, then `start - xb.fsStart + blocks - 1` in the 0x1fff store (constprop.1's 51), then `partial = (len < 0x4000) & (type != 0) & (type != '0');` (gen_iw91 `f11`): **2 lines: one compare, writeFsTable's big copy** (`drafts/image_write_near6.c`, build/iw/a6/r0.c; same compare as earlier attempts: `ivtmp.433_92 != _317`, wants the split-paths copy's name above end's).
+- The last compare's mechanism (r0 vs reference, `iw6last.py`, `iw6ver.py`): ivopts' pops for the big copy's `end` come from the FS loop's dead else arm of an inlined copy. Reference: first copy's arm, low names (174); r0: second copy's arm (317), because r0 has about 10 free names more on top of the list (the reference's cunroll runs out and allocates up to 407, r0 stays at 391). The split-paths copy then takes the top of the list, the last name ivopts released (reference 405, r0 92 = reassoc1's `_128 * 32`). So r0 wants about 10 more names popped between ccp2 and ivopts and live until ivopts, or a higher name for reassoc1's statement. Sweeps that don't reach it: gen_iw92 (1440 writeFsTable forms), gen_iw93 (dead tests back), gen_iw94 (pg forms), annealing seed 603 (2872 states from r0).
+- gen_iw104 `bv` (`for (blk = start, b = 0; b < blocks; b++, blk++)`, all LBA stores on blk): writeFsTable matches, but b's iv goes in constprop.4 (167). gen_iw105: `blk = start + b;` local at the top of the outer loop used only by `s[1]`, `s[0]` (`u2+u4+lo`, build/iw/a6/c0.c) gets the big-copy third compare right too, 61 lines with the 4th compare wrong. A named block number does move the free list: lever to continue.
+- Family with a `small` temporary: gen_iw113 `e+u1+lo` (`drafts/image_write_near6c.c`, build/iw/a6/f0.c): `blk = start + b;` at the top of the outer loop used by big-arm `b2lo = blk >> 8`; `small = 0; if (type != 0 && type != '0') small = 1; partial = small && len < 0x4000;`. 2 lines: the big copy's other compare (`ivtmp.433_314 != _316`, its first pair member). r0 and f0 are complementary: in the big copy's two compares, r0 has (389 good, 92 bad), f0 (314 bad, 360 good). A state with ivopts' incr high (r0's 389, a cunroll temp) and split-paths' copy high (f0's 360) would be identical in writeFsTable.
+- Other near states: `drafts/image_write_near6b.c` (build/iw/a6/c2.c: `s[1] = blk; s[0] = blk;`, `&` partial, original fsend): 10 lines, only compare operand orders in constprop.2 and writeFsTable. `partial = (type != 0) & (type != '0') && len < 0x4000;` on it (build/iw/a6/c1.c with `lo`, d0 with `lm`): writeFsTable fully right, but imgAdd 16 (t's lea, two byte slots) and constprop.2 6. The imgAdd lines track the ifcombine-popped name: `&` and `small` forms fix imgAdd and move writeFsTable's compare; that's the same coupling attempt 5 saw.
+- imgAdd's t pin on r0: 10 lines, same slot swap. Range forms of the test (gen_iw103: `type >= '1' && type < '@'` etc.) 16. Unchanged.
+- lnp2 on r0: `if (partial) {...} else npages = 32;` (gen_iw96 n1, n2, n3, n6, n9) gets imgAddFile to 12 lines (the 0x30/0x34 slots) with no label, plus writeInitialHeader 89, which wasn't looked at. Best trick to try after the compare.
+- opt on r0: its own cost is now one compare (the small copy's `cmp edx,ecx`).
+
+### Attempt 6 result: NO MATCH
+
+Nothing identical with fewer tricks; src/image_write.c stays best at 9. But the closest states have **all four dead tests gone (would be 5 tricks)** with one flipped compare left:
+
+- `drafts/image_write_near6.c` (r0): 2 lines, writeFsTable big copy, `cmp esi,edx` at its second site (line 360 of the function's disassembly). Changes from src: dead tests removed; `pg = start * 32; s = xb.spare + (pg + p + b * 32) * 16;` in the inner loop; `partial = (len < 0x4000) & (type != 0) & (type != '0');`; `tail = rem; if (rem >= 0x4000) tail = rem % 0x4000;`; `fsTable[start - xb.fsStart + blocks - 1]` in the 0x1fff store.
+- `drafts/image_write_near6c.c` (f0): 2 lines, the same compare's first site (line 316). As r0, plus `blk = start + b;` used by big-arm `b2lo = blk >> 8`, and `small = 0; if (type != 0 && type != '0') small = 1; partial = small && len < 0x4000;`.
+- `drafts/image_write_near6b.c` (c2): 10 lines, operand orders only.
+
+What each near draft still keeps: pins on t and xb.hdr, hot label lnp2, optimize on writeFsTable, xmalloc.
+
+Per trick now:
+
+| Trick | State |
+|---|---|
+| 4 dead tests | near6/near6c above: one compare. Their ipa-cp job is solved by `pg = start * 32` (evaluation 757, threshold 500; a second such statement risks passing 500 for the off-0x80 value too, which needs time >= about 265: extra clone, seen with gen_iw98 `ip`) |
+| opt | on r0 costs one compare of its own (small copy) |
+| pin_t | 10, slots only, range forms of the test worse (gen_iw103) |
+| lnp2 | `if (partial) {...} else npages = 32;` (gen_iw96 n1): imgAddFile 12, writeInitialHeader 89 not examined |
+| xmalloc | reference keeps malloc's result in a stack slot, no reload of xb.raw, so no natural load breaks the alignment; not attacked further |
+| pin_hdr | not attacked |
+
+Scripts (repo root): `iw6cp.py <file.c>` (ipa-cp evaluations; full dump to build/iw/a6_cp.txt); `iw6ver.py <dumpdir> <fn> <first pass number> <versions> [-m]`, `iw6last.py <dumpdir> <fn> <pass number> <versions>` (who owns a name by pass, who released what a pass pops; dumpdir from `IWNP=1 iwdump.py <file> <dir> writeFsTable -fdump-tree-all`); `iw6anneal.py <secs> <seed> <base.c> [--workers N] [--state json] [--render json out.c]` (extended shapes, plain -O3; log build/iw/a6/an6_<seed>.log, stops on IDENTICAL writing an6_<seed>.c). `iw_tuples.py <gen>` is the view to use on generators: it shows the eight iv compares (wanted `i<e e<i e<i e<i i<e i<e i<e i<e`). Generators: gen_iw86 (start per loop), 87, 88 (pg, dead subsets), 89, 91 (partial, type, fsend, tail), 90, 93 (dead tests back; `IWB=`), 92 (gen_iw15's writeFsTable forms, `IWB=`), 94 (pg forms), 95, 97 (all forms x dead subsets from src), 96 (npages shapes for lnp2), 98, 100, 101 (`off & 0x1ffff` local instead of pg; s1 family, worse), 99 (pg outside inner loop: clone lost), 102 (off + len local: `end` at the head gets the compare right but ifcombine merges the head's tests, 356), 103 (t range), 104, 105, 108, 110 (blk local), 106, 107, 111 (around c2), 109, 112, 113, 114, 115 (small temporary, f0). Bases in build/iw/a6: r0 = near6, r1 = r0 without pg, r2 = r0 with `blk` declared, c0, c1, c2 = near6b, d0, e0, f0 = near6c; c0 = gen_iw105 `u2+u4+lo`, c1 = gen_iw101 `fo+p0` on c0 (`IWB=`), c2 = same `fo`, d0 = gen_iw108 `u2+u4+lm+fo+f0`, e0 = gen_iw110 `u1+lm+t32+f0+fo`, f0 = gen_iw113 `e+u1+lo`.
+
+Searches that stayed at their start: iw3anneal seed 603 (r0, 2872 states), iw6anneal 611 (r0, 2200), 612 (c2, 1204), 613, 614 (e0, c1), 615 (f0, 2040).
+
+Next:
+1. Get r0's incr and f0's copy in one state. The levers that moved these compares: a named block-number local (position barely matters, which stores use it does), `partial`'s form, `small`. Try other natural temporaries of the same kind (a named `BLK >> 8`, a named `next` test, a name for `start - xb.fsStart` in the FS loop), viewed with iw_tuples, not lines.
+2. Once it's identical, count again: if a dead test has to come back for it, it's still a reduction, so land the first identical state. Then opt (one compare), then lnp2 n1.
+3. Don't retry: gen_iw92's writeFsTable forms on r0, dead tests back on r0 or c2 (gen_iw93), pg's spelling (gen_iw94: only whether it survives as a separate statement counts), `&`/`&&` orders of partial (gen_iw111), FS else-arm forms (gen_iw53 on r0: lose imgAdd).
+
+Lesson: an ipa-cp benefit doesn't need a dead test. An ordinary local computed from params alone inside a loop counts as time saved, then reassoc folds it back into the same code. Worth checking wherever another object uses dead tests for a clone.
