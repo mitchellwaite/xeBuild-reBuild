@@ -199,3 +199,36 @@ src/net.c unchanged (flip + asm: both MATCH, SHA matches, one hint left). Best w
 Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr32.py ; python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr33.py ; python tools/wip/dehint/nrrtl.py build/nr/gen_nr30/v6.c 'got|want|_12'
 Next, low odds: a natural exit that exists at profile_estimate and later goes away in both versions (stale exit sum, the one lever that moved the margin). It has to land away from J and log, or the clone's R order breaks. Nothing natural known. Otherwise this is the user's call: keep the asm.
 Don't retry: verbose tests that aren't exits (no effect, gen_nr31), named or two-use conversions at the sub or add (fwprop, gen_nr30), log-block copies and casts (gen_nr32), verbose-only exits as written (gen_nr33/34: V=67+).
+
+## Attempt 6: reuse of one C variable
+
+Partition map (`-fdump-rtl-expand-details`, the clone of the flip): r_3, r_8, r_15, r_24 are all separate partitions, and the "Coalesce list" has only PHI/copy pairs (got_26/34/32/79; _27/_31/buf_14). So in this gcc, with -ftree-coalesce-vars on, sharing a base variable alone does NOT merge SSA names; the same-base merge is what -fno-tree-coalesce-vars does. A plain reuse needs a PHI or a copy connecting the names.
+gen_nr40 (300; hs/hr/ls/lr roles over r, got, size, n, m, k, decl order, `got = 0` at the declaration with/without the later set): **all V=0 C=48 r=0**. Where got holds a head result, that's its own pseudo and got's margin line in nrdef reads that first pseudo (MEM 2289/2380), the loop's pseudo is unchanged. `int got = 0` is const-propped: same.
+gen_nr41 (20; got read in a shared exit, flags on the flip): `got = 0; buf = &netEmpty; if (size) {...; if (got != size) {fail}} *len = got; return buf;` V=6 (r=2), C=51 (r=3), MEM 17105 (-62): one shared store is real in the output (the reference has `mov [eax],0` and a separate store of size/got), zero path's got=0 is constant-propagated, no ref. `nest` (only the zero arm's `got = 0; *len = got`), `head-got`: same bytes as the flip, cprop. Flags on the flip: break-tail|err V=26 C=22 margin -6: shared compare (reference has 3); cont-cond V=215+.
+gen_nr42 (100; size through r: `r = getBeU32(hdr); ...; size = r` and others, buf through ret/ptr locals, r on verbose paths: `r = got; printf(.., r, ..)`, `r += got; got = r`, `r = got` before the log): 80 are V=0 C=48 MEM 17117, identical to the flip. `void *p = calloc(); buf = p` V=130, C=68, same MEM. Copies are propagated, so no pseudo changes.
+Not swept: scope and parameter forms for merging. They were only to be tried if reuse showed promise. It can't: a nested `int r` is just another base variable, and gen_nr40's distinct-name rows already give identical bytes.
+
+**General note for the queue:** reusing a C variable doesn't change the code in gcc 6.2 at -O3, unless the names are joined by a PHI or a surviving copy. Only those pairs are on the coalesce list. Unconnected webs of one variable stay separate pseudos, so a reuse sweep isn't worth running to change allocation. Check with `-fdump-rtl-expand-details` ("Coalesce list", "Partition map"; the map is printed per function, so find the clone's section).
+
+### The margin, as a formula, and what it rules out
+
+With H the loop header (10000) and exit shares a (select), b (recv), x (tail): margin/H is about .8x + .4*else/H - .4a - .6b. Plain a=b=x=.03 gives -60 + 10 = -50, as measured. So tail exits pay and recv exits cost most, but a second tail exit doubles J (J > R breaks the clone's layout, gen_nr7/11), and with x <= b the best natural mix would be a=e, b=2e, x=2e, n=5, which needs tests no one writes and comes to about 0. else pays .4 per unit, but log then passes R (attempt 4's window). PRED_LOOP_EXIT is first match on all 3 exits (profile_estimate dump: "first match heuristics: 3.0%", others ignored), so no other predictor on the exit blocks can shift a or b; only n_exits can.
+
+### Another way to the same registers, looked at and dropped
+
+IRA dump of the flip's clone: r111, r136, r139, r137 are pushed as potential spills, then r138, buf, size, got go colorable together and are pushed in ascending cost, so got pops first (ebx). If got went colorable alone, one step before size and buf, it would pop later: that needs got to have one conflict fewer than they do, or one more profitable reg.
+- Conflicts: got's are the same long-lived set as size's and buf's (len, the recv and select pointers, &tv, &fds), all live over the whole loop. A pseudo that conflicts with size and buf but not got would have to cross a call outside the loop, and the output has no such pseudo (its only stack slots are 0x24, 0x28, 0x2c, already these).
+- Profitable reg: a hard-reg preference on got (eax, from `(set got eax)`) could add one, but head results in got are their own pseudo (gen_nr40), so nothing natural gives got that copy.
+- Thread freq order (from memory of the bucket sort; the dump only shows the push order): got would have to rank below size and buf, and it has 5 refs in the loop against size's 2.
+
+### What can't reach IRA as a got ref, added to attempt 5's list
+
+- J's compare (insn 163, +113 if it lived) is at expand and gone at IRA, removed by cse_cc. Nothing after IRA could remove it instead (no cmpelim, as attempt 2 found).
+- A PHI-joined carrier with a type change needs its second use on the path in the clone before the copy; with a signed `got < size` compare the conversion comes first, so the name is shared and TER folds. Not compiled: reasoned from attempt 5's TER findings.
+
+## State at the end of attempt 6: NO MATCH without the asm
+
+src/net.c unchanged (flip + asm). Best with no hint is still drafts/net_netRecvVerbose_best.c (V MATCH, clone 13 lines). Most natural is still drafts/net_netRecvVerbose_flip.c (V MATCH, clone 48, margin -50). No new candidate.
+Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr40.py (also gen_nr41.py, gen_nr42.py).
+Next: nothing with real odds. This is the user's call: keep the one asm, or accept the 13-line or 48-line state. If anyone retries, the only unexplored kind of source is one that changes loop exits at profile_estimate and then folds away in both V and the clone, with x <= b.
+Don't retry: variable reuse in any role (gen_nr40, gen_nr42), got in a shared exit (gen_nr41: real extra store merge, or cprop), flags on the flip (shared compare), `void *p` calloc carrier.
