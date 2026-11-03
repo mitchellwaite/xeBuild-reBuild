@@ -7,6 +7,10 @@ the generated asm (and still reproduces the SHA256).
 keeps the removals that leave the object unchanged and lists the closest misses.
 Its docstring says what to check before copying the result back.
 
+The sections below describe how each object first matched. `fileutil`, `net`,
+`console_hdd` and `bootloaders` have since lost most or all of those hints, so
+for them `dehint/` has the current state, with per-function notes.
+
 ## console_hdd.c
 
 All 14 functions match and are built from `src/console_hdd.c` with plain

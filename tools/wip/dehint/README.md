@@ -21,7 +21,7 @@ Status is `open`, `MATCH` (draft matches, not landed), `landed <commit>` or `par
 | 9 | bootloaders | daeVerifySig (inlines daeSigCheck where used) | no-early-inlining, hint(), literal asm, always_inline on daeSigCheck | landed (one function; `ok = 1`, key/hash scoped; daeSigCheck gone) |
 | 10 | bootloaders | cbDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | landed (locals in the magic block; good arms return, failures fall out to `return 0`) |
 | 11 | bootloaders | cdDecrypt | no-tree-dominator-opts, no-cse-follow-jumps | landed (same shape as cbDecrypt) |
-| 12 | bootloaders | ceDecrypt | no-tree-dominator-opts, no-cse-follow-jumps, pin on len/hmacKey | open |
+| 12 | bootloaders | ceDecrypt | no-tree-dominator-opts, no-cse-follow-jumps, pin on len/hmacKey | landed (same shape as cbDecrypt; cbsweep's a=1 is a .p2align that emits no bytes, see its notes) |
 
 When the last hint in an object goes, its `--param` options in `build.sh` go too
 (they only act on `__builtin_expect` and loop alignment).

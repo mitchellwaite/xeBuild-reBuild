@@ -412,24 +412,17 @@ uint8_t *cdDecrypt(uint8_t *bl, const void *pubKey, const uint8_t *salt, const u
 	return 0;
 }
 
-/* decrypted copy of an SE/CE with hmacKey, hash checked if given; the
-   attribute stops DOM/uncprop and CSE proving buf == 0 on the calloc-fail
-   path (the original keeps its `xor ebx,ebx` there), `if (buf)` first keeps
-   postreload from learning it from the jump; register pins (in a block jump
-   threading removes) keep IRA's original choice: bl ebp, hmacKey edi, len esi */
-__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
+/* decrypted copy of an SE/CE with hmacKey, hash checked if given */
 uint8_t *ceDecrypt(uint8_t *bl, uint32_t *outLen, const uint8_t *hmacKey, const uint8_t *hash)
 {
-	uint8_t *buf;
-	uint32_t len;
-	uint8_t key[16];
-
 	if (bl && hmacKey) {
 		if (BL_MAGIC(bl, 'E')) {
+			uint8_t *buf;
+			uint32_t len;
+			uint8_t key[16];
+
 			len = BL_SIZE(bl);
 			buf = calloc(len, 1);
-			if (buf)
-				__asm__("" :: "S"(len), "D"(hmacKey));
 			if (buf) {
 				memcpy(buf, bl, len);
 				XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
@@ -439,19 +432,18 @@ uint8_t *ceDecrypt(uint8_t *bl, uint32_t *outLen, const uint8_t *hmacKey, const 
 						log_printf(1, "%c%c hash check OK! Decryption successful!\n", buf[0], buf[1]);
 						if (outLen)
 							*outLen = len;
-					} else {
-						log_printf(0, "***** ERROR: %c%c hash check invalid, corrupted or decryption failed!\n", buf[0], buf[1]);
-						free(buf);
-						buf = 0;
+						return buf;
 					}
+					log_printf(0, "***** ERROR: %c%c hash check invalid, corrupted or decryption failed!\n", buf[0], buf[1]);
+					free(buf);
 				} else {
 					log_printf(0, "***** WARNING: could not check %cE signature, 1BL RSA key not loaded!\n", buf[0]);
 					if (outLen)
 						*outLen = len;
+					return buf;
 				}
-				return buf;
-			}
-			log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %cE!\n", bl[0]);
+			} else
+				log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %cE!\n", bl[0]);
 		} else
 			log_printf(0, "***** WARNING: SE/CE does not have valid magic!\n");
 	} else
