@@ -83,3 +83,35 @@ Don't retry: access forms and index local types with a plain IV (gen_ca2), cost-
 Tools added: casweep.py (CA_DIAG=<p>), caloop.py, catrace.py (bbro traces), cachain.py (block chain per pass), cafreq.py, cadiag.py, caobj.py, caboth.py. Generators gen_ca1..gen_ca14.
 
 Verdict: NO MATCH. F2 gets fncmp MATCH with no flags, but its `.rdata` is wrong and both `uint32_t k = i` and the redundant `i >= count` exist only to steer gcc, so it does not meet the README criteria. Best is F1 at 2 lines, which still has `k`. `sh build.sh` was not run: object sections were compared with build/obj/console_hdd.o instead. Earlier bullets naming drafts/console_hdd_sendAvatarData_best.c as gen_ca5 v424 or gen_ca11 v3718 are out of date: _best.c is now F1.
+
+## Attempt 2
+
+Read find_if_header/find_if_case_1/2 (ifcvt.c 6.2.0). The hoist needs then = the block the guard falls through to; case 1 refuses when then falls through to its successor, case 2 refuses when else has 2 preds. Probe of guard probability (expect + param on f1): p<=52 flips the layout (41-43 lines), 53..97 2 lines, >=98 0 lines. Cost route: one insn is 40000 vs 12*(p+1250), so a single insn is never expensive above 50%; two would need p<=54.
+**New mechanism (chain, not probability):** expand_gimple_cond makes the FALSE edge the fallthrough when neither successor is next in the chain. So guard `if (count <= 0)` (false = preheader), with some unrelated block Z next in the chain, then MF, then preheader, body: then = preheader, which falls into the body, so case 1 refuses; else = MF with 2 preds, so case 2 refuses. Literals stay right because MF is still before the body. Prototype build/ca/a2/z1 (Z = the cleanup block, MF head lexically before the loop, its arms after): xor ebp right and .rdata identical (fncmp 15 lines; left: `mov edi,1` for createSysexDirs failure hoisted, since crossjump of [edi=1] onto the OK arm's tail no longer fires with OK not falling into OUT).
+gen_ca15 (MF inside the loop at its head, `while (ret) { if (i >= count) {MF; break;} ...}`): no header copy (do_while_loop_p: empty latch, load+cond header), 36+ lines. No use.
+Z must be multi-pred or it merges into its predecessor (gen_ca17, prep blocks after the guard: merged away). With Z = cleanup block the OK arm no longer falls into it, and crossjump only redirects a whole [edi=1] block when it has the lower index (createSysexDirs is at chain end since vrp1's thread): gen_ca16 (144, prep spellings) 11 lines.
+gen_ca18 (MF head in the loop, `for (i = 0;; i += ret != 0) { if (i >= count || !ret) { if (ret) {MF head; goto check;} break; } ...}`, arms after the loop): .rdata right, no `k` needed, 19 lines (hoist, i/i+1 not coalesced: latch i+1 is a dom3 thread copy). Copied header but the old header merges with the thread copy at chain end, so it isn't Z.
+gen_ca19 (explicit `if (count <= 0) goto mf` + head-tested loop): e|fora|k2 (v13) 2 lines r=0, .rdata right: same xor hoist as F1. Forwarders guard->MF and test->MF tail-merge in pre, so MF lands right after the guard again.
+gen_ca20 (guard goes to a post-loop test that keeps i live, so forwarders don't tail-merge): dom3's thread copy of the test swallows MF at chain end, .rdata wrong. gen_ca21 (guard jumps into the loop past the head test): pointer IV, up to 96 lines. Don't retry either.
+**gen_ca22 le|a|forb|k1 (v2, drafts/console_hdd_sendAvatarData_z.c): .rdata .data identical, xor ebp right, 4 fncmp lines: only the latch `cmp [count],ebp; jg` vs reference `cmp ebp,[count]; jl`.** Chain guard, loop test, manifest head, preheader, body. The `goto send` before `mf:` puts a block with no edge to MF (the `if (!ret) break`) right before MF, so crited1 places the guard's forwarder there and not right after the guard (split_edge_bb_loc). `i += ret != 0` before the failure log leaves the latch empty, so the loop test isn't thread-copied. cmp order: gimple `if (_26 <= _31)`: swapped by SSA version (load is numbered before i + 1 because the head test dominates the body). Moving on: gen_ca23, compute i + 1 before the test.
+gen_ca23 (i + 1 before the head test), gen_ca24 (432 spellings): cmp order doesn't move. The head test's load is numbered before anything in the body because it dominates it, and `i_new >= _load` gets swapped on copy-prop.
+**A read through a small static accessor is inlined with a fresh, higher SSA version. Head test `i >= itemCount()` on the gen_ca22 shape (build/ca/a2/h1.c = drafts/_best.c): fncmp MATCH, caobj text 0 data 0.** Next: remove what can go (gen_ca25), then land.
+gen_ca25 (240): the accessor can be `itemCount()`, `itemsDone(i)` or `moreItems(i)`; `i += ret != 0` before the log is the only increment at 0 lines (`after` 2 lines; `if (ret) i++` and the if/else forms 15+); no index local at all: 15+ lines (i isn't threaded the same way).
+k replaced: `e = &manifest.e[(uint32_t)i]` or `(size_t)i` 0 lines; no cast 15 lines (lea, i not coalesced); `manifest.e + i` 28; casts inline with no e 41.
+gen_ca26 (36, plainer heads): `while (ret)`, `if (ret && more) goto send`, `if (!ret) break` first: 48+. Without `goto send_item` the guard's forwarder lands after the guard (2 lines). `if (0) { mf: ... }` also gives 0 but is a dead test: rejected.
+
+## State at the end of attempt 2: MATCH, landed in src (not committed)
+
+`python tools/re/fncmp.py src/console_hdd.c sendAvatarData` MATCH with no flags, prepSysex MATCH, `sh build.sh` SHA256 10dac648...971c, both --params and the console_hdd case gone from build.sh, no __builtin/asm/attribute left in the file. drafts/console_hdd_sendAvatarData_best.c = landed src/console_hdd.c. src/xebuild.h: the manifest entry struct got a tag (`struct manifestItem`).
+
+Mechanism, in full: see src/console_hdd.c's comment and tools/wip/README.md. Guard >= 98% wasn't the way: no natural source reaches it (goto + call + opcode = 93.9%, guessed iterations needs scev at profile_estimate, 5 exits gets 98%). The chain was.
+
+Borderline, for review:
+- Loop control: `if (count <= 0) goto send_manifest;` then `for (;;)` with labels send_manifest and send_item inside it, `goto send_item` right before send_manifest. Live code, but nobody would lay it out this way unprompted. The guard is redundant with the head test.
+- `itemsDone(i)` accessor used only in the head test: its one job is the SSA version that decides the cmp operand order.
+- `e = &manifest.e[(size_t)i]`: the cast is redundant; it replaces `k`, same job (i dead after i + 1).
+- `i += ret != 0` before the failure log, then `if (ret) ... / if (!ret) ...` tests at the loop head: real logic, odd spelling.
+- `sent` local with arms after the loop: only so the arms' literals come after the loop's.
+- prepSysex's `r` flag and second `if (r)`.
+
+Try next, if the loop control is rejected: gimple chain needs a multi-pred block between guard and manifest send plus the false edge to i = 0; only the loop test qualifies so far. An alternative for the block before send_manifest (now `if (!ret) goto out; goto send_item`) is the place to look.

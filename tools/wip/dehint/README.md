@@ -11,8 +11,8 @@ Status is `open`, `MATCH` (draft matches, not landed) or `landed <commit>`.
 | # | Object | Function | Tricks to remove | Status |
 |---|--------|----------|------------------|--------|
 | 1 | fileutil | readFileIn | 2 expect, pin on edi/ebx/esi, rf_hint, no-early-inlining | landed 454b47d |
-| 2 | fileutil | myatou32 | dead `'X'` test | landed |
-| 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | open (2 lines; see notes) |
+| 2 | fileutil | myatou32 | dead `'X'` test | landed b17d678 |
+| 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | candidate, not landed: awaiting the user's review (drafts/console_hdd_sendAvatarData_candidate.patch) |
 | 4 | net | netRecvVerbose (netRecv is its clone) | expect, `got` pin | open |
 | 5 | net | netWriteBlocks | no-crossjumping, no-early-inlining | open |
 | 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | open |
@@ -42,6 +42,14 @@ All of these, for the function and anything inlined into it:
 
 A hint moved elsewhere, or disguised as ordinary code, isn't a match. Report what
 actually happened: a near miss is a near miss, however close.
+
+Live but redundant code that reads naturally is acceptable and lands, flagged for
+the user's review. `myatou32`'s `BOOL hex` flag is the approved example: one `if`
+sets it and the next tests it. Source that compiles to the right bytes but no one
+would write is a candidate, not a match: for example a `for (;;)` entered and left
+through labels, or a helper that exists only to change an SSA number. Save a
+candidate as `drafts/<obj>_<function>_candidate.patch`, leave `src/` unchanged, and
+report it for review.
 
 ## Landing a MATCH
 
