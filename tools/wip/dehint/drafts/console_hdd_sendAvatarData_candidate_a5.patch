@@ -1,0 +1,98 @@
+diff --git a/src/console_hdd.c b/tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5labels.c
+index a8fdfb2..e94ddc2 100644
+--- a/src/console_hdd.c
++++ b/tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5labels.c
+@@ -335,24 +335,11 @@ int prepSysex(void)
+ 	return 0;
+ }
+ 
+-/* long, not int: uncprop then can't reuse the int netSendFile result for the
+-   manifest failure's 0 (it does for the loop failure, which assigns ret).
+-
+-   The count is reloaded into n ahead of the failure test, so the loop's header
+-   is only a condition: ch copies it (the guard) and it stays between the guard
+-   and the manifest send, which is expanded before the loop body for its
+-   literal.  i advances on ok (scev can't see it until dom3, which keeps the
+-   imul).  The size_t cast leaves i dead after i + 1, so they share a register.
+-   See the comment in the loop for the ok test. */
+-long sendAvatarData(const char *dir, uint32_t ver)
++static long sendItems(const char *dir, uint32_t ver)
+ {
+-	int i, n, ok;
++	int i, n, sent;
+ 	long ret;
+ 
+-	netTimerStart();
+-	log_printf(0, "loading avatar data...\n");
+-	ver &= ~0xf;
+-	addTitleId(ver);
+ 	if (loadManifest(dir, ver)) {
+ 		log_printf(0, "success!\nFormatting HDD partition...\n");
+ 		ret = 1;
+@@ -361,37 +348,30 @@ long sendAvatarData(const char *dir, uint32_t ver)
+ 			log_printf(1, "sending %d items to xbox\n", manifest.count);
+ 			i = 0;
+ 			n = manifest.count;
+-			ok = 1;
++			if (n <= 0)
++				goto send;
+ 			for (;;) {
+-				if (i >= n) {
+-					if (!ret)
+-						goto out;
+-					/* Dead: ok is 0 only when ret is, tested just above; dom3
+-					   folds it.  It's here for bbro and crited1: its block has
+-					   no edge to the manifest send (so the guard's forwarder
+-					   lands in front of that send and ifcvt can't hoist i = 0
+-					   above the guard), and <= 0 with the call in the arm
+-					   brings the send's frequency up to round 3. */
+-					if (ok <= 0) {
+-						netTimerEnd();
+-						goto out;
+-					}
+-					log_printf(1, "sending manifest to %s\n", manifest.path);
+-					ok = netSendFile(manifest.path, manifest.data, manifest.size);
+-					break;
++				if (i < n) {
++					if (ret)
++						goto item;
++					goto out;
+ 				}
+ 				if (!ret)
+ 					goto out;
++send:
++				log_printf(1, "sending manifest to %s\n", manifest.path);
++				sent = netSendFile(manifest.path, manifest.data, manifest.size);
++				break;
++item:;
+ 				struct manifestItem *e = &manifest.e[(size_t)i];
+ 				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, e->len, e->len, e->path);
+ 				ret = netSendFile(e->path, e->data, e->len);
+-				ok = ret != 0;
+ 				n = manifest.count;
+-				i += ok;
++				i += ret != 0;
+ 				if (!ret)
+ 					log_printf(0, "aborting sending avatar data, failed to send %s\n", e->path);
+ 			}
+-			if (!ok) {
++			if (!sent) {
+ 				ret = 0;
+ 				log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
+ 			} else {
+@@ -410,6 +390,15 @@ out:
+ 	return ret;
+ }
+ 
++long sendAvatarData(const char *dir, uint32_t ver)
++{
++	netTimerStart();
++	log_printf(0, "loading avatar data...\n");
++	ver &= ~0xf;
++	addTitleId(ver);
++	return sendItems(dir, ver);
++}
++
+ int sendDir(const char *src, const char *dst)
+ {
+ 	char pattern[1024];

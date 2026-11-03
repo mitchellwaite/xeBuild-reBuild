@@ -29,8 +29,9 @@ shapes that are still open to question):
     can't see it and ivopts keeps `imul ebx,ebp,1032` instead of a pointer IV.
     It comes before the failure log, so the latch is empty and the loop test
     isn't thread-copied to the end of the chain.
-  - `e = &manifest.e[(size_t)i]`: the cast leaves i dead after `i + 1`, so
-    both coalesce into ebp.
+  - `struct manifestItem *e = &manifest.e[(size_t)i]` in the loop body: the
+    cast leaves i dead after `i + 1`, so both coalesce into ebp. `size_t k = i`
+    or `uint32_t k = i` give the same bytes.
   - The count cached in `n`, reloaded before the failure test. The loop header
     is then only a condition, which ch copies (do_while_loop_p), so the guard
     comes from the head test with the failure arm already threaded out, and
@@ -49,7 +50,10 @@ shapes that are still open to question):
     tail merge would pull the send. `<= 0` (opcode positive) and the call in
     the arm (cancels the call heuristic against the send) take the send's block
     from 5 to 10, bbro's round 3 threshold: below it the block pops in round 4
-    and takes the failure arm as its fallthrough.
+    and takes the failure arm as its fallthrough. Two forms without it are in
+    `dehint/drafts`: `_a5while.c`, a plain `while` that stops with `i = n` (only
+    the `xor ebp,ebp` hoist differs, 2 lines), and `_a5labels.c`, which matches
+    but needs a static helper and `goto` into the loop (`send`, `item`).
   - The result test and its arms stay after the loop for their literals'
     order; the success arm falls into `out` and jump2 cross-jumps the
     createSysexDirs failure's `mov edi,1` with it.

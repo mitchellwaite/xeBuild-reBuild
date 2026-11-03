@@ -256,3 +256,67 @@ Removing the dead test: something else that keeps MF from merging into dom2's th
 Don't retry: the list above; attempt 3's families without n.
 
 Reproduce: python tools/re/fncmp.py src/console_hdd.c sendAvatarData ; python tools/wip/dehint/caobj.py src/console_hdd.c ; sh build.sh ; python tools/wip/dehint/casweep.py tools/wip/dehint/gen_ca53.py (also 45, 47, 54, 55); python tools/wip/dehint/cachains.py <file.c>
+
+## Attempt 5: dead test still landed; two new forms without it
+
+Tools: caobjbest.py <gen> [N] runs caobj on every sweep row with at most N fncmp lines (fncmp alone can't see .rdata). Generators gen_ca56-73. Draft fncmp needs `-O3 -Isrc` from outside src/.
+
+### Landed
+
+`struct manifestItem *e` moved into the loop body, same bytes, SHA256 10dac648...971c. drafts/_best.c is a copy. The dead test, `(size_t)i`, `ok` and `for (;;)` stay.
+gen_ca71: with the dead test, `(size_t)i`, `size_t k = i` and `uint32_t k = i`, with or without e, and `i += ok` or `i += ret != 0`, are all text 0 data 0. The arm can be netTimerEnd() or the abort log, with `<= 0`. `!ok` is 10 lines (as in attempt 4) and `i = n` with the dead test is 6+.
+
+### drafts/console_hdd_sendAvatarData_a5while.c: the natural text, 2 fncmp lines
+
+gen_ca72 cast|wh|iN|ifret, tidied. Plain `while (i < n)`, one result variable, no dead test, no labels, no goto, no flag; the manifest handling sits in `if (ret)` after the loop. caobj data 0, text 30: the `xor ebp,ebp` hoist and the addresses it shifts. Declaration order counts: `int i; long ret; int n;` here, while `int i, n; long ret;` also flips freeManifest's cmp (text 34).
+
+    i = 0;
+    n = manifest.count;
+    while (i < n) {
+        struct manifestItem *e = &manifest.e[(size_t)i];
+        log; ret = netSendFile(...);
+        n = manifest.count;
+        i += ret != 0;
+        if (!ret) { log failure; i = n; }
+    }
+    if (ret) { log manifest; if (!send) { ret = 0; log } else { log; netTimerEnd(); ret = 1; } }
+
+What's new is the one loop exit (gen_ca67). A failure ends the loop through `i = n`, so the head is the only exit: PRED_LOOP_EXIT gives it 9%, not 4.5%, and the manifest block is 15-16, past bbro's 10, with no dead arm (attempt 4's 5 -> 10 problem is gone). No cmp is left on the failure path (attempt 4's gen_ca48 problem). `.rdata` is right the F1 way: the forwarders tail-merge in pre and the send lands after the guard, which is also why the hoist happens. `n = 0` in place of `i = n` (z1) is 20 lines, r=8; `if (ret) i++` with `i = n` (z3, z7) is 37+.
+
+Borderline in it: `(size_t)i` (`size_t k = i`, `uint32_t k = i` are the same 2 lines), `n` reloaded and cached (nothing can change the count in the loop), `i += ret != 0` next to `i = n`, prepSysex's r.
+
+### drafts/console_hdd_sendAvatarData_a5labels.c: no dead test, text 0 data 0, not landed
+
+gen_ca64 cast|le|J, tidied (J4 and either caller body also match). Patch from the landed text: drafts/console_hdd_sendAvatarData_candidate_a5.patch. fncmp MATCH for sendAvatarData and prepSysex, caobj text 0 data 0; `sh build.sh` not run on it. Not landed because README names this shape as a candidate: a `for (;;)` entered through a label. It has `if (n <= 0) goto send;`, `send:` and `item:` inside the loop, and a static helper holding everything after addTitleId. **The user's call whether this beats the dead test:** nothing in it is dead, but more of its structure is there to steer.
+
+How each part works, from the dumps:
+- Second predecessor (gen_ca57). The entry goto gives the send a real edge from the guard, so dom2's copy doesn't swallow it and it stays in place. .rdata right.
+- Positive `if (ret) goto item;` in front of the send (J). The dump has it as `_40 != 0`, the `_40 = ret != 0` that `i += ret != 0` computes, and dom2 doesn't thread it from the body's `ret == 0`. So this block survives to crited1, has no edge to the send, and the guard's forwarder is placed in front of the send (split_edge_bb_loc). It does the dead test's chain job with live code. The `if (!ret)` spelling (X head) is threaded by dom2, and the send lands after the guard (hoist). Worth remembering: **the two senses of a ret test are two values while `ret != 0` is also computed.**
+- The helper. vrp1 threads the guard edge past the head (n > 0 and i = 0 mean i < n), and the head's PHIs i_1, ret_2, n_5 are gone by dce2. ch2's copies then have those low versions, and addTitleId's `_2 == ver_14` swaps the cmp (gen_ca58, 2 lines; no spelling in gen_ca59 or gen_ca60 moves it). Inlined from a helper, the PHIs have versions above ver's. The helper must include the else arm and the join: when the send arms (gen_ca61, gen_ca62, 4 lines) or the cleanup (gen_ca63, 34 lines) end the helper, early return (39%) lands on the manifest failure and the arms go from 8/8 to 6/10.
+
+gen_ca66 cast|Q1|add (no entry goto and no helper; `if (i >= n) { if (ret) goto send; goto out; } if (ret) goto item; goto out; send: ...; break; item:`): .rdata right, no hoist, 10 lines, only the arms off because the send's block is 8. gen_ca73 (`ok > 0` for opcode positive, `if (sent)` first): 7 lines at best (`sent1`), 17+ with `ok > 0`. If something brings that block to 10, it's a match with two labels, no entry goto, no helper.
+
+### Literal order idea
+
+a4nodead's text 12 is only literal addresses, so the code is right and only the manifest literal is late. But the literal has to be expanded after `sending %d items` and before `sending %03d`, and only a block in that stretch of the chain can do that. A local `const char *` is propagated to its use, and a static helper expands where it's inlined (gen_ca30 had the same chain). A PHI of literals would expand ahead of the whole function (from memory of expand's order, not tested). None of this was swept. Don't retry without a new way to reach that stretch.
+
+### Other things tried
+
+- gen_ca56 (`!ok` or `ok <= 0` as the manifest path's only test, two exits): 17+.
+- gen_ca65, gen_ca66 positive `if (ret)` on the manifest path, or in the body with the head negative: P1, B|elseN, B|cont have data 0 and 12 lines (hoist, arms off, send at 8).
+- gen_ca69 (one exit, `!ok` as the head's test): dom2 sends the guard edge straight to the send (the chain shows it), the forwarders merge, hoist. 4 lines at best (`early`, which also flips addTitleId's cmp).
+- gen_ca68, gen_ca70 (ok is the result, success arm doesn't assign it, hoping for a PHI at the send that stops tail merge): the PHI's constant is already 1 at crited1, so nothing stops the merge. 2 and 6 lines.
+
+### What's left, for a5while
+
+Only find_if_case_2's speculation of `i = 0` (conditions from attempt 1's read of ifcvt.c and memory):
+- A block before the send with no edge to it: can't exist in a `while`. The send is lexically after the body, and only the forwarder right after the guard puts it before the body's literals. It needs the send inside the loop's head, which needs `for (;;)`.
+- Guard >= 98%: a loop with one exit could now get PRED_LOOP_ITERATIONS_GUESSED, but that needs an array index scev can read at profile_estimate, and a real IV loses the imul at ivopts. It would need something that's an IV at 042t and stops being one by ivopts. A helper's profile is estimated before inlining, which is the one lever not fully explored; nothing tried.
+- A trapping insn in the preheader (dead_or_predicable refuses) or 4+ insns there at ce1, gone by final: no natural source found.
+- A PHI at the send whose arguments differ at pre and fold after it: needs a value VRP1 can't see but dom3 can. `ok` fails since its range is 0..1.
+
+Don't retry: gen_ca56, 60, 63, 68, 69, 70 families; n = 0 as the stop.
+
+Evidence: chains, frequencies, predictor values and SSA versions are from dumps. split_edge_bb_loc, find_if_case_2, dead_or_predicable's trap check, the early-return rule and predict_loops' single-exit rule are from memory of gcc's source (none read in this attempt) and fit the dumps. That ch2 reuses the freed PHI versions, and that vrp1 rather than dce2 frees them, are inferred from version numbers. Why dom2 leaves `_40 != 0` alone is inferred from it surviving.
+
+Reproduce: python tools/re/fncmp.py src/console_hdd.c sendAvatarData ; python tools/wip/dehint/caobj.py src/console_hdd.c ; sh build.sh ; python tools/re/fncmp.py tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5while.c sendAvatarData -O3 -Isrc ; python tools/wip/dehint/caobj.py tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5while.c tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5labels.c ; python tools/wip/dehint/casweep.py tools/wip/dehint/gen_ca72.py ; python tools/wip/dehint/caobjbest.py gen_ca72 2

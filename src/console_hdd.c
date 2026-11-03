@@ -346,7 +346,6 @@ int prepSysex(void)
    See the comment in the loop for the ok test. */
 long sendAvatarData(const char *dir, uint32_t ver)
 {
-	struct manifestItem *e;
 	int i, n, ok;
 	long ret;
 
@@ -383,7 +382,7 @@ long sendAvatarData(const char *dir, uint32_t ver)
 				}
 				if (!ret)
 					goto out;
-				e = &manifest.e[(size_t)i];
+				struct manifestItem *e = &manifest.e[(size_t)i];
 				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, e->len, e->len, e->path);
 				ret = netSendFile(e->path, e->data, e->len);
 				ok = ret != 0;
