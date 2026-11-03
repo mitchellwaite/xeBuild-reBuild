@@ -264,10 +264,11 @@ builtin-expect-probability=50`, default top-level order).
   ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
   recycled, i.e. the compare operand orders in the clones and inlined
   copies; their layout was found by a search (tools/wip/README.md).
-- imgAddFile computes imgFits' limit and end itself before a dead `len++`
-  (the end kept by a code-free asm), and the dead test in its body is
-  `cold`, so VRP1's jump threading neither renumbers those values nor
-  leaves the error edge at 75%.
+- imgAddFile computes imgFits' limit itself before a dead `len++`, and the
+  dead test in its body calls `abort()`, whose noreturn prediction works like
+  a `cold` label, so VRP1's jump threading neither renumbers that value nor
+  leaves the error edge at 75%. The call is removed before expansion, so the
+  object has no `_abort` reference.
 - String literals are emitted in statement order with each function, and
   the buildImage jump table after its strings, which is the `.rdata`
   order; finalizeImage's arms are written in the order that gives it.

@@ -586,10 +586,8 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		   modify len or off: ipa-cp then can't specialise on them */
 		if (x > first + 0x4000)
 			__asm__("");
-		if (x + 0x4000 < first)
+		if (x + 0x4000 < first || (len & 0x3fff) > 0x3fff)
 			blocks++;
-		if ((len & 0x3fff) > 0x3fff)
-			__asm__("");
 		t = type - '1';
 		partial = type != 0 && type != '0' && len < 0x4000;
 		if (len % 512)
@@ -688,27 +686,21 @@ void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32
 	uint32_t start, b, p, pages, npages, first, rem, tail, blocks;
 	uint16_t blk;
 	uint8_t *s;
-	/* imgFits by hand, its limit and end before the dead len++: VRP1's
-	   threading of the two dead tests copies the block after len++ (which
-	   gives the original's head registers), so names defined there are
-	   renumbered high.  lim (one use, expanded at the test) and end (kept
-	   by the code-free asm; DOM2 makes the inlined imgAdd's off + len this
-	   one) keep low numbers: `lim < end` and the range test's `end > raw`
-	   then come out in the original's operand order */
+	/* imgFits by hand, its limit before the dead len++: VRP1's threading
+	   of the two dead tests copies the block after len++ (which gives the
+	   original's head registers), so names defined there are renumbered
+	   high.  lim (one use, expanded at the test) keeps a low number:
+	   `lim < end` then comes out in the original's operand order */
 	uint32_t lim = (xb.fsEnd - 1) * 0x4000;
-	uint32_t end = off + len;
 
-	__asm__("" :: "g"(end));
 	if ((len & 0x3fff) > 0x3fff)
 		len++;
 	if (__builtin_expect(lim >= off + len, 1)) {
-		/* dead; cold, so the threading that removes it doesn't leave the
-		   error edge at 75% (the error block is then laid out after the
-		   big-block path) */
-		if ((len & 0x3fff) > 0x3fff) {
-			c1: __attribute__((cold));
-			name++;
-		}
+		/* dead; the noreturn call predicts it not taken, so the threading
+		   that removes it doesn't leave the error edge at 75% (the error
+		   block is then laid out after the big-block path) */
+		if ((len & 0x3fff) > 0x3fff)
+			abort();
 		fsFiles[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
 		fsFiles[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
 		strcpy(fsFiles[nFsFiles].name, name);
