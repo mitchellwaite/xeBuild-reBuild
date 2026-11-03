@@ -77,8 +77,8 @@ counted. Neither are plain type casts.
 <summary><b>1. image_write</b>: 18 tricks, hard</summary>
 
 - `--param builtin-expect-probability=50`
-- 7 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
-- 4 register and slot pins, across `buildImage`, `imgAdd` and `finalizeImage`
+- 8 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
+- 3 register and slot pins, across `imgAdd`, `imgAddFile` and `finalizeImage`
 - 2 `__builtin_expect`, 2 hot and cold labels, and
   `optimize("no-tree-scev-cprop")` on `writeFsTable`
 - 1 asm-label prototype: `xmalloc`, which stops CCP assuming `malloc`'s alignment.

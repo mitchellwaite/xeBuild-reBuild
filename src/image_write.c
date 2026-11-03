@@ -113,7 +113,7 @@ static int imgWriteHdr(const void *src, uint32_t len)
 
 int buildImage(void)
 {
-	uint32_t rawSize, spareSize, userSize, cf, bb;
+	uint32_t rawSize, spareSize, userSize, cf;
 	int bigBlock;
 	uint8_t *spare, *hdr;
 
@@ -189,32 +189,10 @@ int buildImage(void)
 	hdrTemplate.magic = 0x4fff;
 	hdrTemplate.build = 0x6007;
 	memset(xb.mmcAnchor, 0, sizeof(xb.mmcAnchor));
-	if (xb.type == BUILD_JTAG) {
-		hdrTemplate.cbOffset = 0x800000;
-		hdrTemplate.cfOffset = 0x700;
-		hdrTemplate.kvSize = 0x400000;
-		hdrTemplate.sysUpdateAddr = 0x700;
-		hdrTemplate.sysUpdateCount = 0x0200;
-		hdrTemplate.kvVersion = 0x1207;
-		hdrTemplate.kvAddr = 0x400000;
-		hdrTemplate.smcBootSize = 0x300000;
-		hdrTemplate.smcBootAddr = 0x100000;
-		imgEnd = 0x8000;
-		if ((xb.flags & CONSOLE_MASK) == CONSOLE_JASPER) {
-			if (xb.flags & NAND_BB_CONTROLLER) {
-				xb.bbController = 1;
-				hdrTemplate.patchSlotSize = 0x100;
-			}
-			if (bigBlock)
-				hdrTemplate.patchSlotSize = 0x100;
-			copyright[10] = '8';
-		} else if ((xb.flags & CONSOLE_MASK) == CONSOLE_XENON ||
-			   (xb.flags & CONSOLE_MASK) == CONSOLE_ZEPHYR) {
-			copyright[10] = '5';
-			hdrTemplate.kvSize = 0;
-		} else
-			copyright[10] = '7';
-	} else {
+	/* JTAG last: peephole2 walks the blocks backwards, and its rotating
+	   scratch register for `cmp mem,0` gives JTAG's bigBlock test edx and
+	   the Jasper case's ebx */
+	if (xb.type != BUILD_JTAG) {
 		hdrTemplate.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
 		cf = SWAP32_IMAGE_WRITE(findFileOffset(9));
 		hdrTemplate.sysUpdateCount = 0x0200;
@@ -240,9 +218,7 @@ int buildImage(void)
 				xb.bbController = 1;
 				hdrTemplate.patchSlotSize = 0x100;
 			}
-			bb = xb.bigBlock;
-			__asm__("" :: "b"(bb));
-			if (bb)
+			if (xb.bigBlock)
 				hdrTemplate.patchSlotSize = 0x200;
 			copyright[10] = '9';
 			break;
@@ -262,6 +238,31 @@ int buildImage(void)
 			hdrTemplate.smcBootSize = 0x3800;
 			break;
 		}
+	} else {
+		hdrTemplate.cbOffset = 0x800000;
+		hdrTemplate.cfOffset = 0x700;
+		hdrTemplate.kvSize = 0x400000;
+		hdrTemplate.sysUpdateAddr = 0x700;
+		hdrTemplate.sysUpdateCount = 0x0200;
+		hdrTemplate.kvVersion = 0x1207;
+		hdrTemplate.kvAddr = 0x400000;
+		hdrTemplate.smcBootSize = 0x300000;
+		hdrTemplate.smcBootAddr = 0x100000;
+		imgEnd = 0x8000;
+		if ((xb.flags & CONSOLE_MASK) == CONSOLE_JASPER) {
+			if (xb.flags & NAND_BB_CONTROLLER) {
+				xb.bbController = 1;
+				hdrTemplate.patchSlotSize = 0x100;
+			}
+			if (bigBlock)
+				hdrTemplate.patchSlotSize = 0x100;
+			copyright[10] = '8';
+		} else if ((xb.flags & CONSOLE_MASK) == CONSOLE_XENON ||
+			   (xb.flags & CONSOLE_MASK) == CONSOLE_ZEPHYR) {
+			copyright[10] = '5';
+			hdrTemplate.kvSize = 0;
+		} else
+			copyright[10] = '7';
 	}
 	if (xb.type > BUILD_DEVGL16) {
 		copyright[9] = '1';
