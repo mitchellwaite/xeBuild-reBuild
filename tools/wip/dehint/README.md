@@ -13,7 +13,7 @@ Status is `open`, `MATCH` (draft matches, not landed), `landed <commit>` or `par
 | 1 | fileutil | readFileIn | 2 expect, pin on edi/ebx/esi, rf_hint, no-early-inlining | landed 454b47d |
 | 2 | fileutil | myatou32 | dead `'X'` test | landed b17d678 |
 | 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | landed at the user's request; retry for natural code later (see its notes) |
-| 4 | net | netRecvVerbose (netRecv is its clone) | `got` pin (expect removed, 6d5d62b) | parked with the pin after 9 attempts, at the user's request (see its notes) |
+| 4 | net | netRecvVerbose (netRecv is its clone) | `got` pin, expect | landed with a dead `if (!len)` instead of the pin, at the user's choice (see its notes) |
 | 5 | net | netWriteBlocks | no-crossjumping, no-early-inlining | landed (borderline: `netSendStr(cmd) <= 0`) |
 | 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | landed (borderline: `ok` flag, `netSendStr(cmd) <= 0`) |
 | 7 | net | netWritePatches | no-early-inlining | landed (borderline: `netSendStr(...) <= 0`) |
@@ -50,6 +50,12 @@ would write is a candidate, not a match: for example a `for (;;)` entered and le
 through labels, or a helper that exists only to change an SSA number. Save a
 candidate as `drafts/<obj>_<function>_candidate.patch`, leave `src/` unchanged, and
 report it for review.
+
+The user prefers natural C syntax to asm hints wherever a match allows it, because
+it means fewer impediments to future changes. So if the only choices are plain C
+that steers gcc, even a dead test, or an empty `asm`, the C wins: land it with a
+comment saying what it's for, record it in the function's notes, and flag it to the
+user. Keep looking for a form that doesn't steer at all, but this ranks above an asm.
 
 ## Landing a MATCH
 

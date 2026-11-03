@@ -81,12 +81,15 @@ another try.
 <details>
 <summary><b>1. net</b>: 1 trick, moderate</summary>
 
-- 1 pin, on `got` in `netRecvVerbose`
+- 1 dead test, `if (!len)` after the `calloc` in `netRecvVerbose`
 
-`netRecvVerbose`'s IPA-CP clone (`netRecv`) still needs the pin for its register
-choice, and eight attempts without it didn't match. `<= 0` on the first send, with
-`rlen` scoped in a block, removed the attributes from `netWriteBlocks` and
-`netWritePatches`, and `netSendFile` also needed an `ok` flag.
+The test can't be true, because `*len = 0` runs earlier and VRP folds it, but the
+frequency it leaves behind gives `netRecv`, its IPA-CP clone, the right registers.
+It replaced an empty `asm` on purpose: plain C leaves fewer impediments to future
+changes. It's the last thing to replace here, and it's narrow: other failure arms
+in the same place don't match. `<= 0` on the first send, with `rlen` scoped in a
+block, removed the attributes from `netWriteBlocks` and `netWritePatches`, and
+`netSendFile` also needed an `ok` flag.
 
 </details>
 

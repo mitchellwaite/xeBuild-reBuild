@@ -1,5 +1,11 @@
 # net netRecvVerbose (queue 4)
 
+**Current state:** `src/net.c` has no asm. It uses attempt 10's dead test, `if (!len) { netFree(buf); return NULL; }`
+after the calloc, which the user chose over the `got` asm because natural C leaves fewer impediments to future
+changes. The test isn't real logic: `*len = 0` runs earlier and VRP folds it after profile_estimate, leaving the
+frequency that the clone's registers need (margin +5 in a window about 13 wide). A form that doesn't steer at all
+would still be better; attempts 10 and 11 below say what's been tried.
+
 Tools: `tools/wip/dehint/nrsweep.py <gen.py>` (compiles the file, compares netRecvVerbose and the
 clone; outputs in build/nr/<gen>/), generators `gen_nr*.py`. NR_DIAG="--param ..." for diagnostics only.
 
@@ -404,3 +410,56 @@ src/net.c and build.sh unchanged (flip + asm).
 Reproduce: python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_candidate.c netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_candidate.c netRecv -O3 -Isrc ; python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr98.py (also 90-97); python tools/wip/dehint/nrtr.py tools/wip/dehint/drafts/net_netRecvVerbose_candidate.c netRecvVerbose.constprop
 Next: a test with the same effect and a reason to be there. Anything that exits between the calloc and the loop at profile_estimate and is gone by the output must be false at compile time, so it is dead in some sense; the only question left is which spelling the user accepts. A loop exit that folds (attempt 8's four-exit model) now looks doable with the same VRP trick, but it can't read better than this.
 Don't retry: declaration types, log prototypes, FD_SET forms and global declarations for the margin (all -50); narrow verbose (no clone); tests before the calloc (outer `if` loses the call heuristic, V=44); `uint32_t size` (real compare stays).
+
+## Attempt 11: the author's out-parameter guard (`if (len) *len = ...`)
+
+Reference: `*len = 0` at the head is unconditional (0x41ee66, `mov eax,[esp+0x160]; mov [eax],0`, no test), so a later guard would fold. It also counts against the idea: bootloaders and fileutil guard every store of an out-parameter, and here the first store isn't guarded.
+
+gen_nr100 (224; flip/else/old/not x tail eq/ne/first newline inside/`got == size && len`/`len && got == size` x store plain/`if (len)`/`!= NULL`/`*len = got` x zero arm plain/guards): no row above -50.
+- Zero arm's guard: no change, as it isn't on the clone's path to got.
+- Success store's guard: -62 (V=0, C=48). It rejoins, so flow is conserved and f_pre doesn't move; only the store block falls.
+- `got == size && len`: -74, V=15. The false edge reaches the log, so log + store stays J + else.
+
+gen_nr101 (241; `size && len` and spellings x `size == -1 || !len` and splits x zero arm x store): -50/-62 for everything natural. Why: on x86 `a && b` of two side-effect-free tests is one non-short-circuit `&` at GENERIC, so there's no exit edge at profile_estimate; VRP then only removes an operand. `size != -1 && size && len` has +40, but V=74+, r=14+. Control `if (!len) { netFree(buf); return NULL; }` is V=0, C=0, +5, so the tooling agrees with attempt 10.
+
+gen_nr102 (384; no zero arm: buf from tern/if-else/default, verbose output skipped by `verbose && size` etc., one store, zero path left to threading; this would explain why buf != &netEmpty exists at the frees): margin -290/-302, V=65+, C=51, r=3. got's own refs fall (MEM 16865), and the threaded zero path doesn't get its own `mov [eax],0`. gen_nr93's `tern-if` etc. (rerun): second `if (size)` is gone before profile_estimate, V=22, -50. `buf != &netEmpty` as the second test: +167, but a real compare stays (r=17).
+
+gen_nr107: `!tv.tv_sec`, `tv.tv_sec != 15`, `!fds.fd_count`, `!FD_ISSET(...)` after the calloc are real (V=157+, and gcc makes no clone). `!hdr`, `!&fds` fold in the front end: V=0, C=48, -50. `while (got < size && r != SOCKET_ERROR)` and spellings (a dead exit VRP should fold): V=134, C=48, -50, no lever. With `r != 0` too: V=222, C=31.
+
+### In a tail helper the guard has a reason to exist (gen_nr103-108)
+
+Attempt 8's do form with netRecvDone: the helper can't see the head's `*len = 0`, and the test folds after IPA.
+
+Ordinary rejoining guard (gen_nr103): same frequencies as attempt 8 apart from the store. `eq-g|ret`: V=0, C=48, -26. `eq-g|ifnot`: V=16, C=24, +6, log 298. No match.
+
+A `!len` test that leaves the helper before the compare, at P(stay) .85, lowers log without changing J, which is what attempt 8 lacked. **gen_nr104 `nolen|inl|ifnot`, gen_nr105 `free|not|afternl|eq|ifnot2` (build/nr/gen_nr105/v48.c, saved as drafts/net_netRecvVerbose_helperlen.c): V MATCH, C=6, r=0, margin +2, all registers right.** What's left is one block: the store (18) comes before the two head failures rather than after them.
+
+Why, from the bbro dump: log 282 = J 282. log enters the heap first (the guard's else edge, trace 3), so on the tie it pops first and J is a one-block trace. That makes the store's predecessor a trace end, so bb_to_key gives the store priority over 3 and 5, whatever its frequency (70). If J pops first it extends into log, its trace doesn't end at J, and the store has to wait.
+
+The window, exact:
+- log < J = 282 (J is fixed by the 3% exit), so log <= 281.
+- REG_FREQ truncates frequency to tens (`freq * 1000 / 10000`), so got's MEM moves in steps of 4 per 10 of log: log 280-289 is +2, 270-279 is -2 (C=52, registers lost).
+- So log must be 280 or 281. log = Q(len) * (1 - P(eq)) * 414, so eq tail (.801) needs Q .845-.848, ne tail (.72) needs Q .940-.943.
+
+The bb_to_key and J-extends-into-log steps are from memory of bb-reorder.c plus the hinted build's traces (J + log in one trace, store last); the dump shows the tie and "Changing key for bb 18 from -70 to -1008270". Not tested with a log of 280-281, because no source gave one. The window itself is therefore a prediction.
+
+Measured (gen_nr105/107/108; about 115 arm x tail rows at ifnot2): all fall one side or the other. Upper side, margin +2 and C=6: eq tail with free, dup, vput (log 282), netFree + const, netFree + buf = NULL (not read individually), ne tail `log-const` (285). Lower side, margin -2 and C=52: ne tail `dup0`, `logfree`, `log-net-null`. No row is C=0. No predictor combination seen lands in the window, and I don't see one to try (hitrates from dumps: pointer .7, call .71, null return, const return, early return .61).
+
+gen_nr106 (198; `*len = got` in the helper): V=2, margin unchanged, so no got ref is added.
+
+Not landable even if the window were hit: `!len` here is still a dead test, in a helper that exists for the frequencies, with a caller `if (!netRecvDone(...)) return NULL; return buf;` that ignores the pointer. Attempt 10's single `!len` is simpler and already matches.
+
+## State at the end of attempt 11: NO MATCH with the idiom
+
+src/net.c and build.sh unchanged (flip + asm). The `if (len) *len = ...` idiom has no effect beyond lowering got's cost, since a test that rejoins conserves flow (attempt 10 had said so from one row; now it's measured over every shape). The evidence also says the author didn't guard len in this function: the head's store has no test.
+
+Line counts, no flags (V, clone):
+- drafts/net_netRecvVerbose_helperlen.c: 0, 6, margin +2. Lowest yet, but it has a dead `!len` and a helper, so this is a measure of the family, not a shape to land.
+- drafts/net_netRecvVerbose_best.c: 0, 13. Still the lowest with no dead test.
+- drafts/net_netRecvVerbose_flip.c with `if (len)` on the success store: 0, 48, margin -62, the idiom's best.
+- drafts/net_netRecvVerbose_candidate.patch (attempt 10): 0, 0, margin +5, still awaiting the user's ruling.
+
+Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr100.py (also 101-108; NR_TAGS=1 lists tags); python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_helperlen.c netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py tools/wip/dehint/drafts/net_netRecvVerbose_helperlen.c netRecv -O3 -Isrc ; python tools/wip/dehint/nrtr.py build/nr/gen_nr105/v48.c netRecvVerbose.constprop
+
+Next: the user's ruling on attempt 10's candidate or the asm. Otherwise, any natural source that lowers log alone by 1-2 units in helperlen's shape, though that only swaps one dead test for another.
+Don't retry: `if (len)` on any store in any shape (gen_nr100, 103); `size && len`, `size == -1 || !len` (one test at GENERIC, gen_nr101); no zero arm with threading (gen_nr102); tests of fds/tv (real, gen_nr107); `r != SOCKET_ERROR` in the loop condition (gen_nr107); `*len = got` in the helper (gen_nr106); more `!len` arms (gen_nr105, 108).

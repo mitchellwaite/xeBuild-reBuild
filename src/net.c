@@ -127,9 +127,10 @@ int netSendStr(const char *s)
    int, uncprop reuses it for got's 0 and keeps it in a register.  The
    if (size) nesting swaps the early-return prediction for the call
    heuristic, which raises the entry frequency and so bbro's round
-   thresholds.  The asm (a use of got on the short-count path) puts got over
-   IRA's caller-save threshold in the clone, which then allocates
-   size/buf/got to ebx/esi/edi; it is 50 short without it. */
+   thresholds.  The !len test is dead (*len = 0 above; VRP folds it after
+   profile_estimate), but the block before the loop keeps its pre-test
+   frequency, which puts got over IRA's caller-save threshold in the clone, so
+   it allocates size/buf/got to ebx/esi/edi. */
 uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
@@ -158,6 +159,10 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 		return NULL;
 	if (size) {
 		buf = calloc(size, 1);
+		if (!len) {
+			netFree(buf);
+			return NULL;
+		}
 		if (verbose)
 			printf("waiting for 0x%x bytes\n", size);
 		got = 0;
@@ -191,7 +196,6 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 		}
 		if (verbose)
 			putchar('\n');
-		__asm__ ("" : : "g"(got));
 		log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 		if (buf != (uint8_t *)&netEmpty)
 			free(buf);
