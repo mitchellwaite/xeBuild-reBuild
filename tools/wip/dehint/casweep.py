@@ -70,6 +70,9 @@ def main():
     print(len(items), 'variants')
     with cf.ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         res = sorted(ex.map(run, items), key=lambda r: r[0])
+    with open(os.path.join(out, 'results.txt'), 'w', newline='\n') as f:  # every row: lines, r, tag, file
+        for n, tag, o, path in res:
+            f.write('%d r=%d %s %s\n' % (n, rdiff(o), tag, os.path.basename(path)))
     hist = {}
     for n, *_ in res:
         hist[n] = hist.get(n, 0) + 1

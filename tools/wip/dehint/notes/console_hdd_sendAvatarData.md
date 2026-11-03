@@ -173,3 +173,86 @@ Don't retry: gen_ca31, 32, 34, 36, 38 families.
 
 Evidence: chains, PHIs and the 4.5% are from dumps. split_edge_bb_loc's rule, the do_while_loop_p conditions, the PRED_LOOP_EXIT formula and find_if_header's EDGE_LOOP_EXIT refusal are from memory of gcc's source (none read in this attempt); the first three agree with the dumps, the last is untested.
 Full build run at the end of attempt 3: SHA256 10dac648...971c.
+
+## Attempt 4: landed, no labels but `out`, one dead test
+
+Tools: casweep.py now writes every row to build/ca/<gen>/results.txt. cachains.py <file.c> [pass...] dumps a draft and prints the block chain per pass, RTL's ce1 lines at the end. Generators gen_ca40-55.
+
+### The result
+
+src/console_hdd.c: fncmp MATCH with no flags, caobj text 0 data 0, `sh build.sh` SHA256 10dac648...971c. drafts/console_hdd_sendAvatarData_best.c is a copy of it.
+
+    i = 0;
+    n = manifest.count;
+    ok = 1;
+    for (;;) {
+        if (i >= n) {
+            if (!ret)
+                goto out;
+            if (ok <= 0) {            /* dead */
+                netTimerEnd();
+                goto out;
+            }
+            log manifest; ok = netSendFile(manifest...); break;
+        }
+        if (!ret)
+            goto out;
+        e = &manifest.e[(size_t)i];
+        log; ret = netSendFile(e...);
+        ok = ret != 0;
+        n = manifest.count;
+        i += ok;
+        if (!ret)
+            log failure;
+    }
+    if (!ok) {...} else {...}
+
+Gone from the landed text: `send_manifest` and `send_item` labels, the entry `goto`, `itemsDone`, the `sent` local (ok doubles as it).
+
+### What was new: the count in a local, reloaded before the failure test
+
+Attempt 3's conflict: ch copies the head only if the latch's predecessor doesn't exit at ch (needs an unthreaded failure arm, a statement in the join), and H stays in the chain only with an empty join. Caching the count breaks it, for two separate reasons. Each is from the dumps.
+- do_while_loop_p is false for a header of only a condition. With `n` in a local, the head is `if (i >= n)` with the load elsewhere, so ch copies it however vrp1 threaded the failure arm (gen_ca45).
+- Where the reload sits decides where H ends up. Reload at the loop bottom (gen_ca45): a block with the load falls into H, they merge at that block's place, and H is gone from the spot after the guard (hoist, 2-4 lines). Reload before `if (!ret)` (gen_ca47): H's only predecessor is the conditional block, nothing merges, and H stays between guard and manifest send. `i += ...` before or after the reload makes no difference. In this shape the cmp orders in sendAvatarData, addTitleId and freeManifest all came right with no accessor.
+
+gen_ca47 `cast|none|Nadd|B|brk0` (`if (i >= n) { if (!ret) goto out; manifest...; break; } if (!ret) goto out; ...`) is fncmp MATCH with no dead test, but .rdata is wrong: dom2 threads the `if (!ret)` on the manifest path, MF is merged into the thread copy at the chain's end, and the manifest literal comes last (caobj text 12, data 32). drafts/console_hdd_sendAvatarData_a4nodead.c. Same class as F2.
+
+### What the dead test does
+
+`ok <= 0` after `if (!ret)` keeps MF in place. Folding timeline for the name, from cachains.py:
+- FRE, vrp1: can't. A different PHI from ret, and ok's assert doesn't come from the `ret` test. `failed = !ret` and `ok = !ret` (`bang`) don't work: dom2 folds them (cond `ret == 0` is the same expression), and MF moves as in the no-dead shape.
+- dom2: leaves it (ok set before the test, as `(int)(ret != 0)`).
+- crited1: its block is in front of MF with no edge to it (split_edge_bb_loc), so the guard's forwarder lands there.
+- sink moves ok into the success arm, dom3 folds it to 1 and the test goes. No thread copy of H, so H is still in place at expand.
+
+Frequency: with `if (!ok) goto out;` MF is 5 (H exit 20, ret test .61 from early return, ok test .39 from early return + call against the send). Text is right apart from the arms: bbro round 3's threshold is 10, MF pops in round 4 and extends into the failure arm (gen_ca50, 10 lines, r=2). `<= 0` adds opcode positive: 9, still one short (gen_ca51, 10 lines). A call in the dead arm cancels the call heuristic: 10, MATCH (gen_ca53). The arm can be the abort log, `ret = 0` + log, netTimerEnd() or freeManifest(); all the same bytes (its literal is dead code, so it isn't emitted). `if (sent) goto ok_arm` also fixes the fallthrough (gen_ca52, 4 lines), but addTitleId's `mov eax,1` block is then placed before the failure arm, and only MF >= 10 gets both.
+
+### Dead and redundant tests, exactly
+
+- `if (ok <= 0) { netTimerEnd(); goto out; }`: **dead.** ok is 0 only when ret is 0, and ret was tested just above. Has a comment in src. Steers: chain position of the guard's forwarder, MF's frequency.
+- `if (!ret) goto out;` on the manifest path: **redundant, not dead in the source's terms.** i doesn't advance on failure, so i >= n with ret 0 needs the count to shrink. Needed: without it (gen_ca48) the failure arm keeps a real `cmp` on the way out. Reads naturally.
+- `ok <= 0` is an unusual spelling for a 0/1 flag.
+- `ok = ret != 0` beside ret: only exists for the dead test and `i += ok`. `i += ret != 0` gives the same bytes (`okNr`).
+
+Others left, unchanged in kind: `(size_t)i` (without it 15 lines, r=3, i and i + 1 not coalesced; `uint32_t k = i`, `(uint32_t)i` are the same bytes as the cast), `n` as a local (reads naturally, though nothing can change the count mid-loop), arms after the loop (literal order), prepSysex's r.
+
+### Other things tried
+
+- gen_ca40: the shared cleanup written out in front of MF (`if (!ret) { netUnmount; freeManifest; return 0; }`): freeManifest is inlined, tail merge can't join the return values, 67+. Don't retry.
+- gen_ca41: `failed = !ret` for the head and `i += ret != 0` with the plain count: the head's test stays until RTL, but the failure arm threads only after sink, so setne stays (14, r=8). Chain right, MF at the end.
+- gen_ca42: `if (i < count) {...} else {manifest}` with no n: 15, r=3. Hoist, since dom2 copies H to the chain's end.
+- gen_ca43: `continue` for the dead test: a second back edge, no ch copy. Don't retry.
+- gen_ca44: `sent = ret` (nop conversion): FRE sees the same value, same result as `ret`. Don't retry.
+- gen_ca46: failure leaving from the body (`if (!ret) { log; goto out; }`): loop exit prediction, so the success arm is 97% and sink (threshold 75%) won't move i + 1 there: setne stays (30+).
+- gen_ca48: no ret test on the manifest path: see above.
+- gen_ca55: one ret test before H (`tfirst`), the call on the ret test instead (`tm_t2`), `||` of the two tests, `while (ret)`, all 16+. Only `base` matches, `eT` (else form) 2 lines.
+- F1's guard >= 98%, the user's first angle: nothing in a folded test can reach it. The guard edge's probability comes from predictors on that edge alone; a test after the guard moves frequencies, not this. Only n_exits >= 5 on a copied head would, so 3 dead exits. Not run: more dead tests than this result has. The lever worked here on MF's frequency instead.
+
+Evidence: chains, frequencies and predictor values are from dumps. do_while_loop_p, split_edge_bb_loc, the sink threshold and bbro's thresholds are from memory of gcc's source (none read this attempt) and fit the dumps; the threshold of 10 is also backed by block 14 [10] popping in round 3. "Sink moves ok, dom3 folds it" is inferred from the test and setne being gone after dom3.
+
+### What to try next
+
+Removing the dead test: something else that keeps MF from merging into dom2's thread copy in the gen_ca47 `B` shape. MF needs another predecessor at dom2, or the `!ret` on the manifest path has to survive dom2 by itself, with a frequency of at least 10 at MF. drafts/console_hdd_sendAvatarData_a4nodead.c is the start. Removing the cast: nothing new, attempt 3's list stands.
+Don't retry: the list above; attempt 3's families without n.
+
+Reproduce: python tools/re/fncmp.py src/console_hdd.c sendAvatarData ; python tools/wip/dehint/caobj.py src/console_hdd.c ; sh build.sh ; python tools/wip/dehint/casweep.py tools/wip/dehint/gen_ca53.py (also 45, 47, 54, 55); python tools/wip/dehint/cachains.py <file.c>

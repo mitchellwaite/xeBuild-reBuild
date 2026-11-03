@@ -25,26 +25,34 @@ shapes that are still open to question):
     reuses a call result for a PHI's 0 when the types are compatible, so
     the loop failure (which assigns ret) gets `mov edi,eax` and the
     manifest failure keeps `xor edi,edi`.
-  - `i += ret != 0`: i is a PHI until dom3 threads it, so scev can't see it
-    and ivopts keeps `imul ebx,ebp,1032` instead of a pointer IV. It comes
-    before the failure log, so the latch is empty and the loop test isn't
-    thread-copied to the end of the chain.
+  - `i += ok`, with `ok = ret != 0`: i is a PHI until dom3 threads it, so scev
+    can't see it and ivopts keeps `imul ebx,ebp,1032` instead of a pointer IV.
+    It comes before the failure log, so the latch is empty and the loop test
+    isn't thread-copied to the end of the chain.
   - `e = &manifest.e[(size_t)i]`: the cast leaves i dead after `i + 1`, so
     both coalesce into ebp.
-  - The manifest send inside the loop, between the loop test and the body,
-    with an explicit `if (count <= 0) goto send_manifest`. expand makes the
-    false edge fall through when neither successor is next in the chain, so
-    the guard falls through to `i = 0`, which falls into the body: ce1's
-    find_if_case_1 and _2 both refuse to speculate `i = 0` above the guard.
-    The manifest literal is still expanded before the loop's. `goto
-    send_item` leaves a block with no edge to send_manifest right before it,
-    so crited1 places the guard's forwarder there (split_edge_bb_loc), not
-    right after the guard, where tail merge would pull the manifest send.
-    The result test and its arms stay after the loop for their literals'
+  - The count cached in `n`, reloaded before the failure test. The loop header
+    is then only a condition, which ch copies (do_while_loop_p), so the guard
+    comes from the head test with the failure arm already threaded out, and
+    the head's only predecessor is a conditional block, so it isn't merged
+    away from its place after the guard. expand makes the guard's false edge
+    fall through when neither successor is next in the chain: guard, loop test,
+    manifest send, `i = 0`, body, and ce1's find_if_case_1 and _2 both refuse
+    to speculate `i = 0` above the guard. The loop test is also `cmp ebp,[count]`
+    with no accessor, and the manifest literal is expanded before the loop's.
+  - `if (ok <= 0) { netTimerEnd(); goto out; }` in the manifest path is dead: ok
+    is 0 only when ret is, and `if (!ret)` is right above it. FRE and vrp1 can't
+    tell (other name), dom2 can't (ok is set before the failure test), and dom3
+    folds it after sink moves ok into the success arm. Until then its block has
+    no edge to the manifest send, so crited1 places the guard's forwarder in
+    front of that send (split_edge_bb_loc), not right after the guard, where
+    tail merge would pull the send. `<= 0` (opcode positive) and the call in
+    the arm (cancels the call heuristic against the send) take the send's block
+    from 5 to 10, bbro's round 3 threshold: below it the block pops in round 4
+    and takes the failure arm as its fallthrough.
+  - The result test and its arms stay after the loop for their literals'
     order; the success arm falls into `out` and jump2 cross-jumps the
     createSysexDirs failure's `mov edi,1` with it.
-  - `itemsDone(i)`: the head test's load, inlined, gets a newer SSA version
-    than i + 1, so the compare isn't swapped (`cmp ebp,[count]`).
   - prepSysex's `r` flag with a second `if (r)`: no guarded call on the mount
     success edge, so P(mount success) is .793 (call + early return), which is
     what bbro's block order needs (79..81% work).

@@ -12,7 +12,7 @@ Status is `open`, `MATCH` (draft matches, not landed), `landed <commit>` or `par
 |---|--------|----------|------------------|--------|
 | 1 | fileutil | readFileIn | 2 expect, pin on edi/ebx/esi, rf_hint, no-early-inlining | landed 454b47d |
 | 2 | fileutil | myatou32 | dead `'X'` test | landed b17d678 |
-| 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | landed at the user's request; retry for natural code later (see its notes) |
+| 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | landed: simpler loop with one dead test, `if (ok <= 0)`; retrying (see its notes) |
 | 4 | net | netRecvVerbose (netRecv is its clone) | `got` pin, expect | landed with a dead `if (!len)` instead of the pin, at the user's choice (see its notes) |
 | 5 | net | netWriteBlocks | no-crossjumping, no-early-inlining | landed (borderline: `netSendStr(cmd) <= 0`) |
 | 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | landed (borderline: `ok` flag, `netSendStr(cmd) <= 0`) |

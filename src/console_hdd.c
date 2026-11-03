@@ -335,29 +335,19 @@ int prepSysex(void)
 	return 0;
 }
 
-/* inlined with a newer SSA version than anything in the send loop, which is
-   why the loop test compares `cmp i,count` and not `cmp count,i` */
-static int itemsDone(int i)
-{
-	return i >= manifest.count;
-}
-
 /* long, not int: uncprop then can't reuse the int netSendFile result for the
    manifest failure's 0 (it does for the loop failure, which assigns ret).
 
-   The shape is what gives the block chain guard, loop test, manifest send,
-   i = 0, loop body: the guard's false edge falls through to i = 0, which falls
-   into the body, so ifcvt can't speculate i = 0 above the guard (find_if_case_1
-   and _2), and the manifest literal is expanded before the loop's.  `goto
-   send_item` leaves a block with no edge to send_manifest in front of it, so
-   crited1 puts the guard's forwarder there.  i advances on the flag (scev can't
-   see it until dom3, which keeps the imul), before the failure log (an empty
-   latch, so the loop test stays where it is).  The size_t cast leaves i dead
-   after i + 1, so they share a register. */
+   The count is reloaded into n ahead of the failure test, so the loop's header
+   is only a condition: ch copies it (the guard) and it stays between the guard
+   and the manifest send, which is expanded before the loop body for its
+   literal.  i advances on ok (scev can't see it until dom3, which keeps the
+   imul).  The size_t cast leaves i dead after i + 1, so they share a register.
+   See the comment in the loop for the ok test. */
 long sendAvatarData(const char *dir, uint32_t ver)
 {
 	struct manifestItem *e;
-	int i, sent;
+	int i, n, ok;
 	long ret;
 
 	netTimerStart();
@@ -371,30 +361,38 @@ long sendAvatarData(const char *dir, uint32_t ver)
 			log_printf(0, "success!\nSending avatar files to HDD partition...\n");
 			log_printf(1, "sending %d items to xbox\n", manifest.count);
 			i = 0;
-			if (manifest.count <= 0)
-				goto send_manifest;
+			n = manifest.count;
+			ok = 1;
 			for (;;) {
-				if (itemsDone(i)) {
-					if (ret)
-						goto send_manifest;
-					goto out;
+				if (i >= n) {
+					if (!ret)
+						goto out;
+					/* Dead: ok is 0 only when ret is, tested just above; dom3
+					   folds it.  It's here for bbro and crited1: its block has
+					   no edge to the manifest send (so the guard's forwarder
+					   lands in front of that send and ifcvt can't hoist i = 0
+					   above the guard), and <= 0 with the call in the arm
+					   brings the send's frequency up to round 3. */
+					if (ok <= 0) {
+						netTimerEnd();
+						goto out;
+					}
+					log_printf(1, "sending manifest to %s\n", manifest.path);
+					ok = netSendFile(manifest.path, manifest.data, manifest.size);
+					break;
 				}
 				if (!ret)
 					goto out;
-				goto send_item;
-send_manifest:
-				log_printf(1, "sending manifest to %s\n", manifest.path);
-				sent = netSendFile(manifest.path, manifest.data, manifest.size);
-				break;
-send_item:
 				e = &manifest.e[(size_t)i];
 				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, e->len, e->len, e->path);
 				ret = netSendFile(e->path, e->data, e->len);
-				i += ret != 0;
+				ok = ret != 0;
+				n = manifest.count;
+				i += ok;
 				if (!ret)
 					log_printf(0, "aborting sending avatar data, failed to send %s\n", e->path);
 			}
-			if (!sent) {
+			if (!ok) {
 				ret = 0;
 				log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
 			} else {
