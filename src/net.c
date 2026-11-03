@@ -572,37 +572,41 @@ uint8_t *netGetBadBlocks(int *len)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping")))
+/* The `ok` flag is threaded away, but the test that sets it guards no call, so
+   it stays 50/50: frequent enough for bbro to place the return-0 block after
+   the send, and few enough uses of buf to leave it on the stack. `<= 0` takes
+   the opcode predictor (`!` takes none), which lifts netSendData's block far
+   enough for the return-0 block to be aligned. rlen's scope ends before the
+   tail, so its clobber keeps the two `mov eax,1` from being head-merged. */
 int netSendFile(const char *name, const void *buf, uint32_t len)
 {
-	int rlen, ret;
+	int ret, ok = 0;
 	uint8_t *r;
 
-	/* the hint (with builtin-expect-probability=65, 55-65 work) makes the
-	   shared return-0 block frequent enough to be aligned */
-	if (__builtin_expect(!name, 0))
-		return 0;
-	if (!buf)
-		return 0;
-	/* buf's uses are just over IRA's callee-saved threshold */
-	__asm__("" : : "m"(buf));
-	char cmd[264] = "SNDF";
+	if (name && buf)
+		ok = 1;
+	if (ok) {
+		char cmd[264] = "SNDF";
 
-	strcpy(cmd + 4, name);
-	strcat(cmd, "\n");
-	if (!netSendStr(cmd))
+		strcpy(cmd + 4, name);
+		strcat(cmd, "\n");
+		if (netSendStr(cmd) <= 0)
+			return 0;
+		if (!netSendData(buf, len, log_get_verbose() != 0))
+			return 0;
+		{
+			int rlen;
+
+			r = netRecv(&rlen);
+			if (!r)
+				return 0;
+			ret = rlen == 2 && getBeU16(r) == OK_REPLY;
+			netFree(r);
+		}
+		if (ret)
+			return 1;
 		return 0;
-	if (!netSendData(buf, len, log_get_verbose() != 0))
-		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
-	if (ret)
-		return 1;
+	}
 	return 0;
 }
 

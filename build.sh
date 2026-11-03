@@ -72,11 +72,6 @@ for f in $objects globals; do
     # -fno-toplevel-reorder keeps
     image_read) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder" ;;
-    # netSendFile's !name hint (55-65).
-    # No -fno-toplevel-reorder: netRecv is netRecvVerbose's IPA-CP clone,
-    # which only the default order emits first (as the original)
-    net) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=65" ;;
     # loadFileCrc's verbose hint (92-99); 98 for tools/wip/'s checkBl draft.
     # -fno-toplevel-reorder emits the functions, strings and .data in
     # definition order

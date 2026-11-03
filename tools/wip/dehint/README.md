@@ -15,7 +15,7 @@ Status is `open`, `MATCH` (draft matches, not landed), `landed <commit>` or `par
 | 3 | console_hdd | sendAvatarData (inlines prepSysex) | 2 expect, literal asm, pin, assume_aligned, align-loop-iterations | landed at the user's request; retry for natural code later (see its notes) |
 | 4 | net | netRecvVerbose (netRecv is its clone) | `got` pin (expect removed, 6d5d62b) | parked with the pin after 8 attempts, at the user's request (see its notes) |
 | 5 | net | netWriteBlocks | no-crossjumping, no-early-inlining | landed (borderline: `netSendStr(cmd) <= 0`) |
-| 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | open |
+| 6 | net | netSendFile | no-crossjumping, expect, `buf` pin | landed (borderline: `ok` flag, `netSendStr(cmd) <= 0`) |
 | 7 | net | netWritePatches | no-early-inlining | open |
 | 8 | bootloaders | cfDecrypt | no-tree-dominator-opts, no-tree-vrp | open |
 | 9 | bootloaders | daeVerifySig (inlines daeSigCheck where used) | no-early-inlining, hint(), literal asm, always_inline on daeSigCheck | open |
