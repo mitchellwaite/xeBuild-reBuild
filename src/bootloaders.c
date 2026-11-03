@@ -114,24 +114,22 @@ uint32_t cfBestPairing(uint8_t *data, uint32_t size)
 }
 
 /* decrypt a CF in place with the 1BL key; 1 if it checks out */
-/* no DOM/VRP: they fold ok to 0 on the false edge and the result becomes a
-   setne; the original keeps `ok` there and if-converts to cmovne */
-__attribute__((optimize("no-tree-dominator-opts", "no-tree-vrp")))
+/* key's scope matters: returning from inside it puts its clobber on both arms
+   of the test, so phiopt can't make a setne of it, and uncprop gives the 0 arm
+   checkZeros' result back; the join if-converts to cmovne */
 int cfDecrypt(uint8_t *cf, uint32_t size)
 {
 	uint32_t len;
-	uint8_t key[16];
-	int ok;
 
 	if (BL_MAGIC(cf, 'F')) {
 		len = BL_SIZE(cf);
 		if (len <= size) {
+			uint8_t key[16];
+
 			XeCryptHmacSha(xb.key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
 			XeCryptRc4(key, 16, cf + 48, len - 48);
-			ok = checkZeros(cf + 496, 32);
-			if (ok)
-				ok = 1;
-			return ok;
+			if (checkZeros(cf + 496, 32))
+				return 1;
 		}
 	}
 	return 0;

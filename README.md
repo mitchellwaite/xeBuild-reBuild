@@ -91,18 +91,17 @@ choice, and eight attempts without it didn't match. `<= 0` on the first send, wi
 </details>
 
 <details>
-<summary><b>2. bootloaders</b>: 9 tricks, moderate</summary>
+<summary><b>2. bootloaders</b>: 8 tricks, moderate</summary>
 
-- 5 `optimize` attributes: `no-tree-dominator-opts`, `no-tree-vrp`,
-  `no-cse-follow-jumps` and `no-early-inlining`, on `cfDecrypt`, `cbDecrypt`,
-  `cdDecrypt`, `ceDecrypt` and `daeVerifySig`
+- 4 `optimize` attributes: `no-tree-dominator-opts`, `no-cse-follow-jumps` and
+  `no-early-inlining`, on `cbDecrypt`, `cdDecrypt`, `ceDecrypt` and `daeVerifySig`
 - 1 `always_inline`, on `daeSigCheck`
 - 1 guarded `hint()` call, 1 literal-order `asm` and 1 register pin
 
 The three `*Decrypt` attributes each come down to one `xor ebx,ebx` on the
 `calloc` failure path, which gcc drops because it knows `buf` is 0 there. Return
-types, a separate variable for `calloc`'s result and scoping `key` were no
-closer. `cfDecrypt` is 20 lines off without its attribute.
+types and a separate variable for `calloc`'s result were no closer. Moving `key`
+into the innermost block removed `cfDecrypt`'s attribute, so scope may help here.
 
 </details>
 
