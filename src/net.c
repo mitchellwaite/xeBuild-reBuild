@@ -700,7 +700,10 @@ int netReboot(int how)
 	return 1;
 }
 
-__attribute__((optimize("no-early-inlining")))
+/* `<= 0` takes the opcode predictor while netSendStr is still a call at
+   profile_estimate (`!` takes none) and folds away once it's inlined. That lifts
+   the free block above 10% of the entry, so bbro copies the epilogue after it
+   instead of a jmp, as in netWriteBlocks. */
 int netWritePatches(const uint8_t *buf, uint32_t len)
 {
 	int ret;
@@ -709,7 +712,7 @@ int netWritePatches(const uint8_t *buf, uint32_t len)
 	{
 		int rlen;
 
-		if (!netSendStr("WBPT\n") || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
+		if (netSendStr("WBPT\n") <= 0 || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
 			return 0;
 		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);

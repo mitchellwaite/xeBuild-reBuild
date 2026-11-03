@@ -79,16 +79,14 @@ loop still isn't code the author is likely to have written.
 another try.
 
 <details>
-<summary><b>1. net</b>: 2 tricks, moderate</summary>
+<summary><b>1. net</b>: 1 trick, moderate</summary>
 
-- 1 `optimize("no-early-inlining")` attribute, on `netWritePatches`
 - 1 pin, on `got` in `netRecvVerbose`
 
 `netRecvVerbose`'s IPA-CP clone (`netRecv`) still needs the pin for its register
-choice, and eight attempts without it didn't match. `netWritePatches` is 10 lines
-off without its attribute, and a helper holding the reply check was further off.
-Scoping `rlen` in a block and `<= 0` on the first send removed `netWriteBlocks`'s
-attributes, and `netSendFile` also needed an `ok` flag.
+choice, and eight attempts without it didn't match. `<= 0` on the first send, with
+`rlen` scoped in a block, removed the attributes from `netWriteBlocks` and
+`netWritePatches`, and `netSendFile` also needed an `ok` flag.
 
 </details>
 
