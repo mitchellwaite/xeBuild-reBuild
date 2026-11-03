@@ -78,7 +78,7 @@ def main():
         k = 'V=%s C=%s r=%s margin=%s %s' % (v, c, r[7:9] if len(r) > 7 else '', mg, info)
         groups.setdefault(k, []).append(r[3] + ' ' + os.path.basename(r[6]))
     for k, tags in list(groups.items())[:int(os.environ.get('NR_TOP', '60'))]:
-        print(k, '| x%d e.g.' % len(tags), tags[0])
+        print(k, '| x%d e.g.' % len(tags), ' '.join(tags) if os.environ.get('NR_TAGS') else tags[0])
 
 
 if __name__ == '__main__':

@@ -274,3 +274,53 @@ src/net.c unchanged (flip + asm). Line counts, no flags (V, clone):
 Reproduce: python tools/re/fncmp.py <draft> netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py <draft> netRecv -O3 -Isrc ; python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr50.py (also 57, 58, 59, 60, 61, 62); python tools/wip/dehint/nrpass.py <src.c>; python tools/wip/dehint/nrbb.py build/nr/tr/<dir> 'netRecvVerbose.constprop'.
 Next: only with a new way to set R, J, log independently. Candidates, low odds: a natural predictor giving P(X->J) <= .2 on the status test for the recv-helper + loop-helper combination; anything that keeps the else edge off log until J is placed. Otherwise the user's call: keep the one asm.
 Don't retry: fail helper (early-inlined), whole-arm helper (static: not inlined; static inline: same freqs as plain), `got < 0` return from a loop helper (real js stays), pointer to got in a recv helper (nested loops, entry 2573, V=138), status with out param for recv only (phiopt or early inline, margin -50), netWait in any spelling (f2 up, f3 fixed: margin -73, loop rotates).
+
+## Attempt 8: constraints re-read from the source, then a tail helper
+
+Read from the official repo at releases/gcc-6.2.0: ira-color.c. (Saved in the session's scratchpad only.)
+
+### The constraints themselves
+
+bbro (hinted src/net.c vs recv helper, `nrbb.py build/nr/tr/<dir> 'netRecvVerbose.constprop'`). The first decision that differs is in round 3: the hinted build gets bb 14 (R 282) then 17 (J 274) + 19 (log 240); the recv helper gets 10, then 15 (J) + 17 (log), and R (150) is below round 3's threshold (5% of 3405 = 170), so it goes to round 4.
+- `log <= J` is NOT required. If log > J, log starts its own trace, J gets a later one, and connect_traces' predecessor search still places J before log, so the output is the same. Required is only R >= J and R >= log (R has to start its trace first), and store <= the lower head failure. Attempt 7's "log <= J <= R" was too strong, though its margin arithmetic used log <= R anyway.
+- A block whose predecessor ends a trace gets priority in the heap (bb_to_key, from memory of bb-reorder.c, consistent with 10 being popped first). R's and J's predecessors are mid-trace (recv, add) in the reference's loop rotation, so R has no way to jump the queue.
+
+IRA (ira-color.c bucket_allocno_compare_func): the colorable bucket sorts by thread_freq first, and threads form over any copy (including `shuffle`, an operand dying into an output). Popping size, buf, got, r138 in that order would also give the reference's registers without passing the caller-save test. That needs thread(size) > thread(buf) > thread(got) (got's freq about 4700, size about 2100, buf about 1400): a loop-frequency partner for size and buf through a copy. None exists: their operands don't die in the loop, and head copies are low frequency. Dropped.
+
+### New family: a shared tail after the transfer (gen_nr70)
+
+`buf = &netEmpty; got = 0; if (size) {...loop...; newline} if (got == size) {store; return buf;} newline; log; free; return NULL` explains why buf != &netEmpty exists at all, and has margin +634 with registers right, but it isn't the reference: one shared store (no `mov [eax],0`), and J 1953 stale from the zero path. V=28, C=47. Don't retry; the separate `*len = 0` store is real.
+
+### New family: tail in a helper above the early-inline limit, do form (gen_nr71-74)
+
+`if (size > 0) do {...} while (got < size); return netRecvDone(buf, got, size, len, verbose);`, with netRecvDone holding the newline, the got == size test, the second newline, the log and the free. Not early-inlined, inlined at IPA. **V MATCH with the do form** for the first time (attempt 2 to 4's do family was V=50), and the guard takes the call heuristic the notes wanted (attempt 4's "p = .869 can't exist": it can, through a call in the else block at profile_estimate).
+Why it works: at estimate the else edge and the loop's exit both reach the helper's got == size; after inlining VRP threads the else edge past it. Threading doesn't lower log or store, so log = (1-P)*S and store = P*S, with S = J + else and P = P(eq) in the helper (J 282 itself is corrected).
+Measured (do form; f [10000, 9700], R 291, J 282, head failures scale with f_pre):
+- `ne|ret` (gen_nr72 v10; `if (got != size) {...; return NULL;} *len = size; return buf;`, guard .912, P .28): **V=0, C=52, r=(0,0)**, margin -26. log 264, store 103. Layout right in both; only the registers.
+- `eqs|ifnot` (gen_nr73 v16; guard .869, P .378): V=0, C=54, r=(0,2), margin -10. log 257, store 157 > head 155 (that's the r=2).
+- `ne|ifnot` (gen_nr73 v10; `if (netRecvDone(...)) return buf; return NULL;`, guard .869, P .28): V=16, C=24, r=(0,0), margin +6. Registers right. log 298 > R 291, that's all the 16 and 24 are.
+- `eq|ret` (gen_nr71 v9, guard .912, P .199): V=16, C=62, margin -14, log 294.
+Exact model: margin = .4*(f_pre + log) - 515; f_pre = 874/g, else = 874(1/g - 1), S = 282 + else. Needs log <= 291, store <= second head failure (149 at g .869), margin > 0.
+- g predictors: .912 (opcode + call + early return, `return helper()`), .869 (opcode + call, a test on the helper's result), .73 (no call first).
+- P(eq) in the helper: .199 (eq layout), .28 (ne layout, the return block is next so no early return), .378 (eq + call first in the fail block via a nested static helper), .402/.598 (`nes`), .488 (nesv).
+- At g = .869 the window is P in [.297, .316]. At P = .28, g would need to be about .877 and the window is empty by one freq unit. .33 misses by 2.4 cost. Nothing natural gives .30 (only opcode + call + const return, `return 2` on the ok path).
+- gen_nr74 (63; `if (size > 0) { while ... }`, `for`, with the helper): the while's first test folds late; V=81+, C=37+. Do only.
+- gen_nr75 (15; recv helper with a status and `int *` out for r, log in the caller, to keep R's own freq): early-inlined whatever the status convention, and r stays in memory (V=72, C=44+). Don't retry.
+- gen_nr76 (40; helper returning 1/0 with the store in the caller): every test spelling and the eq/ne layout give the same bytes (phiopt folds PHI<1,0>; only two results, `eq`: V=16, C=24, margin +22, log 332, store 373; `eqs`: V=0, C=54, r=(0,2), margin -10). store here is P(X ok)*S with the null return's .90, so it decouples from log but can't get under the head failures.
+
+Other windows worked out, none reachable:
+- Direct form (else bypasses the helper's test, log = (1-P)J + else, store = PJ): at g .869, P in [.443, .468]. Have .488 (2.4 cost short); `return 2` on the fail path would give .464. And the else block can't start with a call, because the reference's else path has its own newline first.
+- g .73 (margin to spare, S 605): log <= R needs P >= .519, then store 314 against head 177; also f_pre 1197 > the free-test block, so its trace starts in the wrong order.
+- Pointer heuristic: a pointer compare at J has P(eq) .15, and with the call on the fail block that's .30, in the window. It would need `buf + got == end`-style pointers that survive to profile_estimate and go through a helper's parameters: a parameter that exists only to change the prediction, so not worth writing. Not compiled.
+- Four exits, one dead (a = b = x = .0225): model gives R 220, log 215, store 131, margin about +100 at g .869, P .378, the clearest window of all. It needs a loop exit present at profile_estimate that is gone after IPA and doesn't land in J or log. Nothing natural known (attempt 6 reached the same wish from another side). A test in a helper would do it mechanically, but that helper has no reason to exist other than the count, so it would be a candidate at best. Not compiled.
+
+## State at the end of attempt 8: NO MATCH without the asm
+
+src/net.c and build.sh unchanged (flip + asm). Line counts, no flags (V, clone):
+- drafts/net_netRecvVerbose_best.c (flip + cast pair): 0, 13. Still lowest total.
+- drafts/net_netRecvVerbose_tailifnot.c (gen_nr73 v10, do form, tail helper, `if (netRecvDone(...)) return buf; return NULL;`): 16, 24. Registers right, margin +6, only log 298 > R 291, 7 over. The test on a pointer that is then ignored isn't how anyone would write it; the status form with the same layout (gen_nr76) isn't quite the same (eq: log 332).
+- drafts/net_netRecvVerbose_tailhelper.c (gen_nr72 v10, `return netRecvDone(...)`): 0, 52. V MATCH, layout right in both, only the clone's registers, margin -26. The most natural of the three. The do + guard + tail helper reads like normal code.
+- drafts/net_netRecvVerbose_tailshort.c (gen_nr73 v16): 0, 54. margin -10, store 157 against head 155.
+Reproduce: python tools/wip/dehint/nrdef.py tools/wip/dehint/gen_nr72.py (also 70, 71, 73, 74, 75, 76); NR_TAGS=1 lists every tag per group. python tools/re/fncmp.py <draft> netRecvVerbose -O3 -Isrc ; FNCMP_GCCSYM=_netRecvVerbose.constprop.1 python tools/re/fncmp.py <draft> netRecv -O3 -Isrc ; python tools/wip/dehint/nrtr.py <src.c> netRecvVerbose (predictions) ; python tools/wip/dehint/nrbb.py build/nr/tr/<dir> 'netRecvVerbose.constprop' (traces).
+Next: a natural P(eq) of about .30 at the helper's test, or a natural dead exit (four-exit model). If neither, keep the asm: this family only shows other ways to miss by a few units.
+Don't retry: shared tail after the transfer (gen_nr70, shared store), guard + while (gen_nr74), recv helper with an out parameter (gen_nr75), caller test spellings on a status helper (gen_nr76, same bytes), thread_freq route to the same registers.
