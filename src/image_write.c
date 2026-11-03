@@ -572,8 +572,6 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			blocks++;
 		}
 	}
-	if (x > first + 0x4000)
-		blocks += 2;
 	memcpy(xb.hdr + off, src, len);
 	if (pad == 1) if (tail)
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
@@ -582,14 +580,15 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		/* dead (VRP1 removes them): they raise the off-0 ipa-cp value (imgWriteStart
 		   clone; `first + ...` is computed in the loop) and set which SSA names get
 		   recycled (compare operand orders in the clones and inlined copies); so
-		   do the ones before memcpy, in the FS loop and before imgEnd.  None may
-		   modify len or off: ipa-cp then can't specialise on them */
+		   does the one in the FS loop.  `blocks`, not an empty body: it stays a loop
+		   PHI in the len-0x1000 clone, where the len test folds.  None may modify
+		   len or off: ipa-cp then can't specialise on them */
 		if (x > first + 0x4000)
-			__asm__("");
-		if (x + 0x4000 < first || (len & 0x3fff) > 0x3fff)
+			blocks += 2;
+		if ((len & 0x3fff) > 0x3fff)
 			blocks++;
-		t = type - '1';
 		partial = type != 0 && type != '0' && len < 0x4000;
+		t = type - '1';
 		if (len % 512)
 			npages = (len + 512) / 512;
 		else
@@ -611,9 +610,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			s = xb.spare + (BLK * 32 + p) * 16;
 			/* pages here and left in the big arm: lim2 then hoists left
 			   after len >> 8 and the type tests, as in the original */
-			pages = len / 512;
-			if (len % 512)
-				pages++;
+			pages = len % 512 ? len / 512 + 1 : len / 512;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
 				((struct spb *)s)->b2lo = BLK >> 8;
@@ -660,13 +657,11 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			if (x > first + 0x4000)
 				blocks++;
 			if (next != 0 && next != 0xffff) {
-				fsTable[start - xb.fsStart + i] = SWAP16_IMAGE_WRITE(next);
+				fsTable[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(next);
 			} else {
-				fsTable[start - xb.fsStart + i] = SWAP16_IMAGE_WRITE(start - xb.fsStart + i + 1);
+				fsTable[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(start + i - xb.fsStart + 1);
 			}
 		}
-		if (x + 0x4000 < first)
-			start++;
 		if (next == 0xffff) {
 			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff);
 		}
@@ -690,16 +685,19 @@ void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32
 	   of the two dead tests copies the block after len++ (which gives the
 	   original's head registers), so names defined there are renumbered
 	   high.  lim (one use, expanded at the test) keeps a low number:
-	   `lim < end` then comes out in the original's operand order */
+	   `lim < end` then comes out in the original's operand order.  end lives
+	   to DOM2 through `end < off` (the dead test's first half), which then
+	   replaces off + len by it: `end > rawSize` in the original's order too */
 	uint32_t lim = (xb.fsEnd - 1) * 0x4000;
+	uint32_t end = off + len;
 
-	if ((len & 0x3fff) > 0x3fff)
+	if (end < off && (len & 0x3fff) > 0x3fff)
 		len++;
 	if (__builtin_expect(lim >= off + len, 1)) {
 		/* dead; the noreturn call predicts it not taken, so the threading
 		   that removes it doesn't leave the error edge at 75% (the error
 		   block is then laid out after the big-block path) */
-		if ((len & 0x3fff) > 0x3fff)
+		if ((end & 0x3fff) > 0x3fff)
 			abort();
 		fsFiles[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
 		fsFiles[nFsFiles].size = SWAP32_IMAGE_WRITE(len);

@@ -74,11 +74,10 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. image_write</b>: 16 tricks, hard</summary>
+<summary><b>1. image_write</b>: 14 tricks, hard</summary>
 
 - `--param builtin-expect-probability=50`
-- 8 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes (two of them
-  share one `if`)
+- 6 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
 - 2 register and slot pins, in `imgAdd` and `finalizeImage`
 - 2 `__builtin_expect`, 1 hot label, and
   `optimize("no-tree-scev-cprop")` on `writeFsTable`

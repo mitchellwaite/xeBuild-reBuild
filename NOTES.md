@@ -264,8 +264,9 @@ builtin-expect-probability=50`, default top-level order).
   ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
   recycled, i.e. the compare operand orders in the clones and inlined
   copies; their layout was found by a search (tools/wip/README.md).
-- imgAddFile computes imgFits' limit itself before a dead `len++`, and the
-  dead test in its body calls `abort()`, whose noreturn prediction works like
+- imgAddFile computes imgFits' limit and end itself before a dead `len++`
+  (`end < off` in its test keeps end alive until DOM2), and the dead test in
+  its body calls `abort()`, whose noreturn prediction works like
   a `cold` label, so VRP1's jump threading neither renumbers that value nor
   leaves the error edge at 75%. The call is removed before expansion, so the
   object has no `_abort` reference.
