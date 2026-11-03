@@ -338,16 +338,12 @@ int prepSysex(void)
 /* long, not int: uncprop then can't reuse the int netSendFile result for the
    manifest failure's 0 (it does for the loop failure, which assigns ret).
 
-   The count is reloaded into n ahead of the failure test, so the loop's header
-   is only a condition: ch copies it (the guard) and it stays between the guard
-   and the manifest send, which is expanded before the loop body for its
-   literal.  i advances on ok (scev can't see it until dom3, which keeps the
-   imul).  The size_t cast leaves i dead after i + 1, so they share a register.
-   See the comment in the loop for the ok test. */
+   A failed send ends the loop with i = manifest.count, not break: with break
+   i is a plain IV and ivopts replaces the imul with a pointer. */
 long sendAvatarData(const char *dir, uint32_t ver)
 {
-	int i, n, ok;
-	long ret;
+	int i;
+	long ret = 1;
 
 	netTimerStart();
 	log_printf(0, "loading avatar data...\n");
@@ -355,58 +351,33 @@ long sendAvatarData(const char *dir, uint32_t ver)
 	addTitleId(ver);
 	if (loadManifest(dir, ver)) {
 		log_printf(0, "success!\nFormatting HDD partition...\n");
-		ret = 1;
 		if (prepSysex()) {
 			log_printf(0, "success!\nSending avatar files to HDD partition...\n");
 			log_printf(1, "sending %d items to xbox\n", manifest.count);
-			i = 0;
-			n = manifest.count;
-			ok = 1;
-			for (;;) {
-				if (i >= n) {
-					if (!ret)
-						goto out;
-					/* Dead: ok is 0 only when ret is, tested just above; dom3
-					   folds it.  It's here for bbro and crited1: its block has
-					   no edge to the manifest send (so the guard's forwarder
-					   lands in front of that send and ifcvt can't hoist i = 0
-					   above the guard), and <= 0 with the call in the arm
-					   brings the send's frequency up to round 3. */
-					if (ok <= 0) {
-						netTimerEnd();
-						goto out;
-					}
-					log_printf(1, "sending manifest to %s\n", manifest.path);
-					ok = netSendFile(manifest.path, manifest.data, manifest.size);
-					break;
+			for (i = 0; i < manifest.count; i++) {
+				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, manifest.e[i].len, manifest.e[i].len, manifest.e[i].path);
+				ret = netSendFile(manifest.e[i].path, manifest.e[i].data, manifest.e[i].len);
+				if (!ret) {
+					log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.e[i].path);
+					i = manifest.count;
 				}
-				if (!ret)
-					goto out;
-				struct manifestItem *e = &manifest.e[(size_t)i];
-				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, e->len, e->len, e->path);
-				ret = netSendFile(e->path, e->data, e->len);
-				ok = ret != 0;
-				n = manifest.count;
-				i += ok;
-				if (!ret)
-					log_printf(0, "aborting sending avatar data, failed to send %s\n", e->path);
 			}
-			if (!ok) {
-				ret = 0;
-				log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
-			} else {
-				log_printf(0, "success! Avatar data is successfully sent to the console!\n");
-				netTimerEnd();
-				ret = 1;
+			if (ret) {
+				log_printf(1, "sending manifest to %s\n", manifest.path);
+				if (!netSendFile(manifest.path, manifest.data, manifest.size)) {
+					ret = 0;
+					log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
+				} else {
+					log_printf(0, "success! Avatar data is successfully sent to the console!\n");
+					netTimerEnd();
+					ret = 1;
+				}
 			}
 		}
-out:
 		netUnmount(SYSEX);
 		freeManifest();
-	} else {
+	} else
 		log_printf(0, "***** WARNING: avatar data skipped, unable to load data!\n");
-		ret = 1;
-	}
 	return ret;
 }
 

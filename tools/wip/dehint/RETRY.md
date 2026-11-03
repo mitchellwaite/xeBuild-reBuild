@@ -1,13 +1,12 @@
-# Retrying the last two functions
+# Retrying what's left
 
-The user asked to keep going on `sendAvatarData` until it matches. `netRecvVerbose`
-is settled for now, with a dead test the user chose over the asm; retry it only with
-a new idea. Attempts run one at a time and continue from the function's notes.
+`sendAvatarData` is done: attempt 6 found a plain `for` loop. `netRecvVerbose` is
+settled for now, with a dead test the user chose over the asm; retry it only with a
+new idea. Attempts run one at a time and continue from the function's notes.
 
 | Function | Notes | Done means |
 |----------|-------|------------|
 | `netRecvVerbose` in `src/net.c`, with its clone `netRecv` | `notes/net_netRecvVerbose.md` | The dead `if (!len)` is gone and the full build's SHA256 matches |
-| `sendAvatarData` in `src/console_hdd.c`, inlining `prepSysex` | `notes/console_hdd_sendAvatarData.md` | Natural source replaces the landed loop and the full build's SHA256 matches |
 
 ## For each attempt
 

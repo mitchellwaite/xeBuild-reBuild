@@ -320,3 +320,48 @@ Don't retry: gen_ca56, 60, 63, 68, 69, 70 families; n = 0 as the stop.
 Evidence: chains, frequencies, predictor values and SSA versions are from dumps. split_edge_bb_loc, find_if_case_2, dead_or_predicable's trap check, the early-return rule and predict_loops' single-exit rule are from memory of gcc's source (none read in this attempt) and fit the dumps. That ch2 reuses the freed PHI versions, and that vrp1 rather than dce2 frees them, are inferred from version numbers. Why dom2 leaves `_40 != 0` alone is inferred from it surviving.
 
 Reproduce: python tools/re/fncmp.py src/console_hdd.c sendAvatarData ; python tools/wip/dehint/caobj.py src/console_hdd.c ; sh build.sh ; python tools/re/fncmp.py tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5while.c sendAvatarData -O3 -Isrc ; python tools/wip/dehint/caobj.py tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5while.c tools/wip/dehint/drafts/console_hdd_sendAvatarData_a5labels.c ; python tools/wip/dehint/casweep.py tools/wip/dehint/gen_ca72.py ; python tools/wip/dehint/caobjbest.py gen_ca72 2
+
+## Attempt 6: natural match, landed
+
+src/console_hdd.c: fncmp MATCH with no flags for sendAvatarData and prepSysex, caobj text 0 data 0, `sh build.sh` SHA256 10dac648...971c. drafts/_best.c is a copy. This supersedes the "Retry later" list and attempts 3-5's what-to-try lists: labels, `ok`, the dead test, `n`, the cast, `i += ret != 0` and `itemsDone` are all gone. The `struct manifestItem` tag from attempt 2 went too.
+
+    long ret = 1;
+    ...
+    for (i = 0; i < manifest.count; i++) {
+        log_printf(1, "sending %03d: ...", i + 1, manifest.e[i].len, manifest.e[i].len, manifest.e[i].path);
+        ret = netSendFile(manifest.e[i].path, manifest.e[i].data, manifest.e[i].len);
+        if (!ret) {
+            log_printf(0, "aborting ...", manifest.e[i].path);
+            i = manifest.count;
+        }
+    }
+    if (ret) { log manifest; if (!send) { ret = 0; log } else { log; netTimerEnd(); ret = 1; } }
+
+### How it was found
+
+- gen_ca80 (360; the task's idea, i live after the loop): `i >= n && ret`, `ret && i >= n` and `(i >= n) & (ret != 0)` fold to a5while's bytes, 2 lines, the hoist. Without `ret` in the test (`i >= n`, `i == n`, `i == count`), or with `break`, 19-58 lines. So i-live post-loop tests didn't work. The sweep's useful row was a side effect: `wh|big|ret`, failure `i = n + 1`, had **no hoist**, data 0, 11 lines.
+- gen_ca81 (192): the failure arm uses the old n, with the reload only on success, so the load sinks past the ret test: text 4, and `if (ret) i++` works, so `i += ret != 0` isn't needed. Left: the inlined freeManifest's cmp order.
+- gen_ca83 (162): `i = n` with i++ in a `for` step is `n + 1` for free. No cast needed. Text 4.
+- gen_ca85 (1920) G rows: drop n altogether, `for (i = 0; i < manifest.count; i++)` with `i = manifest.count`: text 0 data 0. The cmp order came right by itself.
+- gen_ca86 (432): `long ret = 1` at the top in place of the two `ret = 1` assignments, text 0 data 0.
+
+### Mechanism, from the dumps
+
+Failure path at dom3: `i_34 = manifest.count; _72 = i_34 + 1; if (i_34 > _72)`. No pass can fold that until forwprop4 ("Replaced 'i_34 > _72' with '0'"). That one fact does all three jobs:
+- imul: at ivopts the head's i is a PHI of i + 1 and the failure path's value, not an IV. `break` removes that path and gives a pointer IV (39 lines, `-imul`).
+- Hoist: at cddce2 the loop has two latch edges (success and failure). The chain goes from `14 guard, 15 MF, 16[35], 17[359], 18 body` at vrp2 to `14 guard, 15[35], 16 MF, 17[359], 18 body` at cddce2, so `i = 0` sits right after the guard. a5while's `i = n` is `n > n`, which folds at dom2, so it has one latch at cddce2, keeps guard, MF, `i = 0`, and gets hoisted.
+- .rdata: at `pre` the chain is still guard, MF, body (forwarders merged, the F1 way), so MF stays ahead of the body at expand and the literals are in order.
+
+From memory, not read: cddce's loop_optimizer_init (LOOPS_NORMAL) merging the latches and rebuilding the preheader with split_edge, which would explain why the block moves. That the move is what stops ce1 is inferred: the xor is right, and ce1 still prints "IF-CASE-2 found, start 12, else 15" without hoisting; the refusal itself wasn't traced.
+
+Why dropping n fixed the cmp is not understood beyond the versions: `prephitmp_62 > i_67` (lower version first) where the n forms had `i_71 < prephitmp_99`.
+
+### Left in the source
+
+- `long ret` next to `int netSendFile`: needed, `int ret` is 2 lines (comment in src, from earlier attempts). Reads fine.
+- `i = manifest.count` to stop, not `break`: needed. Live, ordinary code.
+- prepSysex's `r` with the second `if (r)`, item 6 of the retry list: live, same kind as the approved `hex`. The flag-free spellings (gen_ca86 s1-s6) are at best 10 lines, the mount failure and loop failure arms swapped. Don't retry without a new way to get .793.
+
+Variations with the same bytes: `struct manifestItem *e = &manifest.e[i]` in the body, `if (ret == 0)`, `ret = 1` at both old spots, `long ret; int i;`, prepSysex h5d or h1d.
+
+Reproduce: python tools/re/fncmp.py src/console_hdd.c sendAvatarData ; python tools/wip/dehint/caobj.py src/console_hdd.c ; sh build.sh ; python tools/wip/dehint/casweep.py tools/wip/dehint/gen_ca86.py ; python tools/wip/dehint/cachains.py src/console_hdd.c vrp2 cddce2 forwprop4 optimized
