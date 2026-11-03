@@ -91,17 +91,16 @@ choice, and eight attempts without it didn't match. `<= 0` on the first send, wi
 </details>
 
 <details>
-<summary><b>2. bootloaders</b>: 4 tricks, moderate</summary>
+<summary><b>2. bootloaders</b>: 3 tricks, moderate</summary>
 
-- 3 `optimize` attributes: `no-tree-dominator-opts` and `no-cse-follow-jumps`, on
-  `cbDecrypt`, `cdDecrypt` and `ceDecrypt`
+- 2 `optimize` attributes: `no-tree-dominator-opts` and `no-cse-follow-jumps`, on
+  `cdDecrypt` and `ceDecrypt`
 - 1 register pin, on `ceDecrypt`
 
-The three attributes each come down to one `xor ebx,ebx` on the `calloc` failure
-path, which gcc drops because it knows `buf` is 0 there. Return types and a
-separate variable for `calloc`'s result were no closer. Scoping locals to the
-innermost block removed the tricks from `cfDecrypt` and `daeVerifySig`, so it may
-help here.
+Both attributes come down to one `xor ebx,ebx` on the `calloc` failure path, which
+gcc drops because it knows `buf` is 0 there. `cbDecrypt` lost its attribute by
+declaring `key`, `buf` and `len` in the magic block and letting the failure paths
+fall out to the final `return 0`.
 
 </details>
 

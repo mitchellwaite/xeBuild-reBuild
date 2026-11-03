@@ -329,18 +329,14 @@ uint32_t shaSelfCheck(uint8_t *p)
 
 /* decrypted copy of a CB/SB (free it), checked against the 1BL RSA key */
 uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey);
-/* stops DOM/uncprop and CSE proving buf == 0 on the calloc-fail path (the
-   original keeps its `xor ebx,ebx` there); `if (buf)` first keeps
-   postreload from learning it from the jump */
-__attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
 uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 {
-	uint8_t *buf;
-	uint32_t len;
-	uint8_t key[16];
-
 	if (cb) {
 		if (BL_MAGIC(cb, 'B')) {
+			uint8_t *buf;
+			uint32_t len;
+			uint8_t key[16];
+
 			len = BL_SIZE(cb);
 			buf = calloc(len, 1);
 			if (buf) {
@@ -354,19 +350,18 @@ uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 						log_printf(1, "%cB signature OK! Decryption successful!\n", buf[0]);
 						if (outLen)
 							*outLen = len;
-					} else {
-						log_printf(0, "***** ERROR: %cB signature invalid, corrupted or decryption failed!\n", buf[0]);
-						free(buf);
-						buf = 0;
+						return buf;
 					}
+					log_printf(0, "***** ERROR: %cB signature invalid, corrupted or decryption failed!\n", buf[0]);
+					free(buf);
 				} else {
 					log_printf(0, "***** WARNING: could not check %cB signature, 1BL RSA key not loaded!\n", buf[0]);
 					if (outLen)
 						*outLen = len;
+					return buf;
 				}
-				return buf;
-			}
-			log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n", cb[0], cb[1]);
+			} else
+				log_printf(0, "***** WARNING: Unable to allocate 0x%x bytes for %c%c!\n", cb[0], cb[1]);
 		} else
 			log_printf(0, "***** WARNING: CB/SB does not have valid magic!\n");
 	} else
@@ -377,7 +372,9 @@ uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 /* decrypted copy of an SC/SD/CD with hmacKey, signature checked if pubKey and salt */
 uint8_t *cdDecrypt(uint8_t *bl, const void *pubKey, const uint8_t *salt, const uint8_t *hmacKey,
 	uint32_t *outLen, uint8_t *outKey);
-/* as cbDecrypt */
+/* stops DOM/uncprop and CSE proving buf == 0 on the calloc-fail path (the
+   original keeps its `xor ebx,ebx` there); `if (buf)` first keeps
+   postreload from learning it from the jump */
 __attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
 uint8_t *cdDecrypt(uint8_t *bl, const void *pubKey, const uint8_t *salt, const uint8_t *hmacKey, uint32_t *outLen, uint8_t *outKey)
 {
@@ -421,7 +418,7 @@ uint8_t *cdDecrypt(uint8_t *bl, const void *pubKey, const uint8_t *salt, const u
 }
 
 /* decrypted copy of an SE/CE with hmacKey, hash checked if given; as
-   cbDecrypt, plus register pins (in a block jump threading removes) that
+   cdDecrypt, plus register pins (in a block jump threading removes) that
    keep IRA's original choice: bl ebp, hmacKey edi, len esi */
 __attribute__((optimize("no-tree-dominator-opts", "no-cse-follow-jumps")))
 uint8_t *ceDecrypt(uint8_t *bl, uint32_t *outLen, const uint8_t *hmacKey, const uint8_t *hash)
