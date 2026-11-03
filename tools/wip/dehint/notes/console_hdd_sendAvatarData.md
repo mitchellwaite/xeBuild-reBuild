@@ -138,3 +138,38 @@ hoisted above the guard, right .rdata. Starting from it is probably better than 
 
 Compare with `python tools/wip/dehint/caobj.py <draft>` as well as fncmp, against a build/obj/console_hdd.o from
 the landed source, and finish with `sh build.sh`.
+
+## Attempt 3
+
+No aggregate locals anywhere in sendAvatarData, prepSysex, addTitleId or freeManifest (loadManifest isn't inlined), so no scope clobbers: the scoping lever doesn't apply here unless an aggregate is invented.
+gen_ca30 (840; inlined helpers sendItem(i) / sendItem(e, n) / sendManifest x natural loops x increments): imul kept in 252, best 9 lines (pn|dga|add|if), still the hoist plus i/i+1 not coalesced. A late-inlined helper does not change the chain.
+gen_ca31 (`while (ret)`, MF at the head): vrp1 threads the ret test away, so header is load+cond with exiting latch pred: no ch copy, 33+.
+gen_ca32 (`i >= count` first, MF inside it): same no-copy, 31+.
+gen_ca33 (head `if (i >= count || !ret) { if (!ret) goto out; MF; sent = ...; break; }`, `if (!ret) log; i += ret != 0;` at the end): **ch copies the header**, so the guard comes from the natural loop test. 19 lines r=3 (v89): only hoist + no coalesce. Chain at dom2 is guard, H, T, MF, pre, body as wanted; crited1 then moves MF after the guard because T (`if (!ret)`) sits right before MF and has an edge to it (split_edge_bb_loc).
+That needs a block with no edge to MF lexically right before it. In C that is either a block with real statements (`if (!ret) { stmts; goto out; }`) or a jump over MF (the landed `goto send_item`).
+gen_ca34 (the item failure's log as that block, in the `if (!ret)` at the head): the chain is right and the hoist goes (xor after the guard), but the abort literal then expands before MF (.rdata wrong) and without the join at the body's end the head isn't copied or the latch tests i before ret: 36+. There's no other statement available for that block: anything with a literal breaks .rdata, and the shared `out` code can't be repeated there.
+gen_ca35 (copied head plus jumps over MF, no entry goto, no accessor): `if (i < count && ret) goto send_item; if (!ret) goto out; MF; break; send_item:` + cast + `if (!ret) log; i += ret != 0;` (v105, drafts/console_hdd_sendAvatarData_a3label.c): 8 lines, r=2: the hoist plus cmp order in addTitleId and freeManifest (SSA numbering). .rdata right. Two-test head with the block before MF (`A`, v100): 30, because `if (!ret) log; i += ...` makes dom3 thread-copy the loop test to the chain end, so the Z block dies before expand and it hoists anyway.
+The conflict in one line: ch copies the head only if the latch's predecessor doesn't exit at ch, which needs the failure arm unthreaded at vrp1 (a statement in the join, `addl`); Z survives to expand only if the join is empty so dom3 doesn't thread-copy the head (`add`), and with `add` vrp1 threads the failure arm and ch sees a do-while.
+gen_ca36 (separate `ok = ret != 0` that the head tests, so vrp1 can't thread from a `ret` test; 288): `inl|d|A|brk1` v106 keeps Z (the fail arm still reaches the head's test in gimple, and RTL removes that test) and has no hoist and no cast, 14 lines; but `i += ok` stays setne + add since dom3 can't tell ok from a `ret` test. Testing ok for the log folds it and loses Z again. Not better than the landed text anyway: two labels plus another flag.
+gen_ca37 (landed text with one part replaced): accessor -> named local n (function, body or block scope, either compare order), plain test: all 4 lines (`n_25 <= _31`: into-SSA numbers in dominator order and the head dominates i + 1, whether temporary or named). Only an inlined callee gets a later version. Cast -> u32 0 lines (same thing), plain or `+ i` 15+, `num = i + 1` local 9. So no part of the landed text can go on its own.
+gen_ca38 (528; `while (ok)` over the MF head, a header of only a condition is never do-while to ch): 31+, setne stays and the ok test stays. Don't retry.
+
+Per part, what attempt 3 learned:
+1. for(;;) with labels: the entry goto can go (ch copies the head in gen_ca33/35), but then Z is lost; the `goto send_item` jump-over is needed for split_edge_bb_loc in every shape that keeps Z. Not replaced.
+2. itemsDone: not needed in the copied-head family (cmp is right there, drafts a3head and a3label). In the landed explicit-guard family only an inlined callee reorders it. Not replaced in src.
+3. (size_t) cast: an item pointer doesn't do its job (`e = &manifest.e[i]`, body local or not: i not coalesced, in F1 12 lines; a pointer or i + 1 passed to an inlined sendItem likewise, 9). Not replaced.
+4. `i += ret != 0`: `if (ret) i++` variants all get threaded at vrp1 into a plain IV in the head-tested shapes (imul lost). Not replaced.
+5. `sent`: reads fine in the copied-head drafts (`sent = netSendFile(...); break;` then `if (!sent)` after the loop, or with `goto out` for the item failure). Item failure must skip the manifest's arms, and arms in place put the success literal before the loop's. Stays.
+6. prepSysex's r: stays, as expected.
+Scoping: no aggregate in sendAvatarData or anything inlined into it, and none can be added without changing frame or steering. No clobbers to move. Inlined helpers (gen_ca30): static sendItem and sendManifest inline with the same chain; they renumber SSA but don't move blocks, and don't help the hoist.
+Also read: the guard's 95.5% in the E head is first-match PRED_LOOP_EXIT, (100% - 91%) / n_exits. predictable_edge_p (2%) needs n_exits >= 5 at profile_estimate (floor 2%), which is attempt 2's "5 exits gets 98%". Natural sources have 2-3 exits, and the extra tests must fold after 042t. A body failure `goto out` gives a third. Not reached.
+
+## State at the end of attempt 3: no change, landed source stays
+
+src/console_hdd.c and build.sh untouched. drafts/console_hdd_sendAvatarData_a3head.c (gen_ca33 v89) is the most natural text so far: no labels but `out`, no accessor, no entry goto, no cast, the guard comes from ch. 19 fncmp lines, r=3: hoist, and i/i+1 not coalesced. .rdata right. drafts/console_hdd_sendAvatarData_f1.c stays the fewest lines of the readable shapes (2), with `k`.
+
+Try next, only with a new idea: a natural block with no literal and no edge to MF between `if (!ret)` and the manifest send in a3head; or something other than Z that stops find_if_case_2 (guard edge >= 98%, EDGE_LOOP_EXIT on the guard's edge: find_if_header refuses those, and a dirty successor block in ce1). Not tried: anything that puts the guard inside an enclosing loop.
+Don't retry: gen_ca31, 32, 34, 36, 38 families.
+
+Evidence: chains, PHIs and the 4.5% are from dumps. split_edge_bb_loc's rule, the do_while_loop_p conditions, the PRED_LOOP_EXIT formula and find_if_header's EDGE_LOOP_EXIT refusal are from memory of gcc's source (none read in this attempt); the first three agree with the dumps, the last is untested.
+Full build run at the end of attempt 3: SHA256 10dac648...971c.
