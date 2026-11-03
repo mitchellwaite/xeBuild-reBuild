@@ -161,7 +161,7 @@ struct manifest {
 	char path[1024];
 	size_t size;
 	int count;
-	struct {
+	struct manifestItem {
 		void *data;
 		uint32_t len;
 		char path[1024];

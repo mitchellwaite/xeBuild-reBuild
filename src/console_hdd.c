@@ -315,24 +315,49 @@ uint32_t loadManifest(const char *dir, uint32_t ver)
 	return ret;
 }
 
+/* r stays a flag with a second test: createSysexDirs isn't guarded on the mount
+   success edge, so the mount failure's probability (call + early return) gives
+   bbro the original's block order where sendAvatarData inlines this */
 int prepSysex(void)
 {
-	if (netFormatSysex()) {
-		/* hint: makes the mount failure cold where sendAvatarData inlines this */
-		if (__builtin_expect(netMount(SYSEX, "\\SEP"), 1))
-			return createSysexDirs();
-		log_printf(0, "ERROR: unable to mount sysex partition!\n");
+	int r = netFormatSysex();
+
+	if (r) {
+		r = netMount(SYSEX, "\\SEP");
+		if (!r) {
+			log_printf(0, "ERROR: unable to mount sysex partition!\n");
+			return 0;
+		}
 	} else
 		log_printf(0, "ERROR: unable to format sysex partition!\n");
+	if (r)
+		return createSysexDirs();
 	return 0;
 }
 
+/* inlined with a newer SSA version than anything in the send loop, which is
+   why the loop test compares `cmp i,count` and not `cmp count,i` */
+static int itemsDone(int i)
+{
+	return i >= manifest.count;
+}
+
 /* long, not int: uncprop then can't reuse the int netSendFile result for the
-   manifest failure's 0 (it does for the loop failure, which assigns ret) */
+   manifest failure's 0 (it does for the loop failure, which assigns ret).
+
+   The shape is what gives the block chain guard, loop test, manifest send,
+   i = 0, loop body: the guard's false edge falls through to i = 0, which falls
+   into the body, so ifcvt can't speculate i = 0 above the guard (find_if_case_1
+   and _2), and the manifest literal is expanded before the loop's.  `goto
+   send_item` leaves a block with no edge to send_manifest in front of it, so
+   crited1 puts the guard's forwarder there.  i advances on the flag (scev can't
+   see it until dom3, which keeps the imul), before the failure log (an empty
+   latch, so the loop test stays where it is).  The size_t cast leaves i dead
+   after i + 1, so they share a register. */
 long sendAvatarData(const char *dir, uint32_t ver)
 {
-	int i;
-	uint32_t k;
+	struct manifestItem *e;
+	int i, sent;
 	long ret;
 
 	netTimerStart();
@@ -345,28 +370,31 @@ long sendAvatarData(const char *dir, uint32_t ver)
 		if (prepSysex()) {
 			log_printf(0, "success!\nSending avatar files to HDD partition...\n");
 			log_printf(1, "sending %d items to xbox\n", manifest.count);
-			/* hint: expands this literal before the loop's, for its .rdata
-			   order (no code) */
-			__asm__("" :: "i"("sending manifest to %s\n"));
-			if (manifest.count > 0) {
-				i = 0;
-				do {
-					/* hint: hides k from scev, so ivopts keeps the
-					   imul instead of a pointer IV (no code) */
-					k = (uint32_t)__builtin_assume_aligned((void *)i, 1);
-					log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, manifest.e[k].len,
-						manifest.e[k].len, manifest.e[k].path);
-					ret = netSendFile(manifest.e[k].path, manifest.e[k].data, manifest.e[k].len);
-					if (__builtin_expect(!ret, 0)) {
-						log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.e[k].path);
-						goto out;
-					}
-				} while (++i < manifest.count);
-				/* hint: i live here stops ifcvt hoisting i = 0 above the guard */
-				__asm__("" :: "r"(i));
+			i = 0;
+			if (manifest.count <= 0)
+				goto send_manifest;
+			for (;;) {
+				if (itemsDone(i)) {
+					if (ret)
+						goto send_manifest;
+					goto out;
+				}
+				if (!ret)
+					goto out;
+				goto send_item;
+send_manifest:
+				log_printf(1, "sending manifest to %s\n", manifest.path);
+				sent = netSendFile(manifest.path, manifest.data, manifest.size);
+				break;
+send_item:
+				e = &manifest.e[(size_t)i];
+				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, e->len, e->len, e->path);
+				ret = netSendFile(e->path, e->data, e->len);
+				i += ret != 0;
+				if (!ret)
+					log_printf(0, "aborting sending avatar data, failed to send %s\n", e->path);
 			}
-			log_printf(1, "sending manifest to %s\n", manifest.path);
-			if (!netSendFile(manifest.path, manifest.data, manifest.size)) {
+			if (!sent) {
 				ret = 0;
 				log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
 			} else {

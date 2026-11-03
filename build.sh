@@ -53,10 +53,6 @@ for f in $objects globals; do
     # definition order
     keys) orig="$f.c"
            cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=60" ;;
-    # console_hdd's __builtin_expect hints are tuned to this probability;
-    # sendAvatarData's loop is aligned (1 and 2 align other loops too)
-    console_hdd) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3" ;;
     # parseOption's setBoolOption and vlen hints (82 and 84 lay out the
     # done/incomplete blocks differently); applyIniOptions' layout comes
     # from dead hints in the source (tools/wip/aio/p1/NOTES.md)

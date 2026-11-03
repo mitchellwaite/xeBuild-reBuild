@@ -115,3 +115,26 @@ Borderline, for review:
 - prepSysex's `r` flag and second `if (r)`.
 
 Try next, if the loop control is rejected: gimple chain needs a multi-pred block between guard and manifest send plus the false edge to i = 0; only the loop test qualifies so far. An alternative for the block before send_manifest (now `if (!ret) goto out; goto send_item`) is the place to look.
+
+## Retry later: landed, but not natural yet
+
+The user reviewed the attempt 2 candidate on 2026-11-02 and had it landed as is, with a note to try again.
+It has no builtin, asm, attribute or --param and the full build matches, so a retry has to keep all of that.
+What it doesn't have is believable source. The goal of a retry is to replace these with what the author likely wrote:
+
+1. `for (;;)` with `send_manifest` and `send_item` labels inside it, entered by `goto`. It sets the block order
+   (guard, loop test, manifest head, `i = 0`, body), which stops find_if_case_1 and _2 speculating `i = 0`.
+   The manifest's position also puts its literal first in .rdata.
+2. `static int itemsDone(int i)`: only changes an SSA version, for `cmp i,count` over `cmp count,i`.
+3. `&manifest.e[(size_t)i]`: the cast only leaves `i` dead after `i + 1`, so they coalesce.
+4. `i += ret != 0` before the failure log: keeps the imul (scev can't see i until dom3) and an empty latch.
+5. `sent` local tested after the loop: the `break` and arm positions only set literal order.
+6. `int r` in prepSysex with a second `if (r)`: gives P(mount success) = .793. Same kind as myatou32's approved
+   `hex` flag, so this one can probably stay.
+
+Targets a natural source has to hit: the block order in item 1, mount success at about 79-81%, imul kept, manifest
+literal before the loop's. Attempt 1's `_f1.c` is the most readable near miss: 2 fncmp lines, only `xor ebp,ebp`
+hoisted above the guard, right .rdata. Starting from it is probably better than simplifying the landed shape.
+
+Compare with `python tools/wip/dehint/caobj.py <draft>` as well as fncmp, against a build/obj/console_hdd.o from
+the landed source, and finish with `sh build.sh`.

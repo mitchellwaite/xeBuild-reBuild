@@ -9,40 +9,45 @@ Its docstring says what to check before copying the result back.
 
 ## console_hdd.c
 
-All 14 functions match and are built from `src/console_hdd.c` with
-`-O3 --param builtin-expect-probability=80 --param align-loop-iterations=3`
-(the expect param like fileutil/keyvault; 3 aligns sendAvatarData's loop
-as the original, 1 or 2 align other loops too). `sendDir` matches: both
-failure paths `goto fail`, and `fail:` sits after `return 1` with a
-`__builtin_prefetch(0)` (no code on i686) that keeps it a GIMPLE block, so
-jump2 cross-jumps the xor and bbro copies it for the send failure.
+All 14 functions match and are built from `src/console_hdd.c` with plain
+`-O3`. `sendDir` matches: both failure paths `goto fail`, and `fail:` sits
+after `return 1`, so jump2 cross-jumps the xor and bbro copies it for the send
+failure.
 
-`sendAvatarData` needed:
+`sendAvatarData` (and prepSysex, inlined into it) needed, with no hints
+(`tools/wip/dehint/notes/console_hdd_sendAvatarData.md` has the search and the
+shapes that are still open to question):
   - `int netSendFile` with `long ret` and a `long` return: uncprop only
     reuses a call result for a PHI's 0 when the types are compatible, so
     the loop failure (which assigns ret) gets `mov edi,eax` and the
     manifest failure keeps `xor edi,edi`.
-  - The loop indexes with `k = (u32)__builtin_assume_aligned((void *)i, 1)`.
-    scev can't see through it, so ivopts keeps `imul ebx,ebp,1032` instead
-    of a pointer IV, and it expands to nothing (an empty asm pin needs a
-    reg copy; with `int k` PRE's value numbers of the cast chain change
-    the SSA name reuse and flip an inlined freeManifest compare).
-  - An explicit `if (count > 0) do ... while` guard, and
-    `__asm__("" :: "r"(i))` after the loop: with i live there, RTL
-    if-conversion (ce1) can't speculate `i = 0` above the guard.
-  - `__builtin_expect` on the loop failure, and on netMount in prepSysex
-    (cold mount failure, so bbro orders the cold blocks as the original;
-    prepSysex itself is unchanged at p <= 80). The manifest send is an
-    if/else so the success path falls into `out` and jump2 cross-jumps the
+  - `i += ret != 0`: i is a PHI until dom3 threads it, so scev can't see it
+    and ivopts keeps `imul ebx,ebp,1032` instead of a pointer IV. It comes
+    before the failure log, so the latch is empty and the loop test isn't
+    thread-copied to the end of the chain.
+  - `e = &manifest.e[(size_t)i]`: the cast leaves i dead after `i + 1`, so
+    both coalesce into ebp.
+  - The manifest send inside the loop, between the loop test and the body,
+    with an explicit `if (count <= 0) goto send_manifest`. expand makes the
+    false edge fall through when neither successor is next in the chain, so
+    the guard falls through to `i = 0`, which falls into the body: ce1's
+    find_if_case_1 and _2 both refuse to speculate `i = 0` above the guard.
+    The manifest literal is still expanded before the loop's. `goto
+    send_item` leaves a block with no edge to send_manifest right before it,
+    so crited1 places the guard's forwarder there (split_edge_bb_loc), not
+    right after the guard, where tail merge would pull the manifest send.
+    The result test and its arms stay after the loop for their literals'
+    order; the success arm falls into `out` and jump2 cross-jumps the
     createSysexDirs failure's `mov edi,1` with it.
-  - `__asm__("" :: "i"("sending manifest to %s\n"))` before the loop:
-    gcc numbers and emits string literals in expand order, and the
-    original has the manifest literal before the loop's (fncmp doesn't
-    see .rdata order).
+  - `itemsDone(i)`: the head test's load, inlined, gets a newer SSA version
+    than i + 1, so the compare isn't swapped (`cmp ebp,[count]`).
+  - prepSysex's `r` flag with a second `if (r)`: no guarded call on the mount
+    success edge, so P(mount success) is .793 (call + early return), which is
+    what bbro's block order needs (79..81% work).
 
-`tools/wip/fnrep.py` plus small generators (variants joined by `=====`) found
-these; `-fdump-rtl-bbro-details` traces and `-fdump-tree-pre-details`
-explain the block order and SSA numbering.
+`tools/wip/dehint/casweep.py` plus the `gen_ca*.py` generators found these;
+`-fdump-rtl-ce1-details`, `-fdump-rtl-jump2-details` and
+`tools/wip/dehint/cachain.py` explain the block chain and ifcvt.
 
 `sendDir` calls libmingwex's `stat` (448820). msvcrt's `_stat` IAT slot
 had that name, so `tools/re/split.py` renames the slot to `__imp___stat`
