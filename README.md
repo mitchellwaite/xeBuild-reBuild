@@ -45,14 +45,14 @@ tricks some functions needed to match, and the checks behind each step.
 
 The application files match, but some only match because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 9 files that still have them from easiest to hardest to match with
+ranks the 8 files that still have them from easiest to hardest to match with
 source shape alone: ordinary C, the same `-O3` as the rest, and none of these
-hints. The other 16 application files build with no tricks.
+hints. The other 17 application files build with no tricks.
 
 Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
-removes any that no longer change the code, but past `stfs` no hint-free source
-has been attempted, so the ranking there is an estimate. Trick count isn't the
-only factor: a single hint can be harder to replace than several others if it sets
+removes any that no longer change the code, but no hint-free source has been
+attempted for them, so the ranking is an estimate. Trick count isn't the only
+factor: a single hint can be harder to replace than several others if it sets
 something like register ties or bb-reorder's heap order.
 
 **How tricks are counted:** one for each non-default gcc option in `build.sh`,
@@ -74,22 +74,7 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. stfs</b>: 2 tricks, hard</summary>
-
-- 1 `__builtin_expect` and 1 register pin (`fb` in `esi`), both on the loop guard
-  in `stfsGetFile`
-
-This was ranked easy, but over 900 source shapes didn't remove either hint: loop
-forms, local types and scopes, helpers, and the copy inside the scan loop. The
-best reaches 26 differing lines, only swapping `esi` and `ecx`. IRA colours `fb`
-before the `c->blocks` pseudo, so `fb` takes `ecx`. Changing the guard's
-probability didn't fix it, and low values change the layout too. A match
-probably needs something that makes `ecx` unavailable to `fb`.
-
-</details>
-
-<details>
-<summary><b>2. mode_update</b>: 15 tricks, hard</summary>
+<summary><b>1. mode_update</b>: 15 tricks, hard</summary>
 
 - `--param builtin-expect-probability=68`
 - Dead layout hints in `mode_update` and `updateNand`: 7 `__builtin_constant_p`,
@@ -105,7 +90,7 @@ a Fibonacci-heap tie, which needs the exact frequencies.
 </details>
 
 <details>
-<summary><b>3. image_write</b>: 18 tricks, hard</summary>
+<summary><b>2. image_write</b>: 18 tricks, hard</summary>
 
 - `--param builtin-expect-probability=50`
 - 7 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
@@ -122,7 +107,7 @@ hint-free source would have to land on the same numbers.
 </details>
 
 <details>
-<summary><b>4. keys</b>: 18 tricks, hard</summary>
+<summary><b>3. keys</b>: 18 tricks, hard</summary>
 
 - `--param builtin-expect-probability=60`
 - 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
@@ -136,7 +121,7 @@ of them together.
 </details>
 
 <details>
-<summary><b>5. filelist_ini</b>: 22 tricks, hard</summary>
+<summary><b>4. filelist_ini</b>: 22 tricks, hard</summary>
 
 - 3 options: `-fno-tree-loop-vectorize`,
   `--param builtin-expect-probability=65` and
@@ -153,7 +138,7 @@ options with no direct source equivalent.
 </details>
 
 <details>
-<summary><b>6. image_read</b>: 31 tricks, hard</summary>
+<summary><b>5. image_read</b>: 31 tricks, hard</summary>
 
 - 8 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
 - 5 `__builtin_expect`, 5 hot labels, 4 `__builtin_unreachable` and 3 empty `asm`
@@ -169,7 +154,7 @@ is probably the best of the hard files to work through next.
 </details>
 
 <details>
-<summary><b>7. build</b>: 52 tricks, very hard</summary>
+<summary><b>6. build</b>: 52 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
 - 19 `__builtin_expect`, 9 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
@@ -187,7 +172,7 @@ frequency from scaling to 0.
 </details>
 
 <details>
-<summary><b>8. options</b>: 70 tricks, very hard</summary>
+<summary><b>7. options</b>: 70 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 30 `__builtin_constant_p`, 16 `__builtin_expect`, 3 `asm goto`, 3
@@ -207,7 +192,7 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>9. mode_client</b>: 141 tricks, very hard</summary>
+<summary><b>8. mode_client</b>: 141 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=50`
 - 89 `__builtin_constant_p` feeds and 19 `asm goto` edges to dead labels, which

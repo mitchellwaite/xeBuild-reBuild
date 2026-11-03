@@ -168,12 +168,10 @@ int stfsGetFile(stfs_t *c, const char *name, uint8_t **out, uint32_t *len)
 found:
 	n = LE24(e->ab);
 	fb = LE24(e->fb);
-	/* code-free hint: the empty asm asks for fb in esi (the original's
-	   allocation); its block folds into the loop guard */
-	if (__builtin_expect(n != 0, 1))
-		__asm__("" : : "S"(fb));
-	for (j = 0; j < n; j++)
-		memcpy(buf + j * 0x1000, c->data + c->blocks[j + fb], 0x1000);
+	for (j = 0; j < n; j++) {
+		uint32_t off = c->blocks[j + fb];
+		memcpy(buf + j * 0x1000, c->data + off, 0x1000);
+	}
 	*out = buf;
 	*len = SWAP32(e->size);
 	return 1;
