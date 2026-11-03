@@ -58,16 +58,16 @@ int detectController(uint8_t *raw, int size);
 int checkHeader(const char *name, FILE *fp);
 void getNonces(void);
 
-/* .bss and .data in the original's order */
-static struct mobile mobiles[10];
-static uint8_t anchor[0x200];
-static uint32_t fsOffset;
-static int fsValid;
-static struct fsroot fsBuf;
+/* .bss and .data in the original's order, reversed (gcc emits data last to first) */
 static int dumpSize;
-char zeropair[16] = "zeropair image";
-char mobileName[] = "MobileA";
+static struct fsroot fsBuf;
+static int fsValid;
+static uint32_t fsOffset;
+static uint8_t anchor[0x200];
+static struct mobile mobiles[10];
 struct fsroot *fs = &fsBuf;
+char mobileName[] = "MobileA";
+char zeropair[16] = "zeropair image";
 
 static int fsFind(const char *name, uint32_t *block, uint32_t *size, uint32_t *time, int quiet)
 {

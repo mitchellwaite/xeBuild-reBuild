@@ -212,9 +212,9 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
   immediate stores, longer ones copy from the (merged) literal, as in the
   original, so it stays a plain strcat.
 
-And `keys` (whole object in C, data included; built with
-`-fno-toplevel-reorder` so functions and key buffers come out in definition
-order; its strings are plain literals).
+And `keys` (whole object in C, data included; key buffers are defined in reverse
+of their address order, as gcc emits data last to first; its strings are plain
+literals).
 The names (`keysInit`, `cbaEncrypt`, `kvPrepare`, the `infoKey0..5` HMAC
 salts, ...) are ours.
 
@@ -244,8 +244,8 @@ which puts its error block over the default align-threshold, as the
 original's is. Its strings are plain literals: the functions whose
 literals came out of order are written success-first (errors in an else
 or after the main path), which gives the original's `.rdata` order. The
-variables are zero-initialized globals in `.bss` order, which relies on
-`-fno-toplevel-reorder`.
+variables are zero-initialized globals in reverse `.bss` order, as gcc emits
+data last to first.
 
 And `image_write` (whole object in C, no `.s`; `-O3 --param
 builtin-expect-probability=50`, default top-level order).

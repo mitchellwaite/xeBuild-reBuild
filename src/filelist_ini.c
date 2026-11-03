@@ -11,51 +11,51 @@
 #include "fileutil.h"
 #include "log.h"
 
-/* .data, in this order (-fno-toplevel-reorder) */
-/* the bl section's file order per build type (blOrder is one of them) */
-int blJtag[9] = {4, 5, 6, 7, 8, 15, 16, 9, 10};
-int blDevgl[6] = {3, 4, 5, 6, 8, 9};
-int blTestk[6] = {4, 5, 6, 7, 8, 9};
-int blDevk[6] = {3, 4, 5, 6, 7, 8};
-int blRetail[6] = {3, 4, 5, 6, 8, 9};
+/* .data, in the original's order reversed (gcc emits data last to first) */
+char fnPayload[32] = "payload.bin";
+char fnFuses[32] = "fuses.bin";
+char fnFreeboot[32] = "freeboot.bin";
+char fnSmcConfig[32] = "smc_config.bin";
+char fnPatches[32] = "patches_";
+char fnXell2f[32] = "xell-2f.bin";
+char fnXellGg[32] = "xell-gggggg.bin";
+char fnKvAlt[32] = "kv_alt.bin";
+char fnKv[32] = "kv.bin";
+char fnSmc[32] = "smc.bin";
+char fnNone[32] = "none";
 
 /* {offset, type} of each file for each build type */
 struct fileloc { uint32_t offset; int type; };
-struct fileloc locDevgl[14] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 7}, {-1, 8},
+struct fileloc locRetail[14] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 5}, {-1, 6}, {-1, 7}, {-1, 8},
 	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
 	{0x3febe00, 27}
-};
-struct fileloc locTestk[12] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 4}, {0xc000, 11}, {-1, 12}, {-1, 13},
-	{-1, 14}, {0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
-};
-struct fileloc locDevk[11] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 13}, {-1, 14},
-	{0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
 };
 struct fileloc locJtag[19] = {
 	{0, 0}, {0x200, 1}, {0x1000, 2}, {0x4000, 3}, {0x8000, 17}, {-1, 18}, {-1, 19},
 	{0x70000, 20}, {-1, 21}, {0x80000, 9}, {-1, 10}, {0x90000, 22}, {0x91000, 23},
 	{0x95000, 24}, {0x95060, 25}, {0xd5060, 5}, {-1, 7}, {-1, 26}, {0x3febe00, 27}
 };
-struct fileloc locRetail[14] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 5}, {-1, 6}, {-1, 7}, {-1, 8},
+struct fileloc locDevk[11] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 13}, {-1, 14},
+	{0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
+};
+struct fileloc locTestk[12] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 4}, {0xc000, 11}, {-1, 12}, {-1, 13},
+	{-1, 14}, {0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
+};
+struct fileloc locDevgl[14] = {
+	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 7}, {-1, 8},
 	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
 	{0x3febe00, 27}
 };
 
-char fnNone[32] = "none";
-char fnSmc[32] = "smc.bin";
-char fnKv[32] = "kv.bin";
-char fnKvAlt[32] = "kv_alt.bin";
-char fnXellGg[32] = "xell-gggggg.bin";
-char fnXell2f[32] = "xell-2f.bin";
-char fnPatches[32] = "patches_";
-char fnSmcConfig[32] = "smc_config.bin";
-char fnFreeboot[32] = "freeboot.bin";
-char fnFuses[32] = "fuses.bin";
-char fnPayload[32] = "payload.bin";
+/* the bl section's file order per build type (blOrder is one of them) */
+int blRetail[6] = {3, 4, 5, 6, 8, 9};
+int blDevk[6] = {3, 4, 5, 6, 7, 8};
+int blTestk[6] = {4, 5, 6, 7, 8, 9};
+int blDevgl[6] = {3, 4, 5, 6, 8, 9};
+int blJtag[9] = {4, 5, 6, 7, 8, 15, 16, 9, 10};
 
 extern const char *const consoleNames[8];
 extern const unsigned char validChars[74];
@@ -862,10 +862,10 @@ int loadUserIni(void)
 	return 1;
 }
 
-/* .rdata after the functions' strings */
-/* iniPreParse's; 74 chars, no NUL */
-const unsigned char validChars[74] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;[]_\n\\/-$:";
+/* .rdata after the functions' strings, reversed like .data */
 const char *const consoleNames[8] = {
 	NULL, "xenon", "zephyr", "falcon", "jasper", "trinity", "corona", "winchester"
 };
+/* iniPreParse's; 74 chars, no NUL */
+const unsigned char validChars[74] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;[]_\n\\/-$:";

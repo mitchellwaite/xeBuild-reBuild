@@ -43,16 +43,14 @@ for f in $objects globals; do
               cflags="-O3 -Isrc/crypto" ;;
     # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
     # mode_update's cold layout comes from dead hints in the source
-    # (tools/wip/mu/p1/NOTES.md); -fno-toplevel-reorder keeps its data order
+    # (tools/wip/mu/p1/NOTES.md)
     mode_update) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=68" ;;
+           cflags="-O3 --param builtin-expect-probability=68" ;;
     # fcrtEncrypt's offset hint needs 60 (and setFuseCpuKey's NULL hint
     # then aligns that block; align-threshold=200 would also align
-    # smcChecksum's count == 0 block, which the original doesn't);
-    # -fno-toplevel-reorder emits the functions and key buffers in
-    # definition order
+    # smcChecksum's count == 0 block, which the original doesn't)
     keys) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder --param builtin-expect-probability=60" ;;
+           cflags="-O3 --param builtin-expect-probability=60" ;;
     # parseOption's setBoolOption and vlen hints (82 and 84 lay out the
     # done/incomplete blocks differently); applyIniOptions' layout comes
     # from dead hints in the source (tools/wip/aio/p1/NOTES.md)
@@ -60,27 +58,21 @@ for f in $objects globals; do
            cflags="-O3 --param builtin-expect-probability=83" ;;
     # iniPreParse: vectorization makes PRE drop a PHI; its ';' hint (65-66)
     # makes its memcpy block hot enough to be aligned; parseIni needs
-    # LRA's EBBs to stop at a 50% fallthrough (51-70 work);
-    # -fno-toplevel-reorder emits the tables in definition order
+    # LRA's EBBs to stop at a 50% fallthrough (51-70 work)
     filelist_ini) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder -fno-tree-loop-vectorize --param builtin-expect-probability=65
+           cflags="-O3 -fno-tree-loop-vectorize --param builtin-expect-probability=65
                    --param lra-inheritance-ebb-probability-cutoff=60" ;;
     # imgAddMobile's 50/50 imgFits hint
     image_write) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=50" ;;
-    # its data is defined in the original's .data/.bss order, which
-    # -fno-toplevel-reorder keeps
+    # its data is defined in the original's .data/.bss order, reversed
     image_read) orig="$f.c"
-           cflags="-O3 -fno-toplevel-reorder" ;;
+           cflags="-O3" ;;
     # loadFileCrc's verbose hint (92-99); 98 for tools/wip/'s checkBl draft.
-    # -fno-toplevel-reorder emits the functions, strings and .data in
-    # definition order
     build) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=98" ;;
     # mode_client's layout comes from dead hints in the source, no profile
     # (src/mode_client.c's head comment; tools/wip/mc/s150/NOTES.md).
-    # -fno-toplevel-reorder emits the functions (and so their literals) and
-    # data in definition order
     mode_client) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=50" ;;
     # the COMMON block in address order (src/globals.c's head comment)

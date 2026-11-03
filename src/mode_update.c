@@ -27,16 +27,16 @@ uint32_t getSecurityFiles(const char *dir);
 
 int useConsoleAddons = 1;
 
-/* .bss in the original's order (-fno-toplevel-reorder emits definition
-   order); globals, not statics, so that gcc assumes calls can change them */
-char path[260] = { 0 };
-int noReboot = 0;
-int noAvatar = 0;
-int noWrite = 0;
-int clean = 0;
-int hasHdd = 0;
-int updating = 0;
+/* .bss in the original's order, reversed (gcc emits data last to first);
+   globals, not statics, so that gcc assumes calls can change them */
 struct consoleinfo *info = 0;
+int updating = 0;
+int hasHdd = 0;
+int clean = 0;
+int noWrite = 0;
+int noAvatar = 0;
+int noReboot = 0;
+char path[260] = { 0 };
 
 /* gcc emits a function's literals in expand-time block order, so the
    original's .rdata order shows its shape: parseAddonIdx, getAddons,

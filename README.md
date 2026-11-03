@@ -89,9 +89,9 @@ probably needs something that makes `ecx` unavailable to `fb`.
 </details>
 
 <details>
-<summary><b>2. mode_update</b>: 16 tricks, hard</summary>
+<summary><b>2. mode_update</b>: 15 tricks, hard</summary>
 
-- `-fno-toplevel-reorder` and `--param builtin-expect-probability=68`
+- `--param builtin-expect-probability=68`
 - Dead layout hints in `mode_update` and `updateNand`: 7 `__builtin_constant_p`,
   1 `asm goto`, 1 `__builtin_unreachable`, 1 `if (0)` dummy block, 1 pin and 1
   hot label
@@ -122,9 +122,9 @@ hint-free source would have to land on the same numbers.
 </details>
 
 <details>
-<summary><b>4. keys</b>: 19 tricks, hard</summary>
+<summary><b>4. keys</b>: 18 tricks, hard</summary>
 
-- `-fno-toplevel-reorder` and `--param builtin-expect-probability=60`
+- `--param builtin-expect-probability=60`
 - 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
   `daeEncrypt`, which set trace order and LRA's spill-slot order
 - 1 `pure` redeclaration (`getBeU32`), which only this file can use
@@ -136,9 +136,9 @@ of them together.
 </details>
 
 <details>
-<summary><b>5. filelist_ini</b>: 23 tricks, hard</summary>
+<summary><b>5. filelist_ini</b>: 22 tricks, hard</summary>
 
-- 4 options: `-fno-toplevel-reorder`, `-fno-tree-loop-vectorize`,
+- 3 options: `-fno-tree-loop-vectorize`,
   `--param builtin-expect-probability=65` and
   `--param lra-inheritance-ebb-probability-cutoff=60`
 - 12 dead tests (`< -1` and `< 0` stores, a `strlen` block), whose freed SSA
@@ -153,9 +153,8 @@ options with no direct source equivalent.
 </details>
 
 <details>
-<summary><b>6. image_read</b>: 32 tricks, hard</summary>
+<summary><b>6. image_read</b>: 31 tricks, hard</summary>
 
-- `-fno-toplevel-reorder`
 - 8 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
 - 5 `__builtin_expect`, 5 hot labels, 4 `__builtin_unreachable` and 3 empty `asm`
   barriers
