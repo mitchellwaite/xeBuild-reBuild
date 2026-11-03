@@ -765,9 +765,9 @@ line before `inline short cfPatchSlots(` so keysmixed picks it up (its
 
 ## mode_update.c
 
-The whole object is built from `src/mode_update.c` (no `.s` since
-2026-10-22; `mode_update` from build.sh's profile compile, see the
-2026-10-22 notes below). This draft, with string literals and statics, is
+The whole object is built from `src/mode_update.c`, a plain `-O3` compile
+since 2026-11-03 (`mu/d1/NOTES.md`; the profile and dead-hint builds below and
+in `mu/p1/NOTES.md` are history). This draft, with string literals and statics, is
 what `tools/wip/mufdo.sh` experiments on; it is older than src (getBadBlocks there
 still has the early return that needed `align-threshold=200`). Line counts
 are `FNCMP_LITERALS=1 python tools/re/fncmp.py tools/wip/mode_update.c <name>`.

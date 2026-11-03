@@ -235,9 +235,10 @@ salts, ...) are ours.
   key); `checkKeys`/`setCpuKeyStr` are `if (len == 32) { if (valid) ...}`.
 
 And `mode_update` (whole object in C).
-`mode_update` is a plain compile with no profile: its cold blocks are placed
-by bb-reorder's Fibonacci-heap ties, which dead zero-byte hints set (one dummy
-heap entry and three keys, tools/wip/mu/p1/NOTES.md). No object is built with a
+`mode_update` is a plain `-O3` compile: its cold blocks are placed by
+bb-reorder's Fibonacci-heap ties, and plain source shapes set them (the
+`flashConsole` helper, `if (ret) *pret = ret`, tools/wip/mu/d1/NOTES.md; the
+older dead-hint version is tools/wip/mu/p1/NOTES.md). No object is built with a
 profile now.
 getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the

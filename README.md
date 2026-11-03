@@ -74,18 +74,12 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. mode_update</b>: 15 tricks, hard</summary>
+<summary><b>1. mode_update</b>: 1 trick, moderate</summary>
 
-- `--param builtin-expect-probability=68`
-- Dead layout hints in `mode_update` and `updateNand`: 7 `__builtin_constant_p`,
-  1 `asm goto`, 1 `__builtin_unreachable`, 1 `if (0)` dummy block, 1 pin and 1
-  hot label
-- 1 `__builtin_expect`, on `updateNand`
 - `XB_PATCHES`
 
-Without the dead hints, the only difference was cold-block order in the last
-bb-reorder round, with no register changes, so the target is narrow. It is still
-a Fibonacci-heap tie, which needs the exact frequencies.
+Only `parseAddonIdx` needs it: over about 1180 tried shapes it stayed 7 lines
+from matching without the switch. The rest of the file is a plain `-O3` compile.
 
 </details>
 

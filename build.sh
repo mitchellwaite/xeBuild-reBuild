@@ -41,11 +41,6 @@ for f in $objects globals; do
     # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
     crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
               cflags="-O3 -Isrc/crypto" ;;
-    # getConsoleFiles' netMount hint needs 68 (66-70 in other forms).
-    # mode_update's cold layout comes from dead hints in the source
-    # (tools/wip/mu/p1/NOTES.md)
-    mode_update) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=68" ;;
     # fcrtEncrypt's offset hint needs 60 (and setFuseCpuKey's NULL hint
     # then aligns that block; align-threshold=200 would also align
     # smcChecksum's count == 0 block, which the original doesn't)
