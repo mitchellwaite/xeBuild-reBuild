@@ -512,25 +512,31 @@ uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 	return 0;
 }
 
-__attribute__((optimize("no-crossjumping", "no-early-inlining")))
+/* rlen's scope ends before the tail, so its clobber keeps the two `mov eax,1`
+   from being head-merged. `<= 0` takes the opcode predictor (`!` takes none),
+   which lifts the free block over bbro's copy threshold for the epilogue. */
 int netWriteBlocks(const uint8_t *buf, uint32_t len, uint32_t start, uint32_t count)
 {
-	int rlen, ret;
+	int ret;
 	uint8_t *r;
 	char cmd[32];
 
 	sprintf(cmd, "WBLK%04x%04x\n", (uint16_t)start, (uint16_t)count);
-	if (!netSendStr(cmd))
+	if (netSendStr(cmd) <= 0)
 		return 0;
 	if (!netSendData(buf, len, log_get_verbose() != 0))
 		return 0;
-	r = netRecv(&rlen);
-	if (!r)
-		return 0;
-	ret = 0;
-	if (rlen == 2 && getBeU16(r) == OK_REPLY)
-		ret = 1;
-	netFree(r);
+	{
+		int rlen;
+
+		r = netRecv(&rlen);
+		if (!r)
+			return 0;
+		ret = 0;
+		if (rlen == 2 && getBeU16(r) == OK_REPLY)
+			ret = 1;
+		netFree(r);
+	}
 	if (ret)
 		return 1;
 	return 0;
