@@ -606,3 +606,7 @@ Not worth retrying: anything with P(head), P(match), T or inner-loop probabiliti
 
 - `src/` is unchanged. The comment on `uint32_t file` could say why it's only the log line (above); the parent can take that or not.
 - Probing with `__builtin_expect` is for measuring only. None of the `fl10b`-`fl10d` sources is a candidate.
+
+## Outcome
+
+Finished at 0 counted tricks (2026-11-04). The user chose to keep `key == NULL` in `findKey` and not count it as a trick, because the author may well have written a check like it; it has a NOTE comment in `src/filelist_ini.c`. The two candidate patches in `drafts/` were not used.

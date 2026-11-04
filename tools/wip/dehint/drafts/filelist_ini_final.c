@@ -692,8 +692,11 @@ static int findKey(unsigned char *buf, const char *key)
 			if (j == len) {
 				unsigned char *q = &buf[i + len];
 
-				/* defensive, and dead (key was read above): VRP removes it, and
-				   until then it sets findKey's SSA numbers in the getters (a register tie) */
+				/* NOTE: dead, since key was read above, but kept and not counted as a
+				   trick: the author may well have written a check like this.  It's a third
+				   loop exit when gcc estimates branch probabilities, and that sets the block
+				   frequencies the getters' registers follow.  Without it, findKey is 41 lines
+				   off at best (notes/filelist_ini.md) */
 				if (key == NULL)
 					return -1;
 				if (*q != 0)
