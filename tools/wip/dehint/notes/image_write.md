@@ -1113,3 +1113,95 @@ Reproduce: `IWB=build/iw/a18/noph.c python tools/wip/dehint/iw16sweep.py tools/w
 Lessons: **split a trick into what it does before looking for a replacement.** The pin looked like one thing and was two: a tie and a frequency threshold. An expect probe on the state with the tie solved showed the threshold was all that was left. And **print the cost, not just the lines**: the state that broke the tie had 232 lines against 243, which no line ranking would have followed. Don't assume a predictor applies because a call is there: gcc's own pure analysis decides it.
 
 Landed after attempt 19: drafts/image_write_a19.c is now src/image_write.c (3 tricks, full build matches), so the draft is removed. build/iw/a19/one.py is saved as iw19one.py.
+
+## Attempt 20
+
+Written as I go. New tools in tools/wip/dehint: gen_iw269 onward. Scratch in build/iw/a20: nopt.c = src minus pin_t, na.c = src minus optimize, plainm.c = src with plain malloc, pl.c = nopt with `if (partial)`.
+
+Re-measured on src: optimize 2 lines (writeFsTable, `cmp edx,ecx`), pin_t 10 (imgAdd only, no clone), xmalloc 178 (finalizeImage 176, imgAddRaw 2).
+
+### pin_t: only one competitor, and it's a rounding loss
+
+The slot layout is reversed relative to the frequency list: in the reload dump, the highest slot number has the highest address (seen by matching `Slot N` to frame offsets: npages -28, then the rest downward, holes filled from the top). From memory lra-spill sorts slots in reverse when there's no frame pointer; the offsets fit that. So on the list:
+
+```
+no pin:  r402 98 | _268 96 | t 95 | npages 83  -> t -29, _268 -30, r402 -36
+pin:     t 140 | r402 98 | _269 96 | npages 83 -> _269 -29, t -30, r402 -36 (hole)
+```
+
+`_268` is partial's flag (the `setne ... and`), which is what swaps with t. **r402 isn't a competitor: `r402 | t | _268` gives the same bytes.** All that's needed is t >= _268, a tie going to the lower regno (t's). Attempt 18's "t reaches 96 at best" was the answer, not the obstacle.
+
+t = 6 (def, bb 64) + 65 + 24 (tests, bb 657 and 243). _268 = 6 + 90 (bb 900). 657 + 243 = 900, each rounded down, so t loses 1 unless the arm's frequency is a multiple of 10. 900 is 10000 * (1 - 91%), the loop exit first-match on the page loop; 657 is 73% from `partial > 0`'s opcode-positive heuristic.
+
+Mechanism test, `__builtin_expect(partial > 0, 1)` with builtin-expect-probability N on nopt (build/iw/a20/ex1.py): imgAdd is clean at exactly N = 50, 60, 70, 80, and 10 lines at every other N in 52..85. So the body is insensitive to P from 50 to 85 and the rounding is all that's going on.
+
+**`if (partial)` is P 50%, t = 96, and imgAdd is clean with no pin** (pl.c, 158 lines: constprop.1 4, constprop.4 4, imgAddFile 126, the rest followers). So the pin and `> 0` are the same problem.
+
+`partial` in imgAdd is a flag, so `if (partial)` isn't only a replacement for the pin, it also drops the `> 0` flagged as borderline since attempt 16. The remaining differences on that family are all SSA names, nothing about P (build/iw/a20/fnx.py on the optimized dumps of nopt and pl: imgAddFile's only change in the statements is `p_N < npages_N` against `npages_N > p_N`, and bb-reorder's 126 lines follow from that; imgAdd is clean; constprop.1 and .4 are compares).
+
+Why the names move (gen_iw271, 204 states): `partial > 0` on a signed type is the only spelling that keeps the `(int)` cast alive until vrp1 (with `partial >= 1`, the same). `&`, `== 1`, `!= 0`, `!!`, shifts, casts and every unsigned type fold early, and all of them are the 158 state. From memory the opcode heuristic only looks at comparisons against 0, 1 or -1, so nothing spells a late-folded test with no heuristic.
+
+Forms of partial at P 50 (gen_iw269, 270; lines): `if`-form `partial = 0; if (small && len < 0x4000) partial = 1;` **32** (imgAdd 6: pad/tail order, imgAddFile 20: two slots and two compares, writeFsTable 6); `partial = type != 0 && type != '0' && len < 0x4000;` 98; `partial = small && ...` 158; `len < 0x4000` first 46, but the setne order is wrong; `if (len >= 0x4000) partial = 0;` 65. The arm's own spelling, `if (!partial)` order, and a `npages = 32;` default are the same bytes as `if (partial) ... else`.
+
+The pad/tail order on the `if` form comes from PRE (dumps): `_313 = tail != 0`, `_316 = pad == 1`, against `_315`, `_314` on nopt. `&` is canonicalised by version, so the descending pair is what gives pad first. imgAddFile's own statement forms (gen_iw272, 96 states) can't fix the flip on pl: best 123.
+
+`iw20climb.py <base> <prefix> 100 400 <threads> <rounds>`: hill climb over every single option of gen_iw100-400 that applies; drops moves adding asm, __builtin, attributes or a new `if` (the old generators' dead tests; `ad2` of gen_iw189 got past the first filter, `if ((len & 0x3fff) > 0x3fff) len++`, which is why it's there). Writes `<prefix>_rN.txt` with every result of the round.
+
+### pin_t: the climb, and what blocks it
+
+`iw20climb.py` from `pl.c` plus the small arm's `pages` after `s[0] = BLK` (gen_iw141 `Zt`), with `partial >` forms filtered (rounds 0-4, about 1300 single moves each): 22, 18, 16, 16, 14. **drafts/image_write_a20.c (build/iw/a20/n_plz_16.c): no pin, no optimize attribute, no `> 0`, 16 lines: imgAddFile 14, writeFsTable 2.** Every clone and imgAdd are clean. The last step to 14 was gen_iw196 `Ctm` (`if (xb.bigBlock && time)`, a dead test on a pointer that's already dereferenced), so it isn't a candidate and the draft stops at 16. Against src:
+
+- `if (partial)`, and no pin.
+- `pages` in the small arm after `s[0] = BLK`.
+- The same `pages` line at the top of the big arm (gen_iw138 `Btop`). It's overwritten where it's used, so it's close to a dead store: review it.
+- `s[9] = (uint32_t)(left - (int)pages) >> 2;` (gen_iw234 `f5`).
+- No attribute on writeFsTable (gen_iw250 `noattr`).
+
+What's left is two things:
+
+- writeFsTable: `<>>><><<`, the same one compare as src minus the attribute.
+- imgAddFile: `off + len` (`_45`) and `npages` swap slots (0x34, 0x30), 12 of the 14 lines. The other 2 are the rawSize tests' order.
+
+**The imgAddFile swap is a frequency threshold on the same P.** npages in imgAddFile is 8 + 8 + (900 * P / 10) in the IRA listing, and the expect probes (build/iw/a20/ex3.py, on nopt) flip imgAddFile between P 55 (12 lines) and P 56 (clean). `iw20refs.py` shows the refs. `_45` splits into reload pseudos during LRA (the `orig=136` lines in the reload dump), so its count at slot time isn't what the IRA listing gives, and I only have the threshold: on nopt, npages 66 passes and 65 doesn't. At P 50 npages is 61. Across about 3000 states from the climbs (`iw20an.py` on `n_*_r*.txt`), **no state with the slot order right in imgAdd at P 50 has imgAddFile clean**; the floor is these 12 lines.
+
+So there are two constraints, both measured with expect:
+
+- imgAdd: 900 * P a multiple of 10, so t's two rounded tests don't lose 1. P 50, 60, 70, 80 passed. From the arithmetic, 1/90 steps should too (7333 gives 660); not probed.
+- imgAddFile: P >= 56.
+
+**P 60, 70 or 80 would remove the pin.** With expect at those values on nopt, imgAdd and imgAddFile are clean. What's left there (constprop.1 51, writeFsTable 89) comes with the expect form: those two numbers don't change with N; that it's the expect's names is inferred. The predictors don't reach those values: opcode positive 73, nonequal 72, call 71/29, early return 61 (549, one short of the grid). I computed Dempster-Shafer pairs by hand: 73 with 39 gives 63.35, which lands on 570, but it needs an early return on the partial arm and there's no return there. `pointer` is 70 from memory; it would need a pointer test, and the reference tests a byte flag.
+
+Other routes, tried or ruled out:
+
+- Lowering imgAddFile's entry so `_45` drops, by raising P(fits): expect on the fits test is 14 total at 50 and 52, 54 at 55, 100+ from 57 (build/iw/a20/m7.py). `imgFits(...) > 0` 174. The fit test written in imgAddFile 148. imgFits as `return a >= b` 180, inverted 121.
+- f20 (900) is 10000 * (1 - 91%), the first-match loop exit, because the page loop's head is the hottest block. A guard would make it 900 / P(guard): 1800 at 50%, which still loses 1 (1314, 486). 73% would give 1233 and land on the grid, but that compare doesn't exist in the reference. Arithmetic only, not compiled.
+- Rescaling with a deeper loop: the spare clear as a loop rather than memset (build/iw/a20/m8.py): 1553+.
+- Two tests instead of if/else (gen_iw273): threading doesn't move the frequencies, they stay 900 / 657 / 243 or 900 / 450 / 450.
+- t's second test can't be avoided at LRA: it's already there from dom2 on (657 and 243 in the dumps), and from the code it's the else arm's thread, where `npages = 32` makes the page loop's guard known when t >= 15 (inferred from the asm: `mov edi,0x20` follows the test).
+
+### optimize and xmalloc
+
+optimize: climb on na.c (src minus the attribute, 1409 single moves of gen 100-273, build/iw/a20/n_na_r0.txt): nothing at 0. Attempt 18's two routes weren't searched again.
+
+xmalloc: reasoned only, no new forms compiled. The new page body doesn't change it: still 178 lines (finalizeImage 176, imgAddRaw 2) with `raw` from `mem`. For a name to have no ALIGN its value must be unknown at ccp3, and a later pass must resolve it: from the pass list only dom3 and vrp2 are left, for a test dom2 and vrp1 didn't resolve. I have no natural source for that. Reloading `xb.raw` would lose ALIGN, but the reference reloads from the stack (`mov ebx,[esp+0x28]`), not from xb.
+
+### Attempt 20 result: NO MATCH
+
+3 tricks stand. `iwlib.py src/image_write.c -np`: IDENTICAL. Closest draft by tricks: drafts/image_write_a20.c, plain -O3, xmalloc the only hint left, 16 lines off, not byte-identical. Closest by lines is still src minus optimize, 2.
+
+Next:
+
+1. Look for a natural source of P(partial) in 56..85 on the grid, above all 60, 70, 80. It would remove pin_t and `> 0` together; rerun iw20climb on that base. The predictor values above are measured or from memory; predict.def would settle them (not fetched this attempt).
+2. Or raise npages or lower `_45` by 5 in imgAddFile at P 50. Getting LRA's own freq at slot time would give the real margin, since I only measured it through P.
+3. The draft's other changes (`f5`, `Btop`, `Zt`, `noattr`) are name-only and depend on P 50. Don't port them to src on their own.
+
+Don't retry: `if (partial)` spellings (gen_iw271: they fold to the same state), imgAddFile's own statement forms (gen_iw272), imgFits forms for P(fits), two-test forms (gen_iw273).
+
+Reproduce: base files are one edit from src. nopt: drop the `"g"(t)` line and its comment. na: drop the attribute. pl: nopt with `if (partial)`. pl_Z: pl with gen_iw141 `Zt`. Then:
+
+- `python tools/wip/dehint/iw20ex1.py` for the P table (needs build/iw/a20/nopt.c).
+- `python tools/wip/dehint/iw20climb.py build/iw/a20/pl_Z.c build/iw/a20/n_plz 100 400 4 6` for the climb.
+- `python tools/wip/dehint/iw18freq.py <file> imgAdd 198 221 402` for the slot list. Slots are placed from the last number to the first.
+- `python tools/wip/dehint/iw20refs.py build/iw/a18/fq_<name> imgAddFile 136 165` for the refs, after iw18freq has written the dumps. `iw20fnx.py <dump> <dump> <fn>` diffs two optimized dumps with SSA numbers removed.
+
+Lessons: **work out the layout before naming the competitor.** Slots go out in reverse, so attempt 18's two competitors were one, and t was short by 1, from rounding. **Probe every value.** Passing at only 50, 60, 70, 80 is what showed the floors. **Check the other users of a probability**: `if (partial)` looked done until imgAddFile's slots turned out to be a second threshold. And a hill climb over the old generators needs a dead-test filter: many of their options are dead arms, and one got through even so.
