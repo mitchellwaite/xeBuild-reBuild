@@ -362,3 +362,60 @@ Not worth retrying: goto or continue for predictions (no effect on the profile),
 ### Attempt 6 decision (parent session)
 
 Not landed: the split `if (c > 0) ...; if (c < 0) ...` in findKey is live, but nobody would write it and its only job is to steer gcc, so by README.md it is a candidate, not a removal. Saved as `drafts/filelist_ini_findKey_candidate.patch` for the user to decide on. `src/` keeps `key == NULL`, still 4 tricks. `fl6final.py write` regenerates the candidate over `drafts/filelist_ini_final.c`, which now holds the same source as `src/`.
+
+## Attempt 7
+
+Tools: `fl7lib.py` (KF-free base split round findKey: `fk`, `run`, `diff`), `fl7a.py` (findKey control shapes), `fl7b.py` (loop test against 0), `fl7c.py` (parseIni's block and LRA frequencies per state), `fl7d.py` (natural `[flashfs]` edits at test subsets), `fl7e.py` (head and match tests with no opcode prediction), `fl7f.py` (natural guards). Score logs: `build/filelist_ini/a7/`. Lines below are `nscore`, whole object.
+
+### Result
+
+**NO MATCH: still 4 tricks.** Nothing natural removes `key == NULL` or a `[flashfs]` test. `drafts/filelist_ini_final.c` is untouched (same as `src/`), and there's no new candidate; attempt 6's `drafts/filelist_ini_findKey_candidate.patch` is still the only one.
+
+### findKey's frequencies
+
+`-fdump-tree-profile_estimate-blocks-details` on findKey, inner loop 10000:
+
+| form | entry | header | tail | best lines |
+|---|---|---|---|---|
+| `key == NULL` (3 exits, src) | 114 | 3214 | 252 | match |
+| no test (2 exits) | 163 | 3214 | 252 | 73 (`buf[i] == key[0]`) |
+| tail `if (*q == 0) continue;` | 250 | 3214 | 252 | 41 |
+| matchAt (P(match) 50%) | 172 | 3214 | 450 | 6, iniU32Invalid |
+
+- Entry is (latch x exit share) + (tail x exit share). Header is set by P(head) 28% and the inner loop's 9%, tail by P(match) 28%. So three things move it: the number of exits, P(head), P(match).
+- **The loop exit heuristic is first match, so nothing combines with it.** A loop test `x > 0` does get `opcode values positive`, but the dump marks it "(ignored)" and the combined figure stays 95.5%. `fl7b.py` (80 forms: `xb.iniSize - len - i > 0`, count-down `left`): best 41, and that is the `continue` tail again.
+- `continue` has hitrate 50% in this gcc ("continue heuristics: 50.0%"), so at the head DS leaves 72%. That's why attempt 6 saw no effect. In the tail it matters only because that block loses its loop exit prediction (61%, not 4.5%), which puts entry at 250: the wrong way. `goto` shows no prediction in the dump.
+- **P(head):** about 40% would give the target's entry, but `==` gets 28% and anything without an opcode prediction gets 50%. 50% through a flag or a two-return helper is too far: 155 (`fl7e.py` `flag,eq,q`, `help,eq,q`), 217 with matchAt as well. `buf[i] - key[0] == 0` and `!(a ^ b)` score the same as `==`, so they're normalised before the estimate.
+- **Why matchAt stays 6 off.** In iniU32Invalid's Assign lines, key[0]'s reload goes to ebx in the ref and ecx at matchAt. The sums fit a level rule: ecx about 1600 (960 + 640), ebx 642 x 2 + 162 + x, with x = q's reload plus three entry-level reloads. Ref x = 50 + 33 + 22 + 33 = 138; matchAt x = 90 + 51 + 34 + 51 = 226; it needs about 149 or less. That rule is fitted to these numbers rather than read from LRA, and it doesn't obviously explain iniBoolInvalid's r149 below, so don't lean on the exact threshold.
+
+**A constant argument isn't equivalent to the dead test (new).** With `skipNul` (`fl6k6.py`) findKey's estimate is identical to `key == NULL`'s (114, 3214, 252), yet iniBoolInvalid's preheader ends at 104, not 111, and its entry at 136, not 145, which goes with its 4 lines (r149 takes ebx, not ecx). 104 is what you get by taking the third exit's share out of the entry: (114 - 3% x 252) x 0.97. So, by inference from those numbers and not traced in a pass, the ipa-cp clone's folded test has its flow taken out of the frequencies, and a test dying after inlining doesn't. **If so, the third exit has to survive past IPA inlining**, which rules out anything IPA-CP can see, and it must then fold without emitting code. What folds that late is a fact already known (`key`, `len`, `i`, or `xb.iniSize` from the getter), and a test of one of those is a dead test.
+
+Forms, all live, no dead test:
+- Control shapes (`fl7a.py`, 54): `matchAt` 6; `found` tested in the loop then `break` 33 (`buf[i] == key[0]`); `off` + `break` and `goto found` 47 and 73; `break` + test of `i` after the loop, `found` after the loop 69 and 89; `keyAt` returning off or -1 88-98; `hasVal` 285; `off = i + len; i = xb.iniSize` 305; `matchAt` including the head 312; `found` in the loop head 400; `off == -1` in the loop head 419.
+- Guards (`fl7f.py`, 22, plain and with matchAt): best is `key[0] == 0` return at 49 (with matchAt; the only guard under 73 and it isn't near). `len == 0` return 110 (76 with matchAt), `len < 0` return 128 (92). `len == 0` in the match arm 86 with matchAt. These emit code the target doesn't have. `if (i >= xb.iniSize - len) break;` in the arm is exactly `none` at both (73 and 6): it's gone before it can count as an exit. Bounds checks `i + len >= xb.iniSize` and `buf[i] == 0 && i + 1 >= xb.iniSize`: 185 and up.
+
+### parseIni and the helpers: not frequency
+
+`fl7c.py`, `.optimized` block frequencies and the freq of LRA's first assignment, src against each state:
+
+- Dropping T3: no change at all. Dropping T1, or all three: one block 70 -> 69 and one reload 21 -> 18. Dropping T2: the same, plus one extra block and reload.
+- `ff=none`, `pre=in` and both, on top of all three dropped: the same one block and reload. So **findField and preParse have no frequency effect, and attempt 5's "numbering" label stands.**
+- So nothing here says frequency, unlike findKey. The ties these fix are compare and copy orders, traced in attempts 2-5 to dom2, dom3 and vrp2 pops. I didn't look at which block is the 70 -> 69 one, or whether it matters to a near state's diff.
+
+`fl7d.py` natural `[flashfs]` edits at all 8 subsets of T1-T3 (232 forms; `crc2`'s 8 failed to compile because the edit is broken, so **`crc = 0` + a separate store is untested**). Floors unchanged: none dropped 0, `T1,T3` 4, all three 6.
+
+- Transparent: `helse`, `hor`, `hswap`, `hne`, `ge22`, `slenge`, `sif`, `sifn`, `sinline`, `crcv`, `crcrr`, `incr`, `lastc`, `lastp`.
+- Moved, all worse (lines with none dropped / all three dropped): `slen` 2/8, `lenbad` 6/8 (.rdata), `hnest` 37/29, `pospp` 40/46, `fw` 142/57, `lastsw` 111/54, `pos1st` 104/108, `flip` 198/200, `brk` 218/214, `crc8` 252/316, `crcbad` 332/326, `last` 409/398, `cfirst` 890/637.
+- Pairs of `slen lenbad hnest pospp fw lastsw` at all subsets (120 forms): best `|slen+lenbad` 8, `T1,T2,T3|slen+lenbad` 10. They add up; none cancels a tie.
+
+### Next
+
+1. findKey: it needs an exit that lasts past inlining and then folds silently, and I found no live condition like that. Likely the end for `key == NULL`, unless the user takes the split candidate.
+2. `[flashfs]`'s tests: frequency work won't help. Only the free-list axis is left (Next in attempts 4-5), and it has had many forms.
+3. Small loose ends: `crc2` (fix the edit), the 70 -> 69 block. Low odds.
+
+Not worth retrying: loop tests against 0 or count-downs for probability, `continue` or `goto` for predictions, flags or helpers for P(head), arithmetic spellings of `==`, constant arguments.
+
+### For review
+
+Nothing new: `src/` is unchanged. The four dead tests, findField and preParse stay, flagged in earlier attempts.
