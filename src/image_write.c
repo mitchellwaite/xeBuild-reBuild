@@ -494,7 +494,6 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	uint32_t x, first, rem, tail, blocks, start, p, end, npages, pages;
 	int left;
 	uint8_t t;
-	uint32_t pg;
 	uint8_t sp9, *s;
 	int partial;
 	_Bool small;
@@ -530,28 +529,29 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
 		small = type != 0 && type != '0';
-		partial = small && len < 0x4000;
+		partial = len < 0x4000;
+		/* two tests, nested, with the `> 0`: profile_estimate has 73% on the len test
+		   and 50% on small. ifcombine merges them keeping the inner test's 50%, so t's two
+		   tests are 450 + 450 in the optimized dump (657 + 243 lost 1 to rounding, and t
+		   took the wrong stack slot). imgAddFile, where small is known, needs the len
+		   test's 73%: at 50% it's off (tools/wip/dehint/notes/image_write.md, Attempt 25) */
+		npages = 32;
 		if (partial > 0) {
-			if (len % 512)
-				npages = (len + 512) / 512;
-			else
-				npages = len / 512;
-		} else
-			npages = 32;
+			if (small) {
+				if (len % 512)
+					npages = (len + 512) / 512;
+				else
+					npages = len / 512;
+			}
+		}
 		p = 0;
 		t = type - '1';
 		if (t < 15) {
-			/* no code: the slot order of t and partial (dead in every clone) */
-			__asm__("" :: "g"(t));
 			p = xb.bigBlock ? off & 0x1ffff : off & 0x3fff;
 			if (p) p /= 512;
 		}
 		for (end = p + npages; p < end; p++) {
-			/* a statement of its own: computed from params alone, it's what makes
-			   ipa-cp's off-0 clone (imgWriteStart) worth creating; reassoc folds it
-			   back into the same code */
-			pg = start * 32;
-			s = xb.spare + (pg + p + b * 32) * 16;
+			s = xb.spare + (start * 32 + p + b * 32) * 16;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
 				((struct spb *)s)->b2lo = (start + b) >> 8;
@@ -560,7 +560,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 				if (type > 1) {
 					((struct spt *)s)->type = type;
 					if (type != 0x2a && type != 0x2c) {
-						pages = len / 512;
+						pages = len >> 9;
 						if (len % 512)
 							pages++;
 						/* the array's scope clobber keeps the nonzero arm in the CFG past lim2 (no code;
@@ -571,7 +571,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						   until cunrolli; find a real second value, or a real reason for the block.
 						   It replaced optimize("no-tree-scev-cprop") on writeFsTable */
 						if (off & 0x1ffff) {
-							uint32_t used[2] = { (off & 0x1ffff) / 512, 0 };
+							int used[2] = { (off & 0x1ffff) / 512, 0 };
 							int k;
 
 							left = 256;
@@ -579,10 +579,11 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 								left -= used[k];
 						} else
 							left = 256;
-						if (pages & 3)
-							pages = (pages + 4) & ~3;
-						left -= pages;
-						s[9] = left >> 2;
+						/* TODO: the (int) casts and `len >> 9` above have no reason but SSA
+						   names, which set compare orders: 26 lines without the casts */
+						if ((int)pages & 3)
+							pages = ((int)pages + 4) & ~3;
+						s[9] = (left - pages) >> 2;
 						s[5] = 1;
 						s[8] = len >> 8;
 						s[7] = len;
@@ -824,7 +825,7 @@ void writeFsTable(uint32_t off)
 {
 	uint8_t *buf, *p;
 	uint32_t blk;
-	uint32_t i;
+	int i;
 	uint32_t len;
 
 	blk = off >> 14;

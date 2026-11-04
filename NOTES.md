@@ -260,11 +260,13 @@ order).
   first, oldest first: the original's `.text` order. (Written by hand,
   imgWritePage came out ahead of all three.) len 0x1000 is only worth a clone while no dead
   pin modifies `len` (ipa-cp can't specialise a modified parameter).
-- `pg = start * 32;` in imgAdd's inner loop keeps the off-0 clone's ipa-cp
-  evaluation over 500, and reassoc folds it back into the same code. The SSA
-  names recycled by `small`, the `pages` spellings and writeFsTable's `len` set
-  the compare operand orders in the clones and inlined copies
+- The SSA names recycled by `small`, the `pages` spellings and writeFsTable's
+  `len` set the compare operand orders in the clones and inlined copies
   (tools/wip/dehint/notes/image_write.md).
+- imgAdd's page count sits under two nested tests, `partial > 0` on len (73%)
+  and `small` (50%). ifcombine merges them with the inner 50%, which gives `t`
+  its stack slot, while imgAddFile knows `small` and sees only the 73% it needs.
+  `&&` forms fold `> 0` to `!= 0` first, so both tests would be 50%.
 - imgAdd's `used[2]` table has a `0` entry it doesn't need, marked `TODO` and not
   counted as a trick. Its scope clobber keeps the nonzero arm in the CFG past lim2, which
   gives unswitch the empty forwarder that orders sccp's names for writeFsTable's

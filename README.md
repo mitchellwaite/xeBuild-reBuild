@@ -45,9 +45,9 @@ tricks some functions needed to match, and the checks behind each step.
 
 The application files match, but some only match because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 7 files that still have them from easiest to hardest to match with
+ranks the 6 files that still have them from easiest to hardest to match with
 source shape alone: ordinary C, the same `-O3` as the rest, and none of these
-hints. The other 18 application files build with no tricks.
+hints. The other 19 application files build with no tricks.
 
 Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
 removes any that no longer change the code, but no hint-free source has been
@@ -75,18 +75,7 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. image_write</b>: 1 trick, hard</summary>
-
-- 1 slot pin, on `t` in `imgAdd`
-
-Which SSA names get recycled decides the compare operand order throughout, and
-`imgAdd`'s IPA-CP value decides three clones, so a hint-free source has to land
-on the same numbers.
-
-</details>
-
-<details>
-<summary><b>2. keys</b>: 18 tricks, hard</summary>
+<summary><b>1. keys</b>: 18 tricks, hard</summary>
 
 - `--param builtin-expect-probability=60`
 - 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
@@ -100,7 +89,7 @@ of them together.
 </details>
 
 <details>
-<summary><b>3. filelist_ini</b>: 22 tricks, hard</summary>
+<summary><b>2. filelist_ini</b>: 22 tricks, hard</summary>
 
 - 3 options: `-fno-tree-loop-vectorize`,
   `--param builtin-expect-probability=65` and
@@ -117,7 +106,7 @@ options with no direct source equivalent.
 </details>
 
 <details>
-<summary><b>4. image_read</b>: 31 tricks, hard</summary>
+<summary><b>3. image_read</b>: 31 tricks, hard</summary>
 
 - 8 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
 - 5 `__builtin_expect`, 5 hot labels, 4 `__builtin_unreachable` and 3 empty `asm`
@@ -133,7 +122,7 @@ is probably the best of the hard files to work through next.
 </details>
 
 <details>
-<summary><b>5. build</b>: 52 tricks, very hard</summary>
+<summary><b>4. build</b>: 52 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
 - 19 `__builtin_expect`, 9 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
@@ -151,7 +140,7 @@ frequency from scaling to 0.
 </details>
 
 <details>
-<summary><b>6. options</b>: 69 tricks, very hard</summary>
+<summary><b>5. options</b>: 69 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 30 `__builtin_constant_p`, 16 `__builtin_expect`, 3 `asm goto`, 3
@@ -171,7 +160,7 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>7. mode_client</b>: 141 tricks, very hard</summary>
+<summary><b>6. mode_client</b>: 141 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=50`
 - 89 `__builtin_constant_p` feeds and 19 `asm goto` edges to dead labels, which

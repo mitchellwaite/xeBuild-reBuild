@@ -1540,3 +1540,95 @@ Reproduce: `IWB=build/iw/a24/np.c python tools/wip/dehint/iw16sweep.py tools/wip
 1 trick stands (the pin; the over-long table isn't counted). `iwlib.py src/image_write.c -np`: IDENTICAL. Closest pinless by lines: drafts/image_write_a24.c, 10 lines.
 
 Lessons: **an escape through a heredoc cost a run; CLAUDE.md says so.** **Scope a generator's search string:** `for (k = 0; k < 2; k++)` also matched finalizeImage's loop and 300 lines of the first sweep were that. **Separate rescale from names by probing just below the threshold** (U3 v U4).
+
+## Attempt 25
+
+Written as I go. New tools in tools/wip/dehint: `iw25probe.py`, `iw25probe2.py` (rescale probes with expect, not candidates), `iw25trace.py <fn> <a.c[:N]> <b.c[:N]>` (all dumps of two sources), `iw25rtl.py <fn>` (first RTL pass where the insns differ), `iw25bb.py <fn>` (bb-reorder log diff), `iw25fr.py <gen>` (a generator's states: lines plus imgAdd's depth-1 tests and frequencies at fnsplit and optimized), gen_iw309 onward. Scratch in build/iw/a25. GCC source not fetched; what I say a gcc function does is from memory unless a dump is named.
+
+### Rescale: ruled out, every r > 1 breaks the clones
+
+Probe: an over-long table in a `type > 1` arm (dead in all clones, so only the rescale reaches them) with expect and builtin-expect-probability=N on its test. The head is 1661 * N% * (k + 1), not k. Lines by the page loop's head (r = 10000 / head):
+
+| Head | .1 | .4 | imgAdd |
+|---|---|---|---|
+| 10000 | 4 (the expect's own, constant over all N) | 0 | 10 |
+| 9998, 9995 | 132 | 130 | |
+| 9985 .. 9944 | 132 | 210 | clean at 9985 in one state (F 899), so the slots do fix themselves; other arms have the expect's names |
+| 9927 .. 9835 | 64 | 197 | clean at 9904 in one state (F 891) |
+| 9805 and down | 134, 218 .. | 198, 315 .. | |
+
+So even r = 1.0002 breaks .1 and .4. Traced with iw25trace, iw25rtl, iw25bb:
+
+- r = 1.0002 (k 13, N 42 v N 43), .1: the RTL is the same up to bbro. bb 4 is 44.505 in real terms (89.01 * 50%), so any r > 1.00011 rounds it to 44, while the forwarder bb 47 is an integer edge frequency from bb 3 (89 * 50% rounded up, 45). So bb 47's trace starts first. .1's order is on a rounding tie at 44.5.
+- r >= 1.0057: bb 3 goes to 88 and the two tie at 44 again, but by then other things have crossed. At r = 1.0097 .1 first differs at ce1 (`tmp = 0` speculated into the test's block, bb 18 is 30 -> 29), and .4 at reload (hard registers). Frequencies there: 20 -> 19, 30 -> 29, 70 -> 69, each a REG_FREQ floor. Which one moved .4 isn't traced.
+
+The window with a valid F (891 .. 899) is heads 9900 .. 9989, all covered by the rows above: **no rescale of imgAdd passes the clones**, and the blocks that break them are outside the page loop, so a table elsewhere doesn't change that. Don't retry, whatever the table's place or size. Blocks offering a hottest block in the window don't exist anyway (no arm's frequency times n + 1 is in 10011 .. 10101).
+
+### Predictor: pointer is 85, not 70
+
+Attempt 20's "pointer is 70 from memory" is wrong. gen_iw309 `c3`, profile_estimate's dump: `pointer (on trees) heuristics: 85.0%`. So 765 + 135, t stays 95 (`c2`-`c4` 16 lines, imgAdd 10). Not on the grid.
+
+### The way through: the two tests see different probabilities
+
+Attempt 24 tried direct branches and read imgAddFile's 126 as the P floor. Measured with `iw25fr.py` on gen_iw310, 311 (tests with frequencies at fnsplit and at optimized):
+
+- **imgAdd:** ifcombine merges the two tests, and the merged test keeps the INNER test's probability. Inner 73 (gen_iw311 `n2`: 50 then 73) gives 657 and t's 10 lines; inner 50 (`i1`, gen_iw310 `a1`) gives 450 + 450, imgAdd clean.
+- **imgAddFile:** `small` is known there, so what's left is the test on len, whichever position it's in. It needs >= 56, and `len < 0x4000` has no heuristic (50), which was the floor. `partial = len < 0x4000; ... partial > 0` is 73, as long as `> 0` survives to profile_estimate.
+- `small && partial > 0`, `partial > 0 && small` and `&` values with `&&` all fold `> 0` to `!= 0` first (gen_iw310 `a1`, `a3`, gen_iw311 `i*`, gen_iw312), so both tests are 50, and imgAddFile 128. **Nested ifs keep it.**
+
+So: outer test on len with `> 0` (73, for imgAddFile), inner test on small (50, for imgAdd). gen_iw313 `q1`:
+
+```c
+small = type != 0 && type != '0';
+partial = len < 0x4000;
+if (partial > 0) {
+	if (small) {
+		... page count ...
+	} else
+		npages = 32;
+} else
+	npages = 32;
+```
+
+No pin: **8 lines, imgAdd and imgAddFile clean**: `.constprop.1` 2, writeFsTable 6, four `cmp` operand orders (`cmp edx,esi` v `cmp esi,edx`), so names. `q2` (`npages = 32` first), `q4`, `q8` are the same 8.
+
+Dumps on the final draft (`iw25fr`-style, build/iw/a25/df): fnsplit `900: partial > 0`, `657: small`, `329: len % 512`; optimized `900: flag`, `450: t <= 14`, and the second t test at 450. `iw18freq`: t 96, flag 96, in slots 9 and 10, so the tie goes to t. In the reference order, as with the pin.
+
+### The last 8 lines: names
+
+| Step | Lines |
+|---|---|
+| q1 | 8: .1 2, writeFsTable 6 |
+| gen_iw315 `u1+p1`: `int used[2]`, no `pg` (`s = xb.spare + (start * 32 + p + b * 32) * 16;`) | 4: writeFsTable, two `cmp` |
+| iw20climb from there, 1296 moves | plateau at 4; from `p1` alone it arrives at the same 4 |
+| iw25pairs, 319 pairs: gen_iw315 `sl` (`s[9] = (left - pages) >> 2;`) + gen_iw302 `nu` (`int i` in writeFsTable) | 4: .1 only |
+| iw25pairs from that, 394 pairs: gen_iw234 `f3` (`(int)pages`) + gen_iw233 `bm` (`pages = len >> 9; if (len & 511)`) | **IDENTICAL** |
+| gen_iw316: `len % 512` for the test, `pg` declaration gone | IDENTICAL |
+
+`iw25pairs.py` is what got past the plateau: all singles, one per resulting object, then all pairs of those within a line cap. About 5 minutes per run. A single move rarely helped because the same moves flip other compares. Worth using instead of a climb on any compare-order plateau.
+
+Costs on the final state (gen_iw316): no casts 26 (`.1` 4, writeFsTable 22); `len / 512` 8 (writeFsTable); no casts and `len / 512` 4 (`.1` only, so it's the closest without either odd spelling). The ipa-cp comment on `pg` claimed that statement was what made the off-0 clone worth creating: all three clones are still there and byte-identical without it, so that claim was wrong on this state and it's dropped with the statement.
+
+Comments in the draft: the nested form's on what's above. The TODO on the casts says what's measured.
+
+### Review the shape
+
+- `partial = len < 0x4000; if (partial > 0) { if (small) ...`: every test is live. `> 0` on a 0-or-1 flag is the same borderline as before, now with a measured reason (73% on the len test, imgAddFile needs >= 56). It reads a bit odd but no worse than src. Nested ifs in place of `&&` are ordinary, and that's what the probabilities depend on. `partial` no longer means "partial": it's now "fits in a block". The parent may want a rename; names of locals don't change bytes, not compiled.
+- `(int)pages` twice in `if ((int)pages & 3) pages = ((int)pages + 4) & ~3;`: **no reason but SSA names** (26 lines without). Plain casts aren't tricks by the README's count, and the operation's bits are the same, but flag it.
+- `pages = len >> 9;` next to `if (len % 512)`, where the page count's other spellings use `/ 512`: **names only** (8 lines otherwise).
+- `int used[2]` holding an unsigned quotient, `int i` in writeFsTable, `s[9] = (left - pages) >> 2`, no `pg`: ordinary or simpler than src, names only. `int i` reverts attempt 23's `uint32_t i`.
+- `used[2]`'s 0: unchanged, the over-long array with its TODO.
+
+### Attempt 25 result: MATCH (0 tricks)
+
+drafts/image_write_a25.c. Verification: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a25.c -np`: IDENTICAL. Compiled by hand as build.sh does this object (`gcc -c -O3 -Isrc -x c -`, `#line 1 "image_write.c"` first): nothing on stderr, `cmp` identical to build/iw/reference.o and build/obj/image_write.o, SHA256 cf10057d.... Grep for asm, __attribute__, __builtin, hot, cold: nothing. Full `sh build.sh` not run, since src is the parent's.
+
+If this lands: README's image_write entry goes (0 tricks: remove, renumber, update the file count), NOTES.md's Progress via progress.py.
+
+Don't retry: any rescale of imgAdd (above), the pointer heuristic (85), `&&` forms of the two tests (gen_iw310, 312: `> 0` folds).
+
+Reproduce from src: q1.c = `python tools/wip/dehint/iw23state.py tools/wip/dehint/gen_iw313.py tools/wip/dehint/drafts/image_write_a24.c q1 build/iw/a25/q1.c`, up.c = the same with gen_iw315 `u1+p1` on q1.c, then `python tools/wip/dehint/iw25pairs.py build/iw/a25/up.c build/iw/a25/pa_up 100 315 4 30`, apply `sl` and `nu` for sn.c, then `python tools/wip/dehint/iw25pairs.py build/iw/a25/sn.c build/iw/a25/pa_sn 100 315 4 30`, then gen_iw316. a24 is src minus the pin. `sh tools/wip/dehint/iw25dump.sh <name> <file.c>` and `python tools/wip/dehint/iw25cmp.py build/iw/a25/d_<name>` show writeFsTable's compares by pass. Rescale probes: `python tools/wip/dehint/iw25probe.py`, `iw25probe2.py`, then `iw25trace.py`, `iw25rtl.py`, `iw25bb.py`.
+
+Lessons: **measure each function's view of a probability on its own.** Twenty attempts treated P as one number; imgAdd reads the merged test's inner edge and imgAddFile the test that survives constant propagation, so two tests give each its own value. Attempt 24's c3/c4 had this in hand (imgAdd 4) and read imgAddFile's 126 as a floor. **Print frequencies at two passes for every state**: `iw25fr` showed 50-then-73 ending at 657, which is what gave the rule. **A wrong number from memory blocks a route**: pointer at "70" looked on the grid and wasn't; one compile settled it. **Trace the first break even in a route you expect to drop:** the rescale table's 44.505 ruled out a whole family in an hour.
+
+Landed after attempt 25: drafts/image_write_a25.c is now src/image_write.c (0 tricks, full build matches), so the draft is removed. What's left is optional cleanup: the TODOs on `used[2]`'s 0 and on the `(int)pages` casts and `len >> 9`.
