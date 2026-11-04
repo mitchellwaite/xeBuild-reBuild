@@ -533,7 +533,6 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	for (b = 0; b < blocks; b++) {
 		small = type != 0 && type != '0';
 		partial = small && len < 0x4000;
-		t = type - '1';
 		if (partial > 0) {
 			if (len % 512)
 				npages = (len + 512) / 512;
@@ -542,6 +541,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		} else
 			npages = 32;
 		p = 0;
+		t = type - '1';
 		if (t < 15) {
 			/* no code: the slot order of t and partial (dead in every clone) */
 			__asm__("" :: "g"(t));
@@ -554,8 +554,8 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			   back into the same code */
 			pg = start * 32;
 			s = xb.spare + (pg + p + b * 32) * 16;
-			/* here, not per block: with one blk per block writeFsTable's big copy gets one
-			   compare's operands the other way round (tried; 2 lines) */
+			/* here, not per block: one blk per block is 37 lines off, nearly all in
+			   writeFsTable (tried) */
 			blk = start + b;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
@@ -571,7 +571,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						left = (off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256;
 						if (pages & 3)
 							pages = (pages + 4) & ~3;
-						s[9] = (left - (int)pages) >> 2;
+						s[9] = (left - pages) >> 2;
 						s[5] = 1;
 						s[8] = len >> 8;
 						s[7] = len;
@@ -814,6 +814,7 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 	uint8_t *buf, *p;
 	uint32_t blk;
 	int i;
+	uint32_t len;
 
 	blk = off >> 14;
 	if (xb.bigBlock && (off & 0x1ffff)) {
@@ -829,20 +830,16 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 		memcpy(p, (uint8_t *)fsFiles + i * 0x200, 0x200);
 		p += 0x200;
 	}
-	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
-	/* dead (VRP1 removes it): only sets which SSA names get recycled in the two
-	   inlined imgAdd copies, which decides their page-loop compares. Without it
-	   writeFsTable is 8 lines off */
-	if ((off & 0x3fff) > 0x3fff)
-		off += 0x4000;
+	len = i * 0x400;
+	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + len);
 	if (!xb.bigBlock)
 		goto small;
-	imgAdd(off, buf, i * 0x400, 0x2c, 0x1ffe, 0);
+	imgAdd(off, buf, len, 0x2c, 0x1ffe, 0);
 	goto done;
 small:
-	imgAdd(off, buf, i * 0x400, 0x30, 0x1ffd, 0);
+	imgAdd(off, buf, len, 0x30, 0x1ffd, 0);
 done:
-	setBeU16(off >> 14, (uint8_t *)&xb.fsBlock);
+	setBeU16(blk, (uint8_t *)&xb.fsBlock);
 	setBeU16(0, (uint8_t *)&xb.fsReserved);
 	free(buf);
 }

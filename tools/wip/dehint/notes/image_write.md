@@ -860,3 +860,77 @@ Reproduce: `python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw235.py -
 Lessons: **test the measure itself.** The five-compare signature said the 12-line state was right when it wasn't, because split-paths copies four of the tests later. And **two separate wins can be hidden by one local cost**: `c4` looked like no gain and `g` showed nothing, on their own. Scoring by what each state gets right, not by total lines, is what showed them. Heredoc Python mangles `\n` as CLAUDE.md warns; a filename built from labels collides on Windows (L3re1, L3Re1), which briefly gave me a different state from the label I thought I had.
 
 Landed after attempt 16: drafts/image_write_a16.c is now src/image_write.c (5 tricks, full build matches), so the draft is removed. `iw16rej.py` bases and gen_iw236's "m0" are that source.
+
+## Attempt 17
+
+Written as I go. New generators gen_iw237-244 in tools/wip/dehint. Scratch in build/iw/a17. Base names below: na = src minus optimize; nd = src minus dead test; ifb = na with `if (xb.bigBlock) imgAdd(...); else imgAdd(...);`.
+
+### What optimize does (from dumps)
+
+scev-cprop does no value replacement in writeFsTable. Diffing the copyprop3 dumps of src and na shows only four extra blocks with one single-argument `.MEM` PHI each: the exits of both FS loops and of the two unswitched page loops of the second copy. Those are the loops whose exit block has another predecessor (`blocks != 0` guard, or the join of the unswitched pair). So the pass splits those exits and takes 4 names (.MEM_110, 223, 152, 151 on na). Src gets the same PHIs later, at vect, with other names (.MEM_78, 124, ...); that part reads from iw15src.py. That I'm reading "split the exit" as the pass's behaviour is inferred: the GCC source wasn't read.
+
+Compare with iw15src.py: ivopts' pops on src and na are the same list from pop 6 on, except the pops that hold these PHIs. C1 is `pop 2 != pop 12`, the second copy's FS exit PHI against the first copy's: src 124 < 131, na 223 > 151. C2 is `pop 5 != 163`: src 122, na 175.
+
+So C1 needs FS2's PHI below FS1's. sccp takes names off a descending run (110, then 223, 152, 151, 142, 135, ...), visiting FS2 before FS1, so inside the run FS2 is always the higher. K arms and M PRE PHIs on na (gen_iw237, 240: 84 + 62 states) never flip position 6 of the signature. It does flip on ifb, where the dumps show the exits taking names in another order (FS1 223, FS2 110). That the sign of the call test sets the visit order is inferred.
+
+### Tries that led to the match
+
+`iw16rej.py` on na (100 per generator, gen 1-236, finished, build/iw/a17/rs_na.log): nothing at 0. Best 2, on gen_iw223 only: a second dead arm, so no reduction. Rejudge runs on the bases below were stopped as soon as a better base turned up, so they are partial: ifb, n12, n8, n8d, s4a, s4t, s2c, bp2. None of them is a full search.
+
+Each step below was found by crossing or rejudging, and scoring by signature. Lines are totals at plain -O3:
+
+| Base | Change from the row above | Lines | Left |
+|---|---|---|---|
+| na | src minus optimize | 4 | writeFsTable C1, C2 |
+| ifb | `if (xb.bigBlock) imgAdd(...); else imgAdd(...);`, Linux's form (gen_iw202's call forms) | 14 | C1, C2 right, others wrong, `cmp blocks` 1 v 2 |
+| n12g | no dead test, goto form back, `left = left - pages; s[9] = left >> 2;` (gen_iw242) | 10 | constprop.1, writeFsTable |
+| n8 | unsigned left, ternary big `pages`, `(int)(left - pages) >> 2` (gen_iw243 on n12g) | 8 | writeFsTable only; no dead test, no optimize |
+| s4a | int left, if-form pages, `(left - pages) >> 2`, optimize on (gen_iw245) | 4 | imgAdd, writeFsTable position 2 |
+| s4t | a `bo` local and ternary pages (gen_iw230, 246) | 4 | writeFsTable clean; imgAdd, constprop.1 |
+| s2c | `t = type - '1'` after `p = 0` (gen_iw184 `aft`, found by the rejudge) | 2 | constprop.1 |
+| bp2 | if-form big pages, bo inside the type test (gen_iw248 `bi+pi`) | 2 | writeFsTable position 2 |
+| match | `len = i * 0x400` as a local used by the log and both calls, `setBeU16(blk, ...)` (gen_iw249 `e2+t2`) | 0 | |
+
+`bo` then turned out unnecessary (gen_iw250 `nobo`: IDENTICAL), so the draft has src's `left`.
+
+A 5-trick side result, superseded: bp2 + `setBeU16(blk, ...)` + the dead test (no `len`) is also IDENTICAL.
+
+### The match
+
+**drafts/image_write_a17.c: byte-identical at plain -O3, 4 tricks: pin_t, pin_hdr, optimize, xmalloc. The dead test is gone.** Against src:
+
+- `t = type - '1';` right after `p = 0;`, next to its only test.
+- `s[9] = (left - pages) >> 2;`, without src's `(int)`.
+- writeFsTable has `uint32_t len; len = i * 0x400;`, used for the log's end and both calls. The dead test and its comment are gone.
+- `setBeU16(blk, ...)`, Linux's form (attempt 14 read it there), for `off >> 14`.
+- The comment on `blk = start + b` reworded with the measured number; the old claim (2 lines) no longer holds here.
+
+Why `len` replaces the dead test isn't explained: it's a measured effect on names, I didn't trace it.
+
+Measured on the draft, one change at a time (gen_iw250): no optimize 2 (writeFsTable, `<>>><><<`), `(int)` back 2, no `len` local 8, no pin_t 10, t back at the top 10 (imgAdd), `off >> 14` 29, blk per block 37, if/else calls 41, `if (partial)` 158, plain malloc 180, no pin_hdr 243 (finalizeImage). `len = 0x4000` loses the clones (40006): `i * 0x400` being unknown at inlining still matters.
+
+pin_t, re-measured on the moved base: without it 10 lines, the same two byte slots swapped. gen_iw201, 236 and 239 (types, range tests `type >= '1' && type <= '?'`, t's place, partial's forms) don't move it; the range tests are also 10, or 106 with a wider compare. IRA's MEM costs for r153 (partial) and r172 (t) tie at 1346, and t's test is split in two blocks, so I read it as the old rounding loss; LRA's own totals weren't printed, so that reading is inferred. A tie would also need t's regno below partial's (153 v 172 here).
+
+GCC source wasn't needed or fetched this attempt. Item 2's natural replacement for the dead test was found by accident of crossing, not reasoned from the K count.
+
+### Borderline shapes in the draft, for review
+
+- `len` local: fully ordinary code, but its only reason here is names (8 lines without it).
+- `t` next to its test: ordinary; 10 lines if it moves back, with the pin still on.
+- `goto small` / `goto done` is unchanged from src. if/else, which Linux reads as, costs 41 here.
+- Carried over from src: `if (partial > 0)` on a boolean (158), `pages` spelled two ways in the arms, `blk` and the `BLK` macro both used, `blk` set in the page loop (37).
+
+### Attempt 17 result: MATCH (4 tricks)
+
+Verification: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a17.c -np`: IDENTICAL. Compiled by hand with build.sh's flags for this object (`gcc -c -O3 -Isrc -x c -`, `#line 1 "image_write.c"` first): `cmp` identical to build/iw/reference.o and build/obj/image_write.o, SHA256 cf10057d...2b0a. Full `sh build.sh` not run, since src is the parent's to change.
+
+Next, if this lands:
+1. optimize: 2 lines on the draft, signature `<>>><><<`, one compare (C1). The smallest gap. Read the sccp section above: FS2's PHI must get a name below FS1's. Rerun iw16rej on the draft minus the attribute and gen_iw245-style crosses.
+2. Don't take any line count in earlier notes as a measure of a shape: `(int)`, `off >> 14`, `bo`, `tb` each changed sign across this attempt's bases. Rejudge rather than reuse.
+3. pin_t and pin_hdr haven't moved. xmalloc not attacked.
+
+Reproduce: gen_iw250 on the draft. Bases n8, s4a, s4t, s2c, bp2 are in build/iw/a17 (not committed); each is the draft's text with the edits in the table, and generators 243-249 name their base in the header, so set `IWB`. Rejudge: `python tools/wip/dehint/iw16rej.py <base> <log> 150 100 250 3`.
+
+Lessons: **cross what looks like it costs something.** Several steps here were worse on some axis than the state they came from (n8 is 8 lines against na's 4). Removing a trick first, then searching around the broken state, reached places attempt 16's base couldn't. And **a rejudge on each new base pays**: `t`'s place (gen_iw184, attempt 11) and `bo` (gen_iw229, attempt 16) were old options that only worked here.
+
+Landed after attempt 17: drafts/image_write_a17.c is now src/image_write.c (4 tricks, full build matches), so the draft is removed.

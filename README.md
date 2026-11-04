@@ -74,9 +74,8 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. image_write</b>: 5 tricks, hard</summary>
+<summary><b>1. image_write</b>: 4 tricks, hard</summary>
 
-- 1 dead test in `writeFsTable`, which VRP1 removes
 - 2 register and slot pins, in `imgAdd` and `finalizeImage`
 - `optimize("no-tree-scev-cprop")` on `writeFsTable`
 - 1 asm-label prototype: `xmalloc`, which stops CCP assuming `malloc`'s alignment.

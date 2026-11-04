@@ -262,8 +262,8 @@ order).
   pin modifies `len` (ipa-cp can't specialise a modified parameter).
 - `pg = start * 32;` in imgAdd's inner loop keeps the off-0 clone's ipa-cp
   evaluation over 500, and reassoc folds it back into the same code. The SSA
-  names recycled by `small`, `blk`, the `pages` spellings and a dead test in
-  writeFsTable set the compare operand orders in the clones and inlined copies
+  names recycled by `small`, `blk`, the `pages` spellings and writeFsTable's
+  `len` set the compare operand orders in the clones and inlined copies
   (tools/wip/dehint/notes/image_write.md).
 - Spare byte 12 is a bitfield (`struct spt`: 6-bit type, 2 bits of ECC), as the
   older Linux build's stores suggest. It emits the same read-modify-write as a
