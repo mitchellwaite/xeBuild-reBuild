@@ -440,3 +440,78 @@ What I'd try next:
 3. near8: one more free low name in constprop.1's list at ivopts in the `Btop+St1` family, whose only bad copy is a fresh 177.
 
 Lesson: **an asm pin's job can be two unrelated things.** Removing it changed the push order, so it looked as if it needed a code-free use; a frequency grid with expect + param showed the same allocation needs no extra reference at all. Use expect as a probe for what frequency a pin stands in for, before looking for a use.
+
+## Attempt 10
+
+Written as I go. New tools: `iw10a.py [probe..|file.c]` (expect probes on pageErased's loops, or any source file plain -O3: finalizeImage lines, the pseudos' registers, the `r267 -> r192` move copy's freq, depth-2 block freqs), `iw10b.py <gen>` (an expect-75 generator of attempt 9 with the expect stripped), gen_iw161-163 (forms of pageErased's loops).
+
+- **(A) isn't about P(ECC).** With the ECC test untouched (P 29%, head block still 345), `__builtin_expect(spare[i] != 0xff, 1)` at -p 5..15 in pageErased, or the data test at -p 6..8, gives `r187 di, r192 si` and leaves **finalizeImage at 57 lines and everything else right** (build/iw/a10/grid.py). What moves is the not-erased flow: the threaded ECC entry block (bb48, 317) holds `r192 = r267` (cp freq 31), and it needs block freq >= 320 (cp 32). Head >= 350 was the same thing seen from the other side: bb48 scales with head. The window: per-byte mismatch 5-15% in the spare loop (>= 20 breaks pageErased, >= 25 blockEccOk too), 6-8% in the data loop.
+- Why 4.5% today: PRED_LOOP_EXIT, first match, (100 - 91) / n_exits with 2 exits (`-fdump-tree-profile_estimate-details`). 4.5 is just below the window.
+- The threshold is exact: q 5% gives bb48 320, cp 32, flipped; 4.5% gives 317, cp 31 (build/iw/a10/q5.py). It's 3 units short. Flows are conserved (M + C + E = 345: data mismatch 282, chain mismatches 35 with rounding, erased 28), so rounding won't supply them (`d4`, do-while data loop: M 284, but C falls, bb48 315).
+
+### Forms that can't deliver (A), and why
+
+All on src minus the pin, plain -O3; `iwsweep.py gen_iwN.py`:
+
+- gen_iw161 (49: index in the test, countdown, do-while, `continue`, for both loops). `spare[i++]` etc. don't change anything: the loop has simple latches, so there's no header edge on the test and PRED_LOOP_EXIT stays. Only `if (spare[i] == 0xff) continue; return 0;` (`s5`) moves q: a PRED_CONTINUE on the block makes predict_loops skip PRED_LOOP_EXIT (dumps show no loop exit line), so DS decides: 62%. That's far past 15: pageErased 40, blockEccOk 35 (finalizeImage 61). Same for the data loop (`d5`, 222+).
+- gen_iw162 (48): a test after the loop (`if (!spareUsed(spare)) return 1; return 0;`, `break` + `if (i == 16)`). u1, u3-u7, b1, b5 keep pageErased and all its callers right (finalizeImage 242, imgAddRaw 2), but **no flip**: the predictor is on that test (early return 39%), and threading then rebuilds the chain from the incoming edges, so the test's probability vanishes. Only the mismatch edge's own probability survives to bb48.
+- gen_iw163 (21): flag forms of the whole loop (`ok = 1; for (i = 0; ok && i < 16; i++) ...`): 500+, not examined further. `c2`, a `break` in a braced arm, changes nothing.
+- gen_iw164 (14): the ECC test itself. `<= 0`, `< 1`, `> 0` add opcode-positive: P(ECC) 18%, head 546, finalizeImage 405. `!= 1`, `== 1` work against it, 694. goto forms: same code as the plain test (241). Window is P(ECC) 23-28.7%, DS with call's 71 needs a second predictor of .503-.58. Hitrates read from this file's profile_estimate dump: opcode nonequal 72, opcode positive 73, pointer 85, call 71, const return 67, early return 61, continue 50, negative return 96: none fits.
+- Ways that would work but aren't natural or don't count: a dead conjunct on the ECC test or a test that folds after inlining (factor .79-.989 on the way into the ECC loop; net 0, a swap at best, and (B) is still open, so no swap draft). Unknown bound on calcEcd's loop: exit edge is 1% from the max-predicted-iterations cap, 0x1066 can't reach 80-98.
+- iw10b.py on gen_iw159, 153, 160 (attempt 9's reload forms without the expect): no flip. `sp = xb.spare + Y;` (gen_iw160 `Hs+A+`, build/iw/a10/n1.c) reads 102 lines but it's not near: the reload of xb.spare is gone and coloring is off.
+- (B)'s load order: gen_iw166 (27: spareUsed's forms and its call, on near9_hdr and h1 at -p 75): stays at 4 or worse. spareUsed's form doesn't change PRE's stack.
+
+### pin_t
+
+gen_iw165 (180: 10 forms of partial x its type x t's position and type, src minus pin): best 10, unchanged. As attempt 8 says, it's t's 2 x (floor(a/10) + floor(b/10)) with the hot label's 85/15.
+
+### lnp2: a new near state, and the inline reconsidered
+
+gen_iw167 (72, on near8): one `pages` statement back at the inner loop's top, written as src writes it. `rm+I0q` (build/iw/a10/l1.c): **imgAdd and all three clones right, constprop.1's compare fixed**, no hot label, as predicted by attempt 9's dce2 chain. Left: writeInitialHeader inlines imgAdd.constprop again (93 + small call-offset lines elsewhere), imgAddFile 114, writeFsTable 4. `-fdump-ipa-inline-details`: time 3574.5 -> 3206.5, 10.3% against big_speedup's 10%: 368 saved, limit 357. So about 11 units at frequency .5, about 21 at callee scale, in `(op2 changed)` (505 in the clone's summary).
+
+gen_iw168 (16): cheaper spellings. `rem512 = len % 512;` in the block loop and `pages = rem512 ? len / 512 + 1 : len / 512;` (`r1`) does stop the inline, but constprop.1's compare comes back (2), imgAddFile 114. `r5`, `quot` and `rem512` in the block loop: constprop.1 2, constprop.4 2, imgAddFile 137, writeFsTable 4. `len / 512 + (len % 512 != 0)`: imgAdd 147, constprop.1 53. gen_iw169 (24): partial, npages, t ahead of the block loop: 370+. `pg` moved (gen_iw167 g1-g3): the off-0 clone goes.
+
+So the two facts conflict so far: the low name wants all of pages' statements in the inner loop's top, and the inline wants fewer of them there. Something else on len has to give up those 21 units, or the caller needs about 105 more time of its own (writeInitialHeader's own is 9.5).
+
+### Attempt 10 result: NO MATCH
+
+Nothing identical with fewer tricks, src stays best at 6. No source file changed. reference.o is identical to build/obj/image_write.o and src compiles to it (`iwlib.py src/image_write.c -np`: IDENTICAL). No background work left. Closest: **drafts/image_write_near10.c, no pin_hdr and no expect, 22 lines** (next section).
+
+| Trick | State |
+|---|---|
+| pin_hdr | (A) solved by a natural helper, see the next section. Left: finalizeImage's two preheader loads swapped (4), blockEccOk 18 |
+| lnp2 | near8 (2 + 8) still closest by lines; l1.c has the clones right but the inline and imgAddFile 114 |
+| pin_t | gen_iw165: 10, unchanged |
+| dead test, optimize | 2 lines each, not moved. `iw8ver.py` on src and src minus the attribute: the same names go at sccp vs at ldist, and the free stack then differs (ivcanon's pops {77 79 80 87 90 91 117 136} vs {56 57 58 67 77 79 80 87}), read-only so far |
+| xmalloc | not attacked; thought through again, nothing new |
+
+Scripts (repo root): `iw10a.py [probe|file.c]`, `iw10b.py <gen>`, `iwsweep.py gen_iw161.py` .. `gen_iw169.py` (`-k label` writes the variant to build/iw/<gen>_best.c). `build/iw/a10/grid.py` (the q window), `q5.py`. `build/iw/a10/l1.c` = gen_iw167 `rm+I0q`, `nopin.c`, `noopt.c` = src minus one trick, `fi_nopin.ira`, `fi_ex75.ira` = IRA dumps for finalizeImage, `ws/`, `wn/` = tree dumps with and without the attribute.
+
+Lesson: **a probe with expect on a different branch can move the threshold you assumed was elsewhere.** Attempt 9 read (A) as head frequency because that's where its probe was. Grid the probe across every branch on the path before concluding which number matters.
+
+### A real lever for (A): the byte helper
+
+The heading "Forms that can't deliver" above is about those forms only; this one does. A byte test through an if-shaped helper leaves a PHI of 1 and 0 tested by the loop's exit (no early phiopt, the imgFits lesson). The profile_estimate dump shows a second `loop exit heuristics: 9.0%` line in such loops; read from memory of predict.c, unverified, that's predict_extra_loop_exits, undivided by n_exits. The chain's flow keeps 4.5% but each mismatch block now carries 9%, so bb48 comes to 346 (cp 34).
+
+Two classes (gen_iw170, 171, 172: parameter type and spelling don't matter, only which edge reaches the 1):
+
+- **Class u** (`static int byteUsed(uint8_t b) { if (b != 0xff) return 1; return 0; }`, and n, V, E, W shapes, `b < 0xff` on int, `b ^ 0xff`): r187/r192 flip with no expect, pageErased right, blockEccOk 18, finalizeImage 61 (hdr/spare swapped).
+- **Class v** (`if (b == 0xff) return 0; return 1;`, and e, U, N, X shapes, inline flag `fl1`): no PRED_LOOP_EXIT on the mismatch, DS's 72% (50% with `b >= 0xff` on int: finalizeImage 65). **hdr/spare right with the natural load order**; left in finalizeImage: stack slots 0x28/0x2c/0x30 and the last bytes' layout (34). But pageErased 36, blockEccOk 26: their layout can't take that much. Push and pop order are the same as class u's; what differs is r256's choice of eax vs ebp at its pop, with bb48 at 796 (cp 79). Threshold not found: only those classes exist. A helper used by finalizeImage alone (`pageUsed`, gen_iw173) doesn't help: inlined whole early, there's no part.0, 167+.
+
+On class u, attempt 9's reload forms work **without an expect** (gen_iw174): `spare = xb.spare;` at the page's top, reloaded in the arm after calcPageEcc (`sa`): finalizeImage 8. gen_iw176 `a`: the spare loop `break`s and `if (i == 16) return 1; return 0;`: the MU compare is right too, finalizeImage 4.
+
+**drafts/image_write_near10.c** (`python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_near10.c -np`): plain -O3, pin_hdr gone, no expect, ordinary source. 22 lines:
+
+1. finalizeImage 4: the two preheader loads, `mov eax,[hdr]` before `mov ebp,[spare]`. The conflict from attempt 9 stands (gen_iw177, 65; gen_iw178, 24): spare's head load as a temporary, or both named with spare first, gets the order right but eax/ebp swapped (55). In those forms the lower of the two tied pseudos ends up in eax (`iw9ira.py`), so hdr would need the lower pseudo with the later load. `h = xb.hdr;` ahead of the block loop (gen_iw178 `hH`) gets the registers right in the loop, but the loads go ahead of the `xb.blocks` test (30).
+2. blockEccOk 18, every class u form: a forwarder block in the optimized dump holds the spare[12] PHI (`bb49: prephitmp_119 = PHI <...>; goto bb11`), where the reference has the PHI in bb11. The last compare is also `_168 == 255` rather than `!= 255`. In the RTL that shows as spare[12]'s load merged ahead of byte 11's compare, plus edx/ecx swapped at pageEccOk's first compare. gen_iw175 (blockEccOk's own forms) leaves it at 18 or worse.
+
+What I'd try next:
+
+1. near10's blockEccOk: anything that removes the forwarder, e.g. other shapes of the spare loop's exit on class u (gen_iw176 tried 13; `return !spareUsed(spare)` with spareUsed using the helper, `s1`, is blockEccOk 12 but finalizeImage 140; worth a look at why 12).
+2. near10's load order: r256's or hdr's cost arithmetic at the pop (`update_conflict_hard_regno_costs`-style hops through r267); class v's flip shows it's reachable without touching the load order. bb48 between 346 and 796 would show the threshold, if some form gives it.
+3. l1.c: find the 21 units. Read `(op2 changed)` statement by statement (`-fdump-ipa-inline-details`, `-fdump-tree-all` at einline's output), then ask which other statement on len can leave the loop without touching pages' spelling. Look at imgAddFile 114 at the same time.
+4. Don't retry: plain loop forms in pageErased (gen_iw161), tests after loops without the helper (162), comparison forms on the ECC test (164), spareUsed's forms for the load order (166), partial x t grids for pin_t (165).
+
+Scripts added since the list above: gen_iw170 (helper classes), 171 (parameter x shape), 172 (comparison spellings), 173 (finalizeImage-only helper), 174 (reload forms, `IWB=`), 175 (blockEccOk and MU forms, `IWB=`), 176 (spare loop's exit, on near10), 177, 178 (load order). Bases in build/iw/a10: b_us.c, b_vs.c = gen_iw170 `us`, `vs`; c_sa.c = 174 `sa`; d0.c = b_us.c with the `a` exit; d1.c = near10 with an unused local.
+
+Lesson: **helper shape again, and on a loop's test this time.** `if (x) return 1; return 0;` inlined into a loop's exit test changes which predictor applies to it. Before concluding a predictor's value is fixed, check what makes a different one fire on that edge.
