@@ -268,6 +268,9 @@ order).
 - Spare byte 12 is a bitfield (`struct spt`: 6-bit type, 2 bits of ECC), as the
   older Linux build's stores suggest. It emits the same read-modify-write as a
   byte mask, but with no load in gimple, so imgAdd's SSA numbers all move.
+- finalizeImage writes calcPageEcc out: calcEcd is pure, so the arm has no call
+  for the call heuristic and `<= 0` gives it 27%. Re-reading `xb.spare` and
+  `xb.hdr` after the stores sets their register costs and PRE's load order.
 - imgFits is an `if` returning 1 or 0, not `return a >= b`: it compiles to the
   same function, but the form it inlines with gives imgAddFile and
   imgAddMobile their branch probabilities and head registers.

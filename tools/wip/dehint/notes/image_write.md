@@ -1021,3 +1021,95 @@ Next:
 Reproduce: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a18.c -np`; `sh tools/wip/dehint/iw18align.sh m build/iw/a18/plainm.c`; `python tools/wip/dehint/iw18freq.py src/image_write.c imgAdd 199 402`; `IWB=build/iw/a18/noph.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw255.py`. Base files: remove the attribute (na), the `"g"(t)` line (nopt), the `"a"(xb.hdr)` line (noph) from src.
 
 Lessons: **read what the option actually changes before searching.** Attempts 13 and 17 reasoned about t and partial from the two swapped bytes; printing the slot list with frequencies showed the competitor is r402. And **test the odd spelling even when it isn't a candidate**: the function pointer casts were probes, and one of them showed the mechanism behind xmalloc.
+
+## Attempt 19
+
+Written as I go. New tools in tools/wip/dehint: `iw19hs.py <file.c>` (pseudos holding xb.hdr and xb.spare, reference counts, IRA MEM costs per region), `iw19irasweep.py <gen>` (a generator's states scored by those costs as well as lines), `iw19ft.py <base.c>` (probe: field types of xb.hdr, xb.spare through an overlay header), gen_iw260 onward. Scratch in build/iw/a19.
+
+**If/else rejudge finished:** `iw16rej.py` on ifb.c, cap 60, gen 114 down to 1 (build/iw/a19/rs_ifb2.log, on top of attempt 18's 256-115). Best 35 lines, no state with the target signature. Together with attempt 18's 33 that family is done at this cap: don't rerun it.
+
+### pin_hdr: split in two, the pin isn't needed for what it did
+
+Field types of xb.hdr and xb.spare (iw19ft.py): nothing. A local read in the page with a const type (gen_iw260): hdr in eax and spare in ebp with no pin, 104 lines, but hdr is loaded first.
+
+**build/iw/a19/t1.c (gen_iw261 `tqh_aqh_f_uc`): no pin, plain -O3, 232 lines, and the preheader and hdr and spare's registers are all right.** It's noph with this page body (`uint8_t *h; const uint8_t *q;`):
+
+```c
+q = xb.spare;
+h = xb.hdr;
+if (!pageErased(h + X, q + Y)) {
+	calcPageEcc(xb.hdr + X, xb.spare + Y);
+	q = xb.spare;
+	h = xb.hdr;
+}
+memcpy(raw, h + X, 512);
+memcpy(raw + 512, q + Y, 16);
+```
+
+From `iw19hs.py`: spare's l5 MEM cost is 176, hdr's 216, so the tie the pin broke is broken from the other side (one reference at freq 10 less on spare; the arm's named reload isn't in the partition). PRE inserts both loads in iteration 2, spare first (`iw15pre.py`), which is the reference's order. `q` must be const and `h` not: uu, cc, cu are 249, 249, 249 (gen_iw263).
+
+**t1 + `__builtin_expect(!pageErased(...), 0)` at builtin-expect-probability 72..77: IDENTICAL** (build/iw/a19/t1_ex.c, build/iw/a19/ex1.py; 70 is 224 lines, 80 is 377). That's a mechanism test, not a candidate. It shows the pin did two things and only one is left: the load order and the hdr/spare tie are solved by source shape, and what remains is attempt 9's (A), the head at freq >= 350 (P(ECC) 23..28%, it's 29% from PRED_CALL).
+
+### pin_hdr: (A) from source, and the match
+
+Probes (build/iw/a19/pe/q.c, `-fdump-tree-profile_estimate`): call 71%, early return 61%, continue 50%, opcode positive 73%, opcode nonequal 72%. A call on both sides cancels to 50%. Goto has no effect. No single predictor falls in the window attempt 9 wanted next to call's, so I looked for a way to lose call's instead: opcode positive alone is P(ECC) 27%, inside 23..28.
+
+Ways to take call's prediction off the arm:
+
+- The copy in both arms, so both sides have a call (gen_iw265): head 370, right, but the copy isn't merged back. 213 at best.
+- The whole ECD loop written in the arm (gen_iw266): head 370, but other IVs and an inline flip in writeInitialHeader. 422.
+- **calcPageEcc written out in the arm, `val = calcEcd(...)` and the four stores (gen_iw267): IDENTICAL with `< 1` or `<= 0`.** The `local-pure-const1` dump says `Function found to be pure: calcEcd`, and the profile_estimate dump for the arm's test shows only `opcode values positive 27.0%`. That the call heuristic skips pure calls is from memory; the dump shows that it did here.
+
+Earlier notes' frequency formula holds: head = 100 / P(ECC), measured 345 at 29%, 370 at 27%, 200 at 50% (`iw19head.py`). The final bb frequencies aren't consistent with it (arm 317, loop exit 100, from later threading), so it's the value at rebuild after inlining that sets them (inferred).
+
+**drafts/image_write_a19.c: byte-identical at plain -O3, 3 tricks: pin_t, optimize, xmalloc. pin_hdr is gone.** Against src, finalizeImage's page body:
+
+```c
+const uint8_t *q = xb.spare;
+uint8_t *h = xb.hdr;
+
+if (pageErased(h + X, q + Y) <= 0) {
+	uint32_t val;
+
+	s = xb.spare + Y;
+	val = calcEcd(h + X, s);
+	s[12] = (s[12] & 0x3f) + (val << 6);
+	s[13] = val >> 2;
+	s[14] = val >> 10;
+	s[15] = val >> 18;
+	q = xb.spare;
+	h = xb.hdr;
+}
+memcpy(raw, h + X, 512);
+memcpy(raw + 512, q + Y, 16);
+```
+
+Measured on the draft, one change at a time (build/iw/a19/one.py; gen_iw268 for the grid): `== 0` 687, a calcPageEcc call 377, no h re-read 437, no q re-read 207, neither 468, h read before q at the top 4, q non-const 55, h const 55. Re-reads in the other order, `< 1`, and xb.hdr for h in the calcEcd call are the same bytes.
+
+### Borderline shapes in the draft, for review
+
+- The two re-reads after the stores: live, they're the reference's reload, and it reads as refetching after writing through the spare buffer, but `xb.spare` and `xb.hdr` can't have changed. Their reason here is IRA's cost and PRE's load order.
+- `const` on q and not on h: only reason is bytes (55 otherwise). The reason it matters wasn't traced beyond the IRA costs above.
+- `<= 0` on a function returning 0 or 1: the only reason is the 27%. Same family as src's `if (partial > 0)` by the same author's style, which is itself flagged.
+- calcPageEcc written out when the function exists a few hundred lines up. README counts hand inlining as source shape, and pageEccOk already holds a hand copy of calcEcd's loop, so it isn't out of character, but it's why this is borderline.
+
+### Not done
+
+xmalloc: read and reasoned only, no new forms beyond these. Struct assignment for the 512-byte copy (build/iw/a19/x1.py, `*(struct rp *)raw = *(struct rp *)src` with align-1 bytes): same 180, no prologue, so dest's ptr info decides there too. Still open from reasoning, untested: a name with no alignment info because the value is only known after ccp3, the last CCP (inferred from attempt 18's dump list).
+
+optimize: finished the if/else rejudge, best 35, nothing (above). pin_t: not attacked. Stopped at the first match as instructed. The rejudge of gen_iw196-264 on t1.c was stopped when the match turned up (build/iw/a19/rs_t1.log; partial).
+
+### Attempt 19 result: MATCH (3 tricks)
+
+Verification: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a19.c -np`: IDENTICAL. Compiled by hand as build.sh does this object (`gcc -c -O3 -Isrc -x c -`, `#line 1 "image_write.c"` first): `cmp` identical to build/iw/reference.o and build/obj/image_write.o, SHA256 cf10057d...; no warnings. Full `sh build.sh` not run, since src is the parent's to change.
+
+Next, if this lands:
+1. Rejudge on the draft minus optimize (iw16rej, gen 100-268). The draft's writeFsTable is unchanged, so its one compare is too; SSA names are per function, so don't expect this change alone to move it.
+2. xmalloc is the same kind of problem pin_hdr was: look for what's cheap in the source rather than for a declaration. Try the untested route above.
+3. Other files' hints: the pure-call point applies wherever a P(call) problem has been parked. A helper written out so the arm's first call is to a function gcc finds pure moves P from 29% to 50% with no hint, and `<= 0` or `> 0` to 27%.
+
+Reproduce: `IWB=build/iw/a18/noph.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw268.py -n 60 -t 4` (noph = src minus the `"a"(xb.hdr)` line). t1.c is noph with gen_iw261's `tqh_aqh_f_uc`: `IWB=build/iw/a18/noph.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw261.py -n 0 -t 4` writes it to build/iw/a16.
+
+Lessons: **split a trick into what it does before looking for a replacement.** The pin looked like one thing and was two: a tie and a frequency threshold. An expect probe on the state with the tie solved showed the threshold was all that was left. And **print the cost, not just the lines**: the state that broke the tie had 232 lines against 243, which no line ranking would have followed. Don't assume a predictor applies because a call is there: gcc's own pure analysis decides it.
+
+Landed after attempt 19: drafts/image_write_a19.c is now src/image_write.c (3 tricks, full build matches), so the draft is removed. build/iw/a19/one.py is saved as iw19one.py.

@@ -978,11 +978,28 @@ int finalizeImage(void)
 	raw = (uint8_t *)mem;
 	for (b = 0; b < xb.blocks; b++)
 		for (p = 0; p < 32; p++) {
-			if (!pageErased(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16))
-				calcPageEcc(xb.hdr + (b * 32 + p) * 512, xb.spare + (b * 32 + p) * 16);
-			__asm__("" :: "a"(xb.hdr));
-			memcpy(raw, xb.hdr + (b * 32 + p) * 512, 512);
-			memcpy(raw + 512, xb.spare + (b * 32 + p) * 16, 16);
+			/* calcPageEcc written out: calcEcd is pure (local-pure-const dump), so
+			   the arm has no call for the call heuristic, and `<= 0` alone gives it
+			   27% (profile_estimate dump); a calcPageEcc call here is 377 lines off,
+			   `== 0` 687. Re-reading both after the stores, spare first at the top
+			   and q const: 437, 207, 4, 55 without each (measured) */
+			const uint8_t *q = xb.spare;
+			uint8_t *h = xb.hdr;
+
+			if (pageErased(h + (b * 32 + p) * 512, q + (b * 32 + p) * 16) <= 0) {
+				uint32_t val;
+
+				s = xb.spare + (b * 32 + p) * 16;
+				val = calcEcd(h + (b * 32 + p) * 512, s);
+				s[12] = (s[12] & 0x3f) + (val << 6);
+				s[13] = val >> 2;
+				s[14] = val >> 10;
+				s[15] = val >> 18;
+				q = xb.spare;
+				h = xb.hdr;
+			}
+			memcpy(raw, h + (b * 32 + p) * 512, 512);
+			memcpy(raw + 512, q + (b * 32 + p) * 16, 16);
 			raw += 528;
 		}
 	log_printf(1, "done!\n");
