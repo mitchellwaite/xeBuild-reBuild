@@ -419,3 +419,49 @@ Not worth retrying: loop tests against 0 or count-downs for probability, `contin
 ### For review
 
 Nothing new: `src/` is unchanged. The four dead tests, findField and preParse stay, flagged in earlier attempts.
+
+## Attempt 8
+
+Tools: `fl8lib.py` (state labels `drops|t.var=type,axis=value`, logs in `build/filelist_ini/a8/`), `fl8a.py` (single local types x all T1-T3 subsets), `fl8b.py` (int/long combinations). Lines are `nscore`, whole object.
+
+- parseIni's local types, one at a time at all 8 subsets of T1-T3 (`fl8a.py`, 880 forms): **no floor moves** (none 0, T1,T3 4, T1,T2,T3 6, T1,T2 10, T3 10, T1 18). `long` for size off end comma nul n i, any of `crc`'s types, `unsigned char` tmp and label: fully transparent. The rest are worse at every subset: size/end unsigned 23+ (with all dropped), nbl short 27, nbl long/unsigned 200+, noCrc unsigned 258, noCrc int 386, len long 326, pos long 499, n unsigned 614, the rest 700+.
+- int/long combinations (`fl8b.py`, 2000 samples over 10 vars and noCrc's type at 4 subsets): floors unchanged.
+- Helper signatures (`fl8c.py`, labels `drops|mc=..`, `ms=..`, `ptr=..`, `prot=..`, `ff=..`, `pre=..`; about 700 forms at 5 subsets): floors unchanged. **`char *buf, *p` with every `(char *)` cast gone is fully transparent (`ptr=bc`, also bc2, bc3; `buf[0]` as `(unsigned char)buf[0] == 0xff`, `== (char)0xff` or `== -1`), so the casts aren't needed**, though removing them removes no trick. memFindChar: `const unsigned char *`, `long size` transparent; `char *buf` with `unsigned char c` 6 more, `int c` 24 more, `char *`+`char` or `unsigned char`+`unsigned char` 34 more, returning `long` 700+. memFindStr: `const`, `char *str`, `long size`, `long skipNul` transparent; `char skipNul` 21 more, `char *buf` with unsigned str 32 more; `long` return far worse. Prototypes: `getFileSize` as int, myatox32/myatou32 any type transparent.
+- **Conversions move single ties.** Named ties, as line positions in parseIni: A bl `comma > nul` (484), B raw `comma >= nul` (828), C flashfs `xor edi`/`mov ebx` (1263), D flashfs `comma < nul` (1270). T1,T3 has B wrong; T1,T2,T3 has C and D; T1,T2 A, C, D. `getFileSize` returning unsigned flips C alone at no drops; `preParse(..., uint32_t size)` or a `uint32_t fsize` local up to preParse flips A alone; `fread(buf, 1, size, f)` also moves (`fl8e.py single`). But (`fl8e.py rand`, 1500 combinations with fwp, crcp2, str0 at 7 subsets) floors stay: T1 8, T2 25, T3 6, T1,T2 10, T1,T3 4, T2,T3 25, all 6.
+- `[flashfs]` gaps (`fl8d.py`, 39 forms at 8 subsets, 976 pairs): `crc2` in all forms (`crc = 0` + separate store, either order, `crc = myatox32` + store), `crc` re-read at the log, `if (pos < size) continue; i = 256;`, `else` for the end test, `size <= pos`, `while` with `i++`, `nameblock` (a `name` local only for the base name check), `*(xb.firmwareCrc + i)`, `uint32_t *c`, a `char c` for the last digit, `[security]`'s `*c`, a rawPatch entry pointer: all fully transparent. `char (*fw)[0x400] = &xb.firmware[i]` (`fwp`) is the one that moves things: **T1 alone 8 lines (ties A and D only)**, but 302 with no drops, 18 at T1,T3. `*(xb.firmware[i] + len) = 0` 25 at T2, T2,T3. `name` through the whole section 50+, `(xb.firmware + i)` 380+, one store at the end of the crc 280+, `break` at the end 860+, `struct fileent *e` in bl 650+. Pairs: nothing better.
+- Natural second spellings and setupFiles' body (`fl8f.py`, 60 forms at 8 subsets): section heads `off >= 0` / `off != -1`: transparent or worse (`[flashfs]` `off >= 0` 64+, sec 58, raw 111, bl `off != -1` 45), `comma < 0`, reversed `||`, `pos > end - 1`, `flc_lt`: transparent. setupFiles: `e` in the loop, no `e`, `long i`, `return` for `break`, a `consoleType` local: transparent; `con` local 62+, a type local 94+, `name` 440+, `loc` pointer 680+. Floors unchanged.
+- findKey and matchAt with types (`fl8g.py single`): `buf`/`p`/`key` `const` or not, `long` for i j len, the return type of matchAt, `tail=n`/`qc`: transparent, still 6 lines (iniU32Invalid). `unsigned` j or len 43+, `const unsigned char *key` or a cast in the head compare 70.
+- **Author's `(x&0xFF)` masks** (tmp/dashlaunch/iniparse.c, `fl8h.py`): in memFindChar, memFindStr, findKey, getters, parseIni, iniPreParse: all fully transparent, or (`pi_l`, `fk_nnb`) a few lines worse. mask + `char *` in memFindChar 300+.
+- Flag forms in the name,crc split (`fl8u.py`, 24 forms at 8 subsets: `noCrc = comma > nul`, `?:`, no flag with a repeated test or `len == comma`, a `has` flag, in bl, flashfs, security): 140+ or transparent.
+- Dead tests anywhere with the conversions (`fl8s.py`, sites 208 x 2 conds x 3 arms x 5 conversions): T2 plus one test (6240 forms) floor 4; two tests with T1, T2, T3 all gone (3000 samples) floor 4. These would only have moved tests, but the conversions gave them no new way down.
+- Attempt 6's helper axes (`sect ent copy adv val flen ff`) with the conversions (`fl8v.py`, 3500 samples): floors T1,T3 4, all three 6, T3 6, T1,T2 10, T1 14.
+
+### Tie B, traced (`fl8t.py <tag> [n]`: dom3's pops with each name's pre-ivopts definition)
+
+`flpass.py` of src (`pa`) against T1,T3 (`pb`), both in `build/filelist_ini/dump/`. At T1,T3 raw's test is `_361 <= i_369`; in src its `nul` is `_859`, above comma's number. dom3's first pops, by role:
+
+    src:  _68  _890 _888 _877 len_869 noCrc_861 _859 len_825 noCrc_824 _576 ...
+    near: _66  _878 _876 _865 len_857 noCrc_849 _361 len_815 noCrc_810 _847 ...
+
+The first six are the bl section's threaded `-1` paths, and the seventh is raw's nul. **Only the seventh is low in near**, its neighbours on either side are both high, so one PHI more or fewer in dom3 before raw fixes B, as does any reorder of the stack there. Near's `_361` was `buf_58 + _66` (a `[`-search address); src's `_859` was `(sizetype) i_847` (raw's i), which near has three places further down. ivopts visits the loops in the same order in both (`-fdump-tree-ivopts-details`: 20, 18, 19, 4, ... at the same source lines), so the visit order isn't the cause; I didn't get to what orders the releases inside a loop. I tried to add or remove a bl PHI with `fl8u.py` and none could be had without changing bl's code.
+
+### Attempt 8 result
+
+**NO MATCH: still 4 tricks.** `drafts/filelist_ini_final.c` is untouched (same as `src/`). No other object or header changed: all prototype tests were done by a local redeclaration in generated sources, nothing kept.
+
+**The direction's type and signature axes are close to exhausted.** Before IPA the source is normalised: types, casts, masks, spellings, section-head tests all give the same code or a much worse one. Floors never moved, on any axis: T1,T3 4 lines (B), T1,T2,T3 6 (C, D), KF with matchAt 6 (iniU32Invalid).
+
+Usable findings:
+- A signedness conversion before the first inlining flips a single tie (A: `preParse(.., uint32_t size)` or a `uint32_t fsize` local; C: an unsigned `getFileSize`). But these aren't the ties that are left at T1,T3 (B) or T1,T2,T3 (at T1,T2,T3 neither C nor D moved). They flip against a no-drop baseline, so it depends on the state.
+- No cleanup here reduces tricks, but `char *buf, *p` with all `(char *)` casts gone, and `long` for any one of size, off, end, comma, nul, n, i, are byte-identical (combinations of `long` were only sampled with tests dropped, so recheck a combination). Free to take if wanted (parent's call; `|ptr=bc` in `fl8c.py`).
+
+### Next
+
+1. Tie B only: what puts `buf + _66` above `(sizetype) i_835` in ivopts' releases, given the same loop order. `-fdump-tree-ivopts-details` for `a.c`/`b.c` is in `build/filelist_ini/a8/iva.txt`, `ivb.txt`; compare the release order in the loops around raw's. If it comes down to which candidate a loop picks, that gives something to look for in the source.
+2. Failing that, this file looks finished at 4 unless the user takes attempt 6's split candidate. Seven attempts plus this one give the same floors from many directions.
+
+Not worth retrying: local types, helper signatures, prototypes, `char *` vs `unsigned char *`, `&0xFF` masks, section-head and `||` spellings, setupFiles' internals, `crc` forms, end-of-loop forms, flag forms, more conversions alone.
+
+### For review
+
+Nothing new landed. `src/` is unchanged; the four dead tests, findField and preParse stay, flagged in earlier attempts.
