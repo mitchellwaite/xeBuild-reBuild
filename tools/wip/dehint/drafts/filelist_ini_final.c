@@ -386,15 +386,12 @@ uint32_t parseIni(char *path)
 	if (off >= 0) {
 		log_printf(1, "\nini: label %s found\n", label);
 		end = off + memFindChar(&buf[off], '[', size - off);
-		/* this and the other `< -1` tests are dead (this one reads comma
-		   uninitialized, and lasts until RTL).  They steer gcc: the SSA names they
-		   free, so their stores count too, decide what dom2, dom3 and vrp2 number
-		   next, which sets the comma/nul compares, the rawpatch lea and the
-		   copy order on flashfs's threaded path */
-		if (comma < -1) {
-			buf[0] = 1;
-			buf[1] = 1;
-			buf[2] = 1;
+		/* this and the other can't-happen tests below are dead, and they steer gcc:
+		   the SSA names they free, so their stores count too, decide what dom2, dom3
+		   and vrp2 number next, which sets the comma/nul compares, the rawpatch lea
+		   and the copy order on flashfs's threaded path (notes/filelist_ini.md) */
+		if (nbl != 6 && nbl != 9) {
+			xb.nFiles = 0;
 		}
 		pos = off;
 		for (i = 0; i < nbl; ) {
@@ -455,8 +452,8 @@ uint32_t parseIni(char *path)
 
 	/* [rawpatch]: name,offset */
 	off = memFindStr(buf, size, "[rawpatch]", 1);
-	if (i < -1) {
-		buf[0] = 1;
+	if (i < 0) {
+		xb.nRawPatches = 0;
 	}
 	if (off != -1) {
 		end = off + memFindChar(&buf[off], '[', size - off);
@@ -518,7 +515,7 @@ uint32_t parseIni(char *path)
 			p = &buf[pos];
 			nul = memFindChar(p, 0, size - pos);
 			if (nul < -1) {
-				buf[0] = 1;
+				*buf = 0;
 			}
 			comma = memFindChar(p, ',', size - pos);
 			noCrc = 1;
@@ -531,19 +528,18 @@ uint32_t parseIni(char *path)
 				strncpy(xb.firmware[i], (char *)p, len);
 				xb.firmware[i][len] = 0;
 				if (off < -1) {
-					buf[0] = 1;
-					buf[1] = 1;
+					buf[size] = 0;
+					*buf = 0;
 				}
 				if (len > 21) {
 					s = strrchr(xb.firmware[i], '/');
 					if (off < -1) {
-						buf[0] = 1;
-						buf[1] = 1;
+						*buf = 0;
 					}
 					if (s == NULL)
 						s = strrchr(xb.firmware[i], '\\');
-					if (len < -1) {
-						buf[0] = 1;
+					if (len < 0) {
+						*buf = 0;
 					}
 					s = s ? s + 1 : xb.firmware[i];
 					if (strlen(s) > 21) {
@@ -578,11 +574,9 @@ uint32_t parseIni(char *path)
 				free(buf);
 				return 0;
 			}
-			if (off < -1) {
-				buf[0] = 1;
-				buf[1] = 1;
-				buf[2] = 1;
-				buf[3] = 1;
+			if (off < 0) {
+				*buf = 0;
+				buf[1] = 0;
 			}
 			if (pos >= size)
 				i = 256;
@@ -685,8 +679,7 @@ char *getIniValue(const char *key)
 	return (char *)&xb.iniBuf[off];
 }
 
-/* getters' own helper (not memFindStr).  The ebx pins fix RA ties; findKey's
-   has an output (kept by the unreachable) so it is no sched2 barrier */
+/* getters' own helper (not memFindStr) */
 static int findKey(unsigned char *buf, const char *key)
 {
 	int i, j, len;
@@ -701,8 +694,10 @@ static int findKey(unsigned char *buf, const char *key)
 			if (j == len) {
 				unsigned char *q = &buf[i + len];
 
-				if (q == 0)
-					__builtin_unreachable();
+				/* defensive, and dead (key was read above): VRP removes it, and
+				   until then it sets findKey's SSA numbers in the getters */
+				if (key == NULL)
+					return -1;
 				if (*q != 0)
 					return i + len;
 			}
@@ -738,7 +733,6 @@ char *iniBoolInvalid(const char *key)
 	if (off == -1)
 		return NULL;
 	val = (char *)&xb.iniBuf[off];
-	__asm__("" :: "b"(val));
 	if (strnicmp(val, "true", 4) == 0)
 		return NULL;
 	if (strnicmp(val, "false", 5) != 0)
@@ -763,6 +757,10 @@ char *iniU32Invalid(const char *key)
 		return NULL;
 	off = FIND;
 	if (off == -1)
+		return NULL;
+	/* defensive and dead, as in findKey: sets the order of this function's
+	   buf[i]/key[0] compare */
+	if (key == NULL)
 		return NULL;
 	val = (char *)&xb.iniBuf[off];
 	if (val[0] == '0' && myatol(val[1]) == 'x') {

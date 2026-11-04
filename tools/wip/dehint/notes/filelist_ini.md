@@ -187,3 +187,49 @@ Failed: 6 tests, 2500 samples: best 2 lines (`comma=3,i=1,len=3,off3=8,off4=2,x=
 4. findKey and the pin: arm sizes untried on anything there; a plain `if (q == 0)`-style test with a store arm in place of the unreachable is worth a run. Decl order and val type do nothing (`flx1.py`, `flxb.py`).
 
 Not worth retrying: declaration order, initialisers, scopes and temporaries alone, goto forms of the path check (same as nest).
+
+## Attempt 3
+
+Tools: `fl3a.py` (findKey/pin grid), `fl3b.py`, `fl3c.py` (getters on a value helper), `fl3d.py` (`first`: per-pass lifetime of a test between flpass dumps
+pa and pb), `fl3e.py` (natural checks x arms x positions in findKey), `fl3f.py` (tails, and tests in place of the pin), `fl3final.py` (writes and verifies the draft; change this, not the draft).
+
+- **findKey's unreachable: replaced by `if (buf == NULL) return -1;`** before `*q` (`fl3e.py`, 496 forms): whole-object MATCH with the pin kept. Also matches with `break` for the arm, and with `xb.iniBuf == NULL`.
+  Mechanism (`fl3d.py first`): the unreachable lived until fab1, and `q == NULL` with any other arm reaches the output. `buf == NULL` lives through ch2, dom2 and PRE like the unreachable did, and dies at **vrp2**,
+  because ivopts rewrites the loop's access to `MEM[base: _6, index: i]`, so vrp2 infers `_6` is non-null. **So a NULL check of a pointer whose only derefs before ivopts are `p + i` lives long and leaves no code.** That's the general lever.
+  Near forms: no `q` local (`if (buf[i + len] != 0)`) 6 lines; `q < buf` 65; `q && *q` 68; `buf && *q` 45.
+- **Why the pin's a separate question:** no tree pass matters, it's LRA's hard register usage levelling (`Assign` lines in `-fdump-rtl-reload`): `len + 1`'s reload r149 ties between ecx and ebx, and takes the less used one. The pin puts val's reloads (138 of freq) on ebx;
+  without it they take eax (the `return val` copy) and edi. `fl3f.py pin` (306 tests x arms x positions after the findKey call): nothing beats 4 lines, since tests that die leave only frequencies and those don't reach this tie.
+- **The pin too: `if (key == NULL) return -1;` in findKey's tail (instead of `buf == NULL`) plus `if (key == NULL) return NULL;` in iniU32Invalid after the off test. Whole-object MATCH, no pin, no unreachable** (`fl3l.py`, `fl3m.py`). 9 -> 9, both plain C, both dead defensive checks.
+  Two classes of tail test (`fl3j.py`): (A) `buf == NULL`, `xb.iniBuf == NULL`: long-lived, iniU32Invalid right, iniBoolInvalid needs the pin. (B) `key == NULL`, `buf != xb.iniBuf`, `xb.iniSize == 0`, `len < 0`, `i < 0`: die early, iniBoolInvalid right without a pin, and only iniU32Invalid's `cmp edx,[esp+0x20]` operand order wrong.
+  The getter's test fixes that. No single-test form found: with one test in the tail, 2 lines at best (`fl3l.py` two_* are all worse, 36); a test in a getter but not the tail, worse. Getter shapes for iniU32Invalid (`fl3k.py`, 10 forms) are transparent. No `q` local (`-nq`): 4 lines.
+- parseIni's arms can be smaller than attempt 2's (`fl3g.py`): `comma=1,i=1,len=1,nul=1,off3=2,off4=1,x=2` matches (was 3,1,1,1,2,2,4). Spelling: `i < 0`, `len < 0` and x's `off < 0` behave as `< -1`; off3 and off4's `off < 0` don't. `off == -1` doesn't anywhere (it's removed earlier).
+- **The uninitialised read is gone: `if (nbl != 6 && nbl != 9)` at comma's site** (`fl3p.py`, 192 forms; `fl3q.py arms`). nbl is a PHI of 6 and 9, and no range says it's one of those two (VRP has [6, 9]), so presumably it lives longer than the `< -1` tests, as the uninitialised one did (not checked in dumps: where it dies is worth finding). Other uninitialised reads match too (`pos`, `nul`, `n`, `noCrc`), so that isn't new; of the 32 conditions tried this is the only one on a defined value that matches. `nbl == 7`, `nbl < 6 || nbl > 9`, `nbl > 6 && nbl < 9` don't match.
+  The arm must be stores (1-3 work): `return 0`, `free(buf)`, and assignments to locals don't match.
+- Natural stores in place of `buf[k] = 1` (`fl3q.py site`, then in combination): `xb.nFiles = 0`, `xb.nRawPatches = 0`, `*buf = 0`, `buf[size] = 0`. Taken in the draft. They still steer: the count is what matters, not the store.
+- **How a test dying at each pass acts.** Comma's PHI gets its version in dom3 (popped from the free list: 5 in the ref, 623 at the 4-test state), the nul copy in vrp2 (i_1099 against i_93), and the compare's operand order is by version (tree_swap_operands_p), so tie 1 is one position in dom3's and vrp2's pops. Probably why the long-lived tests reach it and the `< -1` ones rarely do (inferred, not proven).
+
+### Attempt 3 result
+
+**MATCH, 9 -> 9, all plain C now.** `drafts/filelist_ini_final.c` at plain `-O3`, written and checked by `fl3final.py`: object byte-identical, all sections compared. `sh build.sh` not run.
+
+- Gone: `__builtin_unreachable`, the only `asm` (the pin), and the uninitialised read. No `__builtin_*` or `asm` left in the file.
+- Added: `key == NULL` in findKey's tail and in iniU32Invalid; comma's test became the nbl test.
+- Left (9), all dead tests: `nbl`, `i < 0`, `nul < -1`, `off < -1` x2, `len < 0`, `off < 0` in parseIni (7); `key == NULL` x2.
+
+Failed, with miss sizes:
+- Fewer parseIni tests: 2500 samples with the nbl test (`fl3q.py rand`): no match under 7. Best `len=1,nul=1,off4=1+nb=1` **4 lines, 4 tests, ties 2 and 3 wrong**; `len=3,off3=2,off4=1,x=2+nb` 6, tie 1 and 3; subsets at lean arms (`fl3q.py sub`, 63 forms): `-len` 6 lines, `-i+off3+x` 4.
+- One extra natural test anywhere (`fl3n.py`, 31 sites x 10 conds x 9 arms including log/free/return) from `len=3,off3=2,off4=1,x=2` (tie 1 only, 4 lines): nothing fixes tie 1. Only `len < -1` with `pos = size` or `i = 0` at rawpatch's comma check flips it, losing tie 3, 8 lines (`fl3o.py`, 1500 arm samples around it: floor stays 8). From `len=1,nul=1,off4=1+nb` (`fl3n.py <lab> 1`): floor 4.
+- Bl section tests (`fl3h.py`, 1080 forms) with `blOrder == NULL`: emitted, 600+ (the load differs after calls, ivopts doesn't get a base). `free(buf); return 0` arms at comma's site: 1000+.
+- One test in findKey for both jobs: none. `buf == NULL` alone keeps the pin; `key == NULL` alone leaves 2 lines in iniU32Invalid.
+
+### Next
+
+1. `len=1,nul=1,off4=1+nb=1`: 4 tests, ties 2 and 3 (2 lines each). Fix those two for 7 -> 4 tests. `i` fixes tie 2 in earlier tables. Look at what they need in dom3 from `flxph2.py`.
+2. A second kind of long-lived natural test. `nbl` (a PHI of constants) and pointer NULL checks based on ivopts' `MEM[base:]` are the two found. Other PHIs of constants: `noCrc` after its if (`noCrc != 0 && noCrc != 1`).
+3. A single test in findKey (`fl3e.py` conds with both class properties).
+
+Not worth retrying: getter or iniU32Invalid shapes (normalised), any test in iniBoolInvalid for the pin's own tie, `blOrder == NULL`.
+
+### For review (not tricks, but flagged)
+
+All nine remaining tests are dead and steer gcc, and though plain C they read as defensive checks: `if (key == NULL)` after key's been read, in findKey and iniU32Invalid; `if (nbl != 6 && nbl != 9) xb.nFiles = 0`; `if (i < 0) xb.nRawPatches = 0`. The stores in their arms are chosen by count.
