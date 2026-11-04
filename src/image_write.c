@@ -498,7 +498,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	uint8_t sp9, *s;
 	int partial;
 	_Bool small;
-	uint32_t b, blk;
+	uint32_t b;
 	uint32_t i;
 
 	if (xb.rawSize < off || xb.rawSize < off + len) {
@@ -512,8 +512,9 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		tail = len;
 	} else {
 		rem = len - first;
-		tail = rem;
-		if (rem >= 0x4000)
+		if (rem < 0x4000)
+			tail = rem;
+		else
 			tail = rem % 0x4000;
 		blocks = rem / 0x4000;
 		if (tail) {
@@ -551,12 +552,9 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			   back into the same code */
 			pg = start * 32;
 			s = xb.spare + (pg + p + b * 32) * 16;
-			/* here, not per block: one blk per block is 37 lines off, nearly all in
-			   writeFsTable (tried) */
-			blk = start + b;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
-				((struct spb *)s)->b2lo = blk >> 8;
+				((struct spb *)s)->b2lo = (start + b) >> 8;
 				((struct spb *)s)->b0 = 0xff;
 				s[1] = BLK;
 				if (type > 1) {
@@ -565,10 +563,26 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						pages = len / 512;
 						if (len % 512)
 							pages++;
-						left = (off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256;
+						/* the array's scope clobber keeps the nonzero arm in the CFG past lim2 (no code;
+						   the dce4 dump still has it, it's gone by the optimized dump): sccp's dump then
+						   has this PHI's old name on writeFsTable's second FS loop exit, which sets a
+						   compare's order (tools/wip/dehint/notes/image_write.md, Attempt 23).
+						   TODO: revisit the 0 entry. It does nothing except keep the array alive
+						   until cunrolli; find a real second value, or a real reason for the block.
+						   It replaced optimize("no-tree-scev-cprop") on writeFsTable */
+						if (off & 0x1ffff) {
+							uint32_t used[2] = { (off & 0x1ffff) / 512, 0 };
+							int k;
+
+							left = 256;
+							for (k = 0; k < 2; k++)
+								left -= used[k];
+						} else
+							left = 256;
 						if (pages & 3)
 							pages = (pages + 4) & ~3;
-						s[9] = (left - pages) >> 2;
+						left -= pages;
+						s[9] = left >> 2;
 						s[5] = 1;
 						s[8] = len >> 8;
 						s[7] = len;
@@ -806,11 +820,11 @@ long checkBootImage(int write)
 	return 0;
 }
 
-__attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
+void writeFsTable(uint32_t off)
 {
 	uint8_t *buf, *p;
 	uint32_t blk;
-	int i;
+	uint32_t i;
 	uint32_t len;
 
 	blk = off >> 14;
@@ -827,8 +841,8 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 		memcpy(p, (uint8_t *)fsFiles + i * 0x200, 0x200);
 		p += 0x200;
 	}
+	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
 	len = i * 0x400;
-	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + len);
 	if (!xb.bigBlock)
 		goto small;
 	imgAdd(off, buf, len, 0x2c, 0x1ffe, 0);

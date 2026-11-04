@@ -77,7 +77,8 @@ counted. Neither are plain type casts.
 <summary><b>1. image_write</b>: 2 tricks, hard</summary>
 
 - 1 slot pin, on `t` in `imgAdd`
-- `optimize("no-tree-scev-cprop")` on `writeFsTable`
+- 1 dead table entry in `imgAdd`: the `0` in `used[2]`, whose array's scope clobber
+  sets a compare order in `writeFsTable` (marked `TODO` in the source)
 
 Which SSA names get recycled decides the compare operand order throughout, and
 `imgAdd`'s IPA-CP value decides three clones, so a hint-free source has to land

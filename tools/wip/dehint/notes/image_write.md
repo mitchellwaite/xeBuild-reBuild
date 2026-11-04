@@ -1468,3 +1468,32 @@ Reproduce: na.c is src minus the attribute. nae.c is na with gen_iw254 `e2`. `py
 Lessons: **read which name is which before accepting the model.** Attempts 18 and 21 assumed a visit order and looked for a second PHI; the odd one out in the descending run (239) showed unswitch already frees two names, and the fix was their order, not a third. **A forwarder decides order in cleanup.** An empty block and which edge it sits on looked like nothing. **An odd form that flips the target is a probe, even at 40 lines:** `o4` was wrong in kind and showed the mechanism. **Once the mechanism is right, climb:** the last 28 lines were all compare order, and the old generators' single moves cleared them in 3 rounds.
 
 Not landed after attempt 23: drafts/image_write_a23.c is IDENTICAL without the optimize attribute, but `{ x / 512, 0 }` subtracts a hard-coded 0 only to keep a scope clobber alive past lim2. That's a dead entry standing in for the hint, so it counts as a trick and the swap doesn't lower the count. It's a candidate patch; the mechanism is what to reuse. Goal: the same clobber from a local array with real contents.
+
+## Attempt 24
+
+Written as I go. New tools in tools/wip/dehint: `iw24dump.sh <name> <file.c>` (all tree dumps in build/iw/a24/d_<name>), gen_iw296 onward. Scratch in build/iw/a24: nt.c = drafts/image_write_a23.c minus the table (one `left = x ? 256 - x / 512 : 256;`, 32 lines), nopt.c = src minus pin_t. GCC source not fetched: what I say a gcc function does is from memory unless a dump is named.
+
+### A table with real entries can't be `{ x / 512, pages }`
+
+gen_iw298: the arm survives (`keep`, clobber at dce4), but imgAdd is 56+ lines in every state, and it's structural. The reference computes `x ? 256 - x / 512 : 256` first (`cmove edx,eax`), then the rounding test (`test cl,3`), then one `sub edx,ebx`. With pages in the arm's table there are two `sub`s, one per arm, and nothing merges them. So left's PHI has to be before the rounding; the only real values an arm-scoped table can hold reduce to `256 - x >> 9`. `{ 256, -(x / 512) }` summed from 0 (`sum`, every entry real, no one would write it) is 74 lines before any climb.
+
+### Arm kept by a store rather than a clobber (stopped: plan changed)
+
+Stopped when the parent accepted attempt 23's table, so this is unfinished, but the mechanism is new and works. **A store in the arm to an outer, addressable local also survives lim2, with no dead entry needed.** Dumps of gen_iw299 `s1` (build/iw/a24/d_s1, `cnt.py`-style count of `used` by pass):
+
+- `memset(&used, 0, 8)` keeps `used` addressable, so sra (109) doesn't take it. (gen_iw300, read through a pointer with no memset: ccp2 and sra both print `No longer having address taken`, sra scalarizes, arm gone. Variable index alone, gen_iw299 `n1`, the same.)
+- The load after the join isn't forwarded by FRE and is forwarded at pre (123): `_247 = used.before` is gone from the sink dump on.
+- `used.before = _242` stays in the arm through lim2 and dce4, all the way to dse3 (171). So the else edge's forwarder goes first, as with the clobber: sccp's FS2 name falls below FS1's.
+
+What it took on top:
+
+- A memset before the test stays in imgAdd: 163 lines, frame 0x10 bigger, because imgAdd isn't unswitched. dse3 removes the arm's store but not that memset, whose vdef feeds both the store and the join's PHI. In writeFsTable's unswitched copies the chain is linear and dse3 removes it (dumps). That it fails on the double use is my reading from memory.
+- A memset on the else path only (gen_iw301): imgAdd, clones and imgAddFile clean. writeFsTable 340+, in all 128 states with attempt 23's moves toggled (gen_iw302). It's the call predictor on the off & 0x1ffff test, inferred from the next line.
+- A memset on both paths (gen_iw303 `b1l`, `if (x) { memset; used[0] = x / 512; } else memset;`): **22 lines, writeFsTable only**, one compare in the optimized dump. `c1l` (`else used[0] = 0;`) 31.
+- Two climb rounds on b1l (gen_iw158 `Bt1t`, gen_iw167 `I0q`, the climb then stopped by me): **6 lines, writeFsTable**: drafts/image_write_a24_store.c, not byte-identical, pin still in. Its own diff says what's left.
+
+Shape: both entries of used[] can be real: `used[1] = pages; left -= used[1];` compiled the same as `left -= pages;` in gen_iw301 (`k` and `l`, same line counts; not re-run on the 6-line draft, and the draft still has the unused entry). The memset on both arms is what no one would write; a helper called in both arms wasn't tried. If the 0 entry ever needs replacing, continue from here: `python tools/wip/dehint/iw20climb.py tools/wip/dehint/drafts/image_write_a24_store.c build/iw/a24/n_st 100 303 4 6`.
+
+Also on this route: gen_iw296 (offset through its own PHI, `u = 0; if (x) u = x;`): the dead PHI is hoisted as a COND_EXPR and takes its args along, so the arm is emptied. gen_iw297 is under pin_t below.
+
+Update to the "Not landed" line after attempt 23: the user accepted the dead 0 (2026-11-04), so that draft is now src/image_write.c with a TODO comment, and the draft is removed. It still counts as a trick: 2 tricks, the pin on `t` and the dead entry. The optimize attribute is gone.

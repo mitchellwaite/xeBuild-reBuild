@@ -262,9 +262,13 @@ order).
   pin modifies `len` (ipa-cp can't specialise a modified parameter).
 - `pg = start * 32;` in imgAdd's inner loop keeps the off-0 clone's ipa-cp
   evaluation over 500, and reassoc folds it back into the same code. The SSA
-  names recycled by `small`, `blk`, the `pages` spellings and writeFsTable's
-  `len` set the compare operand orders in the clones and inlined copies
+  names recycled by `small`, the `pages` spellings and writeFsTable's `len` set
+  the compare operand orders in the clones and inlined copies
   (tools/wip/dehint/notes/image_write.md).
+- imgAdd's `used[2]` table has a dead `0` entry, accepted for now and marked
+  `TODO`. Its scope clobber keeps the nonzero arm in the CFG past lim2, which
+  gives unswitch the empty forwarder that orders sccp's names for writeFsTable's
+  FS loop exits. It replaced `optimize("no-tree-scev-cprop")`.
 - Spare byte 12 is a bitfield (`struct spt`: 6-bit type, 2 bits of ECC), as the
   older Linux build's stores suggest. It emits the same read-modify-write as a
   byte mask, but with no load in gimple, so imgAdd's SSA numbers all move.
