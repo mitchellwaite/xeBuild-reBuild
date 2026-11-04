@@ -691,3 +691,49 @@ Scripts: iw13x64.py, iw13cmp.py, iw13an.py, gen_iw199-212. Bases in build/iw/a13
 Lesson: **the Linux build settled in one read what five attempts of arithmetic hadn't.** A helper in our source that the older build lacks is suspect, and a store that reads as a bitfield write is one. Test a claim in a source comment before building on it: imgWriteHdr's comment said the plain call couldn't inline, and the plain call matches. I didn't work out why it inlines there.
 
 Landed after attempt 13: drafts/image_write_nohdr.c is now src/image_write.c (imgWriteHdr gone, still 6 tricks, full build matches), so the draft is removed. Treat "src + nohdr" above as plain src; nohdr.py is only needed for older near drafts.
+
+## Attempt 14
+
+Written as I go. New tools in tools/wip/dehint: `iw14names.py <file.c> [fn] [-p pass]` (per tree pass, SSA versions that appear and go; dumps in build/iw/a14/nm_<name>), `iw14pop.py <dumpdir>` (every name ivopts takes, per candidate, with what it held before), `iw14def.py <dumpdir> <n>...` (one version's definition per pass), `iw14gap.py <dumpdir>` (versions in no dump), `iw14rejudge.py <base> <log> [cap] [first] [last]` (reruns old generators on a new base by total lines, dropping options that don't apply, dedupes, logs `WF0` for any state with writeFsTable clean and saves it as build/iw/a14/wf0_*.c), gen_iw214-217.
+
+### Where ivopts' names come from (checked with dumps)
+
+- **The versions "in no dump" are virtual operands.** Default dumps hide `.MEM_n`. With `-fdump-tree-oaccdevlow-vops`, near13's 352, 372, 373, 374, 376 are VDEFs (372-374: `s[9] = xb.spare9`, `s[8] = xb.spare8`, `s[7] = xb.spare7` in the second copy; src's 389-391 are the same three stores). So **the reference's big-copy increment `ivtmp.430_391` is the name of src's dead `s[7] = xb.spare7` store**, and the next pop `ivtmp.430_279` is that store's load (`_279 = xb.spare7`). In near13 the increment is `_158 = start + i` from the big copy's FS chain and the bound `_212 = _37 & 511`.
+- High versions match across drafts at a fixed offset (near13 n = src n + 17), so the two have the same stores, in a different stack order: src pre takes pair 2 (390, 278), ivopts gets pair 1 at position 7-8 and pair 3 at 14-15. near13 pre takes pair 3 (374, 264), ivopts gets 372 at 9 and pair 2 (373, 263) at 17-18. The increment of the big copy is position 14 (three candidates from iw14pop.py: PHI, increment, init; bound after).
+- The sequence isn't monotonic in release order, so I read it as passes taking names and releasing them again inside themselves (vect, cunroll), which reorders the stack. That part is inference; I couldn't read the pop order directly and iw14pop.py's order inside a candidate is assumed from what the dumps show. It means counting by hand doesn't predict a flip.
+- `tail && pad == 1` and `pad == 1 && tail` both give the same result, as gen_iw44's old note suspected: **the big copy's compare is right there**, writeFsTable 6 (bb16's split-paths copy and the outer compare wrong instead). The front end folds them to one `&` branch, so imgAdd has one branch where the reference has two: 571 lines. It's evidence that spending a few more names in imgAdd's pad code moves this compare, nothing more.
+- Checked in the gimple dump: `pad == 1 && tail` is `D = pad == 1; E = tail != 0; F = D & E; if (F != 0)`, the nested form is two `if`s.
+
+### Tried on the family (totals; base 2 lines unless noted)
+
+- **drafts/image_write_a14.c = near13 with `fsTable[blk - xb.fsStart]` for `fsTable[-xb.fsStart + blk]`: same 2 lines, one borderline spelling gone.** Would be 4 tricks. Linux has `mov eax,ebx; sub eax,[fsStart]`, so this is the real form. `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a14.c -np`.
+- `setBeU16(blk, ...)`, which Linux shows (`movzx edi,bx`): 48 lines, writeFsTable only, stack slots shift by one (build/iw/a14/a14_t0.c). `off >> 14` stays as the one spelling there with no reason but the result; compare still wrong with it.
+- gen_iw214: FsPageCount, FsSize and pages forms (5 pages x 7 left/count x 4 store orders x st0 x t0, 560): floor 2. `left` as the free count first (`c1`), reusing `pages` (`c2`, `c3`, `c4`), or `pages` holding the 256 part (`c5`) don't flip it. c3, c4: imgAdd 2 more. `(len + 511) / 512` is worse.
+- gen_iw215: type-arm shapes (order, `||` form, `goto`, where s[5] goes, small arm order, 64): floor 2. Swapped arms: imgAdd 66. `s[2]` before `s[9]`: 8. Worth knowing: `continue` for `if (type == '0')` in the small arm is the same bytes (`s3`).
+- gen_iw216: writeFsTable's length (`p - buf`, a running size, `i << 10`, 0x4000 in a variable, 88 with attribute on/off): floor 2, or 6 with the attribute off, same as `i * 0x400`. Nothing tells the attribute apart from the spelling of i.
+- gen_iw217: pad forms that keep two branches (`int zero = ...`, `s2`, `s3`, 19): those keep 2. The rest lose the two branches or the order: 150 to 1214. `if (tail) if (pad == 1)`, Linux's order: 662, imgAdd's test order is pad first.
+- gen_iw218: the block offset as one local (`bo` or `pg` = off & 0x1ffff; place x partial's form, 40): in the arm or at the use, 2; at the top of the page loop, 12. A value at the head or per block: 227+.
+- gen_iw219: FS chain as one store (ternary, `v` local, `k` local, `SWAP16(cond ? next : k + 1)`, 12): 128 at best.
+- **iw14rejudge.py over gen_iw1-213 on a14** (cap 120 per generator, repeats skipped; log build/iw/a14/rj2.log; a first pass on near13 at cap 150 stopped around gen 165 with no hit): nothing at 0. Of the generators with something that ran, 81 had a best of exactly 2, none below. It's a sample where a generator has more than 120 combinations, not exhaustive. **Only 4 states have writeFsTable clean, all from other families:**
+
+| State | Change | Total | Why it can't land |
+|---|---|---|---|
+| gen_iw100 `m+pb` (same as gen_iw218 `ms+aa`, `for+aa`) | `partial = type != 0 && type != '0' && len < 0x4000` + block offset as a local before the arms | 122: imgAdd 100, imgAddFile 22 | Tail tested before pad and registers rotated in imgAdd. This is `&&` partial's old cost (attempt 8). gen_iw217 on it doesn't fix the order: 122 floor |
+| gen_iw52 `v9` (`fsTable[..] = cond ? a : b`) | one store in the FS loop | 128: constprop.2 104, constprop.1 6, imgAdd 8 | constprop.2's loop has a `cmov` and isn't unswitched. Real structure wrong: the reference has two stores |
+| gen_iw147 `e03`, `x03` | a dead test on `len` in imgAdd's FS section | 140, 150 | new dead test; imgAddFile 114 |
+
+So the compare can flip, and every way found so far costs more elsewhere. `&&` partial reads best of them and Linux's `setne, setne, and, setbe, and` doesn't argue against it, but that's gcc 4.9 and it folds to `&` anyway.
+
+### Attempt 14 result: NO MATCH
+
+No byte-identical state under 6. `iwlib.py src/image_write.c -np`: IDENTICAL. Closest: drafts/image_write_a14.c, would be 4 tricks (pin_t, pin_hdr, optimize, xmalloc), plain -O3, 2 lines (`cmp esi,edx` vs `cmp edx,esi`, writeFsTable's big copy). No pin_t, pin_hdr or optimize work beyond what's above, since the compare didn't yield; re-read Linux's finalizeImage and got nothing usable for pin_hdr. src-side check: `gen_iw201` forms without pin_t on src: none under 7.
+
+Next:
+1. Read the stack as far as it's readable: iw14pop.py on a14 against src. Target is any high VDEF name or later-released name at the increment's place (position 14). Names from the dead `xb.spare*` arm are the candidates, because that's what src has there.
+2. Why does pre take pair 2 in src and pair 3 in near13? `pre new 18` vs `19` is the one count that differs in the table. A difference in what PRE inserts in imgAdd's copies, rather than in what's released, hasn't been looked at.
+3. `&&` partial is the only natural state with writeFsTable clean, so its imgAdd cost (pad and tail order, registers) is the thing to understand. It hasn't been looked at since the name-stack reading.
+4. Don't retry: spellings of FsPageCount, FsSize, left and pages (214), type-arm shapes (215), length spellings (216), pad forms (217), one store in the FS loop (219). Rejudging older generators on this family (rj2.log).
+
+Reproduce: `python tools/wip/dehint/iw14names.py <file> writeFsTable -p ivopts`, then from build/iw/a14 `python ../../../tools/wip/dehint/iw14pop.py nm_<name>`. For VDEFs: compile with `-fdump-tree-oaccdevlow-vops`. `python tools/wip/dehint/iw14rejudge.py tools/wip/dehint/drafts/image_write_a14.c build/iw/a14/rj2.log 120` took under 40 minutes with 4 threads. Scratch bases in build/iw/a14: pa.c, pb.c (`&&` pad), foraa.c, v9.c, c1.c (if/else calls, 50 lines: slots and block order).
+
+Lesson: **`.MEM` names share the SSA counter and the free list, and default dumps hide them.** A "name in no dump" is usually a store. A store dead in one inlined copy can name a loop variable in the other, so what's dead in a copy matters as much as what's live.
