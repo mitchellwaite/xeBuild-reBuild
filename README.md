@@ -75,16 +75,16 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. filelist_ini</b>: 9 tricks, hard</summary>
+<summary><b>1. filelist_ini</b>: 5 tricks, hard</summary>
 
-- 7 dead tests in `parseIni`, whose freed SSA names set compare order and pseudo
+- 4 dead tests in `parseIni`, whose freed SSA names set compare order and pseudo
   numbers
-- 2 dead `key == NULL` tests, in `findKey` and `iniU32Invalid`
+- 1 dead `key == NULL` test in `findKey`
 
-All 9 are plain C, with no `__builtin` or `asm` left, but they're still hints.
-Their effects are indirect, and each source change disturbs the rest: the number
-of stores in a dead test matters too, and few combinations match. With fewer
-dead tests in `parseIni`, the closest so far is 4 lines off.
+All 5 are plain C, with no `__builtin` or `asm` left, but they're still hints.
+Their effects are indirect, and each source change disturbs the rest: where a
+dead test sits matters, and only 1 of 568 placements fixed `parseIni`'s last tie.
+Without any test, `findKey` is 73 lines off.
 
 </details>
 

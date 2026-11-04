@@ -204,99 +204,18 @@ void checkFileCase(void)
 		fixFileCase();
 }
 
-/* read the file list ini: the files for this build type, the bootloaders'
-   names and crcs, [rawpatch], [flashfs] and [security].
-   gcc emits a function's literals in expand-time block order, so the
-   original's .rdata order shows its shape: each section is tested for
-   success with the error in the else, and so are its length checks. */
-uint32_t parseIni(char *path)
+/* the files this build type uses.  Called once, so inlined after parseIni's own names are
+   numbered, and that placement sets the compare operands and copy orders further down
+   (notes/filelist_ini.md).  The test comes first in the body so that xb.nFiles is numbered
+   before i, which gives this loop's `cmp [nFiles],edi` */
+static void setupFiles(void)
 {
-	FILE *f;
-	unsigned char *buf, *p;
-	int size, off, end, pos, len, nul, comma, n, i, nbl;
-	uint32_t noCrc;
+	int i;
 	struct fileent *e;
-	char *s;
-	uint32_t crc;
-	char label[50];
-	char tmp[0x400];
 
-	log_printf(1, "\n------ parsing ini at '%s' ------\n", path);
-	f = fopen(path, "rb");
-	if (f == NULL) {
-		log_printf(0, "\n******* ERROR: could not open '%s'\n", path);
-		return 0;
-	}
-	size = getFileSize(f);
-	buf = malloc(size + 1);
-	if (buf == NULL) {
-		log_printf(0, "******* ERROR loading %s, unable to allocate memory\n", path);
-		return 0;
-	}
-	fread(buf, size, 1, f);
-	fclose(f);
-	if (buf[0] == 0xff || buf[1] == 0xff) {
-		log_printf(0, "\n\n***** ERROR: File descriptor ini %s\nappears to be a multi byte file, not an ascii only file!\n", path);
-		free(buf);
-		return 0;
-	}
-	buf[size] = 0xff;
-	size = iniPreParse(buf, size);
-	buf[size] = 0;
-
-	/* [version] */
-	off = memFindStr(buf, size, "[version]", 1);
-	if (off != -1) {
-		memset(xb.kernelStr, 0, sizeof(xb.kernelStr));
-		len = memFindChar(&buf[off], 0, sizeof(xb.kernelStr));
-		if (len == -1)
-			len = sizeof(xb.kernelStr) - 1;
-		strncpy(xb.kernelStr, (char *)&buf[off], len);
-		log_printf(1, "ini version %s\n", xb.kernelStr);
-		if (xb.type == BUILD_JTAG) {
-			xb.nFiles = 19;
-			blOrder = blJtag;
-			nbl = 9;
-			sprintf(tmp, "%s_jtag_%s.bin", xb.kernelStr, xb.outName);
-		} else {
-			if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
-				xb.nFiles = 11;
-				blOrder = blDevk;
-				sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
-			} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
-				xb.nFiles = 12;
-				blOrder = blTestk;
-				sprintf(tmp, "%s_testk_%s.bin", xb.kernelStr, xb.outName);
-			} else {
-				xb.nFiles = 14;
-				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
-					blOrder = blDevgl;
-					sprintf(tmp, "%s_devgl_%s.bin", xb.kernelStr, xb.outName);
-				} else {
-					blOrder = blRetail;
-					if (xb.type == BUILD_RETAIL)
-						sprintf(tmp, "%s_retail_%s.bin", xb.kernelStr, xb.outName);
-					else if (xb.glitch2mfg)
-						sprintf(tmp, "%s_g2m_%s.bin", xb.kernelStr, xb.outName);
-					else if (xb.glitch2)
-						sprintf(tmp, "%s_g2_%s.bin", xb.kernelStr, xb.outName);
-					else
-						sprintf(tmp, "%s_gg_%s.bin", xb.kernelStr, xb.outName);
-				}
-			}
-			nbl = 6;
-		}
-	} else {
-		log_printf(0, "\n******* ERROR: could not find label [version] in file list ini\n");
-		free(buf);
-		return 0;
-	}
-	xb.nFlashFiles = xb.nFiles - 2;
-	strcpy(xb.outName, tmp);
-	checkFileCase();
-
-	/* the files this build type uses */
-	for (i = 0; i < xb.nFiles; i++) {
+	for (i = 0; ; i++) {
+		if (i >= xb.nFiles)
+			break;
 		e = &xb.files[i];
 		if (xb.type == BUILD_JTAG) {
 			e->type = locJtag[i].type;
@@ -377,6 +296,99 @@ uint32_t parseIni(char *path)
 		}
 	}
 
+}
+
+/* read the file list ini: the files for this build type, the bootloaders'
+   names and crcs, [rawpatch], [flashfs] and [security].
+   gcc emits a function's literals in expand-time block order, so the
+   original's .rdata order shows its shape: each section is tested for
+   success with the error in the else, and so are its length checks. */
+uint32_t parseIni(char *path)
+{
+	FILE *f;
+	unsigned char *buf, *p;
+	int size, off, end, pos, len, nul, comma, n, i, nbl;
+	uint32_t noCrc;
+	char *s;
+	uint32_t crc;
+	char label[50];
+	char tmp[0x400];
+
+	log_printf(1, "\n------ parsing ini at '%s' ------\n", path);
+	f = fopen(path, "rb");
+	if (f == NULL) {
+		log_printf(0, "\n******* ERROR: could not open '%s'\n", path);
+		return 0;
+	}
+	size = getFileSize(f);
+	buf = malloc(size + 1);
+	if (buf == NULL) {
+		log_printf(0, "******* ERROR loading %s, unable to allocate memory\n", path);
+		return 0;
+	}
+	fread(buf, size, 1, f);
+	fclose(f);
+	if (buf[0] == 0xff || buf[1] == 0xff) {
+		log_printf(0, "\n\n***** ERROR: File descriptor ini %s\nappears to be a multi byte file, not an ascii only file!\n", path);
+		free(buf);
+		return 0;
+	}
+	buf[size] = 0xff;
+	size = iniPreParse(buf, size);
+	buf[size] = 0;
+
+	/* [version] */
+	off = memFindStr(buf, size, "[version]", 1);
+	if (off != -1) {
+		memset(xb.kernelStr, 0, sizeof(xb.kernelStr));
+		len = memFindChar(&buf[off], 0, sizeof(xb.kernelStr));
+		if (len == -1)
+			len = sizeof(xb.kernelStr) - 1;
+		strncpy(xb.kernelStr, (char *)&buf[off], len);
+		log_printf(1, "ini version %s\n", xb.kernelStr);
+		if (xb.type == BUILD_JTAG) {
+			xb.nFiles = 19;
+			blOrder = blJtag;
+			nbl = 9;
+			sprintf(tmp, "%s_jtag_%s.bin", xb.kernelStr, xb.outName);
+		} else {
+			if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
+				xb.nFiles = 11;
+				blOrder = blDevk;
+				sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
+			} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
+				xb.nFiles = 12;
+				blOrder = blTestk;
+				sprintf(tmp, "%s_testk_%s.bin", xb.kernelStr, xb.outName);
+			} else {
+				xb.nFiles = 14;
+				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+					blOrder = blDevgl;
+					sprintf(tmp, "%s_devgl_%s.bin", xb.kernelStr, xb.outName);
+				} else {
+					blOrder = blRetail;
+					if (xb.type == BUILD_RETAIL)
+						sprintf(tmp, "%s_retail_%s.bin", xb.kernelStr, xb.outName);
+					else if (xb.glitch2mfg)
+						sprintf(tmp, "%s_g2m_%s.bin", xb.kernelStr, xb.outName);
+					else if (xb.glitch2)
+						sprintf(tmp, "%s_g2_%s.bin", xb.kernelStr, xb.outName);
+					else
+						sprintf(tmp, "%s_gg_%s.bin", xb.kernelStr, xb.outName);
+				}
+			}
+			nbl = 6;
+		}
+	} else {
+		log_printf(0, "\n******* ERROR: could not find label [version] in file list ini\n");
+		free(buf);
+		return 0;
+	}
+	xb.nFlashFiles = xb.nFiles - 2;
+	strcpy(xb.outName, tmp);
+	checkFileCase();
+
+	setupFiles();
 	/* [<console>bl<blSuffix>]: the bootloaders' names and crcs */
 	if (xb.blSuffix[0])
 		sprintf(label, "[%sbl%s]", consoleNames[xb.flags & CONSOLE_MASK], xb.blSuffix);
@@ -386,13 +398,6 @@ uint32_t parseIni(char *path)
 	if (off >= 0) {
 		log_printf(1, "\nini: label %s found\n", label);
 		end = off + memFindChar(&buf[off], '[', size - off);
-		/* this and the other can't-happen tests below are dead, and they steer gcc:
-		   the SSA names they free, so their stores count too, decide what dom2, dom3
-		   and vrp2 number next, which sets the comma/nul compares, the rawpatch lea
-		   and the copy order on flashfs's threaded path (notes/filelist_ini.md) */
-		if (nbl != 6 && nbl != 9) {
-			xb.nFiles = 0;
-		}
 		pos = off;
 		for (i = 0; i < nbl; ) {
 			p = &buf[pos];
@@ -452,9 +457,6 @@ uint32_t parseIni(char *path)
 
 	/* [rawpatch]: name,offset */
 	off = memFindStr(buf, size, "[rawpatch]", 1);
-	if (i < 0) {
-		xb.nRawPatches = 0;
-	}
 	if (off != -1) {
 		end = off + memFindChar(&buf[off], '[', size - off);
 		log_printf(1, "\nini: label [rawpatch] found\n");
@@ -494,6 +496,11 @@ uint32_t parseIni(char *path)
 				free(buf);
 				return 0;
 			}
+			/* this and the three can't-happen tests in [flashfs] are dead, and steer gcc: what they free
+			   sets flashfs's threaded copy order and its comma/nul compare (notes/filelist_ini.md) */
+			if (off < -1) {
+				*buf = 0;
+			}
 			if (pos >= end)
 				i = 16;
 		}
@@ -514,9 +521,6 @@ uint32_t parseIni(char *path)
 		for (i = 0; i < 256; i++) {
 			p = &buf[pos];
 			nul = memFindChar(p, 0, size - pos);
-			if (nul < -1) {
-				*buf = 0;
-			}
 			comma = memFindChar(p, ',', size - pos);
 			noCrc = 1;
 			len = nul;
@@ -528,8 +532,8 @@ uint32_t parseIni(char *path)
 				strncpy(xb.firmware[i], (char *)p, len);
 				xb.firmware[i][len] = 0;
 				if (off < -1) {
-					buf[size] = 0;
 					*buf = 0;
+					buf[size] = 0;
 				}
 				if (len > 21) {
 					s = strrchr(xb.firmware[i], '/');
@@ -538,9 +542,6 @@ uint32_t parseIni(char *path)
 					}
 					if (s == NULL)
 						s = strrchr(xb.firmware[i], '\\');
-					if (len < 0) {
-						*buf = 0;
-					}
 					s = s ? s + 1 : xb.firmware[i];
 					if (strlen(s) > 21) {
 						log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
@@ -576,7 +577,6 @@ uint32_t parseIni(char *path)
 			}
 			if (off < 0) {
 				*buf = 0;
-				buf[1] = 0;
 			}
 			if (pos >= size)
 				i = 256;
@@ -686,7 +686,7 @@ static int findKey(unsigned char *buf, const char *key)
 	unsigned char *p;
 	len = strlen(key);
 	for (i = 0; i < xb.iniSize - len; i++) {
-		if (key[0] == buf[i]) {
+		if (buf[i] == key[0]) {
 			p = &buf[i];
 			for (j = 0; j < len; j++)
 				if (p[j] != key[j])
@@ -695,7 +695,7 @@ static int findKey(unsigned char *buf, const char *key)
 				unsigned char *q = &buf[i + len];
 
 				/* defensive, and dead (key was read above): VRP removes it, and
-				   until then it sets findKey's SSA numbers in the getters */
+				   until then it sets findKey's SSA numbers in the getters (a register tie) */
 				if (key == NULL)
 					return -1;
 				if (*q != 0)
@@ -757,10 +757,6 @@ char *iniU32Invalid(const char *key)
 		return NULL;
 	off = FIND;
 	if (off == -1)
-		return NULL;
-	/* defensive and dead, as in findKey: sets the order of this function's
-	   buf[i]/key[0] compare */
-	if (key == NULL)
 		return NULL;
 	val = (char *)&xb.iniBuf[off];
 	if (val[0] == '0' && myatol(val[1]) == 'x') {

@@ -233,3 +233,49 @@ Not worth retrying: getter or iniU32Invalid shapes (normalised), any test in ini
 ### For review (not tricks, but flagged)
 
 All nine remaining tests are dead and steer gcc, and though plain C they read as defensive checks: `if (key == NULL)` after key's been read, in findKey and iniU32Invalid; `if (nbl != 6 && nbl != 9) xb.nFiles = 0`; `if (i < 0) xb.nRawPatches = 0`. The stores in their arms are chosen by count.
+
+## Attempt 4
+
+Tools: `fl4lib.py` (generator on current src: `gen(tests, secs)`, `st('nb,len')`, `nscore` = diff lines with branch targets blanked), `fl4a.py` (sections as static functions called once), `fl4b.py` (dead tests at the files helper), `fl4c.py`, `fl4d.py` (helper forms and small natural helpers), `fl4show.py`.
+
+- **Big finding: the files loop as `static void setupFiles(void)` called once: no dead test in parseIni at all, 10 lines, ties 1 and 2 right** (was 37 with no tests). Left: the files loop's own `cmp [nFiles],edi/jg` (now `cmp edi,[nFiles]/jl`), tie 3 and `cmp eax,ebx/jge` in [security]. A helper inlined at IPA gets new SSA numbers in remap order, after release_ssa, which is the free-list axis the dead tests were imitating.
+- Other section helpers (bl, raw, flash, sec, cbb), all 64 subsets: 90+ lines. Whole file's targets shift, so use `nscore`, not fllib's score.
+- **`setupFiles`' compare order is remap order.** Inlining remaps a body's names on first use in block order; the for loop's test block comes last, so `i` is seen before `_x = xb.nFiles` and the compare becomes `i < _x`. `for (i = 0; ; i++) { if (i >= xb.nFiles) break; ...` has the test first: `_x` gets the lower number, `_x > i`, as the ref. No dead tests: **6 lines**, two ties left, both in flashfs (`fl4f.py` is this base). (`i >= n`, `n <= i` and `return` in place of `break` are the same.)
+- The two left: tie 3, and flashfs's `comma < nul` (`cmp eax,ebx/jge`). `nul`'s PHI gets its number in dom3, popped from the free list (`fl4n.py` traces a number's owners): ref `_905` above comma's `i_518`; here `_124` below `i_388`.
+- From this base, 3 dead tests (`off3=2,off4=1,x=1`, `fl4k.py`): 4 lines, tie 3 right.
+- **First MATCH of attempt 4: 9 -> 6.** fl4f's base (setupFiles, test first) plus `off3=2,off4=1,x=1` and one `off < -1` from `fl4r.py` (site 62, the only one of 568 that matches). 4 tests in parseIni + `key == NULL` x2. `fl4final.py` builds and checks it.
+- **`if (buf[i] == key[0])` in findKey replaces iniU32Invalid's `key == NULL`: 9 -> 5.** `key[0] == buf[i]` needed that test for one compare's operand order; swapping the source does it (`fl4u.py`). (`flfk2.py`'s swap was tried with the unreachable there and no getter test, so it never showed.)
+
+### Attempt 4 result
+
+**MATCH, 9 -> 5.** `drafts/filelist_ini_final.c` at plain `-O3`, written and checked by `fl4final.py write` (change that, not the draft; `fl3final.py`, `flxfinal.py`, `flfinal.py` are now stale): whole object byte-identical (sha256 f27828c6...), also compiled separately against `build/obj/filelist_ini.o`, all six sections compared. `sh build.sh` not run.
+
+- **Gone (4 net):** `nbl`, `i < 0`, `nul < -1`, `len < 0` in parseIni, and `key == NULL` in iniU32Invalid. One test added in `[rawpatch]`, so parseIni's 7 tests became 4.
+- **What did it:**
+  1. The files loop as `static void setupFiles(void)`, called once. IPA inlining gives it numbers after everything of parseIni's (compacted by release_ssa), so parseIni's later names change. **Before IPA, forms are normalised; after it, they aren't: that's why helpers reach what initialisers and temporaries never did.** Alone, no tests, 37 -> 10 lines. Ties 1 and 2 need no test now.
+  2. `for (i = 0; ; i++) { if (i >= xb.nFiles) break;` (10 -> 6). Inlining remaps a body's names by first use in block order; test-first puts `_x` before `i`, and the compare's operands are ordered by version. So **a helper's loop form sets its compare order, and spelling doesn't.**
+  3. `if (buf[i] == key[0])` in findKey: drops iniU32Invalid's test. Direct: `fl4u.py`. Attempt 3 never tried it with this tail test.
+- **Left (5), all dead tests:** `off < -1` before rawpatch's `if (pos >= end)`; in flashfs `off < -1` before `if (len > 21)` (off3, 2 stores), `off < -1` after the first strrchr (off4), `off < 0` before `if (pos >= size)` (x); `key == NULL` in findKey's tail.
+
+How the two remaining parseIni ties work (`fl4o.py <tag> <pass>`, `fl4n.py <tag> <names>` on `flpass.py` dumps):
+- flashfs's `comma < nul`: dom3 pops `nul`'s PHI name from the free list. Pop list at dom3 here: 266 875 873 862 854 846 844 812 807 **124** 746 735 ...; ref: 5 866 865 863 849 798 498 786 785 **905** 782 ... Comma is `i_388`, so `nul` needs a number above 388: the slot itself holds the one low number. Either neighbour (807, 746) would do, so **one pop more or fewer before it, or `_124` elsewhere in the stack, fixes it**. `_124` was `off_124` of the bl section's memFindStr (freed at ccp2, reused by vrp1, ch2, laddress as rawPatch's `_844 * 1028`, freed by ivopts).
+- Tie 3: `len_797 noCrc_796` at flashfs's join, ref `len_761 noCrc_837`: dom2 pops them across a seam in the stack, so the same sort of position.
+
+Failed, with miss sizes (nscore, branch targets blanked):
+- Sections as called-once helpers (`bl`, `raw`, `flash`, `sec`, `cbb`; `fl4a.py`, 64 subsets, `free(buf); return 0` inside): 90+. `flash` gets tie 3 right, but the frame and registers change throughout. `E`, `S`, `P`, `L` forms of the files helper (a helper per entry, for the switch, for the table lookup; `fl4c.py`): 400+. Only the whole loop works.
+- Small helpers at the base (`fl4d.py`, `fl4m.py`: `iniFail`, `copyName`, `crcValue`, `fieldLen`, `sectionEnd`, `baseName`, `nameTooLong`, `dropDigit`, `setKernelStr`, `blLabel`, `setCbb`, `loadIni`, `preParse`, `setOutName`; subsets per section, 900 samples): floor 6, none fixes either tie. `iniFail`, `setOutName`, `dropDigit` and sect=s are transparent. Best moves: pre, sect=b 8 lines.
+- Natural flashfs, rawpatch, bl forms (`fl4q.py`): most transparent; `strlen` 8, `nfw` 10; nothing below 6.
+- Dead tests at the base: subsets and arms (`fl4b.py`, `fl4g.py`, `fl4k.py` 1500, `fl4p.py` 2200 with helpers): best 3 tests, 4 lines, then only one site of 568 fixes the last tie (`fl4r.py`). Random pairs at statement sites (`fl4s.py`, 2500): floor 6. All four tests are needed at this shape (`fl4x.py`, 256 arm sizes, subsets).
+- findKey with no test: 73 with `buf[i] == key[0]` (`fl4w.py`: helper for the match, `keyAt`, `hasValue`, sized wrapper, `off` locals are all transparent, the same 73). Tail tests that match: `key == NULL`, `len < 0`, `i < 0`, `xb.iniSize == 0`, `buf != xb.iniBuf`; so the class is "dies early", with the test's own names doing the work. Test-first loop in findKey is transparent with a test, worse without.
+
+### Next
+
+1. The `_124` slot: shift dom3's pops by one before flashfs's `nul`, or change what's freed around ivopts, with something natural. `fl4o.py` compares stacks directly, so a candidate can be judged by its pop list rather than its diff.
+2. More called-once helpers that are whole loops, like setupFiles: only that form kept the shape. Candidates: the rawpatch entry loop's body, the search of `[security]` with arguments, or the first part of `[version]`. Look at why `raw` is so far off (frame layout, `tmp` passed in?) before writing them off; `tmp` local in the helper is untried, and so is keeping `free(buf)` in the caller.
+3. Test-first loops in bl, raw, flash and sec are live forms of the same kind, but not useful unless the loop is in a helper, since parseIni's own names are numbered otherwise.
+4. findKey's last test: it needs a natural statement that dies early and shifts the names. No candidate yet.
+
+### For review (not tricks, but flagged)
+
+- `setupFiles` is natural; its `for (i = 0; ; i++) { if (i >= xb.nFiles) break;` is a little unusual, though live. It's the kind of helper that could exist in the original: findKey and `checkFileCase` already do. Its loop form is there for operand order, so it's steering, not uncounted by accident.
+- The five tests still read as defensive checks but steer gcc, and their positions and store counts matter: `off < -1` can't happen, since `off != -1` and off comes from a search.
