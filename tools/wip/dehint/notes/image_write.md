@@ -1499,3 +1499,44 @@ Also on this route: gen_iw296 (offset through its own PHI, `u = 0; if (x) u = x;
 Update to the "Not landed" line after attempt 23: the user accepted the dead 0 (2026-11-04), so that draft is now src/image_write.c with a TODO comment, and the draft is removed. The optimize attribute is gone. See the counting rule below.
 
 Counting rule from the user (2026-11-04): an array longer than it needs to be is not a trick; land it with a TODO comment explaining it. So src is at 1 trick, the pin on `t`, and `used[2]`'s 0 isn't counted. Other dead code still counts.
+
+### pin_t on the landed src (attempt 24, after the plan change)
+
+Base: src/image_write.c as landed (dead 0 table, no optimize). build/iw/a24/np.c = src minus the pin = drafts/image_write_a24.c, 10 lines, imgAdd only, the same two slots as ever. `iw18freq.py`: t 95 (bb 64, 657, 243), the flag `_272` 96 (bb 64, 900); with the pin t 140. Nothing moved by the table.
+
+Frequencies at profile_estimate (`-fdump-tree-fnsplit-blocks-details-all`, imgAdd): page loop head 10000 (hottest), body 9100, big and small arms 4550, their `type > 1` arms 3322, `type != '0'` arm 2391, table arm 830, k head 2491 (830 * 3), block loop's flag test 900.
+
+**New lever: an over-long table's loop can rescale a whole function.** The user allows over-long arrays. A table loop's head is the block's frequency times n + 1 at profile_estimate, and estimation normalises to the hottest block, so a head above 10000 lowers every frequency in imgAdd, and rounding lands elsewhere. The arithmetic: F = 900 * 10000 / hottest, t >= flag when F's split doesn't carry. Measured:
+
+| Generator, state | Hottest (computed) | F, t v flag (iw18freq) | Result |
+|---|---|---|---|
+| gen_iw307 U3, table on s[8] in the small arm | 9564, no rescale | unchanged | imgAdd 10, writeFsTable 33, clones clean |
+| gen_iw305 / 307 **U4**, `part[4]` on s[8] | 11955 | **F 753: t 80, flag 80, t in the right slot, no pin** | 571: imgAdd 25, .1 178, .2 84, .4 238, imgAddFile 10, writeFsTable 22, rest followers, .rdata differs (not looked at) |
+| gen_iw308 n10, `part[10]` on `type == '0'`'s path | 10241 | F 880, 642 + 238: t 93, flag 94 | 678: .1 216, .4 315, .2 clean, imgAdd 46 |
+| gen_iw304 n3..n11, the existing table longer | below 10000 | unchanged | imgAdd 10 throughout; n7 14 lines |
+| gen_iw304 n12+ | 10790, F 834 | arithmetic says 82 v 83 | 525+ |
+
+So the pin's slot can be fixed with no pin, for one F measured so far, **and the cost moves to the clones**: U3 has them clean and U4 doesn't, so that's the rescale, not names. drafts/image_write_a24_rescale.c is U4, kept as the probe. In .1 at r = 1.024 it's block order near the top (`je`/`jne` on the first test), in .2 at U4 a register swap. Why those move at so small an r isn't traced; I'd guess absolute frequency thresholds in bb-reorder and IRA's rounding (inferred). Clones share imgAdd's profile because they're copied after estimation, so I see no way to rescale imgAdd alone. Not climbed: 500 lines of clones aren't compare order.
+
+Ruled out on this base:
+
+- A table inside partial's arm, gen_iw306 (`part[n]` over the page count, n 2..11): I hoped unrolling would leave the arm's edge off 657. It doesn't: t stays 95 on b2 and a7 (`iw18freq`), and imgAdd is 97+ lines because the npages arm's no longer the plain shape.
+- Direct branches instead of the flag, gen_iw297: `if (small > 0 && len < 0x4000)` (c3, c4) gets the slots right with imgAdd 4, but imgAddFile 126, the P floor again. P there is .73 * something, so it can't reach .556, and .73 * .73 is .533 (arithmetic, not probed). c6 keeps the 10 lines.
+- Other predictors: `continue`'s PRED_CONTINUE I didn't test; from memory its hitrate lands off the grid anyway.
+
+Why a third reference isn't reachable (reasoned from the IRA dump, nothing compiled): t's refs are insn 182 (the def, `plus:QI`), and the two `cmp` at 657 and 243. All of bb 19's defs are in one straight block in the reference, so t and the flag can't get different def frequencies, and the flag's insn 205 is already the merged `and` + compare.
+
+Next:
+
+1. Rescale route: look at why .1 and .4 change at r = 1.024. If it's one threshold, a table elsewhere with another F may pass it. Valid F: `python -c` on floor(a/10) + floor(b/10) >= floor(F/10), a = round(.73 F), b = F - a. Blocks offering hottest just above 10000 are few: 931 * 11, 830 * 13, 2391 * 5, 2275 * 5. Note the 880 row: my computed 879 was off by 1 and that decided it, so compile rather than trust the arithmetic.
+2. An over-long table in imgAddFile only can rescale imgAddFile without touching the clones. That doesn't change the ratio `_45` v npages at P 50 (margin 5, attempt 21) except through rounding. Not compiled.
+
+Don't retry: table inside partial's arm (gen_iw306), `{ x / 512, pages }` (gen_iw298), memset before the test for the store route (gen_iw299).
+
+Reproduce: `IWB=build/iw/a24/np.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw30N.py -n 40 -t 4` for N = 4..8, 297 the same. `python tools/wip/dehint/iw18freq.py <file> imgAdd <t regno> <flag regno>` for the slots. `python tools/wip/dehint/iw24cnt.py <dumpdir> <fn> <regex>` counts matching statements by pass. The GCC source wasn't fetched.
+
+### Attempt 24 result: NO MATCH
+
+1 trick stands (the pin; the over-long table isn't counted). `iwlib.py src/image_write.c -np`: IDENTICAL. Closest pinless by lines: drafts/image_write_a24.c, 10 lines.
+
+Lessons: **an escape through a heredoc cost a run; CLAUDE.md says so.** **Scope a generator's search string:** `for (k = 0; k < 2; k++)` also matched finalizeImage's loop and 300 lines of the first sweep were that. **Separate rescale from names by probing just below the threshold** (U3 v U4).
