@@ -571,3 +571,65 @@ Next:
 Scripts: `iwsweep.py gen_iw179..191.py` (`IWB=` other base; gen_iw183, 184 use the probe flag), bases in build/iw/a11: g0 = 183 `P1+G`, g1 = 184 `nopin+ui` (finalizeImage's `t` reverted to uint8_t by hand; no effect on bytes), g2 = 185 `e1`, g3 = near11, et1 = gen_iw177 `et1`, et1p = et1 with the plain spare test, tr.py <file> (bbro traces for imgAddFile, run from build/iw/a11).
 
 Lessons: **a probe flag that removes one known difference (`--param inline-min-speedup=11`) lets a sweep see the state underneath: this family had been discarded for its 89 inline lines.** And big_speedup is a ratio, so the caller's own time is a lever: statements in another inlined callee can stop an inline without touching the callee in question.
+
+## Attempt 12
+
+Written as I go. New tools (repo root): `iw12blocks.py <file.c> <pass> [fn] [flags]` (one line per block: freq, successors with probability), `iw12arms.py <file.c> [fn]` (profile_estimate's predictions per block), `iw12slotfreq.py <file.c>` (slot lines and, per stack slot, its memory refs with block freqs and the REG_FREQ total; `IWFN=` other function), `iw12probe.py <base.c> [big|fits|raw1|outer|inner|partial]` (expect + param grid on one branch; edit GRID), gen_iw192-195.
+
+### imgAddFile's slots, in numbers
+
+- `iw12slotfreq.py` on near11: off+len (r136) refs: head 386, 97, 26, 89: REG_FREQ 38 + 9 + 2 + 8 = 57. npages (r163): 81, guard 450: 8 + 45 = 53. src: npages 8 + 63 = 71. The higher total gets the earlier slot; a tie goes to the lower regno, r136. So npages needs +5.
+- The ratio doesn't depend on the 10000 anchor: scaling inner loops moves both sides. What moves it: P(partial), or the head relative to the big copy (joint P(fits) x P(big)), or the outer loop's iteration count.
+- **New probe result: P(big) in imgAddFile, `if (!xb.bigBlock)`, at 57, 58, 59, 60 (expect + param, `iw12probe.py near11 big`) puts imgAddFile byte-right: only writeFsTable 8 left.** At 56 the slots are still swapped (head 345, 34 + 9 + 2 + 8 = 53, tie, regno loses); at 61 the error block leaves bbro's round 1 (head 317, error 158 < 158.5, a rounding), 62: 111, 65: 55, 70: 69, 80: 111.
+- P(fits): 51-53 stays 12, >= 54 costs the error block's place (52+); that's attempt 11's head/2 rule. So the lever is P(big) alone, and the target is 57..60 with no flag.
+
+### Getting P(big) into 57..60 without a flag: what's been ruled out
+
+Available hitrates (profile_estimate dumps): call 71, early return 61, opcode nonequal 72, opcode positive 73, pointer 85, negative return 96; a combination DS(a, b) has to land in .57-.60. Nothing natural does:
+
+- **Early return (gen_iw192).** `if (!xb.bigBlock) { imgAdd; nFsFiles++; return; } imgAdd; nFsFiles++;` (`e1`): 50%: predictors fire on both arms (dump shows 61 and 39) because a block only escapes the heuristic if it's the one right before the return block, and the log arm sits there. Reordering so that big falls into the return block puts the log arm under the heuristic, P(fits) 61, which loses the error block's place (attempt 11). A static helper holding the two calls (`h1`, `h2`, 67 lines): the helper itself gets P(big) 61, but then imgAddFile's fits arm is a single block and it's the one with the early return: P(fits) 39, head 406. And 61 itself is above the window (head 317, error 158).
+- **Dead null test in the big test (gen_iw194, gen_iw196: 104 forms; a dead test local to imgAddFile, which would be net -1).** The null test on `time` or `name` dies at VRP after the dereference and the predictor fires at profile_estimate, so the mechanism works, and the error stays local. Shapes `a && b` / `a || b` change PRED_CALL too: read from the dumps, test1's edge to the second test gets 71 and the second test gets one call 29 combined with its own predictor. D1 `!big && time`: test2 DS(85, 29) = 69.8, P(big) .504. D3 `time && !big`: test1 93.3, test2 29, P(big) .73, head 265. So P(big) = 1 - .71 x DS(.29, x). To land in the window x would need .76-.79; the ones available give .504 (85), .636 (72), .627 (73). No hit, best stays 12 (gen_iw196's shapes A-M x 8 conditions, including a dead return in either arm and a dead arm with a call).
+- `__builtin_expect` at its default 90: as x in the same formula, P(big) .558 (`if (xb.bigBlock && X)`): head 346, 34 + 9 + 2 + 8 = 53, a tie, and regno favours r136. Not run: computed only.
+
+### Other levers on the slots, ruled out
+
+- **An asm on npages in imgAdd (gen_iw195), net -1 if it replaced lnp2 and pin_t:** best 50 (imgAdd 28, imgAddFile 14). Other positions 600+.
+- **Dead `break` in the outer loop for a second exit (gen_iw197):** 676+, the clones go. Don't retry.
+- **Partial's own forms (gen_iw193, 64: S1-S12 x `if` spelling x pin):** none flips the slots. I read one by dump, S10: its guard is still 450 (bb19 50%). `small = type != 0 && type != '0'; partial = small && len < 0x4000;` (`S2`) ties near11 at 20 and may read better than the `&` chain. `&&` forms keep imgAdd at 102+, as attempt 8 said; imgAddFile 22 (slots plus a compare), writeFsTable 4.
+- **Family A (`if (partial > 0)`, pin kept) as a one-trick reduction:** build/iw/a12/A.c: imgAddFile 114, writeInitialHeader 93 (the inline is back), writeFsTable 4. gen_iw192's helpers on it: 158 at best.
+
+### Other arithmetic worth keeping
+
+- `iw12slotfreq.py` with `IWFN=imgAdd`: t's slot total is 6 + floor(a/10) + floor(b/10), partial's 6 + 90. near11 96 v 96 (tie, regno favours t), near8 95 v 96. A tie needs round(900 P) to be a multiple of 10: P .5778, .5889, .6, .6222, .6333, ... of the DS values only DS(.72,.39) = .622 and DS(.73,.39) = .6335 land on one, and there's no early return on that test.
+- Head's flow to the loop: 386 x .25 = 97, x .96 x .96 (the two `return -1` tests) = 89, x .91 (the loop's entry test, from PRED_LOOP_EXIT on the copied header) = 81, x 11.1 = 900. Removing the .91 alone would tie (35 + 8 + 2 + 8 = 53), and it can't go: the reference has both entry tests.
+
+### imgWriteHdr's spelling (gen_iw198, 36: hi x lo byte)
+
+Only `p / 32 >> 8` for the high byte stops the inline; the low byte can be `p >> 5` or `(p >> 5) & 0xff` (`h0l5`, same 20 lines, reads slightly better as a byte store). Every other pair is 117 (writeInitialHeader 89). No tidier form found.
+
+### writeFsTable on near11
+
+iw7wf seed 1201 (500 s, 2376 states, attribute kept, up to 1 dead test): best writeFsTable 6, no zero: `{'base': 0, 'head': 0, 'store': 3, 'buf': 1, 'loop': 0, 'log': 1, 'tail': 0, 'cf': 0, 'lb': 1, 'ls': 7, 'dead': [(5, 3, 0)]}` (build/iw/a7/wf_1201.log; render by iw7wf's `render`). Seed 1202 (420 s, 1 worker, 660 states, attribute off): best 10. Both are short samples, not exhaustive; base imgAddFile's 12 is in their totals. As the task said, re-tune this last.
+
+### Attempt 12 result: NO MATCH
+
+Nothing identical with fewer tricks; src stays best at 6. `iwlib.py src/image_write.c -np`: IDENTICAL; reference.o identical to build/obj/image_write.o. No source draft is new: near11 stays closest (20 lines, would be 4). No image_write_a12.c because nothing verified. No background work left.
+
+| Trick | State |
+|---|---|
+| lnp2, pin_t | near11; imgAddFile is fixed by P(big) 57..60 and only that, so far as probes go; no natural or single-dead-test source reaches it |
+| dead test, optimize | writeFsTable 6 at best on near11, with both kept |
+| pin_hdr, xmalloc | not attacked this attempt |
+
+Reproduce the probe: `python tools/wip/dehint/iw12probe.py tools/wip/dehint/drafts/image_write_near11.c big` (GRID at the top of the script; at time of writing it holds a `partial` grid, set 57..60), or `python tools/wip/dehint/iwlib.py build/iw/a12/bigx.c -p 58` (near11 with `__builtin_expect(!xb.bigBlock, 0)`): only writeFsTable 8. The expect and the param are a probe, never a candidate. `partial`'s probe is noisy (the expect itself costs constprop.1 53 lines through names), so read only imgAddFile's column there.
+
+Scripts: `iwsweep.py gen_iw192.py` (early returns, helpers; `IWB=build/iw/a12/A.c` for family A), 193 (partial's forms), 194, 196 (dead test in the big test), 195 (asm on npages), 197 (dead break), 198 (imgWriteHdr's spelling). Bases in build/iw/a12: bigx.c, A.c, D1.c, D3.c, E1.c, e1.c, h1.c, s10.c.
+
+What I'd try next:
+
+1. A P(big) of 57..60 from something not in the list above. The test: `iw12arms.py <file>` for the predictions, `iw12blocks.py <file> optimized` for head (wanted 322..339).
+2. A second predictor on the dead test in `big && x`: x has to be .76-.79. DS(.85, .39) = .783 and DS(.67, .39)= .7605 would do, so a dead test that also carries an early return is the shape to think about, though it may no longer read as code.
+3. pin_hdr and xmalloc weren't touched here, and near10's blockEccOk 18 and load order (4) are independent of everything above.
+4. Don't retry: helpers holding the two calls (fits goes to 39), a second exit on the outer loop, asm on npages, partial's spellings for the guard's frequency, tidier imgWriteHdr spellings by hi and lo byte.
+
+Lesson: **grid the probe across every branch on the path, then do the arithmetic per slot.** Attempt 11 probed only `partial`; the same slot flip was available from `if (!xb.bigBlock)` with no effect anywhere else, which only the slot totals explain. Knowing the exact window also rules out whole families on paper before compiling them.
