@@ -1205,3 +1205,73 @@ Reproduce: base files are one edit from src. nopt: drop the `"g"(t)` line and it
 - `python tools/wip/dehint/iw20refs.py build/iw/a18/fq_<name> imgAddFile 136 165` for the refs, after iw18freq has written the dumps. `iw20fnx.py <dump> <dump> <fn>` diffs two optimized dumps with SSA numbers removed.
 
 Lessons: **work out the layout before naming the competitor.** Slots go out in reverse, so attempt 18's two competitors were one, and t was short by 1, from rounding. **Probe every value.** Passing at only 50, 60, 70, 80 is what showed the floors. **Check the other users of a probability**: `if (partial)` looked done until imgAddFile's slots turned out to be a second threshold. And a hill climb over the old generators needs a dead-test filter: many of their options are dead arms, and one got through even so.
+
+## Attempt 21
+
+New tools in tools/wip/dehint: `iw21grid.py` (predictor combinations that land on imgAdd's grid), `iw21pe.py <gen> <base> [fn]` (a generator's `STATES`: lines, plus fn's profile_estimate predictions), `iw21ex.py <base>` (expect probe on imgAddFile's bigBlock test), gen_iw274-280. Scratch in build/iw/a21: nopt.c = src minus pin_t, na.c = src minus optimize, pl.c = nopt with `if (partial)`. d_na = all tree dumps of na. GCC source wasn't fetched: where I say what a gcc function does it's from memory, marked inferred.
+
+### optimize: what the guard on the FS exit is
+
+Tree dumps of na, `blocks` by pass (build/iw/a21/d_na):
+
+- ch2 (107) creates the guards `blocks_N != 0`, after vrp1 (096). So vrp1 never sees them.
+- ccp3 (118) is where `blocks_144 = PHI <2, 1>` first appears, because `len`'s value only arrives through the memcpy loop's exit test. dom2 (110) has already run.
+- The guards go: 4 at ch2, 2 at PRE, 1 at dom3, 0 at vrp2. So at sccp (135) two guards are still there, both dead: `blocks` is 1 or 2.
+- First copy: the guard is right after the memcpy, and its false edge goes straight to the `imgEnd` block, which is the FS exit's dest. Second copy: the guard is after the block loop, and bb 49 has the split exit's `.MEM` PHI.
+
+So the FS exit's second predecessor is a test nothing folds until later. If it went before sccp, sccp wouldn't split the FS exits, and they'd get their PHIs at vect as on src (that this gives src's order is inferred, it's never been reached). Tried on na (signature, lines):
+
+| Generator | Form | Best |
+|---|---|---|
+| gen_iw278 | `blocks` written so vrp1 can prove it non-zero (`blocks = 1` in the `rem < 0x4000` arm, `++` inside the arms; 6 forms) | `b3` 476, `><><><<`; the proving forms `b1`, `b4` 1686 |
+| gen_iw279 | do-while for the block loop, the FS loop or both, with `<` or `!=` (16 states) | `fd` 1215, `<<<<<<<`; `bd` 1682 |
+| gen_iw277 | unsigned `<=` on the FS loop or the page loop, which from memory leaves niter unknown because of the wraparound assumption, so sccp would skip the loop (20 states) | `p1` 672, `f5` 1103, `f1` 1548 |
+| build/iw/a21/fsfirst.py | the FS table before the spare loop, to change the loops' order | 2114 |
+
+All the changed forms are wrong in `_imgAdd` and the clones too (`_imgAdd` 57 at the very best, `b3`, and 250+ for the others listed), so the guards and the loop forms are structural: the reference's threading needs them. The reference's rem arm (`mov [esp+0x64],0; add [esp+0x64],1`, and two memcpys) comes from threading src's form, and taking that away costs far more than the 2 lines. gen_iw277 `f6` (`blocks > i`) is the same bytes as na.
+
+**A route not closed: a second name freed by unswitch.** From attempt 18's stack, `165, 239, 184, 175`: page A, FS2, page B, FS1. One more name freed by unswitch, popped first, gives FS2 165 and FS1 184, the right order whatever the name is. So attempt 18's condition "below FS1's" is too strict for that ordering (arithmetic on the notes' list, not compiled). It needs another PHI on `off & 0x1ffff` in the second copy's page loop at unswitch. I found no form: `left` is the only value on that condition, and PRE keeps one PHI for the final s[9]. Forms in gen 214 and 234 already don't add one.
+
+### pin_t: predictors
+
+**A helper with the same arm is the same bytes.** `armpos0`, gen_iw274 (`static uint32_t pageCount(len, partial)`, one return) and `single`, gen_iw275 (small and partial inside it too) are 10 lines, imgAdd only, the same state as nopt. So source structure is free here, up to one return.
+
+**What can land on the grid.** `iw21grid.py` lists the combinations, floating point, up to four predictors. Values measured in the dumps: opcode positive 73, nonequal 72, call 29/71, early return 39/61, const return 33 on the arm (67 towards the constant). With two predictors only two land: pos with early return on the arm 63.35 (570.2), nonequal with the same 62.18 (559.6). With three: pos, call on the arm, early return on the else 63.33; pos, early return on the arm, const on the else 77.82; two calls on the else with pos or nonequal against the arm, 68.91 and 69.98. All of those need a real return or call at the partial test. Nonequal needs a compare with a nonzero constant, which folds for this flag (gen_iw271).
+
+**imgAdd's own profile sees only the opcode test.** Dumps, gen_iw274 and 275:
+
+- An early-inlined helper keeps nothing. `imgAdd` at profile_estimate has no call left (checked: zero calls of the helper in its section), and the partial test shows 73 or 27 alone, whatever returns the helper has. The helper has its own profile_estimate (57.1 = 73 with const 33), which doesn't reach imgAdd. That the predict statements are stripped before inlining is inferred.
+- The early return lands on the nearest branch leading to it. In a helper with the arm `if (len % 512)`, it's on the `len % 512` test (bb 3 or 9, 39), not on the partial test. The arm can't lose the branch: the reference has the two cmovs.
+- `npages` in pointer-out form (gen_iw280, no const return), in the helper's own profile: partial's test at 73, and the next test at 50 (39 with 61) or 39. So 63.35 isn't reached even there. `retarm` and `noret` are the same bytes.
+
+**Bigger helpers are early-inlined too.** pageRange (npages and the first page through a pointer; gen_iw276, 280) also has zero calls left in imgAdd at profile_estimate (checked on `plain` and `retarm1`), and imgAdd's partial test is 73 alone. They cost 540 at best, 870-1020 for the rest, with `.constprop.1` near 109 and `.constprop.4` at 201 in every state; I read that as the address-taken `p`, not traced. **So no helper I tried stayed out of early inlining, and that case wasn't measured.** It wouldn't give the target anyway: the one reachable pair needs the early return on the partial test, and it lands on the arm's own `len % 512` branch, measured above in the helper's own profile. Without a helper there's nothing to combine: the arm has no call and no return.
+
+### pin_t: other arithmetic (not compiled)
+
+t = 6 + floor(.073 F) + floor(.027 F), `_268` = 6 + floor(F / 10), F = 900. At 73% t reaches `_268` for F in 891..899 or from 905 up. So F slightly off 900 would do it with `> 0` kept. F is 10000 * 9% times (page loop head / hottest block). Nothing natural moves it: a hotter block needs another loop (attempt 20's m8, 1553+), and more than one exit, from memory, divides the exit probability.
+
+### imgAddFile at P 50: real numbers
+
+From the draft's final code and reload dump (`Assigning to` lines, slot accesses in the disassembly): at slot time `_45` = 38 (entry store) + 9 (rawSize compare) + 2 (tail) + 8 (imgEnd store) = 57, and npages = 8 (store) + floor(900 P / 10) (arm). The rest are inherited into registers. P 50: 57 v 53. P 55: 57 v 57, the tie goes to the lower regno, `_45`. P 56: 57 v 58. **That reproduces attempt 20's threshold exactly, so the margin at P 50 is 5 and the numbers are right to within rounding** (these aren't LRA's printed totals; it doesn't print them for non-reload pseudos).
+
+Only the entry's 38 is outside the inlined body, so only it can change alone: it needs <= 33, entry <= 339 from 386, so P(fits) * P(bigBlock path) >= .28 where it's .25. Expect on the bigBlock test (`iw21ex.py`, both directions, N 52 to 80 on the a20 draft): `_imgAddFile` 116-424, nothing clean, and from 68 up in one direction the clone goes. The numbers are the expect form's own names as much as the probabilities, so this doesn't rule out a natural P: it gives no reason to look for one.
+
+### xmalloc
+
+Nothing new, no forms compiled.
+
+### Attempt 21 result: NO MATCH
+
+3 tricks stand. `iwlib.py src/image_write.c -np`: IDENTICAL. drafts/image_write_a21.c is src minus the attribute (2 tricks, 2 lines off, `_writeFsTable`, `<>>><><<`), kept as the closest state. It isn't byte-identical. Closest pinless: still drafts/image_write_a20.c, 16.
+
+Next:
+
+1. optimize: a second PHI on `off & 0x1ffff` at unswitch in the second copy is the one route with a clear target. Try `iw15stack` on any form that moves the unswitch free count, and check `prephitmp` in the unswitch dump, rather than lines.
+2. A way to fold `blocks != 0` between ccp3 and sccp without changing the threading. The one candidate I can think of is making `blocks`' PHI and the guard adjacent at PRE, and I have no source form for it.
+3. pin_t by predictors: treat as closed unless the arm gets a real call or return in the reference, which it hasn't. A transient RTL reference to t is still open: from memory LRA merges two spilled pseudos joined by a move and drops the move, which would be the third reference attempt 18 asked for, with no code. imgAdd's reload dump has no `Pseudos coalescing` section on nopt (other functions in the file have one), so that step doesn't happen there today. I found no source that keeps such a copy of t alive, and didn't compile one.
+
+Don't retry: forms that prove `blocks` non-zero early (gen_iw278), do-while block or FS loops (gen_iw279, 259), `<=` loops (gen_iw277), helpers for the partial arm in the hope of adding predictors (gen_iw274-276, 280), the FS table before the spare loop.
+
+Reproduce: `IWB=build/iw/a21/na.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw279.py -n 30 -t 4` (same for 277, 278). `python tools/wip/dehint/iw21pe.py tools/wip/dehint/gen_iw275.py build/iw/a21/nopt.c pageCount` (same for 274, 276, 280). `python tools/wip/dehint/iw21grid.py`. `python tools/wip/dehint/iw21ex.py tools/wip/dehint/drafts/image_write_a20.c`. na and nopt are one edit from src, as in attempt 20. Dumps: compile na with `-fdump-tree-all-vops` and grep `blocks_` in writeFsTable.
+
+Lessons: **follow the value through the passes before shaping the source.** The guard looks like it should be easy to remove, and the table by pass shows why it isn't: it's created after vrp1 and the value arrives after dom2. **A structural change that costs 1000 lines answers the question quickly.** These forms were cheap to run and ruled out a family in one sweep.
