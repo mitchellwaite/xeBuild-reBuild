@@ -1358,3 +1358,113 @@ Reproduce: `IWB=build/iw/a22/pm.c python tools/wip/dehint/iw16sweep.py tools/wip
 Lessons: **compile the silly form first.** The empty stepping loop isn't a candidate, but one run proved plain malloc could reach the reference, which three attempts of reasoning hadn't. **A dump-reading tool needs a known-good case**: iw18align's regex misses PHI defs, so "no info" looked the same on both files until iw22align was checked against pm.c. **Don't conclude the mechanism from the first probe**: the winning form is unrolled well before sccp, and only the per-pass dump showed `&MEM`.
 
 Landed after attempt 22: drafts/image_write_a22.c is now src/image_write.c (2 tricks, full build matches), so the draft is removed.
+
+## Attempt 23
+
+Written as I go. New tools in tools/wip/dehint: `iw23dump.sh <name> <file.c>` (all tree dumps in build/iw/a23/d_<name>, names around unswitch and sccp), `iw23arm.py <gen> <base> [labels]` (the off & 0x1ffff test and its arm at forwprop3, ccp3, pre, lim2, dce4), `iw23sw.py <gen> <base> [threads] [top]` (a generator's states with lines, signature, whether the arm survives at dce4, prephitmp's name, the names sccp hands out), `iw23state.py <gen> <base> <label> <out>` (write one state), gen_iw286 onward. Scratch in build/iw/a23: na.c = src minus optimize, nopt.c = src minus pin_t. The GCC URL was not tried; where I say what a gcc function does it's from memory, marked inferred, and the dumps are the check.
+
+### optimize: which of unswitch's two names is on top
+
+Dumps of na (sccp, with vops):
+
+- The four PHIs sccp makes are virtual, one per split exit: m175 FS1 (bb 25), m239 FS2 (bb 52), m184 the original page loop (bb 43), m165 the copy (bb 45).
+- Position 6 is the compare in the second copy's constant loop: `_175 != ivtmp.405_239`. `_175` is the bound, popped after vect frees m175. `239` is the increment, popped after dce6 frees m239. So it's FS2 v FS1, as attempt 18 said.
+- 239 isn't in the descending run. The unswitch pops are 325..194 with 239 missing, so I read 239 as the copy's PHI, popped in sequence during loop_version and freed by cleanup (inferred: nothing dumps that name, the numbers fit and the next results agree). So unswitch frees two names, not one: the original's prephitmp_165 and the copy's 239, and the stack at sccp is `239, 165, 184, 175`.
+- That corrects attempts 18 and 21's visit order. It's FS2, copy, original, FS1: FS2 gets the top name, FS1 the fourth. **What's needed is prephitmp_N on top**, then FS2 gets N and FS1 stays 184, or anything above N.
+
+Why the copy's goes on top: cleanup_tree_cfg walks blocks by index (from memory), copies have the highest index, so the original's arm merges first. Unless the original's path has an empty forwarder in it. Then the first sweep only merges the forwarder, the block is requeued, and the original's PHI is freed after the copy's.
+
+So the shape wanted at unswitch is `if (_242 != 0) goto A; else goto J;`, A an empty forwarder, the constant arriving on the direct edge. In the current source it's the reverse (`if (_242 != 0) goto J; else goto C;`, C empty, const through C).
+
+Checked three ways:
+
+- gen_iw287 `o4` (`if (!(off & 0x1ffff)) left = 256; else ...`): `if (_242 == 0) goto C; else goto J`, the forwarder's on the true edge, and sccp gives FS2 165 and the copy 239. **Signature `<>>><<<<`, 40 lines**, the first state not far away. But the condition's `==`, so the versions swap (orig = const): writeFsTable's two loops are in the wrong places. Not usable: the reference has `!=` with the constant loop on the false path. `!x ? 256 : ...` folds to the na form, only the if/else statement keeps `==`.
+- gen_iw289: `__asm__("")` in the nonzero arm (mechanism probe): target signature, with imgAdd 194 from the asm.
+- gen_iw293 onward below, with no asm.
+
+### Why the arm doesn't survive, and what can keep it
+
+Dumps by pass: PRE leaves the chain `_243 .. _318` in A and the false edge direct; sink's split_critical_edges makes C with a new high index; lim2 moves the whole chain out; lim2's cleanup finds both empty, takes A first (lower index) and C can't go after that. So A has to be non-empty at lim2's cleanup, or C's index lower than A's. The index route fails for every form: PRE's end compacts, sink's split is always newest (gen_iw292, the value computed before the test: A or T still lower).
+
+What lim2 leaves behind, from memory of tree-ssa-loop-im.c and tested below:
+
+- A dependency's cost only counts if its def is in the same loop. gen_iw291: `(off & 0x1ffff) / 512` in the block loop body. Then PRE's dead `(int)` cast in A costs under LIM_EXPENSIVE, stays at lim2 (seen in the lim2 dump), and dce4 removes it. **But** the PHI is hoisted as a COND_EXPR then, since the chain's cost falls under 2 * LIM_EXPENSIVE, and there's no unswitch: 398+.
+- Before the block loop (gen_iw288): 689+.
+- **A scope clobber.** A local array declared in the arm has `n ={v} {CLOBBER}` at the end of the arm: no code, lim2 can't move it, and no pass removes it until cddce2 as long as the array is still referenced at ccp2 (the last remove_unused_locals before that, inferred from the dumps' clobber counts by pass). SRA takes constant-index arrays early (gen_iw293 `c1`, `c2`, `c4`, `c6`: clobber gone, 2-4 lines, same stack), and a one-element array with a k < 1 loop too (gen_iw294 `f3`). A loop over a two-element array survives: variable index until cunrolli.
+
+So this is the table loop again, for a different reason: the clobber.
+
+### The match
+
+Sweeping loop forms by arm survival and prephitmp's name (`iw23sw.py`, gen_iw294, 295) showed two things on top of the arm: prephitmp has to be low (329 keeps the wrong order, 164-174 gives the right one) and the extra statements shift which names ivopts gets, since ccp2 frees 9-10 more from the dead arm in writeFsTable's first copy. So the compares at positions 1-4 and 7 moved, not the code. `left -= pages; s[9] = left >> 2;` (`s1`) moves prephitmp down. Then the climb on the moved-log base:
+
+| State | Lines |
+|---|---|
+| gen_iw295 `ct+s1` on na | 28, writeFsTable only |
+| + gen_iw254 `e2`, log_printf before `len` | 10 |
+| gen_iw295 `at+s1` on that base (`uint32_t n[2]`) | 6 |
+| climb round 0, gen_iw200 `bl`: no `blk`, `(start + b) >> 8` | 4 |
+| round 1, gen_iw254 `ui`: `uint32_t i` in writeFsTable | 2 |
+| round 2, gen_iw101 `t0`: `if (rem < 0x4000) tail = rem; else tail = rem % 0x4000;` | **IDENTICAL** |
+
+Then spellings of the table (`iw23one.py`). The first match was a one-iteration loop, `{256, x / 512}`, `left = n[0]; for (k = 1; k != 2; k++)`. **`{ x / 512, 0 }` with `left = 256; for (k = 0; k < 2; k++)` is the same bytes**, an ordinary two-iteration for loop, so the draft uses that.
+
+**drafts/image_write_a23.c: byte-identical at plain -O3, 1 trick: pin_t. The optimize attribute is gone.** Against src:
+
+```c
+/* imgAdd */
+if (rem < 0x4000)
+	tail = rem;
+else
+	tail = rem % 0x4000;
+...
+if (off & 0x1ffff) {
+	uint32_t used[2] = { (off & 0x1ffff) / 512, 0 };
+	int k;
+
+	left = 256;
+	for (k = 0; k < 2; k++)
+		left -= used[k];
+} else
+	left = 256;
+if (pages & 3)
+	pages = (pages + 4) & ~3;
+left -= pages;
+s[9] = left >> 2;
+/* no blk: b2lo = (start + b) >> 8 */
+
+/* writeFsTable: uint32_t i, no attribute */
+log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
+len = i * 0x400;
+```
+
+One change at a time on the draft (`iw23one.py`): no table (one statement in the arm) 32; `int used[2]` 6; `s[9] = (left - pages) >> 2` 8; log_printf after `len` 22; `int i` 4; the old tail form 2; `blk` back 26; minus the pin 10 (imgAdd only, same as on src). `k != 2`, `uint32_t k` and the one-iteration `{256, x}` form are the same bytes.
+
+Dumps on the draft (build/iw/a23/d_fin): dce4 has `used ={v} {CLOBBER}` alone in `if (_247 != 0)`'s true arm, and `PHI <56(34), _367(35)>` with 34 the test's block. unswitch's gone list is `130 m334`. sccp gives FS2 m130. The clobber's count in writeFsTable: from fixup_cfg4 2, from ccp2 1, 0 in the optimized dump; in imgAdd it goes at cddce2.
+
+### Review the shape
+
+- **The table is the weak part.** It's live and adds no dead test, but `{ x / 512, 0 }` subtracts a hard-coded 0, one subtraction would do, and its only reason is the clobber (32 lines without). I have no evidence the original looked like this. What plausibly did the same thing in the original is some real local array or struct in that arm, or a real statement lim2 couldn't move; nothing here singles one out. A better second entry than 0 would make it read better: `{ x / 512, pages }` with the rounding first (tried by hand on the draft, not saved) is 112, and `{ pages, x / 512 }` 231.
+- `left -= pages; s[9] = left >> 2;`: `left` is int now in the shift, where src's was unsigned. Only the low 8 bits of the shift are stored, so the bytes don't depend on it.
+- `off + 0x4000` in log_printf while `len` is computed on the next line: reads fine since the format string has 0x4000 literally. Only reason is names (22 otherwise).
+- `uint32_t i`: ordinary. `tail` as if/else: ordinary. Dropping `blk`: simpler than src.
+
+### Attempt 23 result: MATCH (1 trick)
+
+Verification: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a23.c -np`: IDENTICAL. Compiled by hand as build.sh does this object (`gcc -c -O3 -Isrc -x c -`, `#line 1 "image_write.c"` first): nothing on stderr, `cmp` identical to build/iw/reference.o and build/obj/image_write.o, SHA256 cf10057d.... Full `sh build.sh` not run, since src is the parent's. Hints left (grep for asm, __attribute__, __builtin): the `"g"(t)` pin.
+
+pin_t: not attacked, I stopped at the first match. Worth trying next with this new lever: a scope clobber is a statement with a virtual def and no code, and the same array trick may reach other things attempts said needed a statement with no code. From memory a clobber of an array doesn't reference t, so I wouldn't expect it to give t an RTL reference; nothing was compiled for this.
+
+Next, if this lands:
+
+1. Update README's image_write entry. The draft's comment names this section.
+2. pin_t: P on the grid or t's third reference, as before. The names have all moved, so rerun `iw18freq.py` on the new src before believing the old slot numbers (the pin still costs 10 lines in imgAdd only).
+3. Other files: a stuck compare order that comes from which of two PHIs an unswitch frees last is now readable: look for the same `forwarder on the true edge` shape. A local array with a loop is a source-level way to keep an arm's block alive through lim2.
+
+Don't retry: forms of `left` with no local array (gen_iw287, 290), the division outside the page loop (gen_iw288, 291: the PHI gets hoisted or everything moves), the value before the test (gen_iw292), a table loop at writeFsTable's tail (gen_iw286).
+
+Reproduce: na.c is src minus the attribute. nae.c is na with gen_iw254 `e2`. `python tools/wip/dehint/iw23sw.py tools/wip/dehint/gen_iw295.py build/iw/a23/nae.c 4 30`; `python tools/wip/dehint/iw23state.py tools/wip/dehint/gen_iw295.py build/iw/a23/nae.c at+s1 build/iw/a23/at1.c`; `python tools/wip/dehint/iw20climb.py build/iw/a23/at1.c build/iw/a23/n_at1 100 285 4 6` (about 4 minutes a round, gives n_at1_0.c in 3 rounds). `python tools/wip/dehint/iw23one.py tools/wip/dehint/drafts/image_write_a23.c` for the costs. `sh tools/wip/dehint/iw23dump.sh fin tools/wip/dehint/drafts/image_write_a23.c` for the dumps.
+
+Lessons: **read which name is which before accepting the model.** Attempts 18 and 21 assumed a visit order and looked for a second PHI; the odd one out in the descending run (239) showed unswitch already frees two names, and the fix was their order, not a third. **A forwarder decides order in cleanup.** An empty block and which edge it sits on looked like nothing. **An odd form that flips the target is a probe, even at 40 lines:** `o4` was wrong in kind and showed the mechanism. **Once the mechanism is right, climb:** the last 28 lines were all compare order, and the old generators' single moves cleared them in 3 rounds.
+
+Not landed after attempt 23: drafts/image_write_a23.c is IDENTICAL without the optimize attribute, but `{ x / 512, 0 }` subtracts a hard-coded 0 only to keep a scope clobber alive past lim2. That's a dead entry standing in for the hint, so it counts as a trick and the swap doesn't lower the count. It's a candidate patch; the mechanism is what to reuse. Goal: the same clobber from a local array with real contents.
