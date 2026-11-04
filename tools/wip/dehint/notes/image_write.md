@@ -515,3 +515,59 @@ What I'd try next:
 Scripts added since the list above: gen_iw170 (helper classes), 171 (parameter x shape), 172 (comparison spellings), 173 (finalizeImage-only helper), 174 (reload forms, `IWB=`), 175 (blockEccOk and MU forms, `IWB=`), 176 (spare loop's exit, on near10), 177, 178 (load order). Bases in build/iw/a10: b_us.c, b_vs.c = gen_iw170 `us`, `vs`; c_sa.c = 174 `sa`; d0.c = b_us.c with the `a` exit; d1.c = near10 with an unused local.
 
 Lesson: **helper shape again, and on a loop's test this time.** `if (x) return 1; return 0;` inlined into a loop's exit test changes which predictor applies to it. Before concluding a predictor's value is fixed, check what makes a different one fire on that edge.
+
+## Attempt 11
+
+Written as I go. Base bases in build/iw/a11. New tools: `iw11cfg.py <dump>` (one line per block), `iw11trace.py <dumpdir> <fn>` (block order per pass), `iw11sched.py <file>` (sched2 trace of finalizeImage), `iw11refs.py`, `iw11probe.py <base>` (expect grid on pageErased/ECC test), `iw11inl.py <files>` (inliner numbers for writeInitialHeader), `iw11slots.py <file> <fn> [flags]` (LRA slots), `iw11p2.py <base>` (expect grid on `if (partial)`).
+
+- **New lead: build/iw/a11/g1.c (gen_iw183 `P1+G` + gen_iw184 `nopin+ui`): no hot label AND no pin on t, pages at src's place.** `partial = (len < 0x4000) & (type != 0) & (type != '0');`, `if (partial) {npages..} else npages = 32;`, `unsigned t;`, `if ((uint8_t)t < 15)`. imgAdd and all clones right. Left (with the PROBE flag `--param inline-min-speedup=11`): imgAddFile 12 (slots r163 npages / r136 off+len), writeFsTable 8. Without the flag writeInitialHeader inlines (saved 363 of 3569.5 = 10.17%).
+- **The inline has a second lever:** big_speedup is saved / (time w/o inlining), and imgWriteHdr is inlined into the caller first, so its statements raise the denominator: `iw11inl.py`. `(p / 32)` for the block number in imgWriteHdr: +49 and same final code (gen_iw181 `blk`). Needs +61 on g1.
+- **drafts/image_write_near11.c (build/iw/a11/g3.c = g1 + gen_iw187 `f`): plain -O3, no hot label, no pin on t, no flag: 20 lines (imgAddFile 12: the slots; writeFsTable 8).** gen_iw187 `f`: imgWriteHdr's block number from the page: `*(..) = p >> 5`, `s->b2lo = p / 32 >> 8`: same code, but it stops writeInitialHeader's inline.
+- imgAddFile's slots: r163 npages vs r136 off+len. Expect grid (`iw11p2.py`): flips at P(partial) >= about 55%. r136 has 2 refs in the head, so head:guard counts: e3 (early return on the error arm) has head 317 and the slots flip, P(fits) 61%. But the error block must be >= head/2 to be in bbro's round 1 (`tr.py`-style trace dump, build/iw/a11/tr.py): in the reference it's trace 2; with P(fits) > 50% it comes after the ret chain and its position costs lines (gen_iw185 e1, build/iw/a11/g2.c, 65 lines, only that block and two peephole2 scratch registers). Via imgFits the head edge stays 50/50 after threading and better_edge_p then takes the colder error arm as fallthrough (gen_iw182 e3). Raising P(big arm) with an early return on the small arm duplicates nFsFiles++ and that doesn't merge (gen_iw186, 210).
+
+### pin_hdr (read before retrying it)
+
+- Unsharing the helper (the task's lead) doesn't settle blockEccOk. gen_iw179: blockEccOk spelling its test with isErased, spareUsed, its own loops or a static copy of pageErased: 72 at best (`l1`), 119 for the static copy. The reference's blockEccOk needs pageErased inlined after its own early optimisation (split into head and part.0): PRE then reuses spare[12]'s load (`movzx eax,[edi+0x20c]`). A whole early inline or plain loops lose that. A static copy called once isn't split.
+- What near10's 18 is: not a stray forwarder as such. Both src and near10 have a forwarder holding the prephitmp PHI. In src it sits straight after spare[0]'s mismatch block, with the unrolled chain below it and the ECC loop after the chain; in near10 the ECC loop comes before the chain, because threading through the helper's PHI (vrp1) duplicates every chain block, and duplicates go at the end (`iw11cfg.py`, `iw11trace.py`; order flips between vrp1 and copyprop1). That index order then changes crossjump/head merging: byte 11's mismatch load gets head-merged with the next block's.
+- What near10's load-order conflict is: **it's decided at IRA's l0, not l5.** l0's a20/a21 are created walking the preheader block backwards, so the first load in the block gets the higher allocno number; costs tie (220), so it's pushed later, popped first and takes eax (fi_n10.ira, fi_et1.ira in build/iw/a11). So spare-first in the block gives spare eax. sched2 doesn't swap them: same priority (3), RFS_TIE on LUID (`iw11sched.py`). So the reference needs one of: hdr's cost above spare's at l0 (the asm's effect: any extra ref, 4 x freq), or eax already taken at l0 when spare pops (class v: the cap of r331 holds eax, spare gets ebp, hdr is spilled at l0 and gets eax in l4).
+- `iw11probe.py` on et1 (spare-first, helper): expect on the helper's test at -p 7..9 gives finalizeImage 8 lines with load order and registers right, but that's a per-byte mismatch of about 40% (chain freqs 58, 42, ...), far beyond what pageErased's own layout takes (36). Plain base (et1p): stays 59+. So the hdr/spare flip wants a much bigger chain flow than the reg-order threshold (A).
+- gen_iw180 (pageErased and the test via isErased/spareUsed, 40): nothing, 243 at best; `p8` (`return isErased(spare, 16)` after the data loop) is unchanged from plain.
+
+### lnp2 and pin_t: near11
+
+Base g0 = gen_iw183 `P1+G` with the probe flag `--param inline-min-speedup=11`, a way of looking past the inline: pages back at src's place, `if (partial)`, `&` partial. g1 = gen_iw184 `nopin+ui`. Family table (gen_iw183, 72, probe flag):
+
+| Form | imgAdd, clones | imgAddFile | writeFsTable |
+|---|---|---|---|
+| `if (partial)` (G), `&` | constprop.1 2 (0 with `unsigned t` + no pin) | 12 (slots) | 8 |
+| `if (partial > 0)` (A, D, E) | right with uint8 t and pin | 114 (compare `npages_134 > p_145`) | 4 |
+
+- A's compare: p is split-paths' copy, which pops what reassoc2 released, which reassoc1 popped from dom2/phicprop1's dead names (`i_46 = PHI <0>` in src, 145 in l1): `iw8ver.py`. gen_iw182 (500 imgAddFile-only forms) doesn't move it.
+- Slots in G: only r163 npages and r136 off+len swap (`iw11slots.py`). r136 has two refs in the head block. Tried: fits arm 61% by early return (gen_iw182 e3, 185): slots right, but only with the error block out of bbro's round 1; see above. One hint in imgAddFile instead (gen_iw189: hot label or expect on the big arm 165, dead tests 22-328): no. Predictors on partial's test: types and spellings of `> 0` (gen_iw188, 280: 130 at best); `!= C` on a kind variable (gen_iw190: K1, K3, K5, K6 predict 72% but imgAdd 106 with `&&`; K2, K4 fold and predict nothing). Early-return arms with nFsFiles++ duplicated (gen_iw186, 210: no merge).
+- writeFsTable: decoupled. On near11 4 flips of 2 compare pairs in the big copy. gen_iw122 grid stays at 8. iw8wf seed 1101 (g1, modes dead, opt, both): see the log build/iw/a8/wf8_1101.log; some forms with the attribute gone reach 2 lines there, which is no better than src's.
+- Borderline in near11, if it ever lands: `p >> 5` next to `p / 32 >> 8` in imgWriteHdr is there only to raise the caller's time (+61 needed; two spellings stop FRE from merging them); `(uint8_t)t` on an `unsigned t` is there for the slot tie. Other imgWriteHdr spellings in gen_iw187 don't reach the threshold.
+- gen_iw191 (npages' spelling x the loop's head, 30): the 12 slot lines don't move.
+- iw8wf seed 1101 was stopped early (at least 528 states). Its bests on g1: attribute gone 2 lines in writeFsTable, dead test gone 4. No hit; don't read this as a full search.
+
+### Attempt 11 result: NO MATCH
+
+Nothing identical with fewer tricks; src stays best at 6. `iwlib.py src/image_write.c -np`: IDENTICAL; reference.o is identical to build/obj/image_write.o. No src change, no background work left.
+
+Closest: **drafts/image_write_near11.c, would be 4 (dead test, optimize, pin_hdr, xmalloc), both lnp2 and pin_t gone, plain -O3: 20 lines** (`python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_near11.c -np`): imgAddFile 12 (only slots 0x30/0x34 swapped, every reference to them), writeFsTable 4 flips (8 lines). imgAdd, all clones and writeInitialHeader byte-right.
+
+| Trick | State |
+|---|---|
+| lnp2, pin_t | near11; the slots are what's missing |
+| pin_hdr | near10 unchanged; both remaining differences explained above; unsharing the helper doesn't work |
+| dead test, optimize | writeFsTable only, 2 lines each from src; on near11 8 with both kept |
+| xmalloc | not attacked |
+
+Next:
+1. near11's slots: r163 needs about +5 REG_FREQ units against r136 (P(partial) about 55% in the expect grid, guard 500), while t's tie needs a guard freq that's a multiple of 10 (500 is one, so P of exactly 5/9 would serve both). Or fewer on r136. Don't sweep imgAddFile's forms or npages' spelling again.
+2. If slots can't go naturally, spend one hint there if it's net -1: anything but what gen_iw189 tried.
+3. Then writeFsTable on near11 with `iw_tuples.py` and iw7wf (decoupled), wanted: both big-copy compare pairs flipped.
+4. Don't retry: blockEccOk unshared forms (179), isErased/spareUsed forms (180), imgAddFile-local forms for A's compare (182), partial's types (188).
+
+Scripts: `iwsweep.py gen_iw179..191.py` (`IWB=` other base; gen_iw183, 184 use the probe flag), bases in build/iw/a11: g0 = 183 `P1+G`, g1 = 184 `nopin+ui` (finalizeImage's `t` reverted to uint8_t by hand; no effect on bytes), g2 = 185 `e1`, g3 = near11, et1 = gen_iw177 `et1`, et1p = et1 with the plain spare test, tr.py <file> (bbro traces for imgAddFile, run from build/iw/a11).
+
+Lessons: **a probe flag that removes one known difference (`--param inline-min-speedup=11`) lets a sweep see the state underneath: this family had been discarded for its 89 inline lines.** And big_speedup is a ratio, so the caller's own time is a lever: statements in another inlined callee can stop an inline without touching the callee in question.
