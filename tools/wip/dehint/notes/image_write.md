@@ -795,3 +795,68 @@ Next:
 Reproduce: `python tools/wip/dehint/iw15dump.py a15 tools/wip/dehint/drafts/image_write_a15.c`, then `python tools/wip/dehint/iw15stack.py build/iw/a15/d_a15 writeFsTable pre ivopts` and `python tools/wip/dehint/iw15src.py build/iw/a15/d_a15`. K table: `python tools/wip/dehint/iwsweep.py tools/wip/dehint/gen_iw221.py -n 81`. gen_iw225 needs foraa, which is a14 with gen_iw218's `for+aa`: `python tools/wip/dehint/iwsweep.py tools/wip/dehint/gen_iw218.py -n 1 -k for+aa` writes build/iw/gen_iw218_best.c; point `IWB` at it. gen_iw220, 221, 223, 224 and iw15grid are probes, never candidates.
 
 Lesson: **sweep by counting first.** A dead arm with K throwaway statements showed in seconds that position doesn't matter and the count does, which no sweep of plausible spellings could show. And score by compare signature as well as lines: a state with the target compare right can look worse than the one you have.
+
+## Attempt 16
+
+Written as I go. New tools in tools/wip/dehint: `iw16rej.py <base.c> <log> [cap] [first] [last] [threads]` (iw14rejudge with a signature per state, one compile each), `iw16sweep.py <gen>` (one generator crossed, histogram by full signature), gen_iw228 onward. Scratch in build/iw/a16.
+
+### The signature was incomplete
+
+iw15sig reads five compares in the ivopts dump, but split-paths then copies each page loop's test, so the object has eight. **The 12-line `small` state has iw15sig's target `<>><<` and still a wrong compare**: the second copy, bb16 `ivtmp.429_114 != _213`, where src has `_319 != ivtmp.430_362`. Full signature, read from the optimized dump in order (`<` when the ivtmp comes first): **target `<>>><<<<`**. iw16rej and iw16sweep report both. a15 is `<<>><<<<`, a15_dead `<>>>>><<` (C1, both copies), the 12-line state `<><><<<<`.
+The copy's name is a separate race from ivopts': split-paths' first name is whatever ivopts released last, `b_362` in src, `_114 = _89 * 32` in the 12-line state, `_347 = _89 * 32` in a15 (from the dumps; I didn't work out the release order).
+
+### Item 2: rerunning old generators by signature found it
+
+`iw16rej.py` over gen_iw1-227 (cap 100 per generator, build/iw/a16/rs_a15.log, rs_dead.log; the a15 run finished; I stopped the dead run around gen 95 once c4 had turned up) printed states that had always been hidden behind a worse line count:
+
+| State | Lines | Full signature | What's wrong |
+|---|---|---|---|
+| a15_dead + gen_iw214 `c4` (`left` as the free count, `pages` rounded in place, build/iw/a16/c4d.c) | 4: imgAdd 2, writeFsTable 2 | `<><><<<<` | C1 right. bb16 and imgAdd's outer compare |
+| c4d + gen_iw207 `g` (`blk = start + b` in the page loop, build/iw/a16/c4g.c) | 2: imgAdd | `<>>><<<<` | writeFsTable clean. imgAdd's `cmp [esp+0x4c],eax` |
+| c4d + gen_iw207 `a+e`, `c+e` | 2: writeFsTable | `<><>...` | imgAdd clean |
+
+gen_iw207's `g` had been run before, but scored on a base without `c4`. Attempt 13's sweeps of 214 and 207 were on the no-dead-test family, and attempt 15's rejudge on the dead draft was scored by total lines, where each alone showed nothing below 4.
+
+imgAdd's compare on c4g (from dumps): the bound is `_322 = start + blocks`, where a15_dead has `_46` and src `_18`. `c4` has no `left = (int)pages`, so PRE has 121 new names against 126 and the pops land elsewhere.
+
+### The match
+
+gen_iw234 on c4g (types and forms of `pages`, `left`, s[9]): **`(left - (int)pages) >> 2` makes imgAdd clean** and moves writeFsTable to `<<>><<<<`, one compare. gen_iw235 crossed that with left's spellings, blk's position and the tail spelling. **960 states, 48 IDENTICAL.** All of them have the signed `s[9]` form (e1 or e2), `g` and `setBeU16(off >> 14, ...)`.
+
+**drafts/image_write_a16.c: byte-identical at plain -O3, 5 tricks** (dead test, pin_t, pin_hdr, optimize, xmalloc). lnp2 is gone. Against src:
+
+- `blk = start + b;` in the page loop, above memset, not per block.
+- `small = type != 0 && type != '0'; partial = small && len < 0x4000;`, tested as `if (partial > 0) { npages... } else npages = 32;`.
+- `s[12]` through `struct spt`'s 6-bit `type` field.
+- Big arm: `pages = len / 512; if (len % 512) pages++; left = (off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256; if (pages & 3) pages = (pages + 4) & ~3; s[9] = (left - (int)pages) >> 2;`. Small arm: its own ternary `pages`.
+- `setBeU16(off >> 14, ...)` for the FS block.
+
+Measured on it, one change at a time: no dead test 8 lines (writeFsTable), blk per block 2, no `(int)` 6, `setBeU16(blk, ...)` 2, `if (partial)` 244, no pin_t 10 (imgAdd), no pin_hdr 243, no optimize 4 (writeFsTable), plain malloc 180. `uint8_t *buf, *p` or `*p, *buf`: same bytes, so the draft has src's.
+
+gen_iw236 (partial's forms, `if (partial)`, dead test on/off, pages spellings, tail, 96): IDENTICAL only for `''`, `si`, `sm`, `sm+si`. Unifying pages (`bt`) is 4 (constprop.1 2, writeFsTable 2). `small` gets rid of the `&` form at no cost, so the draft has it.
+
+### Borderline shapes in the draft, for review
+
+- `(int)pages` in `(left - (int)pages) >> 2`. Plausible (`left` is int, `pages` unsigned), but the only reason it's there is that it changes imgAdd's compare. I didn't work out why from dumps; it's a measured effect.
+- `pages` spelled two ways in the two arms. Unifying costs 4.
+- `if (partial > 0)` for a boolean: `if (partial)` costs 244, from the predictor (attempt 13's reading).
+- `off >> 14` where `blk` is in scope in writeFsTable, and Linux reads as `blk` (attempt 14). `blk` costs 2.
+- `blk` and the `BLK` macro both used in imgAdd. gen_iw207 `b`, `d` (all `blk`) are 900+; `a`, `c` are the same bytes.
+- `blk` in the page loop: fine as code, but its reason here is names.
+
+### Attempt 16 result: MATCH (5 tricks)
+
+Verification: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a16.c -np` IDENTICAL; compiled by hand with `gcc -c -O3 -Isrc -x c -` (`#line 1 "image_write.c"` first, build.sh's flags for this object) and `cmp` against build/obj/image_write.o: identical, SHA256 cf10057d...2b0a. build/iw/reference.o equals build/obj/image_write.o. The full `sh build.sh` wasn't run, since src is the parent's to change.
+
+Next, if this lands:
+1. Drop the dead test: 8 lines on the draft, signature `<<<<<<<<`. a15's other states are 2 lines with `<<>><<<<`, so try gen_iw232-style name counts in natural code instead of a dead arm, keyed on the full signature.
+2. Rerun gen_iw1-236 with iw16rej on the draft and on the draft minus each trick. This method found the match after 15 attempts of ranking by lines, and it wasn't used on `optimize` (4 lines off), which is now the smallest gap.
+3. Rerun with a full signature for any other function that's a compare off: imgAdd's outer compare and constprop.1 have them too.
+
+Don't retry: `bo` local placements for this family (gen_iw229, 230; imgAddFile's `_45 > _53` version is what they cost); dead test bodies on c4d (gen_iw232: bb16 stays wrong without `g`).
+
+Reproduce: `python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw235.py -t 4`, about 8 minutes. `IWB=<base>` overrides the base. Rejudge: `python tools/wip/dehint/iw16rej.py <base> <log> 100 1 236 3`.
+
+Lessons: **test the measure itself.** The five-compare signature said the 12-line state was right when it wasn't, because split-paths copies four of the tests later. And **two separate wins can be hidden by one local cost**: `c4` looked like no gain and `g` showed nothing, on their own. Scoring by what each state gets right, not by total lines, is what showed them. Heredoc Python mangles `\n` as CLAUDE.md warns; a filename built from labels collides on Windows (L3re1, L3Re1), which briefly gave me a different state from the label I thought I had.
+
+Landed after attempt 16: drafts/image_write_a16.c is now src/image_write.c (5 tricks, full build matches), so the draft is removed. `iw16rej.py` bases and gen_iw236's "m0" are that source.

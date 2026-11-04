@@ -28,6 +28,7 @@ struct blhdr {
 struct spb { uint8_t b0; uint8_t b1; uint8_t b2lo:4, b2hi:4; uint8_t b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
 struct sps { uint8_t b0; uint8_t b1lo:4, b1hi:4; uint8_t b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
 struct sp { uint8_t b0; uint8_t b1lo:4, b1hi:4; uint8_t b2lo:4, b2hi:4; uint8_t b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15; };
+struct spt { uint8_t b[12]; uint8_t type:6, ecc3:2; };
 struct spare {
 	uint8_t b[16];
 };
@@ -530,24 +531,16 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
-		/* blk and small as statements of their own: they set which SSA names get
-		   recycled (compare operand orders in writeFsTable's inlined copies) */
-		blk = start + b;
-		small = 0;
-		if (type != 0 && type != '0')
-			small = 1;
+		small = type != 0 && type != '0';
 		partial = small && len < 0x4000;
 		t = type - '1';
-		if (len % 512)
-			npages = (len + 512) / 512;
-		else
-			npages = len / 512;
-		if (!partial)
+		if (partial > 0) {
+			if (len % 512)
+				npages = (len + 512) / 512;
+			else
+				npages = len / 512;
+		} else
 			npages = 32;
-		else {
-			/* imgAddFile's clone: keeps DOM2's threading from zeroing the npages guard edge */
-			lnp2: __attribute__((hot));
-		}
 		p = 0;
 		if (t < 15) {
 			/* no code: the slot order of t and partial (dead in every clone) */
@@ -561,21 +554,24 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			   back into the same code */
 			pg = start * 32;
 			s = xb.spare + (pg + p + b * 32) * 16;
-			/* pages here and left in the big arm: lim2 then hoists left
-			   after len >> 8 and the type tests, as in the original */
-			pages = len % 512 ? len / 512 + 1 : len / 512;
+			/* here, not per block: with one blk per block writeFsTable's big copy gets one
+			   compare's operands the other way round (tried; 2 lines) */
+			blk = start + b;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
 				((struct spb *)s)->b2lo = blk >> 8;
 				((struct spb *)s)->b0 = 0xff;
 				s[1] = BLK;
 				if (type > 1) {
-					s[12] = (s[12] & 0xc0) | (type & 0x3f);
+					((struct spt *)s)->type = type;
 					if (type != 0x2a && type != 0x2c) {
-						left = pages;
-						if (left & 3)
-							left = (left + 4) & ~3;
-						s[9] = (((off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256) - left) >> 2;
+						pages = len / 512;
+						if (len % 512)
+							pages++;
+						left = (off & 0x1ffff) ? 256 - (off & 0x1ffff) / 512 : 256;
+						if (pages & 3)
+							pages = (pages + 4) & ~3;
+						s[9] = (left - (int)pages) >> 2;
 						s[5] = 1;
 						s[8] = len >> 8;
 						s[7] = len;
@@ -588,11 +584,12 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 					}
 				}
 			} else {
+				pages = len % 512 ? len / 512 + 1 : len / 512;
 				((struct sps *)s)->b1lo = BLK >> 8;
 				((struct sps *)s)->b5 = 0xff;
 				s[0] = BLK;
 				if (type > 1) {
-					s[12] = (s[12] & 0xc0) | (type & 0x3f);
+					((struct spt *)s)->type = type;
 					s[9] = 32 - pages;
 					s[2] = 1;
 					if (type != '0') {
@@ -834,8 +831,8 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 	}
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
 	/* dead (VRP1 removes it): only sets which SSA names get recycled in the two
-	   inlined imgAdd copies, which decides the big copy's page-loop compares.
-	   It's here, not in imgAdd, so that it can't touch the clones */
+	   inlined imgAdd copies, which decides their page-loop compares. Without it
+	   writeFsTable is 8 lines off */
 	if ((off & 0x3fff) > 0x3fff)
 		off += 0x4000;
 	if (!xb.bigBlock)
@@ -845,7 +842,7 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 small:
 	imgAdd(off, buf, i * 0x400, 0x30, 0x1ffd, 0);
 done:
-	setBeU16(blk, (uint8_t *)&xb.fsBlock);
+	setBeU16(off >> 14, (uint8_t *)&xb.fsBlock);
 	setBeU16(0, (uint8_t *)&xb.fsReserved);
 	free(buf);
 }
