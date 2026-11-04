@@ -1275,3 +1275,86 @@ Don't retry: forms that prove `blocks` non-zero early (gen_iw278), do-while bloc
 Reproduce: `IWB=build/iw/a21/na.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw279.py -n 30 -t 4` (same for 277, 278). `python tools/wip/dehint/iw21pe.py tools/wip/dehint/gen_iw275.py build/iw/a21/nopt.c pageCount` (same for 274, 276, 280). `python tools/wip/dehint/iw21grid.py`. `python tools/wip/dehint/iw21ex.py tools/wip/dehint/drafts/image_write_a20.c`. na and nopt are one edit from src, as in attempt 20. Dumps: compile na with `-fdump-tree-all-vops` and grep `blocks_` in writeFsTable.
 
 Lessons: **follow the value through the passes before shaping the source.** The guard looks like it should be easy to remove, and the table by pass shows why it isn't: it's created after vrp1 and the value arrives after dom2. **A structural change that costs 1000 lines answers the question quickly.** These forms were cheap to run and ruled out a family in one sweep.
+
+## Attempt 22
+
+New tools in tools/wip/dehint: `iw22align.py <dumpdir> [fn] [size]` (per pass, the memcpy dests with the ALIGN of their definition; unlike iw18align.py it reads PHI defs), gen_iw281-285. Scratch in build/iw/a22: pm.c = src with plain malloc, d0d = dumps of the first version of the draft. The official GCC URL was tried once (tree-ssa-sccvn.c) and returned the Anubis access-denied page, so where I say what a gcc function does it's from memory, marked inferred.
+
+### xmalloc: gone, by source shape
+
+**drafts/image_write_a22.c: plain `malloc`, no asm label, byte-identical at plain -O3, 2 tricks (pin_t, optimize).** Against src, the end of the page body:
+
+```c
+{
+	static const uint32_t partSize[2] = { 512, 16 };
+	const uint8_t *from[2] = { h + (b * 32 + p) * 512, q + (b * 32 + p) * 16 };
+	int k;
+
+	for (k = 0; k < 2; k++) {
+		memcpy(raw, from[k], partSize[k]);
+		raw += partSize[k];
+	}
+}
+```
+
+How the experiments got there, all on pm.c:
+
+| Generator | Forms | Lines |
+|---|---|---|
+| gen_iw281 | helper returning the buffer or through an out pointer, `sz` | 186 |
+| | `mem = xb.raw` right after the store (forwarded), integer copy, unions | 178 |
+| | `raw = xb.raw` after log_printf (real load): prologue right, `imgAddRaw` clean, but the stack copy at [esp+0x28] goes | 194 |
+| | `realloc(0, n)` | 238 |
+| gen_iw282 | spare copy as a byte loop, `*raw++ = *q++` | 193: 16 byte moves in place of the 4 dwords |
+| | the same with indices, or the 512 as a byte loop | 417-873 |
+| gen_iw283 | an empty stepping loop, `raw += 512; for (k = 0; k < 16; k++) raw++;` (also 2, 4 steps) | **IDENTICAL, mechanism probe only**, no one writes this |
+| | restrict helper returning the end pointer | 193, 417, 778, 810; in the optimized dump (193 form) no 16-byte memcpy from ldist, with or without -fno-early-inlining |
+| gen_iw284 | `T1`, the copy loop over a size table | **IDENTICAL** |
+| | `T3`, an empty loop adding the table to raw | IDENTICAL, not a candidate |
+| | `T2`, `T6` (`k ? 16 : 512`), summed page size `T4`, `T7`, `static uint32_t pageSize = 528` never written `T5` | 178 |
+| | `T8` 180, `T9` 221 | |
+| gen_iw285 | T1's spellings: file-level or function static table, local const or plain array, `from` by assignment or initialiser, a struct of `{from, size}`, `uint32_t k`, `n` for k | **all IDENTICAL** |
+
+Only `fnstatictop` in gen_iw285 failed, and that's a compile error (`size` clashes with the function's own). So across the spellings tried, the bytes don't depend on the spelling, only on it being a loop that the table drives.
+
+**Why it works (dumps, `iw22align.py`):** ALIGN comes from CCP's known low bits, and raw's PHI has to be unknown at all three CCPs.
+
+- pm.c: raw has `ALIGN = 4` from ccp1, and it stays to `optimized`. This also checks the tool.
+- Draft's form (d0d): no ALIGN on the 512-byte memcpy's dest at any pass.
+  - ccp1, ccp2: the step is `partSize[k]`, the loop isn't unrolled yet.
+  - cunrolli (087) unrolls the loop: `raw_282 = raw_274 + 16`.
+  - forwprop2 rewrites that as `raw_282 = &MEM[(void *)raw_12 + 528B]`, and it's still that form through ccp3.
+  - From memory CCP takes an ADDR_EXPR's value from `get_pointer_alignment` instead of the lattice of its base, so the PHI stays unknown. That's inferred, the source wasn't read. The dump only shows the form and the missing ALIGN.
+  - By the ivopts dump the `&MEM` step is gone; the optimized dump has the PHI's arg as `_376`, from dom3 on.
+- The empty-loop forms keep a loop past ccp3 (inferred from sccp being the pass that can resolve it; I didn't trace those dumps by pass). So there may be two ways to reach it. Attempt 20's reasoning that only dom3 and vrp2 could resolve the value was too narrow, as it didn't consider a value CCP can't read even once it's constant.
+
+Attempt 18's finding about the argument type still holds, but it isn't what's needed: no change to the malloc call is needed at all. writeFsTable and buildImage keep the builtin without any trick, because the ALIGN loss here is on the destination's PHI and not at the allocation.
+
+Late forwarding of a load, reasoned and not compiled: a `raw = xb.raw` load that FRE can't forward but PRE can would also leave the PHI unknown at ccp3 and keep the stack copy. Between the store and the arms the reference has no store or call that could block FRE, so it would take a clobber that disappears, which means dead code. Not pursued.
+
+### Review the shape
+
+The draft adds no dead code and no hint, and every statement is live. But the two-part loop has no reason here other than bytes: two memcpys would be shorter. It's plausible as a person's code (data, then spare, sizes in a table), and I have no evidence the original was written this way. Linux's finalizeImage has the same prologue and the same split, which fits a source-level cause but doesn't single out this one; I didn't compile anything for Linux.
+
+### optimize, pin_t
+
+Not attacked: I stopped at the first match, as instructed. The second-PHI route for optimize and a helper out of early inlining for pin_t are still uncompiled. Costs measured on the draft: minus the attribute 2 lines (`_writeFsTable`), minus the pin 10 lines (`_imgAdd`), the same as on src.
+
+### Attempt 22 result: MATCH (2 tricks)
+
+Verification: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a22.c -np`: IDENTICAL. Compiled by hand (`gcc -c -O3 -Isrc -x c -`, `#line 1 "image_write.c"` first): nothing on stderr, `cmp` identical to build/iw/reference.o and build/obj/image_write.o, SHA256 cf10057d.... Full `sh build.sh` not run, since src is the parent's to change. Hints left in the draft: the `"g"(t)` pin and the optimize attribute (grep for asm, __attribute__, __builtin, xmalloc).
+
+Next, if this lands:
+
+1. Update README's image_write entry and rerun build.sh. The draft's comment names iw22align.py, which is in tools/wip/dehint.
+2. optimize: the second-PHI route from attempt 21, judged by `prephitmp` in the unswitch dump.
+3. pin_t: nothing new.
+4. Other files: a loop over a constant table, unrolled at cunrolli, is a new source-level way to hide a value from ccp1 and ccp2. Worth trying wherever a CCP-known alignment or value is the problem.
+
+Don't retry for xmalloc: helpers around the allocation (gen_iw281), restrict byte-copy helpers (gen_iw283), byte loops with real stores (gen_iw282).
+
+Reproduce: `IWB=build/iw/a22/pm.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw285.py -n 40 -t 4` (same for 281-284; its `TARGET` lines are writeFsTable's signature, not a match). pm.c is src minus the xmalloc prototype and its comment, with `malloc` at the call. Dumps: copy the draft to `<dir>/a.c`, run `gcc -c -O3 -I<repo>/src a.c -fdump-tree-all-alias` in that directory, then `python tools/wip/dehint/iw22align.py <dir>`.
+
+Lessons: **compile the silly form first.** The empty stepping loop isn't a candidate, but one run proved plain malloc could reach the reference, which three attempts of reasoning hadn't. **A dump-reading tool needs a known-good case**: iw18align's regex misses PHI defs, so "no info" looked the same on both files until iw22align was checked against pm.c. **Don't conclude the mechanism from the first probe**: the winning form is unrolled well before sccp, and only the per-pass dump showed `&MEM`.
+
+Landed after attempt 22: drafts/image_write_a22.c is now src/image_write.c (2 tricks, full build matches), so the draft is removed.

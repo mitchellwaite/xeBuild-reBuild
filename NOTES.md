@@ -271,6 +271,9 @@ order).
 - finalizeImage writes calcPageEcc out: calcEcd is pure, so the arm has no call
   for the call heuristic and `<= 0` gives it 27%. Re-reading `xb.spare` and
   `xb.hdr` after the stores sets their register costs and PRE's load order.
+  The page's two parts are copied in a loop over a size table: cunrolli unrolls
+  it, and no pass then sets alignment on `raw`, so the 512-byte memcpy gets its
+  alignment prologue from plain `malloc`.
 - imgFits is an `if` returning 1 or 0, not `return a >= b`: it compiles to the
   same function, but the form it inlines with gives imgAddFile and
   imgAddMobile their branch probabilities and head registers.

@@ -34,9 +34,6 @@ struct spare {
 };
 
 int pageErased(const uint8_t *data, const uint8_t *spare);
-/* the malloc call without the builtin: same call, but CCP doesn't assume
-   MALLOC_ABI_ALIGNMENT for the result (the ECD memcpy aligns its destination) */
-void *xmalloc(size_t) __asm__("_malloc") __attribute__((malloc));
 
 /* the year's last digit is a NUL in the image: buildImage sets it per
    console type */
@@ -944,7 +941,7 @@ int finalizeImage(void)
 
 	if (xb.flags & NAND_MMC)
 		return 0;
-	xb.raw = (uint8_t *)(mem = xmalloc(xb.rawSize));
+	xb.raw = (uint8_t *)(mem = malloc(xb.rawSize));
 	if (!mem)
 		return -1;
 	if (xb.bigBlock) {
@@ -998,9 +995,20 @@ int finalizeImage(void)
 				q = xb.spare;
 				h = xb.hdr;
 			}
-			memcpy(raw, h + (b * 32 + p) * 512, 512);
-			memcpy(raw + 512, q + (b * 32 + p) * 16, 16);
-			raw += 528;
+			/* a loop over the page's parts, not two memcpys: raw's step is unknown
+			   to ccp1 and ccp2 until cunrolli unrolls this, and forwprop2 then leaves
+			   it as &MEM[raw + 528], so no pass sets ALIGN on raw (tree dumps, checked
+			   with iw22align.py) and the 512-byte memcpy gets its alignment prologue */
+			{
+				static const uint32_t partSize[2] = { 512, 16 };
+				const uint8_t *from[2] = { h + (b * 32 + p) * 512, q + (b * 32 + p) * 16 };
+				int k;
+
+				for (k = 0; k < 2; k++) {
+					memcpy(raw, from[k], partSize[k]);
+					raw += partSize[k];
+				}
+			}
 		}
 	log_printf(1, "done!\n");
 	if (xb.nandMu && (xb.bootFlags & 0x10000000)) {

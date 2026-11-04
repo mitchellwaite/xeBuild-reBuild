@@ -74,12 +74,10 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. image_write</b>: 3 tricks, hard</summary>
+<summary><b>1. image_write</b>: 2 tricks, hard</summary>
 
 - 1 slot pin, on `t` in `imgAdd`
 - `optimize("no-tree-scev-cprop")` on `writeFsTable`
-- 1 asm-label prototype: `xmalloc`, which stops CCP assuming `malloc`'s alignment.
-  `-fno-builtin-malloc` doesn't replace it
 
 Which SSA names get recycled decides the compare operand order throughout, and
 `imgAdd`'s IPA-CP value decides three clones, so a hint-free source has to land
