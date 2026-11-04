@@ -11,7 +11,7 @@ import fllib as L
 L.FLAGS[:] = ['-O3']
 A4 = os.path.join(L.BD, 'a4')
 os.makedirs(A4, exist_ok=True)
-S0 = open(os.path.join(L.R, 'src', 'filelist_ini.c'), newline='').read()
+S0 = open(os.environ.get('FL4SRC') or os.path.join(L.R, 'src', 'filelist_ini.c'), newline='').read()
 
 CUR = {'nb': ('nbl != 6 && nbl != 9', 'xb.nFiles = 0'), 'i': ('i < 0', 'xb.nRawPatches = 0'), 'nul': ('nul < -1', '*buf = 0'),
        'off3': ('off < -1', 'buf[size] = 0; *buf = 0'), 'off4': ('off < -1', '*buf = 0'), 'len': ('len < 0', '*buf = 0'),

@@ -208,6 +208,15 @@ void checkFileCase(void)
    numbered, and that placement sets the compare operands and copy orders further down
    (notes/filelist_ini.md).  The test comes first in the body so that xb.nFiles is numbered
    before i, which gives this loop's `cmp [nFiles],edi` */
+/* the terminators around iniPreParse.  Called once, as with findField: numbers flashfs's len and noCrc copies */
+static int preParse(unsigned char *buf, int size)
+{
+	buf[size] = 0xff;
+	size = iniPreParse(buf, size);
+	buf[size] = 0;
+	return size;
+}
+
 static void setupFiles(void)
 {
 	int i;
@@ -298,6 +307,15 @@ static void setupFiles(void)
 
 }
 
+/* an entry's name,crc separators.  Called once, so inlined after parseIni's own names are numbered, and the
+   loads and stores of *comma and *nul only go after that: it sets [security]'s compare order and takes the
+   place of the dead tests that did (notes/filelist_ini.md) */
+static void findField(unsigned char *p, int rem, int *comma, int *nul)
+{
+	*comma = memFindChar(p, ',', rem);
+	*nul = memFindChar(p, 0, rem);
+}
+
 /* read the file list ini: the files for this build type, the bootloaders'
    names and crcs, [rawpatch], [flashfs] and [security].
    gcc emits a function's literals in expand-time block order, so the
@@ -333,9 +351,7 @@ uint32_t parseIni(char *path)
 		free(buf);
 		return 0;
 	}
-	buf[size] = 0xff;
-	size = iniPreParse(buf, size);
-	buf[size] = 0;
+	size = preParse(buf, size);
 
 	/* [version] */
 	off = memFindStr(buf, size, "[version]", 1);
@@ -496,11 +512,6 @@ uint32_t parseIni(char *path)
 				free(buf);
 				return 0;
 			}
-			/* this and the three can't-happen tests in [flashfs] are dead, and steer gcc: what they free
-			   sets flashfs's threaded copy order and its comma/nul compare (notes/filelist_ini.md) */
-			if (off < -1) {
-				*buf = 0;
-			}
 			if (pos >= end)
 				i = 16;
 		}
@@ -529,12 +540,14 @@ uint32_t parseIni(char *path)
 				noCrc = 0;
 			}
 			if (len <= 1023) {
-				strncpy(xb.firmware[i], (char *)p, len);
-				xb.firmware[i][len] = 0;
+				/* this and the other two can't-happen tests in [flashfs] are dead, and steer gcc: what they free
+				   sets [rawpatch]'s comma/nul compare and flashfs's copy order (notes/filelist_ini.md) */
 				if (off < -1) {
 					*buf = 0;
 					buf[size] = 0;
 				}
+				strncpy(xb.firmware[i], (char *)p, len);
+				xb.firmware[i][len] = 0;
 				if (len > 21) {
 					s = strrchr(xb.firmware[i], '/');
 					if (off < -1) {
@@ -563,6 +576,10 @@ uint32_t parseIni(char *path)
 						return 0;
 					} else {
 						strncpy(tmp, (char *)&buf[pos], 8);
+						if (off < 0) {
+							*buf = 0;
+							buf[size] = 0;
+						}
 						tmp[8] = 0;
 						crc = xb.firmwareCrc[i] = myatox32(tmp, 0);
 					}
@@ -574,9 +591,6 @@ uint32_t parseIni(char *path)
 				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's path!\n", 1023);
 				free(buf);
 				return 0;
-			}
-			if (off < 0) {
-				*buf = 0;
 			}
 			if (pos >= size)
 				i = 256;
@@ -596,8 +610,7 @@ uint32_t parseIni(char *path)
 		pos = off;
 		for (i = 0; i < 10; i++) {
 			p = &buf[pos];
-			comma = memFindChar(p, ',', size - pos);
-			nul = memFindChar(p, 0, size - pos);
+			findField(p, size - pos, &comma, &nul);
 			if (comma > nul) {
 				noCrc = 1;
 				len = nul;

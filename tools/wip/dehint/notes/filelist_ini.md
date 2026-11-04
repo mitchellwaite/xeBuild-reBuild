@@ -279,3 +279,43 @@ Failed, with miss sizes (nscore, branch targets blanked):
 
 - `setupFiles` is natural; its `for (i = 0; ; i++) { if (i >= xb.nFiles) break;` is a little unusual, though live. It's the kind of helper that could exist in the original: findKey and `checkFileCase` already do. Its loop form is there for operand order, so it's steering, not uncounted by accident.
 - The five tests still read as defensive checks but steer gcc, and their positions and store counts matter: `off < -1` can't happen, since `off != -1` and off comes from a search.
+
+## Attempt 5
+
+Tools: `fl5lib.py` (generator on current src: `gen(tests, kf, helpers)`, `run`, `nscore`), `fl5s.py` (diff of a helper state), `fl5a.py` (section helpers), `fl5b.py` (inlining order, memFind forms), `fl5c.py` (attempt 4's natural axes at test subsets; `FL4SRC` lets fl4lib import against commit c392b614's source), `fl5d.py` (combinations of non-transparent axes), `fl5e.py`, `fl5f.py` (out-parameter helpers), `fl5g.py` (diff of an fl5f label). Scratch and score logs in `build/filelist_ini/a5/`. Labels: `axis=value,..|tests`, tests from raw off3 off4 x (the four in parseIni).
+
+- Whole sections, loops or entries as helpers (`fl5a.py`, 1500 states, no tests, free in or out, uint32_t, `tmp` local, test-first, `break`): best `secL:f` 39 lines, `cbb` 88 (block placement only, same ties), everything else 180+. Keeping `free(buf)` in the caller is worse than freeing in the helper (literal order and `.rdata` break). `tmp` local is worse too.
+- Where setupFiles is defined, forward declarations, memFindChar and memFindStr forms (`fl5b.py`, 43 single states): transparent or far worse. Definition order does nothing.
+- Attempt 4's natural axes at all 15 subsets of tests (`fl5c.py single`, 840): the only changes are numbers shifting a tie around; floor is `off3+off4+x` 4 lines (`[security]`'s `cmp ebx,esi`) and none 6 lines.
+- **New lever, `fl5f.py`: a called-once helper with out-parameters for an entry's head.** `[security]`'s two searches as `findField(p, size - pos, &comma, &nul)`: no parseIni test needed for `[security]`'s compare. `hsec=cn|off4` (that helper, one dead test, `off4`): **4 lines**, the only tie `cmp ebx,eax/jge` in `[rawpatch]`'s `comma >= nul` (was `nul <= comma`). Others in the same table: `hsec=cn|` 6 lines (tie 3 and flashfs's `comma < nul`), `hbl=nl|raw` 10.
+  In `hsec=cn|off4` raw's `nul` PHI gets `_365` at dom3 (needs a number above comma's `i_373`); ref has `_881` in that pop slot. dom3's stack: near `249 878 876 865 857 849 365 815 ...`, ref `129 878 870 862 840 839 881 821 ...`. (249,365) is the `[`-search's `buf + off + i` chain, (129,881) rawPatch's `_860 * 1028 + 307456`: both released by ivopts, and in near they've swapped places, with `(126,868)` (near's rawPatch chain) 18th and 19th in the stack. So which chain sits on top is what's wrong.
+- Beam over everything around these states (`fl5j.py`, width 12, about 1300 distinct states): closure in 3 steps; nothing under 4 lines. Single extra dead test at every site of `hsec=cn|off4` and `hsec=cn|` (`fl5i.py`, 1100 forms each): floor stays 4.
+- findKey with no test (`fl5k.py` 270, `fl5l.py` 1152 forms: scan, wrapper, compare order, `p`, loop, tail, getters plain or through `iniVal`): best 41 lines, tail `if (buf[i + len] == 0) continue; return i + len;`, getIniBool 6, iniBoolInvalid 31, getIniU32 14, iniU32Invalid 6; all reg/slot ties (`q`'s reload takes ecx, ref ebx). `iniVal` with `key[0] == buf[i]` gives the same as plain with `buf[i] == key[0]`.
+- **First MATCH of attempt 5: 5 -> 4** (`fl5final.py`). `findField` for `[security]`, `preParse` (fl4m's), and three tests in flashfs: `off4` where it was, `off < -1` (2 stores) before `strncpy(xb.firmware[i], ...)`, `off < 0` (2 stores) before the crc's `tmp[8] = 0`. Found by `fl5m.py` (2 random extra tests from `hsec=cn|off4`: 2 lines, tie 3 only, 1 of 2500) then `fl5p.py` (natural axes on that state: `pre=y` or `fail=y` flip tie 3). `iniFail` matches too, but changes every error path.
+
+### Attempt 5 result
+
+**MATCH, 5 -> 4.** `drafts/filelist_ini_final.c` at plain `-O3`, written and checked by `fl5final.py write` (change that, not the draft; `fl4final.py` and older `*final.py` are stale, and fl4lib now needs `FL4SRC` to import, which `fl5c.py` sets): whole object byte-identical to `build/obj/filelist_ini.o` and the reference, all six sections compared. `sh build.sh` not run.
+
+- **Gone (net 1):** `[rawpatch]`'s `off < -1`, flashfs's `off3` and `x`; one test added there at each of two new sites, so parseIni's 4 tests became 3.
+- **Added, live and natural:** `static void findField(p, rem, &comma, &nul)` for `[security]`'s two searches, `static int preParse(buf, size)` for the terminators around iniPreParse. Both called once. findField's loads and stores of `*comma`, `*nul` go after IPA, so this acts where parseIni's own forms can't; **out-parameters are a stronger version of attempt 4's helper lever**. preParse is transparent elsewhere and only flips tie 3 here (`mov ebx,-1`/`xor edi,edi`).
+- **Left (4), all dead tests:** in flashfs `off < -1` (2 stores) before `strncpy(xb.firmware[i], ...)`, `off < -1` (1 store) after the first strrchr, `off < 0` (2 stores) before the crc's `tmp[8] = 0`; `key == NULL` in findKey's tail.
+
+Failed, with miss sizes (`nscore`, branch targets blanked):
+- Fewer tests with findField and preParse or iniFail: `off4` plus one test anywhere (`fl5q.py 1`, 1100 forms) 4 lines; two tests without off4 (`fl5q.py 2`, 2500) 4 lines. `hsec=cn|off4` alone 4 lines (raw's compare), `off4` + 2 tests without pre/fail: 2 lines (tie 3).
+- findField elsewhere: `hbl` 450, `hraw` 450, `hflash` 29 (`cn`); `nl` (return noCrc, `*len`) `hbl` 10 with `raw` or `x`, `hsec` 10; `ln`/`lv` 19+. crc block as a helper with a slot pointer (`cbl`, `cflash`, `csec=slot`): 240+. Shared `findField` for bl and sec (`shared=y`) is the same as separate. Pairs and triples of these with test subsets (`fl5f.py rand`, 4000): nothing under 4.
+- Section helpers (`fl5a.py`): see above, 39+. Definition order, memFind forms (`fl5b.py`): transparent or 130+.
+- findKey with no test: 41 lines at best (`fl5l.py`, 1152 forms); iniVal and scan wrappers normalise.
+
+### Next
+
+1. `hsec=cn|off4` is one tie off with one test: raw's `comma >= nul`. dom3's position 7 has to hold a number above comma's; which of two ivopts chains is on top decides it. Find a natural change near the `[`-search or `xb.rawPatch[i]` (a pointer to the entry, `sectionEnd` with an out-parameter) that swaps them; `fl4o.py` compares stacks directly.
+2. Other out-parameter helpers around flashfs and `[rawpatch]`: only head and crc forms were tried. `n` and `pos` through pointers (`pos = readX(...)`, `&pos`) are untried, and so is a helper over `strncpy` + NUL + `pos` advance.
+3. findKey: `*q` tail, or `*off` as an out-parameter from findKey (`if (!findKey(buf, key, &off))`), is untried and is the same lever. The 41-line tail's ties are all `q`'s reload register.
+
+Not worth retrying: `free(buf)` in the caller, `tmp` local, helper definition order, memFindChar forms.
+
+### For review (not tricks, but flagged)
+
+- `findField` and `preParse` are live and read naturally, but both are there for numbering, not structure: findField only for `[security]`, while the other three sections keep the two calls inline, which is odd to read. `preParse` wraps three lines. By README's "a helper that exists only to change an SSA number" they could be called candidates, so you decide; they're the same kind of move as `setupFiles` and its loop form.
+- The three tests' positions and store counts still matter, and `off < 0` before `tmp[8] = 0` reads badly (`off` isn't near).

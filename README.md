@@ -75,16 +75,16 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. filelist_ini</b>: 5 tricks, hard</summary>
+<summary><b>1. filelist_ini</b>: 4 tricks, hard</summary>
 
-- 4 dead tests in `parseIni`, whose freed SSA names set compare order and pseudo
-  numbers
+- 3 dead tests in `parseIni`'s `[flashfs]` loop, whose freed SSA names set compare
+  order and pseudo numbers
 - 1 dead `key == NULL` test in `findKey`
 
-All 5 are plain C, with no `__builtin` or `asm` left, but they're still hints.
+All 4 are plain C, with no `__builtin` or `asm` left, but they're still hints.
 Their effects are indirect, and each source change disturbs the rest: where a
-dead test sits matters, and only 1 of 568 placements fixed `parseIni`'s last tie.
-Without any test, `findKey` is 73 lines off.
+dead test sits matters. With one fewer in `parseIni` the closest is 4 lines off,
+and without any test `findKey` is 41 lines off.
 
 </details>
 
