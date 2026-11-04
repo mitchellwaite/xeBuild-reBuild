@@ -393,3 +393,50 @@ What I'd try next:
 3. Don't retry: forms of raw for xmalloc; static helpers in writeFsTable (iw8wf); head forms for the dead test (gen_iw127); partial as `&&` without the hot label (imgAdd 102+); pages in the inner loop without the label (the inline, always).
 
 Lesson: **read the inliner's dump before assuming which call inlines.** Attempt 7 thought it was the 0x80 call and tried temporaries; the real saving was a hot statement depending on one known parameter, and moving that statement to where it's used is natural and fixes it.
+
+## Attempt 9
+
+Written as I go. New tools: `iw9exp.py <base.c>` (expect + param grid on the ECC test, pin removed; mechanism test only), `iw9ira.py <file.c> [flags]` (finalizeImage's l5 spill pushes and pops, hdr/spare pseudos, block freqs; full dump build/iw/a9/ira/fi.ira).
+
+### pin_hdr: what the asm really does (dumps, `-fdump-rtl-ira-all`)
+
+- xb.spare is at xb+0x30, xb.hdr at xb+0x38. Reference: hdr in eax, spare in ebp, data (r192) esi, v (r187) edi. Without the pin both pairs are swapped; that's all of the 241 lines (51 core), the rest is jump offsets.
+- r201 (hdr) and r202 (spare) have equal cost: only 3 refs in l5, head use at freq 34 and reload def + use at freq 10 (each ref costs 4 x freq; the memcpy's hdr + off is another pseudo, r267). The asm adds a ref at freq 34: 232 -> 368, pri 1 -> 2 (pri = cost / (excess points + 1), about 148), and an AREG preference. That lets r201 be pushed after r196 and the ECC group, so r327 (the memcpy's esi) stays uncolorable and pops first, which is what makes r192 take esi.
+- A "use that emits no code" is **not** required. Two separate things fix it without any extra ref:
+  - **(A) head/tail block freq >= 350 instead of 345.** Freq 345 = 100 / P(ECC), with 100 the ECC loop's exit (normalised, 1% of the 10000 top) and P(ECC) = 29% from PRED_CALL on calcPageEcc's arm (`_265 == 0` where pageErased is a PHI of 0 and pageErased.part.0). REG_FREQ floors 345 to 34; at 35 r187 takes edi and r192 esi, with no change of the push or pop order. `iw9exp.py src/image_write.c`: `__builtin_expect(!pageErased(...), 0)` with builtin-expect-probability 72..77 (P(ECC) 23-28%) leaves 57 lines (only hdr/spare swapped), <= 71 and >= 78 are 243+.
+  - **(B) spare's pseudo number below hdr's.** They tie at pri 1 and the same cost, so the lower allocno is pushed first and popped last. Pseudo order = lowest SSA name of each PHI partition (hdr {288,294,295,461,462}, spare {290,299,300,465,466}).
+- gen_iw153 `h1cu8+tHh` on the expect stand-in (build/iw/a9/h1.c, `iwlib.py build/iw/a9/h1.c -p 75 -v _finalizeImage`): `{ const uint8_t *h = xb.hdr; if (__builtin_expect(!pageErased(h + X, xb.spare + Y), 0)) calcPageEcc(xb.hdr + X, xb.spare + Y); } { const uint8_t *h2 = xb.hdr; memcpy(raw, h2 + X, 512); }`, no pin: **4 lines, the two preheader loads in the other order (hdr before spare)**, everything else in the object identical. The pin's whole job is reproduced without an asm, given (A).
+- Load order vs (B): PRE inserts by value id at the preheader, then PHIs in the same order, popping a descending free stack (pops: 304 303 | 300 spare 299 298 | 295 hdr 294 293 | 290 spare 289 288 hdr ...). So the value inserted first has the higher names: spare first in the preheader (reference) means hdr's inner PHI (288) is lowest. To have both, spare's inner PHI must be the last name on the free stack (then hdr's inner PHI gets a new high name and hdr's lowest is 294 > 290). The stack at PRE holds only the unrolled spareUsed chain, 3 of every 5 names, 30 pops down to 256 (`pretmp_256` then 435). It'd have to be 9-10 names long. Not reached; gen_iw152 (384 finalizeImage forms) doesn't move it.
+- (A) has no natural source so far. `continue heuristics` is 50% in this gcc (PRED_CONTINUE has no effect). The other predictors are too strong in DS with call's 71: anything >= .6 gives >= 78%, which is outside the window; the window needs a second predictor of .513-.58. gen_iw151 (96 forms of calcEcd, calcPageEcc: no flip at 345). A dead conjunct (untested, `&& p < 32`) would be net 0.
+- Reloads after the ECC (gen_iw159, on the expect stand-in): `spare = xb.spare;` at the top of the page, `spare = xb.spare;` again in the arm after calcPageEcc, `memcpy(raw + 512, spare + Y, 16)` (`sa`, **drafts/image_write_near9_hdr.c**, `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_near9_hdr.c -p 75 -v _finalizeImage`): natural source, no local for hdr, same 4 lines as h1: only the preheader's two loads swapped. It still has __builtin_expect in it, standing in for (A), so it isn't a candidate. A named variable's SSA version comes after all the gimplifier's temporaries, so `spare` loses to the `xb.hdr` temporary on value id, hence hdr's load first. gen_iw159's `hsc`, `hsb` (both named, spare first) have the preheader order and the ECC exit's order right but eax/ebp swapped (55). gen_iw160 (page pointers `sp = xb.spare + Y`, so the load stays a temporary): best 51. In these the first of the two tied allocnos popped isn't always the higher number's eax: see `iw9ira.py`, don't reason from numbers alone.
+
+### near8's compare in constprop.1 (traced, not fixed)
+
+`iw8ver.py` on near8 and src (dumps from `IWNP=1 iwdump.py <file> <dir> writeFsTable -fdump-tree-all`). Comparing src's and near8's name lists pass by pass is no use from the start: they differ from fixup_cfg4 on because the statements moved. What counts:
+
+- Reference: `ivtmp.106_55 != ivtmp.109_82`, `ivtmp.106_78 != ivtmp.109_82` (end 82, both copies lower). near8: `ivtmp.109_78 != ivtmp.106_96`, `ivtmp.106_74 != ivtmp.109_78` (end 78, one copy 96 is higher). `Btop+St1` (build/iw/a9/bt.c): `107_59 != 110_82`, `110_82 != 107_177`: its low copy is now right and the other copy is a **fresh** 177.
+- Chain for that name: split-paths' copy pops what ivopts released last, which is ivcanon's `ivtmp`; ivcanon pops 96, 98 in near8 and 55, 58 in src; those were `iftmp.20_95, _96` (near8: the small arm's `pages ?:`) and `iftmp.17_54, _55` (src: `pages` at the top of the inner loop). **They're released at dce2**, backwards, so the lowest name that's dead at dce2 is on top. A `pages` inside `if (type > 1)` is gone by ccp2 in the type-0 clones and doesn't count; one at an arm's top survives until dce2.
+- So moving the names low works for that compare: gen_iw154 `sBi`, `sBt` (small arm's pages computed at the top of the block loop) fix constprop.1 but cost imgAdd 508+ (generic imgAdd's LIM order and the arm's frequency), and gen_iw155 (arms inverted, `if (!xb.bigBlock)`) costs 406 with imgAdd 261.
+- Tried, stays at the one compare: gen_iw158 (81: 3 positions x 3 spellings of pages per arm), gen_iw143, 139, 144 on build/iw/a9/bt2.c (`Btope+St1i`, 744 forms). gen_iw156 (named `len >> 8` or `len / 512` ahead of the arms, to add a low dead-at-dce2 name): hi costs imgAdd 246+, `pg0 = len / 512` at the inner loop's top (`qiT`, build/iw/a9/qiT.c) keeps imgAdd right but constprop.1 53 (21 core), constprop.4 2, imgAddFile 4, writeFsTable 4. gen_iw157 (the same names on src with the dead test or optimize gone, 48): stays at 2 with no name, 248+ with one.
+
+### Attempt 9 result: NO MATCH
+
+Nothing identical with fewer tricks; src/image_write.c stays best at 6, reference.o is identical to build/obj/image_write.o and src compiles to it. No source file changed, no background work left.
+
+Per trick after this attempt:
+
+| Trick | State |
+|---|---|
+| pin_hdr | mechanism solved, see above: (A) freq >= 350 and (B) the tie, then the preheader's load order. All reproduced without an asm on the expect stand-in, 4 lines. (A) is what's missing: P(ECC) must fall from 29% to 28.5% or less without an expect |
+| lnp2 | near8 unchanged: constprop.1's compare + writeFsTable 8 |
+| pin_t, dead test, optimize, xmalloc | not moved. Named `len` values don't help them (gen_iw157) |
+
+Scripts (repo root; `iwsweep.py gen_iwN.py -n TOP [-k label]`): `iw9exp.py`, `iw9ira.py`; gen_iw151 (calcEcd, calcPageEcc forms, no flip at 345), 152 (384 finalizeImage forms on build/iw/a9/ex.c at expect 75, no effect on the swap), 153 (gen_iw47's load orders there, `h1cu8+tHh` 4 lines), 154, 155, 156, 158 (near8's pages), 157 (src), 159, 160 (explicit reloads). build/iw/a9/ex.c = src with the pin removed and `__builtin_expect(!pageErased(...), 0)`; recreate with sed from src, compile with `-p 75`. build/iw/a9/{cmp1,own,ifs}.py are small dump readers, run from build/iw/a9 (dumps in src/, n8/, bt/ there). Careful: `iwlib.py` with neither -np nor -p adds the 50 param; and a stray `cat` or `python -` in a shell blocks on stdin, redirect `</dev/null`.
+
+What I'd try next:
+
+1. pin_hdr's (A): anything that lowers P(ECC) by 0.5 to 6 points without an expect. The test is `_265 == 0`, `_265 = PHI <0, pageErased.part.0()>`; PRED_CALL on the arm gives exactly 29. Look at where else a probability enters: pageErased not being split (fnsplit) so its loops' exits count before calcPageEcc's test, or the ECC loop's 1% exit block being split. A dead conjunct such as `&& p < 32` (not tried) is net 0: it would turn an asm into plain C, which the user prefers, but wouldn't lower the count.
+2. Then the preheader's load order: spare's value id below hdr's with hdr's pseudo still below spare's.
+3. near8: one more free low name in constprop.1's list at ivopts in the `Btop+St1` family, whose only bad copy is a fresh 177.
+
+Lesson: **an asm pin's job can be two unrelated things.** Removing it changed the push order, so it looked as if it needed a code-free use; a frequency grid with expect + param showed the same allocation needs no extra reference at all. Use expect as a probe for what frequency a pin stands in for, before looking for a use.
