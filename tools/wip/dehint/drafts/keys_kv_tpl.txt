@@ -1,0 +1,51 @@
+void kvPrepare(struct fileent *kv, int alt)
+{
+	const char *file = "kv.bin", *name = "kv";
+	uint8_t *buf, *nbuf;
+
+	if (alt) {
+		file = "kv_alt.bin";
+		name = "alt kv";
+	}
+	if (kv->size == 0x3ff0) {
+		nbuf = malloc(0x4000);
+		memset(nbuf, 0, 16);
+		memcpy(nbuf + 16, kv->data, 0x3ff0);
+		free(kv->data);
+		kv->data = nbuf;
+		kv->size = 0x4000;
+	}
+	if (kv->size != 0x4000) {
+		log_printf(0, "\n******* ERROR: %s is not the correct size! Skipping verification and encryption!\n", file);
+		return;
+	}
+	buf = malloc(0x4000);
+	memcpy(buf, kv->data, 0x4000);
+	if (!checkZeros(buf, 16)) {
+		if (!kvHashOk(buf, kv->size)) {
+			if (checkZeros(buf + 56, 88)) {
+				log_printf(1, "%s appears to be decrypted already, but the hash does not match the CPU key...", file);
+				log_printf(0, "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n", file);
+			} else {
+				log_printf(1, "%s appears to be encrypted, attempting to decrypt...", file);
+				memcpy(buf, kv->data, kv->size);
+				if (!verifyExtended(buf, 0x4000)) {
+					log_printf(1, "Failed!\n%s could not be decrypted!\n", file);
+					log_printf(0, "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n", name, file);
+					memcpy(buf, kv->data, kv->size);
+				} else
+					log_printf(1, "Success!\n");
+			}
+		}
+	} else if (!checkZeros(kv->data + 88, 8))
+		log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
+	memcpy(kv->data, buf, kv->size);
+	if (!alt)
+		kvSet(kv->data);
+	if (alt)
+		kvEncryptAlt(kv->data, kv->size);
+	else
+		kvEncrypt(kv->data, kv->size);
+	free(buf);
+}
+

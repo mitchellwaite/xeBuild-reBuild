@@ -1,0 +1,28 @@
+void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
+{
+	uint8_t iv[16];
+	uint8_t hash[20];
+	uint32_t off;
+	XECRYPT_AES_STATE aes;
+
+	memcpy(iv, fcrt + 256, 16);
+	if (size != 0x4000)
+		log_printf(0, "****** ERROR: FCRT encrypt invalid size!\n");
+	else {
+		off = getBeU32(fcrt + 284);
+		if (off >= 0x4000)
+			log_printf(1, "**** ERROR: FCRT encrypt invalid offset!\n");
+		else {
+			XeCryptSha(fcrt + off, 0x4000 - off, NULL, 0, NULL, 0, hash, 20);
+			if (memcmp(fcrt + 300, hash, 20) == 0) {
+				XeCryptAesKey(&aes, xb.cpuKey);
+				XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
+			} else if (verifyFcrt(fcrt, 0x4000) == 1) {
+				XeCryptAesKey(&aes, xb.cpuKey);
+				XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
+			} else
+				log_printf(0, "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n");
+		}
+	}
+}
+

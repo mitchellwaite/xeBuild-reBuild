@@ -13,10 +13,6 @@
 #include "log.h"
 #include "smc.h"
 
-/* getBeU32 redeclared pure (only here: in the headers it changes other
-   objects' code): fcrtEncrypt's block order needs it left out of the call
-   heuristic (with its off < 0x4000 hint at builtin-expect-probability 60) */
-uint32_t getBeU32(const uint8_t *p) __attribute__((pure));
 /* external copy of the inline cfPatchSlots */
 short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max);
 
@@ -264,7 +260,7 @@ void setFuseLdv(uint8_t *fuse, uint8_t ldv)
 /* gcc emits a function's literals in expand-time block order, so the
    original's .rdata order shows its shape: setFuseCpuKey and daeEncrypt
    log a bad argument or header in an else after the main path, and
-   fcrtEncrypt returns early on a bad offset */
+   fcrtEncrypt logs each failure in order down an else chain */
 void setFuseCpuKey(uint8_t *fuse)
 {
 	int i;
@@ -647,8 +643,9 @@ static int kvHashOk(uint8_t *kv, uint32_t size)
 
 /* The size check comes after the 0x3ff0 fix-up (profile estimated before
    jump threading: a colder main path makes alt a caller-saved ecx).  The
-   hints and labels give bb-reorder the original's trace order and LRA
-   its spill-slot order (tools/wip/README.md). */
+   two alt tests at the end do the same for the encrypt arms: threaded into
+   one branch, they leave bb-reorder the original's trace order and LRA its
+   spill-slot order (tools/wip/dehint/notes/keys.md). */
 void kvPrepare(struct fileent *kv, int alt)
 {
 	const char *file = "kv.bin", *name = "kv";
@@ -666,42 +663,37 @@ void kvPrepare(struct fileent *kv, int alt)
 		kv->data = nbuf;
 		kv->size = 0x4000;
 	}
-	if (__builtin_expect(kv->size != 0x4000, 1)) {
+	if (kv->size != 0x4000) {
 		log_printf(0, "\n******* ERROR: %s is not the correct size! Skipping verification and encryption!\n", file);
 		return;
 	}
 	buf = malloc(0x4000);
 	memcpy(buf, kv->data, 0x4000);
-	if (__builtin_expect(!checkZeros(buf, 16), 0)) {
+	if (!checkZeros(buf, 16)) {
 		if (!kvHashOk(buf, kv->size)) {
-			if (__builtin_expect(checkZeros(buf + 56, 88), 0)) {
+			if (checkZeros(buf + 56, 88)) {
 				log_printf(1, "%s appears to be decrypted already, but the hash does not match the CPU key...", file);
 				log_printf(0, "\n******* WARNING: could not verify pre-decrypted keyvault, please be sure your provided a valid %s!\n", file);
 			} else {
 				log_printf(1, "%s appears to be encrypted, attempting to decrypt...", file);
 				memcpy(buf, kv->data, kv->size);
 				if (!verifyExtended(buf, 0x4000)) {
-				failed: __attribute__((hot));
 					log_printf(1, "Failed!\n%s could not be decrypted!\n", file);
 					log_printf(0, "\n******* ERROR: could not decrypt %s, please be sure your provided a valid %s!\n", name, file);
 					memcpy(buf, kv->data, kv->size);
 				} else
 					log_printf(1, "Success!\n");
 			}
-		} else {
-		hashOk: __attribute__((hot));
 		}
 	} else if (!checkZeros(kv->data + 88, 8))
 		log_printf(0, "\n******* ERROR: please be sure your provided a DEcrypted %s!\n", file);
-	else {
-	zerosOk: __attribute__((hot));
-	}
 	memcpy(kv->data, buf, kv->size);
-	if (__builtin_expect(!alt, 0)) {
+	if (!alt)
 		kvSet(kv->data);
-		kvEncrypt(kv->data, kv->size);
-	} else
+	if (alt)
 		kvEncryptAlt(kv->data, kv->size);
+	else
+		kvEncrypt(kv->data, kv->size);
 	free(buf);
 }
 
@@ -837,8 +829,11 @@ void daeEncryptOne(uint8_t *dae, uint32_t size, uint8_t *date)
 /* The `!n` tests are threaded apart into one decrypt sequence per n, which
    leaves the first-key success shared by both; its own encrypt copy keeps
    it in one LRA EBB (no reload of off before the encrypt), and crossjumping
-   then merges that copy into the main one.  The asm pins put off's zero in
-   ebx across malloc/memcpy and off in edx in the loop, as the original. */
+   then merges that copy into the main one.  A bad header ends the loop
+   through its test (off = size), not a break.  The orig test is dead (memcpy
+   implies non-null, so vrp removes it) but it stands between the n != 2
+   test and the return block, so that branch escapes the early-return
+   predictor (51% rather than 62%); the warning then lands out of line. */
 void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 {
 	uint8_t *orig = malloc(size);
@@ -846,13 +841,11 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 	uint32_t off = 0;
 	uint32_t len;
 	int n = 0;
-	__asm__("" : "+b"(off));
 
 	memcpy(orig, buf, size);
-	if (__builtin_expect(size, 1)) do {
+	while (off < size) {
 		dae = buf + off;
-		__asm__("" :: "d"(off));
-		if (__builtin_expect(buf[off] == 'D', 1) && __builtin_expect(buf[off + 1] == 'A', 0) && __builtin_expect(buf[off + 2] == 'E', 0) && __builtin_expect(buf[off + 3] == 'P', 0)) {
+		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
 			len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
 			if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
 				if (!n)
@@ -860,7 +853,6 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 				memcpy(dae, orig + off, len);
 				daeDecrypt(dae, len, 1);
 				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
-					ok: __attribute__((cold));
 					log_printf(1, "success!\n");
 					daeEncryptOne(dae, len, date);
 					n++;
@@ -885,15 +877,16 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 			n++;
 		} else {
 			log_printf(0, "\n******* ERROR: dae segment does not have the expected header!\n");
-			break;
+			off = size;
+			len = 0;
 		}
 	next:
 		off += len;
-	} while (off < size);
-	if (n != 2) {
-		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
 	}
-	free(orig);
+	if (n != 2)
+		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
+	if (orig)
+		free(orig);
 }
 
 void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
@@ -904,22 +897,24 @@ void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
 	XECRYPT_AES_STATE aes;
 
 	memcpy(iv, fcrt + 256, 16);
-	if (size != 0x4000) {
+	if (size != 0x4000)
 		log_printf(0, "****** ERROR: FCRT encrypt invalid size!\n");
-		return;
+	else {
+		off = getBeU32(fcrt + 284);
+		if (off >= 0x4000)
+			log_printf(1, "**** ERROR: FCRT encrypt invalid offset!\n");
+		else {
+			XeCryptSha(fcrt + off, 0x4000 - off, NULL, 0, NULL, 0, hash, 20);
+			if (memcmp(fcrt + 300, hash, 20) == 0) {
+				XeCryptAesKey(&aes, xb.cpuKey);
+				XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
+			} else if (verifyFcrt(fcrt, 0x4000) == 1) {
+				XeCryptAesKey(&aes, xb.cpuKey);
+				XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
+			} else
+				log_printf(0, "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n");
+		}
 	}
-	off = getBeU32(fcrt + 284);
-	if (__builtin_expect(off >= 0x4000, 0)) {
-		log_printf(1, "**** ERROR: FCRT encrypt invalid offset!\n");
-		return;
-	}
-	XeCryptSha(fcrt + off, 0x4000 - off, NULL, 0, NULL, 0, hash, 20);
-	if (memcmp(fcrt + 300, hash, 20) && verifyFcrt(fcrt, 0x4000) != 1) {
-		log_printf(0, "****** WARNING: FCRT data appears to be crypted or damaged!! Skipping encryption.\n");
-		return;
-	}
-	XeCryptAesKey(&aes, xb.cpuKey);
-	XeCryptAesCbc(&aes, fcrt + off, 0x4000 - off, fcrt + off, iv, 1);
 }
 
 void shaHeader(uint8_t *buf)

@@ -1,0 +1,55 @@
+void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
+{
+	uint8_t *orig = malloc(size);
+	uint8_t *dae;
+	uint32_t off = 0;
+	uint32_t len;
+	int n = 0;
+
+	memcpy(orig, buf, size);
+	while (off < size) {
+		dae = buf + off;
+		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
+			len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
+			if (!shaCheck(dae, len, 12, 20, 336, NULL)) {
+				if (!n)
+					log_printf(1, "dae appears encrypted, attempting to decrypt with CPU key...");
+				memcpy(dae, orig + off, len);
+				daeDecrypt(dae, len, 1);
+				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+					log_printf(1, "success!\n");
+					daeEncryptOne(dae, len, date);
+					n++;
+					goto next;
+				}
+				if (!n)
+					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
+				memcpy(dae, orig + off, len);
+				daeDecrypt(dae, len, 0);
+				if (shaCheck(dae, len, 12, 20, 336, NULL)) {
+					if (!n)
+						log_printf(1, "success!\n");
+				} else {
+					if (!n)
+						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
+					n = 0;
+					off = size + 1;
+					goto next;
+				}
+			}
+			daeEncryptOne(dae, len, date);
+			n++;
+		} else {
+			log_printf(0, "\n******* ERROR: dae segment does not have the expected header!\n");
+			off = size;
+			len = 0;
+		}
+	next:
+		off += len;
+	}
+	if (n != 2)
+		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
+	if (orig)
+		free(orig);
+}
+

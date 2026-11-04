@@ -75,16 +75,14 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. keys</b>: 18 tricks, hard</summary>
+<summary><b>1. keys</b>: 1 trick, moderate</summary>
 
-- `--param builtin-expect-probability=60`
-- 10 `__builtin_expect` and 4 hot and cold labels, mostly in `kvPrepare` and
-  `daeEncrypt`, which set trace order and LRA's spill-slot order
-- 1 `pure` redeclaration (`getBeU32`), which only this file can use
-- 2 pins (`off` in `daeEncrypt`)
+- 1 dead test: `if (orig) free(orig);` in `daeEncrypt` (memcpy implies non-null,
+  so vrp removes it)
 
-The hints are spread over several functions, and `kvPrepare` depends on several
-of them together.
+It stands between the `n != 2` test and the return block, so that branch escapes
+the early-return predictor and the warning lands out of line. Plain `free(orig)`
+is 91 lines off.
 
 </details>
 

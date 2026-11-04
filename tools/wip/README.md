@@ -646,6 +646,9 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
 
 ## keys.c
 
+The expects, labels, pins, `pure` and `--param` described below were removed on
+2026-11-04, so they are history; see `tools/wip/dehint/notes/keys.md`.
+
 Whole object in C since 2026-10-22 (no keys.s): `src/keys.c` is this
 draft plus the key buffers' initial values and the original's function
 order (shaCheck before crlEncrypt, daeEncrypt before fcrtEncrypt,
