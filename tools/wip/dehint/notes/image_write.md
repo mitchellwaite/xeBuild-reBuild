@@ -633,3 +633,61 @@ What I'd try next:
 4. Don't retry: helpers holding the two calls (fits goes to 39), a second exit on the outer loop, asm on npages, partial's spellings for the guard's frequency, tidier imgWriteHdr spellings by hi and lo byte.
 
 Lesson: **grid the probe across every branch on the path, then do the arithmetic per slot.** Attempt 11 probed only `partial`; the same slot flip was available from `if (!xb.bigBlock)` with no effect anywhere else, which only the slot totals explain. Knowing the exact window also rules out whole families on paper before compiling them.
+
+## Attempt 13
+
+Written as I go. New tools: `tools/wip/dehint/iw13x64.py [addr]` (image_write's functions in tmp/xeBuild64: extents from .eh_frame, strings, callees; with an address, one function's disassembly). build/iw/a13/nohdr.py in.c out.c drops imgWriteHdr from any draft.
+
+### What the Linux build shows
+
+Function order and set in tmp/xeBuild64 match src exactly: 41b810 buildImage, 41c360 pageErased, 41c1b0 blockEccOk, 41c6c0 imgSizeAligned, 41c960 imgAdd (generic, 1180 bytes), 41ce00 imgFits (25 bytes, a real function), 41ce20 imgAddFile, 41d210 imgAddFileAs, 41d280 imgAddMobile, 41d580 addSmcConfig, 41d610 writeInitialHeader, 41d7e0 checkBootImage, 41dbc0 writeFsTable, 41e4e0 finalizeImage, 41eef0 imgAddRaw. Clones in front of buildImage: 41b1b0 (off 0, type 0, pad 1), 41b3b0, 41b5c0 (type 0, pad 1).
+
+- **There's no static helper that src lacks**, and no block or page arithmetic helper. imgAdd is one body with the same statements as src: rawSize tests, x/first/rem/tail/blocks, the two spellings `(len + 512) / 512` and `len / 512 + 1`, the `left` formula, the arms' order.
+- **imgWriteHdr isn't real.** Linux's writeInitialHeader has no helper: `if (xb.bigBlock) imgAdd(0, &hdr, 0x80, 0, 0xf1f1, 1); else imgAdd(0, &hdr, 0x80, 0, 0x1ffb, 1);`, and gcc inlines one of the two.
+
+**drafts/image_write_nohdr.c = src with imgWriteHdr deleted and that plain call: byte-identical (`iwlib.py ... -np`: IDENTICAL).** Everything said in earlier notes about imgWriteHdr's spelling (the inline threshold, `p >> 5`, gen_iw181, 187, 198, "the caller's time") is obsolete: with the plain call, near11 is the same 20 lines without `p >> 5`, and the writeInitialHeader inline that discarded so many states isn't there any more (near8 + nohdr: 10 lines; l1 + nohdr: no inline, imgAddFile 114 + writeFsTable 4). Reproduce: `python build/iw/a13/nohdr.py <draft> out.c`.
+
+### The block type is a bitfield
+
+Linux's stores read like bitfield writes, and the struct is the one every Xbox 360 NAND tool has (`FsBlockType:6, ECC3:2` in spare byte 12). src's bits b2lo/b1lo are bitfields already, byte 12 wasn't. `((struct spt *)s)->type = type;` for `s[12] = (s[12] & 0xc0) | (type & 0x3f);` with `struct spt { uint8_t b[12]; uint8_t type:6, ecc3:2; };` emits the same RMW at expand but has no load in gimple, so every SSA number in imgAdd moves. On near8 + nohdr (build/iw/a13/n8_bf.c): **constprop.1's compare is fixed, lnp2 gone, only writeFsTable 4 lines** (two flips); attribute removal costs nothing there (n8_bfna.c, also 4). gen_iw204: both arms need it (one arm: 28).
+
+**drafts/image_write_near13.c (= build/iw/a13/w2.c), would be 4 tricks (pin_t, pin_hdr, optimize, xmalloc: lnp2 and the dead test gone), plain -O3: 2 lines, one compare operand order in writeFsTable's big copy.** `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_near13.c -np`. It's near8 + nohdr + bitfield + two iw8wf writeFsTable spellings (`fsTable[-xb.fsStart + blk]`, `setBeU16(off >> 14, ...)`).
+
+The compare: bb15 `ivtmp.429_158 != _212`, the reference has `_319 != ivtmp.433_391` (`iw13cmp.py <file>` lists all of them). Reference: small copy inc < end, big copy end < inc. ivopts allocates inc first and the end later, so the big copy needs a stack that hands out a high name and then a lower one, i.e. a run boundary between the two pops. In the reference inc 391 is the last of the high run (369, 389, 391) and the end comes from the next run (313..322). In near13 inc and end are both from the ascending run released at ccp2 (158, 159, 160, 162, 212, 214, ...: `start + i`, `len & 511`, dead there once the constants arrive). `-fdbg-cnt=ivopts_loop` doesn't exist in this gcc, so the pop order is inferred, not read.
+
+Borderline in near13: `int partial = (len < 0x4000) & ...; if (partial > 0)` gives P(partial) 73% from the positive-opcode predictor, which is what flips imgAddFile's slots without P(big). `_Bool partial`, `partial >= 1` are the same bytes. `pages` spelled differently in the two arms. `fsTable[-xb.fsStart + blk]` has no reason other than names.
+
+### Tried on the bitfield family, all stuck (2 lines on near13 unless noted)
+
+- Whole-file random: iw8wf seeds 1303, 1304 (n8_bf, all modes: dead gone 2, attribute gone 4, both 6), 1305 (near13, 2400 states); iw7wf 1301, 1302 (attribute off, 4), 1307 (4 bases, 3608 states, up to 2 dead tests: 2). iw13an seed 1306 (anneal over imgAdd + writeFsTable forms, 1480 states). All 0 hits; samples, not exhaustive.
+- Sweeps, `iwsweep.py gen_iwN.py`: 205 (end, size, head, loop spellings), 206 (one dead test: position x condition x body), 207 (blk vs start + b per use, blk's position, pages), 208 (the attribute's flag swapped for each of gcc's 203 optimizer flags: only flags with no effect tie), 209 (602 spellings of imgAdd's FS chain), 210 (typed local struct pointers per arm: no effect on bytes, so real struct code is free to use), 211 (one empty asm in writeFsTable: no effect), 212 (src + nohdr, each trick on/off x bitfield: nodead 2, noattr 2, both 4, bitfield with src's `pages` 53+). gen_iw203 reruns any older generator on a new base, no FOCUS, no flag: 139, 140, 143, 144, 147, 156, 158, 193 on near13 stay at 2.
+- pin_t on the family (gen_iw201): `np` imgAdd 10. With P(partial) 73: t total 6 + 65 + 24 = 95 v partial 96, the carry from 657 + 243. Needs P x 900 to round to a multiple of 10, none of the predictors gives one. Range test `if (type >= '1' && type <= '?')` replaces `t` naturally on near11 at 2 extra lines (constprop.1, gen_iw200 t0).
+- `pages` at the inner loop's top with the bitfield (l1_bf.c): writeFsTable 2 but imgAddFile 114, gen_iw182 doesn't move it.
+
+### xmalloc
+
+Linux's memcpy shows the alignment prologue too, but that's no evidence: gcc 4.9 may not use the dest alignment alone. In this gcc a known dest with an unknown source gets no prologue. Late CCP restores the alignment whatever the form: gen_iw199 (`mem + (b * 32 + p) * 528` etc., 201 lines, no prologue, no continuing pointer), build/iw/a13/xm.py (ways of storing the result, 180). `raw` is malloc's SSA value in the reference (`[esp+0x28]`, no reload of xb.raw). No natural source found.
+
+### Attempt 13 result: NO MATCH
+
+No byte-identical state under 6. Useful and landable with no change of count: **drafts/image_write_nohdr.c (src minus imgWriteHdr), IDENTICAL.**
+
+| Trick | State |
+|---|---|
+| lnp2 | gone in near13; the bitfield fixed constprop.1's compare |
+| dead test | gone in near13, the one compare left; or kept with 4 lines (n8_bf) |
+| optimize | n8_bfna: attribute gone, dead test kept: 4 lines; both gone 6 |
+| pin_t | 10 lines without it, see above |
+| pin_hdr | not moved; Linux's preheader loads spare then hdr, as the reference. Not attacked |
+| xmalloc | see above |
+
+Next:
+1. Near13's one compare: more of the real source. The two finds of this attempt both came from reading what the code really was, not from names, so look for a third: other things the original had as fields or expressions (byte 12 was one). `s[9]`, `s[7]`, `s[8]` as FsPageCount and FsSize, `(off & 0x1ffff) ? ... : 256` etc. moved as one value.
+2. Don't take the `imgWriteHdr`, inline-threshold or big_speedup notes above as live; re-judge anything a sweep rejected for writeInitialHeader's 89 lines. Rerun with gen_iw203 and nohdr.py.
+3. Run big forms against n8_bf and near13 by total lines; writeFsTable is not decoupled in this family.
+
+Scripts: iw13x64.py, iw13cmp.py, iw13an.py, gen_iw199-212. Bases in build/iw/a13: n8.c, n8_bf.c, n8_bfna.c, n8_nd.c (byte form, no attribute, no dead test: 6 lines, constprop.1 2 + writeFsTable 4), w2.c, w2na.c, l1_bf*.c, n_nohdr.c (near11 + nohdr), trace.py (one name through every pass, run in a cmp_* dir).
+
+Lesson: **the Linux build settled in one read what five attempts of arithmetic hadn't.** A helper in our source that the older build lacks is suspect, and a store that reads as a bitfield write is one. Test a claim in a source comment before building on it: imgWriteHdr's comment said the plain call couldn't inline, and the plain call matches. I didn't work out why it inlines there.
+
+Landed after attempt 13: drafts/image_write_nohdr.c is now src/image_write.c (imgWriteHdr gone, still 6 tricks, full build matches), so the draft is removed. Treat "src + nohdr" above as plain src; nohdr.py is only needed for older near drafts.
