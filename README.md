@@ -75,16 +75,14 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. filelist_ini</b>: 4 tricks, hard</summary>
+<summary><b>1. filelist_ini</b>: 1 trick, hard</summary>
 
-- 3 dead tests in `parseIni`'s `[flashfs]` loop, whose freed SSA names set compare
-  order and pseudo numbers
 - 1 dead `key == NULL` test in `findKey`
 
-All 4 are plain C, with no `__builtin` or `asm` left, but they're still hints.
-Their effects are indirect, and each source change disturbs the rest: where a
-dead test sits matters. With one fewer in `parseIni` the closest is 4 lines off,
-and without any test `findKey` is 41 lines off.
+It acts as a third loop exit when gcc estimates branch probabilities, and that
+sets the block frequencies the getters' registers follow. Without it `findKey`
+is 41 lines off, and the closest form with no dead test (a `matchAt` helper) is
+6 lines off.
 
 </details>
 

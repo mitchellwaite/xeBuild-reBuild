@@ -465,3 +465,64 @@ Not worth retrying: local types, helper signatures, prototypes, `char *` vs `uns
 ### For review
 
 Nothing new landed. `src/` is unchanged; the four dead tests, findField and preParse stay, flagged in earlier attempts.
+
+## Attempt 9
+
+Tools: `fl9a.py` (first names of a pass, with owners), `fl9b.py <file.c>` (dumps + **model of ivopts' releases**, printed top-down), `fl9c.py a b` (two stacks side by side), `fl9d.py tag n..` (owners of a number per pass), `fl9e.py tag pass` (replacement table by old version), `fl9f.py` (`pv` axis), `fl9g.py label..` (diff). Scratch `build/filelist_ini/a9/`; `FLA=a9` sends fl8lib's logs there.
+
+### What orders ivopts' releases (read from tree-ssa-loop-ivopts.c, tree-ssa.c, tree-ssanames.c at releases/gcc-6.2.0)
+
+- `tree_ssa_iv_optimize` walks `LI_FROM_INNERMOST`; each loop's `remove_unused_ivs` -> `release_defs_bitset`: **ascending version, a name deferred to a later sweep while a user's def is still in the set**. Releases queue, and the queue is spliced on the stack at flush, so the stack's top is the LAST loop's last name. The model (`fl9b.py`) accounts for every name that vanishes at ivopts (97 of 97 at T1,T3, 100 of 100 at src) and its top-down order matches dom3's table.
+- **Attempt 8's "seventh pop" was wrong: that was dump order (block order), not pop order.** Raw's `nul` is at stack slot 56 (`_361`, the `[`-search's address, loop 10). Slot 57 is `_847` (raw's i chain, loop 2).
+
+### Slots: the ties are one sequence (at all-dropped and T1,T3)
+
+`fl9h.py` tabulates a state. The threaded name in each compare is the section's FIRST memFindChar (bl comma, raw nul, flash nul, sec comma), the `i_N` the second; operands sort by version. Ref needs threaded < i in bl and sec, threaded > i in raw and flash. dom3's update_ssa takes PHIs by **ascending old version**, popping contiguous slots:
+
+    slot (T1,T2,T3): 53 _567 hi, 54 _357 mid, 55 _64 low, 56 _358 mid, 57 _844 hi, 58 _115 low, 59 _865 hi, 60 _369 mid
+    T1,T3 order:    X(53) sec(54) bl(55) raw(56 WRONG) flash(57) noCrc(58) len(59)
+    all dropped:    X(53) -(54)   bl(55) sec(56) raw(57) flash(58 WRONG) noCrc(59) len(60), C wrong: noCrc above len
+
+So D and C at all-dropped are ONE tie: if slots 58 and 59 swapped, flash is high and noCrc low. Slots 57-59 are the rawPatch chain a = (sizetype) i, b = a * 1028, c = b + 307456, released c, b, a by the dependency rule; b's number is low. `T1,T3|pv=v` (below) confirms the model: taking one name off the top fixes B and moves A, C, D, E exactly as slots predict.
+
+### laddress sets rawPatch's chain; first MATCH of attempt 9 (fl9i.py)
+
+laddress lowers each `&xb.files[k].name` with a variable index into three names popped in order, `(sizetype) k`, `* 1068`, `+ 270000`. rawPatch's chain pops (844, 115, 865) with the low one in the middle. **One pop fewer before it gives (845, 844, 115)**: slots 57-59 hi, hi, low, which is the swap above. A `(sizetype)` statement doesn't exist for an unsigned index (sizetype is unsigned int here), so an unsigned index on exactly one of bl's three `&xb.files[..].name` uses does it with no code change: `T1,T2,T3|ui=1`, `(uint32_t)` on the strncpy's index, is a whole-object MATCH with all three [flashfs] tests gone. Predicted from the model, first try.
+
+`fl9j.py`, natural spellings at T1,T2,T3: a local `uint32_t` (or unsigned, unsigned long, size_t) index for bl's log line matches, so the three [flashfs] tests go with no cast (8 masks' worth of `fl9i.py` show only which of the three `&xb.files[..].name` uses is unsigned: exactly one of strncpy, crc error, log; loads don't count). **`preParse` isn't needed any more** (`pre=in` matches). `ff=none` is 4 lines, `pre=in,ff=none` 2. `struct fileent *e` for the log line: 6, as no index form.
+
+### Draft: MATCH 4 -> 1 (`fl9final.py write`)
+
+`drafts/filelist_ini_final.c` at plain `-O3`: whole object byte-identical to `build/obj/filelist_ini.o` and the reference (sha256 f27828c6...), all six sections compared. Gone: T1, T2, T3, and `preParse`. Added: `uint32_t file` in bl's loop, used only for the log line. Left: findKey's `key == NULL`. `findField` and setupFiles' loop form stay for now.
+
+The local's placement doesn't matter (loop-body declaration, a block round the log line, function top; `fl9j.py`). Only its unsignedness does: an `int` local is the 6-line state.
+
+### Attempt 9 result
+
+**MATCH, 4 -> 1.** `drafts/filelist_ini_final.c` at plain `-O3` (no other flags), written and checked by `fl9final.py write` (change that, not the draft; `fl6final.py` and older are stale). Also compiled by hand with `#line 1 "filelist_ini.c"` piped to `tools/toolchain-4745` gcc: sha256 f27828c6... equal to `build/obj/filelist_ini.o`; all six sections compared. `sh build.sh` not run.
+
+- **Gone:** T1, T2, T3 (all of `[flashfs]`'s dead tests), and `preParse`.
+- **Added:** `uint32_t file` in bl's loop, for the log line only (live; steers via its type, see Review).
+- **Left (1):** `key == NULL` in findKey's tail, a frequency tie (attempts 6, 7), nothing here touches it.
+- **What ordered it (Direction 1):** nothing in ivopts needed changing. Its release order is fully mechanical, so the useful question was which *pass numbers the released chain*, and for the bad slots that's laddress, four passes back.
+
+Failed, with miss sizes (nscore):
+- `pv=v` etc. (`fl9f.py`: `p = &buf[..]` used twice, so a search has 2 ivopts names, not 3): `v` removes one name from the stack's top and moves ties as predicted, 14 at T1,T3 and T1,T2,T3; `b r f s` keep `p` live, and change code, 46+.
+- Two or three unsigned chains (`fl9k.py`, `fl9i.py`): 2 lines with two, 6 with all three. Exactly one pop has to go.
+- `struct fileent *e` for the log line: 6, no pop removed.
+- **Removing findField too** (`fl9k.py`, `fl9m.py`, 576 forms: fl6lib's natural axes and [security]'s split forms): floor 2, tie C alone (`xor edi`/`mov ebx`). Without it sec's second PHI has old `_791`, below flash's noCrc_797, so it takes slot 59 (low) and noCrc 60. Needs that PHI's dom2 number above 798. Not a counted trick; it's still flagged.
+- **Plain `for` in setupFiles** (`fl9k.py`, `fl9m.py`): floor 4, its own compare (attempt 4's remap order).
+
+### Next
+
+1. findKey: nothing new. It wants an exit which lasts past inlining and folds silently, and attempts 6-8 found none that isn't a dead test. The findKey split candidate (`drafts/filelist_ini_findKey_candidate.patch`) still stands for the user to decide on.
+2. findField: dom2's PHI number for sec's second name; `fl9e.py <tag> dom2` shows that table. Worth one short attempt with the same method, since it's a one-slot problem. dom2's own stack isn't modelled yet.
+3. **The method is the lesson, for any other object with "numbering" ties:** dump a pass's replacement table (`fl9e.py`), see which pass numbered the slot's owner (`fl9d.py`), then remove or add exactly one statement at that pass. `(sizetype)` on an index is the cheapest such statement: unsigned indexes change no code.
+
+Not worth retrying: ivopts' order itself (it's mechanical), more dead-test placement.
+
+### For review (flagged)
+
+- **`uint32_t file` is a live local but its type steers gcc**: `int file` doesn't match. It reads naturally (it shortens a long line, and an index being unsigned is unremarkable), and README lists types as fair game. But it's used by only one of bl's eight `xb.files[blOrder[i]]`, for numbering reasons, and the comment says so. Parent's and user's call whether that's a removal.
+- `findField` (used only by `[security]`) and setupFiles' test-first loop remain numbering helpers, as flagged since attempts 4-5. `preParse` is gone.
+- `fl8lib.py` gained an `FLA` env var for its log directory (default unchanged).

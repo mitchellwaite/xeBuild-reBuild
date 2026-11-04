@@ -204,15 +204,6 @@ void checkFileCase(void)
 		fixFileCase();
 }
 
-/* the terminators around iniPreParse.  Called once, as with findField: numbers flashfs's len and noCrc copies */
-static int preParse(unsigned char *buf, int size)
-{
-	buf[size] = 0xff;
-	size = iniPreParse(buf, size);
-	buf[size] = 0;
-	return size;
-}
-
 /* the files this build type uses.  Called once, so inlined after parseIni's own names are
    numbered, and that placement sets the compare operands and copy orders further down
    (notes/filelist_ini.md).  The test comes first in the body so that xb.nFiles is numbered
@@ -308,8 +299,8 @@ static void setupFiles(void)
 }
 
 /* an entry's name,crc separators.  Called once, so inlined after parseIni's own names are numbered, and the
-   loads and stores of *comma and *nul only go after that: it sets [security]'s compare order and takes the
-   place of the dead tests that did (notes/filelist_ini.md) */
+   loads and stores of *comma and *nul only go after that: it sets flashfs's copy order
+   (notes/filelist_ini.md) */
 static void findField(unsigned char *p, int rem, int *comma, int *nul)
 {
 	*comma = memFindChar(p, ',', rem);
@@ -351,7 +342,9 @@ uint32_t parseIni(char *path)
 		free(buf);
 		return 0;
 	}
-	size = preParse(buf, size);
+	buf[size] = 0xff;
+	size = iniPreParse(buf, size);
+	buf[size] = 0;
 
 	/* [version] */
 	off = memFindStr(buf, size, "[version]", 1);
@@ -416,6 +409,10 @@ uint32_t parseIni(char *path)
 		end = off + memFindChar(&buf[off], '[', size - off);
 		pos = off;
 		for (i = 0; i < nbl; ) {
+			/* unsigned on purpose: no (sizetype) statement at laddress, and that one name fewer sets the
+			   numbers of [rawpatch]'s and [flashfs]'s compares and copies (notes/filelist_ini.md, attempt 9) */
+			uint32_t file;
+
 			p = &buf[pos];
 			comma = memFindChar(p, ',', size - pos);
 			nul = memFindChar(p, 0, size - pos);
@@ -449,7 +446,8 @@ uint32_t parseIni(char *path)
 				pos = pos + n + 1;
 			} else
 				xb.files[blOrder[i]].crc = 0;
-			log_printf(1, "found (%d) '%s' crc: 0x%08x\n", i + 1, xb.files[blOrder[i]].name, xb.files[blOrder[i]].crc);
+			file = blOrder[i];
+			log_printf(1, "found (%d) '%s' crc: 0x%08x\n", i + 1, xb.files[file].name, xb.files[file].crc);
 			i++;
 			if (pos > end) {
 				log_printf(0, "\n******* ERROR: ini problem, can't find enough data for %s section!\n", label);
@@ -540,19 +538,10 @@ uint32_t parseIni(char *path)
 				noCrc = 0;
 			}
 			if (len <= 1023) {
-				/* this and the other two can't-happen tests in [flashfs] are dead, and steer gcc: what they free
-				   sets [rawpatch]'s comma/nul compare and flashfs's copy order (notes/filelist_ini.md) */
-				if (off < -1) {
-					*buf = 0;
-					buf[size] = 0;
-				}
 				strncpy(xb.firmware[i], (char *)p, len);
 				xb.firmware[i][len] = 0;
 				if (len > 21) {
 					s = strrchr(xb.firmware[i], '/');
-					if (off < -1) {
-						*buf = 0;
-					}
 					if (s == NULL)
 						s = strrchr(xb.firmware[i], '\\');
 					s = s ? s + 1 : xb.firmware[i];
@@ -576,10 +565,6 @@ uint32_t parseIni(char *path)
 						return 0;
 					} else {
 						strncpy(tmp, (char *)&buf[pos], 8);
-						if (off < 0) {
-							*buf = 0;
-							buf[size] = 0;
-						}
 						tmp[8] = 0;
 						crc = xb.firmwareCrc[i] = myatox32(tmp, 0);
 					}

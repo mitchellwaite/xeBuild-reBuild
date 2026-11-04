@@ -8,7 +8,7 @@ import itertools, os, random, re, sys, threading
 from concurrent.futures import ThreadPoolExecutor
 import fllib as L, fl6lib as F
 
-A8 = os.path.join(L.BD, 'a8')
+A8 = os.path.join(L.BD, os.environ.get('FLA', 'a8'))
 os.makedirs(A8, exist_ok=True)
 S0 = F.S0
 WORKERS = int(os.environ.get('WORKERS', '6'))
