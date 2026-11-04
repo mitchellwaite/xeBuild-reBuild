@@ -737,3 +737,61 @@ Next:
 Reproduce: `python tools/wip/dehint/iw14names.py <file> writeFsTable -p ivopts`, then from build/iw/a14 `python ../../../tools/wip/dehint/iw14pop.py nm_<name>`. For VDEFs: compile with `-fdump-tree-oaccdevlow-vops`. `python tools/wip/dehint/iw14rejudge.py tools/wip/dehint/drafts/image_write_a14.c build/iw/a14/rj2.log 120` took under 40 minutes with 4 threads. Scratch bases in build/iw/a14: pa.c, pb.c (`&&` pad), foraa.c, v9.c, c1.c (if/else calls, 50 lines: slots and block order).
 
 Lesson: **`.MEM` names share the SSA counter and the free list, and default dumps hide them.** A "name in no dump" is usually a store. A store dead in one inlined copy can name a loop variable in the other, so what's dead in a copy matters as much as what's live.
+
+## Attempt 15
+
+Written as I go. New tools in tools/wip/dehint: `iw15dump.py <name> <file.c> [flags]` (tree dumps with `.MEM` names and pre-details, build/iw/a15/d_<name>), `iw15stack.py <dumpdir> [fn] [first] [last]` (names new and gone per pass, `.MEM` marked `m`), `iw15src.py <dumpdir> [fn]` (each name ivopts takes, the last pass it was live in, what it held, `.MEM` included), `iw15pre.py <dumpdir> <fn>` (what PRE inserts, with value ids), `iw15sig.py <file.c>...` (writeFsTable's compare signature), `iw15grid.py <base.c> [kmax] [mmax]` (probe grid by signature), gen_iw220-227.
+
+GCC source: I tried CLAUDE.md's official URL for tree-ssanames.c once. gcc.gnu.org answered with an Anubis access-denied page, so nothing below comes from reading source. I didn't try to get round it or use a mirror. Anything about how the free list works internally is inferred from dumps.
+
+### The signature
+
+`iw15sig.py` reads the five `if (ivtmp != _bound)` tests in writeFsTable's ivopts dump, in dump order: `<` when the increment's version is below the bound's, `>` above. Later passes put the lower version first, so this predicts the emitted operand order. Target (src): **`<>><<`**. The positions are the small-copy loop, the big copy's inner loop (the known compare), the big copy's outer loop, and the two page loops of the other copy (C1 and C2 below; each emits two compares after split-paths). a14 is `<<><<`.
+
+### Item 1: what puts a name at the increment's position (from dumps unless marked)
+
+- Names come in tuples of (PHI, increment, init, bound), and the bound comes straight after its loop's candidate, not where iw14pop.py lists it (iw14pop groups it under the outer candidate that the bound's expression later uses). Real order: src `102 67 68 282 | 369 58 226 389 | 277 240 314 313 241 | 315 391 279 319 | 317 318 321 320 322 74 | 75 76 84 108 ...`, a14 `51 121 233 130 | 352 120 162 160 | 159 372 301 300 302 | 214 158 215 212 | 373 263 217 304 303 219 | 305 218 216 309 ...`. Inferred from the tuples holding up across a dozen states; nothing reads the pops directly.
+- **src versus src without the dead test (build/iw/a15/nd.c, 2 lines, the same compare):** add 2 to nd's numbers and the two stacks are the same layer. nd has `... 389 240 314 313 241 315 391 279 316 319 318 ...` with the big tuple at `279 316 319 318` (316 < 318, wrong). src has 58, 226 and 277 above that layer, so the big tuple lands on `315 391 279 319` (391 > 319, right). **So 391 isn't special. The dead test works by adding names above the ccp2 layer, which moves the window over the same list.**
+- Most of the names in play last appear in oaccdevlow: they go at ccp2, from arms dead for that copy's constants. Names freed later sit above them.
+- **Position doesn't matter, count does.** gen_iw220: K names freed by a dead arm, at 3 positions: same lines per K at every position. gen_iw221, lines by K on a14: 0:2 1:8 2:8 3:30 4:28 5:28 6:8 7:4 8:4 ... 16:4, never 0 up to 80. Bodies aren't neutral, though: src's `off += 0x4000` on nd gives 0 and `off++` gives 6, so a body can change more than the count (I read that as FRE matching it to the log's `off + 0x4000`; inferred, not traced).
+- **K = 7, 8, 16 fix the big copy's compare and only C1 is wrong (`<>>><`).** C1's bound is `_39`, a low name from writeFsTable's own arm, and C1's increment is around 129. Every K >= 1 on a14 gets C1 wrong. writeFsTable's own names are lower than the inlined copies', so an arm there can't supply a bound above it (the reason is inference; the `>` at every K is measured). gen_iw223: 3000 random arms on a14, floor 2; 3000 on a14 with `setBeU16(blk, ...)`, floor 4. Samples, but the arms vary length, nesting, target and count.
+- Why a low name freed at VRP1 sits above an ifcvt name, under pcom's, isn't explained. Stretches of the stack read as ascending runs, and I'd guess some passes release in version order, but that's inference. The stack isn't one LIFO by pass.
+- On paper, using a14's tuples: 2 or 3 more names above the layer break the big outer compare (212 v 304, 215 v 217). 3 fewer (or 3 more taken live by earlier passes, off the top of the layer) makes the compares listed there right. Probe: `M` partially redundant `off >> n` in iw15grid.py (each one a PRE PHI, the mechanism of a14's `off >> 14`). M = 0..6 x K = 0..30: no `<>><<` on a14. M's own names disturb everything else, so this doesn't refute the paper result, but it isn't a way to reach it.
+
+### Item 2: pre new 18 v 19
+
+**The extra PRE name is the tail spelling.** a14's first insertion is `prephitmp_278 = PHI <blk_8, blk_8, blk_14>` for `off >> 14` (`iw15pre.py`); src writes `setBeU16(blk, ...)` and has no such PHI. After it the two insert parallel lists (read for writeFsTable's first iteration). So I read the different store and load pair as a consequence of one extra pop plus the different layer above it, not a separate lever (inferred; not tested in isolation).
+
+### Item 3: what `&&` partial costs in imgAdd
+
+- **The pad and tail order is a naming race.** ifcombine merges the two tests into `_1 & _N` in both a14 and foraa (gen_iw218 `for+aa`). In the optimized dump the order comes from the two compare names PRE makes on the path to the memset: a14 `_315 = pad == 1; _316 = len != 0; _315 & _316`, foraa `_317 = len != 0; _320 = pad == 1; _317 & _320`. PRE handles `&` before `tail != 0` in a14 (ids 0061 v 0182) and after it in foraa (0180 v 0179).
+- The id order looks like version order (inferred): a14's `&` result is `_49`, foraa's is `_237`, with tail's compare at 233 and 235. 49 and 237 are both among the names dce2 frees: `i_49` versus `iftmp.16_237 = PHI <1(18)>`, a single-arg PHI left after VRP1's threading of the `&&`.
+- A dead arm or an unused-after-VRP local in imgAdd doesn't move this (gen_iw224, build/iw/a15/p1.py): imgAdd stays 100+ across K. Note gen_iw224's condition is `(x & 0xff) > 0xff`, which does survive once the body assigns off.
+- **`small` removes almost all of it. gen_iw225: foraa with `small = type != 0 && type != '0'; partial = small && len < 0x4000;` is 12 lines, down from 122**: imgAdd 6 (`and edi,0x1ffff` and `and eax,..` scheduled differently), imgAddFile 4 (a cmp and ja order), writeFsTable 2 (a different compare, line 359). `a && b && c`, ternary and `if` forms stay 122+; `if (&&)` with no variable 46+.
+- gen_iw226, 227: the block offset's place on this family. In the arm or at the use: 2, the known compare. At the top of the loop (`for`, `forv`, `forw`, `forx`, `ms`): 12. In the big arm or type test (`big`, `bt`): 54, or 10 with `setBeU16(blk, ...)`. Above the page loop: 227+.
+- **Without the block offset local, `small` is byte-identical to a14 with the same SSA numbers.** That's drafts/image_write_a15.c. It replaces `(len < 0x4000) & (type != 0) & (type != '0')` with something a person would write.
+
+### Item 4: small landings
+
+- **drafts/image_write_a15_dead.c = a14 with src's dead test and `setBeU16(blk, ...)`, would be 5 tricks (lnp2 gone): 4 lines, signature `<>>><`.** Same SSA numbers as attempt 13's n8_bf, now understood: everything is right except C1 (`ivtmp.405_120 != _106`, two lines after split-paths). The bound is `pages_106`, the first copy's `len / 512`. It needs a name above 120.
+- iw14rejudge over gen_iw205-219 on it (cap 300, build/iw/a15/rj_dt1a.log): floor 4, except gen_iw212's `nodead+tl`, which just goes back to the 2-line family.
+- gen_iw222: a14 x one dead test (3 positions, 7 conditions, 18 bodies, tail spelling; 756): floor 2.
+- Dropping the dead test or lnp2 from src alone: gen_iw212's results stand, nothing new.
+
+### Not candidates, but worth knowing
+
+iw15grid on nd (src family, dead test swapped for a K arm): `<>><<` at K = 12, 19, 23, 24, with 46 lines; I read K = 12's and they're a stack-slot rotation ([esp+0x1c], 0x20, 0x24 become 0x20, 0x24, 0x10). a14 with `setBeU16(blk, ...)` has 48 lines, which attempt 14 also read as slots. It keeps lnp2 and a long dead arm, so it isn't a reduction. It shows the signature and the slots are separate targets, and that the src family keeps C1 right under K where the bitfield family doesn't: its C1 increment is 79, a14's about 129.
+
+### Attempt 15 result: NO MATCH
+
+No byte-identical state under 6. `iwlib.py src/image_write.c -np`: IDENTICAL; build/iw/reference.o is identical to build/obj/image_write.o. Closest: drafts/image_write_a15.c, would be 4 tricks (pin_t, pin_hdr, optimize, xmalloc), 2 lines. With a dead test and 5 tricks: drafts/image_write_a15_dead.c, 4 lines. optimize, pin_t and pin_hdr weren't attacked because the compare didn't yield.
+
+Next:
+1. C1 in image_write_a15_dead.c. It's the one thing left in a 5-trick state, and the target is concrete: C1's bound above C1's increment (`iw15sig.py <file>`, then `iw15dump.py` and `iw15src.py` for what each is). `pages_106` is the first copy's `len / 512` in the big arm. Move that name, or lower the increment (a `.MEM` taken at vect).
+2. The 12-line `small` state: three small independent diffs. Its writeFsTable compare is a different one from a14's, so read it with the signature first.
+3. Rerun older generators keyed on the signature, not total lines, logging any state with the big copy's compare right. A state fixing it at a cost elsewhere has been invisible to every sweep so far. It needs two compiles per state.
+4. Don't retry: dead arms in writeFsTable on a14 (gen_iw221, 223), K arms in imgAdd (gen_iw224), M probes (iw15grid), a second dead test on the dead draft (gen_iw206 in the rejudge).
+
+Reproduce: `python tools/wip/dehint/iw15dump.py a15 tools/wip/dehint/drafts/image_write_a15.c`, then `python tools/wip/dehint/iw15stack.py build/iw/a15/d_a15 writeFsTable pre ivopts` and `python tools/wip/dehint/iw15src.py build/iw/a15/d_a15`. K table: `python tools/wip/dehint/iwsweep.py tools/wip/dehint/gen_iw221.py -n 81`. gen_iw225 needs foraa, which is a14 with gen_iw218's `for+aa`: `python tools/wip/dehint/iwsweep.py tools/wip/dehint/gen_iw218.py -n 1 -k for+aa` writes build/iw/gen_iw218_best.c; point `IWB` at it. gen_iw220, 221, 223, 224 and iw15grid are probes, never candidates.
+
+Lesson: **sweep by counting first.** A dead arm with K throwaway statements showed in seconds that position doesn't matter and the count does, which no sweep of plausible spellings could show. And score by compare signature as well as lines: a state with the target compare right can look worse than the one you have.
