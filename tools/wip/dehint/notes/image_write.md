@@ -1496,4 +1496,6 @@ Shape: both entries of used[] can be real: `used[1] = pages; left -= used[1];` c
 
 Also on this route: gen_iw296 (offset through its own PHI, `u = 0; if (x) u = x;`): the dead PHI is hoisted as a COND_EXPR and takes its args along, so the arm is emptied. gen_iw297 is under pin_t below.
 
-Update to the "Not landed" line after attempt 23: the user accepted the dead 0 (2026-11-04), so that draft is now src/image_write.c with a TODO comment, and the draft is removed. It still counts as a trick: 2 tricks, the pin on `t` and the dead entry. The optimize attribute is gone.
+Update to the "Not landed" line after attempt 23: the user accepted the dead 0 (2026-11-04), so that draft is now src/image_write.c with a TODO comment, and the draft is removed. The optimize attribute is gone. See the counting rule below.
+
+Counting rule from the user (2026-11-04): an array longer than it needs to be is not a trick; land it with a TODO comment explaining it. So src is at 1 trick, the pin on `t`, and `used[2]`'s 0 isn't counted. Other dead code still counts.

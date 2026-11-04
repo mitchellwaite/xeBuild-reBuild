@@ -265,8 +265,8 @@ order).
   names recycled by `small`, the `pages` spellings and writeFsTable's `len` set
   the compare operand orders in the clones and inlined copies
   (tools/wip/dehint/notes/image_write.md).
-- imgAdd's `used[2]` table has a dead `0` entry, accepted for now and marked
-  `TODO`. Its scope clobber keeps the nonzero arm in the CFG past lim2, which
+- imgAdd's `used[2]` table has a `0` entry it doesn't need, marked `TODO` and not
+  counted as a trick. Its scope clobber keeps the nonzero arm in the CFG past lim2, which
   gives unswitch the empty forwarder that orders sccp's names for writeFsTable's
   FS loop exits. It replaced `optimize("no-tree-scev-cprop")`.
 - Spare byte 12 is a bitfield (`struct spt`: 6-bit type, 2 bits of ECC), as the

@@ -71,14 +71,13 @@ These are the hints:
 
 Writing a function success-first, duplicating a block, inlining a helper by
 hand and spelling a byte swap differently are source shape, so they aren't
-counted. Neither are plain type casts.
+counted. Neither are plain type casts, or an array longer than it needs to be,
+which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. image_write</b>: 2 tricks, hard</summary>
+<summary><b>1. image_write</b>: 1 trick, hard</summary>
 
 - 1 slot pin, on `t` in `imgAdd`
-- 1 dead table entry in `imgAdd`: the `0` in `used[2]`, whose array's scope clobber
-  sets a compare order in `writeFsTable` (marked `TODO` in the source)
 
 Which SSA names get recycled decides the compare operand order throughout, and
 `imgAdd`'s IPA-CP value decides three clones, so a hint-free source has to land
