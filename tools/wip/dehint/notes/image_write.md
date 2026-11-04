@@ -934,3 +934,90 @@ Reproduce: gen_iw250 on the draft. Bases n8, s4a, s4t, s2c, bp2 are in build/iw/
 Lessons: **cross what looks like it costs something.** Several steps here were worse on some axis than the state they came from (n8 is 8 lines against na's 4). Removing a trick first, then searching around the broken state, reached places attempt 16's base couldn't. And **a rejudge on each new base pays**: `t`'s place (gen_iw184, attempt 11) and `bo` (gen_iw229, attempt 16) were old options that only worked here.
 
 Landed after attempt 17: drafts/image_write_a17.c is now src/image_write.c (4 tricks, full build matches), so the draft is removed.
+
+## Attempt 18
+
+Written as I go. New tools in tools/wip/dehint: `iw18align.sh <name> <file.c>` + `iw18align.py` (alias dumps, the 512-byte memcpy's dest per pass; ALIGN lines in `build/iw/a18/al_<name>/a.c.*`), `iw18freq.py <file.c> [fn] [regno...]` (LRA slot list with each pseudo's rounded frequency), gen_iw251-258. Scratch in build/iw/a18: na.c = src minus optimize, ifb.c = na with if/else calls, nopt.c = src minus pin_t, noph.c = src minus pin_hdr, plainm.c = src with plain malloc.
+
+GCC source wasn't fetched. Where I name what a gcc function does below, it's from memory, marked inferred, and only the measured results are facts.
+
+### xmalloc: what it is, and a way to do it without the asm label
+
+The 180 lines are one thing: `memcpy(raw, ..., 512)` gets an alignment prologue only if `raw` has no alignment info, and everything else (registers, then jump offsets) follows from that. Alias dumps on plainm.c: `raw_366` and `raw_386` are `ALIGN = 4` from ccp1 on, set by CCP from `mem_40`; src's have no ALIGN line. ccp3 is the last pass that sets it (from the dump list) and ivopts keeps the use's lhs (checked on the 2D form: `_105` keeps its ALIGN through `(uint8_t[512] *) ivtmp`), so a name that had ALIGN at ccp3 keeps it. That's why every pointer form gen_iw199 tried still has no prologue.
+
+Tried on plain malloc (gen_iw251):
+
+- A per-block pointer, Linux's shape (`bp = mem; for b { raw = bp; for p {...} bp += 0x4200; }`): same 180. **With xmalloc it's byte-identical to src**, so the source form of the pointer is free. Reads closer to Linux's `rbx += 0x4200; r8 = rbx`, no bytes gained.
+- `struct rawpage { data[512]; spare[16]; } *pg`, `pg->data`, `pg++`: 180, the same bytes as raw with plain malloc.
+- Page and 2D indexing (`pg[b * 32 + p].data`, `rb[b].page[p].data`, `uint8_t (*rb)[32][528]`, ...): 201, no prologue, and 303 even with xmalloc. So not that shape: the reference is a biv, these get an ivtmp.
+
+Tried on how malloc is called (gen_iw252, 253, build/iw/a18/cand.py for the argument types):
+
+| Call | Lines |
+|---|---|
+| `static void *(*alloc)(size_t) = malloc`, `*const`, a const struct of pointers | 180 |
+| a static wrapper | 188 |
+| `((void *(*)(uint32_t))malloc)(...)`, `(void *(*)())` with the unsigned arg, `uint8_t *` return | 180 |
+| **`((void *(*)(int))malloc)(xb.rawSize)`** | **IDENTICAL** |
+| `static void *(*alloc)() = malloc; alloc((int)xb.rawSize)` | IDENTICAL |
+| `(void *(*)(long))`, `(char *)`, `(void *)` argument types | IDENTICAL |
+| `(short)` 12, `(unsigned)` 180, `(long long)` 209 | |
+| `void *malloc();` with or without stdlib.h in the file, `(int)` at the call | 180: the prototype survives (aes.h pulls stdlib.h in) |
+| `void *malloc(int);` | compile error, same reason |
+| xmalloc without `__attribute__((malloc))` | 385: the attribute matters, and the cast keeps malloc's own |
+| the same cast on writeFsTable's call too | 197: writeFsTable needs the builtin's alignment |
+
+So, measured: **the call stops being the builtin for CCP when its argument's type isn't compatible with size_t (signed or pointer), through a function type that doesn't convert it. The callee stays malloc with its attributes.** From memory that's the argument check in gimple_call_builtin_p; not read. `-fno-builtin-malloc` can't do this because writeFsTable and buildImage keep the builtin.
+
+**drafts/image_write_a18.c: src with the asm label replaced by `((void *(*)(int))malloc)(xb.rawSize)`. IDENTICAL at plain -O3.** Not a MATCH: no one writes that call, it only moves the hint from a declaration into a cast. README doesn't count plain casts, so by the letter it's 3 tricks; it's a candidate patch and the parent's call. Compiling it prints a new warning, `function called through a non-compatible type`, at that line. The object is still identical (`cmp` against build/iw/reference.o, so no trap is emitted here), but the warning is one more sign it isn't what the original had, assuming the original built cleanly.
+
+Linux: finalizeImage has the prologue, writeFsTable none, the same split as here, and with a plain `uint32_t` argument converted by the prototype that wouldn't be expected (inferred, I didn't compile anything for Linux). A function type taking `uint32_t` or `int` would mismatch size_t on x86-64, so an original call through a wrong or missing prototype would explain both builds, but I found no source form in C that reaches it without a cast. A different cause common to both compilers isn't ruled out.
+
+Don't retry: pointer forms for xmalloc (gen_iw199, 251), function pointers with size_t arguments, K&R declarations.
+
+### pin_t: the earlier note about ties was wrong
+
+Slots come from LRA's list by frequency, then regno (`iw18freq.py` against the dump's `Slot N regnos`; the order fits on both files). **The pin moves `t` (r198, or r199 with it) past r402 and `_268`:**
+
+```
+no pin:  ... _106 172 | r402 98 | _268 96 | t 95 | npages 83
+pin:     ... _106 172 | t 140 | r402 98 | _269 96 | npages 83
+```
+
+t's insns are in blocks of frequency 64 (def), 657 and 243 (the two split tests): 6 + 65 + 24 = 95. r402 is `start + blocks`, absent from the expand dump (a later RTL pass makes it), in 64, 919, 18: 6 + 91 + 1 = 98. The pin adds one insn at 450 (+45). t and partial swap bytes as a consequence of the holes that order leaves; I didn't work out the hole arithmetic. So what attempts 13 and 17 said (t needs a regno below partial's) doesn't hold: partial and `_137` are slots 4 and 5 with or without the pin.
+
+A shift of probabilities can't do it: t's two tests sum to the body's frequency, so 6 + 90 = 96 at best against r402's latch. **It takes a third reference to t that exists at LRA and is gone from the code**, or r402 losing a reference, whose insns are all real in the reference. I found no natural source for either. Moving the empty asm to learn the threshold (gen_iw257: exit, loop body, else arm, after the assignment) doesn't work: the asm moves other things, 220+ lines.
+
+### pin_hdr: what decides it
+
+The pin changes no SSA name: src and noph have the same pretmp and prephitmp numbers in the optimized dump. Without it spare gets eax and hdr ebp, with it the reverse. Forms of the ECD body (gen_iw255, 256; the block-level options of 256 didn't apply, so 56 states ran):
+
+- `h = xb.hdr;` at the top of the page body, used only by pageErased or calcPageEcc: 236. **hdr in eax and spare in ebp with no pin**, but the preheader loads hdr first and other registers rotate.
+- Dumps: pretmps are `spare 300, hdr 295` in src and `hdr 300, spare 298` in that form, so the higher version gets eax (seen on these two, the rule is inferred). The reference loads spare first, so it'd want spare first with the lower version: ascending pops, a free-list boundary between the two.
+- `q = xb.spare + ...;` kept across the call: 102, but wrong in kind: the reference reloads spare after the call.
+- K dead arms in finalizeImage (gen_iw258, K 0-60): 243 at every K, so the names in play come from layers above them.
+
+### optimize
+
+Rejudged gen_iw1-250 on na (cap 100, finished, build/iw/a18/rs_na.log): nothing at 0 without the attribute. Position 6 flips only far away (gen 54, 94, 131, 167: 650+ lines, FS or page loop rewritten). gen_iw254 (400 states: calls x loop x len x tail x i's type): `l2`, `l4` (Linux's `memcpy(p + 0x200, ...); p += 0x400`), `e3`, `e4` are the same bytes as src: free to use, no gain.
+
+The mechanism on na (iw15stack + iw15src): sink frees a long run, unswitch pops 25 and frees one, `prephitmp_165`, the PRE PHI of `s[9]` whose constant arm goes when the `off & 0x1ffff` test is unswitched. sccp then pops in this order (inferred from which name went where): page loop A takes 165, FS2 239, page loop B 184, FS1 175. C1 is FS2 v FS1, so inside the descending run FS2 is always the higher. Without changing the visit order, two things could flip it:
+
+- a second name freed by unswitch, below FS1's, so the stack reads `165, x, 239, 184, ...` and FS2 gets x. It'd have to be another PHI on the same condition in the second copy; s[9] is the only such value and the forms in gen 214 and 234 don't add one.
+- page loop A not being split, so FS2 gets 165. From memory sccp splits an exit only for a single-exit loop with known niter whose exit block has another predecessor. gen_iw259 (page loop with `!=`, a countdown, signed `end`; FS loop with `!=`, a guard, do-while; 32 states): `p != end` 12 with position 6 unchanged, the rest 648+.
+
+The if/else family, which does flip it: `iw16rej.py` on ifb.c (cap 60, gen 256 down; **stopped partway, around gen 115-125**, so partial, build/iw/a18/rs_ifb.log). Best 33 (gen 158, 243), with several compares still wrong. The first compare of each copy is wrong there too: ifcombine's two new names, `_4 | _118` in na and `_116 | _220` in ifb with the `off >` test on the other side. I didn't trace why the call form changes that.
+
+### Attempt 18 result: NO MATCH
+
+No natural state under 4 tricks. `iwlib.py src/image_write.c -np`: IDENTICAL. Closest by count: drafts/image_write_a18.c, a candidate patch (see xmalloc), byte-identical. Closest natural: src minus optimize, 2 lines, one compare (build/iw/a18/na.c; not committed, it's src with the attribute removed).
+
+Next:
+1. xmalloc: decide whether the cast is acceptable. If it isn't, look for a natural call with a non-size_t argument type. Other objects' mallocs in the original might show a project allocator type; I only looked at image_write.
+2. pin_hdr: the `hl` family gives the right two registers. Target is spare's pretmp first and with the lower version, which takes a free-list boundary inside PRE. Read `pre-details` for the pop order there, and look at what frees names just before PRE (K arms are too deep).
+3. optimize: only the two routes above, or finish the ifb rejudge (gen 115 down) if the if/else family still looks worthwhile.
+4. pin_t: only if a transient RTL reference turns up.
+
+Reproduce: `python tools/wip/dehint/iwlib.py tools/wip/dehint/drafts/image_write_a18.c -np`; `sh tools/wip/dehint/iw18align.sh m build/iw/a18/plainm.c`; `python tools/wip/dehint/iw18freq.py src/image_write.c imgAdd 199 402`; `IWB=build/iw/a18/noph.c python tools/wip/dehint/iw16sweep.py tools/wip/dehint/gen_iw255.py`. Base files: remove the attribute (na), the `"g"(t)` line (nopt), the `"a"(xb.hdr)` line (noph) from src.
+
+Lessons: **read what the option actually changes before searching.** Attempts 13 and 17 reasoned about t and partial from the two swapped bytes; printing the slot list with frequencies showed the competitor is r402. And **test the odd spelling even when it isn't a candidate**: the function pointer casts were probes, and one of them showed the mechanism behind xmalloc.
