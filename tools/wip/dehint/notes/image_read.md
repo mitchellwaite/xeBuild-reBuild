@@ -1,0 +1,107 @@
+# image_read de-tricking
+
+Goal: `build/ir/reference.o` (copy of a matching build/obj/image_read.o) byte-identical
+from plain `-O3`, with fewer hints.  31 tricks at the start of attempt 1.
+
+## Attempt 1
+
+Tools (tools/wip/dehint/): `irlib.py <file.c> [-v [fn]]` (IDENTICAL or per-function lines),
+`irtricks.py singles|pairs|greedy|show` (named edits of each trick, IRBASE=<file> for the base),
+`irsweep.py` (added later, see below).
+
+Cost of removing each trick alone (lines, total incl. functions moved by knock-on effects):
+
+| trick | lines | where |
+|---|---|---|
+| if0_smc | 0 | `return;` then the labels instead of `if (0) {` : IDENTICAL |
+| pin_cb | 4 | parseDump (xor ebp,ebp; mov [esp+2c],ebp and an `xchg ax,ax`) |
+| pin_lo2 | 4 | detectController: `movzx edx` vs `eax` |
+| bar_hdr | 6 | checkHeader: size test first |
+| exp_ok1 | 7 | findAnchor: alignment only |
+| pin_found | 7 | detectController: head-merged xor eax |
+| lit_anchor | 10 | findAnchor, .rdata order |
+| lit_smc | 16 | getImageSmc, .rdata order |
+| exp_nok1 | 20 | findAnchor (7 together with exp_ok1) |
+| unr_remap | 21 | remapBadBlocks |
+| pin_t | 23 | checkBlock |
+| unr_p2 | 26 | parseDump |
+| opt_smc | 37 | getImageSmc |
+| unr_smc | 46+ | getImageSmc |
+| bar_p | 45+ | parseDump |
+| pin_lo | 67 | detectController |
+| pin_v | 70 | fsGetFile |
+| unr_p1 | 70+ | parseDump |
+| opt_mmc | 74 | copyMmcImage 14, parseDump 6, loadDump 54 |
+| exp_ok0 | 93 | findAnchor |
+| lab_bhot | 93 | getImageSmc |
+| lab_shot / pin_addr / lab_vhot / exp_smc | 119-158 | getImageSmc |
+| exp_scan | 137+ | scanMobiles |
+| bar_anchor | 67+ | findAnchor |
+| lab_mmc | 296 | loadDump |
+| pin_b2 / lab_rem | 308 / 382 | parseDump |
+| noinline | 1083 | imgGetSecurityFiles, loadDump |
+
+Everything of a function removed at once: findAnchor 42, getImageSmc 156, detectController 96,
+parseDump 358.  Useful pairs: exp_nok1+exp_ok1 7, pin_found+pin_lo2 11, bar_p+opt_mmc parseDump 51
+with loadDump only 2 (so loadDump's 54-56 lines is one effect shared by parseDump/copyMmcImage).
+
+### Findings as they came
+
+- **if0_smc: IDENTICAL.** `return;` + the labelled blocks at the end replaces `if (0) {`.
+- **bar_hdr (checkHeader's asm): IDENTICAL.** ifcombine only merges two tests when the inner block
+  holds nothing but the condition (cf is FRE'd from the earlier `size < cf` test).  So a load between
+  the tests, which the sink pass moves past the test later, does the asm's job with no code:
+  `count = SWAP16(hdr.sysUpdateCount);` (uint32_t; a uint16_t count gives 116 lines) between
+  `goto badSysUpdate` and the cf test.  gen_ir8.py.  Other shapes, gen_ir7.py: `||` 6 lines (ifcombine),
+  reversed `||` 220 (not combined, wrong order), separate blocks 300+.
+- findAnchor (5 tricks, 42 all gone), gen_ir1..6:
+  - .rdata order (e8 valid, e8 invalid, ec valid, ec selected, ec invalid, e8 selected) is met without
+    lit_anchor by `if (ok1) { valid; if (!ok0 || v0 < v1) { sel1; return 1; } } else invalid; if (ok0) sel0`
+    ("or" in gen_ir1.py, 58 lines).  The reference's threading isn't: dom2 threads the I block's ok0 test
+    (I = `ec invalid; if (ok0)`), the reference keeps it.  What keeps it in HEAD is bar_anchor: an asm
+    stops thread_through_normal_block in I.  In dom3's input J (the sha call) is split only if nothing
+    threaded it in dom2; each incoming edge keeps one joiner thread (first registered wins).
+  - Natural idea not yet found: I block must end without a cond (K separate) until dom3, or ok0's
+    knowledge must not reach it.
+  - With the two asms kept, all 3 expects go at 14 lines: `if (ok0) { if (ok1 && v0 < v1) { sel1 } sel0 } if (ok1) sel1`
+    (gen_ir2/3).  Left: v1/ok0 swap (ebx/edi).  IRA pops by spill cost: ref v0 > ok0 > v1 (v0 10625, ok0 10000,
+    v1 7797), draft ok0 10000 > v1 8687 > v0 7915.  v0 must beat ok0's constant 10000, which needs P(ok0) of the
+    FIRST test above 50% (both arms hold a call: call heuristics 71/29 cancel).  `int ok0; if (ok0 > 0)` on
+    the first test (opcode-positive predictor) gets it to 4 lines, only `jle` where the ref has `je` (gen_ir4).
+    `uint32_t ok0 > 0` folds to != 0 in the front end: no effect.  Single exit (`ret`, gen_ir5) no effect.
+    One expect alone: on `ok1` in the nested && it is the same 14, on the second ok0 20, gen_ir6.
+- **unr_remap: IDENTICAL** with `int i` in both remapBadBlocks and findFreeRemap (gen_ir17): VRP derives numBad != 0 from a signed IV.
+  One of the two alone leaves 4 lines.  Draft at this point: 28 tricks (if0_smc, bar_hdr, unr_remap gone).
+- parseDump (gen_ir11-16): a signed `for (blk = 0; blk < blocks; blk++)` (VRP knows blocks >= 0 from uint / {32,256}, so the guard is
+  still `je`) removes the need for u1, u2, bar_p, pin_cb, pin_b2 **at once** (all five free of one another: 52-48 loose lines left
+  with lab_rem kept, IRLOOSE=1 irlib).  What's left then: ch gives blk a late SSA name (blk_170 vs dst_30), so `blk != dst`
+  canonicalises to `dst != blk`: cmp operands swapped in 3 places, plus `xor ebp,ebp`, plus one block's place.  HEAD's `blk = (int)n`
+  has its own low name, which is what the reference's compares want (dst_2 < blk < dst_30).  do-while avoids ch but layout breaks
+  (410 lines, `blk == 0` handled as separate).  `(int)n < blocks` on an unsigned counter: same as the signed loop (FRE'd into the header).
+  Dropping `dest < numBlocks` (always true) from addRemapP with the unsigned loop gets the compares right and needs no unreachable, but its
+  callee-side prediction lowers the log block's frequency: without it blk is hoisted out of the inner loop by IRA (41 loose lines).
+  A later attempt should start from this: signed loop plus something for the SSA order, or a test with the same prediction.
+
+### State at the end of attempt 1
+
+`drafts/image_read_attempt1.c` is IDENTICAL with 28 tricks: if0_smc, bar_hdr, unr_remap gone.
+Borderline: checkHeader's `count` read between the tests (live, and it reads naturally; it's there for ifcombine).
+`if (0)` is now `return;` + labelled blocks at the end of getImageSmc.
+
+Tried without a result, in the order to read them (generators under tools/wip/dehint/):
+- loadFlashFile's noinline (gen_ir18-20): size 45, growth 39, limit 40.  A separate mask statement leaves `_27 & 65535` in gimple
+  at IPA time (+1 size: not inlined, combine drops it later), but the extra pseudo changes RA: 88 lines (fsOffset spilled, block in edi).
+  `(uint16_t)SWAP16(...)` stays out too and leaves only 18 lines, but bswap turns it into `rol bx,8`.  Types of params/return/locals: no effect.
+  Next: another +1 size statement that doesn't touch the swap.
+- fsGetFile's pin_v (gen_ir23): pure esi/edi swap of v and name, plus stack slots; shape doesn't matter (70 for all).  IRA tie.
+- detectController (gen_ir9, 10): pin_lo2 gives 4 lines for every spelling of the second test; pin_found 7 for every placement.  pin_lo: the sum
+  takes hi's register only because lo is live past it; without it i moves to ecx (copy after the call), 52 lines.
+- getImageSmc, all ten hints gone, written like getImageKv (gen_ir21, 22): 90-98 loose lines, 138-146 strict; structure is already right, block order
+  and arm polarity differ.  Ref: the bad-addr arm falls through (P(bad) > 50), `cmp ebx,eax; jb`.  Best `ii.zlast.ne.ge`.  Next attempt: model profile_estimate on it.
+  Note ebx/edi copies of addr in the ref and `edi = 0x1000` are RA from the hints or real; unknown.
+- checkBlock's pin_t: reassoc's range test merges `t <= 0x29 && m` into `(m - 1) <= 0x28`; reassoc2 runs after sink, so the
+  checkHeader trick won't hold.  Not swept.
+
+What to try first next: (1) parseDump's signed loop (5 tricks at once) and the SSA order after ch; (2) findAnchor at 4 lines with `int ok0; ok0 > 0`
+if P(ok0) above 50 can come from elsewhere, or the 'or' shape; (3) `sink moves it` as a natural replacement for other empty asms.
+Don't retry: declaration order in findAnchor (no effect), `uint32_t > 0` spellings (fold early), single-exit findAnchor.

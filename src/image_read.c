@@ -201,17 +201,16 @@ bback:
 	} else {
 		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	}
-	if (0) {
+	return;
 zero:
-		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-		addr = 0x1000;
-		goto zback;
+	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+	addr = 0x1000;
+	goto zback;
 bad:
-		bhot: __attribute__((hot));
-		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-		addr = 0x1000;
-		goto bback;
-	}
+	bhot: __attribute__((hot));
+	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+	addr = 0x1000;
+	goto bback;
 }
 
 void getImageKv(void)
@@ -831,7 +830,7 @@ int addRemap(uint32_t block, int dest, int numBlocks)
 int findFreeRemap(int numBlocks)
 {
 	int b, used;
-	uint32_t i;
+	int i;
 
 	for (b = numBlocks - 1; b >= numBlocks - 32; b--) {
 		used = 0;
@@ -848,7 +847,7 @@ int findFreeRemap(int numBlocks)
 
 void remapBadBlocks(int numBlocks)
 {
-	uint32_t i;
+	int i;
 	int b;
 
 	log_printf(1, "cleaning up stray remaps\n");
@@ -856,8 +855,6 @@ void remapBadBlocks(int numBlocks)
 		if (xb.badRemap[i] != -1)
 			continue;
 		if (xb.badBlocks[i] < numBlocks - 32) {
-			if (!xb.numBad)	/* i < numBad: drops the inlined loop's guard */
-				__builtin_unreachable();
 			b = findFreeRemap(numBlocks);
 			if (b) {
 				xb.badRemap[i] = b;
@@ -1155,6 +1152,7 @@ int checkHeader(const char *name, FILE *fp)
 	uint8_t page[0x210];
 	uint32_t magic;
 	long long size;
+	uint32_t count;
 
 	size = getFileSize64(fp);
 	log_printf(1, "%s file size: 0x%llx\n", name, size);
@@ -1181,16 +1179,18 @@ int checkHeader(const char *name, FILE *fp)
 		return 0;
 	}
 	/* as `||`, ifcombine makes it `a | b` and forwprop puts the size test
-	   last; the asm keeps two jumps in this order */
+	   last; ifcombine needs nothing but the test in the second block, so
+	   reading count here keeps two jumps in this order (sink then moves the
+	   read below the test, no code) */
 	if (size < SWAP32(hdr.sysUpdateAddr))
 		goto badSysUpdate;
-	__asm__("");
+	count = SWAP16(hdr.sysUpdateCount);
 	if (SWAP32(hdr.cfOffset) > SWAP32(hdr.sysUpdateAddr)) {
 badSysUpdate:
 		log_printf(0, "******* ERROR loading '%s', flash header SysUpdateAddr is malformed\n", name);
 		return 0;
 	}
-	if (SWAP16(hdr.sysUpdateCount) != 2)
+	if (count != 2)
 		log_printf(0, "******* ERROR loading '%s', flash header SysUpdateCount is not 2, continuing anyway\n", name);
 	if (SWAP16(hdr.kvVersion) != 0x712)
 		log_printf(0, "******* ERROR loading '%s', flash header KeyVaultVersion is not 0x0712, continuing anyway\n", name);
