@@ -75,19 +75,17 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. filelist_ini</b>: 22 tricks, hard</summary>
+<summary><b>1. filelist_ini</b>: 11 tricks, hard</summary>
 
-- 3 options: `-fno-tree-loop-vectorize`,
-  `--param builtin-expect-probability=65` and
-  `--param lra-inheritance-ebb-probability-cutoff=60`
-- 12 dead tests (`< -1` and `< 0` stores, a `strlen` block), whose freed SSA
+- 8 dead tests in `parseIni` (`< -1` stores, a `strlen` block), whose freed SSA
   names set compare order and pseudo numbers
-- 3 literal-order `asm`, 1 pin and 1 `__builtin_unreachable` in `findKey`
-- 1 `__builtin_expect` and `optimize("ira-region=one")`
+- 1 literal-order `asm` in `parseIni`'s `[flashfs]` loop
+- 1 `__builtin_unreachable` in `findKey` and 1 pin in `iniBoolInvalid`
 
 The SSA-numbering hints are the problem. Their effects are indirect, and each
-source change disturbs the rest. Vectorization and LRA's cutoff are global
-options with no direct source equivalent.
+source change disturbs the rest. Nesting the `[flashfs]` path check takes out
+the `asm` and four dead tests but leaves two register-order ties, and `findKey`
+and `iniBoolInvalid` share a pseudo-number tie of their own.
 
 </details>
 

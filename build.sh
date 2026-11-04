@@ -46,12 +46,6 @@ for f in $objects globals; do
     # from dead hints in the source (tools/wip/aio/p1/NOTES.md)
     options) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=83" ;;
-    # iniPreParse: vectorization makes PRE drop a PHI; its ';' hint (65-66)
-    # makes its memcpy block hot enough to be aligned; parseIni needs
-    # LRA's EBBs to stop at a 50% fallthrough (51-70 work)
-    filelist_ini) orig="$f.c"
-           cflags="-O3 -fno-tree-loop-vectorize --param builtin-expect-probability=65
-                   --param lra-inheritance-ebb-probability-cutoff=60" ;;
     image_write) orig="$f.c"
            cflags="-O3" ;;
     # its data is defined in the original's .data/.bss order, reversed

@@ -61,13 +61,10 @@ extern const char *const consoleNames[8];
 extern const unsigned char validChars[74];
 int iniPreParse(unsigned char *buf, int size);
 
-/* copy the base dir's casing of the smc, kv and patches file names; IRA's
-   regional allocation keeps &st rather than dir in a register (ira-region=one) */
-__attribute__((optimize("ira-region=one")))
+/* copy the base dir's casing of the smc, kv and patches file names */
 void fixFileCase(void)
 {
-	char dir[1024], path[1024];
-	struct stat st;
+	char dir[1024];
 	DIR *d;
 	struct dirent *de;
 
@@ -76,6 +73,9 @@ void fixFileCase(void)
 	if (d == NULL)
 		return;
 	while ((de = readdir(d)) != NULL) {
+		char path[1024];
+		struct stat st;
+
 		strcpy(path, dir);
 		strcat(path, de->d_name);
 		if (stat(path, &st) < 0)
@@ -90,9 +90,7 @@ void fixFileCase(void)
 	closedir(d);
 }
 
-/* strip comments and invalid characters; returns the new size.  Needs
-   -fno-tree-loop-vectorize (with it, PRE drops the validChars loop's
-   PHI <'A', validChars[j+1]>) */
+/* strip comments and invalid characters; returns the new size */
 int iniPreParse(unsigned char *buf, int size)
 {
 	unsigned char *tmp;
@@ -102,10 +100,7 @@ int iniPreParse(unsigned char *buf, int size)
 	memcpy(tmp, buf, size + 1);
 	/* remove comments */
 	for (i = 0; i < n; i++) {
-		/* 35% (builtin-expect-probability=65, build.sh): the comment
-		   block's memcpy path is then hot enough for the default
-		   align-threshold to align it after the ret */
-		if (__builtin_expect(buf[i] == ';', 0)) {
+		if (buf[i] == ';') {
 			i++;
 			for (j = 0; buf[i + j] != '\n' && buf[i + j] != 0xff && i + j < n; j++)
 				;
@@ -121,7 +116,7 @@ int iniPreParse(unsigned char *buf, int size)
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < (int)sizeof(validChars); j++)
 			if ((char)buf[i] == (char)validChars[j])
-				break;
+				j = sizeof(validChars) + 1;
 		if (j == sizeof(validChars))
 			buf[i] = ' ';
 	}
@@ -147,20 +142,9 @@ int iniPreParse(unsigned char *buf, int size)
 	for (i = 0; i < n; i++)
 		if (buf[i] == '\n' || buf[i] == ';')
 			buf[i] = 0;
-	/* dead (VRP drops it): its freed SSA name puts the comment loop's
-	   header copy in 0xff-first order */
-	if (i < 0)
-		buf[0] = 1;
 	memcpy(tmp, buf, size + 1);
 	/* remove empty lines */
 	for (i = 0; i < n; i++) {
-		/* dead (VRP drops it, then the empty loop), but the profile is
-		   estimated with it as the hottest block: that scales the comment
-		   block and its inner loop's preheader to equal REG_FREQs, so LRA
-		   assigns the inheritance of i (ebx) before &buf[i] (ecx) */
-		for (j = 0; j < 44; j++)
-			if (i < 0)
-				buf[j] = 1;
 		if (buf[i] == 0 && buf[i + 1] == 0) {
 			memcpy(&buf[i], &tmp[i + 1], n - i - 1);
 			n--;
@@ -223,11 +207,9 @@ void checkFileCase(void)
 /* read the file list ini: the files for this build type, the bootloaders'
    names and crcs, [rawpatch], [flashfs] and [security].
    gcc emits a function's literals in expand-time block order, so the
-   original's .rdata order shows its shape: [version] and the bl label are
-   tested for success with the error in the else, and [rawpatch] nests its
-   name-length check.  Where the shape is pinned by layout or by the dead
-   stores below, an empty asm with "i" operands emits literals early
-   without changing the code. */
+   original's .rdata order shows its shape: each section is tested for
+   success with the error in the else, and so are its length checks.  The
+   [flashfs] path check doesn't yet (see its empty asm). */
 uint32_t parseIni(char *path)
 {
 	FILE *f;
@@ -282,8 +264,6 @@ uint32_t parseIni(char *path)
 				xb.nFiles = 11;
 				blOrder = blDevk;
 				sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
-				if (off < -1)
-					buf[0] = 1;
 			} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
 				xb.nFiles = 12;
 				blOrder = blTestk;
@@ -407,10 +387,11 @@ uint32_t parseIni(char *path)
 	if (off >= 0) {
 		log_printf(1, "\nini: label %s found\n", label);
 		end = off + memFindChar(&buf[off], '[', size - off);
-		/* this and the other `< -1` stores below are dead (VRP1 drops them);
-		   the SSA names they free set the comma/nul compare order in the bl,
-		   [flashfs] and [security] loops, and give [rawpatch]'s n a late
-		   partition (combine orders the lea's registers by pseudo number) */
+		/* this and the other `< -1` stores below are dead (this one reads comma
+		   uninitialized, and its store is gone by the final code); the SSA names
+		   they free set the comma/nul compare order in the bl, [flashfs] and
+		   [security] loops, and give [rawpatch]'s n a late partition (combine
+		   orders the lea's registers by pseudo number) */
 		if (comma < -1) {
 			buf[0] = 1;
 			buf[1] = 1;
@@ -473,30 +454,15 @@ uint32_t parseIni(char *path)
 	}
 
 	/* [rawpatch]: name,offset */
-	/* the original logs "not found" after this section (as an else); that
-	   shape renumbers the SSA names the dead stores tune, so the section's
-	   other strings are emitted first here instead */
-	__asm__("" :: "i"("[rawpatch]"),
-		"i"("\nini: label [rawpatch] found\n"),
-		"i"("\n******* ERROR: an entry in [rawpatch] is missing offset info!\n"),
-		"i"("\n******* ERROR: offset data for file '%s' is either too large or too small!\n"),
-		"i"("found (%d) '%s' offset: 0x%08x\n"),
-		"i"("***** ERROR: [rawpatch] '%s' length is unintelligible!\n"),
-		"i"("\n******* ERROR: file name in [rawpatch] is too long!\n"),
-		"i"("\n******* ERROR: %d of %d [rawpatch] slots are already full!\n"));
 	off = memFindStr(buf, size, "[rawpatch]", 1);
 	if (i < -1)
 		buf[0] = 1;
-	if (off == -1)
-		log_printf(1, "\n[rawpatch] label not found in ini\n");
-	else {
+	if (off != -1) {
 		end = off + memFindChar(&buf[off], '[', size - off);
 		log_printf(1, "\nini: label [rawpatch] found\n");
 		pos = off;
 		for (i = xb.nRawPatches; i < 16; i++) {
 			p = &buf[pos];
-			if (off < -1)
-				buf[0] = 1;
 			nul = memFindChar(p, 0, size - pos);
 			comma = memFindChar(p, ',', size - pos);
 			if (comma == -1 || comma >= nul) {
@@ -538,164 +504,154 @@ uint32_t parseIni(char *path)
 			free(buf);
 			return 0;
 		}
-	}
+	} else
+		log_printf(1, "\n[rawpatch] label not found in ini\n");
 
 	/* [flashfs]: name[,crc]; a trailing 1 or 2 on the name is dropped */
 	off = memFindStr(buf, size, "[flashfs]", 1);
-	if (off == -1)
-		goto noFlashfs;
-	xb.nFirmware = 0;
-	log_printf(1, "\nini: label [flashfs] found\n");
-	pos = off;
-	for (i = 0; i < 256; i++) {
-		p = &buf[pos];
-		nul = memFindChar(p, 0, size - pos);
-		if (nul < -1)
-			buf[0] = 1;
-		comma = memFindChar(p, ',', size - pos);
-		noCrc = 1;
-		len = nul;
-		if (comma >= 0 && comma < nul) {
-			len = comma;
-			noCrc = 0;
-		}
-		/* the original checks the path length after the name (nesting it
-		   moves IRA's choices) */
-		__asm__("" :: "i"("\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n"), "i"("\n        Line: %s\n"));
-		if (len > 1023) {
-			log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's path!\n", 1023);
-			free(buf);
-			return 0;
-		}
-		strncpy(xb.firmware[i], (char *)p, len);
-		xb.firmware[i][len] = 0;
-		if (off < -1)
-			buf[0] = 1;
-		if (len > 21) {
-			s = strrchr(xb.firmware[i], '/');
+	if (off != -1) {
+		xb.nFirmware = 0;
+		log_printf(1, "\nini: label [flashfs] found\n");
+		pos = off;
+		for (i = 0; i < 256; i++) {
+			p = &buf[pos];
+			nul = memFindChar(p, 0, size - pos);
+			if (nul < -1)
+				buf[0] = 1;
+			comma = memFindChar(p, ',', size - pos);
+			noCrc = 1;
+			len = nul;
+			if (comma >= 0 && comma < nul) {
+				len = comma;
+				noCrc = 0;
+			}
+			/* the original checks the path length after the name (nesting it
+			   moves IRA's choices) */
+			__asm__("" :: "i"("\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n"), "i"("\n        Line: %s\n"));
+			if (len > 1023) {
+				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's path!\n", 1023);
+				free(buf);
+				return 0;
+			}
+			strncpy(xb.firmware[i], (char *)p, len);
+			xb.firmware[i][len] = 0;
 			if (off < -1)
 				buf[0] = 1;
-			/* dead only from the strlen pass on (after dom3): the names it
-			   frees go to vrp2's threading, which then gives the len == 0
-			   path's noCrc PHI its copy first */
-			{
-				char t_[4];
-				strcpy(t_, "ab");
-				if (strlen(t_) != 2)
-					buf[0] = 1;
-			}
-			if (s == NULL)
-				s = strrchr(xb.firmware[i], '\\');
-			if (len < -1)
-				buf[0] = 1;
-			s = s ? s + 1 : xb.firmware[i];
-			if (strlen(s) > 21) {
-				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
-				log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
-				free(buf);
+			if (len > 21) {
+				s = strrchr(xb.firmware[i], '/');
 				if (off < -1)
 					buf[0] = 1;
-				return 0;
+				/* dead only from the strlen pass on (after dom3): the names it
+				   frees go to vrp2's threading, which then gives the len == 0
+				   path's noCrc PHI its copy first */
+				{
+					char t_[4];
+					strcpy(t_, "ab");
+					if (strlen(t_) != 2)
+						buf[0] = 1;
+				}
+				if (s == NULL)
+					s = strrchr(xb.firmware[i], '\\');
+				if (len < -1)
+					buf[0] = 1;
+				s = s ? s + 1 : xb.firmware[i];
+				if (strlen(s) > 21) {
+					log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
+					log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
+					free(buf);
+					if (off < -1)
+						buf[0] = 1;
+					return 0;
+				}
 			}
-		}
-		pos = pos + len + 1;
-		if (xb.firmware[i][len - 1] == '1' || xb.firmware[i][len - 1] == '2')
-			xb.firmware[i][len - 1] = 0;
-		if (!noCrc) {
-			n = memFindChar(&buf[pos], 0, size - pos);
-			if (n == 0)
+			pos = pos + len + 1;
+			if (xb.firmware[i][len - 1] == '1' || xb.firmware[i][len - 1] == '2')
+				xb.firmware[i][len - 1] = 0;
+			if (!noCrc) {
+				n = memFindChar(&buf[pos], 0, size - pos);
+				if (n == 0)
+					crc = xb.firmwareCrc[i] = 0;
+				else if (n != 8) {
+					log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
+					free(buf);
+					return 0;
+				} else {
+					strncpy(tmp, (char *)&buf[pos], 8);
+					tmp[8] = 0;
+					crc = xb.firmwareCrc[i] = myatox32(tmp, 0);
+				}
+				pos = pos + n + 1;
+			} else
 				crc = xb.firmwareCrc[i] = 0;
-			else if (n != 8) {
-				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
-				free(buf);
-				return 0;
-			} else {
-				strncpy(tmp, (char *)&buf[pos], 8);
-				tmp[8] = 0;
-				crc = xb.firmwareCrc[i] = myatox32(tmp, 0);
-			}
-			pos = pos + n + 1;
-		} else
-			crc = xb.firmwareCrc[i] = 0;
-		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFirmware, xb.firmware[i], crc);
-		if (pos >= size)
-			i = 256;
+			log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFirmware, xb.firmware[i], crc);
+			if (pos >= size)
+				i = 256;
+		}
+	} else {
+		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
+		free(buf);
+		return 0;
 	}
 
 	/* [security]: name[,crc] */
-	/* the not-found block sits between the search's guard and its preheader:
-	   ce2 then speculates the preheader into the guard, and jump2 (once this
-	   block is crossjumped into noFlashfs) inverts the guard to fall into
-	   IRA's buf reload */
-	goto secSearch;
-noSecurity:
-	/* sic: names [flashfs] */
-	log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
-	free(buf);
-	return 0;
-secSearch:
 	off = memFindStr(buf, size, "[security]", 1);
-	if (off == -1)
-		goto noSecurity;
-	xb.nFlashFiles2 = 0;
-	log_printf(1, "\nini: label [security] found\n");
-	end = off + memFindChar(&buf[off], '[', size - off);
-	pos = off;
-	for (i = 0; i < 10; i++) {
-		p = &buf[pos];
-		comma = memFindChar(p, ',', size - pos);
-		nul = memFindChar(p, 0, size - pos);
-		if (comma > nul) {
-			noCrc = 1;
-			len = nul;
-		} else {
-			noCrc = 0;
-			len = comma;
-		}
-		if (len > 21)
-			goto secName;
-		strncpy(xb.flashFiles[i], (char *)p, len);
-		xb.flashFiles[i][len] = 0;
-		pos = pos + len + 1;
-		if (!noCrc) {
-			n = memFindChar(&buf[pos], 0, size - pos);
-			if (n == 0)
-				xb.flashCrc[i] = 0;
-			else if (n != 8) {
-				/* sic: names the [flashfs] file */
-				log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
+	if (off != -1) {
+		xb.nFlashFiles2 = 0;
+		log_printf(1, "\nini: label [security] found\n");
+		end = off + memFindChar(&buf[off], '[', size - off);
+		pos = off;
+		for (i = 0; i < 10; i++) {
+			p = &buf[pos];
+			comma = memFindChar(p, ',', size - pos);
+			nul = memFindChar(p, 0, size - pos);
+			if (comma > nul) {
+				noCrc = 1;
+				len = nul;
+			} else {
+				noCrc = 0;
+				len = comma;
+			}
+			if (len <= 21) {
+				strncpy(xb.flashFiles[i], (char *)p, len);
+				xb.flashFiles[i][len] = 0;
+				pos = pos + len + 1;
+				if (!noCrc) {
+					n = memFindChar(&buf[pos], 0, size - pos);
+					if (n == 0)
+						xb.flashCrc[i] = 0;
+					else if (n != 8) {
+						/* sic: names the [flashfs] file */
+						log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
+						free(buf);
+						return 0;
+					} else {
+						strncpy(tmp, (char *)&buf[pos], 8);
+						tmp[8] = 0;
+						xb.flashCrc[i] = myatox32(tmp, 0);
+					}
+					pos = pos + n + 1;
+				} else
+					xb.flashCrc[i] = 0;
+				/* re-read, not a crc variable: FRE's later PHI orders the n == 0
+				   path's copies crc first */
+				log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], xb.flashCrc[i]);
+			} else {
+				log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
 				free(buf);
 				return 0;
-			} else {
-				strncpy(tmp, (char *)&buf[pos], 8);
-				tmp[8] = 0;
-				xb.flashCrc[i] = myatox32(tmp, 0);
 			}
-			pos = pos + n + 1;
-		} else
-			xb.flashCrc[i] = 0;
-		/* re-read, not a crc variable: FRE's later PHI orders the n == 0
-		   path's copies crc first */
-		log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], xb.flashCrc[i]);
-		if (pos >= end)
-			i = 10;
+			if (pos >= end)
+				i = 10;
+		}
+	} else {
+		/* sic: names [flashfs] */
+		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
+		free(buf);
+		return 0;
 	}
-	/* secName's string comes before this one (its block stays last) */
-	__asm__("" :: "i"("\n******* ERROR: file in [security] has greater than %d chars in it's name!\n"));
 	free(buf);
 	log_printf(1, "------ ini parsing completed ------\n\n");
 	return 1;
-	/* after the security blocks, so jump2 redirects noSecurity into it */
-noFlashfs:
-	log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
-	free(buf);
-	return 0;
-	/* last in the block chain: jump2 then crossjumps the crc error into the
-	   shared tail instead of splitting it */
-secName:
-	log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
-	free(buf);
-	return 0;
 }
 
 /* offset of the value after `key` in buf, or -1 */
