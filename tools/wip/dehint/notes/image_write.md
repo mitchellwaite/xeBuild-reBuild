@@ -316,3 +316,39 @@ Next:
 3. Don't retry: gen_iw92's writeFsTable forms on r0, dead tests back on r0 or c2 (gen_iw93), pg's spelling (gen_iw94: only whether it survives as a separate statement counts), `&`/`&&` orders of partial (gen_iw111), FS else-arm forms (gen_iw53 on r0: lose imgAdd).
 
 Lesson: an ipa-cp benefit doesn't need a dead test. An ordinary local computed from params alone inside a loop counts as time saved, then reassoc folds it back into the same code. Worth checking wherever another object uses dead tests for a clone.
+
+## Attempt 7
+
+Written as I go. New tools: `iw7wf.py <secs> <seed> <base.c,...> [--workers N] [--dead MAX] [--noopt P]` (random forms of writeFsTable's own code plus up to MAX dead tests inside writeFsTable; only writeFsTable can change; hits in build/iw/a7/wfhit_*.c, log wf_<seed>.log), gen_iw116 (FS-loop temporaries on r0), gen_iw117 (one dead test in writeFsTable on r0), gen_iw118 (lnp2 forms x memset forms on src).
+
+- **Key lever: writeFsTable is decoupled.** A change in writeFsTable's own body can't touch imgAdd or its clones. So near6c's one remaining compare can be moved by something local to writeFsTable.
+- **First reduction, `drafts/image_write_a7.c`, IDENTICAL to reference.o (plain -O3): near6c (f0) plus one dead test in writeFsTable just before the calls: `if ((off & 0x3fff) > 0x3fff) off += 0x4000;`.** All 4 old dead tests gone, 1 new: 9 -> 6 tricks. The body matters: `off++` gives 6 lines.
+- Variants, all IDENTICAL (gen_iw122): the same condition with body `off = 0;` before `p = buf`, before the malloc, or before the fsTable store (build/iw/a7/b_p0.c, b_p1.c, b_p5.c). On r0, or with `small` or `blk` undone, no position or body in that grid matches (best 24). What the test does is put a PHI on `off`, alive until vrp1 (checked in the dumps: `> 16383` is gone after 096t.vrp1), ahead of both inlined copies. The test needs f0's imgAdd.
+- Why the free list matters (dumps of r0, f0, src; build/iw/a7/names_after.py): ivopts' pops come from the list as it stood before the pass; nothing it releases is reused in that pass (no name is in both its new and gone sets). The processing order follows the ivtmp numbers: small inner loops, small outer, big inner, big outer, memcpy loop. reassoc2 and split-paths then pop what ivopts released last: 3 names to reassoc2, then 3 to split-paths, the last being the big copy's copy. In r0 that name is `_92 = _128 * 32`, in f0 it's `b_360`, the outer PHI: that's why f0 has that site right. In src cunroll goes up to 407 where r0 stops at 391.
+- Remaining tricks from a7:
+  - `opt`: 2 lines, one compare in the small copy (`_90 != ivtmp.409_148`, wants the iv first; end is a low name without the attribute). gen_iw123 (240 positions and bodies of the dead test) stays at 2. Searches: iw7wf seeds 702 (r0, f0, up to 1 dead test), 704 (a7 and b_p* with writeFsTable's forms), iw6anneal seed 721 from build/iw/a7/a7no.c: see the result below.
+  - `pin_t`: 10, t and partial's byte slots. Measured: r234 partial total 180, r235 t 178 (LRA's `Assigning` freq lines). Needs t's total above partial's or a tie with t's regno lower. Only a split of t's test whose two parts are multiples of 10 ties, and the hot label's 85/15 isn't one. gen_iw119 (t's position, range form) no better.
+  - lnp2: much worse on a7 than on src: `partial <= 0` is 12 lines on src but 213 on a7; gen_iw118, gen_iw124. Best: `if (partial) {...} else npages = 32;` with `&` partial (build/iw/a7/n1p1.c): imgAddFile 12 (slots 0x30/0x34: r139 off+len vs r181 npages; off+len has 7 refs, all of which are in the reference's code, so npages has to rise), writeInitialHeader 89 (its off-0x80 call gets inlined: big_speedup, 3569 -> 3206 is just over 10%; gen_iw125's temporaries fold before the estimate and don't change it), constprop.1 2, writeFsTable 8.
+  - pin_hdr: gen_iw121 (forms of pageErased, calcPageEcc and the call, 96) stays at 241 or more in finalizeImage.
+  - xmalloc: not attacked. Read from memory of gcc, unverified: bit-CCP's alignment comes from a builtin-malloc call.
+- Don't retry: gen_iw117's single dead tests on r0; helpers for pin_hdr (gen_iw121); temporaries for inlining (gen_iw125, they die early).
+
+### Attempt 7 result: MATCH, 9 -> 6
+
+`drafts/image_write_a7.c`, plain -O3, .o byte-identical to reference.o, which is identical to build/obj/image_write.o. Differences from src: the 4 dead tests in imgAdd and imgAddFile gone; `pg = start * 32;` in the inner loop; `blk = start + b;` used by big-arm `b2lo`; `_Bool small`, set by an `if`, then `partial = small && len < 0x4000;`; `tail = rem; if (rem >= 0x4000) tail = rem % 0x4000;`; `fsTable[start - xb.fsStart + blocks - 1]`; one new dead test in writeFsTable. Left: dead 1 (writeFsTable), pins 2 (t, xb.hdr), hot label lnp2, optimize on writeFsTable, xmalloc = 6.
+
+Searches that found nothing further:
+- iw7wf seed 703: no dead test, r0 and f0, 1956 states, best 2.
+- iw7wf seed 702: attribute gone, up to 1 dead test, 1924 states, best 2.
+- iw7wf seed 704: attribute gone, a7 and b_p*, 2322 states, best 2.
+- iw6anneal seed 721: from a7 with the attribute gone, 2832 states, stays at 2.
+Seed 701 (900 s, up to 2 dead tests) found the two hits, build/iw/a7/wfhit_701_1.c and _2.c.
+
+Scripts (repo root): `iw7wf.py` as above; `iw_tuples.py gen_iw116|117|122|123.py`; `iwsweep.py gen_iw118|119|120|121|124|125.py`. gen_iw122 is the grid around the dead test (`IWB=` other base), gen_iw123 the same with the attribute removed. gen_iw125 reads build/iw/a7/n1p1.c (gen_iw124 `n1+p1`). build/iw/a7/names_after.py <src|r0|f0> and regfreq.py are small dump readers, run from build/iw/a7.
+
+Next:
+1. The dead test: a form on f0 that puts a PHI on `off` ahead of the copies and survives to vrp1, without a test that's dead. 703's forms didn't find one. The grid shows any early `off` PHI with `off = 0` works, so the PHI is what counts.
+2. `opt` on a7: one compare, `_90 != ivtmp.409_148` in the small copy. The attribute changes which names top the list at ivopts. A second dead test would fix it only at net 0, so it wants a natural form: not found in 702, 704, 721.
+3. lnp2: three separate problems (see above), so only after the rest.
+
+Lesson: **look for the function that's decoupled.** writeFsTable isn't inlined anywhere and nothing depends on its names, so a local change there settles a compare that 20000 states of imgAdd forms couldn't without disturbing the clones. A dead test local to one such function can replace several shared ones.

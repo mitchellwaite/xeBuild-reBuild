@@ -260,14 +260,14 @@ order).
   first, oldest first: the original's `.text` order. (Written by hand,
   imgWritePage came out ahead of all three.) len 0x1000 is only worth a clone while no dead
   pin modifies `len` (ipa-cp can't specialise a modified parameter).
-- Dead `if (...) blocks++;`-style tests in imgAdd keep the off-0 clone's
-  ipa-cp evaluation over 500 (off 128 under) and set which SSA names get
-  recycled, i.e. the compare operand orders in the clones and inlined
-  copies; their layout was found by a search (tools/wip/README.md).
+- `pg = start * 32;` in imgAdd's inner loop keeps the off-0 clone's ipa-cp
+  evaluation over 500, and reassoc folds it back into the same code. The SSA
+  names recycled by `small`, `blk` and a dead test in writeFsTable set the
+  compare operand orders in the clones and inlined copies
+  (tools/wip/dehint/notes/image_write.md).
 - imgFits is an `if` returning 1 or 0, not `return a >= b`: it compiles to the
   same function, but the form it inlines with gives imgAddFile and
-  imgAddMobile their branch probabilities and head registers. A dead `len++`
-  in imgAddFile sets the SSA order of the inlined big copy's `npages > p`.
+  imgAddMobile their branch probabilities and head registers.
 - String literals are emitted in statement order with each function, and
   the buildImage jump table after its strings, which is the `.rdata`
   order; finalizeImage's arms are written in the order that gives it.

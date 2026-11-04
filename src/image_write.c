@@ -546,7 +546,8 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	uint32_t pg;
 	uint8_t sp9, *s;
 	int partial;
-	uint32_t b;
+	_Bool small;
+	uint32_t b, blk;
 	uint32_t i;
 
 	if (xb.rawSize < off || xb.rawSize < off + len) {
@@ -560,9 +561,8 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		tail = len;
 	} else {
 		rem = len - first;
-		if (rem < 0x4000)
-			tail = rem;
-		else
+		tail = rem;
+		if (rem >= 0x4000)
 			tail = rem % 0x4000;
 		blocks = rem / 0x4000;
 		if (tail) {
@@ -577,17 +577,13 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++) {
-		/* dead (VRP1 removes them): they raise the off-0 ipa-cp value (imgWriteStart
-		   clone; `first + ...` is computed in the loop) and set which SSA names get
-		   recycled (compare operand orders in the clones and inlined copies); so
-		   does the one in the FS loop.  `blocks`, not an empty body: it stays a loop
-		   PHI in the len-0x1000 clone, where the len test folds.  None may modify
-		   len or off: ipa-cp then can't specialise on them */
-		if (x > first + 0x4000)
-			blocks += 2;
-		if ((len & 0x3fff) > 0x3fff)
-			blocks++;
-		partial = type != 0 && type != '0' && len < 0x4000;
+		/* blk and small as statements of their own: they set which SSA names get
+		   recycled (compare operand orders in writeFsTable's inlined copies) */
+		blk = start + b;
+		small = 0;
+		if (type != 0 && type != '0')
+			small = 1;
+		partial = small && len < 0x4000;
 		t = type - '1';
 		if (len % 512)
 			npages = (len + 512) / 512;
@@ -607,13 +603,17 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			if (p) p /= 512;
 		}
 		for (end = p + npages; p < end; p++) {
-			s = xb.spare + (BLK * 32 + p) * 16;
+			/* a statement of its own: computed from params alone, it's what makes
+			   ipa-cp's off-0 clone (imgWriteStart) worth creating; reassoc folds it
+			   back into the same code */
+			pg = start * 32;
+			s = xb.spare + (pg + p + b * 32) * 16;
 			/* pages here and left in the big arm: lim2 then hoists left
 			   after len >> 8 and the type tests, as in the original */
 			pages = len % 512 ? len / 512 + 1 : len / 512;
 			memset(s, 0, 16);
 			if (xb.bigBlock) {
-				((struct spb *)s)->b2lo = BLK >> 8;
+				((struct spb *)s)->b2lo = blk >> 8;
 				((struct spb *)s)->b0 = 0xff;
 				s[1] = BLK;
 				if (type > 1) {
@@ -654,8 +654,6 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	if (next != 0xf1f1) {
 
 		for (i = 0; i < blocks; i++) {
-			if (x > first + 0x4000)
-				blocks++;
 			if (next != 0 && next != 0xffff) {
 				fsTable[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(next);
 			} else {
@@ -663,7 +661,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			}
 		}
 		if (next == 0xffff) {
-			fsTable[start + blocks - 1 - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1fff);
+			fsTable[start - xb.fsStart + blocks - 1] = SWAP16_IMAGE_WRITE(0x1fff);
 		}
 	}
 	imgEnd = off + len;
@@ -684,11 +682,6 @@ void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32
 {
 	uint32_t off = imgSizeAligned();
 
-	/* dead (VRP1 removes it): it only sets which SSA names get recycled, which
-	   gives the inlined big-block copy its `npages > p` compare and so its loop
-	   layout */
-	if ((len & 0x3fff) > 0x3fff)
-		len++;
 	if (imgFits(off, len)) {
 		fsFiles[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
 		fsFiles[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
@@ -887,6 +880,11 @@ __attribute__((optimize("no-tree-scev-cprop"))) void writeFsTable(uint32_t off)
 		p += 0x200;
 	}
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
+	/* dead (VRP1 removes it): only sets which SSA names get recycled in the two
+	   inlined imgAdd copies, which decides the big copy's page-loop compares.
+	   It's here, not in imgAdd, so that it can't touch the clones */
+	if ((off & 0x3fff) > 0x3fff)
+		off += 0x4000;
 	if (!xb.bigBlock)
 		goto small;
 	imgAdd(off, buf, i * 0x400, 0x2c, 0x1ffe, 0);

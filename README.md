@@ -74,17 +74,17 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts.
 
 <details>
-<summary><b>1. image_write</b>: 9 tricks, hard</summary>
+<summary><b>1. image_write</b>: 6 tricks, hard</summary>
 
-- 4 dead tests in `imgAdd` and `imgAddFile`, which VRP1 removes
+- 1 dead test in `writeFsTable`, which VRP1 removes
 - 2 register and slot pins, in `imgAdd` and `finalizeImage`
 - 1 hot label, and `optimize("no-tree-scev-cprop")` on `writeFsTable`
 - 1 asm-label prototype: `xmalloc`, which stops CCP assuming `malloc`'s alignment.
   `-fno-builtin-malloc` doesn't replace it
 
-The dead tests set `imgAdd`'s IPA-CP value and which SSA names get recycled.
-Those decide three clones and the compare operand order throughout, so a
-hint-free source would have to land on the same numbers.
+Which SSA names get recycled decides the compare operand order throughout, and
+`imgAdd`'s IPA-CP value decides three clones, so a hint-free source has to land
+on the same numbers.
 
 </details>
 
