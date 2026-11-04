@@ -526,3 +526,83 @@ Not worth retrying: ivopts' order itself (it's mechanical), more dead-test place
 - **`uint32_t file` is a live local but its type steers gcc**: `int file` doesn't match. It reads naturally (it shortens a long line, and an index being unsigned is unremarkable), and README lists types as fair game. But it's used by only one of bl's eight `xb.files[blOrder[i]]`, for numbering reasons, and the comment says so. Parent's and user's call whether that's a removal.
 - `findField` (used only by `[security]`) and setupFiles' test-first loop remain numbering helpers, as flagged since attempts 4-5. `preParse` is gone.
 - `fl8lib.py` gained an `FLA` env var for its log directory (default unchanged).
+
+## Attempt 10
+
+Tools: `fl10lib.py` (base split round findKey on current src; `fk`, `run`, `diff`, `dumps`, `fn_part`), `fl10a.py` (`cfg`, `freq`, `assign`: LRA's running usage), `fl10b.py`, `fl10c.py` (**probes**: `__builtin_expect` + `--param builtin-expect-probability` set one edge's probability, n dead tail tests set n_exits; never candidates), `fl10d.py` (probe's diff + usage), `fl10e.py` (skipNul forms on current src), `fl10f.py` (iniBoolInvalid shapes on that), `fl10g.py`. Scratch and logs `build/filelist_ini/a10/` (`map.txt` is the 2D probe table; `gcc/` the three source files read).
+
+### Verified: the compare that decides key[0]'s register (lra-assigns.c, find_hard_regno_for_1)
+
+`hard_regno_costs[] == best_cost && priority == best_priority && best_usage > lra_hard_reg_usage[hard_regno]`: class order tries ecx before ebx, so **ebx wins only if its accumulated usage is strictly below ecx's**. Usage is the sum of `lra_reg_info[].freq` of what's already assigned (in descending tfreq order), plus a starting usage from pseudos IRA placed (`D` below = ecx start - ebx start, per getter). So "the level rule" is real, not fitted. `fl10a.py assign <tag> <fn>` prints it.
+
+iniU32Invalid, target `movsx ebx`: at key[0]'s reload (r153, freq 2 x pre/10), ecx has 960 + 640 (three and two refs of the header block, so 0.5 x h), ebx has 642 + 642 + 162 (0.4 x h + 2 refs of bb7) + x, where **x = 2 tail/10 + 8 pre/10** (q's reload, then 3+2+3 pre-level reloads). src: 1600 v 1584 -> ebx. matchAt: 1595 v 1672 -> ecx. Probes put the threshold between x = 138 and 155 at h = 3214. "149" was about right, and this is why.
+
+getIniBool and iniBoolInvalid want the same two reloads in **ecx**, so they have a different D (between -44 and -38 for iniBoolInvalid; src 1622 v 1584 -> ecx, skipNul 1620 v 1576 -> ebx). That's a window: U (iniU32Invalid) needs x small, G (the other three) x large enough.
+
+### Verified: frequencies don't scale through inlining
+
+The getter's blocks equal findKey's edge probabilities re-estimated from scratch: bb3 of iniU32Invalid is 114, the same as findKey's entry, in all four getters; the getter only adds its entry (145 or 293, from `iniSize == 0`'s 21.4% or 61%). **So the getter's shape, and how many getters there are or their order, cannot change pre, tail or h.** Only findKey's edge probabilities at inline time can. Shapes that change only post-loop code change D, by little: `fl10f.py`, 36 forms of iniBoolInvalid: normalised or worse.
+
+getIniValue's copy is **insensitive**: `key == NULL` added to findIniKey is still a whole-object MATCH. So its having two exits isn't evidence about the original.
+
+### Verified: a third exit must fold after IPA inlining, and then that alone is enough
+
+- `static int iniFlag;` never written, `if (iniFlag) return ...;` in the tail (`fl10g.py`): whole-object MATCH. A never-written static only becomes readonly at IPA, so it's folded after inlining. A dead test again, so not a candidate. But it **confirms the account**: nothing about `key` matters, only an exit edge that lives through inlining and leaves no code.
+- skipNul (`fl10e.py`, 32 forms on current src): all 4 lines (iniBoolInvalid, r149) with `buf[i] == key[0]`. entry 107, pre 104 (src 114, 111). IPA-CP's clone folds the arm at materialisation, before inlining re-estimates; pre = 3% x h + 3% x tail, not 6% x tail. **Attempt 7's inference is right**, by these numbers and this match. Only iniBoolInvalid misses, by about 6-8 of usage, and its own shapes don't reach that.
+
+### The feasible region (`fl10c.py`, about 300 probe states; lines per getter in `a10/map.txt`)
+
+Expect itself costs 4 lines in iniU32Invalid (`cmp eax,edx` -> `cmp edx,eax`, `lea`), so read "4" as passing there.
+
+| state | pre | tail | h | G (3 getters) | U |
+|---|---|---|---|---|---|
+| 3 exits, src | 111 | 252 | 3214 | ok | ok |
+| 4 or 5 exits, T=10% | 103-107 | 252 | 3214 | ok | ok |
+| 3 exits, M 35..80 | 115-139 | 315-720 | 3214 | ok | x too big |
+| 2 exits, M 40..72 (matchAt is M 50) | 160-174 | 360-648 | 3214 | ok | x too big |
+| 2 exits, H 36 | 123 | 252 | 2500 | ok | threshold drops with h |
+| 2 exits, H 14..35 and 37..95 | | 252 | | no | no |
+| 2 exits, M 3..35, T 2..80 | 146-337 | | 3214 | no | no |
+| 4+ exits, M <= 28; H >= 35 (pre < 100) | 90 or lower | | | mostly no | no: r161 flips to ebx |
+
+**With two exits, no value of any one edge's probability gives U** (H, M, T, or the inner loop's latch at 70..97, a throwaway script in the same style as `fl10b.py`, where nothing beats 53 lines). It takes e(latch) about 3%. Natural predictions give 4.5% for two exits and first-match means nothing combines with it; predict_loops's other routes: PRED_LOOP_BRANCH (a do-while, block == latch) is 86% i.e. 14%, the wrong way; PRED_LOOP_ITERATIONS needs a constant bound; `_GUESSED` needs n_exits == 1 and a bound from the statements; `continue` bypasses the exit heuristic, the wrong way too. matchAt would need x down by 77 with pre < 75, and nothing gets there.
+
+### Part 1 result: blocked, with reasons
+
+An exit edge that vanishes without code is by definition dead, redundant, or merged with another test. Dead or redundant fails the bar. Merged is attempt 6's split: `*q != 0` as two tests ifcombine joins (`c > 0` + `c < 0`), rejected. Lowering the latch's exit probability any other way isn't available from what I read of predict_loops (above); predict.def's values were read too, the rest of predict.c wasn't. What the original had remains a fact about the original, and this says what it must be: **a loop exit edge that survives IPA inlining and folds silently**. So its author probably had a real test of something known only after inlining or IPA (a never-written static or a check repeated from the getter, for instance). That's a dead test in the original too. Plausible, not provable: **"0 tricks" may simply not be how the original looked**.
+
+`drafts/filelist_ini_findKey_candidate2.patch` (`fl10n.py write`): `static int iniStopOnEmpty;`, never set, `if (iniStopOnEmpty) return -1;` in the tail. Whole-object MATCH, all sections. **Not a removal:** it's a dead test, the same count. Possibly reads better than `key == NULL` after key has been read, or possibly worse (a flag no one sets); I'd keep `key == NULL`. `iniStopOnEmpty && *q == 0`, which reads best, is 36 lines: the `*q` load moves.
+
+Other constraints that came out of this, so nobody retries them:
+- Natural P(head) is 28% (`==`) or 50% (no prediction). 36% is the one H that keeps G with two exits, and it still fails U.
+- `len`/`i`/`key` tests, the loop test against 0, count-downs, do-while (14%), `continue` (bypasses the heuristic): all wrong or dead.
+
+### Part 2: what's possible
+
+**`uint32_t file` for all of bl's uses: not possible.** `uint32_t file = blOrder[i]` at the loop's top with all uses through it (`fl10h.py fileall`): 777 lines; even keeping the other uses as they are (`filetop`) 776. blOrder is a global pointer and strncpy, log_printf and myatox32 clobber it, so the original reloads `blOrder[i]` after each call: caching it is a different program. A reassignment before each use is just the 3-chain state (attempt 9: 6 lines, 2 lines with two). **So the one use is forced, and this reads better than the flag suggests: the log line is the only statement with two `xb.files[blOrder[i]]` uses and no call between them, which is why a local exists there.** Only its unsignedness steers. Worth saying so in the comment, and I'd call this one a non-issue. (A wider `int` local there is attempt 9's 6-line state.)
+
+**findField: exactly why it's needed, not fixed.** Floor without it stays 2 (tie C).
+- **Seen in the dumps (`[security]`, dom2):** as plain code nul is `_414` and comma `_420`, the later call having the lower numbers; through findField comma is `_414` and nul `_420`. **Cause, not read or traced:** from memory, `gimple_expand_calls_inline` walks a BB's statements backwards, which fits the plain case; why the helper's order comes out the other way I only infer (its nested calls being reached later). tree-inline.c would settle it. bl wasn't checked.
+- dom2 (`fl10j.py dom2 ssrc sff`): the join of old `_414` gets new `_800`, of `_420` new `_791`. Dom3 takes rows by old version: comma's join is what it threads. So src has `noCrc_124<-noCrc_797 len_374<-len_798 _375<-_800`; without the helper `_124<-_791 noCrc_374<-noCrc_797 len_375<-len_798`: sec takes the low slot in noCrc's place. That is attempt 9's "one slot" with its cause.
+- So the requirement is: **sec's comma search inlined before its nul search with comma still first in the code.** Needs a BB boundary between the calls that lives until IPA (emits nothing), or a nested inline for nul alone. Tried: `fieldLen(p, rem)` wrapper at all subsets of heads and crc uses (`fl10m.py`, 255 forms): transparent, floor 2. The early inliner takes it, since it shrinks, so before IPA it's normalised. An out-parameter `findNul` might act (not tried), but it's findField again and reads worse.
+- findField shared: bl+sec, with raw or flash, a twin nul-first helper (`fl10k.py`): 466+. Called more than once, it isn't inlined the called-once way.
+- noCrc declared before len (`fl10l.py`, 11 positions): flips every copy order: 6 lines at positions 0-4, 2 at 5-10. Old versions do follow declaration order here (`noCrc_2`, `len_13`), but dom2's rows flip with them, so nothing is gained.
+
+**setupFiles' plain `for`: unchanged, floor 4.** The cond block's after the body in block order, so the remap always sees `i` before `_x`. No plain `for` or `while` has the test first in block order (it's attempt 4's explanation; that the C front end always puts the cond last is from memory, not read). No new form was tried here. Only the test-first form or a do-while with a guard changes it.
+
+### Attempt 10 result
+
+**NO MATCH: still 1 trick.** `drafts/filelist_ini_final.c` is unchanged (same as `src/`). One candidate, `drafts/filelist_ini_findKey_candidate2.patch`, matches but is a dead test too.
+
+### Next
+
+1. Nothing for `key == NULL`, unless the user accepts attempt 6's split or wants to count something as natural. I don't think another attempt has anything left: all edges' probabilities have been mapped and the mechanism read from source.
+2. findField: a BB boundary until IPA between sec's two calls, with no code. No natural form known. Low odds.
+3. The method's lesson: **probe with expect + the param first** (`fl10c.py`). It tells you in a few minutes which probabilities a target has, before writing any source form. Worth using on any object with frequency ties.
+
+Not worth retrying: anything with P(head), P(match), T or inner-loop probabilities with two exits (mapped, none works); skipNul or any constant argument (IPA-CP folds it early, 4 lines, r149 by 6-8 of usage, getter shapes can't reach it); getter shapes for frequency (they can't change pre, tail or h); small wrappers round memFindChar (early-inlined, transparent); `uint32_t file` at more uses.
+
+### For review
+
+- `src/` is unchanged. The comment on `uint32_t file` could say why it's only the log line (above); the parent can take that or not.
+- Probing with `__builtin_expect` is for measuring only. None of the `fl10b`-`fl10d` sources is a candidate.
