@@ -1,0 +1,23 @@
+--- src/filelist_ini.c	2026-11-04 15:13:45.613795600 -0500
++++ tools/wip/dehint/drafts/filelist_ini_final.c	2026-11-04 15:36:29.721438100 -0500
+@@ -705,13 +705,14 @@
+ 				if (p[j] != key[j])
+ 					j = len + 1;
+ 			if (j == len) {
+-				unsigned char *q = &buf[i + len];
++				/* one test written as two so that the loop has three exits when gcc estimates branch
++				   probabilities (9% / exits), which sets the frequencies the getters' registers follow;
++				   ifcombine then merges them into c != 0 (notes/filelist_ini.md) */
++				char c = buf[i + len];
+ 
+-				/* defensive, and dead (key was read above): VRP removes it, and
+-				   until then it sets findKey's SSA numbers in the getters (a register tie) */
+-				if (key == NULL)
+-					return -1;
+-				if (*q != 0)
++				if (c > 0)
++					return i + len;
++				if (c < 0)
+ 					return i + len;
+ 			}
+ 		}

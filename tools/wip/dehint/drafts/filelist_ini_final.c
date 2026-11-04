@@ -204,10 +204,6 @@ void checkFileCase(void)
 		fixFileCase();
 }
 
-/* the files this build type uses.  Called once, so inlined after parseIni's own names are
-   numbered, and that placement sets the compare operands and copy orders further down
-   (notes/filelist_ini.md).  The test comes first in the body so that xb.nFiles is numbered
-   before i, which gives this loop's `cmp [nFiles],edi` */
 /* the terminators around iniPreParse.  Called once, as with findField: numbers flashfs's len and noCrc copies */
 static int preParse(unsigned char *buf, int size)
 {
@@ -217,6 +213,10 @@ static int preParse(unsigned char *buf, int size)
 	return size;
 }
 
+/* the files this build type uses.  Called once, so inlined after parseIni's own names are
+   numbered, and that placement sets the compare operands and copy orders further down
+   (notes/filelist_ini.md).  The test comes first in the body so that xb.nFiles is numbered
+   before i, which gives this loop's `cmp [nFiles],edi` */
 static void setupFiles(void)
 {
 	int i;

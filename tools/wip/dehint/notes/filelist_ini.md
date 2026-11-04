@@ -319,3 +319,46 @@ Not worth retrying: `free(buf)` in the caller, `tmp` local, helper definition or
 
 - `findField` and `preParse` are live and read naturally, but both are there for numbering, not structure: findField only for `[security]`, while the other three sections keep the two calls inline, which is odd to read. `preParse` wraps three lines. By README's "a helper that exists only to change an SSA number" they could be called candidates, so you decide; they're the same kind of move as `setupFiles` and its loop form.
 - The three tests' positions and store counts still matter, and `off < 0` before `tmp[8] = 0` reads badly (`off` isn't near).
+
+## Attempt 6
+
+Tools: `fl6lib.py` (generator on current src: `state('T1,T3|axis=v')`, drops T1 T2 T3 KF; `run`, `nscore`; pid-tagged objects, so sweeps can overlap), `fl6a.py` (natural parseIni edits, single and pair), `fl6k.py`-`fl6k7.py` (findKey). Scratch: `build/filelist_ini/a6/`.
+
+- **findKey's tie is a frequency, not an SSA number** (attempts 1-5 had this wrong). `-fdump-tree-optimized-blocks-details`: at `key == NULL`, entry freq 293, tail 252; without, entry 418, tail 252. The names in `.optimized` are the same. LRA's register levelling picks ebx or ecx for `q`'s reload by how much entry-level code has used each, so what counts is tail/entry. `-fdump-tree-profile_estimate`: the loop exit heuristic is 9% / n_exits, and **the dead test works as a third loop exit** (3% each, not 4.5%), removed only after the profile is estimated. That's why "dies early" was the class that worked, and why `skipNul` works too.
+- `if (j <= len)` (`fl6k3.py`): registers right with no test (tail 450, entry 441), but `jl` not `jne`. VRP doesn't fold it, because of the `len <= 0` path into j's PHI. **tree_predict_by_opcode gives EQ 28% except against 0, which gets none.**
+- Hence **a flag or helper for the match**: `if (j == len) return 1; return 0;` in a helper `matchAt(p, key, len)`, `if (matchAt(&buf[i], key, len))` (`fl6k7.py`): threading takes the flag away after the profile. No dead test: 73 -> 6 lines, only iniU32Invalid. `return j == len` folds early and doesn't do it.
+- No effect on the profile: goto and continue on mismatch paths (`fl6k5.py`), `*off`/`**val` out-parameters and a pointer return (`fl6k.py`, floor 41), iniSize check moved into findKey (`fl6k2.py`, 41), `i + j` spellings (`fl6k4.py`).
+- `skipNul` parameter in memFindStr's tail form (`fl6k6.py`): 4 lines (iniBoolInvalid). A constant argument is a dead test by another name. `memFindStr(xb.iniBuf, xb.iniSize, key, 0)` directly: 282, it isn't inlined the same way.
+- parseIni natural edits at `T1,T3` and `T1,T2,T3` (`sectionEnd` return/out/range, rawPatch entry pointer, `copyName`, `takeName`, `copyValue`, `fieldLen`, findField placements; `fl6a.py pair`, 1976 forms): floor stays 4 (raw's compare) and 6.
+- **`key == NULL` gone, no flag or helper: a third loop exit that is live.** `char c = buf[i + len]; if (c > 0) return i + len; if (c < 0) return i + len;` (`fl6k12.py`): whole-object MATCH. Two edges leave the loop at the profile (so 3% per exit, as with the dead test), and ifcombine merges them into `c != 0` afterwards. Neither test is dead or redundant, but it's a split of one test, and it is there for the loop exit count. `*q >= 0x20` + `*q != 0` also matches and is redundant, `*q >= 0x80` + `*q != 0` is 2 lines off.
+- matchAt's last 6 lines: iniU32Invalid's `movsx` of key[0] takes ecx rather than ebx. LRA's levels: ebx gets the entry-level `_5`, `_50` (scale with the preheader's freq) and q's reload (scales with the tail); it needs those under about 150, and only a third exit or a higher P(head) lowers the preheader that far. Head flag (`fl6k9.py flag100`) 155, all forms. iniU32Invalid's body (`fl6k8.py`, 80 forms), head and iniVal subsets (`fl6k11.py`, 21 forms): no change or worse. matchAt's return encodings (`fl6k10.py`, 88): 6 at best.
+- Spellings of the split (`fl6final.py spell`): two ifs, `else if`, `(char)buf[i + len]` twice, `int c = (char)...` all match. `c > 0 || c < 0` is folded to `!=` by the front end: 73. `unsigned char c` with `c > 0` and `c != 0`: 73.
+- Live split tests in parseIni (`fl6s.py`, 840 forms: the loop-end tests as `>` and `==`, flashfs's comma check and last-digit test, at the subsets of T1-T3): nothing below each subset's floor (4 at `T1,T3`, 6 with none). `pos >= end + 1` for the bl check is transparent. Most are worse (160+).
+
+### Attempt 6 result
+
+**MATCH, 4 -> 3 dead tests, with a split test in place of the fourth.** `drafts/filelist_ini_final.c` at plain `-O3`, written and checked by `fl6final.py write` (change that; `fl5final.py` is stale): object byte-identical to `build/obj/filelist_ini.o` and the reference (sha256 f27828c6...), all six sections compared. `sh build.sh` not run.
+
+- **Gone:** findKey's `key == NULL`. **Added:** `char c = buf[i + len]; if (c > 0) ...; if (c < 0) ...`, in place of `q` and `*q != 0`.
+- **Left (3), all dead tests:** flashfs's T1, T2, T3. findField and preParse stay, for numbering; nothing found removes them (`ff=none` and `pre=in` are worse at every test subset).
+- **Is the split a trick?** Under the "dead or redundant" count, no: both tests are live and neither implies the other. But nobody would write it, and it's there only for the exit count, so by README's "anything else whose only job is to steer gcc" it's a candidate. Parent and user to decide. If it's rejected, the count stays at 4, and `key == NULL` is the one to keep.
+
+Failed: all of Next items 1 and 2 from attempt 5 (`fl6a.py pair`: `sectionEnd` return/out/range, rawPatch entry pointer, name and offset locals, `copyName`, `takeName`, `copyValue`, `fieldLen`, findField placements and a nul-first findField for raw/flash, 1976 forms at `T1,T3` and `T1,T2,T3`): floors 4 and 6, the same two ties, and no form lets findField or preParse go. Only findKey moved.
+
+### Next
+
+1. **Check the other "numbering" ties for frequency.** findKey's was misdiagnosed as SSA numbers for five attempts; `-fdump-tree-optimized-blocks-details` and `-fdump-tree-profile_estimate` settle it in a minute. parseIni's T1-T3 might partly act by predictions too: their arms and tests change probabilities until they die. Raw's compare order and tie 3 have been traced to dom3 pops, so they probably are numbering, but this hasn't been checked by comparing frequencies at the near states.
+2. A more natural form of the third exit in findKey. It has to be two edges leaving the loop at profile time that become one test afterwards. What the original had is an open question: its frequencies say three exits, so a real source shape probably exists (a helper with a constant argument like memFindStr's `skipNul` gives 4 lines, iniBoolInvalid; `fl6k6.py`). Its tail is worth more forms.
+3. matchAt (no dead test, reads well) is 6 lines off: iniU32Invalid's ebx/ecx level. If something else lowers iniU32Invalid's preheader freq, it replaces the split.
+
+Not worth retrying: goto or continue for predictions (no effect on the profile), `*off`/`**val` out-parameters from findKey, moving the iniSize check, parseIni loop-end splits.
+
+### For review (not tricks, but flagged)
+
+- The split: see above. Its comment says what it's for.
+- Earlier notes on findKey ("pseudo-number tie", "the test's own names doing the work") were wrong: both are the frequency effect above.
+- `findField` and `preParse`: still there only for numbering, as attempt 5 flagged. `findField` is still used only by `[security]`.
+
+### Attempt 6 decision (parent session)
+
+Not landed: the split `if (c > 0) ...; if (c < 0) ...` in findKey is live, but nobody would write it and its only job is to steer gcc, so by README.md it is a candidate, not a removal. Saved as `drafts/filelist_ini_findKey_candidate.patch` for the user to decide on. `src/` keeps `key == NULL`, still 4 tricks. `fl6final.py write` regenerates the candidate over `drafts/filelist_ini_final.c`, which now holds the same source as `src/`.
