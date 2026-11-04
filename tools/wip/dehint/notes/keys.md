@@ -72,3 +72,79 @@ Next, if anyone wants to go further: replace `if (orig)` with something that isn
 getting the same 51.2% on the n != 2 branch. It needs that edge's destination to be something
 other than a block ending in the return. A real second `return` elsewhere would split the return
 block, but the original has no path for one.
+
+## Attempt 2
+
+**Result: MATCH, 1 trick -> 0.** `drafts/keys_daeloop.c` at plain `-O3`, compiled through stdin
+as build.sh does (`keyslib.py`), gives a keys.o byte-identical to the reference (sha256
+e129fe9f..., same as `build/obj/keys.o`). `src/keys.c` still reproduces the reference, so the
+reference was current. `sh build.sh` was not run: src/ is the orchestrator's to change.
+
+The shape: the warning moves into the loop's exit arm, and the dead test goes.
+
+```c
+for (;; off += len) {
+	if (off >= size) {
+		if (n != 2)
+			log_printf(0, "...WARNING...");
+		break;
+	}
+	...   /* `goto next` became `continue`; the label is gone */
+}
+free(orig);
+```
+
+Why it works (from `-fdump-tree-profile_estimate-details`):
+
+- The early-return predictor fires in two ways, and attempt 1's notes only had one. Say `e` goes to
+  the block ending in `return`, and isn't `bb`'s next block. If `bb` has two successors, `e` is
+  predicted not taken. If `bb` has one successor, `bb`'s incoming edges are predicted not taken.
+- With the warning right after the test and right before free (the plain form), only the first
+  fires: free edge not taken, warning 62.2%.
+- In the exit arm, the body's blocks sit between the warning and free, so both fire. The dump shows
+  early return 39% and 61% on the same branch; they cancel, leaving 72 + 29 = 51.2%, the
+  number the dead test gave. The form with the warning after the free block (`E9`) only fires
+  the second: 40.2%.
+- The real window: bb-reorder sees edge frequencies after the size == 0 path is threaded off the
+  warning edge, so the warning edge is `900p - 81`, not `819p` as attempt 1 wrote, and the free
+  edge is `900(1-p)`. Dead test: 380 and 439, both under 450, so the trace ends and the warning
+  goes out of line. Plain form: 479, so the trace takes the warning. The window for p is about
+  50-59%. Below 50 the trace takes free directly, which should also leave the warning out of line
+  (`E9`'s 179 lines are its allocation, see next point; that wasn't separated out further).
+- The allocation needs the warning's block ordered before the loop (`.optimized` shows it as bb 3).
+  The block moves there in the `pre` dump. Likely mechanism, inferred and not traced: PRE splits
+  the critical edges, the forwarders are tail-merged, and the warning merges into the one placed
+  after bb 2. That only seems to happen when the block before the warning has an edge to it.
+  `E1`, `E2`, `E9` (warning not right after the test) keep it late, and that's where their
+  172-179 lines come from: `xor ebx,ebx` is lost and buf/size change registers.
+
+Scores at plain -O3 (`KEYSBASE=drafts/keys_final.c python keysend.py keysend_forms.py`):
+
+| Form | Lines | |
+|------|-------|---|
+| `for (;; off += len)` with `continue` (the draft, `f3V1`) | 0 | no goto, no label |
+| same plus `continue` after the bad header's `len = 0` (`f3V4`) | 0 | |
+| `for (;;)` keeping `next:` (`T1`), `while (1)` (`T2`), `do ... while (1)` (`f3V8`) | 0 | |
+| `size <= off` (`f3V7`), `if (n == 2) break; log; break;` (`T5`), `goto out` in the arm (`T4`) | 0 | |
+| bad header `off = size; continue;` with no `len = 0`, `for (;;)` form (`f3V3`) | 0 | keeps `goto next` for the other two |
+| warning kept after the loop, with the bad-header block moved between warning and free, reached by `goto bad` (`Z1`) | 0 | same predictor effect, worse to read |
+| exit arm with `free(orig); return;` in it (`T3`) | 91 | warning falls into free again |
+| plain, and folded spellings (`E0`, `E3`, `E4`, `E5`, `E6`, `E7`, `Ed`, `Ee`) | 91 | |
+| free in the `n == 2` arm or warning last (`E1`, `E2`, `Eb`, `Ec`) | 172 | |
+| flags and goto tails (`E8`, `E9`, `Ea`) | 179 | |
+| free before the warning (`Ef`, `Eg`) | 214 | |
+
+Borderline, for review: the warning in the loop's exit arm is unusual but live. Nothing in it
+is dead or redundant, it behaves the same as before (same bytes), and it needs no goto. The
+shape does steer the predictor, as any loop form does. It's a source shape, not a disguised
+hint, so it counts as 0. The remaining borderline shapes from attempt 1 (fcrtEncrypt's two
+encrypt calls, kvPrepare's two alt tests, `off = size; len = 0`) are unchanged.
+
+Not tried: dropping daeEncrypt's duplicated first-key encrypt copy under the new loop form, or
+`break` at the bad header (it would skip the warning test, so no).
+
+Tools: `keysend.py` + `keysend_forms.py` (forms), `keysshowdae.py` (reference listing or diff).
+`keyslib.py`'s default `FLAGS` still carries the old `--param`; pass `-O3` (keysend and keysshowdae do).
+
+Next: nothing left to remove in keys. To land: copy the draft to `src/keys.c`, run `sh build.sh`,
+drop keys from README.md's trick list (renumber, update the count), run `tools/re/progress.py`.

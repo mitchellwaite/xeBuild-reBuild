@@ -830,10 +830,10 @@ void daeEncryptOne(uint8_t *dae, uint32_t size, uint8_t *date)
    leaves the first-key success shared by both; its own encrypt copy keeps
    it in one LRA EBB (no reload of off before the encrypt), and crossjumping
    then merges that copy into the main one.  A bad header ends the loop
-   through its test (off = size), not a break.  The orig test is dead (memcpy
-   implies non-null, so vrp removes it) but it stands between the n != 2
-   test and the return block, so that branch escapes the early-return
-   predictor (51% rather than 62%); the warning then lands out of line. */
+   through its test (off = size), not a break.  The warning sits in the
+   loop's exit arm: there the early-return predictor counts against both of
+   the n != 2 edges, since neither the warning nor the test falls into the
+   free block, so the branch stays at 51% and the warning lands out of line. */
 void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 {
 	uint8_t *orig = malloc(size);
@@ -843,7 +843,12 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 	int n = 0;
 
 	memcpy(orig, buf, size);
-	while (off < size) {
+	for (;; off += len) {
+		if (off >= size) {
+			if (n != 2)
+				log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
+			break;
+		}
 		dae = buf + off;
 		if (buf[off] == 'D' && buf[off + 1] == 'A' && buf[off + 2] == 'E' && buf[off + 3] == 'P') {
 			len = (uint16_t)((buf[off + 4] << 8) + buf[off + 5]);
@@ -856,7 +861,7 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 					log_printf(1, "success!\n");
 					daeEncryptOne(dae, len, date);
 					n++;
-					goto next;
+					continue;
 				}
 				if (!n)
 					log_printf(1, "failed! Attempting to decrypt with alternate key...\n");
@@ -870,7 +875,7 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 						log_printf(0, "failed!\n******* ERROR: dae hash incorrect, could not verify decrypted dae!\n");
 					n = 0;
 					off = size + 1;
-					goto next;
+					continue;
 				}
 			}
 			daeEncryptOne(dae, len, date);
@@ -880,13 +885,8 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 			off = size;
 			len = 0;
 		}
-	next:
-		off += len;
 	}
-	if (n != 2)
-		log_printf(0, "\n******* WARNING: dae data appears to be crypted with a different key or damaged! Skipping encryption.\n");
-	if (orig)
-		free(orig);
+	free(orig);
 }
 
 void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
