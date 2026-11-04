@@ -113,3 +113,77 @@ Not worth retrying: more spellings of the `comma > nul` ifs, getter shapes, `key
 - Pre-existing, not introduced here: `if (comma < -1)` in parseIni's bl section reads `comma` before it
   is assigned. It survives into `.optimized` as `comma_244(D) < -1`, so the comment's "VRP1 drops them"
   isn't right for this one (the RTL passes do), and it should go for that reason too.
+
+## Attempt 2
+
+Tools: `flx.py` (dead/flen generator on current src, subset search), `flx1.py` (findKey decl order),
+`flx2.py` (parseIni decl order), `flx3.py` (axes in combination, random sample, `DEADP`/`AXP` env),
+`flx4.py` (`diff`/`hill`/`save` of a state label `flen|dead+dead|ax=v,ax=v`), `flx5.py` (initialisers).
+
+- Subset search on current src (768 forms, flen asm/nest/plain): no free removal. Best 4 lines at
+  `asm|t+len` and `nest|i+off3+off5+t`.
+- Declaration order: findKey no effect at all (120 perms x 6 test forms). parseIni: discrete changes
+  but never below each state's floor.
+- Initialisers (`int comma = 0`, per-loop too; 800 samples): no effect on the floor. Early ccp frees
+  those names, but it isn't the free list vrp2 uses.
+- **New closest state: `nest|comma+i+off3+off4+off5+t+len|e=scope,lenc=scope`: 8 lines, only `nul` test
+  left and no asm**; `e` in the files loop, `len`/`noCrc` per section. Three independent ties:
+  (1) bl `cmp edx,ebx/jle` vs `cmp ebx,edx/jge` (`_5 > i_1093` vs `i_89 < _460`; set at **vrp2**, where
+  threading's update_ssa takes recycled names; before it both forms are `_a < _b`), (2) rawpatch
+  `lea ebp,[ebx+ebp+1]`, (3) flashfs `mov ebx,-1`/`xor edi,edi` order on the threaded path (PHI order, from
+  version order of old names in update_ssa).
+- `nest|comma+i+off3+off4+off5+t+len|` (no scoping needed): same 8 lines; natural axes (`flx3.py`, `flx7.py` with
+  tie vectors, 1500 samples, 25 axes: scopes for s e p n comma/nul len/noCrc crc, loop endings, flag heads, `left` temporary,
+  `name` pointer, char local for the last byte, split ++counts, p reuse, crc forms) are either fully transparent or far worse (100+).
+  Not one flips a tie alone. **They're normalised before the free list matters.**
+- One extra dead test anywhere (`flx6.py`, 182 points x 9 vars) at S: floor stays 8. At `nest|i+off3+off5+t`: floor 4. At
+  `asm|t+len`: floor 2 (only tie 3 left, with an `off` test in the rawpatch loop or [security] head). Strlen block anywhere (`flx8.py`): nothing.
+- Tie vectors over all subsets (`flx9.py`): **no flen=nest state ever has tie 3 right.** `i` is what fixes tie 2, `comma` tie 1.
+  Tie 3 right only in asm at: all, -i, and -comma-t (`-23`). So nesting is blocked by tie 3 alone.
+- Tie 3's mechanism: dom3's threading makes single-arg PHIs `len_809`, `noCrc_560` in the flashfs loop; update_ssa then adds
+  the join's PHIs in old-name version order. Names popped from the free list in dom3 run high-to-low here, and low-to-high in the ref
+  (`flxphi.py` traces the order per pass; S turns NL at dom3, the ref stays LN).
+- Tie 1 is also late: vrp2 (`_5 > i_1093` in the ref, `i_89 < _460` at S; both `_a < _b` until strlen).
+- The comma test can't move to a defined variable: `flx6` at `asm|comma|` matches only with another *uninitialised* read just before
+  the bl loop (`pos` or `nul` at `pos = off;`). So the point is `x_N(D) < -1` surviving to RTL, where nothing else does: an uninitialised
+  read is the trick's mechanism. `end`, `i`, `off`, `size`, `len` there don't match.
+- memFindChar shapes (`flxa.py`): `ret` with break or `while` compile the same when they match, others change memFindChar or are far worse.
+  iniBoolInvalid pin (`flxb.py`, 120 forms: val type, off test, nest, return forms): all 4 lines or worse.
+- Moved test: `asm|comma+t|` plus `if (off < -1)` before [version]'s `len =` (`flxc.py`): 4 lines, only rawpatch's `cmp ebx,eax/jge`.
+  Also `asm|len|` with it: 2 lines (net zero tricks). Natural axes at comma+t, comma+len and comma+t+off3 with it (`flxf.py`, 2374
+  forms): no change.
+- **Arm length is an axis** (`flxj.py`): a dead test's arm with k stores frees more names at the same point. `nest|i=3` (one test, three stores)
+  has tie 3 right, the first nest state that does. Free-list position is what matters, as the dumps say: `len`/`noCrc` get their numbers in
+  **dom2**, from what vrp1..sra freed. Bl: S `len_810 noCrc_807`, ref `len_762 noCrc_843`; `flxph2.py` shows this per pass.
+- Goto forms for the path check (`flxh.py`, `flxi.py`): identical to nest. `nestcopy` (only strncpy in the good arm) keeps all ties with all tests, but
+  has the literal order wrong (6 lines, .rdata).
+- Arm sizes sampled (`flxk.py`, `flxl.py` beam, `flxm.py` diff; states as `nest|comma=3,i=1,...`, all in build/filelist_ini/xk.txt). No asm in any of these.
+  Closest so far: `nest|comma=1,i=1,len=3,off3=5,off4=4,off5=2` 2 lines (tie 3 only); `nest|comma=3,i=1,len=1,nul=1,off3=2,off4=2,off5=3` 4 lines (ties 1-3 right,
+  [security]'s `cmp ebx,esi` wrong); `nest|len=3,off3=5,off4=1,off5=4` 4 lines, **4 tests, no uninitialised read**, only tie 1 wrong.
+- **First MATCH of attempt 2:** `nest|comma=3,i=1,len=1,nul=1,off3=2,off4=2,off5=3` plus `if (off < -1) buf[0] = 1;` in flashfs (10 positions match, e.g. before `if (pos >= size)`):
+  no asm, no strlen block, 8 dead tests (arms of 1-3 stores). 11 -> 10. `comma`'s uninitialised read still there. Found by `flxn.py`.
+- `flxn.py` scan found the 8-test match; `flxp.py` (sampling drops and arm sizes, `START`/`KMAX` env) took it to 7.
+
+### Attempt 2 result
+
+**MATCH, 11 -> 9.** `drafts/filelist_ini_final.c` at plain `-O3`: object byte-identical (sha256 f27828c6...), all sections compared. Written and verified by
+`flxfinal.py` (`flfinal.py` is attempt 1's and now stale: don't run it, it would overwrite the draft). `sh build.sh` not run.
+
+- Gone: `[flashfs]`'s literal asm (path check nested, `if (len <= 1023) {...} else {err}`), the `t_` strlen block, `off5` (the one after `free(buf)`).
+- Added: one `off < -1` test before flashfs's `if (pos >= size)`. So 9 parseIni tricks became 7 tests.
+- Left (9): tests `comma` (3 stores, uninitialised read), `i`, `nul`, `off3` (2), `off4` (2), `len`, `x` (4 stores); `findKey`'s unreachable; `iniBoolInvalid`'s pin.
+- **Arm sizes are part of the steering.** Stores in a dead arm free names; nobody would write them naturally. Count each test as one trick, but they're no less a hint for it.
+- Matching states are few: 13 of about 5000 sampled, all 7-test ones with comma, i=1, len=1, nul=1, off3, off4, x>=4.
+
+Failed: 6 tests, 2500 samples: best 2 lines (`comma=3,i=1,len=3,off3=8,off4=2,x=4`, tie 3) and 4 (`nul`, no `len`). 4 tests with no uninitialised read: `nest|len=3,off3=5,off4=1,off5=4`, 4 lines, tie 1 only; one more test anywhere
+(`flxn.py`, 1746 forms) doesn't fix it. Natural axes on near states (`flxo.py`, 1926 forms): transparent, same floors.
+
+### Next
+
+1. More arm-size search from the match: 6 tests, moving `x` as well (its position is fixed in `flxp.py`), and moving the others. Positions and sizes together haven't been sampled.
+2. `comma`: only an uninitialised variable has matched there (it lasts until RTL). Look for another way to fix tie 1, starting from the 4-test state above, which has no comma.
+3. What natural code frees names between vrp1 and dom2? That is the real axis: names popped in dom2 and dom3. Early-dying forms (initialisers, temporaries) do nothing; dead tests with arms do. Natural code VRP1 removes, such as a
+   redundant range check on `len` or `n`, is the place to look.
+4. findKey and the pin: arm sizes untried on anything there; a plain `if (q == 0)`-style test with a store arm in place of the unreachable is worth a run. Decl order and val type do nothing (`flx1.py`, `flxb.py`).
+
+Not worth retrying: declaration order, initialisers, scopes and temporaries alone, goto forms of the path check (same as nest).

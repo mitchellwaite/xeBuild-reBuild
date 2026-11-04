@@ -75,17 +75,16 @@ counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead.
 
 <details>
-<summary><b>1. filelist_ini</b>: 11 tricks, hard</summary>
+<summary><b>1. filelist_ini</b>: 9 tricks, hard</summary>
 
-- 8 dead tests in `parseIni` (`< -1` stores, a `strlen` block), whose freed SSA
-  names set compare order and pseudo numbers
-- 1 literal-order `asm` in `parseIni`'s `[flashfs]` loop
+- 7 dead tests in `parseIni` (`< -1` stores), whose freed SSA names set compare
+  order and pseudo numbers
 - 1 `__builtin_unreachable` in `findKey` and 1 pin in `iniBoolInvalid`
 
 The SSA-numbering hints are the problem. Their effects are indirect, and each
-source change disturbs the rest. Nesting the `[flashfs]` path check takes out
-the `asm` and four dead tests but leaves two register-order ties, and `findKey`
-and `iniBoolInvalid` share a pseudo-number tie of their own.
+source change disturbs the rest: the number of stores in a dead test matters
+too, and few combinations match. With 6 dead tests the best found is 2 lines
+off. `findKey` and `iniBoolInvalid` share a pseudo-number tie of their own.
 
 </details>
 
