@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import irlib
 
 base = open(irlib.SRC, newline='').read().replace('\r\n', '\n')
-A = base.index('/* One optimize attribute and the else arm')
+A = base.rindex('/*', 0, base.index('void getImageSmc(void)'))  # the comment above it
 B = base.index('void getImageKv(void)')
 L0 = base.index('static void loadSmc(int addr, int size)')
 

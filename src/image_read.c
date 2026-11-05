@@ -177,9 +177,9 @@ static void loadSmc(int addr, int size)
      not-sane block two predecessors, so no call heuristic on it; out's `<= 0` is
      opcode positive, which brings P(not sane) into the 78-90 needed for the
      inner arms' epilogues.
-   - bad: `bad > 0` is positive 73 where `&&` alone has no predictor: P(size bad)
-     must be 53 or more for the 3000 arm to fall through.  VRP folds `> 0` to
-     `!= 0`, so it costs no code.
+   - bad: `bad <= 0` is opcode positive 73 where `&&` alone has no predictor:
+     P(size bad) must be 53 or more for the 3000 arm to fall through.  VRP folds it
+     to `== 0`, so it costs no code.
    - o: P(0x800) 27, not 28: the 3800 arm's frequency stays under 2000 (1971),
      which is what aligns loadSmc's block (branch > 4 * fallthru).
    - t, nested on an unsigned copy: both opcode predictions survive and ifcombine
@@ -212,15 +212,14 @@ void getImageSmc(void)
 	}
 fixSize:
 	bad = size != 0x3000 && size != 0x3800;
-	if (bad > 0) {
-		o = addr != 0x800;
-		if (o > 0)
-			goto use3000;
-		size = 0x3800;
-		log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
-		goto check;
-	}
-	goto sizeOk;
+	if (bad <= 0)
+		goto sizeOk;
+	o = addr != 0x800;
+	if (o > 0)
+		goto use3000;
+	size = 0x3800;
+	log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
+	goto check;
 badAddr:
 	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 	addr = 0x1000;
