@@ -375,6 +375,15 @@ struct fan {
 	uint8_t speed:7, override:1;
 };
 
+/* round up to the 16 bytes bootloaders are padded to.  Being a call until the
+   early inliner matters to patchBlsBlmod: inlining it too changes which findFile
+   copy reuses freed low SSA names, so pt's partition sorts after cd's, and that
+   orders two spill stores (it replaces no-early-inlining there). */
+static uint32_t align16(uint32_t v)
+{
+	return (v + 15) & ~15;
+}
+
 /* read baseDir/name into e */
 static int loadBaseFile(const char *name, struct fileent *e)
 {
@@ -437,13 +446,13 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	}
 	e->size = size;
 	if (pad && (size & 15))
-		e->size = (size + 15) & ~15;
+		e->size = align16(size);
 	/* hints: the "bytes" log must be hot enough for bb-reorder's second round
 	   (build.sh's expect probability, 92-99); the pin sets e's register in the
 	   out-of-line copy only (callers with pad == 0 drop this block) */
 	if (__builtin_expect(verbose, 1)) {
 		if (size != e->size) {
-			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, (size + 15) & ~15);
+			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, align16(size));
 			__asm__("" : : "S"(e));
 		} else
 			log_printf(1, "reading %s (0x%x bytes)", name, size);
@@ -1707,7 +1716,7 @@ int patchBlsResign(void)
 				off += 8;
 				if (n) {
 					if (addr + len > xb.files[cd].size) {
-						xb.files[cd].size = (addr + len + 15) & ~15;
+						xb.files[cd].size = align16(addr + len);
 						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
 					}
 					for (i = 0; i < len; i++)
@@ -1753,7 +1762,6 @@ int patchBlsResign(void)
 	return ok;
 }
 
-__attribute__((optimize("no-early-inlining")))
 void patchBlsBlmod(const void *blmod, int size)
 {
 	int cd = findFile(7), cbb = findFile(6), pt = findFile(23);
@@ -1773,14 +1781,14 @@ void patchBlsBlmod(const void *blmod, int size)
 				off += 8;
 				if (!n) {
 					if (addr + len > xb.files[cbb].size) {
-						xb.files[cbb].size = (addr + len + 15) & ~15;
+						xb.files[cbb].size = align16(addr + len);
 						setBeU32(xb.files[cbb].size, xb.files[cbb].data + 12);
 					}
 					for (i = 0; i < len; i++)
 						xb.files[cbb].data[addr + i] = d[off + i];
 				} else {
 					if (addr + len > xb.files[cd].size) {
-						xb.files[cd].size = (addr + len + 15) & ~15;
+						xb.files[cd].size = align16(addr + len);
 						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
 					}
 					for (i = 0; i < len; i++)
@@ -1804,14 +1812,14 @@ void patchBlsBlmod(const void *blmod, int size)
 			cbb = cd;
 		max = xb.cbb ? 0xc000 : 0x10000;
 		off = getBeU32(xb.files[cbb].data + 12);
-		end = (off + size + 15) & ~15;
+		end = align16(off + size);
 		if (end > max) {
 			size -= end - max;
 			log_printf(0, "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n", end - max, max - off);
 		}
 		log_printf(1, "Adding 0x%x bytes blmod.bin data to %s...", size, xb.cbb ? "CBB" : "CD");
 		memcpy(xb.files[cbb].data + off, blmod, size);
-		end = (off + size + 15) & ~15;
+		end = align16(off + size);
 		i = end - xb.files[cbb].size;
 		xb.hdr[0x49] = i >> 8;
 		xb.hdr[0x4a] = i;

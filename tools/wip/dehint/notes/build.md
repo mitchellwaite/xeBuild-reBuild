@@ -3,6 +3,14 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 7
+
+**20 tricks:** `--param builtin-expect-probability=98`, 8 `__builtin_expect` (verbose, the two scan bounds, type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 4 pins (e, next/buf, d, size), the empty asm barrier, 3 hot and cold labels (t5le, badsize, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`). `no-early-inlining` is gone: see "## Attempt 7". The review table below stands, plus:
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| `align16`, all 7 `(x + 15) & ~15` in build.c | A small static helper | Not redundant and reads naturally, so it isn't marked borderline. But it steers: patchBlsBlmod needs it at 3 or 4 of its sites to match. The other sites are free either way; they use it so the helper is the file's, not the function's |
+
 ## State after attempt 6
 
 Attempt 6 landed nothing, so the count and the review table below stand. It did explain the type-11 copy, the constant_p entry and `else if (type)`: see "## Attempt 6" at the end.
@@ -474,3 +482,53 @@ Structure only: `r` in ecx with `test ecx,ecx` after the switch; the signature t
 - The loop form (gen_bd164) with the mechanisms above in hand: read which blocks move, and why, rather than sweeping.
 - `else if (type)`: anything that keeps the passed log's first block free of a call without a copy.
 - FSM order may explain other "thread only happens with this shape" hints in other objects: check `FSM did not` in dom3 first.
+
+## Attempt 7
+
+Started on the small functions, as asked. One trick landed, patchBlsBlmod's, with a new lever. Generators gen_bd171 to gen_bd181. `bdhints.py` holds the remaining hints as named edits and prints their costs. gen_bd171 and gen_bd172 only rerun against src/build.c from before this attempt, as they look for the attribute; the rest run on this attempt's source.
+
+### What moved the numbers: a small helper the early inliner takes (21 -> 20, full build SHA256 matches)
+
+**patchBlsBlmod's no-early-inlining -> `align16` (gen_bd171, gen_bd172).** `static uint32_t align16(uint32_t v) { return (v + 15) & ~15; }`, used at all seven such expressions in build.c. Three attempts of sweeping neutral shapes had missed it.
+- Why: the two spill stores follow partition order. Without the attribute, einline gives the third findFile's `i` a low freed name (i_20, seen from 027t.einline on), so pt's partition sorts before cd's. The freed names are the removed calls' `.MEM` names (the "missing" versions in a dump without `-vops` are often virtual operands, not holes). Another inlined call changes which copy gets them. With align16: cd partition 25, pt 29, cbb 34.
+- gen_bd171: the sites that matter are patchBlsBlmod's. `bcd` or `abcd` are IDENTICAL, any smaller subset keeps the 2 lines. gen_bd172: the other three sites (loadFileCrc's two, patchBlsResign's one) make no difference, so all of them use it.
+- **Lesson: when a hint is about SSA numbering, try a natural small helper, because it's a call until einline.** Spelling changes don't move these names, and a big helper isn't inlined early.
+
+### Mechanisms found (no landing)
+
+- **pin_size: it's operand order.** At forwprop4, `size_41 = size_254 + prephitmp_229` becomes `prephitmp_229 + size_254`, as the lower version goes first. So IRA's shuffle copy ties the sum to the prephitmp (r105 with r197), not to the running size, and they end up in different threads. In the JTAG arm the sum is `size_249 + prephitmp_287` because that arm's PRE names are new. PRE does this arm first and takes names off the free list (243, 242, .. 229); size_254 was made at dom2 and is high. In the source that matches, the asm isolates size from this. The mov is LRA's output reload for `size_226 = size_41 + _225` when the two sides have different registers (`add esi,..; mov ebx,esi`), not an out-of-SSA copy. To remove the pin, prephit's version has to be above the size PHI's, or the load must not go through PRE.
+- **isUpdateBl: its own profile decides.** The exported function isn't early inlined into addUpdateBls (`_26 = isUpdateBl (type_24)` at profile_estimate), so the inlined copy keeps isUpdateBl's probabilities. The front end folds `a == x || a == y` pairs into one non-short-circuit test: `(23|15)`, `(16|9)`, `(10|24)`, then `25` alone. Each pair has only early return (39%), since `_5 != 0` gets no nonequal; a lone `==` gets both, 19.9%.
+  - rotate_loop takes the hottest edge leaving the trace: 23's is 8725 * .39 = 3403 and the bit test's 5323 * .39 = 2076. So `type == 23` needs under 23.8%.
+  - A lone 23 has 19.9%, but then it joins the bit test (mask 0x3818600 in the loop, L226). 23 only stays out of the bit test while it shares a test with the next type. That's the bind.
+  - **`23, 10, 9, ..` (gen_bd173, gen_bd174, 48 orders, 4 loose in addUpdateBls) gets the rotation right** without an expect: `(23|10)` stays a real OR, expand splits it into two jumps and halves each edge. What's left is that 10 stays out of the mask (`cmp esi,0xa; je`, 0x3018200). The size change also moves buildFlash's call displacements and .rdata, which isn't a real difference.
+  - `23 bac ere`-class ranges (`type == 23 || type == 15 || type == 16 || (type >= 9 && type <= 10) || type == 24 || type == 25`, 5 loose): the loop's mask takes 23 and the exported function loses `movzx eax,al`.
+- **exp_devgl, exact condition.** Tree-sink moves `fuse` when the block's frequency is under 75% of its definition's. Two NONEQUAL tests give 50%, stale after ifcombine. A helper keeps it (gen_bd179: 7 loose at best, usually 9 to 13).
+- **pin_e:** e and f are colored by thread frequency: e is pushed last and popped first, so it gets ebx. The pin adds e's frequency, which swaps the order. Without the verbose expect the frequencies change and it swaps by itself (exp_verbose + pin_e costs the same 18). So the pair falls together or not at all.
+- **pin_i:** next (a50) is colorable early, so it's popped late, gets edx, and improve_allocation moves it to ebp by spilling e. Size has taken esi by then. Reaching next = esi needs next to be popped first, and it has too few conflicts for that.
+- **pin_d:** the base (r535, thread 422) is popped before d (thread frequency higher), and gets eax. Its thread would have to outweigh d's.
+
+### Near miss, not landed
+
+`loadBl60` with `||` in loadBl's second case-24 arm only (`*pr = loadBl60(e)`, gen_bd178 `c or 2`) is IDENTICAL. The first arm and the console copy can't use it (90 and 6 loose), and one helper call beside two written-out copies is no more natural, so src keeps the three matching copies. `checkBlSig` in place of `else if (type)`: 128 loose.
+
+### Don't retry
+
+- pin_size by lookups through a helper, any subset of the 7 (gen_bd176, 127 cases: 40 at best).
+- exp_upd: 23 tested in the loop before isUpdateBl (gen_bd175: 228 and up), parenthesized groupings (gen_bd180: parens mostly normalize, 12 at best), forms of isUpdateBl's return including bit tests (gen_bd181: 12 at best).
+- exp_devgl through isDevGl, at the one site or all, 4 helper forms x 5 fuse forms (gen_bd179).
+- loadFileCrc: logs per pad arm with align16 (gen_bd177: .rdata moves, 79 and up).
+- Larger helpers in patchBlsBlmod (setBlSize, copyPatch, a file-entry lookup): not inlined early or cloned, 199 and up.
+
+### Not tried this attempt
+
+- exp_t24 and lab_none: no new idea, so per the brief no sweep. The scan bounds: no new form tried, only the mechanism above (attempt 5's) re-read. loadBl: attempt 6's leads stand.
+
+### Costs now (strict and loose, removed alone)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_i 22/22, pin_d 23/14, pin_e 26/26, lab_badsize 26/6, exp_t24 29/7, exp_210 43/11, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_200 97/29, exp_t10 116/46, vol_fail 296/126, lab_none 333/231. Sets: lab_t5le+exp_pr 13/2, exp_200+exp_210 239/189 (111 loose in extractSmcConfig itself).
+
+### What to try next
+
+- exp_upd: the `(23|x)` OR that stays a real OR is the right lead. Find why 15 joins the mask from `(23|15)` but 10 doesn't from `(23|10)`, reading reassoc1 (optimize_range_tests) on both, and look for an order where the OR survives until expand and x still ends up in the mask.
+- The same lever elsewhere: other small helpers the author is likely to have had, wherever a pin or hint comes down to SSA or partition order. image_read's and other objects' notes may have similar cases.
+- pin_size: anything that keeps this arm's size load out of PRE, or changes PRE's order so this arm gets new names.
