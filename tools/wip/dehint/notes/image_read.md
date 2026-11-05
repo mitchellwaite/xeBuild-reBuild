@@ -602,3 +602,17 @@ Tools: gen_ir254 (whole-function, no flags: Z addr fix x S size fix x C sane tes
 No gain, no new draft: 1 trick stands, src/image_read.c's `excess`.  Judged stuck: every family in the brief is covered, and the two ways to E's conversion with no statement (S unsplit, a non-constant fallback) both came to nothing.  Whatever the author wrote that keeps it isn't something these attempts have found; if it was a statement, it compiled to no code.
 Don't retry: shared fallback forms (gen_ir256); const local or static for 0x1000 (gen_ir256); Kv's literal form, inline load, helpers for the header reads (gen_ir254, 257); the 3800 kill with S unsplit (gen_ir258).
 Only with a new idea: read do_regular_insertion at the tag when gitweb answers, to check the list above.
+
+## Attempt 22 (quick test, 2026-11-05)
+
+Idea from build's checkBl (build.md attempt 5): an error variable set in the arms
+and tested later, with no hints. gen_ir259 runs 18 forms of getImageSmc with no
+hints: 3 addr fixes (two ifs, if/else if, one shared log) x 3 size fixes (nested
+if/else, a `fix` variable set to the new size and tested later, a `fix` flag) x 2
+ends (if/else, an `ok` variable tested before loadSmc). Best: 154 strict lines in
+getImageSmc (`one.nest.if`), and `one.nest.ok` changes only getImageSmc (194). All
+of them are far behind attempt 21's best plain form (66), so the lever doesn't carry
+over: checkBl's gain came from moving the logs to a shared tail, and getImageSmc's
+logs have to stay in their arms for .rdata order. This doesn't change attempt 20's
+point that E can't hold live code.
+Don't retry: error or fix variables for the addr and size fixes (gen_ir259).
