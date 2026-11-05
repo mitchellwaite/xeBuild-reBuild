@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 13
+
+Attempt 13 landed nothing; src is unchanged, so the count (17) and the review tables below stand. It read the Linux build's addUpdateBls, isUpdateBl, loadBlFiles tail, loadConsoleBlFiles, loadFileCrc, addBlsToImage and calcBlAreaSize for structure, and found nothing that the gcc 6 source doesn't already have (see "## Attempt 13" at the end).
+
 ## State after attempt 12
 
 **17 tricks** (20 before): `--param builtin-expect-probability=98`, 6 `__builtin_expect` (verbose, type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 3 pins (e, d, size), the empty asm barrier, 3 hot and cold labels (t5le, badsize, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`). The two scan-bound expects and the next/buf pin are gone, and so is the findSmcConfig helper: the scan loops are written in extractSmcConfig as the Linux build has them (see "## Attempt 12"). The review tables below stand, except that findSmcConfig no longer exists. No new borderline shape.
@@ -768,3 +772,33 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, lab_badsize 
 - The Linux build lens on the other loops with hints: loadConsoleBlFiles' loop (lab_none), addUpdateBls' loop (exp_upd), and loadBlFiles' (loadBl's group).  Look for jumps back to a loop test that gcc 6 would thread.
 - The param is now held by the loadBl expects, exp_verbose, exp_t24, exp_upd and exp_devgl; re-measure which values still match after each landing.
 - loadFileCrc: a form whose bytes log is reached directly from the non-pad path and whose pad log keeps both arms' calls (so no PRED_CALL on it).  The two-copy form wasn't tail-merged; a shape that merges might do.
+
+## Attempt 13
+
+No match; src is unchanged.  Goal: attempt 12's lever (loop structure read off tmp/xeBuild64, build/x64.dis) on every function that still has a hint.  Generators gen_bd240 (isUpdateBl forms) and gen_bd241 (loadFileCrc with a padded-size local) run on src/build.c as of f735084.  Linux strings were found by file offset + 0x400000 (static ELF) and grepped as `mov esi,0x...` in x64.dis.
+
+### Structure readings (Linux, gcc 4.9)
+
+- **isUpdateBl (407840) is a real function** in Linux too: `(t - 23) <= 2 ? 1 : ((t - 15) <= 1 | (t - 9) <= 1)`, i.e. reassoc's ranges [23,25], [15,16], [9,10].  **addUpdateBls (407870) inlines it:** `cmp 23; sete r14b; je body`, then [24,25], [9,10], and [15,16] last, on the way back to the latch; the body's `type == 23` is `test r14b` (the compare reused, as attempt 8 found for gcc 6).  The loop is `if (!isUpdateBl) continue;` with no re-test, the none test is `continue`, and the body tests 9, 23, 25, 16, 10, 24 in src's order.  Nothing here differs from src; the block order doesn't pin the source order of the chain (it depends on where 4.9's reassoc puts merged ranges, not checked).
+- **loadBlFiles (405280):** r (ecx) is tested once after the switch (405355) and the loop reloads nFiles only on paths with a call.  Case 23: `if (r) -> log`, size log `jmp 4059e2`, appendAddonPatches -> latch.  **The one -1 block (4059e2 `mov ecx,-1; jmp log`) is reached from the size log, case 2's `!e->offset` (falls into it) and the signature-failed tail**, as attempt 9 said.  Signature-failed: log, then `xb.type <= 5 -> -1 block`, `type != 14 -> -1 block`, else `ecx = -1`, setFlashBuild, the r test.  The passed, no-key and non-signature types go to 405a73: `xb.type <= 5 -> latch`, `type != 14 -> latch`, else `r = 0`, setFlashBuild, the r test.  That reads as `if (xb.type > BUILD_DEVGL16 && type == 14) setFlashBuild(..);` with r tested after the switch, which attempt 11 already measured (`and exp`, 2 loose, 18 strict, with the `*pr` expect still on).  CG (405ded) goes from its checkBl straight to the latch; CF success sets r13d = 9 and goes to the SE test.  No new loop shape: the loop has no jump back to its test that gcc 6 could have threaded away.
+- **loadConsoleBlFiles (405e70):** the same loop as loadBlFiles (precheck `nFiles <= 1 -> return 0`, switch, r tested after), so nothing new for lab_none; the precheck is the loop header copy any `for` gives.
+- **loadFileCrc (402900):** the pad path keeps the dead `size == e->size` compare (as the Windows reference does, 2a7) and the non-pad path goes straight to the bytes log, which is a thread in both compilers.  So the source compares `size != e->size` inside `if (verbose)`, as src has it; no goto or second log.
+- **addBlsToImage (4071f0..):** `if (xb.type == RETAIL && (23 || 25)) .. else if (xb.type > 5) { if (23 || 25) .. } else if (type == 25 && offset < imgSize())`, as src without the `type != 24`.  Nothing for exp_t24.
+- **calcBlAreaSize (around 409700):** every findFile lookup is inlined and the arms are scattered by threading; I couldn't read a source form from it for pin_size.
+
+### Measured
+
+- gen_bd240, isUpdateBl's return written as ranges (`>= && <=`, `(uint32_t)(t - a) <= n`) or `==` groups in all 6 orders of the three Linux ranges, a switch, and `if (type == 23) return 1;` first: no expect in any.  Best 12 loose (`15 16 23 24 25 9 10` as `==`, the same as src without the expect); the range and switch forms change isUpdateBl itself (19 to 22 lines, the reference is one bit test with 23 in it) and cost 164 and up in addUpdateBls.  einline still refuses isUpdateBl ("growth 10 exceeds --param early-inlining-insns divided by number of calls", read from `bddump.sh .. t-einline`), so the loop's predictors never reach the first test.  The reason the message says "divided by number of calls" for a callee with no calls wasn't checked: the official repo's ipa-inline.c was behind a bot wall when fetched.
+- gen_bd241, loadFileCrc with `len` for the padded size (set in two statements, a ternary, or stored late), compared as `size != len`, `size != e->size` or `len != size`, logged as `len` or `align16(size)`, allocated by `len` or `e->size`; no expect, no pin: 88 loose at best (18 for src without them); it also changes loadCommonFile (28) and moves .rdata.
+
+### Don't retry
+
+- exp_upd from isUpdateBl's return forms or the Linux ranges (gen_bd240); the Linux loop shape is src's.
+- loadFileCrc with a local for the padded size (gen_bd241).
+- Reading the Linux build for loadBl's tail, lab_none, exp_t24 or pin_size: done here, nothing beyond attempts 9 to 11.
+
+### What to try next
+
+- The Linux lens is used up for build: every loop with a hint has src's shape there.  What's left are frequency and register questions inside shapes that both builds agree on.
+- exp_upd: only an isUpdateBl small enough for einline (growth under 7 with that check) that still compiles to the reference's one bit test would bring the loop's predictors in; the forms tried here all grew or changed the bit test.
+- loadBl: Linux's tail supports `if (xb.type > BUILD_DEVGL16 && type == 14)`; attempt 11's `and exp` (2 loose) is the base, and what's left there is the sig-failed `type != 14` path going to `fail` where the reference has its own -1.
