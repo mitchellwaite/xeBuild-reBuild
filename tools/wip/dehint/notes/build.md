@@ -3,11 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
-## State after attempt 4
+## State after attempt 5
 
-25 tricks: `--param builtin-expect-probability=98`, 9 `__builtin_expect`, 6 pins, the empty
-`__asm__ __volatile__("")` barrier at loadBl's `fail:`, 4 hot and cold labels, no `cb_hint()`,
-2 `__builtin_constant_p`, 2 `no-early-inlining` (checkBl, patchBlsBlmod). (After attempt 3: 26, with 10 expects. After attempt 2: 43, with 18 expects, 7 pins,
+21 tricks, counting loadBl's dead `else if (type)` (attempt 5's report said 20, without it; README's rules count dead tests): `--param builtin-expect-probability=98`, 8 `__builtin_expect` (verbose, the two scan bounds, type == 10, `*pr != 0`, type != 24, isUpdateBl, the devgl test), 4 pins (e in loadFileCrc, next/buf in findSmcConfig, d in case 27, size in calcBlAreaSize), the empty
+`__asm__ __volatile__("")` barrier at loadBl's `fail:`, 3 hot and cold labels (t5le, badsize, none), 2 `__builtin_constant_p`, 1 `no-early-inlining` (patchBlsBlmod). (After attempt 4: 25. After attempt 3: 26, with 10 expects. After attempt 2: 43, with 18 expects, 7 pins,
 6 labels, 5 cb_hint and 3 no-early-inlining. After attempt 1: 50.)
 
 Landed shapes to review:
@@ -15,10 +14,10 @@ Landed shapes to review:
 | Where | Shape | Why it's borderline |
 |---|---|---|
 | patchCpuFan and its caller | The cpu fan section as a function, with `xb.cpuFan != 0xffffffff` tested in both | The repeat is redundant, folded after inlining, and only there for what it does to frequencies. It replaces no-early-inlining on patchSmcConfig and 4 cb_hint. The function alone is natural |
-| checkBl, blMagic | `blMagic(bl, &m)` where `m = bl[0]` would do | An out parameter so the call has side effects, for PRED_CALL. It replaces cb_hint |
-| checkBl, 7 arms | `if (!crcSame(c, crc)) { log; return -2; }`, the same log 7 times, with `goto bad` kept for type 14 and default | crcSame only hides the compare from the predictor while no-early-inlining holds. It replaces 7 expects |
-| checkBl | `goto toobig`, with the size error's text after the crc error's | Text order only, for .rdata. Plain `if (blsize <= size) { ... }` nesting matches too |
 | loadBl case 24 (both arms), loadConsoleBlFiles case 24 | `if (loadBaseFile(..)) r = defaultBl60(e); else if (e->size != 0x60) r = defaultBl60(e);` | Two identical calls where `\|\|` would do; crossjump merging them is what orders the size store. All three now have the same form (attempt 4). The first arm can't use `\|\|` (243 lines), console's costs 2 lines |
+| loadBl, signature passed | `else if (type)`, a test that can't be false there | Not new and not counted so far; plain `else` costs 54 loose lines. It's a dead test that steers threading, so it may deserve counting |
+
+crcSame, blMagic and `goto toobig` are gone (attempt 5): checkBl has no borderline shape left.
 
 Not borderline, but they steer, so check them: the struct copy in extractSmcConfig, `findSmcConfig`, `int size` on extractSmcConfig and `int crc` on loadInputFile (comments in
 the source say so). Both are compared as unsigned through the usual conversions, so behaviour is the same. `*pr = 0` in loadBl's
@@ -362,3 +361,53 @@ nei_blmod 2, lab_t5le 7, pin_type 11, exp_pr 18, exp_upd 18, pin_i 22, pin_d 23,
 - More always-true tests like case 27's: look at any expect whose test can't be false, or that a switch has already decided. exp_t24's `type != 24` is the one left, and it's there for its block, not its value.
 - A statement that keeps loadBl's `fail` block non-empty until expand, with no code, in place of the asm (near miss above).
 - `--param` and the constant_p entry stay last.
+
+## Attempt 5
+
+### What moved the numbers: an error variable (25 -> 20, full build SHA256 matches)
+
+1. **checkBl, 4 tricks plus crcSame, blMagic and `goto toobig` (gen_bd130).** Very likely the author's own shape: `uint32_t blsize, c = 0; int m, r = 0;`, the arms only set `r`, and one block at the end logs by `r`, then `return r;`:
+   `if (r) { if (r == -2) crc log; else if (r == -3) size log; else magic log; }`. Byte-identical with plain -O3 and no attribute, label, pin or helper, and the literal 6 stays in loadBl. 16 of 96 variants match, and only the outer `if (r)` matters
+   (flat `if/else if` chain 15 lines, sequential ifs or a switch up to 167). `break` or `else` arms, `goto done` or nesting, `c = 0` in the declaration or the default are all equivalent. Behaviour: default still logs the crc message with c = 0, and m is bl[0], which nothing writes.
+   Attempts 1 to 4's predictor arithmetic (P(size error) in [10%, 20%)) was beside the point: the logs aren't guarded by the size test when branches are estimated, so their frequencies come from jump threading the tests at the end. The crc, size, magic text order is just that chain's order.
+2. **exp_t9 (gen_bd135).** loadConsoleBlFiles' update fallback: `if (r) { if (type == 9) {..} else if (type == 10) {..} } if (!r) r = checkBl(..);` in place of `if (r) break;`. Byte-identical with no expect.
+3. **The r6 local (gen_bd150).** Case 6 is plain `if (!*pr) *pr = checkBl(.., 6, ..);`. No change to the count.
+
+**The lesson for what's left: where a hint is about error-path frequencies, try setting a variable and testing it later, before any predictor work.**
+
+### Near miss: loadBl with almost no hints
+
+drafts/build_loadBl_errvar_nearmiss.patch (gen_bd137 to gen_bd146 take their BASE from build/bd/a5/lb*.c, each made by the one before with `-k`, so they only rerun in order). No constant_p, no expect on 10 or `*pr`, no t5le or badsize label: **32 loose lines in loadBlFiles** (83 strict), where taking only vol_fail off src costs 256. It keeps the d pin and the shared `fail` with its barrier (14 and 75 more loose without them). Landing it would remove 6 tricks. Its shape:
+`*pr = checkBl(..); if (!*pr) { sig test; if (xb.type <= 5) break; if (type == 14) flash; }`, `goto chk` kept for CG (it's what makes CG's checkBl share CF's), signature as `if (!xb.pub1bl) .. else if (!verify) .. else if (type) ..` (the text order 0xcb8, 0xcf4, 0xd2c reads straight off this).
+What's left in it:
+- The type-11 test's copy: the reference has its own `pub1bl` test and no-key log for type 11, jumping straight to the loop's next iteration. The draft goes to the shared one. This is what the constant_p entry does. With t10, bad, cp and the `*pr` expect back on, it's all that differs with this signature form (`notel,nest,t10,bad,cp,pr`: 10 loose, 20 strict), but that keeps nearly all the tricks.
+- appendAddonPatches' position (4 lines, the badsize label fixes it), the sig-failed flash copy's `imul` (the reference leaves `xb.files[i]` alone there, probably because that block has frequency 0), `jbe` for `ja` on the SE copy, a `mov edi,-1; jmp`.
+- The loop form (r a real variable from the start, gen_bd133, gen_bd143) is further off: 90 at best with the pin on. The static function with `*pr` looks right: `*pr` stays memory until inlining, so its tests survive to be threaded late.
+- Grid gen_bd146 (signature form, hint subsets, tail forms, 512 cases): only src's own hint set is identical, so nothing lands piecemeal from this base.
+
+### Don't retry
+
+- checkBl's range test and all P(size error) work: solved another way. The three checkBl near-miss patches are deleted.
+- lab_none by console loop forms: an error variable for the -1, `for` conditions on r, int i, a pointer walk, `continue` (gen_bd136): 4 loose at best. r = 1 [14] against the return [20] don't move.
+- exp_verbose: loadFileCrc's exits as an error variable. All 16 combinations are byte-identical to the plain form (gen_bd131: 18 loose, 83 strict), so r has no effect there. Logs per pad arm (gen_bd132: 68 and up), `&&` forms (gen_bd149: 18 at best).
+- exp_t24: flags for the skip tests (gen_bd147: 380 and up), a redundant test on xb.type (gen_bd148: `xb.type <= 5` folds too early, 7; `!= RETAIL` 124). Plain, nested and `type != 24` are all 7.
+- Case 6 falling into the shared case, or `type == 6 && !xb.cbb` in it (gen_bd145: 127 and up). It looked like the natural non-constant entry, but no.
+- `xb.files[n].data` in place of the d local, without the pin: 14 loose (gen_bd150).
+
+### Mechanisms
+
+- tree_estimate_probability_bb's PRED_CALL only looks at a guarded block's own statements, and PRED_NEGATIVE_RETURN needs the constant to be a direct argument of the return block's PHI. A test that only sets a variable gets neither.
+- predict.def at this tag: call 71, early return 61, const return 67, negative return 96, continue 50, goto 70. The C front end emits no goto predictor here: no GIMPLE_PREDICT in checkBl's cfg dump, and no goto heuristic in profile_estimate's. Earlier notes that credit it, for example the bytes log's 1609, should be read with that in mind.
+- A loop's exit probability is shared out by exit count (predict_loops), so the scan loops' bound test, coming first, has the hotter exit and rotate_loop picks it. That's why exp_200 and exp_210 hold. I found no natural form.
+- predict.c and predict.def were read from the official repo at releases/gcc-6.2.0, into build/bd/a5.
+
+### Costs now (strict, removed alone)
+
+nei_blmod 2, lab_t5le 7, exp_pr 18, exp_upd 18, pin_i 22, pin_d 23, pin_e 26, lab_badsize 26, exp_t24 29, exp_210 43, exp_devgl 43, pin_size 82, exp_verbose 83, exp_200 97, exp_t10 116, vol_fail 296, lab_none 333.
+
+### What to try next
+
+- loadBl's near miss: 6 tricks. It needs the type-11 copy to survive with no constant_p. Read vrp1 and dom2 on the patch, and look for what else could give the shared path a non-constant entry.
+- The same lens on other objects: any counted hint about an error path in a function with several `return`s. image_read's last trick is worth a look.
+- pin_size, exp_devgl and exp_upd haven't had the "what would he have written" look: each is one test in a function whose shape is otherwise guessed. checkBl's answer came from asking that, not from sweeping spellings.
+- `--param` and the constant_p entry stay last. The param is now held by the loadBl expects, the scan bounds and exp_verbose.

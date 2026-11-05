@@ -995,158 +995,136 @@ void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
 		xb.kernel = k;
 }
 
-/* Borderline, for review: an out parameter where a return would do.  A call with
-   a side effect on checkBl's normal edge makes that edge less likely when branches
-   are predicted (no-early-inlining); a getter is pure and does nothing.  It
-   replaces a hint call. */
-static void blMagic(const uint8_t *bl, int *m)
-{
-	*m = bl[0];
-}
-
-static int crcSame(uint32_t c, uint32_t crc)
-{
-	return c == crc;
-}
-
-__attribute__((optimize("no-early-inlining")))
 int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 {
-	uint32_t blsize, c;
-	int m;
+	uint32_t blsize, c = 0;
+	int m, r = 0;
 
-	/* the original copies the epilogue into the size-error block, which needs
-	   that edge >= 10% of entry, and not into the crc failure one, which needs
-	   it below. Hints (none emit code): the hot label takes the size error
-	   from 1.7% to 19%, with blMagic below, and the "D" pin loads type before
-	   the first call as the original does.
-	   Borderline, for review: the failure log is written in each arm, with
-	   crcSame for the test, not `goto bad`.  Under no-early-inlining crcSame
-	   is still a call when branches are predicted, so the test gets no
-	   not-equal prediction, and the arms are unlikely; crossjump then merges
-	   them into `bad` at 979 (it replaces 7 expects). */
-	__asm__("" : : "D"(type));
 	blsize = getBeU32(bl + 12);
-	/* Borderline, for review: the size error sits after the crc error only
-	   for the text and .rdata order; it replaces a literal-order asm */
 	if (blsize > size)
-		goto toobig;
-	blMagic(bl, &m);
-	__asm__("" :: "a"(m));
-	if ((m & 0x43) != 0x43)
-		goto magic;
-	switch (type) {
-	case 5:
-	case 6:
-	case 11:
-	case 17:
-		if (bl[1] != 'B')
-			goto magic;
-		memset(bl + 0x10, 0, 0x30);
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
+		r = -3;
+	else {
+		m = bl[0];
+		if ((m & 0x43) != 0x43)
+			r = -1;
+		else {
+			switch (type) {
+			case 5:
+			case 6:
+			case 11:
+			case 17:
+				if (bl[1] != 'B')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x30);
+					c = crc32(bl, blsize);
+					if (c != crc)
+						r = -2;
+				}
+				break;
+			case 7:
+			case 18:
+				if (bl[1] != 'D')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x10);
+					c = crc32(bl, blsize);
+					if (c != crc)
+						r = -2;
+				}
+				break;
+			case 8:
+			case 19:
+				if (bl[1] != 'E')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x10);
+					c = crc32(bl, blsize);
+					if (c != crc)
+						r = -2;
+					else
+						raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+				}
+				break;
+			case 9:
+			case 15:
+			case 20:
+				if (bl[1] != 'F')
+					r = -1;
+				else {
+					memset(bl + 0x20, 0, 0x210);
+					c = crc32(bl, blsize);
+					if (c != crc)
+						r = -2;
+					else
+						raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
+				}
+				break;
+			case 10:
+			case 16:
+			case 21:
+				if (bl[1] != 'G')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x10);
+					c = crc32(bl, blsize);
+					if (c != crc)
+						r = -2;
+				}
+				break;
+			case 12:
+				if (bl[1] != 'C')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x10);
+					if (crc != 0xffffffff) {
+						c = crc32(bl, blsize);
+						if (c != crc)
+							r = -2;
+					}
+				}
+				break;
+			case 13:
+				if (bl[1] != 'D')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x10);
+					if (crc != 0xffffffff) {
+						c = crc32(bl, blsize);
+						if (c != crc)
+							r = -2;
+					}
+				}
+				break;
+			case 14:
+				if (bl[1] != 'E')
+					r = -1;
+				else {
+					memset(bl + 0x10, 0, 0x10);
+					c = crc32(bl, blsize);
+					raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+					if (crc != 0xffffffff) {
+						c = crc32(bl, blsize);
+						if (c != crc)
+							r = -2;
+					}
+				}
+				break;
+			default:
+				r = -2;
+				break;
+			}
 		}
-		break;
-	case 7:
-	case 18:
-		if (bl[1] != 'D')
-			goto magic;
-		memset(bl + 0x10, 0, 0x10);
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
-		}
-		break;
-	case 8:
-	case 19:
-		if (bl[1] != 'E')
-			goto magic;
-		memset(bl + 0x10, 0, 0x10);
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
-		}
-		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
-		break;
-	case 9:
-	case 15:
-	case 20:
-		if (bl[1] != 'F')
-			goto magic;
-		memset(bl + 0x20, 0, 0x210);
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
-		}
-		raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
-		break;
-	case 10:
-	case 16:
-	case 21:
-		if (bl[1] != 'G')
-			goto magic;
-		memset(bl + 0x10, 0, 0x10);
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
-		}
-		break;
-	case 12:
-		if (bl[1] != 'C')
-			goto magic;
-		memset(bl + 0x10, 0, 0x10);
-		if (crc == 0xffffffff)
-			break;
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
-		}
-		break;
-	case 13:
-		if (bl[1] != 'D')
-			goto magic;
-		memset(bl + 0x10, 0, 0x10);
-		if (crc == 0xffffffff)
-			break;
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc)) {
-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-			return -2;
-		}
-		break;
-	case 14:
-		if (bl[1] != 'E')
-			goto magic;
-		memset(bl + 0x10, 0, 0x10);
-		c = crc32(bl, blsize);
-		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
-		if (crc == 0xffffffff)
-			break;
-		c = crc32(bl, blsize);
-		if (!crcSame(c, crc))
-			goto bad;
-		break;
-	default:
-		c = 0;
-		goto bad;
 	}
-	return 0;
-bad:
-	log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
-	return -2;
-toobig: __attribute__((hot));
-	log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
-	return -3;
-magic:
-	log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", bl[0], bl[1], type);
-	return -1;
+	if (r) {
+		if (r == -2)
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+		else if (r == -3)
+			log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
+		else
+			log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", m, bl[1], type);
+	}
+	return r;
 }
 
 int verifyBlSigs(void)
@@ -1266,6 +1244,8 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 				if (!cbVerifySig(e->data, xb.pub1bl)) {
 					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
 					*pr = -1;
+				/* Borderline, for review: type is 5, 11 or 17 here, so this test
+				   is always true; a plain else costs 54 lines */
 				} else if (type)
 					log_printf(1, "loaded %s, signature check passed!\n", e->name);
 			} else
@@ -1288,11 +1268,8 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		if (!xb.cbb)
 			break;
 		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (!*pr) {
-			uint32_t r6 = checkBl(e->data, e->size, 6, e->crc);
-
-			*pr = r6;
-		}
+		if (!*pr)
+			*pr = checkBl(e->data, e->size, 6, e->crc);
 		break;
 	case 24:
 		/* Borderline, for review: two calls where `||` would do.  Crossjump merges
@@ -1517,17 +1494,16 @@ int loadConsoleBlFiles(void)
 			case 9: case 10: case 15: case 16: case 20: case 21:
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
 				if (r) {
-					if (__builtin_expect(type == 9, 0)) {
+					if (type == 9) {
 						if (suGetCF(&e->data, &e->size))
 							r = 0;
 					} else if (type == 10) {
 						if (suGetCG(&e->data, &e->size))
 							r = 0;
 					}
-					if (r)
-						break;
 				}
-				r = checkBl(e->data, e->size, type, e->crc);
+				if (!r)
+					r = checkBl(e->data, e->size, type, e->crc);
 				break;
 			case 24:
 				if (!xb.glitch2mfg)

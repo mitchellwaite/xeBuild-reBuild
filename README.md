@@ -88,14 +88,15 @@ The file has no `asm`, attributes or builtins left, and it builds with plain `-O
 </details>
 
 <details>
-<summary><b>2. build</b>: 25 tricks, very hard</summary>
+<summary><b>2. build</b>: 21 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
-- 9 `__builtin_expect`, 6 pins, 1 `asm` barrier and 4 hot and cold labels, across
-  `loadFileCrc`, `extractSmcConfig`, `checkBl`, `loadBl` and others
+- 8 `__builtin_expect`, 4 pins, 1 `asm` barrier and 3 hot and cold labels, across
+  `loadFileCrc`, `findSmcConfig`, `loadBl` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
-- 2 `no-early-inlining` attributes
+- 1 dead test: `else if (type)` in `loadBl`, always true there
+- 1 `no-early-inlining` attribute
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
 narrow, unusually high range (92-99), and the dom2 entry is there to keep one

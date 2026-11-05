@@ -1,0 +1,141 @@
+--- src/build.c
++++ build/bd/a5/lb6b.c
+@@ -1218,50 +1218,41 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 	case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
+ 	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+ 		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+-		if (*pr) {
+-			if (type == 9) {
+-				if (!suGetCF(&e->data, &e->size))
+-					break;
+-			} else if (__builtin_expect(type == 10, 0)) {
+-				if (!suGetCG(&e->data, &e->size))
+-					break;
+-				goto chk;
+-			} else
+-				break;
+-		}
+-		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
+-			/* an SE where the CF goes */
+-			e->type = type = 14;
+-			xb.cfLdv = 0;
+-			xb.seReplacesCf = 1;
+-		}
+-	chk:
+-		*pr = checkBl(e->data, e->size, type, e->crc);
+-		if (*pr)
+-			break;
+-		if (type == 5 || type == 17 || type == 11) {
+-			if (xb.pub1bl) {
+-				if (!cbVerifySig(e->data, xb.pub1bl)) {
+-					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
+-					*pr = -1;
+-				} else if (type)
+-					log_printf(1, "loaded %s, signature check passed!\n", e->name);
+-			} else
+-				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
+-		}
+-		/* the expect leaves vrp1's signature-failed copy of this test a
+-		   >5 edge (else its setFlashBuild copy has frequency 0 and final
+-		   aligns the type-11 block after it); the hot label keeps the SE
+-		   copy's <=5 edge the likely one (jbe) */
+-		if (xb.type <= BUILD_DEVGL16) {
+-		t5le: __attribute__((hot));
+-			if (__builtin_expect(*pr != 0, 0))
+-				goto fail;
+-			break;
+-		}
+-		if (type == 14)
+-			setFlashBuild(getBeU16(xb.files[i].data + 2));
+-		break;
++if (*pr) {
++if (type == 9) {
++if (!suGetCF(&e->data, &e->size))
++break;
++} else if (type == 10) {
++if (!suGetCG(&e->data, &e->size))
++break;
++goto chk;
++} else
++break;
++}
++if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
++/* an SE where the CF goes */
++e->type = type = 14;
++xb.cfLdv = 0;
++xb.seReplacesCf = 1;
++}
++chk:
++*pr = checkBl(e->data, e->size, type, e->crc);
++if (!*pr) {
++if (type == 5 || type == 17 || type == 11) {
++if (!xb.pub1bl)
++log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
++else if (!cbVerifySig(e->data, xb.pub1bl)) {
++log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
++*pr = -1;
++} else if (type)
++log_printf(1, "loaded %s, signature check passed!\n", e->name);
++}
++if (xb.type <= BUILD_DEVGL16)
++break;
++if (type == 14)
++setFlashBuild(getBeU16(xb.files[i].data + 2));
++}
++break;
+ 	case 6:
+ 		if (!xb.cbb)
+ 			break;
+@@ -1372,9 +1363,9 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 		if (*pr)
+ 			break;
+ 		if (e->size & 3) {
+-		badsize: __attribute__((hot));
+-			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
+-			goto fail;
++		
++			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n",e->size);
++goto fail;
+ 		}
+ 		appendAddonPatches(e);
+ 		break;
+@@ -1396,7 +1387,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 		{
+ 			uint8_t *d = xb.files[xb.nFlashFiles].data;
+ 
+-			__asm__("" : "+a"(d));
++__asm__("" : "+a"(d));
+ 			if (d)
+ 				*pr = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
+ 		}
+@@ -1423,27 +1414,14 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 			*pr = 0;
+ 		}
+ 		e->offset = smcSetLoad(e->size);
+-		if (!e->offset)
+-			goto fail;
++if (!e->offset)
++goto fail;
+ 		break;
+ 	default:
+ 		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+-		/* never taken, but the edge lasts until dom2 resolves
+-		   __builtin_constant_p: an entry into vrp1's shared checkBl
+-		   copy whose type isn't a constant, so dom2's jump threads don't
+-		   scale the type == 11 test's frequency down to 0 (the original
+-		   places it by a frequency of ~25). The pointer compares set its
+-		   weight (tools/wip/README.md, build.c, eleventh pass) */
+-		if ((char *)__builtin_constant_p(i) == (char *)1 && (char *)__builtin_constant_p(type) == (char *)1) {
+-			type = (type & 1) + 18;
+-			goto chk;
+-		}
+-		break;
++				break;
+ 	}
+ 	return;
+-	/* one -1 block for the patch size, SMC and (xb.type <= BUILD_DEVGL16) signature
+-	   failures: the asm keeps it a block of its own (else the -1 is appended
+-	   to the size log, which crossjump can't then share) */
+ fail:
+ 	__asm__ __volatile__("");
+ 	*pr = -1;
