@@ -3,6 +3,17 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 14
+
+Attempt 14 landed nothing; src is unchanged, so the count (17) and the review tables below stand. It found that the `if (xb.type > BUILD_DEVGL16 && type == 14)` tail can't match: the reference's signature-failed path sends `xb.type <= 5` and `type != 14` to different places, and that form makes them one statement (see "## Attempt 14").
+
+**Stuck** (judged after attempt 14; each has had its mechanism read from dumps and several attempts of natural forms):
+- loadBl's tail, t5le and exp_pr: they set P(<=5) on vrp1's joiner copies (path counts in tree-ssa-threadupdate.c). Every form whose `<=5` exit goes straight to loadBl's return gets 0% on the SE copy (attempt 11), and the reference needs the `<=5` exit to be a statement of its own (attempt 14). vol_fail goes only with a near miss (drafts/build_loadBl_brktail_nearmiss.patch, 3 loose).
+- The two `__builtin_constant_p`: their weight is tuned to the line (attempt 14's weight sweep: every other form is 26 loose and up).
+- `else if (type)`, exp_t10, lab_badsize, pin_d: no natural form in 14 attempts; each comes down to one predictor or one IRA tie.
+- exp_upd (isUpdateBl's own profile, attempt 8), exp_devgl (tree-sink's 75% rule), exp_verbose with pin_e (attempts 3, 5, 12, 13), pin_size (PRE names, attempt 7), exp_t24 (PRED_CALL on the block after `type == 25`), lab_none (two round-4 blocks, 5 attempts without movement).
+- The `--param` stays while any expect does.
+
 ## State after attempt 13
 
 Attempt 13 landed nothing; src is unchanged, so the count (17) and the review tables below stand. It read the Linux build's addUpdateBls, isUpdateBl, loadBlFiles tail, loadConsoleBlFiles, loadFileCrc, addBlsToImage and calcBlAreaSize for structure, and found nothing that the gcc 6 source doesn't already have (see "## Attempt 13" at the end).
@@ -802,3 +813,43 @@ No match; src is unchanged.  Goal: attempt 12's lever (loop structure read off t
 - The Linux lens is used up for build: every loop with a hint has src's shape there.  What's left are frequency and register questions inside shapes that both builds agree on.
 - exp_upd: only an isUpdateBl small enough for einline (growth under 7 with that check) that still compiles to the reference's one bit test would bring the loop's predictors in; the forms tried here all grew or changed the bit test.
 - loadBl: Linux's tail supports `if (xb.type > BUILD_DEVGL16 && type == 14)`; attempt 11's `and exp` (2 loose) is the base, and what's left there is the sig-failed `type != 14` path going to `fail` where the reference has its own -1.
+
+## Attempt 14
+
+No match; src is unchanged.  Goal: one try at loadBl's tail from the `and` form, then a mechanism hunt on the cheapest trick.  Generators gen_bd250 to gen_bd254 run on src/build.c as of eb75581.  Scratch in build/bd/a14_* (not kept).
+
+### The `and` tail can't match: the reference's two sig-failed exits differ (read from the reference's objdump)
+
+The reference's signature-failed path (loadBlFiles 37b5..3808):
+```
+37c9  cmp xb.type,5 ; jbe 33d4          <=5: to the shared -1 block (33d4 mov edi,-1, falling into the log at 33d9)
+37d6  cmp esi,0xe ; mov edi,-1 ; jne 33d9   !=14: straight to the log, -1 already set in this block
+37e4  imul .. ; setFlashBuild ; jmp 33d9
+```
+So `<=5` and `type != 14` are different statements in the source: `<=5` reaches a -1 site of its own (src's `if (*pr) goto fail`), while `!= 14` and the setFlashBuild path share the -1 the failed arm set.  In every `and` form both exits are the same statement after the kit test (`if (*pr) goto fail;` or the plain `break`), so they reach the same place: `and exp` sends `!= 14` to fail (`jne 564`, the 2 loose lines), and `and` with a plain break sends both to the log with the -1 in the failed arm's block (`mov edi,-1` before the log call).  The Linux build (both exits to its -1 block) is consistent with either source, because gcc 4.9 crossjumps a split edge's `mov ecx,-1; jmp log` into that block; Windows tells them apart.  Attempt 13's reading of the Linux tail is therefore not evidence for `and`.
+
+Measured (gen_bd250, gen_bd251; loose/strict lines in loadBlFiles):
+- What the `and` form allows: `and exp` with the asm kept removes t5le only (2/18), the same as t5le alone off src (0/7 is better).  `and` with a plain break and the size log's own `*pr = -1; break;` removes t5le, exp_pr and the barrier (5/17, with or without the asm, since fail then has case 2 only), but attempt 10's `brk` near miss removes the same three for 3/11.  So the `and` form opens nothing new.
+- `nest` (`if (xb.type > 5) { if (type == 14) set; break; }`) is the same as `and` with a plain break (5/17) or 4 to 7 loose with the `*pr` test.
+- The `<=5` exit written in the failed arm, `log; if (xb.type <= BUILD_DEVGL16) goto fail; *pr = -1;` (before or after the store), with the tail as a plain `and`: the two exits now come out right (`jbe` to fail, `mov edi,-1; jmp` for `!=14`), but the sig-failed setFlashBuild copy moves to the end and reads `xb.files[i].data` through the IV (`mov eax,[ebx]`, attempt 11's ivopts problem) and the SE copy is `ja`: 24 loose at best (`a1 src g v`), 27 with the plain tail.
+
+### Mechanism hunt: lab_t5le (the cheapest, 0 loose / 7 strict), and two side looks
+
+- t5le's 7 lines are one `.p2align` on the type-11 copy's no-key log (freq 17), which compute_alignments gives when its frequency is over 10x its layout predecessor's (fixup_reorder_chain's jmp block after the SE copy, freq 4 = freq(SE copy) x P(>5)).  Attempt 11 attacked P(>5).  This attempt tried the other two factors:
+  - freq(SE copy), through the SE test's form (gen_bd252: nested, split, a local, `memcmp`, `strncmp`, swapped byte order): nested and local forms compile to the same code (still 0/7); swapping the bytes changes the code (4 loose); `memcmp` and `strncmp` change it far more (500 and up).  The `== 'S'`, `== 'E'` tests each get the nonequal heuristic, whatever the nesting.
+  - freq(no-key log), which the `__builtin_constant_p` entry's weight sets (gen_bd253: int or pointer compares, bare constant_p, one of the two, `||`): only src's form matches; every other form is 26 loose and up, with or without t5le.  So the label can't be moved onto that hint either.
+- loadBl's signature test as a switch, the way verifyBlSigs writes it (`case 5: case 11: case 17:`, gen_bd254, 4 case orders x `else if (type)` or `else` x hint subsets): 167 loose and up.  The switch changes the code (it's no longer three compares), so it isn't the source.
+- lab_badsize, read from profile_estimate: the size log gets 61% without the label (both arms hold calls, so PRED_CALL cancels, and the appendAddonPatches arm has the early-return heuristic), 89.9% with it; appendAddonPatches' block is 123 against 32.  No natural predictor raises the log's side (its first block always holds the log call); not swept again.
+- pin_d, read from the objdump: in the reference the base (`imul edx,edx,0x42c`) takes the register of the reloaded nFlashFiles at the join after the load fallbacks, and d gets eax; without the pin base gets eax and d edx.  loadConsoleBlFiles' case 27 has another shape (no fallbacks) and matches plainly.  Nothing new to sweep beyond gen_bd113.
+- exp_t24: a `pure` imgSize() would also keep PRED_CALL off the block after `type == 25` (gimple_has_side_effects is false for a pure call; inferred, not built), but that's an attribute in a shared header whose only job here is steering, so it wasn't tried.
+
+### Don't retry
+
+- Any `if (xb.type > BUILD_DEVGL16 && type == 14)` or nested kit-first tail (gen_bd250): the `<=5` and `!=14` exits must be different statements.
+- The `<=5` exit as a goto in the failed arm (gen_bd251).
+- Forms of the SE test (gen_bd252) and weights of the constant_p entry (gen_bd253) for t5le.
+- A switch for the signature types (gen_bd254).
+
+### What to try next
+
+Nothing with real odds.  The only open lead is attempt 10's near miss (3 tricks for 3 loose lines), which needs a `fail` block that survives to expand with no asm (mergephi2) and a `<=5` arm block that vrp1's joiner threads go through (tree-ssa-threadupdate.c's path counts); attempts 10, 11 and 14 found no natural statement for either.  I'd park build at 17.
