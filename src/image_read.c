@@ -407,35 +407,35 @@ void listFlashFiles(void)
 	}
 }
 
+/* The locals' scope matters: leaving it clobbers block, len and t, so the not-found
+   path holds a block at profile_estimate and no early return is predicted on it */
 int fsGetFile(const char *name, uint8_t **buf, uint32_t *size, uint32_t *time)
 {
-	uint32_t block, len, t, off, left, done;
-	uint8_t *p;
-	int v = fsValid;
+	if (fsValid == 1) {
+		uint32_t block, len, t, off, left, done;
+		uint8_t *p;
 
-	/* code-free hint: fsValid (reused for return 1) in esi, name in edi */
-	__asm__("" : : "S"(v));
-	if (v != 1)
-		return 0;
-	if (!fsFind(name, &block, &len, &t, 1))
-		return 0;
-	off = fsOffset + (block << 14);
-	p = calloc(len, 1);
-	left = len;
-	done = 0;
-	while (left > 0x4000) {
-		memcpy(p + done, xb.dump + off, 0x4000);
-		left -= 0x4000;
-		done += 0x4000;
-		block = SWAP16(fs->map[block]) & 0x1fff;
-		off = fsOffset + (block << 14);
+		if (fsFind(name, &block, &len, &t, 1)) {
+			off = fsOffset + (block << 14);
+			p = calloc(len, 1);
+			left = len;
+			done = 0;
+			while (left > 0x4000) {
+				memcpy(p + done, xb.dump + off, 0x4000);
+				left -= 0x4000;
+				done += 0x4000;
+				block = SWAP16(fs->map[block]) & 0x1fff;
+				off = fsOffset + (block << 14);
+			}
+			if (left)
+				memcpy(p + done, xb.dump + off, left);
+			*buf = p;
+			*size = len;
+			*time = t;
+			return 1;
+		}
 	}
-	if (left)
-		memcpy(p + done, xb.dump + off, left);
-	*buf = p;
-	*size = len;
-	*time = t;
-	return 1;
+	return 0;
 }
 
 int findAnchor(void)
