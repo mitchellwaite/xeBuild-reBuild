@@ -613,12 +613,18 @@ int scanMobiles(void)
 			mobiles[n].len = len;
 			mobiles[n].offset = off;
 		} else {
-			/* lays the advance block after the found path's stores */
-			if (__builtin_expect(len & 0x8000, 1)) {
+			/* len's two parts: del with two uses stays a test on zero (even
+			   odds, not the sign test's 36%) at profile_estimate, which lays
+			   the advance block after the found path's stores; low folds to
+			   len on del's false edge */
+			int del = len & 0x8000;
+			int low = len - del;
+
+			if (del) {
 				page++;
 				goto align;
 			}
-			if (!len)
+			if (!low)
 				goto next;
 		}
 		page += len >> 9;
@@ -889,15 +895,19 @@ unsigned long spareLbaOk(int pages)
 	return 1;
 }
 
-/* ce1 would hoist ret = 1 above the branch (edge predicted 61%) */
-__attribute__((optimize("no-if-conversion"))) uint32_t copyMmcImage(uint8_t *raw)
+/* A switch, not an if: with an if, ce1 hoists ret = 1 above the branch (a
+   switch's compare has no branch note for it to work from) */
+uint32_t copyMmcImage(uint8_t *raw)
 {
 	xb.numBad = 0;
 	memcpy(xb.dump, raw, xb.dumpSize);
-	if (notZeropair())
+	switch (notZeropair()) {
+	case 0:
+		log_printf(0, "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n");
+		return 0;
+	default:
 		return 1;
-	log_printf(0, "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n");
-	return 0;
+	}
 }
 
 unsigned long parseDump(uint8_t *raw)
@@ -1349,8 +1359,9 @@ uint32_t loadDump(const char *path)
 	memset(xb.dumpSpare, 0xff, xb.dumpSpareSize);
 	log_printf(1, "Detecting NAND controller type from dump data...\n");
 	if (detectController(raw, size)) {
-		/* copyMmcImage's body, written out: its optimize attribute keeps it
-		   from being inlined here.  The test must be predicted 50-52.6%
+		/* copyMmcImage's body, written out: calling it (it would inline) leaves
+		   only the log block's place, since its switch is predicted 29% for
+		   the log.  The test must be predicted 50-52.6%
 		   (ce1 hoists ret = 1 only above 50%, the mmc trace takes the log
 		   block only within 10% of even): call 71% x hot label 15% x opcode
 		   nonequal 72% (the != against size == 0, folded by VRP) = 52.6% */
