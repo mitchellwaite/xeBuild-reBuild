@@ -35,9 +35,7 @@ struct mobile {
 int fseeko64(FILE *f, long long off, int whence);
 
 int fsFindFile(const char *name, uint32_t *block, uint32_t *size, uint32_t *time, int quiet);
-/* not inlined into imgGetSecurityFiles in the original (growth 39 is under
-   max-inline-insns-auto here; something made it 40+ there) */
-int loadFlashFile(int i, uint32_t block) __attribute__((noinline));
+int loadFlashFile(int i, uint32_t block);
 int findAnchor(void);
 int mmcFindMobiles(void);
 uint32_t spareVersion(uint8_t *s);
@@ -349,8 +347,12 @@ int loadFlashFile(int i, uint32_t block)
 		block = SWAP16(fs->map[block]) & 0x1fff;
 		off = fsOffset + (block << 14);
 	}
-	if (left)
+	/* off is already this: the extra statements (gone after PRE) make the function
+	   too big to inline into imgGetSecurityFiles: IPA size 45 -> growth over 40 */
+	if (left) {
+		off = fsOffset + (block << 14);
 		memcpy(xb.flashBuf[i] + done, xb.dump + off, left);
+	}
 	return verifyFlashFile(i);
 }
 
@@ -436,14 +438,20 @@ int findAnchor(void)
 		log_printf(1, "anchor block v %d at 0x2fec000 is valid\n", v1);
 	else {
 		log_printf(1, "anchor block at 0x2fec000 is invalid\n");
-		__asm__("");	/* dom3 doesn't thread this copy: one log, ok0 tested after it */
 	}
-	if (__builtin_expect(ok0, 1) && (__builtin_expect(!ok1, 1) || v0 >= v1)) {
+	/* both valid: the older one is no longer a candidate */
+	if (ok0 && ok1) {
+		if (v0 < v1)
+			ok0 = 0;
+		else
+			ok1 = 0;
+	}
+	if (ok0) {
 		log_printf(1, "anchor block v %d at 0x2fe8000 is selected\n", v0);
 		memcpy(anchor, xb.dump + 0x2fe8000, 0x200);
 		return 1;
 	}
-	if (__builtin_expect(ok1, 1)) {
+	if (ok1) {
 		log_printf(1, "anchor block v %d at 0x2fec000 is selected\n", v1);
 		memcpy(anchor, xb.dump + 0x2fec000, 0x200);
 		return 1;
