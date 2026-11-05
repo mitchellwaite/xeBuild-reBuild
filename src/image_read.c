@@ -936,19 +936,20 @@ unsigned long spareLbaOk(int pages)
 	return 1;
 }
 
-/* A switch, not an if: with an if, ce1 hoists ret = 1 above the branch (a
-   switch's compare has no branch note for it to work from) */
+/* ret is set, then tested: the first test has no predictor (even), the call
+   heuristic lands on the second, which threading folds.  Inlined in loadDump
+   this gives ret = 1's hoist and the log block's place with no other help. */
 uint32_t copyMmcImage(uint8_t *raw)
 {
+	uint32_t ret = 1;
+
 	xb.numBad = 0;
 	memcpy(xb.dump, raw, xb.dumpSize);
-	switch (notZeropair()) {
-	case 0:
+	if (!notZeropair())
+		ret = 0;
+	if (!ret)
 		log_printf(0, "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n");
-		return 0;
-	default:
-		return 1;
-	}
+	return ret;
 }
 
 unsigned long parseDump(uint8_t *raw)
@@ -1095,7 +1096,7 @@ uint32_t copyMuData(FILE *out, void *sha)
 int detectController(uint8_t *raw, int size)
 {
 	int i, n;
-	uint32_t found;
+	int found;
 
 	if (size == 0x3000000) {
 		log_printf(1, "\tNAND dump is from a mmc machine\n");
@@ -1123,35 +1124,23 @@ int detectController(uint8_t *raw, int size)
 		xb.dumpBigBlock = 0;
 		xb.muChecked = 1;
 		found = 0;
-		/* code-free hints: found in eax outside the loop (one head-merged xor
-		   for both found = 0 edges), i in ebx */
-		if (n > 1)
-			__asm__("" : "+a"(found));
 		for (i = 1; i < n; i++) {
 			uint8_t *b = raw + i * 16896;
-			int hi, lo;
+			struct bigSpare *big = (struct bigSpare *)(b + 512);
+			struct smallSpare *s = (struct smallSpare *)(b + 512);
 
 			if (b[517] != 0xff || b[513] == 0xff)
 				continue;
-			hi = (b[514] & 0xf) * 256;
-			lo = b[513];
-			if (hi + lo == i) {
+			if (big->blockId1 + big->blockId0 * 256 == i) {
 				i = n;
 				log_printf(1, "\tNAND dump uses big block controller\n");
 				xb.dumpBbController = 1;
 				found = 1;
-			} else {
-				int lo2 = b[512];
-
-				if (lo2 + (b[513] & 0xf) * 256 == i) {
-					/* code-free: lo stays live over both tests: the
-					   first sum takes hi's register (ebp), lo2 edx */
-					__asm__("" : : "a"(lo));
-					i = n;
-					log_printf(1, "\tNAND dump uses small block controller\n");
-					xb.dumpBbController = 0;
-					found = 1;
-				}
+			} else if (s->blockId1 + s->blockId0 * 256 == i) {
+				i = n;
+				log_printf(1, "\tNAND dump uses small block controller\n");
+				xb.dumpBbController = 0;
+				found = 1;
 			}
 		}
 		return found;
@@ -1399,23 +1388,9 @@ uint32_t loadDump(const char *path)
 	memset(xb.dumpSpare, 0xff, xb.dumpSpareSize);
 	log_printf(1, "Detecting NAND controller type from dump data...\n");
 	if (detectController(raw, size)) {
-		/* copyMmcImage's body, written out: calling it (it would inline) leaves
-		   only the log block's place, since its switch is predicted 29% for
-		   the log.  The test must be predicted 50-52.6%
-		   (ce1 hoists ret = 1 only above 50%, the mmc trace takes the log
-		   block only within 10% of even): call 71% x hot label 15% x opcode
-		   nonequal 72% (the != against size == 0, folded by VRP) = 52.6% */
-		if (xb.dumpMmc) {
-			xb.numBad = 0;
-			memcpy(xb.dump, raw, xb.dumpSize);
-			if (notZeropair() != (size == 0))
-				ret = 1;
-			else {
-mmcbad: __attribute__((hot));
-				log_printf(0, "\n\n***** ERROR: nanddump.bin is a ZEROPAIR/XELL image, discarding\n");
-				ret = 0;
-			}
-		} else
+		if (xb.dumpMmc)
+			ret = copyMmcImage(raw);
+		else
 			ret = parseDump(raw);
 		if (!ret)
 			buildCleanup();

@@ -77,12 +77,11 @@ keeps one dead `key == NULL` test that also isn't counted, because the author ma
 well have written a check like it; a comment on the test explains it.
 
 <details>
-<summary><b>1. image_read</b>: 7 tricks, hard</summary>
+<summary><b>1. image_read</b>: 4 tricks, hard</summary>
 
-- 3 register pins, in `detectController` and `getImageSmc`
-- 1 hot label and 1 dead test
-- 1 `optimize` attribute (`no-if-conversion` and related), on `getImageSmc`
-- 1 literal-order `asm`
+- 1 register pin, 1 dead test and 1 `optimize` attribute (`no-if-conversion` and
+  related), all on `getImageSmc`
+- 1 literal-order `asm`, on `findAnchor`
 
 There's no single hard knot like the other hard files, but many functions each
 need their own solution. Several hints are only 3 or 4 lines from going, so this
