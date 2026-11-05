@@ -449,35 +449,40 @@ int findAnchor(void)
 	ok0 = shaSelfCheck(xb.dump + 0x2fe8000);
 	if (ok0)
 		log_printf(1, "anchor block v %d at 0x2fe8000 is valid\n", v0);
-	else {
+	else
 		log_printf(1, "anchor block at 0x2fe8000 is invalid\n");
-		/* code-free: emits these two (threaded copies, expanded last) in the original's order */
-		__asm__("" : : "i"("anchor block v %d at 0x2fec000 is valid\n"), "i"("anchor block v %d at 0x2fec000 is selected\n"));
-	}
 	ok1 = shaSelfCheck(xb.dump + 0x2fec000);
 	if (ok1)
 		log_printf(1, "anchor block v %d at 0x2fec000 is valid\n", v1);
-	else {
-		log_printf(1, "anchor block at 0x2fec000 is invalid\n");
-	}
-	/* both valid: the older one is no longer a candidate */
+	else
+		goto invalid1;
+check:
+	/* both valid: the older one is no longer a candidate.  newer > 0 is opcode
+	   positive 73 where v0 < v1 alone has no predictor: P(newer) has to be 53 or
+	   more for the 0x2fec000 selection to fall through; VRP folds the > 0. */
 	if (ok0 && ok1) {
-		if (v0 < v1)
+		int newer = v0 < v1;
+
+		if (newer > 0)
 			ok0 = 0;
 		else
 			ok1 = 0;
 	}
-	if (ok0) {
-		log_printf(1, "anchor block v %d at 0x2fe8000 is selected\n", v0);
-		memcpy(anchor, xb.dump + 0x2fe8000, 0x200);
-		return 1;
-	}
-	if (ok1) {
-		log_printf(1, "anchor block v %d at 0x2fec000 is selected\n", v1);
-		memcpy(anchor, xb.dump + 0x2fec000, 0x200);
-		return 1;
-	}
-	return 0;
+	if (ok0)
+		goto select0;
+	if (!ok1)
+		return 0;
+	log_printf(1, "anchor block v %d at 0x2fec000 is selected\n", v1);
+	memcpy(anchor, xb.dump + 0x2fec000, 0x200);
+	return 1;
+	/* written out of line so these strings are emitted in the original's order */
+invalid1:
+	log_printf(1, "anchor block at 0x2fec000 is invalid\n");
+	goto check;
+select0:
+	log_printf(1, "anchor block v %d at 0x2fe8000 is selected\n", v0);
+	memcpy(anchor, xb.dump + 0x2fe8000, 0x200);
+	return 1;
 }
 
 int mmcFindMobiles(void)
