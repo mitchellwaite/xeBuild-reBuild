@@ -16,11 +16,10 @@ T = {
     'lit_smc': [('''	/* code-free: emits the zero/bad arms' string (at the end) first, as the original */
 	__asm__("" : : "i"("smc.bin should not be at 0x%x, trying 0x1000\\n"));
 ''', '')],
-    'lab_vhot': [('''		goto zero;
-	else {
+    'lab_vhot': [('''	} else {
 		vhot: __attribute__((hot));
 	}
-''', '''		goto zero;
+''', '''	}
 ''')],
     'lab_shot': [('''		shot: __attribute__((hot));
 ''', '')],
@@ -92,7 +91,7 @@ bad:
 ''', '')],
     'unr_p1': [('''			if (blk >= blocks)
 				__builtin_unreachable();
-			if (blk < blocks) {''', '''			if (blk < blocks) {''')],
+			log_printf(1, "ECD''', '''			log_printf(1, "ECD''')],
     'bar_p': [('''			__asm__("");
 			dst = blk;
 ''', '''			dst = blk;
@@ -106,7 +105,9 @@ bad:
     'pin_found': [('''		if (n > 1)
 			__asm__("" : "+a"(found));
 ''', '')],
-    'pin_lo': [('''				__asm__("" : : "a"(lo));
+    'pin_lo': [('''					/* code-free: lo stays live over both tests: the
+					   first sum takes hi's register (ebp), lo2 edx */
+					__asm__("" : : "a"(lo));
 ''', '')],
     'pin_lo2': [('''					__asm__("" : : "d"(lo2));
 ''', '')],

@@ -893,6 +893,15 @@ static int addRemapP(int block, int ablock, int cb, int dest, int numBlocks)
 {
 	int i;
 	int found = 0;
+	/* -1 or a block number, true at all three call sites.  Replaces dest <
+	   numBlocks plus an unreachable in parseDump: (uint32_t)blk is its unsigned
+	   counter, so this folds through the loop's test once inlined.  Computed
+	   out here and in this form because of what fre3 and dce2 leave behind:
+	   the log block's frequency, and the SSA name ch2 gives the counter */
+	int valid = dest == -1;
+
+	if ((uint32_t)dest < numBlocks)
+		valid = 1;
 
 	i = 0;
 	goto test;
@@ -909,7 +918,7 @@ tail:
 	return 1;
 body:
 	__asm__("" : : "ri"(cb), "ri"(cb), "ri"(cb), "ri"(cb));
-	if (xb.badBlocks[i] == block && xb.badRemap[i] == -1 && dest < numBlocks) {
+	if (xb.badBlocks[i] == block && xb.badRemap[i] == -1 && valid) {
 		log_printf(1, "block 0x%x was remapped to block 0x%x at remap instance %d\n", block, dest, i);
 		xb.badRemap[i] = dest;
 		found = 1;
@@ -968,18 +977,16 @@ unsigned long parseDump(uint8_t *raw)
 			log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
 			if (!addRemapP(blk, blk, blk, -1, blocks))
 				return 0;
-			__asm__("");
 			dst = blk;
-		} else {
+		}
 rem: __attribute__((hot));
-			if (dst != blk) {
-				if (blk >= blocks - 32)
-					log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
-				else {
-					log_printf(0, "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n", blk, dst);
-					log_printf(0, "               this dump may have some bad data!\n", blk, dst);
-					dst = blk;
-				}
+		if (dst != blk) {
+			if (blk >= blocks - 32)
+				log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
+			else {
+				log_printf(0, "***** WARNING: ignoring possible remap of block 0x%x to block 0x%x\n", blk, dst);
+				log_printf(0, "               this dump may have some bad data!\n", blk, dst);
+				dst = blk;
 			}
 		}
 		if (blk == 0) {
@@ -997,8 +1004,6 @@ rem: __attribute__((hot));
 			memcpy(xb.dump + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
 			memcpy(xb.dumpSpare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
 		}
-		if (blk >= blocks)
-			__builtin_unreachable();
 		if (dst != blk && !addRemapP(dst, dst, 0, blk, blocks))
 			return 0;
 next:
