@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 11
+
+Attempt 11 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It found why attempt 10's near miss has the SE copy's `ja` (the copies' `<=5` edge continues into loadBlFiles' shared `if (r)` join, which is drained to frequency 0) and that removing t5le alone needs the joiner's P(<=5) raised by a predictor (a call on the `>5` side does it; no natural one found). See "## Attempt 11" at the end.
+
 ## State after attempt 10
 
 Attempt 10 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It found which pass removes `fail:` without the asm (mergephi2, read from the 6.2.0 source) and a near miss that drops three of loadBl's tricks at once (vol_fail, lab_t5le, exp_pr: 3 loose, 11 strict lines, drafts/build_loadBl_brktail_nearmiss.patch). See "## Attempt 10" at the end.
@@ -670,3 +674,39 @@ With all of loadBl's other hints off as well (t10, badsize, pin_d, the constant_
 
 - The near miss's size log: its -1 has to end up in a block that's wholly matched and lower in index than the others, or in one GIMPLE block with the smc -1 that holds a statement until expand. The reference's -1 block (33d4) has the smc test, the size log (30a4 jmp) and the sigfail copy (37d0 jbe) as predecessors, so the original kept one block somehow.
 - The near miss's SE copy: anything that raises the `xb.type <= 5` probability on the CG/SE checkBl path without a label; check REG_BR_PROB in `bdbbro.sh` (build/bd/bbro_loadBlFiles.txt) on the compares with `xb+8` and 5.
+
+## Attempt 11
+
+No match; src is unchanged.  Goal: close attempt 10's near miss (`b f brk`, drafts/build_loadBl_brktail_nearmiss.patch). Generators gen_bd220 to gen_bd225 run on src/build.c as of 350598e (gen_bd220, 221 and 225 build on gen_bd210's `mk`). tree-ssa-threadupdate.c was read from the official repo at releases/gcc-6.2.0 (into build/bd/a11, not kept). Scratch tools in build/bd/a11 (not kept in tools): `trk.py dumpdir fn regex` (per tree pass, the blocks whose `if` matches regex, with frequency and successor probabilities; how the numbers below were read), `pp.sh` (all tree dumps of a file, then trk).
+
+### (b) The SE copy's `ja`: why the copies get P(<=5) = 0 (checked against dumps and source)
+
+- At profile_estimate (loadBl, `bddump.sh f loadBl t-profile_estimate`) the near miss's `xb.type <= 5` gets only the early-return heuristic: 39% (`<=5` is a plain `break`, i.e. the return block). src's hot label makes it 85%. Without the label but with src's `if (*pr) goto fail` arm (t5le alone off) it's 50%: no heuristic at all.
+- vrp1 threads every way into that test (joiner threads `(pred, X) (X, join) joiner; (join, next) normal`, X the test, join loadBl's return = loadBlFiles' `if (r)`), so X is copied for the r = 0 paths (freq 157) and the sig-failed path (29). For a joiner copy, ssa_fix_duplicate_block_edges (tree-ssa-threadupdate.c) sets P(on-path) = path_out / path_in, where path_out is the minimum count along the rest of the path. In the near miss the copy of the join (the path's second block) gets frequency 0 (`trk.py`: copies `bb136[157] _438 <= 5 -> 135 (0%) | 24 [100%]`, and bb135, the join's copy, `freq 0`), so the `<=5` edge of every copy is 0% and stays so to RTL (REG_BR_PROB 10000 on gtu / 0 on leu for all six `xb.type` compares). Why the join's count is 0 at that point: the same pass's FSM threads into the join (`(x, join) nocopy`, about 30 of them, all loadBl's other exits) are done before the joiner threads, and they take the join's flow; I didn't follow those updates line by line, so that part is inferred. In src the `<=5` arm is the t5le block (the `*pr` test), its own block, so the path doesn't continue through the drained join.
+- So the near miss's tail can't get `jbe` by spelling the `xb.type` test: any form whose `<=5` edge goes straight to the join gets 0%. It needs a block of its own in the `<=5` arm that the threads go through, which is what src's `if (*pr) goto fail` is.
+
+### t5le alone (exp_pr and the asm kept): what it needs
+
+- src minus the label is 0 loose, 7 strict: the SE copy is `jbe` (its P(<=5) is 57.96%), only the last no-key log loses its `.p2align`. compute_alignments aligns that block (freq 17, no fallthru) only by "freq > 10 x prev": prev is fixup_reorder_chain's `jmp` block after the SE copy (freq 4), whose frequency is 4 x P(>5). It needs frequency <= 1, so P(<=5) >= 62.5% on the SE copy (src: 98.69%).
+- Measured (diagnostics, not shapes): with an expect on the test, P(copy) follows the base probability (55% -> 36%, 65% -> 50%, 75% -> 67%, 85% -> 86%, but that run also moved the `*pr` expect, as both use the param). With a call on the `>5` side (a dummy `setFlashBuild(0)` in front of `if (type == 14)`), PRED_CALL makes the joiner 71% and the SE copy 82%: enough. So a guarded call right at the `>5` edge would land t5le.
+- No natural shape found that does it (gen_bd222, gen_bd224): `< BUILD_DEVKIT`, `*pr == -1`, every if/else arrangement of the kit and `*pr` arms (0/7 at best, `jbe` but no alignment); a `seFlashBuild(i, type)` helper holding `if (type == 14) setFlashBuild(..)` (two calls, so not early inlined: 74 loose, the helper's own profile moves much more than this edge).
+- The kit arm first, `if (xb.type > BUILD_DEVGL16) { if (type == 14) set..; break; } if (__builtin_expect(*pr != 0, 0)) goto fail; break;` (gen_bd223 `brk exp`, gen_bd224 g1/g4/g6..g8): 4 loose, 19 strict in loadBlFiles (the rest is call displacements): the alignment and SE copy come out right, but the sig-failed setFlashBuild copy reads `xb.files[i].data` through the IV (`mov eax,[ebx]`) where the reference recomputes it (`imul eax,[esp+0x2c],0x42c`). In src that copy is made by vrp1/dom2 on the loop's exit path before ivopts (`i_373 = PHI <i_402>`, loop-closed), so ivopts leaves it; in this form it's still the in-loop block at ivopts and is copied later. `xb.type > 5 && type == 14` (`and exp`): 2 loose, 18 strict, but its sig-failed `type != 14` path goes to `fail` where the reference sets its own -1. `type == 14` first (3 forms): 43 loose.
+
+### (a) The size log's own -1: what I checked
+
+- At jump2 (the only crossjump pass here; `-fdump-rtl-all`) the -1 blocks are: bb34 (sig-failed arm), bb104 (the size log, -1 last), bb129 (sig-failed copy's split edge), bb130 (`fail`, case 2's split edge), and jump2 does `Cross jumping from bb 129 to bb 130; 1 common insns`. bb104 against bb130 is refused: bb130 falls into the log block, so bb104 is 'from' and not wholly matched (attempt 10's rule).
+- The reverse direction (S into L's tail, which would give the reference's `jmp 33d4`) needs L to be the fallthru predecessor of the log at jump2, i.e. the size log right before the could-not-read log in the insn chain. The .rdata order (size 0xeb0, then 27's config.bin strings, the default case's, the log's 0xf28) is expand order, so case 27 and default are expanded between them: not possible with this string order.
+- So the reference's size log was never holding a -1 of its own: its edge's -1 was in a block that existed at expand (src's `fail`, kept by the asm), or on a critical edge. Case 23 through a read helper returning -1 (`loadPatchFile`, three forms, gen_bd225): 62 loose and up.
+
+### Don't retry
+
+- Spellings of the near miss's `xb.type <= 5` test or arm with a plain `break` (gen_bd220: `< BUILD_DEVKIT`, `!(> 5)`, `- 1 < 5`, switch on xb.type both ways, `return`, `|| type != 14`, nesting, xb.type read into a local before checkBl): 3 loose at best, the join is drained whatever the spelling.
+- A setFlashBuild helper for the kit arm (gen_bd221, gen_bd222 h1/h2): 43 to 74 loose.
+- Case 23 through a read helper (gen_bd225).
+- If/else arrangements of the kit and `*pr` arms on src without t5le (gen_bd224): 0/7 at best.
+
+### What to try next
+
+- t5le alone: a real call (with side effects) at the start of the `>5` side. Nothing natural is there in the reference (the `>5` copies go straight to `cmp esi,0xe`), so the call would have to fold away later, e.g. a call that's only removed after profile_estimate. Worth one look at what the author might have called there (a kit-only log under a verbose flag would change behaviour).
+- The kit-arm-first form (4 loose): the sig-failed setFlashBuild copy has to be made before ivopts, on the exit path, as in src.
+- (a) stays tied to keeping a `fail` block until expand; attempts 9 to 11 found no natural statement for it.
