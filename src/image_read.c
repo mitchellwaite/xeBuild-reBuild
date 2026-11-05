@@ -48,7 +48,7 @@ int findFsRoot(void);
 void imgGetSecurityFiles(void);
 void findSmcConfig(void);
 int checkBlock(uint8_t *blk, int block, int numBlocks);
-int addRemap(uint32_t block, int dest, int numBlocks);
+int addRemap(int block, int dest, int numBlocks);
 int findFreeRemap(int numBlocks);
 int notZeropair(void);
 unsigned long spareLbaOk(int pages);
@@ -794,16 +794,19 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 	return lba;
 }
 
-int addRemap(uint32_t block, int dest, int numBlocks)
+int addRemap(int block, int dest, int numBlocks)
 {
 	uint32_t i;
 	int found = 0;
-	uint32_t b = block;	/* unused; puts block before the loads in compares */
 
 	for (i = 0; i < xb.numBad; i++) {
+		/* above block's conversion: PRE inserts this one first, so block's gets
+		   the lower free name, and the compare prints block first */
+		uint32_t d = dest;
+
 		if (block == xb.badBlocks[i] && xb.badRemap[i] == -1 && dest < numBlocks) {
 			log_printf(1, "block 0x%x was remapped to block 0x%x at remap instance %d\n", block, dest, i);
-			xb.badRemap[i] = dest;
+			xb.badRemap[i] = d;
 			found = 1;
 		}
 	}
@@ -889,56 +892,12 @@ __attribute__((optimize("no-if-conversion"))) uint32_t copyMmcImage(uint8_t *raw
 	return 0;
 }
 
-static int addRemapP(int block, int ablock, int cb, int dest, int numBlocks)
-{
-	int i;
-	int found = 0;
-	/* -1 or a block number, true at all three call sites.  Replaces dest <
-	   numBlocks plus an unreachable in parseDump: (uint32_t)blk is its unsigned
-	   counter, so this folds through the loop's test once inlined.  Computed
-	   out here and in this form because of what fre3 and dce2 leave behind:
-	   the log block's frequency, and the SSA name ch2 gives the counter */
-	int valid = dest == -1;
-
-	if ((uint32_t)dest < numBlocks)
-		valid = 1;
-
-	i = 0;
-	goto test;
-tail:
-	if (xb.numBad >= 32) {
-		log_printf(1, "MAX REMAPS of 32 exceeded, remapping disabled and image rejected as faulty!\n");
-		return 0;
-	}
-	if (dest != -1)
-		log_printf(1, "block 0x%x was remapped to block 0x%x, entering remap instance %d\n", ablock, dest, xb.numBad + 1);
-	xb.badBlocks[xb.numBad] = ablock;
-	xb.badRemap[xb.numBad] = dest;
-	xb.numBad++;
-	return 1;
-body:
-	__asm__("" : : "ri"(cb), "ri"(cb), "ri"(cb), "ri"(cb));
-	if (xb.badBlocks[i] == block && xb.badRemap[i] == -1 && valid) {
-		log_printf(1, "block 0x%x was remapped to block 0x%x at remap instance %d\n", block, dest, i);
-		xb.badRemap[i] = dest;
-		found = 1;
-	}
-	i++;
-test:
-	if (i < xb.numBad)
-		goto body;
-	if (found)
-		return 1;
-	goto tail;
-}
-
 unsigned long parseDump(uint8_t *raw)
 {
 	int ppb = xb.dumpBigBlock ? 256 : 32;
 	int blocks = xb.dumpPages / ppb;
-	int blk, dst, p, b2;
-	uint32_t n;
-	int i;
+	int blk, dst, p;
+	uint32_t i;
 	uint8_t *src;
 
 	int rr = xb.dumpPages % ppb;
@@ -948,17 +907,20 @@ unsigned long parseDump(uint8_t *raw)
 		return 0;
 	}
 	log_printf(1, "parsing dump into user and spare...\n");
-	for (n = 0; n < blocks; n++) {
-		blk = n;
+	for (blk = 0; blk < blocks; blk++) {
 		src = raw + blk * 528 * ppb;
 		dst = checkBlock(src, blk, blocks);
-		if (dst == -2)
-			continue;
+		/* blk >= 0 is always true (a dead test, VRP folds it).  It's here for its
+		   prediction: P(-2) a bit under 28% at the rebuild after inlining moves
+		   the entry frequency from 60 to 56, under the 10 x the summary's tail
+		   that lets bb-reorder copy the epilogue to it */
+		if (dst == -2) {
+			if (blk >= 0)
+				continue;
+		}
 		if (dst == -1) {
 			log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
-			b2 = blk;
-			__asm__("" : "+r"(b2));
-			if (!addRemapP(b2, blk, 0, dst, blocks))
+			if (!addRemap(blk, dst, blocks))
 				return 0;
 			goto next;
 		}
@@ -972,14 +934,11 @@ unsigned long parseDump(uint8_t *raw)
 			continue;
 		}
 		if (dst == -4) {
-			if (blk >= blocks)
-				__builtin_unreachable();
 			log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
-			if (!addRemapP(blk, blk, blk, -1, blocks))
+			if (!addRemap(blk, -1, blocks))
 				return 0;
 			dst = blk;
 		}
-rem: __attribute__((hot));
 		if (dst != blk) {
 			if (blk >= blocks - 32)
 				log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
@@ -1004,13 +963,14 @@ rem: __attribute__((hot));
 			memcpy(xb.dump + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
 			memcpy(xb.dumpSpare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
 		}
-		if (dst != blk && !addRemapP(dst, dst, 0, blk, blocks))
+		if (dst != blk && !addRemap(dst, blk, blocks))
 			return 0;
 next:
 		;
 	}
 	log_printf(1, "done!\n");
-	if (xb.bootFlags & 0x40000000) {
+	/* (int): with the same type as i, uncprop reuses this test's zero for i = 0 */
+	if ((int)xb.bootFlags & 0x40000000) {
 		if (xb.numBad) {
 			log_printf(1, "Discarding remap data as NOREMAP was specified!\n");
 			xb.numBad = 0;
