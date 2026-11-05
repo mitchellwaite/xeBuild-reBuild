@@ -1,10 +1,11 @@
 /* options: console types (xenon...corona), boot options from the command
    line, options.ini and perbox files, optional patches.  gcc emits the
    string literals in the order it expands their blocks, which gives the
-   original's .rdata order (one asm hint in applyIniOptions).
+   original's .rdata order.
    applyIniOptions' cold layout is set by dead zero-byte hints (dead
    __builtin_constant_p arms and feeds, dummy heap entries), with no
-   profile; tools/wip/aio/p1/NOTES.md has each one. */
+   profile; tools/wip/aio/p1/NOTES.md has each one (optO's is no longer
+   needed: tools/wip/dehint/notes/options.md). */
 #include <stdio.h>
 #include <string.h>
 
@@ -14,11 +15,6 @@
 #include "keyvault.h"
 #include "log.h"
 #include "options.h"
-
-
-uint32_t parseOption(char *opt);
-/* parseCmdOptions matches only when it sees an int return */
-int parseOptionInt(char *opt) __asm__("_parseOption");
 
 /* parseButton after its first four names: gcc's ipa-split part in the
    original.  Written out; cold, and in the original's .text.startup.  Global
@@ -318,32 +314,6 @@ static _Bool optN(const char *name, uint32_t set, uint32_t clear, int def)
 	} else {
 		bad = iniBoolInvalid(name);
 		if (__builtin_expect(!bad, 0)) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
-			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
-		}
-	}
-r:
-	xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
-	return 1;
-}
-
-static _Bool optO(const char *name, uint32_t set, uint32_t clear, int def)
-{
-	char *bad;
-
-	if (__builtin_expect(__builtin_constant_p(xb.bootFlags + 7), 0)) goto r; if (__builtin_constant_p(xb.bootFlags + 8) && __builtin_constant_p(xb.bootFlags + 9)) goto r;
-	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
-		return 0;
-	if (perboxExists(name)) {
-		log_printf(1, "Using %s option (perbox file)\n", name);
-	} else {
-		bad = iniBoolInvalid(name);
-		if (!bad) {
 			if (!getIniBool(name, def))
 				return 0;
 			log_printf(1, "Using %s option (ini file)\n", name);
@@ -747,8 +717,10 @@ int setBoolOption(const char *name, const char *val)
      the done edges stay under gputemp's (so its match trace comes first)
      but above the macid loop exit, and the incomplete block reaches the
      epilogue-copy threshold.
-   The return is uint32_t (int keeps it in esi); parseCmdOptions calls it
-   through parseOptionInt.  po_hint gets parseOption's options too, or it
+   The return is uint32_t, as is parseCmdOptions': with int, uncprop
+   returns stricmp's "macid" result for macid's 0s (kept in esi), and
+   parseCmdOptions' `return 0` reuses the call's 0 only when the types
+   agree.  po_hint gets parseOption's options too, or it
    can't be inlined there. */
 
 static void po_hint(int *p) { *p = 1; }
@@ -933,8 +905,10 @@ bad:
 	return 0;
 }
 
-/* the ;-separated command line options */
-int parseCmdOptions(const char *opts)
+/* the ;-separated command line options.  Borderline, for review: uint32_t
+   like parseOption's, which lets its `return 0` reuse the call's 0 (with
+   int it doesn't; parseOption's comment) */
+uint32_t parseCmdOptions(const char *opts)
 {
 	char opt[512];
 	int i, j, len;
@@ -944,7 +918,7 @@ int parseCmdOptions(const char *opts)
 		if (opts[i] == ';' || opts[i] == 0) {
 			opt[j] = 0;
 			if (strlen(opt) > 4) {
-				if (!parseOptionInt(opt))
+				if (!parseOption(opt))
 					return 0;
 			}
 			j = 0;
@@ -1001,26 +975,23 @@ void applyIniOptions(void)
 		s = getIniValue("macid");
 		if (s) {
 			stripColons(s);
-			/* the original's .rdata has these before the length error (its
-			   tests were likely the other way round) */
-			__asm__("" :: "i"("***** WARNING: invalid characters in macid '"), "i"("' provided in ini file! Discarding!\n"));
-			if (strlen(s) != 12) {
+			if (strlen(s) == 12) {
+				if (validateString(s)) {
+					for (i = 0; i < 6; i++) {
+						xb.macid[i] = myatox8(s);
+						s += 2;
+					}
+				} else {
+					__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));
+					__asm__ goto ("" :::: dzc1);
+					log_printf(0, "***** WARNING: invalid characters in macid '");
+					showHexPairs(0, s);
+					log_printf(0, "' provided in ini file! Discarding!\n", s);
+				}
+			} else {
 				log_printf(0, "***** WARNING: invalid length macid '");
 				showHexPairs(0, s);
 				log_printf(0, "' provided in ini file! Discarding!\n", s);
-			} else if (!validateString(s)) {
-				__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));
-				__asm__ goto ("" :::: dzc1);
-				log_printf(0, "***** WARNING: invalid characters in macid '");
-				showHexPairs(0, s);
-				log_printf(0, "' provided in ini file! Discarding!\n", s);
-			} else {
-				/* keeps if-conversion from hoisting i = 0 above the test */
-				__asm__("");
-				for (i = 0; i < 6; i++) {
-					xb.macid[i] = myatox8(s);
-					s += 2;
-				}
 			}
 		}
 	}
@@ -1049,7 +1020,8 @@ void applyIniOptions(void)
 	   (a switch it can't), and smcnoblink's paths reload the type */
 	if (xb.type == BUILD_JTAG) {
 		OPT("nodvd", 2, 4);
-		if (!(xb.bootFlags & 0)) optO("olddvd", 0, 4, 0);
+		/* no bit of its own: it clears nodvd's 4 */
+		optIniBool("olddvd", 0, 4, 0);
 		if (!xb.dualButton) {
 			xb.dualButton = parseButton(getIniValue("dualboot"));
 			if (xb.xellButton == xb.dualButton) {

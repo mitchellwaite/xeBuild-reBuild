@@ -1,0 +1,34 @@
+diff --git a/src/options.c b/src/options.c
+index a9d6561f..ee2327c3 100644
+--- a/src/options.c
++++ b/src/options.c
+@@ -725,7 +725,6 @@ int setBoolOption(const char *name, const char *val)
+ 
+ static void po_hint(int *p) { *p = 1; }
+ 
+-__attribute__((optimize("no-early-inlining")))
+ uint32_t parseOption(char *opt)
+ {
+ 	int dead;
+@@ -756,8 +755,8 @@ uint32_t parseOption(char *opt)
+ 		if (!stricmp(opt, "cputemp")) {
+ 			xb.cpuTemp = myatou32(val, -1);
+ 			if (xb.cpuTemp == -1) {
+-				po_hint(&dead);
+-				goto bad;
++				log_printf(1, "\n\n***** ERROR: parsing option '%s', value '%s' is incorrect!\n", opt, val);
++				return 0;
+ 			}
+ 			log_printf(1, "Using CPUTEMP option, value %d\n", xb.cpuTemp);
+ 			return 1;
+@@ -807,8 +806,8 @@ uint32_t parseOption(char *opt)
+ 		if (!stricmp(opt, "gpufan")) {
+ 			xb.gpuFan = myatou32(val, -1);
+ 			if (xb.gpuFan == -1) {
+-				po_hint(&dead);
+-				goto bad;
++				log_printf(1, "\n\n***** ERROR: parsing option '%s', value '%s' is incorrect!\n", opt, val);
++				return 0;
+ 			}
+ 			log_printf(1, "Using GPUFAN option, value %d\n", xb.gpuFan);
+ 			return 1;

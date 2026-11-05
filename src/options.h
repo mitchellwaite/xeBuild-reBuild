@@ -7,7 +7,7 @@
 int iniConsoleType(void);
 int setConsoleType(const char *name);
 int macidSet(void);
-int parseCmdOptions(const char *opts);
+uint32_t parseCmdOptions(const char *opts);
 void applyIniOptions(void);
 int parseRawPatches(const char *pats);
 int loadAddons(void);
