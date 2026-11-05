@@ -3,20 +3,24 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
-## State after attempt 1
+## State after attempt 2
 
-50 tricks: `--param builtin-expect-probability=98`, 19 `__builtin_expect`, 9 pins, the empty
-`__asm__ __volatile__("")` barrier at loadBl's `fail:` (README's list counts barriers; the earlier
-count of 52 had missed it), 6 hot and cold labels, 5 `cb_hint()` calls, 2 `__builtin_constant_p`,
-3 `no-early-inlining`, 2 inlining attributes (`noclone` on loadInputFile, `noinline` on
-extractSmcConfig), 2 `__builtin_assume_aligned`.
+43 tricks: `--param builtin-expect-probability=98`, 18 `__builtin_expect`, 7 pins, the empty
+`__asm__ __volatile__("")` barrier at loadBl's `fail:`, 6 hot and cold labels, 5 `cb_hint()` calls,
+2 `__builtin_constant_p`, 3 `no-early-inlining`. No inlining attributes or `__builtin_assume_aligned` left.
+`(void)&size`, which attempt 1 left out of the count, is gone too. (After attempt 1: 50, with 19 expects, 9 pins, 2
+inlining attributes and 2 assume_aligned.)
 
 Landed shapes to review:
 
 | Where | Shape | Why it's borderline |
 |---|---|---|
-| xebuild.h | `struct fileent files[XB_ADDONS]; struct fileent addons[16];` | The addons are still spelled `files + XB_ADDONS` (mode_build, mode_update, options), past the declared bound. One view for every object, not a per-file one, and all objects are byte-identical; any of 19, 20, 21 matches |
 | checkBl | `goto toobig`, with the size error's text after the crc error's | Text order only, for .rdata. Plain `if (blsize <= size) { ... }` nesting matches too |
+| loadBl case 24 (first arm), loadConsoleBlFiles case 24 | `if (loadBaseFile(..)) r = defaultBl60(e); else if (e->size != 0x60) r = defaultBl60(e);` | Two identical calls where `\|\|` would do; crossjump merging them is what orders the size store. The second arm of loadBl's case 24 uses `\|\|`, so the two arms differ for no visible reason |
+
+Not borderline, but they steer, so check them: `int size` on extractSmcConfig and `int crc` on loadInputFile (comments in
+the source say so). Both are compared as unsigned through the usual conversions, so behaviour is the same. `*pr = 0` in loadBl's
+second case-24 arm is what `*pr = loadBl60(e)` did on success, so it's live and unchanged.
 
 ## Attempt 1
 
@@ -153,3 +157,77 @@ Useful groups, by the numbers:
 - checkBl: bad has to lose about 150 more after the crcSame shape, or the default arm's share has to fall (fewer
   switch edges to it, or a shared case). 9 tricks at stake.
 - `--param` and the loadBl __builtin_constant_p entry stay last, as planned.
+
+## Attempt 2
+
+### Addons spelled through xb.addons (landed, no change to the trick count)
+
+Every use past the end of `files` now says `xb.addons[n].name` (`&xb.addons[i]` in build.c): build, mode_build,
+mode_update, options. No loop crosses from files into addons, so all of them converted, and each object is byte-identical;
+full build SHA256 matches. xebuild.h's borderline sentence is gone. `bdaddons.py` was the sweep (its old strings are gone
+from src now, so it only documents what ran). `(xb.addons + n)->name` costs 15 lines in parseAddonIdx at the
+`xb.numPatches` site in mode_update, and `xb.addons + i` costs 2 lines in appendAddonPatches: use the index form.
+
+### What landed (50 -> 43, all IDENTICAL, full build SHA256 matches)
+
+1. **The two 0x60 copies, 4 tricks (gen_bd21 to gen_bd26).** Attempt 1 assumed points-to analysis; it isn't that. Reading sched2's dump
+   (`-fdump-rtl-sched2-all`), the payload and core copies have `[0 S3392 A32]` on the rep_mov's memory, no MEM_EXPR, while the 0x60
+   copy has `MEM[(char *)_190]`. flow_find_cross_jump calls merge_memattrs on every insn pair it matches, even if it then doesn't
+   crossjump; with different SSA names the MEM_EXPR goes, and without one sched2 assumes a dependence on the size store. So the
+   copy needs a partner with the same successor. loadBl's second arm already has one (the payload and core copies join at the same
+   block), so only the first arm and the console copy lacked it. The fix is two copies: `if (load) copy; else if (size) copy;`.
+   New helper `defaultBl60` holds the copy; the load tests are written where they're used. loadBl's first arm uses the two-call form
+   and the second arm keeps `||` plus `*pr = 0`. Using the two-call form in both arms costs 250 lines, and without `*pr = 0` it's 100.
+2. **`int size` on extractSmcConfig (noinline and `(void)&size`, gen_bd38).** The conversion in the bound tests gives forwprop a later SSA name,
+   so `next <= size` falls out in both loops, split or not. `long` and `ssize_t` match too.
+3. **`int crc` on loadInputFile (noclone, gen_bd42).** IDENTICAL with no attribute: with a uint32_t, ipa-cp clones for crc == 0
+   (attempt 1's 21550 lines). `uint8_t *meta` -> `void *` doesn't help.
+4. **exp_t2 came off free** after 1: the config and smc errors still tie at 107, and the order now comes out right. `greedy` is worth
+   rerunning after every landing. lab_badsize also fell from 61 to 26.
+
+### Costs now
+
+Strict lines, removed alone: nei_blmod 2, lab_t5le 7, pin_type 11, cb1 12, pin_src 18, exp_pr 18, exp_upd 18, pin_i 22, pin_d 23, exp_400 25,
+pin_e 26, lab_badsize 26, exp_t24 29, exp_210 43, lab_nf1 and lab_nf2 43 each, exp_devgl 43, nei_smc, cb2 and cb3 52 each, pin_size 82,
+exp_verbose 83, lab_size 84, exp_200 97, exp_t10 116. Groups: lab_t5le+exp_pr 13, lab_badsize+lab_t5le+exp_pr 39, lab_none with its precheck 8.
+
+### Near misses (not landed)
+
+- **patchSmcConfig, 5 tricks, 8 loose (36 strict) lines:** drafts/build_patchSmcConfig_nearmiss.patch, gen_bd35. iniRangeOk written out in the
+  cpu section lowers its log block to 298, under gpu's 348, which fixes the log order. But its success arm rises from 732 to 1029
+  (it loses the helper's return prediction) and moves ahead of the temperature logs; it has to be at most gpu's 732. Writing out gpu
+  instead (gen_bd33, gen_bd34) goes the wrong way. Seven spellings of the range test and flag (gen_bd36) all stay at 1029.
+- **checkBl, 9 tricks:** drafts/build_checkBl_nearmiss.patch, gen_bd31 hg+all. Each arm but type 14 with its own crc log and `return -2` takes `bad`
+  to 884, under its limit of 1000. A helper returning -3 (`return blTooBig(blsize, size)`, the local predictor can't see the constant)
+  lifts the size error from 167 to 2071. It has to be in [1000, 2000): at 2071 it lands in bb-reorder's round 2 (threshold 20% of
+  entry) and its block comes straight after the jump table. So 71 of frequency stands between this and the crc expects, cb5 and lab_size
+  going. Seven copies of the log and an extra helper are a lot of shape, so this would land as borderline at best.
+  `return -2` per arm with no `goto bad` at all loses c's PHI (default's c = 0 is then a constant): keep at least one goto.
+
+### Mechanisms
+
+- Crossjump's merge_memattrs drops MEM_EXPRs even when no crossjump happens, so a `S<big>` size with no expr in a sched2 dump marks a merge.
+- bb-reorder's exec thresholds are 50%, 20%, 5% of the entry frequency: being a little over or under 2000 of 10000 decides the round.
+- lab_none: r = 1 is 14 and the shrink-wrapped return 20, in the same round, and r = 1 has to come first. Six forms of case 24's
+  failure (gen_bd27) don't move either value.
+
+### Don't retry
+
+- 0x60 copies: anything about points-to; it's the MEM_EXPR.
+- pin_d by spelling the case 27 call (gen_bd40: locals, a fileent pointer, n; 23 at best).
+- pin_src and pin_i by spelling the copy or its test (gen_bd41: 18 at best); i, j, found and buf types (gen_bd39).
+- Types, all with no gain (gen_bd42, gen_bd43, gen_bd44): checkBl's params, m and blsize; calcBlAreaSize's locals and return; patched and iniRangeOk's
+  params; loadBl's i, pr, type; loadConsoleBlFiles' r and type; loadFileCrc's crc, pad, verbose, size; patchBlsBlmod's cd, cbb, pt and size.
+- isUpdateBl by switch, flag or ternary (gen_bd42 BDW=upd: 18 at best).
+
+### What to try next
+
+- Types and declarations were the best lever again (2 tricks and an uncounted statement from 2 words), but this attempt's sweep only changed one function
+  at a time, with that function's hints all off. Worth trying with one hint off at a time, as a type can look worse with others in.
+- checkBl: 71 of frequency on the size error (see near misses).
+- patchSmcConfig: a written-out cpu section whose success arm stays at most 732.
+- Look for other copies crossjump could explain: identical-looking blocks whose order or registers needed a hint.
+- `--param` and the loadBl __builtin_constant_p entry stay last, as planned.
+
+Tools added: `bdopt.py file.c fn regex..` (frequencies of matching blocks), `bdbbro.sh file.c fn` (bb-reorder's traces, rounds), `bdaddons.py`.
+gen_bd22 to gen_bd26, gen_bd32 and gen_bd36-style chains take BASE from build/bd/gen_bdN_best.c, so they only rerun in order, and src has since moved on.

@@ -1,0 +1,48 @@
+diff --git a/src/build.c b/build/bd/gen_bd35_best.c
+index 49b2d9ce..4bf573d7 100644
+--- a/src/build.c
++++ b/build/bd/gen_bd35_best.c
+@@ -809,7 +809,6 @@ static void cb_hint(int *p)
+ 	*p = 1;
+ }
+ 
+-__attribute__((optimize("no-early-inlining")))
+ uint32_t patchSmcConfig(uint8_t *smc)
+ {
+ 	uint32_t patched = 0;
+@@ -841,27 +840,30 @@ uint32_t patchSmcConfig(uint8_t *smc)
+ 		patched = 1;
+ 	}
+ 	if (xb.cpuFan != 0xffffffff) {
+-		if (iniRangeOk("cpufan", xb.cpuFan, 40, 100)) {
+-			cb_hint(&dead);
++		int ok = 1;
++
++		if (xb.cpuFan < 40 || xb.cpuFan > 100) {
++			ok = 0;
++			if (xb.cpuFan != 0 && xb.cpuFan != 0xffffffff)
++				log_printf(0, "Ini value %d for %s is out of range (%d-%d), not using\n", xb.cpuFan, "cpufan", 40, 100);
++		}
++		if (ok) {
+ 			smc[0x11] = xb.cpuFan | 0x80;
+ 			patched = 1;
+ 		} else if (xb.cpuFan)
+ 			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.cpuFan);
+ 		else if (smc[0x11] != 0x7f) {
+-			cb_hint(&dead);
+ 			smc[0x11] = 0x7f;
+ 			patched = 1;
+ 		}
+ 	}
+ 	if (xb.gpuFan != 0xffffffff) {
+ 		if (iniRangeOk("gpufan", xb.gpuFan, 40, 100)) {
+-			cb_hint(&dead);
+ 			smc[0x12] = xb.gpuFan | 0x80;
+ 			patched = 1;
+ 		} else if (xb.gpuFan)
+ 			goto gpuwarn;
+ 		else {
+-			cb_hint(&dead);
+ 			smc[0x12] = 0x7f;
+ 		}
+ 	}

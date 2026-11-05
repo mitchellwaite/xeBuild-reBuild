@@ -544,8 +544,8 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	return r;
 }
 
-__attribute__((noclone))
-int loadInputFile(const char *name, struct fileent *e, int pad, uint32_t crc, uint8_t *meta,
+/* crc is an int on purpose: with a uint32_t, ipa-cp clones this for crc == 0 */
+int loadInputFile(const char *name, struct fileent *e, int pad, int crc, uint8_t *meta,
 		  int su, int fs, int common)
 {
 	char path[0x400];
@@ -684,7 +684,7 @@ void appendAddonPatches(struct fileent *e)
 	memcpy(buf, e->data, size);
 	if (xb.numPatches)
 	for (i = 0; i < xb.numPatches; i++) {
-		a = &xb.files[19 + i];
+		a = &xb.addons[i];
 		if (!loadBinFile(a)) {
 			if (!(a->size & 3)) {
 				if (getBeU32(a->data + a->size - 4) == 0xffffffff)
@@ -904,17 +904,15 @@ gpuwarn:
 	goto gpudone;
 }
 
-__attribute__((noinline)) int extractSmcConfig(struct fileent *e, uint8_t *buf, uint32_t size)
+int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 {
 	uint32_t i, j;
 	int found;
 
-	/* hints (tools/wip/README.md): noinline keeps ipa-split off it once it has
-	   C callers (loadConsoleBlFiles); &size makes size SSA late (next <= size in
-	   both loops); the bound expects make found the rotated exit; the pin
-	   puts next/buf in esi/edi; two hot labels on notfound keep the patched
-	   block under bb-reorder's duplication threshold */
-	(void)&size;
+	/* hints: the bound expects make found the rotated exit; the pin puts next/buf
+	   in esi/edi; two hot labels on notfound keep the patched block under
+	   bb-reorder's duplication threshold.  size is an int on purpose: its
+	   conversion in the bound tests gives next <= size in both loops. */
 	if (e->data)
 		free(e->data);
 	e->size = 0x400;
@@ -1180,21 +1178,14 @@ int verifyBlSigs(void)
 	return ok;
 }
 
-/* the 0x60-byte bootloader (type 24) from the base dir, else the default */
-static int loadBl60(struct fileent *e)
+/* the default 0x60-byte bootloader (type 24) */
+static int defaultBl60(struct fileent *e)
 {
-	if (loadBaseFile(e->name, e) || e->size != 0x60) {
-		e->data = malloc(0x60);
-		if (!e->data)
-			return 1;
-		{
-		uint8_t *p = e->data;
-
-		__asm__("" : "+r"(p));
-		e->size = 0x60;
-		memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
-		}
-	}
+	e->data = malloc(0x60);
+	if (!e->data)
+		return 1;
+	e->size = 0x60;
+	memcpy(e->data, defBl60, 0x60);
 	return 0;
 }
 
@@ -1263,10 +1254,21 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		}
 		break;
 	case 24:
-		if (xb.type == BUILD_JTAG || xb.glitch2mfg)
-			*pr = loadBl60(e);
-		if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
-			*pr = loadBl60(e);
+		/* Borderline, for review: two calls, not `||` as below.  Crossjump merges
+		   the two inlined copies, which drops the copy's memory attributes, so
+		   sched2 keeps the size store before the copy (it replaces a pin and an
+		   assume_aligned).  The same goes for loadConsoleBlFiles' case 24. */
+		if (xb.type == BUILD_JTAG || xb.glitch2mfg) {
+			if (loadBaseFile(e->name, e))
+				*pr = defaultBl60(e);
+			else if (e->size != 0x60)
+				*pr = defaultBl60(e);
+		}
+		if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+			*pr = 0;
+			if (loadBaseFile(e->name, e) || e->size != 0x60)
+				*pr = defaultBl60(e);
+		}
 		break;
 	case 1:
 		if (!loadBinFile(e))
@@ -1485,22 +1487,12 @@ int loadConsoleBlFiles(void)
 				r = checkBl(e->data, e->size, type, e->crc);
 				break;
 			case 24:
-				if (!xb.glitch2mfg || (!loadBaseFile(e->name, e) && e->size == 0x60))
+				if (!xb.glitch2mfg)
 					break;
-				e->data = malloc(0x60);
-				if (!e->data) {
-					r = 1;
-					break;
-				}
-				{
-					uint8_t *p = e->data;
-
-					/* p's points-to unknown: the size store may alias the
-					   copy, so sched2 keeps it before the rep movsd setup */
-					__asm__("" : "+r"(p));
-					e->size = 0x60;
-					memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
-				}
+				if (loadBaseFile(e->name, e))
+					r = defaultBl60(e);
+				else if (e->size != 0x60)
+					r = defaultBl60(e);
 				break;
 			case 25:
 				if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
@@ -1568,10 +1560,6 @@ int loadConsoleBlFiles(void)
 				}
 				break;
 			case 2:
-				/* always false (VRP drops it): makes the smc error a bit colder
-				   than the config one, so its trace comes after it */
-				if (__builtin_expect(type != 2, 0))
-					break;
 				if (xb.smc.data) {
 					log_printf(1, "using smc binary from console\n");
 					if (e->data)

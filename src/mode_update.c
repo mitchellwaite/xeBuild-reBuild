@@ -1,8 +1,8 @@
 /* mode_update: `xeBuild update`, rebuilds and reflashes a console over the network.
    flashConsole, `if (ret) *pret = ret` and the -ip arm's argv[i] tests set
    the branch frequencies its cold-block layout needs: tools/wip/mu/d1/NOTES.md.
-   The addons' names are spelled (&xb.files[n] + XB_ADDONS)->name; other spellings
-   of that address change parseAddonIdx: tools/wip/mu/d2/NOTES.md. */
+   The addons' names are spelled xb.addons[n].name; (xb.addons + n)->name changes
+   parseAddonIdx: tools/wip/mu/d2/NOTES.md. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -148,13 +148,13 @@ void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, size_t id
 				strcat(name, ".bin");
 				ok = 1;
 				for (i = 0; i < xb.numPatches; i++) {
-					if (!stricmp(name, (&xb.files[i] + XB_ADDONS)->name)) {
+					if (!stricmp(name, xb.addons[i].name)) {
 						i = xb.numPatches;
 						ok = 0;
 					}
 				}
 				if (ok) {
-					strcpy((&xb.files[xb.numPatches] + XB_ADDONS)->name, name);
+					strcpy(xb.addons[xb.numPatches].name, name);
 					xb.numPatches++;
 					log_printf(0, "addon patch from console: %s\n", idx + off);
 				}
@@ -558,8 +558,8 @@ int mode_update(int argc, char **argv)
 			}
 			useConsoleAddons = 0;
 			if (xb.numPatches < 16) {
-				strcpy((&xb.files[xb.numPatches] + XB_ADDONS)->name, argv[i]);
-				strcat((&xb.files[xb.numPatches] + XB_ADDONS)->name, ".bin");
+				strcpy(xb.addons[xb.numPatches].name, argv[i]);
+				strcat(xb.addons[xb.numPatches].name, ".bin");
 				xb.numPatches++;
 			} else
 				log_printf(0, "***** WARNING: exceeded total number of optional patches with -a %s!\n", argv[i]);

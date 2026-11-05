@@ -244,8 +244,8 @@ int mode_build(int argc, char **argv)
 				build_usage();
 			}
 			if (xb.numPatches < 16) {
-				strcpy((xb.files + xb.numPatches + XB_ADDONS)->name, argv[i]);
-				strcat((xb.files + xb.numPatches + XB_ADDONS)->name, ".bin");
+				strcpy(xb.addons[xb.numPatches].name, argv[i]);
+				strcat(xb.addons[xb.numPatches].name, ".bin");
 				xb.numPatches++;
 			} else
 				log_printf(0, "***** WARNING: exceeded total number of optional patches with -a %s!\n", argv[i]);

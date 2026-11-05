@@ -67,7 +67,7 @@ These are the hints:
   barriers
 - **Attributes:** per-function `optimize(...)`, inlining and cloning control,
   and others
-- **Declarations:** asm-label prototypes and per-file views of `xb.files`
+- **Declarations:** asm-label prototypes
 
 Writing a function success-first, duplicating a block, inlining a helper by
 hand and spelling a byte swap differently are source shape, so they aren't
@@ -88,16 +88,15 @@ The file has no `asm`, attributes or builtins left, and it builds with plain `-O
 </details>
 
 <details>
-<summary><b>2. build</b>: 50 tricks, very hard</summary>
+<summary><b>2. build</b>: 43 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
-- 19 `__builtin_expect`, 9 pins, 1 `asm` barrier, 6 hot and cold labels and 5
+- 18 `__builtin_expect`, 7 pins, 1 `asm` barrier, 6 hot and cold labels and 5
   `cb_hint()` calls, across `loadFileCrc`, `extractSmcConfig`, `patchSmcConfig`,
   `loadBl` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
-- 3 `no-early-inlining` attributes, 2 inlining and cloning attributes, and 2
-  `__builtin_assume_aligned`
+- 3 `no-early-inlining` attributes
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
 narrow, unusually high range (92-99), and the dom2 entry is there to keep one

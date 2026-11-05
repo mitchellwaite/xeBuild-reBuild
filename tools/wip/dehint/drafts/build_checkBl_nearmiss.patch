@@ -1,0 +1,129 @@
+diff --git a/src/build.c b/build/bd/gen_bd31_best.c
+index 49b2d9ce..191e9566 100644
+--- a/src/build.c
++++ b/build/bd/gen_bd31_best.c
+@@ -982,6 +982,13 @@ void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
+ 		xb.kernel = k;
+ }
+ 
++/* the size error, for checkBl */
++static int blTooBig(uint32_t blsize, uint32_t size)
++{
++	log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
++	return -3;
++}
++
+ __attribute__((optimize("no-early-inlining")))
+ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ {
+@@ -1003,7 +1010,6 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 	   for the text and .rdata order; it replaces a literal-order asm */
+ 	if (blsize > size)
+ 		goto toobig;
+-	cb_hint(&dead);
+ 	m = bl[0];
+ 	__asm__("" :: "a"(m));
+ 	if ((m & 0x43) != 0x43)
+@@ -1017,8 +1023,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x30);
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		break;
+ 	case 7:
+ 	case 18:
+@@ -1026,8 +1034,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x10);
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		break;
+ 	case 8:
+ 	case 19:
+@@ -1035,8 +1045,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x10);
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+ 		break;
+ 	case 9:
+@@ -1046,8 +1058,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x20, 0, 0x210);
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
+ 		break;
+ 	case 10:
+@@ -1057,8 +1071,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x10);
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		break;
+ 	case 12:
+ 		if (bl[1] != 'C')
+@@ -1067,8 +1083,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 		if (crc == 0xffffffff)
+ 			break;
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		break;
+ 	case 13:
+ 		if (bl[1] != 'D')
+@@ -1077,8 +1095,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 		if (crc == 0xffffffff)
+ 			break;
+ 		c = crc32(bl, blsize);
+-		if (__builtin_expect(crc != c, 0))
+-			goto bad;
++		if (crc != c) {
++			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
++			return -2;
++		}
+ 		break;
+ 	case 14:
+ 		if (bl[1] != 'E')
+@@ -1100,9 +1120,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ bad:
+ 	log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+ 	return -2;
+-toobig: __attribute__((hot));
+-	log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
+-	return -3;
++toobig:
++	return blTooBig(blsize, size);
+ magic:
+ 	log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", bl[0], bl[1], type);
+ 	return -1;

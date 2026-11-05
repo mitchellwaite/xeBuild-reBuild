@@ -168,10 +168,9 @@ struct manifest {
 	} e[256];
 };
 
-/* xb.files has 19 entries; the 16 addon patches (-a) follow it and are reached
-   through it (files + XB_ADDONS).  The bound sets gcc's trip count estimate for
-   loops over the files (build.c's only match with 19 to 21).  Borderline, for
-   review: the addons are spelled past this declared bound. */
+/* xb.files has 19 entries; the 16 addon patches (-a) follow it in xb.addons.
+   The bound sets gcc's trip count estimate for loops over the files (build.c's
+   only match with 19 to 21). */
 #define XB_ADDONS 19
 
 struct xebuild {
@@ -263,7 +262,7 @@ struct xebuild {
 	struct fileent files[XB_ADDONS];
 	struct fileent addons[16];
 	char blSuffix[0x40];		/* -r */
-	int numPatches;			/* addons (files[XB_ADDONS...]) */
+	int numPatches;			/* entries used in addons */
 	int nFiles;
 	int nFlashFiles;
 	struct {

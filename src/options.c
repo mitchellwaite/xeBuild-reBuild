@@ -1148,12 +1148,12 @@ void addPatch(const char *name)
 
 		sprintf(path, "%s.bin", name);
 		for (i = 0; i < xb.numPatches; i++) {
-			if (!stricmp(path, (&xb.files[i] + XB_ADDONS)->name)) {
+			if (!stricmp(path, xb.addons[i].name)) {
 				log_printf(1, "***** WARNING: %s was provided both on command line and in ini, filtered duplicate!\n", name);
 				return;
 			}
 		}
-		strcpy((&xb.files[xb.numPatches] + XB_ADDONS)->name, path);
+		strcpy(xb.addons[xb.numPatches].name, path);
 		xb.numPatches++;
 	} else
 		log_printf(0, "***** WARNING: exceeded total number of optional patches with ini  %s!\n", name);
