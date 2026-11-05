@@ -756,6 +756,28 @@ void findSmcConfig(void)
 		log_printf(1, "not found!\n", off);
 }
 
+/* A page's NAND spare area (metadata), big and small block layouts.  The bit-fields
+   matter: a 6-bit load has no constant range, so VRP leaves the promoted int compare
+   of fsBlockType alone; and a bit-field read loads b[513] again for the small block's
+   id, where a byte read would reuse the earlier load. */
+struct bigSpare {
+	uint8_t badBlock;
+	uint8_t blockId1;
+	uint8_t blockId0 : 4;
+	uint8_t fsUnused0 : 4;
+	uint8_t other[9];
+	uint8_t fsBlockType : 6;
+	uint8_t ecc3 : 2;
+};
+
+struct smallSpare {
+	uint8_t blockId1;
+	uint8_t blockId0 : 4;
+	uint8_t fsUnused0 : 4;
+	uint8_t other[3];
+	uint8_t badBlock;
+};
+
 /* -1 (bad block) is the initial value and the only one that skips the ECC
    check, so the bad-block exits reach the return through `lba != -1` and
    aren't predicted as negative returns (ce1 hoists the -1 above the tests);
@@ -769,18 +791,14 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 		return -2;
 	lba = -1;
 	if (xb.dumpBigBlock) {
-		if (b[512] == 0xff && b[68096] == 0xff) {
-			lba = b[513] + (b[514] & 0xf) * 256;
+		struct bigSpare *s = (struct bigSpare *)(b + 512);
+
+		if (s->badBlock == 0xff && b[68096] == 0xff) {
+			lba = s->blockId1 + s->blockId0 * 256;
 			if (lba >= numBlocks - 1)
 				lba = -3;
 			else if (!xb.muChecked) {
-				uint8_t m = b[524] & 0x3f;
-				int t = m;
-
-				/* opaque int copy: the <= 0x29 test stays an int
-				   compare and isn't merged with the zero test */
-				__asm__("" : "+d"(t));
-				if (t <= 0x29 && m) {
+				if (s->fsBlockType <= 0x29 && s->fsBlockType) {
 					log_printf(0, "\n\n****************  WARNING  *************************\n");
 					log_printf(0, "  nanddump.bin has NAND memory unit data, make\n");
 					log_printf(0, "  sure you back up any important data off the\n");
@@ -799,10 +817,12 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 			}
 		}
 	} else {
-		if (b[517] == 0xff && b[8965] == 0xff) {
-			lba1 = b[513] + (b[514] & 0xf) * 256;
-			/* volatile: b[513] loaded again, as in the original */
-			lba0 = b[512] + (((volatile uint8_t *)b)[513] & 0xf) * 256;
+		struct bigSpare *big = (struct bigSpare *)(b + 512);
+		struct smallSpare *s = (struct smallSpare *)(b + 512);
+
+		if (s->badBlock == 0xff && b[8965] == 0xff) {
+			lba1 = big->blockId1 + big->blockId0 * 256;
+			lba0 = s->blockId1 + s->blockId0 * 256;
 			if (xb.dumpBbController) {
 				if (block && block == lba0)
 					lba = -6;
