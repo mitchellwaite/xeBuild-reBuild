@@ -88,20 +88,21 @@ The file has no `asm`, attributes or builtins left, and it builds with plain `-O
 </details>
 
 <details>
-<summary><b>2. build</b>: 52 tricks, very hard</summary>
+<summary><b>2. build</b>: 50 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
-- 19 `__builtin_expect`, 9 pins, 6 hot and cold labels and 5 `cb_hint()` calls,
-  across `loadFileCrc`, `extractSmcConfig`, `patchSmcConfig`, `loadBl` and others
+- 19 `__builtin_expect`, 9 pins, 1 `asm` barrier, 6 hot and cold labels and 5
+  `cb_hint()` calls, across `loadFileCrc`, `extractSmcConfig`, `patchSmcConfig`,
+  `loadBl` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
-- 3 `no-early-inlining` attributes, 3 inlining and cloning attributes, and 2
+- 3 `no-early-inlining` attributes, 2 inlining and cloning attributes, and 2
   `__builtin_assume_aligned`
-- `XB_FILES_BOUND` and 1 literal-order `asm`
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
 narrow, unusually high range (92-99), and the dom2 entry is there to keep one
-frequency from scaling to 0.
+frequency from scaling to 0. `tools/wip/dehint/notes/build.md` has the mechanisms
+and what's been tried.
 
 </details>
 

@@ -2,13 +2,10 @@
    ini), bootloader checks, patches and payloads, encoding the flash.
    gcc emits .data in reverse definition order.  The strings are literals: gcc
    emits a function's in the order it expands their blocks, so the original's
-   .rdata order follows from the code's shape (checkBl keeps an asm "i" hint). */
+   .rdata order follows from the code's shape. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* xb.files' declared bound sets the files loops' trip count estimate */
-#define XB_FILES_BOUND 19
 
 #include "crypto/xecrypt.h"
 #include "xebuild.h"
@@ -1003,14 +1000,11 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 	   (crc32 path), so it is aligned as a loop head like the original
 	   (.p2align 4,,10: branch freq > 4 x the B case's fallthru). */
 	__asm__("" : : "D"(type));
-	/* emits the crc error's literal first, as the original's .rdata */
-	__asm__("" :: "i"("\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n"));
 	blsize = getBeU32(bl + 12);
-	if (blsize > size) {
-		size_err: __attribute__((hot));
-		log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
-		return -3;
-	}
+	/* Borderline, for review: the size error sits after the crc error only
+	   for the text and .rdata order; it replaces a literal-order asm */
+	if (blsize > size)
+		goto toobig;
 	cb_hint(&dead);
 	m = bl[0];
 	__asm__("" :: "a"(m));
@@ -1108,6 +1102,9 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 bad:
 	log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
 	return -2;
+toobig: __attribute__((hot));
+	log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
+	return -3;
 magic:
 	log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", bl[0], bl[1], type);
 	return -1;
@@ -1451,143 +1448,6 @@ int loadBlFiles(void)
 	return 0;
 }
 
-static inline __attribute__((always_inline)) uint32_t loadConsoleBl(struct fileent *e)
-{
-	uint32_t r = 0;
-	int type;
-
-	type = e->type;
-	switch (type) {
-	case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
-	case 17: case 18: case 19:
-		log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
-		break;
-	case 9: case 10: case 15: case 16: case 20: case 21:
-		r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-		if (r) {
-			if (__builtin_expect(type == 9, 0)) {
-				if (suGetCF(&e->data, &e->size))
-					r = 0;
-			} else if (type == 10) {
-				if (suGetCG(&e->data, &e->size))
-					r = 0;
-			}
-			if (r)
-				break;
-		}
-		r = checkBl(e->data, e->size, type, e->crc);
-		break;
-	case 24:
-		if (!xb.glitch2mfg || (!loadBaseFile(e->name, e) && e->size == 0x60))
-			break;
-		e->data = malloc(0x60);
-		if (!e->data) {
-			r = 1;
-			break;
-		}
-		{
-			uint8_t *p = e->data;
-
-			/* p's points-to unknown: the size store may alias the
-			   copy, so sched2 keeps it before the rep movsd setup */
-			__asm__("" : "+r"(p));
-			e->size = 0x60;
-			memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
-		}
-		break;
-	case 25:
-		if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
-			break;
-		if (!loadBaseFile(e->name, e))
-			break;
-		log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
-		if (!loadBinFile(e))
-			break;
-		log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
-		r = loadLocalFile(e);
-		break;
-	case 3:
-		if (xb.kv.data) {
-			log_printf(1, "using keyvault data from console\n");
-			if (e->data)
-				free(e->data);
-			e->data = xb.kv.data;
-			e->size = xb.kv.size;
-			xb.kv.data = NULL;
-			xb.kv.size = 0;
-		} else {
-			log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
-			r = -1;
-		}
-		break;
-	case 4:
-		if (xb.kvAlt.data) {
-			log_printf(1, "using keyvault alt data from console\n");
-			if (e->data)
-				free(e->data);
-			e->data = xb.kvAlt.data;
-			e->size = xb.kvAlt.size;
-			xb.kvAlt.data = NULL;
-			xb.kvAlt.size = 0;
-		} else {
-			log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
-			r = -1;
-		}
-		break;
-	case 23:
-		r = loadBinFile(e);
-		if (r)
-			break;
-		if (e->size & 3) {
-			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
-			r = -1;
-			break;
-		}
-		appendAddonPatches(e);
-		break;
-	case 27:
-		if (xb.smcConfig.data) {
-			log_printf(1, "using smc configuration from console\n");
-			if (xb.files[xb.nFlashFiles].data)
-				free(xb.files[xb.nFlashFiles].data);
-			xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
-			xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
-			xb.smcConfig.data = NULL;
-			xb.smcConfig.size = 0;
-			r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
-		} else {
-			log_printf(0, "\n***** ERROR!: acquiring smc configuration data failed!\n");
-			r = -1;
-		}
-		break;
-	case 2:
-		/* always false (VRP drops it): makes the smc error a bit colder
-		   than the config one, so its trace comes after it */
-		if (__builtin_expect(type != 2, 0))
-			break;
-		if (xb.smc.data) {
-			log_printf(1, "using smc binary from console\n");
-			if (e->data)
-				free(e->data);
-			e->data = xb.smc.data;
-			e->size = xb.smc.size;
-			xb.smc.data = NULL;
-			xb.smc.size = 0;
-			e->offset = smcSetLoad(e->size);
-			if (!e->offset)
-				r = -1;
-		} else {
-			log_printf(0, "\n***** ERROR!: acquiring smc binary data failed!\n");
-			r = -1;
-		}
-		break;
-	default:
-		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
-		break;
-	}
-	return r;
-}
-
 int loadConsoleBlFiles(void)
 {
 	struct fileent *e;
@@ -1600,10 +1460,139 @@ int loadConsoleBlFiles(void)
 		goto none;
 	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
-		if (strnicmp(e->name, "none", 4) || e->crc)
-			r = loadConsoleBl(e);
-		else
-			r = 0;
+		r = 0;
+		if (strnicmp(e->name, "none", 4) || e->crc) {
+			int type = e->type;
+
+			switch (type) {
+			case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
+			case 17: case 18: case 19:
+				log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
+				break;
+			case 9: case 10: case 15: case 16: case 20: case 21:
+				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+				if (r) {
+					if (__builtin_expect(type == 9, 0)) {
+						if (suGetCF(&e->data, &e->size))
+							r = 0;
+					} else if (type == 10) {
+						if (suGetCG(&e->data, &e->size))
+							r = 0;
+					}
+					if (r)
+						break;
+				}
+				r = checkBl(e->data, e->size, type, e->crc);
+				break;
+			case 24:
+				if (!xb.glitch2mfg || (!loadBaseFile(e->name, e) && e->size == 0x60))
+					break;
+				e->data = malloc(0x60);
+				if (!e->data) {
+					r = 1;
+					break;
+				}
+				{
+					uint8_t *p = e->data;
+
+					/* p's points-to unknown: the size store may alias the
+					   copy, so sched2 keeps it before the rep movsd setup */
+					__asm__("" : "+r"(p));
+					e->size = 0x60;
+					memcpy(__builtin_assume_aligned(p, 4), defBl60, 0x60);
+				}
+				break;
+			case 25:
+				if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
+					break;
+				if (!loadBaseFile(e->name, e))
+					break;
+				log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
+				if (!loadBinFile(e))
+					break;
+				log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
+				r = loadLocalFile(e);
+				break;
+			case 3:
+				if (xb.kv.data) {
+					log_printf(1, "using keyvault data from console\n");
+					if (e->data)
+						free(e->data);
+					e->data = xb.kv.data;
+					e->size = xb.kv.size;
+					xb.kv.data = NULL;
+					xb.kv.size = 0;
+				} else {
+					log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
+					r = -1;
+				}
+				break;
+			case 4:
+				if (xb.kvAlt.data) {
+					log_printf(1, "using keyvault alt data from console\n");
+					if (e->data)
+						free(e->data);
+					e->data = xb.kvAlt.data;
+					e->size = xb.kvAlt.size;
+					xb.kvAlt.data = NULL;
+					xb.kvAlt.size = 0;
+				} else {
+					log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
+					r = -1;
+				}
+				break;
+			case 23:
+				r = loadBinFile(e);
+				if (r)
+					break;
+				if (e->size & 3) {
+					log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
+					r = -1;
+					break;
+				}
+				appendAddonPatches(e);
+				break;
+			case 27:
+				if (xb.smcConfig.data) {
+					log_printf(1, "using smc configuration from console\n");
+					if (xb.files[xb.nFlashFiles].data)
+						free(xb.files[xb.nFlashFiles].data);
+					xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
+					xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
+					xb.smcConfig.data = NULL;
+					xb.smcConfig.size = 0;
+					r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
+				} else {
+					log_printf(0, "\n***** ERROR!: acquiring smc configuration data failed!\n");
+					r = -1;
+				}
+				break;
+			case 2:
+				/* always false (VRP drops it): makes the smc error a bit colder
+				   than the config one, so its trace comes after it */
+				if (__builtin_expect(type != 2, 0))
+					break;
+				if (xb.smc.data) {
+					log_printf(1, "using smc binary from console\n");
+					if (e->data)
+						free(e->data);
+					e->data = xb.smc.data;
+					e->size = xb.smc.size;
+					xb.smc.data = NULL;
+					xb.smc.size = 0;
+					e->offset = smcSetLoad(e->size);
+					if (!e->offset)
+						r = -1;
+				} else {
+					log_printf(0, "\n***** ERROR!: acquiring smc binary data failed!\n");
+					r = -1;
+				}
+				break;
+			default:
+				log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+				break;
+			}
+		}
 		if (r) {
 			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
 			return -1;

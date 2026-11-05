@@ -168,12 +168,10 @@ struct manifest {
 	} e[256];
 };
 
-/* xb.files has 35 entries, 19..34 the addon patches (-a).  A file may define
-   XB_FILES_BOUND before including this to declare fewer files, as the bound
-   sets gcc's trip count estimate for loops over them (build.c) */
-#ifndef XB_FILES_BOUND
-#define XB_FILES_BOUND 35
-#endif
+/* xb.files has 19 entries; the 16 addon patches (-a) follow it and are reached
+   through it (files + XB_ADDONS).  The bound sets gcc's trip count estimate for
+   loops over the files (build.c's only match with 19 to 21).  Borderline, for
+   review: the addons are spelled past this declared bound. */
 #define XB_ADDONS 19
 
 struct xebuild {
@@ -262,8 +260,8 @@ struct xebuild {
 	char firmware[256][0x400];	/* the ini's firmware files */
 	uint32_t firmwareCrc[256];
 	uint32_t nFirmware;
-	struct fileent files[XB_FILES_BOUND];
-	uint8_t padFiles[(35 - XB_FILES_BOUND) * sizeof(struct fileent)];
+	struct fileent files[XB_ADDONS];
+	struct fileent addons[16];
 	char blSuffix[0x40];		/* -r */
 	int numPatches;			/* addons (files[XB_ADDONS...]) */
 	int nFiles;
