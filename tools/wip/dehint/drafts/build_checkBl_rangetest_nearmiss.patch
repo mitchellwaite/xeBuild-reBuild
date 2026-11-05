@@ -1,0 +1,169 @@
+diff --git src/build.c build/bd/d118.c
+index 23bcb02e..7742b884 100644
+--- src/build.c
++++ build/bd/d118.c
+@@ -995,46 +995,29 @@ void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
+ 		xb.kernel = k;
+ }
+ 
+-/* Borderline, for review: an out parameter where a return would do.  A call with
+-   a side effect on checkBl's normal edge makes that edge less likely when branches
+-   are predicted (no-early-inlining); a getter is pure and does nothing.  It
+-   replaces a hint call. */
+ static void blMagic(const uint8_t *bl, int *m)
+ {
+ 	*m = bl[0];
+ }
+ 
+-static int crcSame(uint32_t c, uint32_t crc)
+-{
+-	return c == crc;
+-}
+-
+ __attribute__((optimize("no-early-inlining")))
+ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ {
+ 	uint32_t blsize, c;
+ 	int m;
+ 
+-	/* the original copies the epilogue into the size-error block, which needs
+-	   that edge >= 10% of entry, and not into the crc failure one, which needs
+-	   it below. Hints (none emit code): the hot label takes the size error
+-	   from 1.7% to 19%, with blMagic below, and the "D" pin loads type before
+-	   the first call as the original does.
+-	   Borderline, for review: the failure log is written in each arm, with
+-	   crcSame for the test, not `goto bad`.  Under no-early-inlining crcSame
+-	   is still a call when branches are predicted, so the test gets no
+-	   not-equal prediction, and the arms are unlikely; crossjump then merges
+-	   them into `bad` at 979 (it replaces 7 expects). */
+ 	__asm__("" : : "D"(type));
+ 	blsize = getBeU32(bl + 12);
+-	/* Borderline, for review: the size error sits after the crc error only
+-	   for the text and .rdata order; it replaces a literal-order asm */
+ 	if (blsize > size)
+ 		goto toobig;
+ 	blMagic(bl, &m);
+ 	__asm__("" :: "a"(m));
+ 	if ((m & 0x43) != 0x43)
+ 		goto magic;
++	if ((uint32_t)(type - 5) > 16) {
++		c = 0;
++		goto bad;
++	}
+ 	switch (type) {
+ 	case 5:
+ 	case 6:
+@@ -1044,10 +1027,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x30);
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		break;
+ 	case 7:
+ 	case 18:
+@@ -1055,10 +1036,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x10);
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		break;
+ 	case 8:
+ 	case 19:
+@@ -1066,10 +1045,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x10);
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+ 		break;
+ 	case 9:
+@@ -1079,10 +1056,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x20, 0, 0x210);
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
+ 		break;
+ 	case 10:
+@@ -1092,10 +1067,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 			goto magic;
+ 		memset(bl + 0x10, 0, 0x10);
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		break;
+ 	case 12:
+ 		if (bl[1] != 'C')
+@@ -1104,10 +1077,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 		if (crc == 0xffffffff)
+ 			break;
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		break;
+ 	case 13:
+ 		if (bl[1] != 'D')
+@@ -1116,10 +1087,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 		if (crc == 0xffffffff)
+ 			break;
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc)) {
+-			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+-			return -2;
+-		}
++		if (c != crc)
++			goto bad;
+ 		break;
+ 	case 14:
+ 		if (bl[1] != 'E')
+@@ -1130,12 +1099,9 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
+ 		if (crc == 0xffffffff)
+ 			break;
+ 		c = crc32(bl, blsize);
+-		if (!crcSame(c, crc))
++		if (c != crc)
+ 			goto bad;
+ 		break;
+-	default:
+-		c = 0;
+-		goto bad;
+ 	}
+ 	return 0;
+ bad:
+@@ -1145,7 +1111,7 @@ toobig: __attribute__((hot));
+ 	log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
+ 	return -3;
+ magic:
+-	log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", bl[0], bl[1], type);
++	log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", m, bl[1], type);
+ 	return -1;
+ }
+ 

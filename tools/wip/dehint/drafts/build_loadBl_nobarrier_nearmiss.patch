@@ -1,0 +1,35 @@
+diff --git src/build.c build/bd/d107.c
+index 23bcb02e..01d5177c 100644
+--- src/build.c
++++ build/bd/d107.c
+@@ -1278,7 +1278,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 		if (xb.type <= BUILD_DEVGL16) {
+ 		t5le: __attribute__((hot));
+ 			if (__builtin_expect(*pr != 0, 0))
+-				goto fail;
++				*pr = -1;
+ 			break;
+ 		}
+ 		if (type == 14)
+@@ -1397,7 +1397,8 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 		if (e->size & 3) {
+ 		badsize: __attribute__((hot));
+ 			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
+-			goto fail;
++			*pr = -1;
++			break;
+ 		}
+ 		appendAddonPatches(e);
+ 		break;
+@@ -1464,11 +1465,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 		break;
+ 	}
+ 	return;
+-	/* one -1 block for the patch size, SMC and (xb.type <= BUILD_DEVGL16) signature
+-	   failures: the asm keeps it a block of its own (else the -1 is appended
+-	   to the size log, which crossjump can't then share) */
+ fail:
+-	__asm__ __volatile__("");
+ 	*pr = -1;
+ }
+ 

@@ -1295,7 +1295,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		}
 		break;
 	case 24:
-		/* Borderline, for review: two calls, not `||` as below.  Crossjump merges
+		/* Borderline, for review: two calls where `||` would do.  Crossjump merges
 		   the two inlined copies, which drops the copy's memory attributes, so
 		   sched2 keeps the size store before the copy (it replaces a pin and an
 		   assume_aligned).  The same goes for loadConsoleBlFiles' case 24. */
@@ -1307,7 +1307,9 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		}
 		if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 			*pr = 0;
-			if (loadBaseFile(e->name, e) || e->size != 0x60)
+			if (loadBaseFile(e->name, e))
+				*pr = defaultBl60(e);
+			else if (e->size != 0x60)
 				*pr = defaultBl60(e);
 		}
 		break;
@@ -1402,7 +1404,7 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		appendAddonPatches(e);
 		break;
 	case 27:
-		if (__builtin_expect(type == 27, 1) && loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
+		if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
 		    loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]) &&
 		    (*pr = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]))) {
 			if (!xb.smcConfig.data)

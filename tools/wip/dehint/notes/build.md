@@ -3,11 +3,11 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
-## State after attempt 3
+## State after attempt 4
 
-26 tricks: `--param builtin-expect-probability=98`, 10 `__builtin_expect`, 6 pins, the empty
+25 tricks: `--param builtin-expect-probability=98`, 9 `__builtin_expect`, 6 pins, the empty
 `__asm__ __volatile__("")` barrier at loadBl's `fail:`, 4 hot and cold labels, no `cb_hint()`,
-2 `__builtin_constant_p`, 2 `no-early-inlining` (checkBl, patchBlsBlmod). (After attempt 2: 43, with 18 expects, 7 pins,
+2 `__builtin_constant_p`, 2 `no-early-inlining` (checkBl, patchBlsBlmod). (After attempt 3: 26, with 10 expects. After attempt 2: 43, with 18 expects, 7 pins,
 6 labels, 5 cb_hint and 3 no-early-inlining. After attempt 1: 50.)
 
 Landed shapes to review:
@@ -18,7 +18,7 @@ Landed shapes to review:
 | checkBl, blMagic | `blMagic(bl, &m)` where `m = bl[0]` would do | An out parameter so the call has side effects, for PRED_CALL. It replaces cb_hint |
 | checkBl, 7 arms | `if (!crcSame(c, crc)) { log; return -2; }`, the same log 7 times, with `goto bad` kept for type 14 and default | crcSame only hides the compare from the predictor while no-early-inlining holds. It replaces 7 expects |
 | checkBl | `goto toobig`, with the size error's text after the crc error's | Text order only, for .rdata. Plain `if (blsize <= size) { ... }` nesting matches too |
-| loadBl case 24 (first arm), loadConsoleBlFiles case 24 | `if (loadBaseFile(..)) r = defaultBl60(e); else if (e->size != 0x60) r = defaultBl60(e);` | Two identical calls where `\|\|` would do; crossjump merging them is what orders the size store. The second arm of loadBl's case 24 uses `\|\|`, so the two arms differ for no visible reason |
+| loadBl case 24 (both arms), loadConsoleBlFiles case 24 | `if (loadBaseFile(..)) r = defaultBl60(e); else if (e->size != 0x60) r = defaultBl60(e);` | Two identical calls where `\|\|` would do; crossjump merging them is what orders the size store. All three now have the same form (attempt 4). The first arm can't use `\|\|` (243 lines), console's costs 2 lines |
 
 Not borderline, but they steer, so check them: the struct copy in extractSmcConfig, `findSmcConfig`, `int size` on extractSmcConfig and `int crc` on loadInputFile (comments in
 the source say so). Both are compared as unsigned through the usual conversions, so behaviour is the same. `*pr = 0` in loadBl's
@@ -294,3 +294,71 @@ lab_size 84, exp_200 97, exp_t10 116, exp_t9 217, pin_m 242, vol_fail 296, lab_n
 - `--param` and the constant_p entry stay last. 10 expects are left.
 
 Tools added: `bdone.py` (one hint off, one edit; BDSLACK shows edits that don't beat it), `bdsubset.py`, `bddump.sh file.c fn pass,..` (t-* tree passes), gen_bd50 to gen_bd87. Heredocs do mangle `\\n` in generators: gen_bd68 was lost to it once; use the Write tool.
+
+## Attempt 4
+
+Tools: `bdrun.py gen.py [-f fn] [-n N] [-k label]` scores whole-source variants, strict and loose together (generators define `CASES(base)`, optional `PRE`, `BASE`); `bdfreq.py gen.py fn re1,re2 [-f fn]` adds the block frequencies
+of matching lines to each row. gen_bd90 to gen_bd118. Beware: a difference in only `loadBlFiles:52 loadConsoleBlFiles:18 blmodMissing:2 buildFlash:16` is nothing but call displacements after checkBl's size moved, not a real difference.
+
+### What moved the numbers
+
+- **exp_27 was a dead test, not a frequency.** `__builtin_expect(type == 27, 1) &&` in case 27 cost 510 lines when only the expect went, because the `type == 27` test then got an opcode prediction. Taking the test out too is byte-identical (gen_bd94).
+  **Whenever an expect sits on a test that's always true, remove the test, not just the expect.**
+- **checkBl: test the type's range before the switch (gen_bd114, gen_bd115).** `if ((uint32_t)(type - 5) > 16) { c = 0; goto bad; }` and no `default:`. VRP removes the switch's own bound test, so it's the same one test in the object. A switch's edges are predicted evenly, so `default` was getting
+  S/9 of the frequency, which is most of `bad`. With the range test, bad is 880 with plain `if (c != crc) goto bad` arms and no crcSame, and it needs under 1000.  `type < 5 || type > 21` is a different compare (616 lines).
+
+- **loadBl case 24's second arm uses the two-call form too (gen_bd121),** byte-identical now (250 lines in attempt 2), so the arms no longer differ. A shape cleanup; the count doesn't change.
+- Not landed, checkBl's range test: it isn't byte-identical yet (below), so src keeps crcSame and the seven logs.
+
+### Near misses
+
+Patches against this attempt's src: drafts/build_checkBl_nohints_nearmiss.patch, drafts/build_checkBl_rangetest_nearmiss.patch, drafts/build_loadBl_nobarrier_nearmiss.patch.
+
+- **checkBl, no attribute, no helper, no hot label, no type pin, no crcSame, no blMagic (gen_bd115, `goto goto hot0 pin1`): 8 loose, 25 strict.** Only the m pin is left in it, and all that's wrong is the size error at 167: it needs an edge >= 1000 (epilogue copy) and < 2000 (round 2),
+  and magic (2123) falls under 2000 as soon as it does. With the hot label: size 880, 6 loose. So the whole of checkBl comes down to P(size error) in [10%, 20%). The type pin goes free once no-early-inlining is off (gen_bd99).
+- **checkBl with the range test and everything else kept, crcSame and the seven logs gone (gen_bd118, nei1 hot1 bm1 pt1 pm1): 0 loose, 7 strict, padding only.** The `xor eax,eax; jmp` block for c = 0 gets a `.p2align` because its frequency is 122 and compute_alignments' threshold is 1% of the maximum, 100.
+  (`default:` in the switch isn't aligned: the bound test's edge from expand has a low frequency.) The test is 1.67% (call 29%, negative return 4%) of 7307. It needs under 100: forms of the range test and the m test change nothing (gen_bd119), and `type < 5 || type > 21` doesn't reduce to the same code. If this falls, it's worth landing even with no change to the count: it trades crcSame and seven copies of a log for one test.
+  - `return -3` gets the negative return, 1.67%. With no constant reaching the return (`r = 0; if (blsize > size) { log; r = -3; } if (r) return r;`, gen_bd98): PRED_CALL alone, 29%, 2900. Adding the early return gives 20.71%, 2071, just as attempt 2 found (gen_bd117 `t3 crc=done mag=done ok=done`, but magic is 6414 there).
+    A third predictor below 50% would do it. PRED_GOTO adds nothing here. `r`-style forms also put the size log's text before crc's unless the log stays after the switch.
+  - A helper that isn't early inlined puts a call on the normal edge: 19.1% with the hot label (gen_bd101, m needs no pin there). But a helper holding the crc arms can't match: the reference's first arm has `cmp eax,[crc]` and the others `cmp [crc],eax`, which only happens when `c`'s SSA version is below `crc`'s,
+    that is when the arms are in checkBl itself at into-SSA (crc is first used there). After inlining crc is the caller's low version and every arm canonicalizes to `crc != c`. So a split can't reach 0: gen_bd100, 101, 102, 114 split1.
+- **loadBl, vol_fail (gen_bd107, `brk goto brk`): 1 loose, 7 strict.** case 23's log `*pr = -1; break;`, the signature tail `*pr = -1; break;`, case 2 `goto fail` with `fail: *pr = -1` after the return. Left: the reference's log jumps to case 2's `mov edi,-1` block, and the draft has its own `mov edi,-1`.
+  `*pr` is a register by then, so `fail` is empty in GIMPLE, the -1 is a PHI argument on each edge, out-of-SSA appends it to the log block (one successor), and crossjump won't fold that into a split-edge block with a higher index. Something must keep `fail` non-empty until expand; that's what the asm does.
+  case 23 moved after case 2 (gen_bd109) changes string order and doesn't fold it either. A clobber (scoped address-taken local) would do but there's no natural one here.
+- **loadFileCrc, pin_e (gen_bd106, gen_bd111):** `e->size = pad && (size & 15) ? (size + 15) & ~15 : size;` fixes the registers (e esi, f ebx) with no pin, 2 loose, but it sinks the first store, and in loadCommonFile it swaps e the other way (28). Forms with both stores keep the swap (26).
+  The ternary has one reference to e fewer, so it's IRA's priority order. A real use of e in the pad log goes the wrong way (gen_bd112).
+- **lab_none: 4 loose, 8 strict with the plain `for`.** Order of two round-4 blocks: return [20] and r = 1 [14], r = 1 has to be first. Forms of case 24 (gen_bd104) and of defaultBl60 (gen_bd103) don't move either.
+- **lab_t5le: 0 loose, 7 strict, alignment only.** With exp_pr too, 2 loose (`ja` for `jbe`); forms in gen_bd95.
+- **lab_badsize: 6 loose.** Order of the appendAddonPatches block. Forms in gen_bd95; a shared loadPatchFile (gen_bd94) is much worse.
+
+### Mechanisms
+
+- **Predictors seen on checkBl's size test:** call 29%, early return 39%, together 20.7% by Dempster-Shafer; negative return gives 1.67% with the call. `-fdump-tree-profile_estimate` lists them per block (`bddump.sh file.c checkBl t-profile_estimate`).
+- **A switch's outgoing edges are even.** combine_predictions_for_bb only predicts two-way branches, so adding or removing a distinct arm changes every arm's frequency. Separate identical cases thin default's share but don't merge back (gen_bd102 split1, split2).
+- **calcBlAreaSize:** the `mov ebx,esi` before the 14 lookup is IRA's region split at the inlined findFile loop, and ebx holds the PRE'd `files[x].size` values. It's not a source variable.
+- **loadXell as a shared helper is byte-identical** (gen_bd94 x25 in either or both functions), for whoever wants the two copies of case 25 merged. It doesn't remove a trick.
+
+### Don't retry
+
+- pin_size by temporaries for the file sizes, statement forms, a blFileSize helper, order or nesting of the build-type chain, declaration order (gen_bd105: 1280 cases; gen_bd110: all L40 or worse).
+- pin_d by forms of the extract call, a fileent pointer, nesting the load fallbacks, or a helper (gen_bd113: 14 at best; helper 124).
+- exp_t24 by the room test as its own `if` (gen_bd96: 7 at best, separate ifs 27), or a warning helper shared with addUpdateBls (gen_bd97: early inlined, 7, and it costs 6 in addUpdateBls). The expect keeps imgSize()'s call out of the block right after `type == 25`, so PRED_CALL misses that edge: the log is 153 with it, 75 without, and has to beat the block at 117.
+- exp_devgl again: the `setne` has to stay above the test, and tree-sink needs the non-dev path at 75%; two `==` tests give 52%.
+- checkBl by bad falling out of the switch to one log (gen_bd90): operand order and polarity of the crc test make no difference; same code.
+- Separate identical switch cases; goto in the helper for magic failures (gen_bd102: no change at all).
+- patchCpuFan's repeated test: it does pay. Without it, 52 lines in patchSmcConfig (40 loose); with the test only in the function, 91 (8 loose). gen_bd120's "IDENTICAL" for the caller-only form was an edit whose text didn't match; bdrun now labels those `(NO CHANGE)`. Check that label before believing an IDENTICAL.
+- blMagic returning the value or gone (70 lines in checkBl), crcSame gone from type 14 only (64): both still pay while no-early-inlining stays (gen_bd121).
+- A shared loadPatchFile for case 23 (gen_bd94): 219 lines in loadBlFiles, 118 in loadConsoleBlFiles.
+
+### Costs now (strict, removed alone)
+
+nei_blmod 2, lab_t5le 7, pin_type 11, exp_pr 18, exp_upd 18, pin_i 22, pin_d 23, pin_e 26, lab_badsize 26, exp_t24 29, exp_210 43, exp_devgl 43, pin_size 82, exp_verbose 83, lab_size 84, exp_200 97, exp_t10 116, exp_t9 217, pin_m 242, vol_fail 296, lab_none 415, nei_chk 501.
+`--param`: 96 gives 46 lines (loadConsoleBlFiles, exp_t9), 97 gives 35 (loadBlFiles), 91 to 95 over 320 (extractSmcConfig, loadBlFiles), 90 adds loadFileCrc. So it's held by exp_t9, the loadBl expects, the two scan expects and exp_verbose.
+
+### What to try next
+
+- checkBl, P(size error) in [10%, 20%): any third predictor on `blsize > size`, or a form with call and early return (20.71%) whose magic stays low. That takes nei_chk, pin_type, lab_size, crcSame and blMagic together, and pin_m may follow (it isn't needed in the split forms).
+- The default block under frequency 100 in the range-test form (see near misses).
+- More always-true tests like case 27's: look at any expect whose test can't be false, or that a switch has already decided. exp_t24's `type != 24` is the one left, and it's there for its block, not its value.
+- A statement that keeps loadBl's `fail` block non-empty until expand, with no code, in place of the asm (near miss above).
+- `--param` and the constant_p entry stay last.
