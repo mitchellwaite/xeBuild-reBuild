@@ -1,0 +1,34 @@
+--- src/build.c
++++ src/build.c
+@@ -1264,12 +1264,8 @@
+ 		   >5 edge (else its setFlashBuild copy has frequency 0 and final
+ 		   aligns the type-11 block after it); the hot label keeps the SE
+ 		   copy's <=5 edge the likely one (jbe) */
+-		if (xb.type <= BUILD_DEVGL16) {
+-		t5le: __attribute__((hot));
+-			if (__builtin_expect(*pr != 0, 0))
+-				goto fail;
++		if (xb.type <= BUILD_DEVGL16)
+ 			break;
+-		}
+ 		if (type == 14)
+ 			setFlashBuild(getBeU16(xb.files[i].data + 2));
+ 		break;
+@@ -1385,7 +1381,8 @@
+ 		if (e->size & 3) {
+ 		badsize: __attribute__((hot));
+ 			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
+-			goto fail;
++			*pr = -1;
++			break;
+ 		}
+ 		appendAddonPatches(e);
+ 		break;
+@@ -1456,7 +1453,6 @@
+ 	   failures: the asm keeps it a block of its own (else the -1 is appended
+ 	   to the size log, which crossjump can't then share) */
+ fail:
+-	__asm__ __volatile__("");
+ 	*pr = -1;
+ }
+ 

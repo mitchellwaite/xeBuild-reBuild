@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 10
+
+Attempt 10 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It found which pass removes `fail:` without the asm (mergephi2, read from the 6.2.0 source) and a near miss that drops three of loadBl's tricks at once (vol_fail, lab_t5le, exp_pr: 3 loose, 11 strict lines, drafts/build_loadBl_brktail_nearmiss.patch). See "## Attempt 10" at the end.
+
 ## State after attempt 9
 
 Attempt 9 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It read loadBl's structure off the reference and the Linux build and measured three hint-free whole-function reconstructions: see "## Attempt 9" at the end. The best one is saved as drafts/build_loadBl_loop_reconstruction.patch (128 loose lines in loadBlFiles, no hints).
@@ -624,3 +628,45 @@ What A gets wrong (`bdanchors.py`): only two blocks move (case 2's smc fallback,
 - loadBl: B is right at the loop level and A is closer in the arms. The arm in the helper has to keep A's threading, which happens after inlining in A and partly before it in B. Compare A and B's vrp1 and dom2 dumps on the 5..21 arm (`bdpasses.py`), rather than sweeping B's spellings again; the first pass where they part is the lead.
 - The shared -1 needs a block that survives until expand. The cfgcleanup reading above says one way: a `fail` whose every predecessor keeps a second edge to the same successor. Not tried.
 - The scan bounds, exp_verbose with pin_e, exp_t24, lab_badsize: no new idea beyond the loop forms above.
+
+## Attempt 10
+
+No match; src is unchanged. Generators gen_bd210 to gen_bd213 run on src/build.c as of 2f2be6f (gen_bd211 to gen_bd213 build on gen_bd210's `b f brk`, through its `mk`). tree-cfgcleanup.c, cfgcleanup.c and bb-reorder.c were read from the official repo at releases/gcc-6.2.0 (into build/bd/a10, not kept; bb-reorder.c turned out not to be needed, and cfgrtl.c's fixup_reorder_chain was not fetched).
+
+### Which pass removes `fail:` without the asm (checked against dumps and source)
+
+- With the asm off, `fail` survives every cleanup_tree_cfg up to fre3: two of its predecessors (the smc test and the t5le `*pr` test) also reach the `if (r)` join directly with another value of r, so remove_forwarder_block refuses it (its phi_alternatives_equal check), as attempt 9 guessed.
+- But **mergephi2 (pass_merge_phi, 095t) removes it.** `fail` has a virtual PHI (`.MEM_230 = PHI <.MEM_213(25), .MEM_250(83), .MEM_267(102)>`, seen with `-fdump-tree-fre3-vops`): its three predecessors come with different memory states. pass_merge_phi takes any forwarder *with* PHIs (tree_forwarder_block_p(bb, true)), and remove_forwarder_block_with_phi doesn't refuse on differing arguments: it splits those edges into new forwarders. So the -1 moves to the split smc and t5le edges (new, high-index blocks) and onto the size log's own edge. phitrack (largest PHI's -1 arguments per pass): `ccp2 4294967295(106)`, then `mergephi2 4294967295(83) (112) (113)`.
+- So attempt 9's lead, "a `fail` whose every predecessor also has a direct edge to the same successor", doesn't help: that only stops remove_forwarder_block, and mergephi doesn't care. To survive with no asm, `fail` must have no PHI at mergephi2 and mergephi3 (104t), i.e. one predecessor (or all with the same memory state), or hold a real statement until expand.
+- Even with one predecessor, a source `fail` block goes later: once vrp1/dom2 thread `if (r)` it forwards straight to the could-not-read log, which its predecessor doesn't reach directly, so cleanup removes it and moves its label into the log (gen_bd212: `goto <bb 109> (fail)` where 109 is the log).
+- **Crossjump's rule** (cfgcleanup.c, checked): with a 1-insn match (`mov edi,-1` is under min-crossjump-insns, 5) try_crossjump_to_edge only goes ahead when the 'from' block is wholly matched. Against the fallthru predecessor 'from' is the non-fallthru one; otherwise it's the lower-indexed one (try_crossjump_bb only pairs e with a higher-index e2, and identical insns keep dir_both, so no swap). The size log's block is lower (expand order follows source order, which .rdata pins) and isn't wholly matched, so its -1 can't join the split-edge -1 blocks. This is attempt 4's observation with the reason read from source.
+
+### Near miss: no asm, no t5le label, no `*pr` expect (gen_bd210 `b f brk`, 3 loose, 11 strict)
+
+drafts/build_loadBl_brktail_nearmiss.patch (`git apply -p0`; the patch leaves the old comments as they are). Three edits, all natural and with the same behaviour:
+- the size log sets `*pr = -1; break;` itself, in place of `goto fail`;
+- the `xb.type <= BUILD_DEVGL16` tail is a plain `if (xb.type <= BUILD_DEVGL16) break;` (`*pr` is already 0 or -1 there, as attempt 8 noted);
+- `fail:` keeps case 2's goto only, with no asm. (`fail` then has one predecessor, no virtual PHI.)
+What's left, both in loadBlFiles:
+1. The size log has its own `mov edi,-1` and jumps to the log; the reference jumps to the shared -1 block (the crossjump rule above).
+2. The CG/SE checkBl copy at 388a: `ja 358e; jmp 2f30` for `jbe 2f30; jmp 358e`. Its `xb.type <= 5` jump has REG_BR_PROB 10000 on gtu in the bbro dump, where src's hot label gives 9869 on leu (the other two `xb.type` tests are 0 here against 9869 and 1090 in src, but come out the same). It's the edge drained by dom2's threads again, which is what t5le was for.
+Tried on this base, none better: the t5le hot label back on the plain break (10000 lines: a hot label on a break heats everything), `return` for either break, `type != 14` exits, `xb.type > 5 && type == 14`, type tested first (66 and up), the size test inverted or with `else` (same 11), the asm put back (58), case 2's -1 written in place (`{ *pr = -1; break; }` or `if (!e->offset) *pr = -1;`: 240), case 2 moved ahead of other cases (47 and up, gen_bd211), `fail:` placed inside the switch before case 23 or others (11 at best, gen_bd212).
+With all of loadBl's other hints off as well (t10, badsize, pin_d, the constant_p entry, `else if (type)`), this base is 109 loose (218 strict), better than attempt 9's A (128) and B (183). No single hint or pair goes free on it (lab_badsize+pin_d is the cheapest pair, 23 loose).
+
+### Don't retry
+
+- Keeping `fail` by giving every predecessor a direct edge to the join: mergephi merges it anyway.
+- `fail:` label position in the source: it doesn't set the block's fate or index (gen_bd212).
+- Case 2 moved within the switch (gen_bd211), or its -1 written in place.
+- Hot labels on a `break`.
+- Tail forms on the near-miss base (gen_bd213, q3/q5 in build/bd/a10): 11 at best.
+
+### Not done
+
+- The A/B pass diff (goal 2): with the near-miss base at 109 loose with every loadBl hint off, it now beats A, so the premise ("A is closer in the arms") changed; not run.
+- Goal 3 (exp_verbose with pin_e, exp_t24, lab_badsize): no new idea.
+
+### What to try next
+
+- The near miss's size log: its -1 has to end up in a block that's wholly matched and lower in index than the others, or in one GIMPLE block with the smc -1 that holds a statement until expand. The reference's -1 block (33d4) has the smc test, the size log (30a4 jmp) and the sigfail copy (37d0 jbe) as predecessors, so the original kept one block somehow.
+- The near miss's SE copy: anything that raises the `xb.type <= 5` probability on the CG/SE checkBl path without a label; check REG_BR_PROB in `bdbbro.sh` (build/bd/bbro_loadBlFiles.txt) on the compares with `xb+8` and 5.
