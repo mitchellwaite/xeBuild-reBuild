@@ -149,60 +149,81 @@ void getImageLdv(void)
 		xb.cfLdv = ldv;
 }
 
+static void loadSmc(int addr, int size)
+{
+	xb.smc.data = malloc(size);
+	if (xb.smc.data) {
+		xb.smc.size = size;
+		memcpy(xb.smc.data, xb.dump + addr, size);
+		log_printf(1, "decrypting SMC at address 0x%x of size 0x%x\n", addr, size);
+		if (unscramble(xb.smc.data, xb.smc.size)) {
+			log_printf(1, "SMC decrypted OK, will use if no external smc.bin is provided\n");
+			setSmcKey(xb.smc.data);
+		} else {
+			log_printf(1, "SMC did not decrypt, discarding it\n");
+			free(xb.smc.data);
+			xb.smc.data = 0;
+			xb.smc.size = 0;
+		}
+	} else
+		log_printf(1, "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n", size);
+}
+
+/* One optimize attribute and the else arm's pin are the hints left.  What stands
+   for the rest, all ordinary statements (probabilities from profile_estimate):
+   - ok: `ok <= 0` is opcode positive 73 against call 29, so P(zero) 13: the zero
+     log is colder than the size-ok join, which bb-reorder's trace order needs.
+     `ok &&` on the sane test is always true (dead, VRP folds it): the not-sane
+     block then has two predecessors, so no call heuristic on it.
+   - bad: `bad > 0` is positive 73 where `&&` alone has no predictor: P(size bad)
+     must be 53 or more for the 3000 arm to fall through.  VRP folds `> 0` to
+     `!= 0`, so it costs no code.
+   - o: P(0x800) 27, not 28: the 3800 arm's frequency stays under 2000 (1971),
+     which is what aligns loadSmc's block (branch > 4 * fallthru).
+   - t, nested on an unsigned copy: both opcode predictions survive and ifcombine
+     still merges the two tests. */
 __attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-merge"))) void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
+	int ok = addr != 0;
+	unsigned t;
+	int bad, o;
 
-	if (!addr) {
+	if (ok <= 0) {
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 		addr = 0x1000;
-	} else {
-		vhot: __attribute__((hot));
+		ok = 1;
 	}
-	if (addr != 0x800 && addr != 0x1000)
-		goto bad;
-bback:
-	if (size != 0x3000 && size != 0x3800) {
-		shot: __attribute__((hot));
-		if (addr == 0x800) {
+	t = addr;
+	if (t != 0x1000) {
+		if (t != 0x800)
+			goto badAddr;
+	}
+fixSize:
+	bad = size != 0x3000 && size != 0x3800;
+	if (bad > 0) {
+		o = addr != 0x800;
+		if (o <= 0) {
 			size = 0x3800;
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
 		} else {
 			size = 0x3000;
-			if (!h)
-				__builtin_unreachable();
 			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3000\n", size);
 		}
-	} else
-		__asm__("" : "+D"(addr));
-	if (__builtin_expect(addr < 528 * xb.dumpPages, 0)) {
-		xb.smc.data = malloc(size);
-		if (xb.smc.data) {
-			xb.smc.size = size;
-			memcpy(xb.smc.data, xb.dump + addr, size);
-			log_printf(1, "decrypting SMC at address 0x%x of size 0x%x\n", addr, size);
-			if (unscramble(xb.smc.data, xb.smc.size)) {
-				log_printf(1, "SMC decrypted OK, will use if no external smc.bin is provided\n");
-				setSmcKey(xb.smc.data);
-			} else {
-				log_printf(1, "SMC did not decrypt, discarding it\n");
-				free(xb.smc.data);
-				xb.smc.data = 0;
-				xb.smc.size = 0;
-			}
-		} else
-			log_printf(1, "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n", size);
 	} else {
-		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
+		__asm__("" : "+D"(addr));
 	}
+	if (ok && addr < 528 * xb.dumpPages)
+		loadSmc(addr, size);
+	else
+		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	return;
-bad:
-	bhot: __attribute__((hot));
+badAddr:
 	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 	addr = 0x1000;
-	goto bback;
+	goto fixSize;
 }
 
 void getImageKv(void)
@@ -914,7 +935,7 @@ unsigned long parseDump(uint8_t *raw)
 {
 	int ppb = xb.dumpBigBlock ? 256 : 32;
 	int blocks = xb.dumpPages / ppb;
-	int blk, dst, p;
+	int blk, dst, p, used;
 	uint32_t i;
 	uint8_t *src;
 
@@ -928,14 +949,13 @@ unsigned long parseDump(uint8_t *raw)
 	for (blk = 0; blk < blocks; blk++) {
 		src = raw + blk * 528 * ppb;
 		dst = checkBlock(src, blk, blocks);
-		/* blk >= 0 is always true (a dead test, VRP folds it).  It's here for its
-		   prediction: P(-2) a bit under 28% at the rebuild after inlining moves
-		   the entry frequency from 60 to 56, under the 10 x the summary's tail
-		   that lets bb-reorder copy the epilogue to it */
-		if (dst == -2) {
-			if (blk >= 0)
-				continue;
-		}
+		/* `<= 0` rather than a plain test: opcode positive gives P(used) 73 where
+		   == -2 has 72, which moves the entry frequency (after inlining's rebuild)
+		   from 60 to 59, under 10 x the summary's tail, so that bb-reorder copies
+		   the epilogue to it.  VRP folds it to != 0 afterwards */
+		used = dst != -2;
+		if (used <= 0)
+			continue;
 		if (dst == -1) {
 			log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
 			if (!addRemap(blk, dst, blocks))

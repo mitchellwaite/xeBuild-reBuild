@@ -77,10 +77,10 @@ keeps one dead `key == NULL` test that also isn't counted, because the author ma
 well have written a check like it; a comment on the test explains it.
 
 <details>
-<summary><b>1. image_read</b>: 14 tricks, hard</summary>
+<summary><b>1. image_read</b>: 9 tricks, hard</summary>
 
 - 5 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
-- 1 `__builtin_expect`, 4 hot labels, 1 `__builtin_unreachable` and 1 dead test
+- 1 hot label and 1 dead test
 - 1 `optimize` attribute (`no-if-conversion` and related), on `getImageSmc`
 - 1 literal-order `asm`
 
