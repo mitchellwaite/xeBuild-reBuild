@@ -3,6 +3,27 @@
 Goal: `build/ir/reference.o` (copy of a matching build/obj/image_read.o) byte-identical
 from plain `-O3`, with fewer hints.  31 tricks at the start of attempt 1.
 
+## State after attempt 21
+
+1 trick left, `excess`, judged stuck (attempts 20 and 21): retry only with a new idea. Flagged
+for the user's review, as landed in `src/image_read.c`, each with a comment there:
+
+| Function | Shape | Why it's borderline |
+|---|---|---|
+| getImageSmc | `int excess = (size & ~0x800u) - 0x3000; addr += excess;` | Always 0; counted as dead code. It replaces the pin |
+| getImageSmc | Gotos: the bad-address log before the 3000 arm, `sizeOk` last | Odd text order; it replaces the optimize attribute |
+| getImageSmc | `ok <= 0`, `bad <= 0`, `o > 0`, `out <= 0` on 0-or-1 flags | Only set predictions; VRP folds them |
+| getImageSmc | `addr != lim`, then `addr >= lim` | One compare split in two, live; it replaces a dead test |
+| findAnchor | `newer > 0` on a 0-or-1 flag | Only sets a prediction |
+| findAnchor | `goto invalid1` and back with `goto check` | A backward goto for one log; it sets string order |
+| parseDump | `used <= 0` on a 0-or-1 flag | Only sets a frequency |
+| parseDump | `(int)xb.bootFlags`, and `uint32_t i` printed with %d | Types chosen for SSA names; bootFlags may really be int |
+| addRemap | `uint32_t d = dest;` used for the store | Only sets a compare's operand order |
+| loadFlashFile | Recomputes `off` before the last copy | Redundant; it keeps the function from inlining (replaces noinline) |
+| scanMobiles | `del`, then `low = len - del` | `low` equals `len` where tested; it replaces an expect |
+| copyMmcImage | `ret` set, then tested | Redundant flag, like myatou32's `hex`; it replaces a hot label and attribute |
+| checkHeader | `count` read between two tests | Position steers ifcombine; it replaces a barrier |
+
 ## Attempt 1
 
 Tools (tools/wip/dehint/): `irlib.py <file.c> [-v [fn]]` (IDENTICAL or per-function lines),
@@ -563,3 +584,21 @@ Tools: ir17lib now finds the comment above getImageSmc itself; gen_ir250, gen_ir
 
 No gain: 1 trick stands.  `drafts/image_read_attempt20.c` IDENTICAL, irlib checked: same `excess`, layout `l_early` only (optional, count unchanged).  Judged stuck on this mechanism.  A real end needs a different mechanism: conversion in E with no statement at all (S unsplit at PRE, or no leader edge optimized for speed), which attempts 15, 17, 18 and 19 found no natural way to.
 Don't retry: more spellings of E's statement (gen_ir250-253); clamps or masks that need addr's range (above); `size` without the unsigned mask (no range in vrp2, or folds at vrp1).
+
+## Attempt 21
+
+Tools: gen_ir254 (whole-function, no flags: Z addr fix x S size fix x C sane test x T types; `python gen_ir254.py <name>` gives the diff), gen_ir255 (the same under a measuring flag), gen_ir256 (fallback spellings on the current layout), gen_ir257 (getImageKv's form: load inline, `ok` flag, addr and size through helpers), gen_ir258 (unsplit S plus a 3800 kill).  Loose lines throughout.
+- gen_ir254, 512 forms, nothing steering: 66 at best (`nestu.sw.lt.ii`, two-case switch), 70 with the `&&` size test (`nestu.and.lt.ii`).  Reading that diff: about 45 of the 70 are the prologue (no E block, attempt 15's finding), the rest are the known ones: `mov edi,ebx`, hoisted moves, `cmp eax,ebx`, inner epilogues, E.
+- getImageKv against getImageSmc: same skeleton, but Kv's bound test is `addr + size < lim`, a sum, and only addr's zero test sits in front of the size test.  So Kv has no constant-and-conversion PHI at a size-ok block and is no model for E.  Kv has no second addr name; its second name is size's (`lea ebx; mov esi,ebx`).
+- gen_ir257, Kv's form literally (96): inline load is no better than the helper; `ok` flag same object as without it; helpers filling addr and size by pointer or return: same score as locals, 70 at best.  Inlined early, so nothing is opaque at PRE.
+- Linux (ir64 416c10): both zero and bad go to ONE log there, and `mov ebx,r12d` is in E on both paths, the 3000 arm with two constant moves: the same asymmetry from a `||` source under gcc 4.9, so it isn't down to two logs or to 6.2.
+- gen_ir256, (b): one shared assignment (`goto fallback` from the zero arm, written in the bad arm or its own block): worse, 77 or 114 with E empty, 64 or 124 with `excess` (never IDENTICAL).  Const local and `static const` for 0x1000: same objects as the literal (59 with E empty, IDENTICAL with `excess`), folded before PRE.  No-op statements in E (`unsigned ta = addr; addr = ta;` etc.) are gone before they count: same as empty.
+- gen_ir258, attempt 18's untested idea, measured on gen_ir226's hidden test: `addr = 0x800` in the 3800 arm with S unsplit: same 14 loose as without it (`==` form) or 22 (`!=` form), and E still has no `mov ebx,edi`.  So that lead is closed.
+- Flags as measurement on gen_ir254's forms: -fno-tree-pre 88 at best with .rdata off, -fno-tree-partial-pre 58, -fno-tree-vrp 71, -fno-tree-tail-merge 62.  No single pass off brings a plain form near; PRE isn't the only thing between them.
+- Reasoning, not measured: PRE from memory only (the official gitweb returned 429 on tree-ssa-pre.c, nothing read at the tag).  The ways I can list for a conversion to survive under a constant-edge PHI: an undefined PHI arg (cant_insert), every leader edge not optimized for speed (needs freq * 1000 < entry, or a function marked executed-once, which needs it to be local; getImageSmc is public), or a block with abnormal preds.  None fits natural code here.  A loop surviving to cunroll would hide a test until after PRE (cunrolli only takes top-level loops with no growth, as I remember it), but gen_ir258 says unsplit S doesn't give E's conversion anyway, so not tried.
+
+### State at the end of attempt 21
+
+No gain, no new draft: 1 trick stands, src/image_read.c's `excess`.  Judged stuck: every family in the brief is covered, and the two ways to E's conversion with no statement (S unsplit, a non-constant fallback) both came to nothing.  Whatever the author wrote that keeps it isn't something these attempts have found; if it was a statement, it compiled to no code.
+Don't retry: shared fallback forms (gen_ir256); const local or static for 0x1000 (gen_ir256); Kv's literal form, inline load, helpers for the header reads (gen_ir254, 257); the 3800 kill with S unsplit (gen_ir258).
+Only with a new idea: read do_regular_insertion at the tag when gitweb answers, to check the list above.

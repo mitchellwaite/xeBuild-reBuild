@@ -983,6 +983,8 @@ unsigned long parseDump(uint8_t *raw)
 	int ppb = xb.dumpBigBlock ? 256 : 32;
 	int blocks = xb.dumpPages / ppb;
 	int blk, dst, p, used;
+	/* the summary loop's counter, unsigned though printed with %d: as int, one more
+	   name is popped at ch2 and blk's new name swaps its compares */
 	uint32_t i;
 	uint8_t *src;
 
