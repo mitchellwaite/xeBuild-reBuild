@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 9
+
+Attempt 9 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It read loadBl's structure off the reference and the Linux build and measured three hint-free whole-function reconstructions: see "## Attempt 9" at the end. The best one is saved as drafts/build_loadBl_loop_reconstruction.patch (128 loose lines in loadBlFiles, no hints).
+
 ## State after attempt 8
 
 Attempt 8 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It did pin down why isUpdateBl needs its expect: see "## Attempt 8" at the end.
@@ -574,3 +578,49 @@ Read from reassoc1 (`bddump.sh file.c addUpdateBls t-reassoc1`) on `23, 15, ..` 
 - exp_upd only falls if something lowers the `(23|15)` edge in isUpdateBl's own profile, or if isUpdateBl is early inlined into addUpdateBls with the loop's predictors and 23's compare still reused. Neither looked natural here; treat it as parked.
 - loadBl's group (2 constant_p, t5le, exp_pr, exp_t10, badsize, vol_fail, pin_d, `else if (type)`: 9 of the 20) is still where most of the count is, and attempt 6's leads stand. Note that `if (*pr) goto fail;` in the `xb.type <= 5` tail does nothing to behaviour (*pr is 0 or already -1 there): it's only there for the shared -1 block. A natural form of the tail without it would have to give the same block in another way.
 - The scan bounds, exp_verbose with pin_e, exp_t24 and lab_badsize had no new idea this attempt.
+
+## Attempt 9
+
+No match; src is unchanged. Goal was loadBl from a fresh question about structure. Generators gen_bd200 to gen_bd205 build from src/build.c as of f302f7d (gen_bd200's text replaces loadBl and loadBlFiles whole, so it reruns as long as those two keep their first and last lines). New tools: `bdanchors.py file.c fn` (block order of fn against the reference, read off calls, .rdata offsets and rets; a moved block shows as a -/+ pair) and `bdrdata.py file.c` (which .rdata strings moved). Best whole-function reconstruction: drafts/build_loadBl_loop_reconstruction.patch (apply with `git apply -p0`).
+
+### What the reference and the Linux build say about the structure
+
+Read from the reference's loadBlFiles (objdump, IDA's build/decomp_22.txt) and tmp/xeBuild64's (build/x64.dis, the function at 405280; strings found by address):
+- **The arms only set r, and r is tested once after the switch.** Both builds keep r in one register (edi, ecx), every load result goes through it, and every failure reaches one `could not read` log. In Linux the test is literally after the switch (405355 `test ecx,ecx`), as loadConsoleBlFiles has it.
+- **One shared `r = -1` site for the SMC, patch-size and signature failures**, in both builds: Windows 33d4 (`mov edi,-1` falling into the log), Linux 4059e2. loadConsoleBlFiles, written with plain `r = -1;` per arm and matching, has a separate `mov edx,-1; jmp` after each failure in the reference. So the original loadBl really had one -1 site (src's `goto fail`), not `r = -1` per arm; the asm barrier's job (keeping that block) is real, only its means is a hint.
+- **After a signature failure the code still reaches the tail:** `xb.type <= 5` goes to the shared -1, otherwise `type == 14` is tested and setFlashBuild can run (with `xb.files[i].data`, frequency 0) before the log. In Linux both outcomes do the same, so the tail isn't guarded by r. That matches `if (xb.type > BUILD_DEVGL16 && type == 14)` or src's tail; nothing tells them apart.
+- CF success and the load-success type-9 path share the SE test; CG has its own checkBl(10). The type-11 test is a copy only in the Windows build (gcc 6 threading); Linux sends 17, 5 and 11 to one pub1bl block.
+- .rdata order is not source order: the strings run sig block, 1, 22, 25, 27, reading.., 3, 23, 4, default, log. It's the bb chain order at expand, after threading; every reconstruction below kept it (`bdrdata.py`: 0 strings moved), and the `.rdata differs` they report is the jump table.
+
+### Three reconstructions, no hints at all (loose lines in loadBlFiles)
+
+| | Shape | Best | Generator |
+|---|---|---|---|
+| A | The switch written in loadBlFiles' loop, r a local, `r = -1` where it fails (as loadConsoleBlFiles and the Linux build) | **128** (con2 fallback, `!xb.pub1bl` signature form, 5,17,11, int r) | gen_bd200 (288 cases) |
+| B | src's `static void loadBl(e, i, &r)` with every loadBl hint off | 183 | gen_bd201 |
+| B2 | A's arms in `loadBl(e, i, &r)`, through `*pr` or a local stored at the end | 225 and up | gen_bd204 (144) |
+| C | A's switch in `static int loadBl(e, i)`, r returned | 225 and up | gen_bd202 (72) |
+
+For comparison, src with its 9 loadBl hints is 0, and attempt 5's near miss (6 of them off) is 32. In A: the fallback form `con2` (`if (r) {9: CF; else 10: CG}` then `if (r) break;`) beats console's `if (!r) {...}` and the `&&` forms; signature `!xb.pub1bl` first beats the Linux string order's form by 50 (attempt 6's PHI-order rule doesn't carry over to the loop); tail form, guard form and case 23's form make no difference; int r beats uint32_t by 17.
+
+What A gets wrong (`bdanchors.py`): only two blocks move (case 2's smc fallback, case 27's config.bin chain), the type-11 copy is missing, and the rest is attempt 1 to 6's known small things (the d registers, a 0x60 copy's `mov edi,eax`, the -1 placements, `jbe`/`ja`).
+
+### Mechanisms
+
+- **The none test's probability is why loadBl is a helper.** In src the guarded block is the call `loadBl(e, i, &r)` at profile_estimate (the helper has calls, so it isn't early inlined), so PRED_CALL gives `strnicmp != 0` 29%: switch 6160, each case arm 513. With the switch written in the loop (A), the guarded block holds no call: 50%, switch 7163, arms 597, and that is what moves cases 2 and 27. loadConsoleBlFiles gets 50% too, and matches, so the two loops were not written alike. A call at the head of A's guarded block (`GetTickCount()` as a probe) doesn't rescue A (170): the arms differ in more than frequency.
+- **A helper that returns r (C) puts return predictors on its arms:** the -1 and 1 PHI arguments of `return r` get the negative and const return predictions, so failure paths go cold and appendAddonPatches, checkBl and the signature log move to the front. src's `*pr` stores get no such prediction, so the original's r went through a pointer (or memory), as src has it.
+- **Why src keeps a `fail:` block only with the barrier** (from memory of tree-cfgcleanup.c's remove_forwarder_block and cfgcleanup.c's try_crossjump_to_edge, not checked against the 6.2.0 source): an empty `fail` forwarder survives tree cfg cleanup only while one of its predecessors also reaches its successor directly (the smc test does, before threading); after the caller's `if (r)` is threaded it can go, and then the patch-size log's -1 is appended to the log block, which crossjump can only share if that block (the lower index) is wholly matched. That is attempt 4's observation, now with the reason.
+- The scan loops: the found test in the loop condition (`for (..; i + N <= size && (found = ..) != 1; ..);`), `while` forms and a separate `found = ..; if (found == 1) break;` all compile to the same code as src's form, with or without the expects (gen_bd205, 200 cases). `if (found != 1)` for the second loop costs 80.
+
+### Don't retry
+
+- The loop form (A) with hints added back: d pin 14 lines, type-10 expect 2, badsize label worse, a `fail:` label inside the switch (with or without the barrier) 64 to 85 worse (gen_bd203).
+- A helper returning r, with any call form or the none test inside it (gen_bd202).
+- A's arms moved into the `*pr` helper (gen_bd204).
+- Scan loop forms with found in the condition (gen_bd205).
+
+### What to try next
+
+- loadBl: B is right at the loop level and A is closer in the arms. The arm in the helper has to keep A's threading, which happens after inlining in A and partly before it in B. Compare A and B's vrp1 and dom2 dumps on the 5..21 arm (`bdpasses.py`), rather than sweeping B's spellings again; the first pass where they part is the lead.
+- The shared -1 needs a block that survives until expand. The cfgcleanup reading above says one way: a `fail` whose every predecessor keeps a second edge to the same successor. Not tried.
+- The scan bounds, exp_verbose with pin_e, exp_t24, lab_badsize: no new idea beyond the loop forms above.
