@@ -804,16 +804,32 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 	return ok;
 }
 
-static void cb_hint(int *p)
+/* the cpu fan setting; returns 1 if it changed the config.
+   Borderline, for review: the caller tests xb.cpuFan != 0xffffffff too.  This
+   test is folded once this is inlined, and the blocks behind it keep the lower
+   frequency, which puts the section's blocks where the original has them (it
+   replaces no-early-inlining on patchSmcConfig and 4 hint calls). */
+static int patchCpuFan(uint8_t *smc)
 {
-	*p = 1;
+	if (xb.cpuFan != 0xffffffff) {
+		if (iniRangeOk("cpufan", xb.cpuFan, 40, 100)) {
+			smc[0x11] = xb.cpuFan | 0x80;
+			return 1;
+		}
+		if (xb.cpuFan)
+			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.cpuFan);
+		else if (smc[0x11] != 0x7f) {
+			smc[0x11] = 0x7f;
+			return 1;
+		}
+	}
+	return 0;
 }
 
-__attribute__((optimize("no-early-inlining")))
 uint32_t patchSmcConfig(uint8_t *smc)
 {
 	uint32_t patched = 0;
-	int i, dead;
+	int i;
 
 	log_printf(1, "Checking for smc config data patches\n");
 	if (iniRangeOk("cputemp", xb.cpuTemp, 40, 120)) {
@@ -841,27 +857,16 @@ uint32_t patchSmcConfig(uint8_t *smc)
 		patched = 1;
 	}
 	if (xb.cpuFan != 0xffffffff) {
-		if (iniRangeOk("cpufan", xb.cpuFan, 40, 100)) {
-			cb_hint(&dead);
-			smc[0x11] = xb.cpuFan | 0x80;
+		if (patchCpuFan(smc))
 			patched = 1;
-		} else if (xb.cpuFan)
-			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.cpuFan);
-		else if (smc[0x11] != 0x7f) {
-			cb_hint(&dead);
-			smc[0x11] = 0x7f;
-			patched = 1;
-		}
 	}
 	if (xb.gpuFan != 0xffffffff) {
 		if (iniRangeOk("gpufan", xb.gpuFan, 40, 100)) {
-			cb_hint(&dead);
 			smc[0x12] = xb.gpuFan | 0x80;
 			patched = 1;
 		} else if (xb.gpuFan)
 			goto gpuwarn;
 		else {
-			cb_hint(&dead);
 			smc[0x12] = 0x7f;
 		}
 	}
@@ -904,25 +909,13 @@ gpuwarn:
 	goto gpudone;
 }
 
-int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
+/* scan for the config, in plain and in ecc layout.  Hints: the bound expects make
+   found the rotated exit; the pin puts next/buf in esi/edi. */
+static int findSmcConfig(uint8_t *buf, int size, uint32_t *pos)
 {
-	uint32_t i, j;
-	int found;
+	uint32_t i;
+	int found = 0;
 
-	/* hints: the bound expects make found the rotated exit; the pin puts next/buf
-	   in esi/edi; two hot labels on notfound keep the patched block under
-	   bb-reorder's duplication threshold.  size is an int on purpose: its
-	   conversion in the bound tests gives next <= size in both loops. */
-	if (e->data)
-		free(e->data);
-	e->size = 0x400;
-	e->data = malloc(0x400);
-	if (!e->data)
-		return -2;
-	log_printf(1, "-------------------\n");
-	log_printf(1, "checking smc_config\n");
-	log_printf(1, "-------------------\n");
-	found = 0;
 	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
 		__asm__("" : : "S"(i + 0x200), "D"(buf));
 		if ((found = smcConfigOk(buf + i)) == 1)
@@ -932,19 +925,40 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 		for (i = 0; __builtin_expect(i + 0x210 <= size, 1); i += 0x210)
 			if ((found = smcConfigOk(buf + i)) == 1)
 				break;
-		if (!found)
-			goto notfound;
 	}
+	*pos = i;
+	return found;
+}
+
+/* a whole smc config */
+struct smcConfigData {
+	uint8_t b[0x400];
+};
+
+int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
+{
+	uint32_t i, j;
+	int found;
+
+	/* size is an int on purpose: its conversion in findSmcConfig's bound tests
+	   gives next <= size in both loops.  The struct copy matters too: memcpy
+	   there allocates the copy's registers differently (18 lines). */
+	if (e->data)
+		free(e->data);
+	e->size = 0x400;
+	e->data = malloc(0x400);
+	if (!e->data)
+		return -2;
+	log_printf(1, "-------------------\n");
+	log_printf(1, "checking smc_config\n");
+	log_printf(1, "-------------------\n");
+	found = findSmcConfig(buf, size, &i);
+	if (!found)
+		goto notfound;
 	if (checkZeros(buf + i + 0x20c, 4)) {
 		log_printf(1, "extracting config\n");
-		if (__builtin_expect(size - i >= 0x400, 1)) {
-			uint8_t *src = buf + i;
-
-			/* buf live past src: no IRA copy buf-src, so the raw
-			   loop's eax doesn't push dst out of eax (tools/wip/README) */
-			__asm__("" : "+r"(src) : "r"(buf));
-			memcpy(e->data, src, 0x400);
-		}
+		if (size - i >= 0x400)
+			*(struct smcConfigData *)e->data = *(const struct smcConfigData *)(buf + i);
 	} else if (size - i >= 0x4200) {
 		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)
@@ -967,8 +981,7 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 		log_printf(1, "---------------------\n");
 	}
 	return 0;
-notfound: __attribute__((hot));
-notfound2: __attribute__((hot));
+notfound:
 	log_printf(0, "******* ERROR: unable to find SMC config data!\n");
 	return 2;
 }
@@ -982,29 +995,43 @@ void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
 		xb.kernel = k;
 }
 
+/* Borderline, for review: an out parameter where a return would do.  A call with
+   a side effect on checkBl's normal edge makes that edge less likely when branches
+   are predicted (no-early-inlining); a getter is pure and does nothing.  It
+   replaces a hint call. */
+static void blMagic(const uint8_t *bl, int *m)
+{
+	*m = bl[0];
+}
+
+static int crcSame(uint32_t c, uint32_t crc)
+{
+	return c == crc;
+}
+
 __attribute__((optimize("no-early-inlining")))
 int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 {
 	uint32_t blsize, c;
-	int m, dead;
+	int m;
 
-	/* hints (none emit code): the original copies the epilogue into the
-	   size-error block, which needs that edge >= 10% of entry, and not into
-	   the crc failure one, which needs it below. The hot label and cb_hint
-	   (on the other edge) take the size error from 1.7% to 19%, the crc
-	   expects (build.sh's probability 98) keep `bad` under 10%, and the "D"
-	   pin loads type before the first call as the original does. The
-	   SC/SD `crc == -1` expects send more frequency to `bad` by branch
-	   (crc32 path), so it is aligned as a loop head like the original
-	   (.p2align 4,,10: branch freq > 4 x the B case's fallthru). */
+	/* the original copies the epilogue into the size-error block, which needs
+	   that edge >= 10% of entry, and not into the crc failure one, which needs
+	   it below. Hints (none emit code): the hot label takes the size error
+	   from 1.7% to 19%, with blMagic below, and the "D" pin loads type before
+	   the first call as the original does.
+	   Borderline, for review: the failure log is written in each arm, with
+	   crcSame for the test, not `goto bad`.  Under no-early-inlining crcSame
+	   is still a call when branches are predicted, so the test gets no
+	   not-equal prediction, and the arms are unlikely; crossjump then merges
+	   them into `bad` at 979 (it replaces 7 expects). */
 	__asm__("" : : "D"(type));
 	blsize = getBeU32(bl + 12);
 	/* Borderline, for review: the size error sits after the crc error only
 	   for the text and .rdata order; it replaces a literal-order asm */
 	if (blsize > size)
 		goto toobig;
-	cb_hint(&dead);
-	m = bl[0];
+	blMagic(bl, &m);
 	__asm__("" :: "a"(m));
 	if ((m & 0x43) != 0x43)
 		goto magic;
@@ -1017,8 +1044,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x30);
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		break;
 	case 7:
 	case 18:
@@ -1026,8 +1055,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		break;
 	case 8:
 	case 19:
@@ -1035,8 +1066,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
 		break;
 	case 9:
@@ -1046,8 +1079,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 			goto magic;
 		memset(bl + 0x20, 0, 0x210);
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
 		break;
 	case 10:
@@ -1057,8 +1092,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 			goto magic;
 		memset(bl + 0x10, 0, 0x10);
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		break;
 	case 12:
 		if (bl[1] != 'C')
@@ -1067,8 +1104,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		break;
 	case 13:
 		if (bl[1] != 'D')
@@ -1077,8 +1116,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (__builtin_expect(crc != c, 0))
-			goto bad;
+		if (!crcSame(c, crc)) {
+			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+			return -2;
+		}
 		break;
 	case 14:
 		if (bl[1] != 'E')
@@ -1089,7 +1130,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		if (crc == 0xffffffff)
 			break;
 		c = crc32(bl, blsize);
-		if (crc != c)
+		if (!crcSame(c, crc))
 			goto bad;
 		break;
 	default:
