@@ -77,10 +77,10 @@ keeps one dead `key == NULL` test that also isn't counted, because the author ma
 well have written a check like it; a comment on the test explains it.
 
 <details>
-<summary><b>1. image_read</b>: 3 tricks, hard</summary>
+<summary><b>1. image_read</b>: 2 tricks, hard</summary>
 
-- 1 register pin, 1 dead test and 1 `optimize` attribute (`no-if-conversion` and
-  related), all on `getImageSmc`
+- 1 register pin and 1 `optimize` attribute (`no-if-conversion` and related), both
+  on `getImageSmc`
 
 Every other function is free of hints. `getImageSmc` is the one left, and its pin
 and attribute each do more than one job. `tools/wip/dehint/notes/image_read.md` has

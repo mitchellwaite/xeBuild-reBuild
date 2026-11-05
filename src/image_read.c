@@ -173,8 +173,14 @@ static void loadSmc(int addr, int size)
    for the rest, all ordinary statements (probabilities from profile_estimate):
    - ok: `ok <= 0` is opcode positive 73 against call 29, so P(zero) 13: the zero
      log is colder than the size-ok join, which bb-reorder's trace order needs.
-     `ok &&` on the sane test is always true (dead, VRP folds it): the not-sane
-     block then has two predecessors, so no call heuristic on it.
+   - in the bound check, `addr != lim` then `addr >= lim` is the one compare
+     `addr < lim` by ifcombine (redundant but live, both can fail).  It gives the
+     not-sane block two predecessors, so no call heuristic on it; out's `<= 0` is
+     opcode positive, which brings P(not sane) into the 78-90 needed for the
+     inner arms' epilogues.
+   - wrong: only here for the free SSA names (it stays until ccp3, so one more name
+     is on the stack at PRE), which puts the converted addr first in the bound
+     compare; `> 0` costs no code.
    - bad: `bad > 0` is positive 73 where `&&` alone has no predictor: P(size bad)
      must be 53 or more for the 3000 arm to fall through.  VRP folds `> 0` to
      `!= 0`, so it costs no code.
@@ -188,17 +194,17 @@ __attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-m
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
 	int ok = addr != 0;
-	unsigned t;
-	int bad, o;
+	unsigned t, lim;
+	int wrong, bad, o, out;
 
 	if (ok <= 0) {
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
 		addr = 0x1000;
-		ok = 1;
 	}
 	t = addr;
 	if (t != 0x1000) {
-		if (t != 0x800)
+		wrong = t != 0x800;
+		if (wrong > 0)
 			goto badAddr;
 	}
 fixSize:
@@ -215,10 +221,15 @@ fixSize:
 	} else {
 		__asm__("" : "+D"(addr));
 	}
-	if (ok && addr < 528 * xb.dumpPages)
-		loadSmc(addr, size);
-	else
-		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
+	lim = 528 * xb.dumpPages;
+	if ((unsigned)addr != lim) {
+		out = (unsigned)addr >= lim;
+		if (out <= 0) {
+			loadSmc(addr, size);
+			return;
+		}
+	}
+	log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	return;
 badAddr:
 	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
