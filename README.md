@@ -77,14 +77,13 @@ keeps one dead `key == NULL` test that also isn't counted, because the author ma
 well have written a check like it; a comment on the test explains it.
 
 <details>
-<summary><b>1. image_read</b>: 2 tricks, hard</summary>
+<summary><b>1. image_read</b>: 1 trick, hard</summary>
 
-- 1 register pin and 1 `optimize` attribute (`no-if-conversion` and related), both
-  on `getImageSmc`
+- 1 piece of dead code: `getImageSmc` adds an `excess` to `addr` that is always 0,
+  which keeps `addr`'s conversion in the block PRE would otherwise move it out of
 
-Every other function is free of hints. `getImageSmc` is the one left, and its pin
-and attribute each do more than one job. `tools/wip/dehint/notes/image_read.md` has
-the mechanisms and what's been tried.
+The file has no `asm`, attributes or builtins left, and it builds with plain `-O3`.
+`tools/wip/dehint/notes/image_read.md` has the mechanisms and what's been tried.
 
 </details>
 

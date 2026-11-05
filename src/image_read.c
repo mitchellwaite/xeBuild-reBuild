@@ -169,8 +169,7 @@ static void loadSmc(int addr, int size)
 		log_printf(1, "Wasn't able to alloc 0x%x bytes memory for SMC bin, not using...\n", size);
 }
 
-/* One optimize attribute and the else arm's pin are the hints left.  What stands
-   for the rest, all ordinary statements (probabilities from profile_estimate):
+/* What stands for hints, all ordinary statements (probabilities from profile_estimate):
    - ok: `ok <= 0` is opcode positive 73 against call 29, so P(zero) 13: the zero
      log is colder than the size-ok join, which bb-reorder's trace order needs.
    - in the bound check, `addr != lim` then `addr >= lim` is the one compare
@@ -178,24 +177,29 @@ static void loadSmc(int addr, int size)
      not-sane block two predecessors, so no call heuristic on it; out's `<= 0` is
      opcode positive, which brings P(not sane) into the 78-90 needed for the
      inner arms' epilogues.
-   - wrong: only here for the free SSA names (it stays until ccp3, so one more name
-     is on the stack at PRE), which puts the converted addr first in the bound
-     compare; `> 0` costs no code.
    - bad: `bad > 0` is positive 73 where `&&` alone has no predictor: P(size bad)
      must be 53 or more for the 3000 arm to fall through.  VRP folds `> 0` to
      `!= 0`, so it costs no code.
    - o: P(0x800) 27, not 28: the 3800 arm's frequency stays under 2000 (1971),
      which is what aligns loadSmc's block (branch > 4 * fallthru).
    - t, nested on an unsigned copy: both opcode predictions survive and ifcombine
-     still merges the two tests. */
-__attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-merge"))) void getImageSmc(void)
+     still merges the two tests.
+   - text order: the bad-address log sits right before the 3000 arm, so at ce3 the
+     size test after it falls through into the arm's two moves and if-conversion
+     has nothing it may hoist (a block that falls through isn't taken, and the
+     other one is the less likely).
+   - excess is always 0, size being 0x3000 or 0x3800 there.  It is there for PRE:
+     its second operand has no value on either incoming edge, so the sum stays in
+     this block with addr's PHI, and the conversion of addr for the bound check
+     stays here too; dom3 then folds the mask to its test's constant. */
+void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
 	int ok = addr != 0;
 	unsigned t, lim;
-	int wrong, bad, o, out;
+	int bad, o, out;
 
 	if (ok <= 0) {
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
@@ -203,24 +207,28 @@ __attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-m
 	}
 	t = addr;
 	if (t != 0x1000) {
-		wrong = t != 0x800;
-		if (wrong > 0)
+		if (t != 0x800)
 			goto badAddr;
 	}
 fixSize:
 	bad = size != 0x3000 && size != 0x3800;
 	if (bad > 0) {
 		o = addr != 0x800;
-		if (o <= 0) {
-			size = 0x3800;
-			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
-		} else {
-			size = 0x3000;
-			log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3000\n", size);
-		}
-	} else {
-		__asm__("" : "+D"(addr));
+		if (o > 0)
+			goto use3000;
+		size = 0x3800;
+		log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
+		goto check;
 	}
+	goto sizeOk;
+badAddr:
+	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+	addr = 0x1000;
+	goto fixSize;
+use3000:
+	size = 0x3000;
+	log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3000\n", size);
+check:
 	lim = 528 * xb.dumpPages;
 	if ((unsigned)addr != lim) {
 		out = (unsigned)addr >= lim;
@@ -231,10 +239,13 @@ fixSize:
 	}
 	log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	return;
-badAddr:
-	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-	addr = 0x1000;
-	goto fixSize;
+sizeOk:
+	{
+		int excess = (size & ~0x800u) - 0x3000;
+
+		addr += excess;
+	}
+	goto check;
 }
 
 void getImageKv(void)
