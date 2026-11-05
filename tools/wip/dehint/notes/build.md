@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 8
+
+Attempt 8 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It did pin down why isUpdateBl needs its expect: see "## Attempt 8" at the end.
+
 ## State after attempt 7
 
 **20 tricks:** `--param builtin-expect-probability=98`, 8 `__builtin_expect` (verbose, the two scan bounds, type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 4 pins (e, next/buf, d, size), the empty asm barrier, 3 hot and cold labels (t5le, badsize, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`). `no-early-inlining` is gone: see "## Attempt 7". The review table below stands, plus:
@@ -532,3 +536,41 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_i 22/22, pin_d 23/14, pin_e 26/26,
 - exp_upd: the `(23|x)` OR that stays a real OR is the right lead. Find why 15 joins the mask from `(23|15)` but 10 doesn't from `(23|10)`, reading reassoc1 (optimize_range_tests) on both, and look for an order where the OR survives until expand and x still ends up in the mask.
 - The same lever elsewhere: other small helpers the author is likely to have had, wherever a pin or hint comes down to SSA or partition order. image_read's and other objects' notes may have similar cases.
 - pin_size: anything that keeps this arm's size load out of PRE, or changes PRE's order so this arm gets new names.
+
+## Attempt 8
+
+No match; src is unchanged. Generators gen_bd190 to gen_bd196 run on src/build.c as of f302f7d. tree-ssa-reassoc.c was read from the official repo at releases/gcc-6.2.0 (into build/bd/a8, not kept in tools).
+
+### isUpdateBl: why only `(23|15)` works, and why it then needs the expect
+
+Read from reassoc1 (`bddump.sh file.c addUpdateBls t-reassoc1`) on `23, 15, ..` and `23, 10, ..` with no expect.
+
+- The front end pairs the chain into `(23|15) (16|9) (10|24) 25`, one block each. The first block dominates addUpdateBls' body, so **FRE reuses its compares for the body's own `type == X` tests** (`if (_105 != 0)` for `type == 23`). A compare with two uses stays in place: reassoc's inter-bb range test (maybe_optimize_range_tests) leaves it out of the merge. Compares in later blocks don't dominate the body and aren't reused.
+- 15 is the only update type the body never tests with `==`. So in `(23|15)`, 15 joins the bit test and 23 stays out, which is the reference's `cmp 23; je` and mask 0x3018600. gen_bd196 checks it: with the expect kept on `(23|X)`, X = 15 is IDENTICAL and 9, 10, 16, 24, 25 cost 127 to 280 lines.
+- But then the first block is `_105 | 0`, a single jump with isUpdateBl's own probability: early return only, 39% (the `_5 != 0` test on a bool gets no opcode heuristic, and isUpdateBl isn't early inlined, so its profile is what's inlined at IPA). rotate_loop needs that edge under 23.8%.
+- `23, 10, ..` gets the rotation right only because 10 is reused too, so the OR stays two jumps and expand halves the edge. That always leaves a `cmp 10` the reference doesn't have.
+- So the reference shape needs a first block `(23|15)` with less than 23.8%, and no form of isUpdateBl itself can give that: it has no calls, no loop, and only the early-return predictor reaches that edge (gen_bd181 covered its return forms). Perhaps the original really had a likely/unlikely there; this attempt found nothing natural that replaces it.
+- The test written in addUpdateBls' loop instead (a macro or copy, isUpdateBl plain; gen_bd190, 720 orders x `||`/`&&` forms): 54 loose at best, and 23 joins the mask in every form starting `23, 15` (212 and up). In the loop the test is negated (`continue` unless it's an update type), so the pairs are `type != 23 & type != 15` (cunrolli dump); the body's `type == 23` isn't the same expression, nothing is reused, and 23 merges.
+
+### Other sweeps, all no better than src
+
+- gen_bd191, the helper lever on pin_d: a natural `takeData(e, &xb.kv)` (and `takeFile`) for the nine "free, take over data and size, clear the source" moves in loadBl and loadConsoleBlFiles, by group, two statement orders, pin on or off. The pin still costs 14 loose in every form; with the pin on, loadBl's three netfile moves through the helper are 2 strict lines off, the console's cost 3 loose and move .rdata, the fileent moves 84 and up, the smcConfig moves 182 and up.
+- gen_bd192, exp_devgl: fuse as int, unsigned, BOOL, _Bool, uint8_t, char, uint32_t x `!= 0`, `!!`, `? 1 : 0`, plain. 7 loose at best (the same as src without the expect); the narrow types cost 12.
+- gen_bd193, `else if (type)`: plain else 54 loose; the failed arm going straight to `fail` (the same behaviour, as the tail would break with -1 or goto fail) 89; returning from it 50; positive polarity 61.
+- gen_bd194, lab_none: loadConsoleBlFiles' precheck as a plain early return (`if (nFiles <= 1) return 0;`, three spellings) 231 loose: the early-return predictor makes the guard hotter. The plain `for` with no precheck stays the best at 4 loose, 8 strict.
+- gen_bd195, pin_size: calcBlAreaSize's two round-ups through an `alignUp(v, a)` helper (two forms, with or without the `size & 0x3fff` guard). The helper is free (IDENTICAL with the pin) but the pin still costs 40 loose: those sites are after the arm, so they don't change PRE's names there. Dropping the guard costs 103.
+
+### Don't retry
+
+- exp_upd by any order, grouping, form of isUpdateBl's return, or the test written in the loop: the partner must be 15, and then the first block's 39% is fixed by isUpdateBl's own profile.
+- pin_d by a take-over-data helper (gen_bd191).
+- exp_devgl by fuse's type (gen_bd192).
+- `else if (type)` by sending the failed arm to `fail` or returning (gen_bd193).
+- lab_none by an explicit early return (gen_bd194).
+- pin_size by helpers after the arm (gen_bd195).
+
+### What to try next
+
+- exp_upd only falls if something lowers the `(23|15)` edge in isUpdateBl's own profile, or if isUpdateBl is early inlined into addUpdateBls with the loop's predictors and 23's compare still reused. Neither looked natural here; treat it as parked.
+- loadBl's group (2 constant_p, t5le, exp_pr, exp_t10, badsize, vol_fail, pin_d, `else if (type)`: 9 of the 20) is still where most of the count is, and attempt 6's leads stand. Note that `if (*pr) goto fail;` in the `xb.type <= 5` tail does nothing to behaviour (*pr is 0 or already -1 there): it's only there for the shared -1 block. A natural form of the tail without it would have to give the same block in another way.
+- The scan bounds, exp_verbose with pin_e, exp_t24 and lab_badsize had no new idea this attempt.
