@@ -328,7 +328,10 @@ r:
 	return 1;
 }
 
-static _Bool optE(const char *name, uint32_t set, uint32_t clear, int def)
+/* applyIniOptions' copy of optIniBool for cygnos, smcnoeject, nosecurity
+   and nandmu: the expect lowers their G blocks, which orders the G tie
+   groups (tools/wip/aio/p1/NOTES.md) */
+static _Bool optIniBoolG(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
 
@@ -361,104 +364,8 @@ r:
 	return 1;
 }
 
-static _Bool optC(const char *name, uint32_t set, uint32_t clear, int def)
-{
-	char *bad;
 
-	if (xb.bootFlags & set) {
-		if (__builtin_constant_p(xb.bootFlags + 1))
-			goto r;
-		return 0;
-	}
-	if (xb.bootFlagsOff & set) {
-		if (__builtin_constant_p(xb.bootFlagsOff + 1))
-			goto r;
-		return 0;
-	}
-	if (perboxExists(name)) {
-		log_printf(1, "Using %s option (perbox file)\n", name);
-	} else {
-		bad = iniBoolInvalid(name);
-		if (__builtin_expect(!bad, 0)) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
-			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
-		}
-	}
-r:
-	xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
-	return 1;
-}
 
-static _Bool optS(const char *name, uint32_t set, uint32_t clear, int def)
-{
-	char *bad;
-
-	if (xb.bootFlags & set) {
-		if (__builtin_constant_p(xb.bootFlags + 1))
-			goto r;
-		return 0;
-	}
-	if (xb.bootFlagsOff & set) {
-		if (__builtin_constant_p(xb.bootFlagsOff + 1))
-			goto r;
-		return 0;
-	}
-	if (perboxExists(name)) {
-		log_printf(1, "Using %s option (perbox file)\n", name);
-	} else {
-		bad = iniBoolInvalid(name);
-		if (__builtin_expect(!bad, 0)) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
-			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
-		}
-	}
-r:
-	xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
-	return 1;
-}
-
-static _Bool optU(const char *name, uint32_t set, uint32_t clear, int def)
-{
-	char *bad;
-
-	if (xb.bootFlags & set) {
-		if (__builtin_constant_p(xb.bootFlags + 1))
-			goto r;
-		return 0;
-	}
-	if (xb.bootFlagsOff & set) {
-		if (__builtin_constant_p(xb.bootFlagsOff + 1))
-			goto r;
-		return 0;
-	}
-	if (perboxExists(name)) {
-		log_printf(1, "Using %s option (perbox file)\n", name);
-	} else {
-		bad = iniBoolInvalid(name);
-		if (__builtin_expect(!bad, 0)) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
-			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
-		}
-	}
-r:
-	xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
-	return 1;
-}
 
 int optIniInt(const char *name, int def)
 {
@@ -472,6 +379,9 @@ int optIniInt(const char *name, int def)
 	return getIniU32(name, def);
 }
 
+/* applyIniOptions' copy of parseButton for xellbutton: the expect and the
+   dead feeds into z set its frequencies, and dx is a zero-byte dummy heap
+   entry (cold, reached by the asm goto; the dead feed gives it its key) */
 static int parseButtonX(const char *s)
 {
 	int b = 0;
@@ -485,7 +395,7 @@ z:
 		if (__builtin_expect(__builtin_constant_p(xb.xellButton + 5), 1)) goto dx;
 bx: ;
 	} else {
-		__asm__ goto ("" :::: dxc);
+		__asm__ goto ("" :::: dx);
 		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2)) goto z; if (__builtin_constant_p(xb.xellButton + 3)) goto z; }
 		if (!strnicmp(s, "remopower", 9))
 			b = 0x20;
@@ -497,10 +407,7 @@ bx: ;
 			b = parseButtonPart(s);
 	}
 	return b;
-dxc: __attribute__((cold));
-	goto dx;
-dx:
-	__asm__ volatile ("" :: "i"(3));
+dx: __attribute__((cold));
 	b = 0x11;
 	if (__builtin_constant_p(xb.xellButton + 6))
 		goto bx;
@@ -938,8 +845,8 @@ void applyIniOptions(void)
 	OPT("nomobile", 0x20000000, 0);
 	OPT("noremap", 0x40000000, 0);
 	if (!(xb.bootFlags & 0x80000000)) optN("noecdremap", 0x80000000, 0, 0);
-	if (!(xb.bootFlags & (0x10000000))) optU("nandmu", 0x10000000, 0, 0);
-	if (!(xb.bootFlags & (0x4000000))) optS("nosecurity", 0x4000000, 0, 0);
+	if (!(xb.bootFlags & (0x10000000))) optIniBoolG("nandmu", 0x10000000, 0, 0);
+	if (!(xb.bootFlags & (0x4000000))) optIniBoolG("nosecurity", 0x4000000, 0, 0);
 	OPT("nosusecurity", 0x1000000, 0);
 	OPT("smcnocheck", 0x200000, 0);
 	if (!xb.cfLdv) {
@@ -983,7 +890,7 @@ void applyIniOptions(void)
 					}
 				} else {
 					__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));
-					__asm__ goto ("" :::: dzc1);
+					__asm__ goto ("" :::: dz1);
 					log_printf(0, "***** WARNING: invalid characters in macid '");
 					showHexPairs(0, s);
 					log_printf(0, "' provided in ini file! Discarding!\n", s);
@@ -996,7 +903,7 @@ void applyIniOptions(void)
 		}
 	}
 	if (xb.type - BUILD_JTAG <= 3) {
-		if (!(xb.bootFlags & (1))) optC("cygnos", 1, 0, 0);
+		if (!(xb.bootFlags & (1))) optIniBoolG("cygnos", 1, 0, 0);
 		OPT("demon", 8, 0);
 		OPT("patchsmc", 0x8000000, 0);
 		if (!xb.xellButton && (xb.bootFlags & 4)) {
@@ -1013,7 +920,7 @@ void applyIniOptions(void)
 			if (!xb.xellButton)
 				log_printf(1, "alternate xell button is disabled\n");
 		}
-		if (!(xb.bootFlags & (0x400000))) optE("smcnoeject", 0x400000, 0, 0);
+		if (!(xb.bootFlags & (0x400000))) optIniBoolG("smcnoeject", 0x400000, 0, 0);
 		OPT("smcnoblink", 0x800000, 0);
 	}
 	/* outside the block above: VRP threads its range test past this one
@@ -1026,7 +933,7 @@ void applyIniOptions(void)
 			xb.dualButton = parseButton(getIniValue("dualboot"));
 			if (xb.xellButton == xb.dualButton) {
 				log_printf(1, "dualboot setting ignored!\n");
-				__asm__ goto ("" :::: dzc2);
+				__asm__ goto ("" :::: dz2);
 				xb.dualButton = 0;
 			}
 		}
@@ -1040,14 +947,18 @@ void applyIniOptions(void)
 		s = getIniValue("rev");
 		if (s) {
 			sprintf(xb.blSuffix, "_%s", s);
-			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 1), 0)) { if (__builtin_constant_p(xb.blSuffix[1] + 2)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 4), 1)) goto dz1; } }
-b1: ;
-			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_constant_p(xb.blSuffix[1] + 16)) { if (__builtin_constant_p(xb.blSuffix[1] + 17)) { if (__builtin_constant_p(xb.blSuffix[1] + 18)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 19), 1)) goto dz2; } } } }
-b2: ;
+			/* dead feeds that key the dummies dz1 and dz2 */
+			if (__builtin_constant_p(xb.blSuffix[1] + 1)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 2), 0)) goto dz1; }
+			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 16), 0)) goto dz2; }
 		}
 	}
-	if (0) { dzc1: ; goto dz1; dz1: __asm__ volatile ("" :: "i"(1));  __builtin_unreachable(); }
-	if (0) { dzc2: ; goto dz2; dz2: __asm__ volatile ("" :: "i"(4));  __builtin_unreachable(); }
+	return;
+	/* the dummy heap entries: zero-byte, reached only by the asm gotos and
+	   the dead feeds above */
+dz1:
+	__builtin_unreachable();
+dz2:
+	__builtin_unreachable();
 }
 
 int parseRawPatch(char *pat)

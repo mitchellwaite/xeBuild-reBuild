@@ -1,0 +1,81 @@
+diff --git a/src/options.c b/src/options.c
+index 692dccae..493e8c71 100644
+--- a/src/options.c
++++ b/src/options.c
+@@ -16,39 +16,6 @@
+ #include "log.h"
+ #include "options.h"
+ 
+-/* parseButton after its first four names: gcc's ipa-split part in the
+-   original.  Written out; cold, and in the original's .text.startup.  Global
+-   and first: gcc emits split parts (baseFileExists') first, then the
+-   functions in source order, which puts its FDE second as in the
+-   original.  regparm(1) is the convention gcc gave the static part */
+-__attribute__((cold, section(".text.startup"), regparm(1)))
+-int parseButtonPart(const char *s) __asm__("_parseButton.part.0");
+-__attribute__((regparm(1))) int parseButtonPart(const char *s)
+-{
+-	int b = 0;
+-
+-	if (!strnicmp(s, "wirelessx", 9))
+-		b = 0x55;
+-	else if (!strnicmp(s, "wiredx", 6)) {
+-		if (!strnicmp(s, "wiredxb1", 8))
+-			b = 0x59;
+-		else if (!strnicmp(s, "wiredxb2", 8))
+-			b = 0x58;
+-		else if (!strnicmp(s, "wiredxb3", 8))
+-			b = 0x5a;
+-		else if (!strnicmp(s, "wiredxf1", 8))
+-			b = 0x56;
+-		else if (!strnicmp(s, "wiredxf2", 8))
+-			b = 0x57;
+-		else
+-			b = 0x5a;
+-	} else if (!strnicmp(s, "eject", 5))
+-		b = 0x12;
+-	else if (!strnicmp(s, "kiosk", 5))
+-		b = 0x41;
+-	return b;
+-}
+-
+ int baseFileExists(const char *name)
+ {
+ 	char path[1024];
+@@ -430,8 +397,25 @@ int parseButton(const char *s)
+ 	   call was likely: 36 is hoisted above the je only then */
+ 	else if (__builtin_expect(!strnicmp(s, "winbutton", 9), 1))
+ 		b = 0x24;
+-	else
+-		b = parseButtonPart(s);
++	else if (!strnicmp(s, "wirelessx", 9))
++		b = 0x55;
++	else if (!strnicmp(s, "wiredx", 6)) {
++		if (!strnicmp(s, "wiredxb1", 8))
++			b = 0x59;
++		else if (!strnicmp(s, "wiredxb2", 8))
++			b = 0x58;
++		else if (!strnicmp(s, "wiredxb3", 8))
++			b = 0x5a;
++		else if (!strnicmp(s, "wiredxf1", 8))
++			b = 0x56;
++		else if (!strnicmp(s, "wiredxf2", 8))
++			b = 0x57;
++		else
++			b = 0x5a;
++	} else if (!strnicmp(s, "eject", 5))
++		b = 0x12;
++	else if (!strnicmp(s, "kiosk", 5))
++		b = 0x41;
+ 	return b;
+ }
+ 
+@@ -907,7 +891,7 @@ void applyIniOptions(void)
+ 		OPT("demon", 8, 0);
+ 		OPT("patchsmc", 0x8000000, 0);
+ 		if (!xb.xellButton && (xb.bootFlags & 4)) {
+-			xb.xellButton = parseButtonX(getIniValue("xellbutton"));
++			xb.xellButton = parseButton(getIniValue("xellbutton"));
+ 			if (!xb.xellButton) {
+ 				log_printf(1, "default console DVD eject button is being used to start xell\n");
+ 				xb.xellButton = 0x12;

@@ -3,6 +3,26 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 2
+
+**44 tricks** (63 before).  Removed (19): the 3 asm "i" pins (dx's, dz1's, dz2's), both
+`if (0)` blocks (the dz labels now follow a `return;` at the end of applyIniOptions), the
+dxc/dzc1/dzc2 indirections (not counted: the cold label sits on dx itself, the asm gotos
+target dz1/dz2 directly), 4 `__builtin_constant_p` + 1 `__builtin_expect` from the rev
+feeds (dz1: `cp { expect(cp, 0) }`, dz2: `expect(cp, 0) { expect(cp, 0) }`), and 6
+`__builtin_constant_p` + 3 `__builtin_expect` by merging the four identical optIniBool copies
+optC/optE/optS/optU into one, `optIniBoolG`.  Full build SHA256 10dac648...1971c.
+
+Remaining: `--param builtin-expect-probability=83`; 18 `__builtin_constant_p` and 11
+`__builtin_expect` (optIniBool's 2 arms; optIniBoolG and optN; parseButtonX's power expect,
+dx feed, z feeds and dx tail; parseButton's winbutton expect; the rev feeds; the macid
+memset; parseOption's two); 3 `asm goto`, 3 `__builtin_unreachable`; 2 `po_hint()` +
+no-early-inlining on parseOption; the hand-written `_parseButton.part.0`; 1 cold label (dx);
+always_inline on optIniIntI.
+
+Review table: unchanged from attempt 1 (no new borderline shapes; everything changed in
+attempt 2 is still a counted hint, only fewer of them).
+
 ## State after attempt 1
 
 **63 tricks** (69 before; README's way of counting).  Removed: optO's copy (its 2
@@ -131,3 +151,87 @@ Draft: `drafts/options_parseOption_badcopies_nearmiss.patch` (code identical, .r
 - The po_hint pair: a natural call on cputemp's/gpufan's bad edge that vanishes after
   profile_estimate and doesn't expand the bad string early.  The copies draft shows the
   layout side is solved by a real call; only the string order is left.
+
+## Attempt 2
+
+Tools (tools/wip/dehint/): `opxb.py` (natural xellbutton-site forms and wrappers on top of
+`part+m_bx`), `opms.py file.c [fn]` (instruction multiset vs the reference, jump targets
+dropped: empty = layout-only difference), `optr4.py REFTAG TAG sf sh` (bbro trace lists side
+by side, TAG's ids >= sf shifted by sh), `opsim.py` (p1/sim3 replay of TAG with key overrides
+and extra round-4 dummy entries, compared with REFTAG's real extraction order), `opds.py`
+(search for one dummy entry).  Dumps: `sh tools/wip/aio/p1/run.sh SRC TAG`
+(build/v/aio_p1/TAG); `cur` = src at 7afad6c2, `pm` = optricks part+m_bx.
+
+### Starting point
+
+- singles and all pairs (optricks, 780 pairs) from 7afad6c2: nothing IDENTICAL.  Nearest
+  `part` 14 (not real: it only calls an undefined `_parseButtonPart`), then 38s as before.
+
+### parseButtonX -> natural parseButton (gcc's own split): 335, not solved
+
+- `part+m_bx` (draft `drafts/options_parseButton_natural_nearmiss.patch`, against the
+  attempt-2 source): only the cold layout of applyIniOptions differs; the instruction
+  multiset is identical (opms.py).  Traces (optr4.py cur pm 194 3): the xellbutton site's
+  remopower block is 17 (edge 103*16.8%) where the reference has 18, so its trace-end key
+  -1001717 ties with xellbutton2's and loses; the `!s` block is 29 where the reference needs
+  exactly 37 (the goto z feeds); and dx's zero-byte entry (key -71) is missing.
+- opsim.py on pm's dump: r3/r4 equal the reference's only with all three: 188=-1001818,
+  263=-37 (36 and 38 both fail) and one extra round-4 entry with key 40..72 in the
+  xellbutton trace.  opds.py: no single dummy anywhere fixes it without the first two.
+- The xellbutton site's probabilities come from the inlined header (parseButton's own
+  profile: 83.2% = call 71% + const return 67%), the same for all three sites, so no
+  call-site spelling can make the remopower block 18.  Tried (opxb.py), all no better than
+  335: assignment-in-if, `== 0`, empty-then/else, `s = getIniValue(); xb.xellButton = s ?
+  parseButton(s) : 0` (pointer heuristic 69.8%: 844), `if (s) ...` forms (code changes),
+  wrappers `iniButton(name)` (one site or all three) and a void `xellButtonIni()` (all early
+  inlined: 335 exactly), `if (!s) return 0` wrapper (745/884).
+- Mechanism for a future try: the xellbutton site needs its own profile (a separately
+  estimated function that is IPA-inlined, like parseButtonX) or a call-block frequency >= 133
+  at IPA-inline time; parseButton isn't early-inlined (it's split first).
+
+### Trimming parseButtonX (opbx.py)
+
+- `nodx` (dx, its feed, the asm goto and the cold label all gone): 38 lines, one getIniBool
+  tie swap; opsim says only the dx-like entry (key 39..78 in the xellbutton trace, or the
+  other positions opds lists) is missing.
+- IDENTICAL: dx's `"i"(3)` pin removed; the cold label put on dx itself (no dxc + goto).
+- Not: the feed without expect (312); asm goto out of the power arm instead of the else arm
+  (656+: the power arm becomes a real block, hot layout moves); dx's tail as a plain
+  `goto bx` (388); fewer/other z feeds (opfeed.py z: every linear nest is 90 or worse, the
+  branching 3/8 form is the only one).  dx feed forms (opfeed.py dx): only `e1`/`e1e1`.
+
+### dz1/dz2 (opdz.py, oprev.py)
+
+- Both pins removable, and the dzc indirections, and the `if (0)` wrappers: `return;` then
+  `dz1: __builtin_unreachable(); dz2: __builtin_unreachable();` (IDENTICAL; one shared label
+  for both is 304, so they stay two entries, in that order or reversed).
+- opsim key ranges on the matching dump: dz1 39..71, dz2 12..18, dx 39..78.
+- oprev.py sweeps nested cp/expect forms: dz1 `ce0` (cp, then expect(cp,0)) and dz2
+  `e0e0` are the cheapest IDENTICAL ones; single conditions and plain cp nests fail
+  (plain cp nests act like no feed at all: 352/64).
+
+### optIniBool copies (opmerge.py, opn.py)
+
+- optC/optE/optS/optU were identical: any merge is IDENTICAL; landed as `optIniBoolG`.
+- optN can't join: its dead entry test moved to the call site (4 spellings) is 684; it has
+  to be inside the inlined body (it shapes the copy's own profile).  optIniBoolG's own cp
+  arms and expect are all needed (1108/708/100).
+
+### Don't retry (attempt 2)
+
+- Call-site spellings and early-inlined wrappers for xellbutton with a natural parseButton.
+- Linear nests for parseButtonX's z feeds; dx feed without expect; asm goto in the power arm.
+- optN's entry outside the copy.
+- One label for both dz dummies.
+
+### Next ideas
+
+- Natural parseButton still needs the xellbutton site to have its own profile.  A static
+  helper that IPA (not early) inlines, e.g. one too big to early-inline that holds the
+  xellbutton default handling and the log, might give that without hints; measure the
+  remopower block's frequency in its dump first (needs 18, and `!s` 37).
+- nodx + one cheaper zero-byte entry: opds.py lists other positions (group 198 key 80..147,
+  group 244, cputemp's getIniU32 group key 17..19, nosusecurity's group 6..10); an existing
+  asm goto edge (macid's, dualboot's) could perhaps also feed dx and drop dx's own feed.
+- parseOption's po_hint group (3 tricks): the copies draft from attempt 1 still only misses
+  the .rdata order of the bad-value string.
