@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 6
+
+Attempt 6 landed nothing, so the count and the review table below stand. It did explain the type-11 copy, the constant_p entry and `else if (type)`: see "## Attempt 6" at the end.
+
 ## State after attempt 5
 
 21 tricks, counting loadBl's dead `else if (type)` (attempt 5's report said 20, without it; README's rules count dead tests): `--param builtin-expect-probability=98`, 8 `__builtin_expect` (verbose, the two scan bounds, type == 10, `*pr != 0`, type != 24, isUpdateBl, the devgl test), 4 pins (e in loadFileCrc, next/buf in findSmcConfig, d in case 27, size in calcBlAreaSize), the empty
@@ -411,3 +415,62 @@ nei_blmod 2, lab_t5le 7, exp_pr 18, exp_upd 18, pin_i 22, pin_d 23, pin_e 26, la
 - The same lens on other objects: any counted hint about an error path in a function with several `return`s. image_read's last trick is worth a look.
 - pin_size, exp_devgl and exp_upd haven't had the "what would he have written" look: each is one test in a function whose shape is otherwise guessed. checkBl's answer came from asking that, not from sweeping spellings.
 - `--param` and the constant_p entry stay last. The param is now held by the loadBl expects, the scan bounds and exp_verbose.
+
+## Attempt 6
+
+No match; src is unchanged. All of this is on loadBl. Generators gen_bd160 to gen_bd168 build from src/build.c at 4bf4bde (attempt 5's source), so they only rerun against that text.
+
+New tools: `bdpasses.py file.c fn regex [dir]` (count a pattern after each tree pass, which finds the pass that makes a copy), `bdtrack.py dir fn regex` (frequencies of those blocks per pass), `bdlabel.py gen.py "label" out.c` (write and score one case without running the whole generator; `bdrun -k` runs them all first). tree-ssa-threadbackward.c was read from the official repo at releases/gcc-6.2.0.
+
+### What the type-11 copy really is
+
+Attempt 5's note blamed block frequency. That was wrong for the copy itself: three separate things are tangled here.
+
+1. **The copy is one FSM jump thread in dom3, and PHI argument order decides it.** The thread is `(24,25) (25,29) (29,137) (137,32) (32,124)`: from the constant 11 in the pub1bl block's PHI, through the no-key log and `xb.type`, to `type == 14`. fsm_find_control_statement_thread_paths walks the tail's `type` PHI in edge order and returns at once for a block it has already visited. So only the first argument naming the pub1bl block's PHI gets a try.
+   - No-key edge first (`PHI <type_469(29), type_469(28), ..>`): the short path fits, 5 insns, and the copy appears.
+   - Passed edge first (the near-miss signature form, `PHI <type_453(30), type_20(24), type_453(26), ..>`): that path goes through the verify call and is too long ("FSM did not thread around loop and would copy too many statements"), and the no-key edge is never tried.
+   - Check it with `grep "FSM did not" *.dom3`, or look for the `(24, 25) .. (25, 29)` registration.
+   - The earlier forms that lost the copy (`if (!xb.pub1bl) nokey; else if ...`) lost it this way, not through constant_p. With `if (xb.pub1bl) {..} else nokey` the copy is there with no constant_p at all.
+2. **`else if (type)` sets a probability, and the dead test is what does it.** PRED_CALL only applies when the edge's destination holds a call. With a plain `else`, both arms hold log_printf calls, so the two predictions cancel: verify is 50/50 and the failed arm falls through (54 loose). The dead test leaves no call in the passed arm's first block, so only the failed arm is predicted against: 29/71, as the reference has it. The escape needs a conditional block in front of the log, or a passed log with a second predecessor.
+   - Testing `*pr` later gets the 29/71 (`if (!v) {failed; *pr = -1;} if (!*pr) passed;`, gen_bd162 s1, s5). But threading then puts the passed log in a copy of the join, placed late, so its literal moves in .rdata and every later offset shifts (82 to 100 loose).
+   - `else if (!*pr)` would behave like `type` but is just as dead, so it was not tried.
+3. **constant_p now only places the type-11 block (26 loose: `dead src t1 bad0 cp0` in gen_bd161, drafts/build_loadBl_fsm_nearmiss.patch).** Removing it, the two constant_p and the t5le label (3 tricks), leaves that one block in the wrong place and nothing else. The test's block frequency is 0 after dom2's joiner threads. Its edge is 36 (`.305 * (N - C)`, with N the non-constant entry and C the constant 9, 10 and 14 entries), so 23's other edge is 43, under what I take to be round 3's exec threshold of 44 (5% of the entry's 882; worked out from the numbers, not read from a dump, while src's 46.5 passes). The trace stops at 23, block 24 gets priority -1003600 and is laid out too early. To land it needs:
+   - 23->27 at 44 or more;
+   - freq(24) from about 22 to 29, since it must sort after 29 [29] and tie with or beat 18 [22] (src has 22, of which constant_p's entry is the source).
+   So the original probably had a real non-constant way into the shared checkBl that lasted until dom2 and then folded. I couldn't find one that's natural.
+
+### Sweeps and results
+
+- gen_bd160, gen_bd161: signature forms x tails x hints. The `dead` form is well ahead of everything else. `dead failx t1 bad0 cp1` (only the t5le label off) is 0 loose, 7 strict: padding before the no-key log. `dead fail t1 bad0 cp1` (t5le and the `*pr` expect off) is 2 loose, 13 strict: `ja` for `jbe` on the SE copy. `dead src t1 bad1 cp1` (badsize off) is 6 loose.
+- gen_bd163: orders of the 5, 17, 11 test. The Linux build tests 17, 5, 11, but here 5, 17, 11 is best (26 against 28 and 30 loose, others costing more).
+- gen_bd164: loadBlFiles written like loadConsoleBlFiles, switch in the loop and r a local. 164 loose at best, mostly layout; registers and code line up. This is still the shape I'd bet the author wrote, since the console function matches that way and tmp/xeBuild64 (v1.16) keeps r in a register tested after the switch.
+- gen_bd165: console's fallback (`if (suGetCF(..)) *pr = 0;`, then `if (!*pr)`) with *pr: 115 loose at best, about the same with `seq`, `and` and `nest2`.
+- gen_bd166: more fallbacks. c7 and c9 (no `goto chk`) are 33 loose, 192 strict, without constant_p. It's the most natural form short of the loop, and worth one more look.
+- gen_bd167: 12 tail forms x `*pr` expect or not x hints: nothing beats the source's own tail; 0 loose, 7 strict at best, as above.
+- gen_bd168: case 23 nesting, order and `% 4` (lab_badsize): 6 loose whatever the form, with and without the outer nest.
+- t0 (no expect on type 10): adds `test edi,edi; je` after the CF and CG checkBl (4 loose), and block 24 goes to the end (key 0).
+
+### Evidence from the Linux build (tmp/xeBuild64, older version, gcc 4.9)
+
+Structure only: `r` in ecx with `test ecx,ecx` after the switch; the signature test order is 17, 5, 11; after setFlashBuild it reloads r and tests it; CF sets r13d to 9 before the SE test; CG goes to its own checkBl and on to the next iteration. Its strings run failed, passed, no-key, the order of `if (xb.pub1bl) { if (!v) failed else passed } else nokey`, which supports that form over the near miss's `if (!xb.pub1bl)`. The strings also appear once for the signature logs, so the code really is in one place.
+
+### isUpdateBl, devgl, pin_size: looked at, nothing new
+
+- isUpdateBl: the exported function's mask has bit 23 (0x3818600), addUpdateBls' copy doesn't (0x3018600) and tests 23 first. Only `type == 23`'s jump polarity differs (12 loose).
+- devgl: `fuse` is `setne`, then `cmovbe` from the two-value test. Not retried; the don't-retry reasoning stands.
+- pin_size: not retried; no new idea.
+
+### Don't retry
+
+- Getting the type-11 copy by frequency: it's the PHI order above.
+- The `!xb.pub1bl` first signature forms (`c`, `d`, `e`): they lose the copy.
+- `*pr` tested after the signature to replace `else if (type)` (s1 to s5): the passed log's literal moves.
+- `goto sigdone` around the passed log (s6): 54 loose.
+- Tail forms for t5le (gen_bd167) and case 23's forms for badsize (gen_bd168).
+
+### What to try next
+
+- A natural non-constant entry into the shared checkBl that dies at dom2. This is what's left between here and 3 tricks gone. Start from c7 and c9, and from whatever the near-miss patch's edge arithmetic says.
+- The loop form (gen_bd164) with the mechanisms above in hand: read which blocks move, and why, rather than sweeping.
+- `else if (type)`: anything that keeps the passed log's first block free of a call without a copy.
+- FSM order may explain other "thread only happens with this shape" hints in other objects: check `FSM did not` in dom3 first.

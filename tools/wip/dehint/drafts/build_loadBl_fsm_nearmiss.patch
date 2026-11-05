@@ -1,0 +1,113 @@
+diff --git src/build.c build/bd/a6/d1.c
+index a0345af4..05fa6c03 100644
+--- src/build.c
++++ build/bd/a6/d1.c
+@@ -1218,52 +1218,45 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 	case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
+ 	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+ 		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+-		if (*pr) {
+-			if (type == 9) {
+-				if (!suGetCF(&e->data, &e->size))
+-					break;
+-			} else if (__builtin_expect(type == 10, 0)) {
+-				if (!suGetCG(&e->data, &e->size))
+-					break;
+-				goto chk;
+-			} else
+-				break;
+-		}
+-		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
+-			/* an SE where the CF goes */
+-			e->type = type = 14;
+-			xb.cfLdv = 0;
+-			xb.seReplacesCf = 1;
+-		}
+-	chk:
+-		*pr = checkBl(e->data, e->size, type, e->crc);
+-		if (*pr)
+-			break;
+-		if (type == 5 || type == 17 || type == 11) {
+-			if (xb.pub1bl) {
+-				if (!cbVerifySig(e->data, xb.pub1bl)) {
+-					log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
+-					*pr = -1;
+-				/* Borderline, for review: type is 5, 11 or 17 here, so this test
+-				   is always true; a plain else costs 54 lines */
+-				} else if (type)
+-					log_printf(1, "loaded %s, signature check passed!\n", e->name);
+-			} else
+-				log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
+-		}
+-		/* the expect leaves vrp1's signature-failed copy of this test a
+-		   >5 edge (else its setFlashBuild copy has frequency 0 and final
+-		   aligns the type-11 block after it); the hot label keeps the SE
+-		   copy's <=5 edge the likely one (jbe) */
+-		if (xb.type <= BUILD_DEVGL16) {
+-		t5le: __attribute__((hot));
+-			if (__builtin_expect(*pr != 0, 0))
+-				goto fail;
+-			break;
+-		}
+-		if (type == 14)
+-			setFlashBuild(getBeU16(xb.files[i].data + 2));
+-		break;
++if (*pr) {
++if (type == 9) {
++if (!suGetCF(&e->data, &e->size))
++break;
++} else if (__builtin_expect(type == 10, 0)) {
++if (!suGetCG(&e->data, &e->size))
++break;
++goto chk;
++} else
++break;
++}
++if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
++e->type = type = 14;
++xb.cfLdv = 0;
++xb.seReplacesCf = 1;
++}
++chk:
++*pr = checkBl(e->data, e->size, type, e->crc);
++if (*pr)
++break;
++if (type == 5 || type == 17 || type == 11) {
++if (xb.pub1bl) {
++	if (!cbVerifySig(e->data, xb.pub1bl)) {
++		log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
++*pr = -1;
++	} else if (type)
++		log_printf(1, "loaded %s, signature check passed!\n", e->name);
++} else
++	log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
++}
++if (xb.type <= BUILD_DEVGL16) {
++t5le: __attribute__((hot));
++if (__builtin_expect(*pr != 0, 0))
++goto fail;
++break;
++}
++if (type == 14)
++setFlashBuild(getBeU16(xb.files[i].data + 2));
++break;
+ 	case 6:
+ 		if (!xb.cbb)
+ 			break;
+@@ -1430,16 +1423,6 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 		break;
+ 	default:
+ 		log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+-		/* never taken, but the edge lasts until dom2 resolves
+-		   __builtin_constant_p: an entry into vrp1's shared checkBl
+-		   copy whose type isn't a constant, so dom2's jump threads don't
+-		   scale the type == 11 test's frequency down to 0 (the original
+-		   places it by a frequency of ~25). The pointer compares set its
+-		   weight (tools/wip/README.md, build.c, eleventh pass) */
+-		if ((char *)__builtin_constant_p(i) == (char *)1 && (char *)__builtin_constant_p(type) == (char *)1) {
+-			type = (type & 1) + 18;
+-			goto chk;
+-		}
+ 		break;
+ 	}
+ 	return;
