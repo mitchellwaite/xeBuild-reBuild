@@ -10,9 +10,6 @@ import bdlib, bdrun
 H = {
     'exp_verbose': [('if (__builtin_expect(verbose, 1)) {', 'if (verbose) {')],
     'pin_e': [('			__asm__("" : : "S"(e));\n', '')],
-    'exp_200': [('__builtin_expect(i + 0x200 <= size, 1)', 'i + 0x200 <= size')],
-    'exp_210': [('__builtin_expect(i + 0x210 <= size, 1)', 'i + 0x210 <= size')],
-    'pin_i': [('		__asm__("" : : "S"(i + 0x200), "D"(buf));\n', '')],
     'exp_t10': [('__builtin_expect(type == 10, 0)', 'type == 10')],
     'exp_pr': [('if (__builtin_expect(*pr != 0, 0))', 'if (*pr != 0)')],
     'lab_t5le': [('		t5le: __attribute__((hot));\n', '')],

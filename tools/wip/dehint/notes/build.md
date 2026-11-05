@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 12
+
+**17 tricks** (20 before): `--param builtin-expect-probability=98`, 6 `__builtin_expect` (verbose, type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 3 pins (e, d, size), the empty asm barrier, 3 hot and cold labels (t5le, badsize, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`). The two scan-bound expects and the next/buf pin are gone, and so is the findSmcConfig helper: the scan loops are written in extractSmcConfig as the Linux build has them (see "## Attempt 12"). The review tables below stand, except that findSmcConfig no longer exists. No new borderline shape.
+
 ## State after attempt 11
 
 Attempt 11 landed nothing; src is unchanged, so the count (20) and the review tables below stand. It found why attempt 10's near miss has the SE copy's `ja` (the copies' `<=5` edge continues into loadBlFiles' shared `if (r)` join, which is drained to frequency 0) and that removing t5le alone needs the joiner's P(<=5) raised by a predictor (a call on the `>5` side does it; no natural one found). See "## Attempt 11" at the end.
@@ -47,7 +51,7 @@ Landed shapes to review:
 
 crcSame, blMagic and `goto toobig` are gone (attempt 5): checkBl has no borderline shape left.
 
-Not borderline, but they steer, so check them: the struct copy in extractSmcConfig, `findSmcConfig`, `int size` on extractSmcConfig and `int crc` on loadInputFile (comments in
+Not borderline, but they steer, so check them: the struct copy in extractSmcConfig, `findSmcConfig` (gone in attempt 12), `int size` on extractSmcConfig and `int crc` on loadInputFile (comments in
 the source say so). Both are compared as unsigned through the usual conversions, so behaviour is the same. `*pr = 0` in loadBl's
 second case-24 arm is what `*pr = loadBl60(e)` did on success, so it's live and unchanged.
 
@@ -710,3 +714,57 @@ No match; src is unchanged.  Goal: close attempt 10's near miss (`b f brk`, draf
 - t5le alone: a real call (with side effects) at the start of the `>5` side. Nothing natural is there in the reference (the `>5` copies go straight to `cmp esi,0xe`), so the call would have to fold away later, e.g. a call that's only removed after profile_estimate. Worth one look at what the author might have called there (a kit-only log under a verbose flag would change behaviour).
 - The kit-arm-first form (4 loose): the sig-failed setFlashBuild copy has to be made before ivopts, on the exit path, as in src.
 - (a) stays tied to keeping a `fail` block until expand; attempts 9 to 11 found no natural statement for it.
+
+## Attempt 12
+
+Goal: leave loadBl alone and reconstruct the author's structure for the other functions' tricks.  **One landing, 20 -> 17**: the scan loops (2 expects and the next/buf pin).  Generators gen_bd230 to gen_bd237 run on src/build.c as of b1ed804 (gen_bd230 to 232 and 237 replace loadFileCrc's verbose block, gen_bd233 to 235 replace findSmcConfig and its call, gen_bd236 the fuse block; 233 to 235 need findSmcConfig, so they only rerun against the old source).  Scratch in build/bd/a12 (not kept).
+
+### extractSmcConfig: the Linux build's scan loops (landed, IDENTICAL, full build SHA256 matches)
+
+Reading: tmp/xeBuild64's scan (404839..4048a2, build/x64.dis) tests the bound, then `found != 1`, calls smcConfigOk, and on a hit (`cmp eax,1; je`) jumps back to the bound test **without advancing i**; on a miss it advances i and loops.  That is a loop whose condition holds both tests and whose body only moves i on a miss, i.e.
+
+```
+i = 0;
+found = 0;
+while (i + 0x200 <= size && found != 1) {
+	found = smcConfigOk(buf + i);
+	if (found != 1)
+		i += 0x200;
+}
+if (!found) { i = 0; /* the same with 0x210 */ }
+if (!found)
+	goto notfound;
+```
+gcc 6 threads the hit's re-test straight to the found block, which is the reference's fallthrough out of the loop; gcc 4.9 left it.  Written in extractSmcConfig itself this is IDENTICAL with plain flags (the param still on for the rest), with no expect, no pin and no findSmcConfig.  Behaviour is the same as the old for/break loops: found is the last result, i stays on a hit and ends past the bound on a miss.
+
+- In findSmcConfig (gen_bd233, gen_bd234: loop forms, condition orders, i's type, const buf, declaration orders) the layout comes out right too (27 loose, 48 strict), but buf and next swap registers (edi/esi) in every form: the pin's job.  Inlined by hand (gen_bd235) it is IDENTICAL, all three init placements and both `while` spellings; `!found` as an early `return 2` with the log in place costs 591 (it moves .rdata).
+- `found` initialized at the top as `while (found != 1 && i + 0x200 <= size)` (bound second) is 59 and up: keep the bound first, as Linux has it.
+- Mechanism (profile_estimate read with `bddump.sh src/build.c extractSmcConfig t-profile_estimate`; the threading step inferred, not traced): both loop tests get PRED_LOOP_EXIT (first match, 4.5% each, two exits), and the inner `if (found != 1)` gets no prediction (50%).  The hit path goes back through the header, so after threading its exit edge carries about half the body's frequency, far above the bound exit's 4.5%, and bb-reorder makes it the fallthrough.  In the old for/break form the hit exit had 4.5% of a smaller block, below the bound exit, which is what the expects reversed.
+- **Lesson: a loop shape the Linux build shows (an extra jump back to a re-test) can be read as source structure even when gcc 6 threads it away.**  Worth checking the Linux build for every loop that still needs a hint.
+
+### loadFileCrc (exp_verbose + pin_e): structure read, no landing
+
+- Reference, IDA and Linux (402900, which has the same five parameters) agree on src's structure: `e->size = size; if (pad && (size & 15)) e->size = align16(size); if (verbose) { if (size != e->size) pad log; else bytes log; }`.  Nothing in either build suggests another form.
+- With both hints off only the bytes log's block is placed late (18 loose); the registers are already right.  Its block frequency is 1102 because the non-pad path reaches it only by a jump thread (vrp/dom: size == e->size is known there), and the threaded flow (about 2950) never gets added to the log's frequency (`bdcheck.sh`: the inner test 2834 > its predecessor 1968 after threading; stale).  Round 2 needs 2000: at P(!=) = 72% that needs P(verbose) >= 91%, which no natural test of an int parameter gets (compare with 0: no opcode heuristic).
+- gen_bd230 (compare opcodes x arm order x `verbose`, `!= 0`, `> 0`): `e->size > size` with `verbose > 0` gets the layout right (6 lines) but `jae`/`jg` for `je`/`jne`, so the source had `!=` and a plain test.  `>` with plain verbose: 1968, 32 short of round 2.
+- gen_bd231, gen_bd232: forms that give the non-pad path its own edge to the bytes log before profile_estimate.  `goto alloc` after the pad log (drafts/build_loadFileCrc_goto_nearmiss.patch, `git apply -p0`): layout right, 38 lines of name/size registers.  IRA (`-fdump-rtl-ira`, checked): name (r99) and crc (r103) are both colorable with equal conflicts and are pushed by frequency; name must beat crc to get edi (then crc goes to memory and size takes ebp).  The goto form's pad log is 504 (PRED_CALL now lands on it, as its other arm has no call), so name's frequency is too low.  Two bytes logs (dup, dup2) aren't tail-merged (79 loose, .rdata moves).
+- gen_bd237: crc tail forms (early return, `r`, `c != crc`, `crc == c` return) on both bases: no change, or worse.
+- Don't retry: compare spellings or verbose spellings (opcode must stay je/jne), the crc tail, two bytes logs.  What's left would need the pad log hot and the bytes log reached without a thread, at once.
+
+### buildFlash's devgl expect: no landing
+
+- gen_bd236: ten fuse forms (dev types as the skip case: `&&` chain, nested, if/else, ternary, `||` value, switch, switch in the non-JTAG arm, negated test, bitwise or of the two tests): 7 loose at best (the negated test, same as src without the expect).  The reference speculates the glitch2mfg load and setne on every non-JTAG path and merges by cmovbe; the switch forms don't get if-converted.  The tree-sink rule (attempt 7) stands.
+
+### Not reached
+
+exp_t24 (IDA shows the same `if (type == 25) { if (offset < imgSize()) warn; else adding log }` as src; only the warning's cold block order differs), lab_none, pin_size and lab_badsize (loadBl, left alone as asked) got no new structure reading beyond that.  The Linux build's patchSmcConfig (404250) has both fan sections inline with one `cpuFan != -1` test each and the gpu warning placed before the cpu one, as in Windows; I found nothing there that suggests a replacement for patchCpuFan.
+
+### Costs now (strict and loose, removed alone)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, lab_badsize 26/6, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.  `bdhints.py` no longer has exp_200, exp_210 and pin_i.
+
+### What to try next
+
+- The Linux build lens on the other loops with hints: loadConsoleBlFiles' loop (lab_none), addUpdateBls' loop (exp_upd), and loadBlFiles' (loadBl's group).  Look for jumps back to a loop test that gcc 6 would thread.
+- The param is now held by the loadBl expects, exp_verbose, exp_t24, exp_upd and exp_devgl; re-measure which values still match after each landing.
+- loadFileCrc: a form whose bytes log is reached directly from the non-pad path and whose pad log keeps both arms' calls (so no PRED_CALL on it).  The two-copy form wasn't tail-merged; a shape that merges might do.

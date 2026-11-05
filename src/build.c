@@ -918,27 +918,6 @@ gpuwarn:
 	goto gpudone;
 }
 
-/* scan for the config, in plain and in ecc layout.  Hints: the bound expects make
-   found the rotated exit; the pin puts next/buf in esi/edi. */
-static int findSmcConfig(uint8_t *buf, int size, uint32_t *pos)
-{
-	uint32_t i;
-	int found = 0;
-
-	for (i = 0; __builtin_expect(i + 0x200 <= size, 1); i += 0x200) {
-		__asm__("" : : "S"(i + 0x200), "D"(buf));
-		if ((found = smcConfigOk(buf + i)) == 1)
-			break;
-	}
-	if (!found) {
-		for (i = 0; __builtin_expect(i + 0x210 <= size, 1); i += 0x210)
-			if ((found = smcConfigOk(buf + i)) == 1)
-				break;
-	}
-	*pos = i;
-	return found;
-}
-
 /* a whole smc config */
 struct smcConfigData {
 	uint8_t b[0x400];
@@ -949,7 +928,7 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	uint32_t i, j;
 	int found;
 
-	/* size is an int on purpose: its conversion in findSmcConfig's bound tests
+	/* size is an int on purpose: its conversion in the scan loops' bound tests
 	   gives next <= size in both loops.  The struct copy matters too: memcpy
 	   there allocates the copy's registers differently (18 lines). */
 	if (e->data)
@@ -961,7 +940,23 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	log_printf(1, "-------------------\n");
 	log_printf(1, "checking smc_config\n");
 	log_printf(1, "-------------------\n");
-	found = findSmcConfig(buf, size, &i);
+	/* scan for the config, in plain and then in ecc layout; i only moves on
+	   a miss (the Linux build re-tests the loop condition after a hit) */
+	i = 0;
+	found = 0;
+	while (i + 0x200 <= size && found != 1) {
+		found = smcConfigOk(buf + i);
+		if (found != 1)
+			i += 0x200;
+	}
+	if (!found) {
+		i = 0;
+		while (i + 0x210 <= size && found != 1) {
+			found = smcConfigOk(buf + i);
+			if (found != 1)
+				i += 0x210;
+		}
+	}
 	if (!found)
 		goto notfound;
 	if (checkZeros(buf + i + 0x20c, 4)) {

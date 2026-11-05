@@ -88,11 +88,11 @@ The file has no `asm`, attributes or builtins left, and it builds with plain `-O
 </details>
 
 <details>
-<summary><b>2. build</b>: 20 tricks, very hard</summary>
+<summary><b>2. build</b>: 17 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
-- 8 `__builtin_expect`, 4 pins, 1 `asm` barrier and 3 hot and cold labels, across
-  `loadFileCrc`, `findSmcConfig`, `loadBl` and others
+- 6 `__builtin_expect`, 3 pins, 1 `asm` barrier and 3 hot and cold labels, across
+  `loadFileCrc`, `loadBl`, `buildFlash` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
 - 1 dead test: `else if (type)` in `loadBl`, always true there
