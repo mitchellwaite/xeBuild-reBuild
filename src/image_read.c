@@ -157,14 +157,12 @@ __attribute__((optimize("no-if-conversion", "no-if-conversion2", "no-tree-tail-m
 	int addr = SWAP32(h->smcBootAddr);
 	int size = SWAP32(h->smcBootSize);
 
-	/* code-free: emits the zero/bad arms' string (at the end) first, as the original */
-	__asm__("" : : "i"("smc.bin should not be at 0x%x, trying 0x1000\n"));
-	if (!addr)
-		goto zero;
-	else {
+	if (!addr) {
+		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
+		addr = 0x1000;
+	} else {
 		vhot: __attribute__((hot));
 	}
-zback:
 	if (addr != 0x800 && addr != 0x1000)
 		goto bad;
 bback:
@@ -202,10 +200,6 @@ bback:
 		log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	}
 	return;
-zero:
-	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-	addr = 0x1000;
-	goto zback;
 bad:
 	bhot: __attribute__((hot));
 	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
@@ -971,11 +965,9 @@ unsigned long parseDump(uint8_t *raw)
 		if (dst == -4) {
 			if (blk >= blocks)
 				__builtin_unreachable();
-			if (blk < blocks) {
-				log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
-				if (!addRemapP(blk, blk, blk, -1, blocks))
-					return 0;
-			}
+			log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
+			if (!addRemapP(blk, blk, blk, -1, blocks))
+				return 0;
 			__asm__("");
 			dst = blk;
 		} else {
@@ -1128,11 +1120,10 @@ int detectController(uint8_t *raw, int size)
 			} else {
 				int lo2 = b[512];
 
-				/* lo kept live past its add, so the sum takes hi's
-				   register (ebp) */
-				__asm__("" : : "a"(lo));
 				if (lo2 + (b[513] & 0xf) * 256 == i) {
-					__asm__("" : : "d"(lo2));
+					/* code-free: lo stays live over both tests: the
+					   first sum takes hi's register (ebp), lo2 edx */
+					__asm__("" : : "a"(lo));
 					i = n;
 					log_printf(1, "\tNAND dump uses small block controller\n");
 					xb.dumpBbController = 0;

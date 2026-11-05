@@ -77,14 +77,14 @@ keeps one dead `key == NULL` test that also isn't counted, because the author ma
 well have written a check like it; a comment on the test explains it.
 
 <details>
-<summary><b>1. image_read</b>: 28 tricks, hard</summary>
+<summary><b>1. image_read</b>: 26 tricks, hard</summary>
 
-- 8 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
+- 7 register pins across `checkBlock`, `detectController`, `fsGetFile` and others
 - 5 `__builtin_expect`, 5 hot labels, 3 `__builtin_unreachable` and 2 empty `asm`
   barriers
 - 2 `optimize` attributes (`no-if-conversion` and related), on `getImageSmc` and
   `copyMmcImage`
-- 2 literal-order `asm` and `noinline`
+- 1 literal-order `asm` and `noinline`
 
 There's no single hard knot like the other hard files, but many functions each
 need their own solution. Several hints are only 3 or 4 lines from going, so this
