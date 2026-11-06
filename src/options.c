@@ -294,11 +294,14 @@ r:
 	return 1;
 }
 
+/* applyIniOptions' copy of optIniBool for noecdremap: one dead exit
+   (`== 1` gives it the opcode heuristic an expect gave it before) and the
+   expect below shape its profile (tools/wip/aio/p1/NOTES.md) */
 static _Bool optN(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
 
-	if (__builtin_expect(__builtin_constant_p(xb.bootFlags + 2), 0)) return 0;
+	if (__builtin_constant_p(xb.bootFlags + 2) == 1) return 0;
 	if (xb.bootFlags & set) {
 		if (__builtin_constant_p(xb.bootFlags + 1))
 			goto r;
@@ -435,19 +438,23 @@ int parseButton(const char *s)
 	return b;
 }
 
-/* applyIniOptions' copies of the functions above: a function with other
-   optimize options can't be inlined into it (always_inline is, early) */
-static inline __attribute__((always_inline)) int optIniIntI(const char *name, int def)
-{
-	char *bad;
-
-	bad = iniU32Invalid(name);
-	if (bad) {
-		log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-		return def;
-	}
-	return getIniU32(name, def);
-}
+/* optIniInt's body for applyIniOptions' int options, as a macro.
+   Borderline, for review: optIniInt itself is never early-inlined (it has
+   three calls, so gcc 6's early inliner always refuses it), and the
+   original's 15% profile for these blocks needs the code in
+   applyIniOptions before profile_estimate; this replaced an always_inline
+   copy of optIniInt.  The temporary is the inlined function's return
+   value: storing var in both arms gives other code */
+#define INI_INT(var, name, def) do { \
+	char *bad = iniU32Invalid(name); \
+	int v; \
+	if (bad) { \
+		log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad); \
+		v = def; \
+	} else \
+		v = getIniU32(name, def); \
+	var = v; \
+} while (0)
 
 #define OPT(name, set, clear) if (!(xb.bootFlags & (set))) optIniBool(name, set, clear, 0)
 
@@ -850,34 +857,34 @@ void applyIniOptions(void)
 	OPT("nosusecurity", 0x1000000, 0);
 	OPT("smcnocheck", 0x200000, 0);
 	if (!xb.cfLdv) {
-		xb.cfLdv = optIniIntI("cfldv", 0);
+		INI_INT(xb.cfLdv, "cfldv", 0);
 		if (xb.cfLdv > 32) {
 			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of 32\n", xb.cfLdv);
 			xb.cfLdv = 32;
 		}
 	}
 	if (xb.cpuFan == -1)
-		xb.cpuFan = optIniIntI("cpufan", -1);
+		INI_INT(xb.cpuFan, "cpufan", -1);
 	if (xb.gpuFan == -1)
-		xb.gpuFan = optIniIntI("gpufan", -1);
+		INI_INT(xb.gpuFan, "gpufan", -1);
 	if (xb.cpuTemp == -1)
-		xb.cpuTemp = optIniIntI("cputemp", -1);
+		INI_INT(xb.cpuTemp, "cputemp", -1);
 	if (xb.gpuTemp == -1)
-		xb.gpuTemp = optIniIntI("gputemp", -1);
+		INI_INT(xb.gpuTemp, "gputemp", -1);
 	if (xb.edramTemp == -1)
-		xb.edramTemp = optIniIntI("edramtemp", -1);
+		INI_INT(xb.edramTemp, "edramtemp", -1);
 	if (xb.overCpuTemp == -1)
-		xb.overCpuTemp = optIniIntI("overcputemp", -1);
+		INI_INT(xb.overCpuTemp, "overcputemp", -1);
 	if (xb.overGpuTemp == -1)
-		xb.overGpuTemp = optIniIntI("overgputemp", -1);
+		INI_INT(xb.overGpuTemp, "overgputemp", -1);
 	if (xb.overEdramTemp == -1)
-		xb.overEdramTemp = optIniIntI("overedramtemp", -1);
+		INI_INT(xb.overEdramTemp, "overedramtemp", -1);
 	if (xb.avRegion == -1)
-		xb.avRegion = optIniIntI("avregion", -1);
+		INI_INT(xb.avRegion, "avregion", -1);
 	if (xb.gameRegion == -1)
-		xb.gameRegion = optIniIntI("gameregion", -1);
+		INI_INT(xb.gameRegion, "gameregion", -1);
 	if (xb.dvdRegion == -1)
-		xb.dvdRegion = optIniIntI("dvdregion", -1);
+		INI_INT(xb.dvdRegion, "dvdregion", -1);
 	if (!macidSet()) {
 		s = getIniValue("macid");
 		if (s) {

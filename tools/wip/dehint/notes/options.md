@@ -3,6 +3,26 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 3
+
+**42 tricks** (44 before).  Removed (2): always_inline on optIniIntI (the copy is gone; the
+int options use an `INI_INT(var, name, def)` macro of optIniInt's body, see the review table),
+and optN's entry `__builtin_expect` (the dead test is now `__builtin_constant_p(...) == 1`,
+whose opcode heuristic does what the expect did).  Full build SHA256 10dac648...1971c.
+
+Remaining: `--param builtin-expect-probability=83`; 18 `__builtin_constant_p` and 10
+`__builtin_expect` (optIniBool's 2 arms; optIniBoolG's 2 arms + expect; optN's entry, 2 arms
++ expect; parseButtonX's power expect, dx feed, z feeds and dx tail; parseButton's winbutton
+expect; the rev feeds; the macid memset; parseOption's two); 3 `asm goto`, 3
+`__builtin_unreachable`; 2 `po_hint()` + no-early-inlining on parseOption; the hand-written
+`_parseButton.part.0`; 1 cold label (dx).
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| applyIniOptions' int options | `INI_INT(var, name, def)` macro, a copy of optIniInt's body with a temporary for the result | Replaces the always_inline copy optIniIntI.  optIniInt can't be early-inlined (3 calls), and the profile needs the body in applyIniOptions before profile_estimate, so the original most likely had the code written out or in a macro; storing var in both arms instead of the temporary gives other code (258) |
+| optN | dead entry test spelled `__builtin_constant_p(xb.bootFlags + 2) == 1` | Still a counted dead cp test; `== 1` replaces the expect (opcode heuristic) |
+| parseOption, parseCmdOptions, olddvd | unchanged from attempt 1's table | |
+
 ## State after attempt 2
 
 **44 tricks** (63 before).  Removed (19): the 3 asm "i" pins (dx's, dz1's, dz2's), both
@@ -235,3 +255,116 @@ and extra round-4 dummy entries, compared with REFTAG's real extraction order), 
   asm goto edge (macid's, dualboot's) could perhaps also feed dx and drop dx's own feed.
 - parseOption's po_hint group (3 tricks): the copies draft from attempt 1 still only misses
   the .rdata order of the bad-value string.
+
+## Attempt 3
+
+New tools (tools/wip/dehint/): `opp3.py` (parseOption bad-value copies with the message as a
+static array / pointer / helper), `opbtn.py` (parseButton's own shape on top of part+m_bx),
+`ophelp.py` (non-early-inlined helpers around the xellbutton site), `opvl.py` (parseOption's
+two expects: operators, vlen's type and computation), `opint.py` (optIniIntI written out /
+macros), `opmac3.py` (macid's memset feed replaced by a real call before the asm goto).
+
+### Landed: optIniIntI's always_inline -> an `INI_INT(var, name, def)` macro (IDENTICAL BYTES)
+
+- Why always_inline was needed: gcc 6's early inliner refuses any callee whose growth *
+  (calls in it + 1) exceeds early-inlining-insns; optIniInt has 3 calls, so no spelling of a
+  function gets early-inlined.  The 15% GU profile needs the body in applyIniOptions before
+  profile_estimate, i.e. the original had the code there: written out or as a macro.
+- opint.py: IDENTICAL with a temporary for the result (do-while macro `m_tv`, statement
+  expression `m_se`, or written out `w_v`); storing the field in both arms (`m_st`, `w_def`)
+  is 258, dropping the bad arm's store (`m_st2`, `w_nodef`) 1090.  Landed `m_tv`, flagged
+  borderline (it is a macro copy of optIniInt).
+
+### parseOption po_hint group: still the .rdata order
+
+- The literal is emitted when its first use is expanded (BB chain order), so cputemp's copy
+  puts the bad string before "Using CPUTEMP" (0x6f8).  A `static const char[]` message: code
+  identical, but the array goes after all literals (0xe80; 42 lines of offsets).  A
+  `const char *const` to the literal folds back (158, same as copies).  A helper
+  `badValue(opt, val)` for all three: 684.
+- Tree tail-merge doesn't merge the copies (pre dump: cluster {cputemp, gpufan} has no
+  duplicate): each copy's vuse is its arm's store (xb.cpuTemp / xb.gpuFan) and the call's vdef
+  escapes to the return block's .MEM PHI.  If it merged into bad: the order would be right.
+
+### parseOption's two expects (opvl.py): no match
+
+- vlen test: `!= 0`, size_t/uint32_t vlen, ternary/if-ne/init forms of vlen: all 62 (the
+  incomplete block loses its epilogue copy); `> 0`, `>= 1`, `0 < vlen`: 79; `vlen = 0; if
+  (val) vlen = strlen(val)`: 483; `len != strlen(opt)` directly: 469.
+- setBoolOption test: `!= 0`/nonzero 217, `> 0`/`>= 1` 403, `== 1` 811.  Pairs: >= 156.
+
+### parseButton's shape (opbtn.py, on part+m_bx): the winbutton expect is free there
+
+- With gcc's own split, removing parseButton's winbutton expect changes nothing: `noexp` =
+  `cur` = 335 (only applyIniOptions; parseButton and its .part identical).  Every other natural
+  shape (returns, `if (s) {}` around the chain, `b` assigned in an else, mixes) is also 335:
+  the split part and the header profile don't depend on the spelling.  uint8_t/uint32_t `b`:
+  far worse.
+- So the natural-split route costs: parseButtonX's ~10 + the hand-written part + pb_exp, all
+  at once, for the 335 xellbutton-site layout.
+
+### xellbutton-site helpers (ophelp.py)
+
+- A helper that holds the whole `if (!xb.xellButton && (xb.bootFlags & 4)) {...}` block is
+  not early-inlined (unlike attempt 2's wrappers) and gets its own profile: 1161 (void), the
+  same with xellbutton2's block too 834, `int xellButtonIni()` with the log inside 607, the
+  whole JTAG-range block as a helper 1653.  All change the entry frequencies (the helper's
+  conditions are estimated with entry 10000: the call block is 216, not 132).
+- Mechanism (profile_estimate dump of noexp): the call block is 907 * 50% (xellButton == 0,
+  no heuristic) * 29% (bootFlags & 4, PRED_CALL) = 132; the header's `!s` is 21.6% (pointer
+  15% + call 71% + early return 39%), power-fail 16.8%.  The reference layout needs `!s` 37
+  and remopower 18 together: call block >= ~141 with p(!s) ~26%, so neither the call-site
+  frequency nor the header's own estimate alone can do it.
+
+### macid memset feed (opmac3.py)
+
+- Dropping the memset: 496.  The asm goto after the first log_printf (a real call before it,
+  no memset): 427; after showHexPairs 431; after the last log 437.  The memset also keeps the
+  asm goto at the head of the arm.
+
+### Landed: optN's entry expect -> `__builtin_constant_p(xb.bootFlags + 2) == 1` (IDENTICAL)
+
+- opcmp.py: every `__builtin_expect(cp, 0|1)` respelled as a comparison of the cp result that
+  folds false.  Only optN's entry matches (`== 1`, `== 2`, `== -1`, `< 0`, `<= -1` all
+  IDENTICAL; `> 1`/`>= 2` 989; dropping the test 172, plain cp 797), so one builtin fewer.
+  The expect(cp, 1) dx feed: every `>`/`>=`/`!=` form is 312 (= no expect: no taken-heuristic
+  folds false).  The rev feeds' expects and dz2's: no form matches.
+- oprev3.py: rev feed nests with levels cp / `cp == 1` / expect(cp, 0), depth 1-3: only the
+  landed `ce` (dz1, 3 builtins) and `ee` (dz2, 4) or costlier (`qqe` 4, `qee`/`eqe` 5).
+- optN's entry as a natural parameter test (`!name`, `name == NULL`, `!set`, `set == clear`,
+  `def < 0`, ...): 172 = dropping it, i.e. folded before profile_estimate; `!*name`: 696.
+- dx's tail `if (cp == 1) goto bx` and the z feed's outer `cp == 1`: IDENTICAL/90, no saving.
+
+### Other probes (no match)
+
+- optIniBoolG/optN's `!bad` expect (opg3.py): `bad == NULL`, nested getIniBool, assignment in
+  the if: 100 (G) / 172 (N); bad arm first: 221 / 690.
+- optIniBoolG/optN sites as a statement-expression macro of optIniBool (opgm.py, like
+  INI_INT): 1300+ (their profiles must be estimated separately; the copies stay).
+- parseButtonPart without `cold`: parseButton and applyIniOptions then match even without the
+  winbutton expect, but the part is no longer optimized for size (102 lines in .part).  So the
+  hand-written part needs cold, and cold needs the expect.
+- parseButtonX's power expect: `== 0` 925, arms swapped (`if (strnicmp(...))`) 898.
+- dx without the cold label 281; dx ending in `return b` instead of unreachable 331.
+- Experiment (opF.py, hints): a dead feed into the xellbutton call block from the block after
+  patchsmc: 1049+ (it takes flow from the xellButton tests below the join; not informative).
+
+### Don't retry (attempt 3)
+
+- The bad-value message as a static array or pointer, or a helper for all bad arms.
+- Natural parseButton spellings (they all give the same split and profile).
+- Helpers around the xellbutton site that hold its conditions (own profile, wrong entry
+  frequencies); written-out/macro optIniBool for the G/N sites.
+- Comparison respellings of the expect(cp, 1) feed and the rev feeds.
+- parseButtonPart without cold.
+
+### Next ideas
+
+- The natural-split route (opbtn noexp, 335) is now ~13 tricks for one region: it needs the
+  xellbutton call block near 171 (so `!s` = 37 with parseButton's own 21.6% and remopower
+  >= 18) plus one dummy entry.  A natural reason for that frequency: the call block is
+  907 * 50% (xellButton == 0) * 29% (PRED_CALL); a shape where one of those two tests gets
+  ~65% or ~38% instead (e.g. a test with an opcode heuristic, or no call in the dominated
+  block) without changing the code.  Model it with p1/sim3 before compiling.
+- po_hint: make tree tail-merge merge the copies into bad: (the arms' stores before the copy
+  stop it today); any form where the copy's vuse equals bad:'s would put the string last.
