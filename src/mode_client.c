@@ -13,7 +13,10 @@
    were found not to matter and removed, and what each remaining one is
    for).  A cp feed sends 1/2^k of its block's flow, so the case heads'
    feeds sit where one or two terms add the frequency they need (the
-   default case, the rok block, fail).  String literals land in .rdata in block order, so clientInfo's and
+   default case, the rok block, fail, the -noenter arm).  Labels in an asm
+   goto's list are free (the statement is the hint), so some edges ride in
+   another block's list (rk6 in the -r head's, ork6 in case 5's) where they
+   stand in for a removed feed or cold label.  String literals land in .rdata in block order, so clientInfo's and
    clientWriteBlocks' shapes (early returns) are what fix it there.  The
    option tests get even odds from calls: an arm that starts with a call
    (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
@@ -608,13 +611,11 @@ int mode_client(int argc, char **argv)
 	int kk = __builtin_constant_p(argc);
 	log_set_name("client");
 	for (i = 0; i < argc; i++) {
-
-if (__builtin_constant_p(i + 321)) goto u2;
 		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2))
 			client_usage(0, NULL);
 		if (!strnicmp(argv[i], "-noenter", 8)) {
 			log_printf(0, "<enter> key on completion suppressed\n");
-			promptEnter = 0;
+			promptEnter = 0; if (__builtin_constant_p(mode + 321)) goto u2;
 		} else if (!strnicmp(argv[i], "-reboot", 7)) {
 			if (reboot == 1)
 				log_printf(0, "shutdown superseded by reboot, ignoring -s in favor of -reboot\n");
@@ -653,7 +654,7 @@ if (__builtin_constant_p(i + 321)) goto u2;
 			ip = argv[i + 1];
 			i++;
 			log_printf(0, "setting forced IP to %s\n", ip);
-		} else { __builtin_memset(argv, 0, kk); if (!kk) { ac: __attribute__((cold)); __asm__ goto ("" :: "a"(i) :: r5x, r3x); } if (!strnicmp(argv[i], "-r", 2)) {
+		} else { __builtin_memset(argv, 0, kk); if (!kk) { __asm__ goto ("" :: "a"(i) :: rk6, r5x, r3x); } if (!strnicmp(argv[i], "-r", 2)) {
 			a = argv[i + 1];
 			if (i + 1 == argc || !a || *a == '-')
 				{ r3x: client_usage(3, argv[i]); }
@@ -742,11 +743,11 @@ if (__builtin_constant_p(i + 321)) goto u2;
 				AT(t4)  if (cinfo->hwFlags & 0x20)
 					s4: { sendAvatarData(arg, cinfo->kernel); }
 				else
-					{  { AT(hdd4) { hc4: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n"); } }
+					{ AT(hdd4) log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n"); }
 				break;
 			case 5:
 				AT(t5)  if (cinfo->hwFlags & 0x20)
-					{ JMP(s4, c12); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
+					{ JMP(s4, c12, ork6); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
 				else
 					{ AT(hdd5) log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); }
 				break;
@@ -762,8 +763,8 @@ if (__builtin_constant_p(i + 321)) goto u2;
 				clientReadBlocks(arg, start, count);
 				break;
 			case 9:
-				AT(c9)   { clientWriteBlocks(arg, start); JMP(hdd4,hdd5); }
-				__asm__ goto ("" : : "i"(107) : : dsp); break;
+				AT(c9) clientWriteBlocks(arg, start);
+				break;
 			case 10:
 				AT(c10)JMP(c10);  clientEraseBlockI(arg);
 				break;
@@ -794,7 +795,7 @@ if (__builtin_constant_p(i + 321)) goto u2;
 		netDisconnect();
 	if (__builtin_constant_p(mode + 50750)) goto u2;
 if (0) { dv: __builtin_unreachable(); } if (0) { dz: __builtin_unreachable(); }	return 0;
-fail: __attribute__((cold)); if (__builtin_constant_p(mode + 255562)) goto ndl; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 1089530)) goto s5; if (__builtin_constant_p(mode + 1095110)) goto c11; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
+fail: __attribute__((cold)); if (__builtin_constant_p(mode + 255562)) goto ndl; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 1089530)) goto s5; if (__builtin_constant_p(mode + 1095110)) goto c11; if (__builtin_constant_p(mode + 156949)) goto dtg;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }

@@ -6,6 +6,117 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 7
+
+**58 tricks** by README's categories (63 before).  Whole object IDENTICAL BYTES, full build
+SHA256 10dac648...1971c.  build.sh unchanged.  No new hint kind, no borderline shape.
+
+| Category | Att. 6 | Now | What went |
+|---|---|---|---|
+| `__builtin_constant_p` | 31 | 30 | fail's c9 feed (its edge now rides in case 5's list as `ork6`) |
+| asm goto | 13 | 11 | case 9's `JMP(hdd4,hdd5)` and its `"i"(107)` dsp asm goto |
+| cold labels | 6 | 4 | `hc4` (case 4's no-HDD block), `ac` (the -r head's kk block) |
+| pins, `if (0)`, unreachable, clientEraseBlockI | 6, 3, 3, 1 | same | |
+
+Real removals vs relocation: all 5 are real removals of a counted item.  One count-neutral
+relocation came with them (the loop-head u2 feed `cp(i + 321)` now sits after `promptEnter =
+0;` in the -noenter arm, still 1 term), and the compensations are uncounted asm goto list
+labels: `rk6` added to the -r head's `"a"(i)` asm goto, `ork6` (a trampoline to c12) to case
+5's `JMP(s4, c12, ork6)`.
+
+Steps (each IDENTICAL, states in build/mc/w7/):
+1. c9's `JMP(hdd4,hdd5)` dropped and hdd4 put in case 5's list (n14: 14 lines, an hdd4-log /
+   u2 tail swap) + the loop-head u2 feed relocated to the -noenter arm (mc7relocall) -> 62.
+2. hc4's cold label dropped, hdd4 taken back out of case 5's list (mc7comp hc4) -> 61.
+   (On the 63 base, hc4 alone + one of several list adds, e.g. `dtg` into c3's JMP, was
+   also IDENTICAL: 62.)
+3. Case 9's `"i"(107)` dsp asm goto free on that base (mc1 greedy) -> 60.
+4. fail's c9 feed dropped + `ork6` in case 5's list (mc7comp c9) -> 59 (full build checked).
+5. `ac`'s cold label dropped + `rk6` in the -r head's asm goto (mc7loop) -> 58 (full build).
+
+## Attempt 7
+
+58 (MATCH).  Tools (tools/wip/dehint/, logs/states in build/mc/w7/, dumps build/mc4/m7*, p_*):
+- `mc7loop.py BASE OUTDIR [-names]`: greedy over mc7comp's removals, each alone or with one
+  free list edit; takes the first IDENTICAL one and starts over.  The lever of this attempt.
+- `mc7reloc.py -rm RX ... -ins TEMPLATE [-k] [-fn] [-var]`: generic relocation (remove one or
+  more constructs, insert one templated statement at every position of mode_client or
+  clientEraseBlockI).  `mc7relocall.py BASE.c`: every 1-term feed relocated (count-neutral).
+- `mc7pairs.sh`: two/three feeds into one target (ndl x3, dtg x2, u2 x2) -> one 1-term feed.
+- `mc7j2l.py`: an asm goto statement removed and its labels moved into other asm goto lists
+  (list labels are uncounted).  `mc7dead.py`: dz/dv dead blocks merged or retargeted.
+- `mc7comp.py NAME|none [-save KEY OUT]`: a counted removal compensated by one free list edit
+  (any mode_client label added at either end of any asm goto list, or one label dropped).
+- `mc7nsingles.sh BASE TAG`: mc1 singles on a near-miss base (= pairs with that near miss).
+- `mc7flip.py`, `mc7rev.py`, `mc7revsub.py`, `mc7sub.py`: the latch-flip toggles (below).
+
+What was found:
+1. Chain arms, k61l, dy: no shorter position.  k61l 1-term at all 279 positions: best 174;
+   the dy feed / ybk back edge (1 term each, not 2) have no other position in
+   clientEraseBlockI (122+).  Chain arms 7/11/9 removed from the chain and placed as
+   `if (cp..) mode = X;` anywhere with 1-4 terms (arm 9: 1): best 14 (arm 11 after arm 7 =
+   mc6chain's order space), 28, 30.  Arms are positional.
+2. Same-target pairs -> one feed (ndl, dtg, u2): all ~290-340.  Not close.
+3. asm goto statement -> labels into other lists (mc7j2l, every single/2-label statement):
+   none.  Near: c9's JMP(hdd4,hdd5) -> hdd4 into case 5's JMP(s4,c12), hdd5 dropped: 14 (two
+   adjacent tail blocks swap: the hdd4 log and u2's usage(2)); JMP(s4,c12) -> s4 dropped, c12
+   elsewhere 22.  JMP(c10) -> c10 into the rok list 116.  dz->dv merge: 60 (= dropping the
+   edge; the second dead block itself matters, not where the edge goes).
+4. Counted removal + one free list edit (mc7comp, 22 removals x ~1500 edits): the c9 fail
+   feed + `hc4` added to `JMP(s4, c12)` -> **8**, and that 8 is purely the loop latch compare
+   flip (`cmp esi,eax; jle` -> `cmp eax,esi; jge`, attempt 3's mechanism).  dtg(156949) + many
+   adds -> 8 (the same flip).  t5 16, s4c12 14, c3 22, t4 30, c11 32, pins 35/41: no gain.
+5. **The latch flip is the common wall.**  Removing almost any case-head feed (c9, t5, dtg2,
+   c11 ...) flips the latch compare.  PRE dumps: the latch phi is the third prephitmp PRE
+   allocates; in the reference state it is a fresh name (prephitmp_580 > argc_69), after a
+   case-feed removal it takes a recycled low name (prephitmp_4 / _7 / _9) -> operands swap.
+   So the removal frees one more SSA name before PRE (a CFG change around the case head,
+   not the feed's own names: re-inserting a 1-term feed anywhere never repairs it, mc7relocall
+   on the c9 base, 11 feeds x 280 positions, floor 8).
+   Toggles tried: mc5nat's rules and oneArg/wbArgs/bpArgs body respellings (mc7flip, 196
+   each): none flips it.  Reverting attempt 3's `x = argv[i + 1]; i++;` to `x = argv[++i];`
+   in all 7 arms (mc7rev) flips it back **only** on the c9 + dtg(156949) base (12 -> 4); every
+   subset of arms on the pure-flip bases c9 / dtg2 (mc7revsub, 127 each): none.  Singles and
+   pairs (within 100) of the near misses on the all-reverted base: none.
+6. (Before the steps above, a dead end on the 63 base.)  l4 =
+   drafts/mode_client_a7_near4.c, 61 tricks, 4 lines (fail's c9 and dtg(156949) feeds gone,
+   hc4 into case 5's list, all arms `x = argv[++i]`): case 9 / case 11 call blocks swapped.
+   Singles, pairs within 60, list edits, feed relocation, chain term counts: none.  Superseded
+   by the 58 state, which got c9 without the latch flip.
+7. What made the steps work: the latch flip of finding 5 depends on the state; after steps
+   1-3 the c9 removal no longer flipped it (comp on the 60 state: c9 + `ork6` and dtg2 +
+   `ork6` both IDENTICAL alone; together 12).  So re-running mc7comp after every banked
+   change matters more than toggles.  Two levers alternate: a counted removal + one free list
+   label (mc7comp / mc7loop), and a near miss + one count-neutral feed relocation
+   (mc7relocall).
+8. mc7loop's full pass on the 59 state found only `ac` (step 5); before it, nothing for dtg2
+   12, arm11 14, c11 18, c3 20, t5 26, t4a 28, dz 28, pins 35/41, kk 76, the rest 100+.  On
+   the 58 state only dtg2 (12), c11 (18), t5 (22) and the rok/fail cold labels (315/285) were
+   re-run with list edits (no hit; the rest of that pass was stopped, its numbers should be
+   close to the 59 pass).  Every 1-term feed relocated on the 58 near misses dtg2 (12), c11
+   (18), t5 (22) and arm11 (22): none (build/mc/w7/ra_m_*.log).
+
+### Don't retry (attempt 7)
+
+- 1-term positions for k61l, dy, ybk, chain arms (as `mode = X` statements anywhere).
+- Merging same-target feeds; asm goto statements into other lists; dz/dv merges/retargets.
+- Relocation on the 58 state's near misses dtg2/c11/t5/arm11 (item 8).  (mc7loop on the 58
+  state is worth one full pass, since only part of it ran.)
+- mc5nat / helper-body respellings as latch-flip toggles; argv[++i] subsets on c9 / dtg2.
+
+### Ideas for attempt 8
+
+- Two list edits with one removal (mc7comp has only one; pairs of adds for the 12-22 line
+  near misses dtg2, arm11, c11, c3 on the 58 state, restricted to labels within the case
+  region and lists 0, 2, 3, 5).
+- Near miss + relocation + list edit (three-step), starting from the dtg2 (12) and arm11
+  near misses; a relocation hit at step 1 came from a near miss that list edits alone could
+  not fix.
+- The latch flip mechanism (finding 5): dump -fdump-tree-all for a flipped / unflipped pair
+  and find which release frees the extra name; a natural toggle would reopen t5/c11/dtg2.
+- The cebi JMPs (efail x2, dy) were not in mc7comp's edit set (mode_client lists only): add
+  clientEraseBlockI's labels and lists.
+
 ## State after attempt 6
 
 **63 tricks** by README's categories (84 before): 20 `__builtin_constant_p` and one cold
