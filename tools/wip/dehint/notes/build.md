@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 16
+
+Attempt 16 landed nothing; src/build.c and build.sh are unchanged, so the count (16) and attempt 15's review table stand.  It checked every heuristic gcc 6 has against exp_devgl's dev test (none can be stacked: the 2% would need a call in the dev arm), took exp_t24's warning frequency apart factor by factor (the loop factor is fixed by the files[19] bound, and each test's missing predictor needs a call-free block or a call nobody would write), read pin_d's IRA pop order (the base's thread is popped before n and d), and found that exp_t10 only places CG's checkBl block (4 against 44).  Sweeps gen_bd270 (exp_t24 chain), gen_bd271 (pin_d address spellings), gen_bd272 (CG's own checkBl): none better than src.  See "## Attempt 16".
+
 ## State after attempt 15
 
 **16 tricks** (17 before): `--param builtin-expect-probability=98`, 6 `__builtin_expect` (verbose, type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 3 pins (e, d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  lab_badsize is gone: loadBl's case 23 tests `(e->size & ~3) != e->size`, which gets the opcode-nonequal heuristic that `e->size & 3` doesn't (gen_bd261; see "## Attempt 15").  New borderline shape, marked in src:
@@ -911,3 +915,58 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7
 - The opcode-heuristic lever (a spelling that makes the test a compare of two non-constants, or against 0/1/-1) on other objects' hints: it's cheap to sweep and it moved a 29-point gap here.  In build, every remaining expect and label has been checked against it.
 - exp_devgl is the closest margin left (73% against 75.06%): any second predictor on the dev test in the non-dev direction would land it, if one turns up that the author could have written.
 - exp_t24 needs a call-free block between `type == 25` and imgSize() that folds after profile_estimate, or 16% on the type == 25 edge.
+
+## Attempt 16
+
+Goal: the cheapest tricks first (exp_devgl's 2%, exp_t24's block frequency), stacking predictors rather than spelling one test, then IRA-side ideas for the pins.  Generators from gen_bd270.  Scratch in build/bd/a16 (not kept).
+
+### Costs re-measured (src as of e76f027f)
+
+Unchanged from attempt 15: lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
+
+### exp_devgl: the predictors that could reach the dev test (read from profile_estimate, `bddump.sh build/bd/a16/nodev.c buildFlash t-profile_estimate`)
+
+- At profile_estimate buildFlash's start is bb2 (1148: `xb.type != 2`, nonequal 72%) -> bb3 (826: load, `_64 = _63 != 0`, `fuse_65 = (int) _64`, `_67 = t - 4; if (_67 <= 1)`, positive 27/73) -> bb4 (empty dev arm) -> bb5 (`fuse_9 = PHI <1(2), fuse_65(3), 1(4)>`).  The 3->5 edge is critical; sink splits it and moves the cast and the compare there.
+- Every heuristic gcc 6 has for a two-way test, checked against that shape: opcode (one per test, 73% is the best a range test gets; `== 4 || == 5` 52%, a switch 50%), PRED_CALL (needs a call with side effects in a block the test dominates and that doesn't post-dominate it: neither arm has one, and bb5 post-dominates), early return / return-value predictors (no return there; a helper returning fuse gets none either, as return_prediction skips the constants 0 and 1), loop predictors (no loop), pointer (xb.type is an int), continue/goto (C front end: continue only).  So there is no second predictor to stack: the 2% can only come from a call in the dev arm, which nobody would write.
+- sink's other refusals (single def, no side effects, `find_bb_for_arg` NULL when the value reaches the PHI on two edges, `commondom == frombb` when a use other than the PHI sits in bb3) all need fuse_65 to be used twice or reach the join twice; any natural form that does (a second override statement, `|=`) is merged back by ccp's bit tracking (`fuse | 1` with fuse in {0,1}) or by vrp1's JTAG thread before sink (gen_bd264).
+- Verdict: stuck, not swept again.  Don't retry exp_devgl without a new kind of predictor.
+
+### exp_t24: where the warning's 75 comes from, factor by factor (profile_estimate of build/bd/a16/not24.c)
+
+- The round-2 threshold is 20% of the entry (431 at bbro), so the warning needs warning/entry >= 0.2; it has 0.174 and needs x1.16.
+- warning/entry = (outer loop factor) x (path probability).  The loop factor is "guessed loop iterations" (94.7% on the latch, about 19 trips): estimated_stmt_executions from the `xb.files[i]` accesses, i.e. the files[19] bound, so it's fixed by the layout (files[20] or [21] change every xb offset; checked: nothing is IDENTICAL).  Written as pointer arithmetic it falls back to the 91% loop-exit predictor (fewer trips), the wrong way.
+- The path: retail-skip join 3762 -> `xb.type > 5` (no heuristic, 50%) -> 1881 -> `type == 25` (nonequal 28% with PRED_CALL 29% from imgSize() in the next block: 13.7%) -> 258 -> room test (`<` between non-constants: none; PRED_CALL against the warning's log: 29%) -> 75.
+- Every factor checked for a natural predictor: the `> 5` test would need PRED_CALL in the kit arm's first block (it starts with the 23/25 test); `type == 25` loses its PRED_CALL only with a call-free block in front of imgSize() (the expect's job; a real test there would stay in the code); the warning loses its PRED_CALL only if its block had a second predecessor or started with a test.  None exists.
+- gen_bd270: the kit arm as `else if (xb.type > BUILD_DEVGL16 && (type == 23 || type == 25))`, the same shape as the retail arm, with the room test still in the chain (3 kit forms x 2 retail forms x 3 room forms): 27 loose at best (`and r p`); the kit path's not-23/25 flow is threaded past the type-25 test, but the retail path's copy of that test moves too.  Not close.
+- Diagnostic only: `__builtin_expect(xb.seReplacesCf, 0|1)` (to move the competing findFile(14) exit block, 117) or a call in that arm: 99, 7 and 60 loose.  The competing block isn't the lever.
+
+### pin_d through IRA (read from `-fdump-rtl-ira` of build/bd/a16/nopind.c, pin off)
+
+- Case 27's tail is `r534 = r125 * 0x42c` (r125 = pretmp_80, the PRE'd nFlashFiles, 5 defs, one per fallback), `r535 = r534 + xb`, `d (r263) = [r535 + 0x422bc]`, size `r493 = [r535 + 0x422c0]`.  Shuffle copies cp3 (r534-r125) and cp4 (r535-r534) tie the base to n, but the pop order is r535 (base, eax: nothing assigned yet to prefer), r125 (edx, it conflicts with eax users elsewhere), r534 (eax, follows r535), then d (edx).  The reference is consistent with r125 popped first (edx), the base following it by the copies (`imul edx,edx`), and d taking eax.  The pin gets there by giving d eax outright.
+- So removing it needs n's thread to outweigh the base's, or d's to outweigh the base's (d has one def and two uses in the same blocks as the base's three refs, so it can't by itself).
+- gen_bd271: address spellings, `xb.files + xb.nFlashFiles` and `(xb.files + n)->` at the loadBaseFile calls, in the fallback arm and at the d/size reads (16 cases, pin off): every form that keeps `&xb.files[n]` in the fallback is the old 14 loose (GIMPLE normalizes the rest to the same ARRAY_REF); the pointer-plus fallback is 127.  Don't retry.
+
+### exp_t10: what it places (bbro traces, `bdbbro.sh`, src against exp_t10 off)
+
+- The only moved block is CG's checkBl copy (bbro block 14): 4 with the expect, 44 without, which lifts it into round 3 and lays it out before the passed log's setFlashBuild.  Round 4 orders by edge as well as block frequency (66 [23] comes before 51 [31]), so it needs roughly 22 or less: a factor of two on top of nonequal+call (13.7%) and the break's early return (61% to the goto).
+- gen_bd272: the CG arm calling checkBl itself (`if (suGetCG(..)) *pr = checkBl(e->data, e->size, type|10, e->crc); break;`, or with `if (!suGetCG) break;` first), with and without the expect, which is the same behaviour (for type 10 everything after chk: is a no-op).  All 8 cases are the same 45 loose (85 strict with the displaced callers): the CG checkBl block lands in the right place, but the could-not-read log moves ahead of the patch code and CF/CG's checkBl argument setup crossjumps further than the reference's.  The expect makes no difference in that form, so the order of block 14 is no longer the issue there; what's left is the shared tail.  Not landed, and probably not the source: the reference's CG copy sets `[esp+8] = 10` and jumps into the CF/chk checkBl's shared argument setup, i.e. one checkBl call reached by `goto chk` with the 10 threaded in; two calls crossjump deeper than that.  Also on src, exp_t10 off: the CG arm falling through to chk with no goto (`c7`) 52 loose in loadBlFiles (it moves .rdata), the same with the expect kept 116, `if (suGetCG(..)) goto chk; break;` 46 (as plain).
+
+### exp_upd: einline's refusal re-read
+
+- `bddump.sh build/bd/a16/noupd.c addUpdateBls i-einline` (no expect): "growth 10 exceeds --param early-inlining-insns divided by number of calls", body size 13 as four OR blocks.  The second einline test fires, so something counts as a call in a callee that has none in the dump; the official ipa-inline.c is still behind the bot wall (fetched again this attempt), so the reason stays unchecked.  Nothing swept.
+
+### Don't retry (attempt 16)
+
+- exp_devgl by any shape that keeps the setne in the non-JTAG block without a call in the dev arm: no gcc 6 heuristic is left to stack (see above).
+- exp_t24 by the kit arm as `xb.type > BUILD_DEVGL16 && (type == 23 || type == 25)` in the chain (gen_bd270), by the files bound (layout), or by moving the seReplacesCf block.
+- pin_d by address spellings (gen_bd271).
+- exp_t10 by CG calling checkBl itself (gen_bd272) or falling through to chk.
+
+### Costs now (strict/loose, removed alone; 16 tricks, unchanged)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
+
+### What to try next
+
+- Every expect and label left in build is now accounted for as "a predictor gcc 6 doesn't have in natural code" (exp_devgl, exp_t24, exp_t10, exp_pr, exp_verbose, exp_upd, t5le, none) or an IRA/PRE tie (the pins).  The one lead with something left to read: exp_upd's einline refusal ("divided by number of calls" for a callee with no calls).  If the official ipa-inline.c at releases/gcc-6.2.0 can be read, find what num_calls counts; an isUpdateBl that einline takes brings addUpdateBls' loop predictors to the `(23|15)` test.
+- Otherwise park build at 16, as attempt 14 suggested at 17.
