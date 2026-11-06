@@ -97,6 +97,8 @@ def build_template(text):
     lit('cebi_efcl', ' efcl: asm volatile("" : : "i"(64));', '')
     lit('cebi_dy', 'if (0) { dy: asm volatile(""); if (__builtin_constant_p(block + 901)) goto ybk; __builtin_unreachable(); } ',
         '', 'if (0) { dy: asm volatile(""); __builtin_unreachable(); } ')
+    lit('cebi_dy', 'if (0) { dy: if (__builtin_constant_p(block + 901)) goto ybk; __builtin_unreachable(); } ',
+        '', 'if (0) { dy: __builtin_unreachable(); } ')
     lit('mc_kk', '\tint kk = __builtin_constant_p(argc);\n', '')
     lit('bp_pin', '\t\t\t__asm__("" :: "a"(i + 1));\n', '')
     lit('r_memset', '__builtin_memset(argv, 0, kk); ', '')
@@ -145,6 +147,11 @@ def build_template(text):
     rok_all = fk_all = None
     lit('dv', 'if (0) { dv: asm volatile("" : : : "memory");  __builtin_unreachable(); } ', '')
     lit('dz', 'if (0) { dz: asm volatile("" : : : "cc"); __builtin_unreachable(); } ', '')
+    # attempt 5: the barriers are gone
+    lit('dv', 'if (0) { dv: __builtin_unreachable(); } ', '')
+    lit('dz', 'if (0) { dz: __builtin_unreachable(); }', '')
+    lit('fk_X1', '__asm__ ("" :: "X"(&fkv)); ', '')
+    lit('rk_m1', '{ __asm__ ("" :: "m"(rko)); goto rkn2; }', '{ goto rkn2; }')
     m = re.search(r'if \(__builtin_constant_p\(mode \+ 1210\).*? mode = 9; ', text)
     if m and os.environ.get('MCCHAIN') == 'lists':
         # each arm's terms as a list slot (all dropped: compile error, so never taken)

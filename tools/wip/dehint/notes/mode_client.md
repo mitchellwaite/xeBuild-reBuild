@@ -6,7 +6,114 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
-## State after attempt 4
+## State after attempt 5
+
+**84 tricks** by README's categories (87 before): the three empty `asm volatile` barriers in
+the dead blocks (`dy:` in clientEraseBlockI, `dv:` and `dz:` at the end of mode_client) are
+gone; the blocks are now `if (0) { L: __builtin_unreachable(); }` (dy keeps its ybk feed).
+No new hint, no borderline shape.  Whole object IDENTICAL BYTES, full build SHA256
+10dac648...1971c.  build.sh unchanged.
+
+How README's categories map onto the source (mc1.count misses some of these, see below):
+- "asm goto" 16 -> 13 = the 13 `asm goto` statements (JMP uses + `__asm__ goto`) other than
+  the `-r` head's `"a"(i)` one, plus the 3 barriers (now 0).
+- pins 6 = bpArgs `"a"(i + 1)`, the -i/-p `"d"(i + 1)`, the `-r` head's asm goto `"a"(i)`,
+  fkbo's `"X"(&fkv)`, rok's `"m"(rko)`.
+- mc1.count (83 before, 83 now) counts the `"a"(i)` asm goto in both columns and neither the
+  barriers nor X/m: README total = mc1 total + 1 (X, m minus the double count) + barriers.
+
+| Category | Att. 4 | Now |
+|---|---|---|
+| `__builtin_constant_p` | 51 | 51 |
+| asm goto + barriers | 16 | 13 |
+| pins | 6 | 6 |
+| cold labels | 7 | 7 |
+| `if (0)` / unreachable | 3 / 3 | 3 / 3 |
+| hand-inlined clientEraseBlockI | 1 | 1 |
+
+## Attempt 5
+
+87 -> 84.  Tools (tools/wip/dehint/, logs in build/mc/, dumps in build/mc4/m5*):
+- `mc5v_dead.py` (dead-block contents: hit `all_ur`), `mc5v_one.py` (-e/-c through oneArg,
+  `static inline`), `mc5v_ip.py` (-i/-p through an optArg helper), `mc5v_bp.py` (bpArgs
+  caller side: out-params, index returned): all for mc2try.py.
+- `mc5nat.py BASE.c [-only]`: mc3nat's rules plus new ones for attempt 4's shapes (helpers,
+  reboot tail, case bodies, -keys/-ip spellings), on the base alone or crossed with its near
+  misses.  `mc5drift.py RULE@K ...`: singles and pairs of near misses on drift bases.
+  `mc5combo.py KEY ...`: score one combination of mc1 keys.
+- mc1.py's template knows the new dead-block spellings and has slots `fk_X1` / `rk_m1` for the
+  X and m asms (old spellings kept for old bases).  Singles on the new base:
+  build/mc/m5_singles2.json (same numbers as before the barrier removal).
+
+What moved:
+1. The barriers: `dv:`/`dz:`'s `asm volatile("" ::: "memory"/"cc")` and dy's `asm
+   volatile("")` dropped, each alone and all three together IDENTICAL BYTES.  The blocks are
+   dead (`if (0)`), reached only by asm goto edges and dy's feed; what the edges need is a
+   block that ends in `__builtin_unreachable()`, not its contents.  Replacing the
+   unreachable with `return 0;`, `goto fail;`, `goto dtg;` or nothing: 60-356.
+
+Profile_estimate findings (build/mc4/m5base/pe_mc.txt, the parsed dump):
+- A cp feed's branch is "no prediction heuristics: 50%" at profile_estimate (cp is folded
+  later), so each `&&` term halves the flow sent to the target: a k-term feed sends 1/2^k of
+  its block's flow.  Feeds whose target ends in a noreturn call (u2) get the noreturn
+  heuristic (~0%) instead.  asm goto edges are "predicted to even probabilities".
+- The switch region is tiny in frequency (the option loop holds the maximum): case heads
+  have frequencies 3-7 of 10000.  Their bbro keys are the priority form
+  -(1000000 + 100 * edge_freq + bb_freq), so a feed decides the order by a unit or two
+  (removing t5's feed: bb 118 from 5 to 3, key -1000405 -> -1000403, after c2's -1000404:
+  the 8-line near miss).  All switch edges are even (13 targets), so natural code gives the
+  case heads equal keys; feeds or extra real predecessors are the only way to order them.
+  That is why the case-order near misses (t5 8, c11 10, rok's c1 12, ...) have no natural
+  compensation: nothing natural changes one case head's frequency by one unit.
+- The -w arm's 6-line test-order flip (also in attempt 4): ifcombine builds
+  `_x = a == 0; _y = argc == i + 1; _z = _x | _y`, and the expander tests the lower SSA
+  version first.  In the base ifcombine gets fresh names (argc compare 636 < 637), in a base
+  where -e calls oneArg it pops recycled names from the free list (157 / 146: flipped).
+  The free list at ifcombine holds names released after release_ssa (045t), i.e. by the
+  passes after ipa-inline, so the spelling of an inlined helper's body is the lever, not
+  the spelling of mode_client (all mc3nat rules left it at 6).
+
+Searched with no hit:
+- Triples of the base's near misses within 35 lines (MC2SKIP fa*, ~1100): none.
+- mc5nat on the base: 30 count-neutral IDENTICAL rewrites (eqarg, keys, ipinc, tail, oa_i,
+  oa_ret, usage0, nma2, help, cinfo, ...); near: decl_ip / decl_reboot / wb_arg2 2,
+  argvi1 4.  Crossed with the 20 near misses within 40 (2018): none.  mc5drift (12 drift
+  rewrites x the 14 near misses within 22, singles and pairs, 1260): none.
+- -e or -c through the shared oneArg (two call sites): 6 (the -w flip above), with or
+  without `static inline`; -e and -c both (three call sites): oneArg is not inlined (10177):
+  oneArg's size is 31 and max-inline-insns-auto is 30, so only the called-once rule (overall
+  growth negative) inlines it; `inline` doesn't help with three sites.  mc3nat on the -e
+  and -c bases: all 6.
+- -i/-p through `optArg(argc, argv, &i, dummy)` (+ `if (arg != dummy) log`, or the message
+  as an argument), shared or one arm, plain or `static inline`: 37-78; the `arg != dummy`
+  test is not threaded into the helper's branch.  Worse than dropping the pins (35/41).
+- bpArgs without the pin, caller side: void with both out-params, the new index returned:
+  410-459 (the out-param/`&arg` forms change the arms' predictions); plain removal 30.
+- Pair compensations by hand: t5 + rok's c2 edge 60, t5 + c11 26, t5 + c3 245, t5 + s4 16.
+- The X / m asms (fk_X1 358, rk_m1 235, both 385) are needed.  The hinted clientEraseBlockI
+  body moved into the global clientEraseBlock (gcc inlines it): 78 (the out-of-line copy
+  changes).
+
+### Don't retry (attempt 5)
+
+- Dead-block contents other than `__builtin_unreachable()`.
+- More call sites for oneArg (3 do not inline); -i/-p helpers with a dummy-test after the
+  call; bpArgs out-param / index-return forms.
+- Natural compensation of the case-head feeds (t5, c11, c3, c9, t4, rok's c-edges): their
+  job is a one-unit frequency difference between switch targets with even edges.
+
+### Ideas for attempt 6
+
+- The case-order feeds can only go with a real structural change of the switch: a case head
+  with a second real predecessor (a case body shared by a goto or a fall-through the
+  original may have had), or a different dispatch (the reference's jump-table order is
+  fixed, but which blocks feed which case is not).  Look at the Linux v1.16 build's
+  mode_client for how the cases are laid out.
+- The -w flip with -e through oneArg: vary oneArg's body (locals, statement order, the
+  `*pi` update) to change how many names it releases before ifcombine; a base with -e and
+  -c as calls predicts those arms evenly and may free feeds in the option loop (u2's loop
+  head feed, k61l, the kk construct) -- run singles on it once it is IDENTICAL.
+- mc1.count could learn README's mapping (barriers, X/m, the double-counted "a"(i)).
 
 **88 tricks** by README's categories (94 before), **87 once build.sh drops the param**: all 6
 expects gone (the 4 `E()` uses, the macro and its `__builtin_expect`), no new hint.  With no

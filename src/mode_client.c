@@ -503,7 +503,7 @@ static void clientEraseBlockI(const char *sblock)
 		} else
 			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);  JMP(efail); }
 	} else
-		{ if (0) { dy: asm volatile(""); if (__builtin_constant_p(block + 901)) goto ybk; __builtin_unreachable(); } einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
+		{ if (0) { dy: if (__builtin_constant_p(block + 901)) goto ybk; __builtin_unreachable(); } einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
 }
 
 /* the option's argument(s); dies with usage if one is missing or, with
@@ -790,7 +790,7 @@ if (__builtin_constant_p(i + 321)) goto u2;
 	else
 		netDisconnect();
 	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 50750)) goto u2; 
-if (0) { dv: asm volatile("" : : : "memory");  __builtin_unreachable(); } if (0) { dz: asm volatile("" : : : "cc"); __builtin_unreachable(); } 	return 0;
+if (0) { dv: __builtin_unreachable(); } if (0) { dz: __builtin_unreachable(); }	return 0;
 fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 255562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5;     if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
