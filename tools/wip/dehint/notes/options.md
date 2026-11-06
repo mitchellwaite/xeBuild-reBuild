@@ -3,6 +3,19 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 5
+
+**34 tricks** (35 before).  Removed (1): one `__builtin_constant_p` of parseButtonX's z feed;
+the feed is now `if (cp) { if (cp > 0) goto z; }` (the opcode heuristic's 75% on `> 0` does
+what the second and third 50% tests did).  Full build SHA256 10dac648...1971c.
+
+Remaining: as after attempt 4 with 14 `__builtin_constant_p` (README's count), i.e.
+`--param builtin-expect-probability=83`; optIniBool's 2 arms; optN's entry, off arm + expect;
+optIniBoolG's 2 arms + expect; parseButtonX's power expect and its 2-cp z feed; parseButton's
+winbutton expect; the rev feeds; the macid memset; parseOption's two expects; 2 `asm goto`, 2
+`__builtin_unreachable`; 2 `po_hint()` + no-early-inlining; the hand-written
+`_parseButton.part.0`.  No new borderline shape (the `> 0` is a counted dead cp test).
+
 ## State after attempt 4
 
 **35 tricks** (42 before).  Removed (7): optN's first cp arm (now a plain `return 0`), and
@@ -470,3 +483,97 @@ it: none IDENTICAL (best 14 `pb_exp+part`, then 38s).
   rewrites there together with removing a neighbouring builtin (the z feed's 3 cp, G's expect).
 - Otherwise the rest looks stuck: the G/N copies need their own profiles, the dz dummies need
   asm-goto edges at bbro, parseOption's group needs a vanishing call.
+
+## Attempt 5
+
+New tools (tools/wip/dehint/): `op5.py FN` (optIniBool / optN / optIniBoolG regenerated from a
+template: each dead arm `{ if (cp) <stmt>; return 0; }` with <stmt> a goto to any label in the
+body (L0 before the off test, L1 before perbox, L2 perbox log, L3 else head, L4 !bad head, L5 ini
+log, L6 bad warning, r, L8 before `return 1`) or `return 1`; arms plain; optN's entry likewise;
+the `!bad` expect on/off), `op5x.py FN` (those forms x every optricks single removal),
+`op5bx.py` (parseButtonX's z feed as 1-2 cp feeds at four positions in the else arm with
+gotos/returns to any label of the copy, power expect on/off).
+
+### Singles on the 5d05a77e source
+
+Nothing IDENTICAL.  Nearest: part 14 (not real), mG_cygnos/mG_smcne 38, rev2_4 44 (its text is
+stale: dz2's feed), po_exp2 62, mG_nosec 62, mG_nandmu 64, bx_z 90, po2 102, G_exp 112.
+
+### Helper dead-arm flow alone (op5.py)
+
+- G (130 forms with fewer builtins): none IDENTICAL.  Best: off arm `goto L6` (into the bad
+  warning) without the expect, 76 (G_exp alone 112); every on-arm target but r is 358+.
+- N (361 fewer forms): none; everything with the expect gone is 146 (= N_exp), whatever the arms.
+- ib: off arm `goto L5`/`goto L8`/`return 1` = `goto r` (IDENTICAL, no saving); any other on-arm
+  target 333+.
+
+### Helper flow forms x single removals (op5x.py; results in build/op/op5x_{G,ib,N}.txt)
+
+- G 4475, ib 2314, N 7175 combinations: none IDENTICAL.  The flow forms are inert: every removal
+  scores what it scores alone (mG_cygnos/mG_smcne 38, rev2_4 44, ...), except that G's
+  no-expect off->L6 form moves with mG_nandmu: 48 (n=2, both gone would be -2).
+- So control flow in the helpers' cp arms only matters where it lands at bbro, and with the
+  helpers inlined 4-8 times the arms are all copies of one shape: there is no per-site lever.
+
+### parseButtonX's z feed as flow (op5bx.py, 1372 forms)
+
+- Only the current 3-cp branching feed is IDENTICAL.  `return 0;`, `return b;` (b is 0 there)
+  and `goto z` are the same block, so every 1-2 cp feed with any targets is 90 (= no feed) at
+  positions 1/3, 546 at position 0 (z gets 50% of the else arm; it needs 37.5%) and 795 at 2.
+  0.375 = 1/2 x 3/4 needs three 50% tests, which is why the branching form is the only one.
+
+### MATCH: parseButtonX's z feed with 2 cp (op5z.py, IDENTICAL BYTES)
+
+- op5z.py: 1-2 tests from a menu of cp comparisons (`== 1`, `> 0`, `< 0`, `!= 0`, ...) and
+  expect(cp, 0|1).  `if (cp1) { if (cp2 > 0) goto z; }` is IDENTICAL (also `>= 1`, `> 1`, and
+  any 50% outer spelling: `!cp`, `cp == 0`, `cp != 0`): PRED_TREE_OPCODE_POSITIVE gives the
+  inner test the 75% that the old pair of 50% tests (1/2 + 1/4) gave.  One cp fewer.
+- No single test works (no menu condition gives 37.5%): 1[...] is 90 at best; sequential
+  pairs `if (a) goto z; if (b) goto z;` 29 at best (`cp < 0` twice).
+- Landed (src: parseButtonX), comment updated.
+
+### Rev feeds with the comparison menu (op5rev.py): nothing
+
+- dz1 (3 builtins now) with 1-2 builtins: best 333 (one expect level), plain-cp pairs 403.
+- dz2 (4) with 1-3: best 38 (`cp == -1`/`cp < 1`/`cp < 2` outer + expect inner, 3 builtins);
+  the 17%-of-17% the two expects give has no opcode-heuristic equivalent.
+
+### ib arms as comparisons (op5cmp.py ib): nothing (one arm gone is 852+ whatever the other)
+
+### G and N arms as comparisons (op5cmp.py G/N, 4223 + 4351 forms): nothing
+
+- The arm's cp spelling (`> 0`, `== 1`, `< 0`, ...) never changes the score: the arms' own
+  frequency comes from the live `x & set` test, and the dead branch only adds flow below the
+  G block (r, the warning).  G without the expect stays 76 (off -> L6) / 112; N without it 146.
+- N's entry test with the comparison menu and other targets, off arm gone: 290+.
+- dz2's feed as 3 one-builtin levels (343 forms): 44 = no feed (plain cp nests act like none).
+
+### Pairs on the new source: nothing IDENTICAL (best pb_exp+part 14, mG_cygnos+mG_smcne 38).
+
+Full build with the z feed change: SHA256 10dac648...1971c; progress 617/617.
+
+### Mechanisms (why the rest is stuck)
+
+- G expect (and N's): it sets p(!bad) on a live test; dead flow can only add counts below the
+  G block, never lower it, and the 4 G sites are copies of one profile (no per-site lever).
+- optIniBool/G/N cp arms: needed for the 50%/29% split of the live tests (early-return
+  predictor); comparison spellings and other targets are inert or 300+.
+- parseButtonX power expect: 83% on a live strnicmp test; `== 0`/swapped arms change code.
+- Rev feeds: their 8.5% / 2.9% come from expect's 17%; no opcode heuristic gives that, and
+  plain cp nests vanish as feeds.
+- dz1/dz2 asm gotos + unreachable, macid memset, po_hint group, hand-written part: unchanged
+  from attempt 4's analysis.
+
+### Don't retry (attempt 5)
+
+- Goto/return targets in the helpers' cp arms (any label, with any single removal).
+- Comparison spellings of the helpers' arms, N's entry, the rev feeds (1-3 levels).
+- z feed: 1 test of any spelling; flow targets in parseButtonX (return 0/b are z).
+
+### Next ideas
+
+- The opcode-heuristic lever (a comparison of a cp result gives 66%/75%/... instead of 50%)
+  only removes builtins where two or more 50% tests combine into one of those values; no other
+  site has that.  Otherwise options looks stuck at 34 by these routes; the natural-split
+  parseButton route (attempt 2-4) remains the one big lever, and it needs the xellbutton call
+  block's frequency (132 -> ~171), which no spelling found so far gives.

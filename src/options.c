@@ -380,7 +380,8 @@ int optIniInt(const char *name, int def)
 }
 
 /* applyIniOptions' copy of parseButton for xellbutton: the expect and the
-   dead feeds into z set its frequencies */
+   dead feed into z set its frequencies (z needs 3/8 of the else arm: 50%
+   for the outer test, 75% for `> 0` from the opcode heuristic) */
 static int parseButtonX(const char *s)
 {
 	int b = 0;
@@ -392,7 +393,7 @@ z:
 	if (__builtin_expect(!strnicmp(s, "power", 5), 1)) {
 		b = 0x11;
 	} else {
-		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2)) goto z; if (__builtin_constant_p(xb.xellButton + 3)) goto z; }
+		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2) > 0) goto z; }
 		if (!strnicmp(s, "remopower", 9))
 			b = 0x20;
 		else if (!strnicmp(s, "remox", 5))
