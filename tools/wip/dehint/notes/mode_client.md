@@ -6,6 +6,26 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 6
+
+**63 tricks** by README's categories (84 before): 20 `__builtin_constant_p` and one cold
+label (`hdd5_c`) gone, no new hint kind, no borderline shape.  Whole object IDENTICAL BYTES,
+full build SHA256 10dac648...1971c, progress 617/617.  build.sh unchanged.  mc1.count now
+uses README's mapping (it prints 63, the same as README's categories).
+
+| Category | Att. 5 | Now | Where |
+|---|---|---|---|
+| `__builtin_constant_p` | 51 | 31 | relocated with fewer terms: t5 4->1 and c3 4->1 (default case), c11 4->1 (fail), t4 4->2 (rok block), s5 4->1 (from after the reboot tail to fail); mode chain 17->12 (2+5+5 in the order 9, 11, 7); fail's dtg(205569) dropped |
+| asm goto | 13 | 13 | (rok list lost c1/c10, fkbo list fa2-fa4: free label drops) |
+| pins | 6 | 6 | |
+| cold labels | 7 | 6 | hdd5_c gone |
+| `if (0)` / unreachable | 3 / 3 | 3 / 3 | |
+| hand-inlined clientEraseBlockI | 1 | 1 | |
+
+Not a plain removal everywhere: five feeds were *relocated* with fewer terms (same target,
+another source block).  The count drops because a feed's job is a frequency, and a colder
+source needs fewer terms for it; reported as such to the user.
+
 ## State after attempt 5
 
 **84 tricks** by README's categories (87 before): the three empty `asm volatile` barriers in
@@ -30,6 +50,85 @@ How README's categories map onto the source (mc1.count misses some of these, see
 | cold labels | 7 | 7 |
 | `if (0)` / unreachable | 3 / 3 | 3 / 3 |
 | hand-inlined clientEraseBlockI | 1 | 1 |
+
+## Attempt 6
+
+84 -> 63.  Tools (tools/wip/dehint/, logs and states in build/mc/w6/, dumps build/mc4/m6*):
+- `mc6short.py BASE.c OUT.c [-auto]`: the lever.  For each multi-term feed: remove it, put a
+  1-term (then 2-, 3-term ...) feed into the same target after every `;` / label of
+  mode_client (`mc6feedpos.py` positions; ~240), take the IDENTICAL hit nearest the old feed,
+  go on.  `-auto` finds the feeds by pattern (pass 2+).  `mc6feedpos.py FEED_RX TARGET`: the
+  same for one feed, prints all hits.
+- `mc6chain.py BASE.c`: the mode = 7/11/9 chain with 0..6 terms per arm, every arm order,
+  `else`-chained or separate ifs (4116 variants at -max 6).
+- `mc6f2l.py`: each feed replaced by its target added to an existing asm goto list (none).
+- `mc6dead.py BASE.c dz|dv`: dead block + its edge replaced by a feed near it (none).
+- `mc6walk.py` / `mc6walk2.py`: walks over list label drops/adds (+ new feeds) from the base
+  with all case feeds stripped (`mc6case_order.py` strips them and prints the case order).
+- `mc6v_one.py` (oneArg bodies x -e / -c / -w call sites), `mc6v_case.py` (shared case 4/5
+  and 7/12 bodies), `mc6v_ceb.py` (clientEraseBlockI natural / a real call): for mc2try.py.
+- `mc6keys.py TAG`: case heads' bbro keys from an mc4dump (rough bb->call mapping).
+- mc1.count follows README now: asm goto with an operand is a pin, `"X"`/`"m"` asms are pins,
+  empty asm barriers count with the asm gotos.
+
+What moved:
+1. Feed relocation (mc6short pass 1, 84 -> 71): a feed sends 1/2^k of its source block's
+   flow (attempt 5), so the frequency a 4-term feed from `fail` adds can come from a colder
+   or smaller block with 1 term.  t5 (default case head, 1 term), c11 (fail, 1), c3 (end of
+   the default case, 1), t4 (inside the rok block, 2; no 1-term hit), s5 (fail, 2 in pass 1,
+   1 in pass 2).  Many positions hit for t5 (7 1-term) and c11 (17); c3 had exactly one.
+2. Free singles then (mc4greedy): fail's dtg(205569) feed, rok list c1/c10, fkbo fa2-fa4
+   (-> 70); MCCHAIN=lists greedy: 4 of the 9 arm's 5 terms (-> 66); pass 2: s5 2 -> 1 (65).
+3. mc6chain on that base: arms in the order 9, 11, 7 with 2, 5, 5 terms (12 for 13) -> 64.
+4. Greedy: cold label hdd5_c free (-> 63).  Pass 3 shortening, mc6f2l, chain sweep again
+   (-max 5): nothing more.
+
+Mechanism notes:
+- Removing every case-head feed (34 cp: chain, t4, t5, c11, c3, c9) costs only 72 lines:
+  the case blocks come out 10, 9, 12, 1, 7, 3, 2, 5, 4, 8, 11 against the reference's 10,
+  12, 1, 3, 4, 5, 2, 8, 9, 11, 7.  The case bodies' source order does not change it (12
+  permutations, same order), so ties are not broken by bb index.  Greedy walks over list
+  label drops/adds (and new 1-3 term feeds) from there stall at 56-58: the order needs the
+  fine-grained per-head amounts, which the relocated short feeds supply more cheaply.
+- Chain arms are not goto feeds: an arm `mode = 7` is threaded through the switch, and
+  replacing an arm with a `goto c7` feed of any length from any position never matched
+  (best 12/4/22 lines for arms 7/11/9).
+
+Searched with no hit:
+- oneArg bodies (DECL x TEST x TAIL x mode-test position, 62 bodies) with -e or -c calling
+  it: best 6 (the -w flip stays); with -w calling it: best 4 (then -eb's own test order
+  flips: the two inlined copies take the same ifcombine order).  mc5nat -only on both bases:
+  no change (all 6 / 4).
+- Shared case bodies: `case 4: case 5:` with one HDD test and a mode test (3 shapes): 258+;
+  gcc does not thread the inner `mode == 4` test (the reference has two separate HDD tests
+  and no mode compare), so 4 and 5 were separate cases.  7/12 sharing the dummy test (`arg
+  = NULL` or `?:`): 251+.
+- clientEraseBlockI as a natural static function or a call to clientEraseBlock: 273; with
+  einv kept cold: 198.
+- The Linux v1.16 build has no client mode (no client strings), so it can't tell the
+  original switch shape.
+- Per feed (63 state): its target added to any asm goto list instead (mc6f2l): best 8
+  (dtg 156949, c9); dz block + JMP(dz) replaced by a 1/2-term feed within 300 chars: 60.
+
+### Don't retry (attempt 6)
+
+- Shared case bodies for 4/5 or 7/12; case body source order (also without the feeds).
+- oneArg body spellings for the -e/-c/-w bases (6 / 4 lines, see above).
+- Feed -> list label replacements; dz/dv dead blocks -> nearby feeds.
+- mc6short / mc6chain again on the 63 state without another change first (pass 3: none).
+
+### Ideas for attempt 7
+
+- Relocation for the other hint kinds: an asm goto list's edges (e.g. JMP(s4, c12) 44, the
+  j_s4-s4 drop is 8) might be replaced by short feeds from a cold block; only a gain where
+  one statement is replaced by fewer counted items (or the list goes with a dead block).
+- Relocation with 2 changes at once: remove two 1-term feeds and search one new 1-term
+  feed (pairs of positions are too many; restrict to the removed feeds' targets).
+- t4 is still 2 terms (no 1-term position); the chain arms 11 and 7 still 5 each: try
+  splitting the chain (`if (...) mode = 7;` placed before netGetInfo / at fkN, only for
+  arms that need fewer terms there), or the arm values in other order with the 9 arm first.
+- The k61l feed (2 terms, `(char *)` form) and the dy feed in clientEraseBlockI (2 terms)
+  were not in mc6short's patterns: extend it to `i`-based and clientEraseBlockI feeds.
 
 ## Attempt 5
 

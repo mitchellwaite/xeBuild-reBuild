@@ -218,7 +218,11 @@ def count(text):
     s = re.sub(r'#define .*', '', s)
     c = {}
     c['cp'] = s.count(CP)
-    c['asmgoto'] = len(re.findall(r'\bJMP\(', s)) + s.count('__asm__ goto')
+    # README's mapping (attempt 6): an asm goto with an input operand is a pin, not an
+    # asm goto; empty asm barriers count with the asm gotos; "X"/"m" asms are pins.
+    pin_goto = len(re.findall(r'__asm__ goto \("" :: "[a-d]"', s))
+    c['asmgoto'] = (len(re.findall(r'\bJMP\(', s)) + s.count('__asm__ goto') - pin_goto
+                    + len(re.findall(r'\basm\s+volatile\s*\(""\s*(?:\)|::)', s)))
     c['cold'] = s.count('__attribute__((cold))')
     c['expect'] = len(re.findall(r'\bE\(', s)) + s.count('__builtin_expect')
     c['if0'] = s.count('if (0)')
@@ -227,7 +231,8 @@ def count(text):
     pins = len(re.findall(r'__asm__\s*(?:volatile)?\s*\("" :: "[adDr]"\(', s))
     pins += len(re.findall(r'\{ int r; __asm__ volatile\("" : "=D"\(r\)\)', s))
     pins += len(re.findall(r'"[XmDadr]"\(&?\w+[^)]*\), "[Xm]"', s))
-    pins += len(re.findall(r'__asm__ goto \("" :: "[a-d]"', s))
+    pins += pin_goto
+    pins += len(re.findall(r'__asm__\s*\("" :: "[Xm]"\(', s))
     c['pin'] = pins
     c['inline'] = 1 if 'clientEraseBlockI' in s else 0
     c['total'] = sum(c.values())

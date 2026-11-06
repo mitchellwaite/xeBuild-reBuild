@@ -11,7 +11,9 @@
    reached (tools/wip/mc/s150/NOTES.md has the levers, the wip/mc attempts
    before it the search; tools/wip/dehint/notes/mode_client.md which hints
    were found not to matter and removed, and what each remaining one is
-   for).  String literals land in .rdata in block order, so clientInfo's and
+   for).  A cp feed sends 1/2^k of its block's flow, so the case heads'
+   feeds sit where one or two terms add the frequency they need (the
+   default case, the rok block, fail).  String literals land in .rdata in block order, so clientInfo's and
    clientWriteBlocks' shapes (early returns) are what fix it there.  The
    option tests get even odds from calls: an arm that starts with a call
    (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
@@ -716,18 +718,17 @@ if (__builtin_constant_p(i + 321)) goto u2;
 		if (reboot) {
 			if (netConnect(ip)) {
 			rok: __attribute__((cold));
-				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;  
-				{ struct {} rko; { __asm__ goto ("" :::: dv, c1, c12, s5, c9, c2, c10, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { __asm__ ("" :: "m"(rko)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
+				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;
+				{ struct {} rko; if (__builtin_constant_p(mode + 1049460) && __builtin_constant_p(mode + 1049461)) goto t4; { __asm__ goto ("" :::: dv, c12, s5, c9, c2, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { __asm__ ("" :: "m"(rko)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
 			} else
 				goto fail;
 		} else
 			{ AT(u2) client_usage(2, NULL); }
 	} else {
 		if (netConnect(ip)) {
-			{ { struct {} fkv; __asm__ ("" :: "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa2, fa3, fa4, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa2: goto ofa2; fa3: goto ofa3; fa4: goto ofa4; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa2: goto fkA2; ofa3: goto fkA2; ofa4: goto fkA2; ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
+			{ { struct {} fkv; __asm__ ("" :: "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
 			dsp: cinfo = netGetInfo();
-			   if (__builtin_constant_p(mode + 930) && __builtin_constant_p(mode + 931) && __builtin_constant_p(mode + 932) && __builtin_constant_p(mode + 933)) goto t4;      
-			           if (__builtin_constant_p(mode + 1210) && __builtin_constant_p(mode + 1211) && __builtin_constant_p(mode + 1212) && __builtin_constant_p(mode + 1213) && __builtin_constant_p(mode + 51213) && __builtin_constant_p(mode + 101213)) mode = 7; else if (__builtin_constant_p(mode + 1230) && __builtin_constant_p(mode + 51230) && __builtin_constant_p(mode + 101230) && __builtin_constant_p(mode + 151230) && __builtin_constant_p(mode + 201230) && __builtin_constant_p(mode + 251230)) mode = 11; else if (__builtin_constant_p(mode + 1221) && __builtin_constant_p(mode + 1222) && __builtin_constant_p(mode + 1223) && __builtin_constant_p(mode + 51223) && __builtin_constant_p(mode + 101223)) mode = 9; switch (mode) {
+			if (__builtin_constant_p(mode + 909000) && __builtin_constant_p(mode + 909001)) mode = 9; else if (__builtin_constant_p(mode + 911000) && __builtin_constant_p(mode + 911001) && __builtin_constant_p(mode + 911002) && __builtin_constant_p(mode + 911003) && __builtin_constant_p(mode + 911004)) mode = 11; else if (__builtin_constant_p(mode + 907000) && __builtin_constant_p(mode + 907001) && __builtin_constant_p(mode + 907002) && __builtin_constant_p(mode + 907003) && __builtin_constant_p(mode + 907004)) mode = 7; switch (mode) {
 			case 1:
 				AT(c1) netDumpNand(arg);
 				break;
@@ -747,7 +748,7 @@ if (__builtin_constant_p(i + 321)) goto u2;
 				AT(t5)  if (cinfo->hwFlags & 0x20)
 					{ JMP(s4, c12); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
 				else
-					{ AT(hdd5) { hdd5_c: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); }
+					{ AT(hdd5) log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); }
 				break;
 			case 6:
 				break;
@@ -776,8 +777,10 @@ if (__builtin_constant_p(i + 321)) goto u2;
 					{ AT(i1) clientInfo(arg); }
 				break;
 			default:
-				AT(cdef)   log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
-				 break;
+				if (__builtin_constant_p(mode + 1084170)) goto t5;
+				AT(cdef) log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
+				if (__builtin_constant_p(mode + 1085650)) goto c3;
+				break;
 			}
 		} else
 			goto fail;
@@ -789,9 +792,9 @@ if (__builtin_constant_p(i + 321)) goto u2;
 		{ netReboot(reboot); JMP(fail); ndl: netDisconnect(); }
 	else
 		netDisconnect();
-	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 50750)) goto u2; 
+	if (__builtin_constant_p(mode + 50750)) goto u2;
 if (0) { dv: __builtin_unreachable(); } if (0) { dz: __builtin_unreachable(); }	return 0;
-fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 255562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5;     if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
+fail: __attribute__((cold)); if (__builtin_constant_p(mode + 255562)) goto ndl; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 1089530)) goto s5; if (__builtin_constant_p(mode + 1095110)) goto c11; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }
