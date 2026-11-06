@@ -3,6 +3,16 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 15
+
+**16 tricks** (17 before): `--param builtin-expect-probability=98`, 6 `__builtin_expect` (verbose, type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 3 pins (e, d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  lab_badsize is gone: loadBl's case 23 tests `(e->size & ~3) != e->size`, which gets the opcode-nonequal heuristic that `e->size & 3` doesn't (gen_bd261; see "## Attempt 15").  New borderline shape, marked in src:
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| loadBl case 23 | `if ((e->size & ~3) != e->size)` | Live and not redundant, but loadConsoleBlFiles spells the same test `e->size & 3` (that one costs 6 lines in the other spelling), and this spelling is chosen for the predictor it gets |
+
+The margins of exp_devgl (73% against 75.06%), exp_t24 (warning frequency 75 against 87) and exp_pr (`*pr`-true edge about 2%) are measured in "## Attempt 15"; no natural form reaches them.
+
 ## State after attempt 14
 
 Attempt 14 landed nothing; src is unchanged, so the count (17) and the review tables below stand. It found that the `if (xb.type > BUILD_DEVGL16 && type == 14)` tail can't match: the reference's signature-failed path sends `xb.type <= 5` and `type != 14` to different places, and that form makes them one statement (see "## Attempt 14").
@@ -853,3 +863,51 @@ Measured (gen_bd250, gen_bd251; loose/strict lines in loadBlFiles):
 ### What to try next
 
 Nothing with real odds.  The only open lead is attempt 10's near miss (3 tricks for 3 loose lines), which needs a `fail` block that survives to expand with no asm (mergephi2) and a `<=5` arm block that vrp1's joiner threads go through (tree-ssa-threadupdate.c's path counts); attempts 10, 11 and 14 found no natural statement for either.  I'd park build at 17.
+
+## Attempt 15
+
+Goal: the tricks with the least mechanism work (exp_t24, exp_devgl, lab_badsize) first.  Generators from gen_bd260.  Scratch in build/bd/a15 (not kept).
+
+### Costs re-measured (src as of 4c988f7c)
+
+Singles unchanged from attempt 12's table: lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, lab_badsize 26/6, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.  All 78 pairs: none cheaper together than its parts, except the known exp_verbose+pin_e (18 loose, as exp_verbose alone) and lab_t5le+exp_pr (13/2).
+
+### The exact margins of the three least-worked tricks (read from profile_estimate, sink and bbro dumps)
+
+- **exp_devgl: 73.0% against 75.06%.**  Without the expect, buildFlash's dev test `(xb.type - 4) <= 1` gets only the opcode-positive heuristic (`x <= 1` predicted false, hitrate 73).  sink splits the critical non-dev edge (bb4, freq 603) and select_best_block sinks `_64 = _63 != 0` and the cast there because 603 < 826 x 0.75 = 619.5 (sink-frequency-threshold 75; the load has a vuse, so 82 for it, and it stays).  So the non-dev side needs 75.06% where the natural one has 73%: one more predictor in that direction of any strength would do, and none exists in that code (no call, return or loop in either arm).  The dev types written as two `==` tests are worse (48% / 52%), a switch 50%, a range written the other way folds to the same `> 1` test (73%).  Noted for later: sink also refuses when the value reaches its PHI on two edges (find_bb_for_arg returns NULL), but every form that would do that is merged into one range test by fold or ifcombine before sink.
+- **exp_t24: the warning block needs frequency >= 87, it has 75.**  addBlsToImage's entry frequency is 431, so bb-reorder's round 2 needs 20% of it, 86.2; the warning (bbro block 40) at 75 falls to round 3 and is laid out after the seReplacesCf findFile(14) found-exit block (80, freq 117, round 2), which is the whole 7-line difference.  With the expect it's 153 (round 2, before 80).  The type == 25 edge gets nonequal (28%) plus PRED_CALL (the next block holds imgSize(): 29%), 13.7% of 1881 = 258, and the warning 29% of that; it needs 16% (or the `xb.type > 5` test, 50% with no heuristic, at 58% for the <=5 side).  The expect works by putting a call-free block between `type == 25` and imgSize().
+- **lab_badsize: appendAddonPatches' block needs frequency < 44 in loadBlFiles, it has 76** (round 4 starts below 5% of the entry, 882).  In loadBl's own profile case 23 is 833 -> retail test 62.2% (nonequal, call and early return) -> `*pr` test 61% (early return) -> size test, whose good arm gets 39% (both arms hold calls, so PRED_CALL cancels; the good arm's break is an early return).  It would need about 22.6%: 39% -> 22.6% takes a predictor of about 69% on its own, or two of 60%.  The label gives 89.9% for the log.
+
+### What landed: lab_badsize by the spelling of the size test (17 -> 16, IDENTICAL, full build SHA256 matches)
+
+gen_bd261: `if ((e->size & ~3) != e->size)` in loadBl's case 23, no label.  A compare of two non-constants gets the opcode-nonequal heuristic (72% for `!=`), which `x & 3` (a compare with 0) doesn't; with the good arm's early return (61%) that's about 80% for the log, so appendAddonPatches' block falls under round 4's threshold.  fold leaves the form alone until after profile_estimate, and every spelling of it compiles to the same `test al,3`: `(x & ~3) != x`, `x != (x & ~3)`, `x / 4 * 4 != x`, `(x >> 2 << 2) != x`, `& ~3u`, `& 0xfffffffc` are all IDENTICAL; `x % 4` is the old 6 loose.  gen_bd262: the same spelling in loadConsoleBlFiles' case 23 costs 6 loose there, and in appendAddonPatches' addon test (`== a->size`) 60, so only loadBl uses it; that inconsistency is why src marks it "Borderline, for review".
+
+**Lever for the rest: a test's spelling picks its opcode heuristic.**  `==`/`!=` between two non-constants, or against a non-zero constant, gets nonequal (72%); `<`/`<=`/`>`/`>=` against 0, 1 or -1 gets positive (73%); anything compared with 0 (including a bare value or `x & c`) gets nothing.  Worth checking on every remaining expect and label whose margin is one predictor.
+
+### The spelling lever on the rest (gen_bd263 to gen_bd266), and other sweeps: nothing more lands
+
+- gen_bd260, exp_t24: the room test out of the xb.type chain, as addUpdateBls has it (`if (type == 25 && e->offset < imgSize())` after the chain; the same behaviour, as the chain's other arms already skip 23 and 25), with four chain forms and three room forms: 63 loose at best.  vrp1 then doesn't thread the kit path's not-23/25 edge past the type-25 test (the reference does), so the chain really is an `else if` chain.
+- gen_bd263, exp_pr: `*pr` is 0 or -1 at the tail, so `*pr == -1` (nonequal) or `(int)*pr < 0` (positive) can stand for `*pr != 0`.  With the t5le label kept: 0 loose, 9 strict (both), against 2/18 for the plain `!= 0`; the 9 are a `.p2align` on the type-11 block (compute_alignments, `-fdump-rtl-alignments` via bddump.sh: its layout predecessor, the sig-failed setFlashBuild copy, falls from 4 to 0).  Why: the sig-failed joiner copy of the `xb.type <= 5` test gets P(<=5) = path_out / path_in, and path_out is capped by the `*pr`-true edge's count, so that edge must carry less than the sig-failed path's own flow (about 2% of the test's count); natural heuristics give 28% at best (37.8% with the break's early return).  Without the label every spelling is 2 loose (the SE copy's `ja`).
+- gen_bd264, exp_devgl: the dev override as a second top-level statement (`fuse = 1; if (!JTAG) fuse = g != 0; if (dev) fuse = 1;`, five forms of the first part, either order): 7 loose, as src without the expect.  vrp1 threads the JTAG path past the dev test before sink, so the def block and its critical PHI edge are the same as before.
+- gen_bd265: attempt 10's brktail near miss (no asm, no t5le, no `*pr` expect) on the new case 23: 9 loose at best (`brk brk bar0`), worse than its old 3 with the badsize label, and `*pr == -1` tails don't help it (0/9 needs the label and asm).
+- gen_bd266, lab_none: the console precheck spelled `<= 1`, `< 2`, signed forms, `== 1`, negated, as `goto none` or `return 0`, no cold label: 229 loose at best.
+- gen_bd267, exp_verbose with pin_e: compare spellings with 0 (`size - e->size`, `^`, `- != 0`) fold back to `!=` (18 loose, as before); `e->size > size` or `size < e->size` with `verbose > 0` is 8 lines with or without the pin (`ja`/`jg` for `jne`/`je`, attempt 12's finding), so the source had `!=` and a plain test.
+
+### Don't retry
+
+- exp_t24 by a separate room test after the chain (gen_bd260), or by any spelling of `type == 25` (fold makes them all `==`, nonequal) or of the room test (`<` between non-constants has no heuristic).
+- exp_devgl by the dev override as its own statement (gen_bd264), or by spellings of the dev test: all fold to `(t - 4) <= 1` (73%), `& ~1 == 4` would be nonequal 72%, two `==` 52%, a switch 50%; it needs 75.06%.
+- exp_pr by `*pr == -1` or `(int)*pr < 0` (gen_bd263): the `*pr`-true edge must carry about 2%.
+- The `(size & ~3) != size` spelling in loadConsoleBlFiles or appendAddonPatches (gen_bd262).
+- lab_none by the precheck's spelling (gen_bd266).
+- exp_verbose by spelling the size compare against 0 (gen_bd267).
+
+### Costs now (strict/loose, removed alone; 16 tricks)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.  No pair is cheaper than its parts beyond the known exp_verbose+pin_e (18 loose) and lab_t5le+exp_pr (13/2).
+
+### What to try next
+
+- The opcode-heuristic lever (a spelling that makes the test a compare of two non-constants, or against 0/1/-1) on other objects' hints: it's cheap to sweep and it moved a 29-point gap here.  In build, every remaining expect and label has been checked against it.
+- exp_devgl is the closest margin left (73% against 75.06%): any second predictor on the dev test in the non-dev direction would land it, if one turns up that the author could have written.
+- exp_t24 needs a call-free block between `type == 25` and imgSize() that folds after profile_estimate, or 16% on the type == 25 edge.

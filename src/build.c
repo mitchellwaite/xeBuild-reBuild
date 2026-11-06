@@ -1382,8 +1382,12 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		*pr = loadBinFile(e);
 		if (*pr)
 			break;
-		if (e->size & 3) {
-		badsize: __attribute__((hot));
+		/* Borderline, for review: loadConsoleBlFiles spells this test
+		   e->size & 3.  Here a compare of two non-constants gets the
+		   nonequal heuristic on top of the early return, so the
+		   appendAddonPatches arm is cold enough for bb-reorder's last
+		   round (it replaces a hot label) */
+		if ((e->size & ~3) != e->size) {
 			log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
 			goto fail;
 		}

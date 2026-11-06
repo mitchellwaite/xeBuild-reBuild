@@ -13,7 +13,6 @@ H = {
     'exp_t10': [('__builtin_expect(type == 10, 0)', 'type == 10')],
     'exp_pr': [('if (__builtin_expect(*pr != 0, 0))', 'if (*pr != 0)')],
     'lab_t5le': [('		t5le: __attribute__((hot));\n', '')],
-    'lab_badsize': [('		badsize: __attribute__((hot));\n', '')],
     'pin_d': [('			__asm__("" : "+a"(d));\n', '')],
     'vol_fail': [('	__asm__ __volatile__("");\n', '')],
     'lab_none': [('none: __attribute__((cold));\n', 'none:\n')],
