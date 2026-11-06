@@ -188,10 +188,7 @@ static void loadSmc(int addr, int size)
      size test after it falls through into the arm's two moves and if-conversion
      has nothing it may hoist (a block that falls through isn't taken, and the
      other one is the less likely).
-   - excess is always 0, size being 0x3000 or 0x3800 there.  It is there for PRE:
-     its second operand has no value on either incoming edge, so the sum stays in
-     this block with addr's PHI, and the conversion of addr for the bound check
-     stays here too; dom3 then folds the mask to its test's constant. */
+   - excess in the sizeOk block: dead, not counted as a trick (see its comment). */
 void getImageSmc(void)
 {
 	struct flashhdr *h = (struct flashhdr *)xb.dump;
@@ -239,6 +236,13 @@ check:
 	log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	return;
 sizeOk:
+	/* NOTE: dead, kept and not counted as a trick.  Borderline, for review:
+	   excess is always 0, size being 0x3000 or 0x3800 here, and the reference has
+	   no code for it.  It is there for PRE: its second operand has no value on
+	   either incoming edge, so the sum stays in this block with addr's PHI, and
+	   the conversion of addr for the bound check stays here too; dom3 then folds
+	   the mask to its test's constant.  Attempts 20 and 21 found no live spelling
+	   (tools/wip/dehint/notes/image_read.md). */
 	{
 		int excess = (size & ~0x800u) - 0x3000;
 

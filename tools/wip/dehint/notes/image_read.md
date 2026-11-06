@@ -5,12 +5,14 @@ from plain `-O3`, with fewer hints.  31 tricks at the start of attempt 1.
 
 ## State after attempt 21
 
-1 trick left, `excess`, judged stuck (attempts 20 and 21): retry only with a new idea. Flagged
-for the user's review, as landed in `src/image_read.c`, each with a comment there:
+0 tricks.  The last one, `excess`, was judged stuck (attempts 20 and 21); on 2026-11-06 the
+user decided it isn't counted (like filelist_ini's `key == NULL`), so it stays with a
+"NOTE: ... Borderline, for review" comment.  Retry only with a new idea.  Flagged for the
+user's review, as landed in `src/image_read.c`, each with a comment there:
 
 | Function | Shape | Why it's borderline |
 |---|---|---|
-| getImageSmc | `int excess = (size & ~0x800u) - 0x3000; addr += excess;` | Always 0; counted as dead code. It replaces the pin |
+| getImageSmc | `int excess = (size & ~0x800u) - 0x3000; addr += excess;` | Always 0, dead in effect; not counted (user's call, 2026-11-06). It replaces the pin |
 | getImageSmc | Gotos: the bad-address log before the 3000 arm, `sizeOk` last | Odd text order; it replaces the optimize attribute |
 | getImageSmc | `ok <= 0`, `bad <= 0`, `o > 0`, `out <= 0` on 0-or-1 flags | Only set predictions; VRP folds them |
 | getImageSmc | `addr != lim`, then `addr >= lim` | One compare split in two, live; it replaces a dead test |

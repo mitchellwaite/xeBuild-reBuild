@@ -45,9 +45,9 @@ tricks some functions needed to match, and the checks behind each step.
 
 The application files match, but some only match because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 4 files that still have them from easiest to hardest to match with
+ranks the 3 files that still have them from easiest to hardest to match with
 source shape alone: ordinary C, the same `-O3` as the rest, and none of these
-hints. The other 21 application files build with no tricks.
+hints. The other 22 application files build with no tricks.
 
 Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
 removes any that no longer change the code, but no hint-free source has been
@@ -74,21 +74,14 @@ hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts, or an array longer than it needs to be,
 which gets a `TODO` comment explaining it instead. `filelist_ini`'s `findKey`
 keeps one dead `key == NULL` test that also isn't counted, because the author may
-well have written a check like it; a comment on the test explains it.
+well have written a check like it; a comment on the test explains it. Likewise
+`image_read`'s `getImageSmc` keeps an `excess` added to `addr` that is always 0,
+which keeps `addr`'s conversion in the block PRE would otherwise move it out of;
+its comment marks it "Borderline, for review", the tag the other borderline
+shapes in `src/` use too.
 
 <details>
-<summary><b>1. image_read</b>: 1 trick, hard</summary>
-
-- 1 piece of dead code: `getImageSmc` adds an `excess` to `addr` that is always 0,
-  which keeps `addr`'s conversion in the block PRE would otherwise move it out of
-
-The file has no `asm`, attributes or builtins left, and it builds with plain `-O3`.
-`tools/wip/dehint/notes/image_read.md` has the mechanisms and what's been tried.
-
-</details>
-
-<details>
-<summary><b>2. build</b>: 17 tricks, very hard</summary>
+<summary><b>1. build</b>: 17 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
 - 6 `__builtin_expect`, 3 pins, 1 `asm` barrier and 3 hot and cold labels, across
@@ -105,7 +98,7 @@ and what's been tried.
 </details>
 
 <details>
-<summary><b>3. options</b>: 22 tricks, very hard</summary>
+<summary><b>2. options</b>: 22 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 7 `__builtin_constant_p`, 7 `__builtin_expect`, 2 `asm goto` and 2
@@ -122,7 +115,7 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>4. mode_client</b>: 48 tricks, very hard</summary>
+<summary><b>3. mode_client</b>: 48 tricks, very hard</summary>
 
 - 23 `__builtin_constant_p` feeds and 10 `asm goto` edges to dead labels, which
   set bb-reorder's heap keys
