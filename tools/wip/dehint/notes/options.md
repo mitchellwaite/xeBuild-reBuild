@@ -3,6 +3,14 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 6
+
+**34 tricks, unchanged** (no match; src/ untouched).  Structural attempt: read the Linux
+v1.16 build (tmp/xeBuild64) for optIniBool, parseButton, parseOption and applyIniOptions;
+tried whole-body shapes of the helpers, live "already on" arms, and the G/N sites written out
+in applyIniOptions.  Nothing came near (best 81 lines, everything else 400+).  The Linux build
+has the same structure as src, so it gives no new shape to try.  See "## Attempt 6".
+
 ## State after attempt 5
 
 **34 tricks** (35 before).  Removed (1): one `__builtin_constant_p` of parseButtonX's z feed;
@@ -577,3 +585,86 @@ Full build with the z feed change: SHA256 10dac648...1971c; progress 617/617.
   site has that.  Otherwise options looks stuck at 34 by these routes; the natural-split
   parseButton route (attempt 2-4) remains the one big lever, and it needs the xellbutton call
   block's frequency (132 -> ~171), which no spelling found so far gives.
+
+## Attempt 6
+
+Structural, not spelling.  New tools (tools/wip/dehint/): `op6x64.py` (iw13x64.py with options'
+strings: function extents in tmp/xeBuild64), `op6dis.py ADDR` (one Linux function with string
+immediates and guessed callee names resolved; outputs kept in tmp/strs/aio64.txt and po64.txt),
+`op6pe.py file.c [pattern]` (applyIniOptions' profile_estimate blocks around a pattern),
+`op6ib.py ib|G|N|all` (whole-body helper shapes), `op6on.py [-fn ib,G,N]` (live on/off arm
+forms x expect x optN entry), `op6w.py` (G/N sites written out in applyIniOptions).
+
+### The Linux build (v1.16, gcc 4.9.2): same structure as src
+
+- optIniBool (40c9b0, 189 bytes, not inlined there): `if ((bootFlags & set) || (bootFlagsOff
+  & set)) return 0;`, then perbox, iniBoolInvalid (bad: warning, return 0), getIniBool(name,
+  def), the ini log, `bootFlags = (bootFlags & ~clear) | set; return 1`.  This is src's
+  logic, and in source it can't be told apart from two separate tests.
+- applyIniOptions (40d9c0) has optIniBool's body at every site (gcc 4.9 inlined it), in
+  src's order: nomobile, noremap, noecdremap, nandmu, nosecurity, nosusecurity, smcnocheck,
+  cfldv and the int options, macid (macidSet inlined), then the JTAG range block: cygnos,
+  demon, patchsmc, xellbutton (`!xellButton`, then `bootFlags & 4`, then
+  `xellButton = parseButton(getIniValue(..)); if (!xellButton) { log; = 0x12 }`),
+  xellbutton2 (with the same `if (!xb.xellButton)` test as src), smcnoeject, smcnoblink;
+  type == 2: nodvd, olddvd, dualboot; dvdkey; rev.  Nothing marks the G sites (nandmu,
+  nosecurity, cygnos, smcnoeject) or noecdremap as different from the other options.
+- The int options pass the field's current value as the default (`getIniU32(name, ebx)`, with
+  ebx loaded before the -1 test), i.e. `xb.cpuFan = optIniInt("cpufan", xb.cpuFan)`.
+  gcc 6 would propagate the -1.  It doesn't help here: INI_INT isn't counted.
+- parseButton (40cac0) is one flat else-if chain in the same order (wiredx nested).
+  parseOption (40d200) has the same arms as src, each `goto bad` style (one shared bad
+  message block), and no extra code in cputemp's or gpufan's arms.  So the po_hint
+  asymmetry (only those two arms) has no source in the older code.
+
+### Helper shapes (op6ib.py): nothing
+
+All builtins of optIniBool gone, whole body replaced: result variable / `ok` flag 917,
+`a || b` exit, nested ifs, `&&`, `out:` exit 1001, bad-first / else-if 1054, early
+`return 1` in each arm 1217, `(a | b) & set` 1493.  The standalone `_optIniBool` itself
+differs by 8 lines (the order of `or`/`mov eax,1` in the set block: the cp arms make `r:`
+a join with its own frequency), so its two arms aren't just for applyIniOptions.
+
+### Live "already on" arm (op6on.py): nothing
+
+Every caller guards with `!(xb.bootFlags & set)` (olddvd's set is 0), so the on arm is dead
+at every site.  A real `if (on) goto r;` (already on: re-apply) or `return 1;` would be
+natural code that still changes the callee's own profile.  Results: ib on `goto r` 445
+(and `_optIniBool` 37 lines: the standalone body changes); G on `goto r` 81 (G's cp arm
+alone, removed, is 112); N's on arm `goto`/`return 1`/`return 0` are all IDENTICAL with
+the entry kept (no saving: N's on arm is already plain).  Off arms must stay `return 0`
+(they are live).  G x N together (`-fn G,N`, 800 forms): best cheaper form is still 81.
+
+### G/N sites written out (op6w.py): nothing
+
+Plain nested ifs at the site (no helper, no return, flag set in each arm, a flag variable,
+`goto` past the block, `else if` chains), for each site, the four G sites and noecdremap:
+821 (smcnoeject alone) and up, 1234 for noecdremap.  The inlined copies with their own
+profiles stay the only way.
+
+### xellbutton call block (profile_estimate, nat2.c)
+
+bb98 `xellButton == 0` has no prediction (50%), bb99 `bootFlags & 4` call heuristic 29%,
+call block 907 x 0.5 x 0.29 = 132.  To get ~171 one of the two tests needs another
+heuristic: 65% on bb98 (only PRED_OPCODE_NONEQUAL, a nonzero constant: other code;
+`xellButton` is int, so `< 1`/`<= 0` give jle) or ~60% to combine with bb99's 29%
+(early-return at 61% would need a `return` on the false edge, which changes behaviour:
+907 x 0.5 x DS(29%, 61%) = 177 even then).  The Linux build has the same two tests in the
+same order, and the reference loads `xellButton` first, so `if (bootFlags & 4) { if
+(!xellButton) ..; if (!xellAltButton) ..; }` is other code.  Still stuck.
+
+### Don't retry (attempt 6)
+
+- Whole-body shapes of optIniBool/G/N with their builtins gone (op6ib's 12 shapes).
+- Live on arms (`goto r`, `return 1`) in place of the cp arms.
+- Writing the G/N sites out in applyIniOptions as plain C.
+- Looking in the Linux build for a different helper set or option order: there isn't one.
+
+### Next ideas
+
+Nothing with real odds is left by these routes.  Each remaining group needs something that
+changes a profile and vanishes before RTL: the G/N copies need a callee profile of their own
+(the same code from a different function), parseButtonX needs a call block of ~171 that
+plain C can't give, and po_hint needs a call that goes away after profile_estimate.  If
+options is retried, start from a new fact about the original (another build of v1.21 or
+a newer source), not from a new spelling.
