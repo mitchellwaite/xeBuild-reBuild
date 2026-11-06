@@ -22,8 +22,12 @@
    names PRE reuses, and with them the option loop's latch compare order.  Labels in an asm
    goto's list are free (the statement is the hint), so some edges ride in
    another block's list (rk6 in the -r head's, ork6 in case 5's; c3 in its
-   own block's, an edge back to the case 3 head) where they stand in for a
-   removed feed or cold label.  String literals land in .rdata in block order, so clientInfo's and
+   own block's, an edge back to the case 3 head; dv in case 3's, for the
+   JMP(dy) clientEraseBlockI's erase-failed block had) where they stand in for a
+   removed feed or cold label.  vrp1 threads the mode chain's arms through the
+   switch in an order set by the function's block count (a hash on the new
+   blocks' indices), and that order sets the case probabilities: a removal
+   that changes the block count needs another edit that changes it back.  String literals land in .rdata in block order, so clientInfo's and
    clientWriteBlocks' shapes (early returns) are what fix it there.  The
    option tests get even odds from calls: an arm that starts with a call
    (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
@@ -511,7 +515,7 @@ static void clientEraseBlockI(const char *sblock)
 			if (netEraseBlock(block, 1))
 				log_printf(0, "Success!\n");
 			else
-				{ AT(efail) { efc: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); JMP(dy); }
+				{ AT(efail) { efc: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
 		} else
 			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);  JMP(efail); }
 	} else
@@ -744,7 +748,7 @@ int mode_client(int argc, char **argv)
 				AT(c2) clientWrite(arg);
 				break;
 			case 3:
-				AT(c3)  { JMP(hdd4, hdd5, c3); clientKeys(); }
+				AT(c3)  { JMP(hdd4, hdd5, c3, dv); clientKeys(); }
 				break;
 			case 4:
 				AT(t4)  if (cinfo->hwFlags & 0x20)

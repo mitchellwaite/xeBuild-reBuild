@@ -6,6 +6,93 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 12
+
+**51 tricks** (MATCH, 52 before): clientEraseBlockI's `JMP(dy)` (erase-failed block) gone,
+`dv` added to case 3's list (`JMP(hdd4, hdd5, c3, dv)`).  Per category: asm goto 11 -> 10;
+cp 24, pins 6, cold labels 4, `if (0)` 3, unreachable 3, clientEraseBlockI 1 unchanged.
+List labels 47 -> 48.  Whole object IDENTICAL BYTES, full build SHA256 10dac648...1971c,
+progress 617/617.  No borderline shape.  n49 (49, 10 lines) still the best near miss; the
+mechanism that ties the cebi removals to the case region is the vrp1 jump-thread hash
+order (below).  build.sh unchanged.
+
+## Attempt 12
+
+52 -> 51 (item 6).  Tools (tools/wip/dehint/, states and logs in build/mc/w12/, dumps build/mc4/b12_*):
+- `mc12keys.py A.c ...`: RTL (bbro) frequency, trace and final position of the blocks that
+  hold named labels (label -> bb from rtl_dce, the numbering bbro's trace lines use).  The
+  case heads: c9 127, c11 140 (138 on n49), c7 123, p1 125.
+- `mc12vrp.py A.c ...`: vrp1's jump threads through the mode-chain switch in execution order
+  with the target block index mod 13.
+- `mc12filt.py BASE -g GEN,...`: count-neutral variants (cebifeed, dyblock, failperm,
+  reloc[:T], rep:<mc9rep gen>, rep:at) filtered by the reference thread order before scoring.
+- `mc12rm.py BASE`: every single trick removal with its thread order and score.
+- `mc12cebi.py BASE`: the two JMP(efail) lists x the cebi feed's spelling and target (576).
+- `mc12arms.py BASE`: mode-chain terms redistributed between arms 9/11/7 (total kept).
+- `mc12heads.py`, `mc12bb.py`: early profile freqs per callee; named bbro traces (the call
+  naming of mc12bb uses the post-bbro listing and is wrong for the high bbs: use mc12keys).
+
+What was found:
+1. **n49's 10 lines are the c11 head's frequency.**  bbro round 4 pops the case heads by
+   key -(100*BB_FREQ_MAX + 100*priority + freq): priority 3 for all (the switch edge),
+   c9 7, c11 7, c7 6 in the reference; on n49 c11 is 4 (fail's c11 feed gave +3), so c7/p1
+   pop before c11.  Need c11 >= 7 (or c7 <= 3).  The case heads' block freqs are fixed at
+   the early profile_estimate (switch shares 4 each + feeds/list edges); the mode-chain
+   arms don't change them (mc12arms: 1/4/5 136, all others 257+).
+2. **Why the c11 feed can't come back on n49 (n49c11 = n49 + the feed, 50 tricks, 320
+   lines): vrp1's thread order.**  vrp1 threads the arms mode = 11 / 7 / 9 through the switch
+   (sources 139/144/134).  thread_block walks a redirection_data hash table whose hash is the
+   target block's index, table size 13.  The targets are the ASSERT blocks VRP creates on
+   switch edges whose case head has several preds (c7 = x, c9 = x+1, c11 = x+3, all
+   last_basic_block + k), so the walk order is set by the *total block count* at vrp1.
+   Reference x = 205 (slots c11 0, c7 10, c9 11: order c11, c7, c9).  The threading order
+   changes the switch's case probabilities after the update: reference 8.7% each, c7 6.3%;
+   n49c11 (x = 204: c7, c9, c11) 8.9% / c7 4.2%, so the c7 edge freq rounds 3 -> 2, c7 loses
+   its priority (key -1000206) and c7/p1 go late: the 320 lines.  n49 has c11 with one pred
+   (no split, target 176), so its order and probabilities are the reference's.
+   Good x: x mod 13 in {10, 11}, i.e. **one or two blocks more** than n49c11.
+3. Block-count shifts of single edits (relative to the state): cebi's dyj alone 0 (nodyj,
+   51 tricks, 122 lines but only ~24 real: a few cold blocks reordered), ybk alone -1
+   (225), dyj+ybk -1, merging `if (0) { dv: } if (0) { dz: }` into one -1 (base 300, a
+   removal waiting for a +1).  Cebi feed moved anywhere in cebi: 0, -1 or -2, never +;
+   dy block moved: 0.  mc12rm on n49c11: no single removal is +1.
+4. No count-neutral +1 found on n49c11: reloc of every feed (1883, 314 with the right order,
+   best 10 = the c11 feed moved somewhere dead, i.e. n49 again), lists/at/less/retarget/
+   default (2144, 108 right order, best 10 = c11 retargeted, then 24+, lists 130+), fail
+   perms (6 right order: feeds before the log call, 261+, the probabilities move to 9.0/5.0
+   because fail's flow changes too), cebi lists x spelling x target (217+).  On n49 the cebi
+   sweep is 10 everywhere (the cebi side does not reach c11's frequency).
+6. **52 -> 51**: nodyj (JMP(dy) removed: shift 0, right order, 122) + the filtered repair set
+   (mc12filt -g rep:perm,default,less,at,retarget,cebifeed,lists: 2189, 1905 right order):
+   `dv` added to case 3's list (either end) or to case 5's `JMP(s4, c12, ork6)` front:
+   IDENTICAL (4 hits; landed `JMP(hdd4, hdd5, c3, dv)`).  An extra edge to the dv
+   unreachable block from the cold area gives back the cold-tail layout JMP(dy)'s edge gave.
+   Next best: c11 retargets 10, at 18.
+5. Asm goto edges into c11 (self JMP(c11) 248, JMP(c10, c11) 284, subs into c11 175+, fkv
+   list drops of c7/p1 209+) are not gentle: the edges live into RTL.
+
+### Don't retry (attempt 12)
+
+- On n49: any c11 feed position (it brings the split and the bad thread order), mode-chain
+  term redistribution, cebi lists/spelling/target, asm goto edges into c11, fkv drops.
+- On n49c11: single feed relocations, single list/at/less/retarget/default edits, fail
+  perms, cebi sweeps (all checked against the thread order, build/mc/w12/*.log).
+
+### Ideas for attempt 13
+
+- The lever is the block count at vrp1 (mc12vrp, mod 13).  Look for a gentle **+1 block**
+  that vanishes before RTL: candidates not tried are shapes that GIMPLE lowers to an extra
+  block but that fold away (a second `return 0;` path, a split `if (a) if (b)` of a 2-term
+  feed such as k61l's, a feed written with `else`, a label kept by `&&label`-free code), and
+  pairs (one count-neutral -1 elsewhere + the dyj/ybk/merge removals).  Each removal with
+  shift -1 (ybk, dyj+ybk, dv/dz merge) becomes a candidate once one such +1 exists.
+- On the new 51 state (mc12rm, build/mc/w12/rm51): c11 feed 18, u2 feed 206, einv cold
+  243, first JMP(efail) 246, ybk feed 320 (shift -1: needs a +1), the rest 260+.  Re-run the
+  filtered repairs (mc12filt rep:lists,at,less,retarget,perm,default) on each of those.
+- Run mc12filt's repair set on every shift-0 removal: that is how 52 -> 51 came.
+- Other hash-order spots: any vrp/dom thread_block with 2+ paths is order-sensitive the same
+  way; mc12vrp prints only the switch's.
+
 ## State after attempt 11
 
 **52 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, still IDENTICAL BYTES).
