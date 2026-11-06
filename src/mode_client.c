@@ -600,11 +600,12 @@ if (__builtin_constant_p(i + 321)) goto u2;
 				client_usage(3, argv[i]);
 			if (mode)
 				client_usage(5, argv[i]);
-			arg = argv[++i];
+			arg = argv[i + 1];
+			i++;
 			log_printf(0, "erase block set to %s\n", arg);
 			mode = 10;
 		} else if (!strnicmp(argv[i], "-s", 2)) {
-			if ((char *)__builtin_constant_p(i + 300) == (char *)1 && (char *)__builtin_constant_p(i + 300 + 1) == (char *)1 && (char *)__builtin_constant_p(i + 300 + 2) == (char *)1) goto k61l;
+			if ((char *)__builtin_constant_p(i + 300) == (char *)1 && (char *)__builtin_constant_p(i + 300 + 1) == (char *)1) goto k61l;
 			if (reboot == 2)
 				log_printf(0, "reboot has already been set on command line, ignoring -s\n");
 			else {
@@ -617,23 +618,25 @@ if (__builtin_constant_p(i + 321)) goto u2;
 		} else if (!strnicmp(argv[i], "-ip", 3)) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
-
-ip = argv[++i];
+			ip = argv[i + 1];
+			i++;
 			log_printf(0, "setting forced IP to %s\n", ip);
 		} else { __builtin_memset(argv, 0, kk); if (!kk) { ac: __attribute__((cold)); __asm__ goto ("" :: "a"(i) :: r5x, r3x); } if (!strnicmp(argv[i], "-r", 2)) {
 			a = argv[i + 1];
 			if (i + 1 == argc || !a || *a == '-')
 				{ r3x: client_usage(3, argv[i]); }
 			if (mode) { r5x: client_usage(5, argv[i]); }
-			arg = argv[++i];
-			log_printf(0, "setting read filename to %s\n", arg); if (__builtin_constant_p(i + 5555)) goto k61l;
+			arg = argv[i + 1];
+			i++;
+			log_printf(0, "setting read filename to %s\n", arg);
 			mode = 1;
 		} else { k61l: if (!strnicmp(argv[i], "-w", 2)) {
 			a = argv[i + 1];
 			if (i + 1 == argc || !a || *a == '-')
 				client_usage(3, argv[i]);
 			if (mode) { client_usage(5, argv[i]); }
-			arg = argv[++i];
+			arg = argv[i + 1];
+			i++;
 			log_printf(0, "setting write filename to %s\n", arg);
 			mode = 2;
 		} else { if (!strnicmp(argv[i], "-e", 2)) {
@@ -641,7 +644,8 @@ ip = argv[++i];
 				client_usage(3, argv[i]);
 			if (mode)
 				client_usage(5, argv[i]);
-			arg = argv[++i];
+			arg = argv[i + 1];
+			i++;
 			log_printf(0, "setting avatar/kinect files base path to %s\n", arg); JMP(dz);
 			mode = 4;
 		} else if (!strnicmp(argv[i], "-c", 2)) {
@@ -649,14 +653,16 @@ ip = argv[++i];
 				client_usage(3, argv[i]);
 			if (mode)
 				client_usage(5, argv[i]);
-			arg = argv[++i];
+			arg = argv[i + 1];
+			i++;
 			log_printf(0, "setting xbox compatibility files base path to %s\n", arg);
 			mode = 5;
 		} else if (!strnicmp(argv[i], "-i", 2)) {
 			if (!argv[i + 1] || i + 1 == argc || ({ __asm__ ("" :: "d"(i + 1)); 0; }) || *argv[i + 1] == '-')
 				arg = dummy;
 			else {
-				arg = argv[++i];
+				arg = argv[i + 1];
+				i++;
 				log_printf(0, "info dump path set to %s\n", arg);
 			}
 			mode = 12;
@@ -664,7 +670,8 @@ ip = argv[++i];
 			if (!argv[i + 1] || i + 1 == argc || ({ __asm__ ("" :: "d"(i + 1)); 0; }) || *argv[i + 1] == '-')
 				arg = dummy;
 			else {
-				arg = argv[++i];
+				arg = argv[i + 1];
+				i++;
 				log_printf(0, "patch file set to %s\n", arg);
 			}
 			mode = 7;
@@ -751,7 +758,7 @@ ip = argv[++i];
 	ndl: netDisconnect();
 	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 50750)) goto u2; 
 if (0) { dv: asm volatile("" : : : "memory");  __builtin_unreachable(); } if (0) { dz: asm volatile("" : : : "cc"); __builtin_unreachable(); } 	return 0;
-fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 255562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5;   if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
+fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 255562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5;     if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }

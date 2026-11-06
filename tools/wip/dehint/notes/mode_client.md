@@ -6,6 +6,88 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 3
+
+**94 tricks** by README's categories (96 before): 2 `__builtin_constant_p` gone (the -s k61l
+feed's third term and -r's `i + 5555` feed, attempt 2's "k61l pair"), no new hint, no
+borderline shape.  Whole object IDENTICAL BYTES, full build SHA256 10dac648...1971c,
+progress 617/617.  build.sh unchanged.
+
+| Category | Att. 2 | Now |
+|---|---|---|
+| `--param builtin-expect-probability=50` | 1 | 1 |
+| `__builtin_constant_p` | 53 | 51 (the -s k61l feed has 2 terms, -r has none) |
+| asm goto statements | 16 | 16 |
+| pins | 6 | 6 |
+| cold labels | 7 | 7 |
+| expects | 6 | 6 |
+| `if (0)` / unreachable | 3 / 3 | 3 / 3 |
+| hand-inlined clientEraseBlockI | 1 | 1 |
+
+The source change besides the two feeds: every `arg = argv[++i];` (and `ip = argv[++i];`)
+is now `arg = argv[i + 1];` + `i++;` (8 arms).  Plain, consistent style; not a hint.
+
+## Attempt 3
+
+96 -> 94.  Tools (tools/wip/dehint/, logs in build/mc/, dumps in build/mc3/, not tracked):
+- `mc3nat.py BASE.c [...] [-r RULE] [-pair]`: natural same-meaning rewrites (pre-increment
+  spellings, `!strnicmp` vs `== 0`, `if (mode != 0)`, operand order of `i + 1 == argc`,
+  declaration order and initialisers, loop spelling, arm statement order, ...), one
+  occurrence or all occurrences of a rule; hits -> build/mc/m3nat_hits.json.
+- `mc3nx.py BASE.c [-m 30]`: mc1 singles on the base (cached), then every mc3nat rewrite on
+  top of each near miss (hint removal x rewrite).
+- `mc3v_tail.py` (E(reboot) with return/duplicate shapes), `mc3v_ga.py` (option arms as
+  getArgs calls), `mc3v_ip.py` (attempt 2's -i/-p variants respelled for the new base);
+  run with mc2try.py.
+
+What moved:
+1. bC.c (attempt 2's k61l pair, 8 lines) is the loop latch compare's operand order
+   (`cmp esi,eax; jle` vs `cmp eax,esi; jge`).  Dumps: tree canonicalisation puts the lower
+   SSA version first; PRE's latch phi takes a recycled name from the SSA free list (src
+   before: prephitmp_228 > argc_69; bC: prephitmp_2 < argc_68).  Which names are free at
+   PRE depends on the numbering of the whole function, so any rewrite that changes the
+   number of SSA names before PRE can flip it.
+2. mc3nat on bC: `arg = argv[i + 1]; i++;` for `arg = argv[++i];` in the -i or -p arm, or
+   in all 8 arms -> IDENTICAL.  Took all 8 (consistent).  On the old base the same rewrite
+   costs 8 (it flips the same compare the other way), so it only pays together with the
+   pair.
+
+Searched with no hit:
+- Pairs of bC's near misses within 120 lines (917); case-order moves on bC (144, all 8).
+- mc2climb on the new base (singles: no free one; pairs of 67 near misses within 250,
+  2167: only label drops that don't count).
+- mc3nx on the new base: 22 near misses within 40 x ~110 rewrites (2400): none.
+- E(reboot) without the expect: `!reboot ; else`, `!= 0`, a duplicated `netDisconnect();
+  return 0;` in the reboot arm, a goto to a shared return: all 10 (two crossjumped
+  `client_usage(5, argv[i])` blocks swap; `> 0` 209).  The return lever does not reach it.
+- Option arms as getArgs calls (-eb, -bp, -wb, both, all three): gcc does not inline
+  getArgs (a constprop clone appears for the NULL-arg calls), 268-10442.  The arms do read
+  like getArgs inlined by hand (same test order, `argv[first - 1]` in the usage calls).
+- Attempt 2's -bp shapes (mc2v_bpa, bpa2) on the new base: still 20; -i/-p shapes
+  (mc3v_ip): still 52.
+- Classified the new base's singles up to 800 lines: none differs only in compares/jumps
+  or only in register names, so no other near miss is an SSA-order flip of the kind the
+  rewrite fixed; the near misses are block-order ties (switch case blocks, the two usage(5)
+  blocks) and register allocation.
+
+### Don't retry (attempt 3)
+
+- mc3nat's rewrites alone or on any near miss within 40 lines of the new base.
+- getArgs calls for the arms; E(reboot) return/duplicate shapes; -bp/-i/-p shapes from
+  attempt 2 on the new base.
+
+### Ideas for attempt 4
+
+- The SSA-free-list lever: look for near misses on other branch points (attempt 2's states
+  bA/bB, other pair choices) whose diff is a compare-order or register-only flip, then run
+  mc3nat on them; a flip is cheap to fix with a spelling change.
+- E(reboot) 10 is a crossjump survivor choice between two identical usage(5) tails (index
+  in ecx vs edx); try changing which arms share the `client_usage(5, argv[i])` tail (e.g.
+  the -bp/-wb arms' spelling of argv[i] in the usage calls via the shared `j`).
+- Switch-case block order near misses (j_dv_26-c1 12, c3 terms 14): case order is free and
+  doesn't move them; try the case bodies' shapes (e.g. `case 7` / `case 12` dummy tests as
+  `arg != dummy`, calls with the dummy test inside the helpers).
+
 ## State after attempt 2
 
 **96 tricks** by README's categories (105 before): both literal-order asms, 4 pins and 3
