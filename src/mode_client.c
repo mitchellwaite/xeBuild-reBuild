@@ -9,7 +9,9 @@
    and only change priority keys and the frequencies of the blocks they enter.
    clientEraseBlockI is clientEraseBlock inlined by hand so its labels can be
    reached (tools/wip/mc/s150/NOTES.md has the levers, the wip/mc attempts
-   before it the search).  String literals land in .rdata in block order; two
+   before it the search; tools/wip/dehint/notes/mode_client.md which hints
+   were found not to matter and removed, and what each remaining one is
+   for).  String literals land in .rdata in block order; two
    empty asm "i" hints fix that order where the shape alone doesn't. */
 #define AT(l) l:
 #define JMP(...) __asm__ goto ("" :::: __VA_ARGS__)
@@ -480,7 +482,6 @@ void clientBinPatch(const char *file, const char *soff)
 void clientEraseBlock(const char *sblock)
 {
 	uint32_t block = myatoh32(sblock, -1);
-	int kk = __builtin_constant_p(block);
 
 	if (block != -1) {
 		if (block < cinfo->nandSize / cinfo->blockSize) {
@@ -488,7 +489,7 @@ void clientEraseBlock(const char *sblock)
 			if (netEraseBlock(block, 1))
 				log_printf(0, "Success!\n");
 			else
-				{ AT(efail) log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
+				{ log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
 		} else
 			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block); }
 	} else
@@ -502,14 +503,13 @@ static void clientEraseBlockI(const char *sblock)
 	if (block != -1) {
 		JMP(efail); if (block < cinfo->nandSize / cinfo->blockSize) {
 
-			eerase:  if (__builtin_constant_p(block + 900)) goto dy; ybk:;  log_printf(0, "erasing block 0x%x...", block);
+			if (__builtin_constant_p(block + 900)) goto dy; ybk:;  log_printf(0, "erasing block 0x%x...", block);
 			if (netEraseBlock(block, 1))
-				{ 
-esucc: ; log_printf(0, "Success!\n"); }
+				log_printf(0, "Success!\n");
 			else
-				{ AT(efail) { efc: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); JMP(dy); efcl: asm volatile("" : : "i"(64)); }
+				{ AT(efail) { efc: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); JMP(dy); }
 		} else
-			{ eout: log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);  JMP(efail); }
+			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);  JMP(efail); }
 	} else
 		{ if (0) { dy: asm volatile(""); if (__builtin_constant_p(block + 901)) goto ybk; __builtin_unreachable(); } einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
 }
@@ -561,7 +561,7 @@ int mode_client(int argc, char **argv)
 	log_set_name("client");
 	for (i = 0; i < argc; i++) {
 
-if (__builtin_constant_p(i + 320) && __builtin_constant_p(i + 321)) goto u2;
+if (__builtin_constant_p(i + 321)) goto u2;
 		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2))
 			client_usage(0, NULL);
 		if (!strnicmp(argv[i], "-noenter", 8)) {
@@ -579,7 +579,7 @@ if (__builtin_constant_p(i + 320) && __builtin_constant_p(i + 321)) goto u2;
 			b = argv[i + 2];
 			j = i + 2;
 			if (j == argc || !b || *b == '-')
-				lu1: client_usage(4, argv[i]);
+				client_usage(4, argv[i]);
 			start = b;
 			if (mode)
 				client_usage(5, argv[i]);
@@ -595,7 +595,7 @@ if (__builtin_constant_p(i + 320) && __builtin_constant_p(i + 321)) goto u2;
 			j = i + 1;
 			a = argv[j];
 			if (j == argc || !a || *a == '-')
-				{ wb3: client_usage(3, argv[i]); }
+				{ client_usage(3, argv[i]); }
 			{ int k = i + 2; b = argv[k];
 			if (!b || k == argc || *b == '-')
 				client_usage(4, argv[i]); }
@@ -616,8 +616,7 @@ if (__builtin_constant_p(i + 320) && __builtin_constant_p(i + 321)) goto u2;
 			mode = 10;
 		} else if (!strnicmp(argv[i], "-s", 2)) {
 			if ((char *)__builtin_constant_p(i + 300) == (char *)1 && (char *)__builtin_constant_p(i + 300 + 1) == (char *)1 && (char *)__builtin_constant_p(i + 300 + 2) == (char *)1) goto k61l;
-if (__builtin_constant_p(i + 300)) goto cdef;
-if (reboot == 2)
+			if (reboot == 2)
 				log_printf(0, "reboot has already been set on command line, ignoring -s\n");
 			else {
 				log_printf(0, "setting shutdown on completion\n");
@@ -632,7 +631,7 @@ if (reboot == 2)
 
 ip = argv[++i];
 			log_printf(0, "setting forced IP to %s\n", ip);
-		} else { k55l: __builtin_memset(argv, 0, kk); if (!kk) { ac: __attribute__((cold)); __asm__ goto ("" :: "a"(i) :: r5x, r3x); } if (!strnicmp(argv[i], "-r", 2)) {
+		} else { __builtin_memset(argv, 0, kk); if (!kk) { ac: __attribute__((cold)); __asm__ goto ("" :: "a"(i) :: r5x, r3x); } if (!strnicmp(argv[i], "-r", 2)) {
 			a = argv[i + 1];
 			if (i + 1 == argc || !a || *a == '-')
 				{ r3x: client_usage(3, argv[i]); }
@@ -644,11 +643,11 @@ ip = argv[++i];
 			a = argv[i + 1];
 			if (i + 1 == argc || !a || *a == '-')
 				client_usage(3, argv[i]);
-			if (mode) { w5x: client_usage(5, argv[i]); }
+			if (mode) { client_usage(5, argv[i]); }
 			arg = argv[++i];
 			log_printf(0, "setting write filename to %s\n", arg);
 			mode = 2;
-		} else { k67l: if (!strnicmp(argv[i], "-e", 2)) {
+		} else { if (!strnicmp(argv[i], "-e", 2)) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
@@ -691,18 +690,18 @@ ip = argv[++i];
 		if (reboot) {
 			if (netConnect(ip)) {
 			rok: __attribute__((cold));
-				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;  dvb:; 
-				{ struct {} rko; { struct {} rkv0; __asm__ goto ("" :::: dv, dsp, c1, c12, s5, c7, c9, c3, c8, c2, c10, cdef, rk0, rk1, rk2, rk3, rk4, rk5, rk6, rk7, rk8, rk9, rk10, rk11, rk12, rk13); goto rkn0; rk0: goto ork0; rk1: goto ork1; rk2: goto ork2; rk3: goto ork3; rk4: goto ork4; rk5: goto ork5; rk6: goto ork6; rk7: goto ork7; rk8: goto ork8; rk9: goto ork9; rk10: goto ork10; rk11: goto ork11; rk12: goto ork12; rk13: goto ork13; } rkn0: ; { struct {} rkv1; goto rkn1; rk14: goto ork14; rk15: goto ork15; rk16: goto ork16; rk17: goto ork17; rk18: goto ork18; rk19: goto ork19; rk20: goto ork20; rk21: goto ork21; rk22: goto ork22; rk23: goto ork23; rk24: goto ork24; rk25: goto ork25; rk26: goto ork26; rk27: goto ork27; rk28: goto ork28; rk29: goto ork29; rk30: goto ork30; rk31: goto ork31; rk32: goto ork32; rk33: goto ork33; rk34: goto ork34; rk35: goto ork35; rk36: goto ork36; rk37: goto ork37; rk38: goto ork38; rk39: goto ork39; rk40: goto ork40; rk41: goto ork41; rk42: goto ork42; rk43: goto ork43; } rkn1: ; { struct {} rkv2; __asm__ ("" :: "m"(rko), "m"(rkv2)); goto rkn2; rk44: goto ork44; rk45: goto ork45; rk46: goto ork46; rk47: goto ork47; rk48: goto ork48; rk49: goto ork49; rk50: goto ork50; rk51: goto ork51; } rkn2: ; goto rkE; ork0: goto c1; ork1: goto c1; ork2: goto c12; ork3: goto c12; ork4: goto c12; ork5: goto c12; ork6: goto c12; ork7: goto s5; ork8: goto s5; ork9: goto c3; ork10: goto c3; ork11: goto rkE; ork12: goto rkE; ork13: goto rkE; ork14: goto rkE; ork15: goto rkE; ork16: goto rkE; ork17: goto rkE; ork18: goto rkE; ork19: goto rkE; ork20: goto rkE; ork21: goto rkE; ork22: goto c8; ork23: goto c8; ork24: goto c8; ork25: goto c8; ork26: goto c10; ork27: goto c10; ork28: goto cdef; ork29: goto cdef; ork30: goto cdef; ork31: goto t4; ork32: goto t4; ork33: goto t4; ork34: goto t5; ork35: goto t5; ork36: goto t5; ork37: goto t5; ork38: goto t5; ork39: goto t5; ork40: goto t5; ork41: goto t5; ork42: goto t5; ork43: goto rkE; ork44: goto rkE; ork45: goto rkE; ork46: goto rkE; ork47: goto rkE; ork48: goto rkE; ork49: goto rkE; ork50: goto rkE; ork51: goto rkE; } rkE: ; 
+				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;  
+				{ struct {} rko; { struct {} rkv0; __asm__ goto ("" :::: dv, c1, c12, s5, c9, c2, c10, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { struct {} rkv2; __asm__ ("" :: "m"(rko), "m"(rkv2)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
 			} else
 				goto fail;
 		} else
 			{ AT(u2) client_usage(2, NULL); }
 	} else {
 		if (netConnect(ip)) {
-			fkbo: { struct {} fko; { struct {} fkv; __asm__ ("" :: "X"(&fko), "X"(&fkv)); __asm__ goto ("" :::: p1, i1, dtg, ndl, c10, c9, c1, c7, cdef, fa0, fa1, fa2, fa3, fa4, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa0: goto ofa0; fa1: goto ofa1; fa2: goto ofa2; fa3: goto ofa3; fa4: goto ofa4; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa0: goto fkA2; ofa1: goto fkA2; ofa2: goto fkA2; ofa3: goto fkA2; ofa4: goto fkA2; ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
+			{ struct {} fko; { struct {} fkv; __asm__ ("" :: "X"(&fko), "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa2, fa3, fa4, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa2: goto ofa2; fa3: goto ofa3; fa4: goto ofa4; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa2: goto fkA2; ofa3: goto fkA2; ofa4: goto fkA2; ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
 			dsp: cinfo = netGetInfo();
-			 if (__builtin_constant_p(mode + 910) && __builtin_constant_p(mode + 911) && __builtin_constant_p(mode + 912) && __builtin_constant_p(mode + 913) && __builtin_constant_p(mode + 50913)) goto c9;  if (__builtin_constant_p(mode + 930) && __builtin_constant_p(mode + 931) && __builtin_constant_p(mode + 932) && __builtin_constant_p(mode + 933)) goto t4;      
-			           if (__builtin_constant_p(mode + 1210) && __builtin_constant_p(mode + 1211) && __builtin_constant_p(mode + 1212) && __builtin_constant_p(mode + 1213) && __builtin_constant_p(mode + 51213) && __builtin_constant_p(mode + 101213)) mode = 7; else if (__builtin_constant_p(mode + 1230) && __builtin_constant_p(mode + 51230) && __builtin_constant_p(mode + 101230) && __builtin_constant_p(mode + 151230) && __builtin_constant_p(mode + 201230) && __builtin_constant_p(mode + 251230)) mode = 11; else if (__builtin_constant_p(mode + 1220) && __builtin_constant_p(mode + 1221) && __builtin_constant_p(mode + 1222) && __builtin_constant_p(mode + 1223) && __builtin_constant_p(mode + 51223) && __builtin_constant_p(mode + 101223)) mode = 9; switch (mode) {
+			   if (__builtin_constant_p(mode + 930) && __builtin_constant_p(mode + 931) && __builtin_constant_p(mode + 932) && __builtin_constant_p(mode + 933)) goto t4;      
+			           if (__builtin_constant_p(mode + 1210) && __builtin_constant_p(mode + 1211) && __builtin_constant_p(mode + 1212) && __builtin_constant_p(mode + 1213) && __builtin_constant_p(mode + 51213) && __builtin_constant_p(mode + 101213)) mode = 7; else if (__builtin_constant_p(mode + 1230) && __builtin_constant_p(mode + 51230) && __builtin_constant_p(mode + 101230) && __builtin_constant_p(mode + 151230) && __builtin_constant_p(mode + 201230) && __builtin_constant_p(mode + 251230)) mode = 11; else if (__builtin_constant_p(mode + 1221) && __builtin_constant_p(mode + 1222) && __builtin_constant_p(mode + 1223) && __builtin_constant_p(mode + 51223) && __builtin_constant_p(mode + 101223)) mode = 9; switch (mode) {
 			case 1:
 				AT(c1) netDumpNand(arg);
 				break;
@@ -710,7 +709,7 @@ ip = argv[++i];
 				AT(c2) clientWrite(arg);
 				break;
 			case 3:
-				AT(c3)  { JMP(hdd4,s5,hdd5); clientKeys(); }
+				AT(c3)  { JMP(hdd4,hdd5); clientKeys(); }
 				break;
 			case 4:
 				AT(t4)  if (cinfo->hwFlags & 0x20)
@@ -722,22 +721,22 @@ ip = argv[++i];
 				AT(t5)  if (cinfo->hwFlags & 0x20)
 					{ __asm__ goto ("" :: "a"(cinfo) :: s4, c12); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
 				else
-					{ S761:; { AT(hdd5) { hdd5_c: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); } }
+					{ AT(hdd5) { hdd5_c: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); }
 				break;
 			case 6:
 				break;
 			case 7:
 				AT(c7)  if (arg == dummy)
-					{ AT(p0) { p0c: ; } clientPatches(NULL); }
+					clientPatches(NULL);
 				else
 					{ AT(p1) clientPatches(arg); }
 				break;
 			case 8:
-				AT(c8)  { clientReadBlocks(arg, start, count); }
-				{ c8t: JMP(c11); break; }
+				clientReadBlocks(arg, start, count);
+				break;
 			case 9:
 				AT(c9)   { clientWriteBlocks(arg, start); JMP(hdd4,hdd5); }
-				c9t: __asm__ goto ("" : : "i"(107) : : dsp); break;
+				__asm__ goto ("" : : "i"(107) : : dsp); break;
 			case 10:
 				AT(c10)JMP(c10);  clientEraseBlockI(arg);
 				break;
@@ -746,13 +745,13 @@ ip = argv[++i];
 				break;
 			case 12:
 				AT(c12) if (arg == dummy)
-					{ AT(i0) { i0_c: ; } clientInfo(NULL); }
+					clientInfo(NULL);
 				else
 					{ AT(i1) clientInfo(arg); }
 				break;
 			default:
-				AT(cdef)JMP(i1);   log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
-				__asm__ goto ("" : : "i"(109) : : dsp); break;
+				AT(cdef)   log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
+				 break;
 			}
 		} else
 			goto fail;
@@ -761,9 +760,9 @@ ip = argv[++i];
 	dtg: if (E(reboot))
 		{ netReboot(reboot); JMP(fail); }
 	ndl: netDisconnect();
-	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 750) && __builtin_constant_p(mode + 50750)) goto u2; 
+	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 50750)) goto u2; 
 if (0) { dv: asm volatile("" : : : "memory");  __builtin_unreachable(); } if (0) { dz: asm volatile("" : : : "cc"); __builtin_unreachable(); } 	return 0;
-fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 5562) && __builtin_constant_p(mode + 55562) && __builtin_constant_p(mode + 105562) && __builtin_constant_p(mode + 155562) && __builtin_constant_p(mode + 205562) && __builtin_constant_p(mode + 255562) && __builtin_constant_p(mode + 305562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5; if (__builtin_constant_p(mode + 260)) goto ndl;   if (__builtin_constant_p(mode + 7351) && __builtin_constant_p(mode + 57351) && __builtin_constant_p(mode + 107351) && __builtin_constant_p(mode + 157351) && __builtin_constant_p(mode + 207351) && __builtin_constant_p(mode + 257351)) goto dtg; if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 5569) && __builtin_constant_p(mode + 55569) && __builtin_constant_p(mode + 105569) && __builtin_constant_p(mode + 155569) && __builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 7368) && __builtin_constant_p(mode + 57368) && __builtin_constant_p(mode + 107368) && __builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 6949) && __builtin_constant_p(mode + 56949) && __builtin_constant_p(mode + 106949) && __builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 3200) && __builtin_constant_p(mode + 53200) && __builtin_constant_p(mode + 103200) && __builtin_constant_p(mode + 153200)) goto c9;
+fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 205562) && __builtin_constant_p(mode + 255562) && __builtin_constant_p(mode + 305562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5; if (__builtin_constant_p(mode + 260)) goto ndl;    if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }
