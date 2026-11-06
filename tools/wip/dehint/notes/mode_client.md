@@ -6,6 +6,81 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 11
+
+**52 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, still IDENTICAL BYTES).
+List labels 47 before and after.  Best near miss: **drafts/mode_client_a11_n49.c, 49
+tricks, 10 lines** (fail's c11 feed, cebi's `JMP(dy)` and the dy block's ybk feed gone, one
+`less` toggle; the only difference is the c11 block, clientBinPatch, laid out after
+c7/p1's clientPatches instead of between c9 and c7).  build.sh unchanged.
+
+## Attempt 11
+
+No match.  Tools (tools/wip/dehint/, states and logs in build/mc/w11/, dumps build/mc4/a11*):
+- `mc8comp.labels` fixed (idea 1): string literals and comments blanked (no more 'ERROR',
+  '1', 'borderline' junk) and AT(x) labels included.  mc8comp.edits on 52: 1236 edits (all
+  older generators that use it, mc7comp / mc8comp -two / mc9rep lists / mc10pairs, now see
+  the case labels).
+- `mc11arm.py BASE -arm N -t L -k ...`: a whole mode-chain arm dropped and replaced by one
+  k-term `goto L` feed at every position (idea 2).
+- `mc11armjmp.py`: arm dropped + list edits / one new JMP(L) anywhere / less / perm (written,
+  not run: the arm 11 drop alone is 371, see below).
+- `mc11sub.py BASE -t L`: list substitutions (one label replaced by L, list length kept).
+- `mc11norm.py A.c [-v]`: diff with jump/call targets blanked (a moved block counts its own
+  lines, not every jump into it; useful to see what a 300-line score really is).
+
+What was found:
+1. mc10loop on 52 (loop.log, stopped after c11's repairs): alone, fail's **c11 feed is 10**
+   (was 26-34 in attempts 7-9); pdpin 35, idpin 41, dyj 122, ybk 225, dy 233, the rest
+   240+.  Every 1-term feed other than c11 is 300+ now (t4 315, t5 324, s5 362, rok's ndl
+   341, dtg 388, fail's ndl 418; mc11norm: t4's 315 is ~96 real lines, several case blocks
+   move).  The arm 11 terms are 300 (were 22 on 54).
+2. The c11 near miss (drafts/mode_client_a11_c11.c, 51): the c11 block is placed after
+   c7/p1's in the same bbro trace (layout c9 c11 c7 p1 -> c9 c7 p1 c11).  rtl dumps
+   (build/mc4/a11r_*): the block order and every call's relative order are the same in
+   every pass up to rtl_dce; **bbro alone** makes the difference.  profile_estimate: c11
+   head 7 -> 4 (c12 3, i1 5, c9 7, c7 6, p1 8).  Repairs on it: at 276, default 2, perm 6,
+   less 20, default+at 552, lists 1218, retarget 552, substitutions 47: all 10 (subs 266+).
+   One arm 11 term removed on top: 22; 2-4 terms 257.
+3. **dyj and ybk ride on the c11 removal.**  On the c11 state, removals: dyj 18 (= the c11
+   10 + the latch flip 8; any of 20 `less` toggles fixes the flip -> 10), arm 11 terms 22,
+   pdpin 45, idpin 51, efail1 56.  On that state (rm_c11_dyj_less, 50) the ybk feed is free
+   (10) -> n49 (49 tricks, 10 lines).  On 52 itself dyj is 122 (dyj+ybk 320, with any less
+   122): the cebi edges and the c11 feed interact (the c10 block, clientEraseBlockI, sits
+   between c9 and c11).  On n49 the whole dy block (feed + if (0) + unreachable, 46 tricks)
+   is 230, efail1 146.
+4. On n49: perm 266+, default 10, less 10, lists (fixed labels, 1228) 10, retarget 552 10,
+   reloc 2144 10, the cebi dy feed moved anywhere in clientEraseBlockI (mc7reloc -fn,
+   with `block + N` spelling) 230+, and the c11 feed put back as a 1-term feed at every position
+   (mc10ins, 269): **10 everywhere**, including the original position.  So the c11 block's
+   placement on n49 is no longer about the c11 feed: it is the cebi change (dyj/ybk) that
+   keeps c11 late, and c11's frequency alone cannot bring it back.
+5. Arm 11 (5 terms) dropped and replaced by a 1-4 term `goto c11` feed anywhere (mc11arm,
+   1076): best 194 (1 term in the rok list block).  The arm is the case head's flow; no
+   position replaces it.  Arm 7 (-> c7/p1) was started and stopped (same pattern expected).
+
+### Don't retry (attempt 11)
+
+- Arms as goto feeds (mc11arm) on 52: 194+.  List substitutions toward c11: 266+.
+- On the c11 state and on n49: single at/lists/less/default/perm/retarget repairs, a new
+  c11 feed anywhere (all 10).
+- 1-term feed removals on 52 other than c11 (300+, several case blocks move).
+
+### Ideas for attempt 12
+
+- n49's 10 lines are a bbro layout choice in the case region (c9, c10 = clientEraseBlockI,
+  c11, c7, p1).  Look at the bbro-details traces of base52 vs n49 (build/mc4/a11_base52,
+  a11_n49, mc.bb: trace 58 is c9 c11 c7 p1 vs c9 c7 p1 c11) and find which edge
+  probability / frequency in the cebi blocks changed; then aim count-neutral moves at cebi
+  (efail list labels, `cp(block)` vs `cp(block + N)` on the dy feed, efc/einv positions,
+  ybk label position) rather than at c11.
+- Pairs of edits on n49 restricted to cebi labels/lists plus c9/c10/c11/c7/p1 (mc10pairs
+  -labs with the fixed labels).
+- On n49, the latch-flip toggle set (less) for the cebi feed spelling `cp(block)` vs
+  `cp(block + N)` together with the dy feed's position (mc7reloc gave 230+ with `block + N`).
+- If n49 lands, the dy block (if (0) + unreachable + its feed) may follow: on n49 it is 230,
+  re-check after.
+
 ## State after attempt 10
 
 **52 tricks** (MATCH, 55 before), three `__builtin_constant_p` gone: the default case's c3

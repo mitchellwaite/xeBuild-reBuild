@@ -40,10 +40,15 @@ def labels(t, fn):
     for nm, s, e in mc7j2l.fn_ranges(t):
         if nm == fn:
             break
+    # attempt 11: string literals and comments blanked (they gave junk labels such as
+    # 'ERROR', '1', 'borderline'), and AT(x) labels included (they were missing)
+    body = re.sub(r'"(?:[^"\\\n]|\\.)*"', '""', t[s:e])
+    body = re.sub(r'/\*.*?\*/', ' ', body, flags=re.S)
     labs = []
-    for m in re.finditer(r'(?<![:\w])(\w+):(?!:)', t[s:e]):
-        if m.group(1) not in ('default', 'case') and m.group(1) not in labs:
-            labs.append(m.group(1))
+    for m in re.finditer(r'(?<![:\w])(\w+):(?!:)|\bAT\((\w+)\)', body):
+        lab = m.group(1) or m.group(2)
+        if lab not in ('default', 'case', 'AT') and not lab.isdigit() and lab not in labs:
+            labs.append(lab)
     return labs
 
 
