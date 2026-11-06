@@ -3,6 +3,20 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 8
+
+**16 tricks by kind** (23 by the same count before; the parent's list said 25).  Removed (7): 5
+`__builtin_constant_p` and 2 `__builtin_expect`.  The dead feeds now test one shared value per
+function: applyIniOptions' `dead = __builtin_constant_p(xb.blSuffix[1])` (macid memset size and
+the rev feeds) with `rare = __builtin_expect(dead, 0)` for the rev feeds' 17% tests, and
+parseButtonX's z feed tests one cp twice.  Full build SHA256 10dac648...1971c; progress 617/617.
+
+Remaining: `--param builtin-expect-probability=83`; 5 `__builtin_expect` (parseButtonX's power,
+parseButton's winbutton, parseOption's two, `rare`); 2 `__builtin_constant_p` (applyIniOptions'
+`dead`, parseButtonX's z feed); 2 `asm goto`, 2 `__builtin_unreachable` (dz1, dz2); 2
+`po_hint()` + no-early-inlining; the hand-written `_parseButton.part.0`.  No new borderline
+shape (the feeds are still counted hints).  See "## Attempt 8".
+
 ## State after attempt 7
 
 **26 tricks** (34 before).  Removed (8): every hint in the optIniBool helpers.  optIniBool
@@ -812,3 +826,127 @@ profile_estimate and vanish after it; a natural static helper there would be ear
   sit after `sprintf` in the rev block (their dead arms `return;`), so a natural `rev` reader
   with a result might replace part of them; the dz dummy entries still need asm-goto edges.
 - parseButtonX still needs a ~45% leak from the else head to `!s` that no natural reader gives.
+
+## Attempt 8
+
+Lever under test: attempt 7's result variables (arms set a value and join a test; the join is
+threaded after inlining, stale counts remain) applied to the remaining groups.  Drafts and
+generators: tools/wip/dehint/op8*.py, build/op/a8/.
+
+### Singles on c49ed372
+
+Nothing IDENTICAL.  part 14 (not real), mG_cygnos/mG_smcne 38 (stale edits), rev2_4 44, po_exp2
+62, mG_nosec 62, mG_nandmu 64, po2 102, pb_exp 190, po1/po_nei 231, dual_goto4 304, m_bx 321,
+mac_ms 373, po_exp1 811, bx_exp 818, param 1109.
+
+Pairs (optricks pairs, 171): nothing IDENTICAL; best pb_exp+part 14 (not real), mG_cygnos+mG_smcne 38.
+
+### parseOption's two expects (op8po.py): arithmetic says no
+
+- Forms for the setBoolOption test (expect, `== 1`, plain, the rest under `else` so the arm has
+  no return of its own, `r = setBoolOption(); if (r) {..; return r;}`) x vlen tails (expect,
+  plain, if/else both ways, `val` in place of vlen): only the current pair is IDENTICAL; best
+  62 (setBool expect kept, vlen plain or if/else), 217 (vlen expect kept, setBool plain).
+- The arm under `else` (r1) keeps the early-return prediction: the log block's single
+  successor is the return block, which is what PRED_TREE_EARLY_RETURN looks for.
+- `-p 82` and `-p 84` on the current source are 199/237 lines in parseOption: both expects
+  need 17% almost exactly.  Natural predictors on that test: opcode `== 1` 28%, call 29%,
+  early return 39%; their DS combinations are 9.2 / 13.7 / 19.9 / 20.7 / 28 / 29 %.  Const
+  return doesn't apply (0/1 are excluded).  For vlen, the pointer heuristic points the wrong
+  way (val != NULL 85%).  No natural shape gives 17%.
+
+### macid memset: asm goto position (op8az.py)
+
+dz1's asm goto with the memset removed, at every statement position of applyIniOptions (67):
+none IDENTICAL; best 172 (inside the macid loop), 333 (xellbutton default / dualboot), 373 at
+its own place.  The memset's PRED_CALL on the asm-goto block's edge is needed where it is.
+
+### parseButtonX with a redundant result test (op8bx.py): no
+
+`if (!b) return 0;` / `if (b) return b; return 0;` / `if (!b) goto z;` after the chain, in the
+non-power arm or after the part call, with three head forms, with and without the power
+expect (51 forms): 471+ (and .rdata order changes).  A live test on the reader's result puts
+far more flow into `!s` than the z feed's 37.5% of the else arm.
+
+### A shared name reader so gcc's split replaces the hand-written part (op8bn.py, op8bh.py)
+
+- `buttonName(s)` = remopower..kiosk (no power), called from parseButton (after its power test)
+  and from parseButtonX's else arm: gcc splits buttonName, but at wiredx (header 30, or 32
+  with a redundant `if (!s) return 0;` in it), not at wirelessx: fnsplit refuses a split whose
+  header + call overhead (2) reaches max-inline-insns-auto (40), i.e. header >= 38.  In
+  parseButton the header holds !s and power too (wirelessx 32 accepted, wiredx 39 refused),
+  which is why the original split lands at wirelessx.  buttonName's header would need ~6 more
+  size units that fold away in both callers; nothing natural gives that.  All forms 20k+
+  (.rdata: "wiredx" first).
+- `buttonName` with power inside and parseButton a null-check wrapper: split at wirelessx,
+  parseButton IDENTICAL (the part's name aside), but parseButtonX can't reach the part
+  without re-testing power (X_E 630 in applyIniOptions: code differs), and the wrapper route
+  for xellbutton (W_E, z feed before power) is 807.
+- So the hand-written part is tied to parseButtonX, as attempts 1-3 found.
+
+### MATCH: one __builtin_constant_p value per function, one expect for the rev feeds (op8k.py)
+
+- The dead feeds only need each test's prediction and that every test folds; the tests can
+  share one SSA value.  `int dead = __builtin_constant_p(xb.blSuffix[1]);` at the top of
+  applyIniOptions feeds the macid memset size and the rev feeds; `long rare =
+  __builtin_expect(dead, 0);` gives every test of `rare` the expect's 17%
+  (expr_expected_value follows the SSA def, also through `rare == 1`).
+- Rev feeds now `if (dead) { if (rare) goto dz1; return; } if (rare) { if (rare == 1) goto
+  dz2; }`: IDENTICAL BYTES.  dz2's inner test must differ from its outer one: with the same
+  test twice (`if (e) { if (e) ..}` or `E(k,0)` twice) early FRE/CSE folds the inner one
+  and dz2 gets 8.5% instead of 1.45% (304, like no feed).  Inner forms that work: `rare ==
+  1`, `rare > 0`, `rare & 1`, `rare >= 1`, `E(k == 1, 0)`, `E(k & 1, 0)`, a second cp;
+  `rare > 0`/`k > 0` with E (kb) and `rare == k` are 44.
+- parseButtonX's z feed: `int dead = __builtin_constant_p(xb.xellButton); if (dead) { if
+  (dead > 0) goto z; }`: IDENTICAL (1 cp instead of 2).
+- Removed: 5 __builtin_constant_p (rev feeds 4 -> shared, memset 1 -> shared, z feed 2 -> 1,
+  plus the shared one counted once per function: 7 -> 2) and 2 __builtin_expect (rev feeds 3
+  -> 1).  Full build SHA256 10dac648...1971c; progress 617/617.
+- Not a new kind of shape: the feeds are still counted dead tests, with fewer builtins.
+
+### Asm gotos and dummies (no)
+
+- One asm goto with both labels (`:::: dz1, dz2`, either order) in macid's arm 901, in
+  dualboot's 838.
+- dz1/dz2 ending in `return;` (one or both) or `;`: 801-951.  The unreachables stay.
+
+### po_hint: what it does, in numbers (lead, not tried to the end)
+
+profile_estimate on parseOption (op7pe): every value arm's `== -1` test has early return 61%,
+opcode 28% and call 71% (PRED_CALL on the success edge, whose block holds the log_printf)
+-> 59.8% bad.  cputemp's and gpufan's add po_hint's call 29% on the bad edge -> 37.8%.
+DS(61%, 28%) without either call is also exactly 37.8%: a shape where the success block of
+those two arms doesn't count as a guarded call (no call in the edge's dest, the dest not
+dominated by the test, or the dest post-dominating it) would do po_hint's job with no call
+at all, and no-early-inlining would go with it.  None found that keeps the code: the log has
+to follow the test directly.
+
+op8ph.py: cputemp/gpufan arms without po_hint as `if (!= -1) {log; return 1;} goto bad;`,
+if/else, plain, and with a redundant `if (!= -1)` before the log: all 231 (= po1 alone; the
+redundant test folds before profile_estimate).
+
+### Don't retry (attempt 8)
+
+- parseOption's expects as plain / result / else-arm shapes (arithmetic: no 17%).
+- dz1's asm goto anywhere else without the memset; one asm goto with both labels; dz
+  dummies without unreachable.
+- Redundant result tests in parseButtonX; a shared name reader without power (split lands
+  at wiredx), or with power (parseButtonX can't reach the part).
+- Shared feed values with the same test twice in a nest (CSE folds the inner one).
+
+### Next ideas
+
+- po_hint: a success block for cputemp/gpufan that PRED_CALL doesn't see (numbers above).
+- parseButtonX's cp could be applyIniOptions' `dead` passed as a parameter (one cp fewer),
+  but that is plumbing for a hint, not natural code: not done.
+- The rest (param, 5 expects on live tests, 2 asm goto + 2 unreachable, the part) is as stuck
+  as attempts 5-7 describe.
+
+### Attempt 8: not landed (parent's call)
+
+The shared-feed shape (`int dead = __builtin_constant_p(...)`, `long rare =
+__builtin_expect(dead, 0)`, feeds testing `dead`/`rare`) matches, but it removes no
+dead test: the same feeds still steer, only through fewer builtin calls. That is a
+hint disguised, not removed (tools/wip/dehint/README.md), so src stays at c49ed372's
+25 tricks and the shape is saved as drafts/options_sharedfeeds_candidate.patch for
+the user's review. Don't count builtin-sharing as a removal in later attempts.
