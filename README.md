@@ -105,13 +105,12 @@ and what's been tried.
 </details>
 
 <details>
-<summary><b>3. options</b>: 25 tricks, very hard</summary>
+<summary><b>3. options</b>: 22 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 7 `__builtin_constant_p`, 7 `__builtin_expect`, 2 `asm goto` and 2
   `__builtin_unreachable`, nearly all setting the cold layout of
   `applyIniOptions`
-- 2 `po_hint()` calls and 1 `no-early-inlining` attribute, for `parseOption`
 - `_parseButton.part.0`, written by hand as a global `cold` function in
   `.text.startup` rather than coming from gcc's own function split
 

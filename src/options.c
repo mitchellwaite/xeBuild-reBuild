@@ -574,30 +574,27 @@ int setBoolOption(const char *name, const char *val)
 
 /* one name[=value] from the command line option string.  The `if (val)`
    around the value options is in the Linux build (gcc 4.9 keeps the test);
-   gcc 6 threads it away.  The hints only steer block order and alignment:
-   - po_hint() on cputemp's and gpufan's bad edges is a guarded call at
-     profile_estimate (PRED_CALL, cancelling log_printf's on the success
-     edge); inlined later, its store to a dead local goes.  cputemp's success
-     then owns an epilogue copy and only edramtemp's -1 test falls into bad;
-     gpufan's moves the jump alignment from avregion's test to gameregion's.
-   - the two __builtin_expect use build.sh's builtin-expect-probability=83:
-     the done edges stay under gputemp's (so its match trace comes first)
-     but above the macid loop exit, and the incomplete block reaches the
-     epilogue-copy threshold.
+   gcc 6 threads it away.
+   Borderline, for review: cputemp and gpufan set an `ok` flag in the log's
+   if and leave on it after, where the other value arms `goto bad` first.
+   The log block then doesn't go straight to the return, so their success
+   edge gets no early-return prediction (bad 48.8% instead of 59.8%); the
+   flag's join is threaded away after profile_estimate.  cputemp's success
+   then owns an epilogue copy and only edramtemp's -1 test falls into bad;
+   gpufan's moves the jump alignment from avregion's test to gameregion's.
+   (Every myatou32 arm but edramtemp in this form also matches.)
+   The two __builtin_expect use build.sh's builtin-expect-probability=83:
+   the done edges stay under gputemp's (so its match trace comes first)
+   but above the macid loop exit, and the incomplete block reaches the
+   epilogue-copy threshold.
    The return is uint32_t, as is parseCmdOptions': with int, uncprop
    returns stricmp's "macid" result for macid's 0s (kept in esi), and
    parseCmdOptions' `return 0` reuses the call's 0 only when the types
-   agree.  po_hint gets parseOption's options too, or it
-   can't be inlined there. */
-
-static void po_hint(int *p) { *p = 1; }
-
-__attribute__((optimize("no-early-inlining")))
+   agree. */
 uint32_t parseOption(char *opt)
 {
-	int dead;
 	char *val = NULL;
-	int i, len, vlen;
+	int i, len, vlen, ok;
 
 	len = strlen(opt);
 	for (i = 0; i < len; i++) {
@@ -622,11 +619,13 @@ uint32_t parseOption(char *opt)
 	if (val) {
 		if (!stricmp(opt, "cputemp")) {
 			xb.cpuTemp = myatou32(val, -1);
-			if (xb.cpuTemp == -1) {
-				po_hint(&dead);
-				goto bad;
+			ok = 0;
+			if (xb.cpuTemp != -1) {
+				log_printf(1, "Using CPUTEMP option, value %d\n", xb.cpuTemp);
+				ok = 1;
 			}
-			log_printf(1, "Using CPUTEMP option, value %d\n", xb.cpuTemp);
+			if (!ok)
+				goto bad;
 			return 1;
 		}
 		if (!stricmp(opt, "gputemp")) {
@@ -673,11 +672,13 @@ uint32_t parseOption(char *opt)
 		}
 		if (!stricmp(opt, "gpufan")) {
 			xb.gpuFan = myatou32(val, -1);
-			if (xb.gpuFan == -1) {
-				po_hint(&dead);
-				goto bad;
+			ok = 0;
+			if (xb.gpuFan != -1) {
+				log_printf(1, "Using GPUFAN option, value %d\n", xb.gpuFan);
+				ok = 1;
 			}
-			log_printf(1, "Using GPUFAN option, value %d\n", xb.gpuFan);
+			if (!ok)
+				goto bad;
 			return 1;
 		}
 		if (!stricmp(opt, "avregion")) {

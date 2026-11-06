@@ -3,6 +3,22 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 9
+
+**22 tricks** (25 before, the parent's count).  Removed (3): both `po_hint()` calls (and the
+po_hint function and its `dead` local) and parseOption's `optimize("no-early-inlining")`.
+cputemp's and gpufan's arms now set an `ok` flag in the log's `if` and `goto bad` on it after
+(src comment: borderline).  Full build SHA256 10dac648...1971c; progress 617/617.
+
+Remaining: `--param builtin-expect-probability=83`; 7 `__builtin_expect` (parseButtonX's power,
+parseButton's winbutton, parseOption's two, the rev feeds' three); 7 `__builtin_constant_p`
+(parseButtonX's z feed 2, the macid memset 1, the rev feeds 4); 2 `asm goto`, 2
+`__builtin_unreachable` (dz1, dz2); the hand-written `_parseButton.part.0`.  See "## Attempt 9".
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| parseOption, cputemp and gpufan | `ok = 0; if (x != -1) { log; ok = 1; } if (!ok) goto bad; return 1;` where the other value arms do `if (x == -1) goto bad; log; return 1;` | Borderline: live, redundant flag (myatou32's `hex` pattern), only in those two arms.  It exists to match: the log block no longer goes straight to the return, so their success edge loses the early-return prediction.  Every myatou32 arm but edramtemp in this form also matches (op9rv.py, ARMS=-edramTemp) |
+
 ## State after attempt 8
 
 **16 tricks by kind** (23 by the same count before; the parent's list said 25).  Removed (7): 5
@@ -950,3 +966,66 @@ dead test: the same feeds still steer, only through fewer builtin calls. That is
 hint disguised, not removed (tools/wip/dehint/README.md), so src stays at c49ed372's
 25 tricks and the shape is saved as drafts/options_sharedfeeds_candidate.patch for
 the user's review. Don't count builtin-sharing as a removal in later attempts.
+
+## Attempt 9
+
+Focus: parseOption's po_hint group.  New tools (tools/wip/dehint/): `op9end.py` (po_hint removed;
+bad-message copies at the end of the function, per-arm or shared labels, before or after
+`bad:`), `op9rv.py [form]` (result-variable / repeated-test forms for value arms; ARMS=two,
+temps, all, regions, two+regions, -X, +X, t-X), `op9mix.py BASE` (every myatou32 arm in BASE
+except edramtemp, which gets each form).  Read predict.c (releases/gcc-6.2.0) for the call
+and early-return heuristics.
+
+### predict.c: what the two heuristics look at
+
+- PRED_CALL on edge e: e->dest is dominated by e->src, doesn't post-dominate it, and holds a
+  call with side effects (anywhere in that one block).  Looping const/pure calls count.
+- PRED_TREE_EARLY_RETURN: for a block bb whose single successor is the return block R (which
+  ends in GIMPLE_RETURN, single succ EXIT) and R != bb->next_bb, every edge into bb is
+  predicted not taken (unless the source has a null/const/negative-return prediction).  All
+  returns share one temp, so R is one block at the end; `bad:` is R's prev block, which is why
+  no bad edge gets the early-return prediction while every success log block does.
+
+### The target is a range, not 37.8%
+
+- op9end `shared_before` (cputemp/gpufan `goto badtemp`, a copy of the bad message under a
+  label before `bad:`): IDENTICAL BYTES with the bad edge at 48.8% (early return now on both
+  edges, they cancel: DS(opcode 28, call 71)).  The copy's literal is expanded after all others
+  (it is at the end), so .rdata stays.  `before`/`before_r` (one label per arm) also
+  IDENTICAL; `after*` 256, `shared_after` 423 (then `bad:` gets the prediction for every arm),
+  copies in the arm 158 (.rdata), plain 231.  Not landed: two identical error exits.
+- So any shape that drops the early-return prediction from just those two success edges (or
+  adds it to their bad edges) is enough.
+
+### MATCH: an `ok` flag in cputemp's and gpufan's arms (op9rv.py, IDENTICAL BYTES)
+
+- F4 `ok = 0; if (x != -1) { log; ok = 1; } if (!ok) goto bad; return 1;`, F4b (`if (ok)
+  return 1; goto bad;`), F4c (`return ok`), F1 `ok = x != -1; if (ok) log; if (!ok) goto bad;
+  return 1;`, F1b: all IDENTICAL BYTES; `ok` int, uint32_t, int8_t or scoped in the arm.
+  The log block's successor is the flag's join, not the return block, so no early return on
+  the success edge: bad 48.8% at profile_estimate (op7pe); DOM/VRP thread the join later.
+- Not: if/else forms without a join (F1c `else goto bad; return ok`, F3) 231; `return x !=
+  -1` after the log (F1d) 329; the field tested twice (F2/F2b) 293.
+- Which arms: cputemp alone 102, gpufan alone 231, all 8 temps/fans 22, all 11 myatou32 arms
+  22, regions only 231, two+regions IDENTICAL, all but edramtemp IDENTICAL (edramtemp plain,
+  F1c or F3; op9mix).  edramtemp is the arm whose -1 test falls into bad.
+- Landed F4 on cputemp and gpufan (fewest changed arms); po_hint, its `dead` local and the
+  no-early-inlining attribute gone.  Full build SHA256 10dac648...1971c; progress 617/617.
+  Borderline (src comment): the flag is live but redundant and exists to match.
+
+### parseOption's two expects: not retried
+
+Attempt 8's -p 82/84 check (199/237 lines) shows they need 17% exactly, unlike the po_hint
+edges; no natural predictor mix gives 17% (attempt 8's arithmetic).
+
+### Don't retry (attempt 9)
+
+- Bad-message copies anywhere (in the arm: .rdata; at the end: two identical exits, only a
+  candidate, op9end `shared_before`).
+- The flag on cputemp alone / gpufan alone / all temps / all myatou32 arms (edramtemp must stay
+  without the join).
+
+### Next ideas
+
+- The early-return lever (a join between the log and the return) may help other edges that
+  need a prediction removed: check `bb->next_bb` and the join before writing a dead test.
