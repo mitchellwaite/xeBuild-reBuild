@@ -6,6 +6,95 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 16
+
+**48 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, full build is still the
+attempt 14 one, SHA256 10dac648...1971c).  List labels 48 before and after.  No new
+borderline shape.  Near misses at 47 tricks: n4cdef/n5dtg (10 lines), c2at132 (8 lines),
+s14 (14 lines, w16/s14.c: the first state with c2 laid out after t4/t5; only t5's block
+is before t4's).  The c2-vs-t4/t5 problem
+is now understood exactly (bbro keys, below) and case 3's list turns out to be a
+profile-only frequency source.
+
+## Attempt 16
+
+Tools (tools/wip/dehint/, states and logs in build/mc/w16/):
+- `mc16state.py BASE_k0 FAMILY N OUT`: one mc14filt family variant, k-corrected, saved.
+- `mc16filt.py`: mc14filt with k up to 8 (mc15k) and `-from/-to` slices (resume).
+- `mc16dump.py A.c OUT`: bbro-details dump of mode_client only (heap events, keys).
+- `mc16cfg.py A.c BBS`: pre-bbro (rtl_dce) preds/succs/calls of given blocks.
+- `mc16freq.py A.c PASS names`: GIMPLE block frequencies (e.g. vrp1) of labelled blocks.
+- `mc16le.py BASE_k0 IDX,...`: apply mc8comp list edits, k-correct, score, case keys.
+- `mc16t45.py BASE_k0`: t4 / t5 added to every list (singles and pairs) with c2/t4/t5 freqs.
+- `mc16l6.py BASE_k0`: case 3's list set to every subset of t4,t5,c9,hdd4,hdd5,c3,dv.
+- `mc16perm.py BASE_k0 LABELS`: every order of case 3's list.
+- `mc16l6r.py BASE_k0`: case 3 list subsets x t4/t5 at the front of rko's list.
+
+Results:
+- **Why c2 lands before t4/t5 (exact).**  All case heads enter bbro's round-4 heap with
+  key `-(100*BB_FREQ_MAX + 100*priority + freq)`; priority = the switch edge's frequency
+  (4, the switch block ends a trace) for every case head, so the RTL block frequency is
+  the only tiebreak: reference c1 111 / c3 113 / t4 115 / t5 118 all -1000406, c2 112
+  -1000405 (rko's edge gives +1), case 8 (126, clientReadBlocks) -1000404; pops 111, 113,
+  115, 118, 112, 126.  With the t4 and t5 feeds gone t4/t5 are 4 (-1000404) and c2 pops
+  first.  With c2 out of rko's list (noc2), c2 4 ties with t4, t5 and 126 and the
+  fibheap tie order is 126, 115, 112, 118.  t4/t5 can't get a larger priority (their only
+  pred is the switch; every case edge has the same probability, 1/13).
+- **The mirror** (not5 + t4 feed retargeted; f_not5_rt.log of attempt 15 had it already:
+  retarget 217 = `goto rkE`, 271 = `goto dtg`, k5): 10 lines, the same c2 block, the same
+  keys as n4cdef (w16/n5dtg.c, n5rke.c).  Nothing new.
+- **Case 3's list is a profile-only frequency source.**  Its block (c3) is gone by RTL
+  (merged), so labels in `JMP(hdd4, hdd5, c3, dv)` add frequency at profile_estimate and
+  leave no RTL edge; each label gets c3's flow / (labels + 1), and c3's own self-edge loops
+  flow back, so adding labels dilutes the others.  Only this list and rko's (list 4, its
+  edges persist and cost 150+) are near; every other list's edges change code (230+).
+  On noc2 (w16/t45_noc2.log, l6_noc2.log): t4>6 alone t4 5 (24), t5>6 alone t5 5 (24),
+  both 4/4 (38: diluted); `c9` at the front (noc2 + at 132, **8 lines**, w16/c2at132.c: c9
+  7 -> 8, c2 still between t4 and t5).  **s18** = noc2 + case 3's list
+  `JMP(t4, t5, hdd4, hdd5, c3)` (dv dropped from it; dv stays in rko's list): c2 4, t4 5,
+  t5 5 and c2 now pops after both (T29), 18 lines = t5's block before t4's (405 tie, wrong
+  order) and c9/c11 swapped (7/7 tie).  Every order of that list (mc16perm, 120): 18 or 22.
+  s18 + t4 in rko 146, + c9 / c11 in case 3's list 130 / 160.
+- Count-corrected retarget (k up to 8): n4cdef 10 (552, nothing new), noc11 18 (552), nodz3
+  60 (612), not4 slice 320.. 26, not5 slice 340.. 28; n4cdef reloc stopped at 246 of 1608
+  (309+).  noc2 + at/lists (stopped at 778): 8 at best (at 132/133/166/167, c9 into case
+  3's list).
+- nodz3's block (exact): in 48 the -e arm's block 73 (log_printf + JMP(dz)) has two succs,
+  74 (`mode = 4`, the fallthrough, taken into trace 46) and dz (147, empty, no succs),
+  which is inserted into the round-4 heap with key 0 at that moment and laid out later as
+  an empty trace; that insert is what reorders the zero-key ties (124 second).  In nodz3
+  `mode = 4` is merged into 73 and nothing is inserted.  A stand-in must be a successor
+  of a trace block that is not taken, has key 0 and emits nothing: only an empty
+  no-successor block (unreachable) does, and only an asm goto edge keeps one alive.
+- **s14 (14 lines, 47 tricks, the best layout so far)** = noc2 + case 3's list
+  `JMP(t5, hdd4, hdd5, c3)` + `t5` at the front of rko's list (it takes c2's place there):
+  c2 4, t4 4, t5 6; c2 after both, c9/c11 right; the only diff is t5's block before
+  t4's (w16/s14_k0.c, s14.c; l6r_noc2.log, 128 combos of case 3 list subsets x t4/t5 in
+  rko's list).  t4 can't follow: t4 in rko's list costs 146+ (its RTL edge changes code),
+  and case 3's list alone gives t4 at most 5 with hdd4/hdd5 kept.  l6r's best is 8, the
+  c2at132 class (c9 in case 3's list, c2 between t4 and t5).
+- s18 repair sweep (lists, at, less, default, retarget; f_s18.log, stopped at 383 of
+  ~2700): 18 at best.
+
+### Don't retry (attempt 16)
+
+- not5 + t4 feed retargeted (rkE/dtg): the same 10 as n4cdef.
+- n4cdef + retarget / reloc of the remaining feeds (10 / 309+); noc11 / nodz3 retarget.
+- t4 / t5 into any list but case 3's or rko's; list 6 orders (only membership matters).
+- Raising t4/t5 priority: impossible (single pred, uniform switch probabilities).
+
+### Ideas for attempt 17
+
+- s14 (14 lines, 47 tricks): only t4 (4) must reach t5's 6 (or t4 6 / t5 6 like the
+  reference) without an RTL edge.  Raise c3's own flow (it is what case 3's list shares
+  out) so one label in it is worth +2, or find a second profile-only list (a block merged
+  away before RTL whose asm goto list is free); then run mc16filt's repair families on
+  s14_k0 (never run).  s18's sweep (f_s18.log) is resumable with `-from 383`.
+- A fibheap simulator fed from mc16dump's event log (insert / extract / replace_key per
+  round) would say which extra insert or key change fixes a tie, instead of sweeping.
+- Honest odds: low.  Everything left is an exact integer frequency or a fibheap tie, and
+  the only profile-only lever is case 3's list, which dilutes as it grows.
+
 ## State after attempt 15
 
 **48 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, so the full build is the
