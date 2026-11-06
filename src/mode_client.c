@@ -13,14 +13,17 @@
    were found not to matter and removed, and what each remaining one is
    for).  A cp feed sends 1/2^k of its block's flow, so the case heads'
    feeds sit where one or two terms add the frequency they need (the
-   default case, the rok block, fail, the -noenter arm).  fail's feeds come
-   after its log call: before it, the last one would take the call
-   heuristic's 71% instead of 50%.  A feed's argument is `mode + N` or plain
+   default case, the rok block, fail, the -noenter arm, the end of the
+   connected branch).  A feed right before a call it dominates takes the
+   call heuristic's 71% instead of 50%: fail's ndl feed sits there on
+   purpose, its other feeds (and the default case's) come after the log
+   call.  A feed's argument is `mode + N` or plain
    `mode` (`block` in clientEraseBlockI; one temporary fewer); which spelling a feed has only moves the SSA
    names PRE reuses, and with them the option loop's latch compare order.  Labels in an asm
    goto's list are free (the statement is the hint), so some edges ride in
-   another block's list (rk6 in the -r head's, ork6 in case 5's) where they
-   stand in for a removed feed or cold label.  String literals land in .rdata in block order, so clientInfo's and
+   another block's list (rk6 in the -r head's, ork6 in case 5's; c3 in its
+   own block's, an edge back to the case 3 head) where they stand in for a
+   removed feed or cold label.  String literals land in .rdata in block order, so clientInfo's and
    clientWriteBlocks' shapes (early returns) are what fix it there.  The
    option tests get even odds from calls: an arm that starts with a call
    (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
@@ -724,7 +727,7 @@ int mode_client(int argc, char **argv)
 			if (netConnect(ip)) {
 			rok: __attribute__((cold));
 				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;
-				{ struct {} rko; if (__builtin_constant_p(mode + 1049460) && __builtin_constant_p(mode + 1049461)) goto t4; { __asm__ goto ("" :::: dv, c12, s5, c9, c2, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { __asm__ ("" :: "m"(rko)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
+				{ struct {} rko; { __asm__ goto ("" :::: dv, c12, s5, c9, c2, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { __asm__ ("" :: "m"(rko)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
 			} else
 				goto fail;
 		} else
@@ -733,7 +736,7 @@ int mode_client(int argc, char **argv)
 		if (netConnect(ip)) {
 			{ { struct {} fkv; __asm__ ("" :: "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
 			dsp: cinfo = netGetInfo();
-			if (__builtin_constant_p(mode + 909000)) mode = 9; else if (__builtin_constant_p(mode + 911000) && __builtin_constant_p(mode + 911001) && __builtin_constant_p(mode + 911002) && __builtin_constant_p(mode + 911003) && __builtin_constant_p(mode + 911004)) mode = 11; else if (__builtin_constant_p(mode + 907000) && __builtin_constant_p(mode + 907001) && __builtin_constant_p(mode + 907002) && __builtin_constant_p(mode + 907003)) mode = 7; switch (mode) {
+			if (__builtin_constant_p(mode + 909000)) mode = 9; else if (__builtin_constant_p(mode + 911000) && __builtin_constant_p(mode + 911001) && __builtin_constant_p(mode + 911002) && __builtin_constant_p(mode + 911003) && __builtin_constant_p(mode + 911004)) mode = 11; else if (__builtin_constant_p(mode + 907000) && __builtin_constant_p(mode + 907002) && __builtin_constant_p(mode + 907003) && __builtin_constant_p(mode + 907004)) mode = 7; switch (mode) {
 			case 1:
 				AT(c1) netDumpNand(arg);
 				break;
@@ -741,7 +744,7 @@ int mode_client(int argc, char **argv)
 				AT(c2) clientWrite(arg);
 				break;
 			case 3:
-				AT(c3)  { JMP(hdd4,hdd5); clientKeys(); }
+				AT(c3)  { JMP(hdd4, hdd5, c3); clientKeys(); }
 				break;
 			case 4:
 				AT(t4)  if (cinfo->hwFlags & 0x20)
@@ -782,13 +785,12 @@ int mode_client(int argc, char **argv)
 					{ AT(i1) clientInfo(arg); }
 				break;
 			default:
-				if (__builtin_constant_p(mode + 1084170)) goto t5;
 				AT(cdef) log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
-				if (__builtin_constant_p(mode + 1085650)) goto c3;
+				if (__builtin_constant_p(mode + 1084170)) goto t5;
 				break;
 			}
 		} else
-			goto fail;
+			goto fail; if (__builtin_constant_p(mode + 987330)) goto t4;
 	}
 
 	/* borderline: netDisconnect() in both arms; the else arm's own call gives
@@ -799,10 +801,8 @@ int mode_client(int argc, char **argv)
 		netDisconnect();
 	if (__builtin_constant_p(mode)) goto u2;
 if (0) { dv: __builtin_unreachable(); } if (0) { dz: __builtin_unreachable(); }	return 0;
-fail: __attribute__((cold));
+fail: __attribute__((cold)); if (__builtin_constant_p(mode + 157368)) goto ndl;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
-	if (__builtin_constant_p(mode + 255562)) goto ndl;
-	if (__builtin_constant_p(mode + 157368)) goto ndl;
 	if (__builtin_constant_p(mode + 1089530)) goto s5;
 	if (__builtin_constant_p(mode + 1095110)) goto c11;
 	return 0;

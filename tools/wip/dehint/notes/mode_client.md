@@ -6,6 +6,110 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 10
+
+**52 tricks** (MATCH, 55 before), three `__builtin_constant_p` gone: the default case's c3
+feed (`cp(mode + 1085650)`), fail's ndl feed `cp(mode + 255562)`, and one term of the t4
+feed (2 terms in the rok block -> 1 term at the end of the connected branch, after
+`} else goto fail;`: a relocation with one term fewer).  Per category: cp 27 -> 24; asm goto
+11, pins 6, cold labels 4, `if (0)` 3, unreachable 3, clientEraseBlockI 1 unchanged.  List
+labels 46 -> 47 (`c3` added to case 3's own `JMP(hdd4, hdd5, c3)`).  Count-neutral moves
+that came with it: the t5 feed after the default case's log call (attempt 9's c3t5 draft),
+fail's other ndl feed `cp(mode + 157368)` moved *before* fail's log call (call heuristic
+71%), the mode = 7 arm's terms spelled 907000/907002/907003/907004 (still 4).  Whole object
+IDENTICAL BYTES, full build SHA256 10dac648...1971c (checked at 54 and at 52), progress
+617/617.  build.sh unchanged.  No new hint kind, no borderline shape.
+
+## Attempt 10
+
+55 -> 54 -> 52.  Tools (tools/wip/dehint/, states and logs in build/mc/w10/):
+- `mc10edits.py BASE.c ... [-pairs]`: asm goto list adds of the **AT(x) labels**.  The lever.
+  mc8comp.labels only matches `name:` labels, so c1, c2, c3, t4, hdd4, t5, s5, hdd5, c7, p1,
+  c9, c10, c11, c12, i1, cdef, u2 (and cebi's efail) were never added to any list by
+  mc7comp/mc8comp/mc9loop/mc9rep (their label list also holds junk from string literals:
+  '1', 'ERROR', 'borderline', which only make compile errors).  278 edits on the 55 state.
+- `mc10loop.py BASE OUTDIR [-skip RX]`: mc9loop with the AT edits as a repair, plus the
+  default-case perms, and two-step default+at / less+at.
+- `mc10pairs.py BASE -labs L,...`: pairs of mc8comp list edits restricted to some labels.
+- `mc10ins.py BASE -t L [-k N]`: one new k-term feed to L at every position.  Found t4.
+- `mc10self.py BASE`: subsets of the three ndl feeds removed x ndl in the dtg arm's JMP(fail)
+  list / a new JMP(ndl), each with fail's perms.  Found fail's ndl feed.
+- `mc10jmp.py BASE -rm RX -t L`: a 2-term feed replaced by L in a list or one new JMP(L)
+  at every position.  `mc10two.py BASE EDIT|none -r ...`: all count-neutral repairs of one
+  near miss (mc9rep's plus `at`).
+
+What was found:
+1. c3t5 (attempt 9's draft: c3 feed gone, t5 after the default log, 8 lines: the clientKeys
+   block placed after case 5's instead of after c1's) + `c3` added to c3's own
+   `JMP(hdd4, hdd5)` -> IDENTICAL.  An edge from the case 3 block back to its own head
+   raises the head's frequency (the block's flow split three ways, one share re-entering),
+   which is what the removed default feed gave it.  The earlier repairs could not reach it:
+   c3 is an AT label.
+2. On c3t5 before that: every 1-term feed relocated (2430): 8 everywhere; pairs of list
+   edits restricted to rk10/ork10 (676; hdd4/hdd5/c3 are AT labels so were missing): 8.
+3. AT edits on the 55 state's near misses: c3 alone 12 -> 8 (`c9` or `t5` into c3's list);
+   arm 11 terms 22 -> 14 (`i1` into case 5's `JMP(s4, c12, ork6)`); ch16 (chain-16 draft,
+   51 tricks) 16 everywhere.  On 55 also: c3 removal + reloc 8, c11 removal + reloc 20
+   (alone 297), c11 + default perms 34.
+4. mc10loop on the 54 state (build/mc/w10/loop*.log): stuck at 54.  Alone: t5 22, arm 11
+   terms 22 (all four the same), ndl (rok's feed) 24, pdpin 35, idpin 41, dz 60, kk2 78,
+   the rest 120+ (c11 now 270+: with c3's self-edge the case-11 head no longer needs only
+   fail's feed).  Repairs:
+   - t5: AT 12 (`hdd5` into case 5's list), perm/less 22, lists 22, less x AT (6072) 12.
+     t5 + hdd5 then: AT, less, perm, lists, retarget all 12 (mc10two, two_t5.log).
+   - arm 11 term: perm **10** (fail's four feeds all *before* the log call, c11's last, so
+     c11's feed takes the call heuristic's 71%), default 18, AT 22.  On that perm
+     (arm11perm0.c): AT, default, less, retarget, lists all 10.  The 10 lines: the c11 block
+     (clientBinPatch) placed after c12's instead of before; mc9freq: c11 head 8 vs 7 in the
+     reference.  The term removal alone leaves every case head's frequency as is (c11 7) and
+     moves the chain itself: arm 7's first test 22 -> 21 (arm 11 takes one unit more).
+   - ndl: AT 22, default+at 22, the rest 24.  pdpin: 35 everywhere.
+   - Two removals with the arm 11 term (+ perms, combo.log, 1780): best 22 (with an ndl
+     feed of fail).
+5. ch16 on the 54 state (ch16_54.c: 50 tricks, 16 lines): AT 16, perm/default/less 16.
+6. **54 -> 53, two ways** (each IDENTICAL on the 54 state, not together: 113+):
+   - mc10self: fail's `cp(mode + 255562)` ndl feed removed and the other ndl feed moved
+     before the log call (fail's perms; with or without `ndl` in the dtg arm's JMP(fail)).
+     The ndl block gets back what the removed feed gave through the call heuristic.
+   - mc10jmp: the rok block's 2-term t4 feed replaced by `case 8: JMP(t4);` (2 cp -> 1 asm
+     goto).  Kept as an alternative only (drafts/mode_client_a10_t4jmp53.c, full build checked).
+7. **53 -> 52**: on the ndl state, the t4 feed removed and a 1-term t4 feed put at every
+   position (mc10ins): one hit, after the connected branch's `} else goto fail;` (the
+   switch's join, colder than the rok block, so one term is enough: attempt 6's mechanism).
+8. On 52: mc10self (the remaining ndl feeds) 275+; k61l as a 1-term feed anywhere 190+.
+   On 53/54: k61l replaced by a JMP or a list label 204+; ch16 + JMP(c7) anywhere 16.
+
+### Don't retry (attempt 10)
+
+- Reloc of 1-term feeds on c3t5 (floor 8); rk10/ork10 list pairs on c3t5.
+- AT edits alone on ch16 / ch16_54 (16 floor); less x AT on removals (6000 each, nothing).
+- k61l as a JMP / list label (54) or a 1-term feed (52): 190+.  The other ndl feeds on 52.
+- On the 54 state: single repairs (AT, perm, default, less, lists, retarget) of t5, the
+  arm 11 terms, ndl, pdpin; repairs of t5+hdd5 and of the arm 11 perm-10 state.
+
+### Ideas for attempt 11
+
+- **Self-edges.**  c3's feed was replaced by the case 3 block's own label in its own asm
+  goto list.  Look for other feeds whose target block (or a block it dominates) already has
+  an asm goto statement, and try the target's label in that statement: t5/s5 into case 5's
+  JMP(s4, c12, ork6) and JMP(dsp) (single AT adds were tried on t5's removal: 12), c10 into
+  JMP(c10) (already there), the efail/dy lists in clientEraseBlockI for the dy feed.  And
+  blocks with no asm goto: a *new* `JMP(L)` inside the target block costs one asm goto per
+  feed removed, so it only pays where it replaces a 2+-term feed (t4's 2 terms, k61l's 2) or
+  two feeds at once (fail's two ndl feeds: one JMP(ndl) in the ndl block).
+- Arm 11 term perm-10 (c11 head 8 vs 7): c11 needs a share between fail's 50% and 71%;
+  try the c11 feed's position relative to *other* calls (reloc ran only on the 55-state
+  near misses; mc10two with -r reloc on build/mc/w10/arm11perm0.c, see two_ap0.log), or
+  the chain's arm 7 first test given back its unit (arm 7 tests before arm 11 with the
+  same terms).
+- mc10ins / mc10jmp for the other multi-term feeds and arms after each bank (t4 only hit
+  once the ndl state existed): the mode = 11 / 7 arm terms as 1-term `goto c11` / `goto c7`
+  feeds at the switch join (attempt 6 tried goto feeds for arms only before the c3/t5
+  moves), and re-run mc10self / mc10ins t4 on every new state.
+- Fix mc8comp.labels (AT labels, no string-literal junk) so every older generator
+  (mc7comp, mc8comp -two, mc9rep lists) includes them; re-run mc8comp -two on the 54
+  state's t5 (12) and arm 11 (10) near misses with AT labels in the pair space.
+
 ## State after attempt 9
 
 **55 tricks** (MATCH, 58 before), all three `__builtin_constant_p`: fail's dtg(156949)
