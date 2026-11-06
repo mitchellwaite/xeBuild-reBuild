@@ -105,16 +105,15 @@ and what's been tried.
 </details>
 
 <details>
-<summary><b>3. options</b>: 42 tricks, very hard</summary>
+<summary><b>3. options</b>: 35 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
-- 18 `__builtin_constant_p`, 10 `__builtin_expect`, 3 `asm goto` and 3
+- 15 `__builtin_constant_p`, 9 `__builtin_expect`, 2 `asm goto` and 2
   `__builtin_unreachable`, nearly all setting the cold layout of
   `applyIniOptions`
 - 2 `po_hint()` calls and 1 `no-early-inlining` attribute, for `parseOption`
 - `_parseButton.part.0`, written by hand as a global `cold` function in
   `.text.startup` rather than coming from gcc's own function split
-- 1 cold label
 
 The main clue that this can work is that natural source (`optIniBool` inlined,
 plain calls) already gives the whole hot layout. The cold layout is the unsolved

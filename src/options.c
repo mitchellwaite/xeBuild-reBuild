@@ -302,11 +302,8 @@ static _Bool optN(const char *name, uint32_t set, uint32_t clear, int def)
 	char *bad;
 
 	if (__builtin_constant_p(xb.bootFlags + 2) == 1) return 0;
-	if (xb.bootFlags & set) {
-		if (__builtin_constant_p(xb.bootFlags + 1))
-			goto r;
+	if (xb.bootFlags & set)
 		return 0;
-	}
 	if (xb.bootFlagsOff & set) {
 		if (__builtin_constant_p(xb.bootFlagsOff + 1))
 			goto r;
@@ -383,8 +380,7 @@ int optIniInt(const char *name, int def)
 }
 
 /* applyIniOptions' copy of parseButton for xellbutton: the expect and the
-   dead feeds into z set its frequencies, and dx is a zero-byte dummy heap
-   entry (cold, reached by the asm goto; the dead feed gives it its key) */
+   dead feeds into z set its frequencies */
 static int parseButtonX(const char *s)
 {
 	int b = 0;
@@ -395,10 +391,7 @@ z:
 	}
 	if (__builtin_expect(!strnicmp(s, "power", 5), 1)) {
 		b = 0x11;
-		if (__builtin_expect(__builtin_constant_p(xb.xellButton + 5), 1)) goto dx;
-bx: ;
 	} else {
-		__asm__ goto ("" :::: dx);
 		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2)) goto z; if (__builtin_constant_p(xb.xellButton + 3)) goto z; }
 		if (!strnicmp(s, "remopower", 9))
 			b = 0x20;
@@ -410,11 +403,6 @@ bx: ;
 			b = parseButtonPart(s);
 	}
 	return b;
-dx: __attribute__((cold));
-	b = 0x11;
-	if (__builtin_constant_p(xb.xellButton + 6))
-		goto bx;
-	__builtin_unreachable();
 }
 
 int parseButton(const char *s)
@@ -954,8 +942,10 @@ void applyIniOptions(void)
 		s = getIniValue("rev");
 		if (s) {
 			sprintf(xb.blSuffix, "_%s", s);
-			/* dead feeds that key the dummies dz1 and dz2 */
-			if (__builtin_constant_p(xb.blSuffix[1] + 1)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 2), 0)) goto dz1; }
+			/* dead feeds that key the dummies dz1 and dz2; dz1's return
+			   takes its flow off dz2's feed, which settles the demon and
+			   patchsmc getIniBool tie (no dummy in parseButtonX needed) */
+			if (__builtin_constant_p(xb.blSuffix[1] + 1)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 2), 0)) goto dz1; return; }
 			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 16), 0)) goto dz2; }
 		}
 	}

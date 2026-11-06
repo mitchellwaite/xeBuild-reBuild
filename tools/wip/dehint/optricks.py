@@ -125,6 +125,29 @@ int parseOptionInt(char *opt) __asm__("_parseOption");
     'param': [],
 })
 
+# attempt 4: edits for the source after attempt 3 (8967a1f8)
+HDR4 = {'G': 'static _Bool optIniBoolG('}
+for k, h in HDR4.items():
+    T[k + '_cp1'] = [F(h, ARM_ON, ARM_ON_P)]
+    T[k + '_cp2'] = [F(h, ARM_OFF, ARM_OFF_P)]
+    T[k + '_exp'] = [F(h, EXP_BAD, 'if (!bad) {')]
+T.update({
+    'N_entry4': [('	if (__builtin_constant_p(xb.bootFlags + 2) == 1) return 0;\n', '')],
+    'mG_nandmu': [('if (!(xb.bootFlags & (0x10000000))) optIniBoolG("nandmu", 0x10000000, 0, 0);', 'OPT("nandmu", 0x10000000, 0);')],
+    'mG_nosec': [('if (!(xb.bootFlags & (0x4000000))) optIniBoolG("nosecurity", 0x4000000, 0, 0);', 'OPT("nosecurity", 0x4000000, 0);')],
+    'mG_cygnos': [('if (!(xb.bootFlags & (1))) optIniBoolG("cygnos", 1, 0, 0);', 'OPT("cygnos", 1, 0);')],
+    'mG_smcne': [('if (!(xb.bootFlags & (0x400000))) optIniBoolG("smcnoeject", 0x400000, 0, 0);', 'OPT("smcnoeject", 0x400000, 0);')],
+    'mac_goto4': [('					__asm__ goto ("" :::: dz1);\n', '')],
+    'mac_ms4': [('					__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));\n', '')],
+    'dual_goto4': [('				__asm__ goto ("" :::: dz2);\n', '')],
+    'rev1_4': [('			if (__builtin_constant_p(xb.blSuffix[1] + 1)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 2), 0)) goto dz1; }\n', '')],
+    'rev2_4': [('			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 16), 0)) goto dz2; }\n', '')],
+    'bx_dxfeed': [('		if (__builtin_expect(__builtin_constant_p(xb.xellButton + 5), 1)) goto dx;\n', '')],
+    'bx_z': [('		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2)) goto z; if (__builtin_constant_p(xb.xellButton + 3)) goto z; }\n', '')],
+    'bx_dxgoto': [('		__asm__ goto ("" :::: dx);\n', '')],
+    'bx_cold': [('dx: __attribute__((cold));', 'dx: ;')],
+})
+
 # parseButtonPart folded back into parseButton (needs m_bx: parseButtonX calls it)
 PART_DEF_START = '/* parseButton after its first four names'
 PART_DEF_END = 'int baseFileExists('

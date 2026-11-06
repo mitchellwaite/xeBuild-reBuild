@@ -3,6 +3,25 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 4
+
+**35 tricks** (42 before).  Removed (7): optN's first cp arm (now a plain `return 0`), and
+parseButtonX's dx dummy (feed cp + expect, asm goto, cold label, tail cp, unreachable: 6),
+replaced by nothing: dz1's rev feed got a `return;` in its (already counted) dead arm.  Full
+build SHA256 10dac648...1971c.
+
+Remaining: `--param builtin-expect-probability=83`; 15 `__builtin_constant_p` and 9
+`__builtin_expect` (README's count; optIniBool's 2 arms; optN's entry, off arm + expect;
+optIniBoolG's 2 arms + expect; parseButtonX's power expect and z feeds; parseButton's winbutton
+expect; the rev feeds; the macid memset; parseOption's two); 2 `asm goto`, 2
+`__builtin_unreachable` (dz1, dz2); 2 `po_hint()` + no-early-inlining; the hand-written
+`_parseButton.part.0`.  No cold label left.
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| applyIniOptions' rev block, dz1's feed | `if (cp) { if (expect(cp, 0)) goto dz1; return; }` | The `return;` is new, inside an existing dead arm (no builtin added); it does the dx dummy's job (the demon/patchsmc getIniBool tie) through the feed's flow |
+| optN | first arm `if (xb.bootFlags & set) return 0;` | Plain optIniBool form, not borderline |
+
 ## State after attempt 3
 
 **42 tricks** (44 before).  Removed (2): always_inline on optIniIntI (the copy is gone; the
@@ -368,3 +387,86 @@ macros), `opmac3.py` (macid's memset feed replaced by a real call before the asm
   block) without changing the code.  Model it with p1/sim3 before compiling.
 - po_hint: make tree tail-merge merge the copies into bad: (the arms' stores before the copy
   stop it today); any form where the copy's vuse equals bad:'s would put the string last.
+
+## Attempt 4
+
+New tools (tools/wip/dehint/): optricks.py has edits for the attempt-3 source (`G_*`, `mG_*`,
+`N_entry4`, `mac_*4`, `dual_goto4`, `rev*_4`, `bx_*`); `opfq.py` (a block's frequency at
+profile_estimate), `opxs4.py` (xellbutton-site condition forms on the natural parseButton base,
+build/op/nat.c), `oppo4.py` (parseOption bad-arm variants), `opnodx4.py` (writes build/op/nodx.c:
+src without the dx dummy), `opdx4*.py` (dx replacements), `opret4.py`/`opret4b.py` (control
+flow inside the existing dead feeds, alone and with removals).
+
+### Landed: optN's first cp arm (singles, IDENTICAL BYTES)
+
+Re-running singles on the attempt-3 source: `N_cp1` (optN's `if (xb.bootFlags & set) { if (cp)
+goto r; return 0; }` -> `if (xb.bootFlags & set) return 0;`) is IDENTICAL.  Its `goto r` lost its
+job once the entry test became `== 1` in attempt 3.  Nothing else is free alone; pairs on top of
+it: none IDENTICAL (best 14 `pb_exp+part`, then 38s).
+
+### Landed: the dx dummy goes, dz1's dead arm returns (IDENTICAL BYTES, 6 tricks)
+
+- nodx (dx, its feed, asm goto, cold label, tail test, unreachable all gone) = 38: only the demon
+  and patchsmc getIniBool blocks swap (a G tie).  opsim a4ref a4nodx 192 3: r3 same, r4 swaps
+  169/179.  opds: one dummy entry fixes it at groups 188/207 (key 47..78), 198 (80..147) etc.
+- opdx4.py: one asm goto from applyIniOptions' xellbutton code to dz1/dz2 (no change) or a new
+  dz3 (312: key wrong).  opdx4c.py: an asm goto (no feed) before every statement: nothing.
+- opdx4b.py: dz3 + asm goto from the xellbutton log block + a rev feed: IDENTICAL with 3-builtin
+  feeds (`ce0`, `e1e0`, `e0e1`), 5 tricks.  opdx4d.py: no 1-2 builtin feed anywhere works.
+- opdx4e.py: dz3's feed inside dz1's outer arm, `if (C1) { if (E0 C2) goto dz1; goto dz3; }`:
+  IDENTICAL, and then without the asm goto too, and with `return;` (or `__builtin_unreachable()`)
+  in place of `goto dz3`: IDENTICAL.  So the tie is settled by the flow of dz1's dead outer arm
+  (it no longer falls through to dz2's feed), not by a dummy entry.  Landed `return;`.
+- Borderline: it is the existing dz1 feed (still counted) with one more statement; no builtin
+  added.
+- Full build after both: SHA256 10dac648...1971c.
+
+### Flow in the dead feeds as a lever (opret4.py, opret4b.py, opdz4.py): nothing more
+
+- dz2's feed with `return;`: IDENTICAL but saves nothing; dropping either inner/outer test of
+  dz2's feed (with or without return): 44 / 279 / 304.  dz1's feed simplified (one test, cp
+  inner): 333-532.
+- Every M edit x every single removal (mG_*, G_*, N_*, ib_*, bx_z, bx_exp, pb_exp, mac_*,
+  dual_goto4, po_exp2, part): nothing IDENTICAL.  Rev feed arms rewritten with
+  return/goto dz1/goto dz2 at both ends (16 x 16 forms) for mG_cygnos/mG_smcne/mG_nosec/
+  mG_nandmu/G_exp/bx_z: best 38 (unchanged tie swaps).
+- A whole dummy (dz1 or dz2 with its feed, asm goto, memset) dropped, the other feed carrying
+  return/goto instead: 304+.  Both dummies stay.
+
+### xellbutton site frequency (opfq.py, opxs4.py): stuck
+
+- Natural base build/op/nat.c (part+m_bx+pb_exp, parseButtonX deleted): 335; on the attempt-4
+  source 321 (nat2.c), and the rev-feed flow forms don't move it.
+- profile_estimate (opfq): call block 132 = 907 x 50% (`_243 == 0`: no heuristic, gcc skips
+  comparisons with 0) x 29% (PRED_CALL on getIniValue).  Forms tried, all 132: nested ifs, test
+  order `bootFlags & 4 && !xellButton` (code changes: 1251), `== 0 && != 0`, negated, empty-then
+  else, and `goto` skips (`if (xb.xellButton || !(xb.bootFlags & 4)) goto alt;`, goto on either
+  test): gcc 6's C front end adds no goto predictor here, frequencies identical (code 931).
+- Needed 0.186..0.191 overall; the only per-test values that give it are 65-66% on the
+  xellButton test (PRED_OPCODE_NONEQUAL needs a nonzero constant: different code) or a DS
+  combination with a ~60% taken predictor on the bootFlags test (none applies to `x & 4`).
+  Judged stuck.
+
+### parseOption po_hint group: stuck
+
+- Confirmed the .rdata mechanism (po4_copies.c -S): literals get LC numbers in expand order and
+  .rdata is written in label order, so cputemp's copy numbers the bad string first (LC86, before
+  "Using CPUTEMP" LC87) even though crossjump later merges the code.  A natural shape needs
+  cputemp's/gpufan's arms to reach `bad:` at expand time while carrying a call at
+  profile_estimate that vanishes afterwards; only a guarded hint call does that.
+
+### Don't retry (attempt 4)
+
+- Asm goto (no feed) to dz1/dz2/new dz3 from any statement of applyIniOptions.
+- One-dummy replacements for the tie (dz3): the flow fix needs none.
+- Rev feed control-flow rewrites for the mG_*/G_exp/bx_z ties; dropping dz1 or dz2.
+- xellbutton-site condition spellings and goto skips (frequency is fixed at 132).
+
+### Next ideas
+
+- The lever that worked: control flow inside an already-dead arm changes the profile without a
+  builtin.  Other dead arms reached from applyIniOptions are inside inlined helpers (optIniBool's
+  and optIniBoolG's `goto r` arms, optN's off arm, parseButtonX's z feed): try `return`/goto
+  rewrites there together with removing a neighbouring builtin (the z feed's 3 cp, G's expect).
+- Otherwise the rest looks stuck: the G/N copies need their own profiles, the dz dummies need
+  asm-goto edges at bbro, parseOption's group needs a vanishing call.
