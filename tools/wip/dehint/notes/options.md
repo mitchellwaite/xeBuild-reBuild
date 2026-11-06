@@ -3,6 +3,15 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 11
+
+**22 tricks, unchanged** (no match; src/ untouched).  The vlen near miss is stuck by
+mechanism: every join form threads in VRP1, and the copy for the vlen==0 edge carries a
+degenerate virtual PHI (the unknown arm's call is on the other edge), so it isn't a
+forwarder and cleanup merges the incomplete block into it at the end of the chain.  Without
+a join, FRE1 folds any re-test of vlen before profile_estimate, and every natural predictor
+points the wrong way.  Named arrays go to the end of .rdata.  See "## Attempt 11".
+
 ## State after attempt 10
 
 **22 tricks, unchanged** (no match; src/ untouched).  parseOption's vlen expect has a
@@ -1104,6 +1113,80 @@ forms V; OUT=file writes the last combination).
 - A shared "
 " block for setBool and macid (label in the arm or at the end).
 - Natural code around the rev block in place of the feeds.
+
+### Result
+
+No match; src/ unchanged (22 tricks).
+
+## Attempt 11
+
+Focus: attempt 10's vlen near miss (J25 and the ok-flag joins: .text identical, the
+incomplete literal after bad's).  Tools (tools/wip/dehint/): `op11s.py file.c [out.s] [re]`
+(literal order of a variant), `op11tail.py [form ...]` (tail forms with the u/i/b literal
+order next to the score; OUT=file), `op11v10.py [V ...]` (attempt 10's V forms with the
+order), `op11dump.sh file.c dir [flags]` (profile_estimate, vrp1, dom2, vrp2, optimized
+dumps).  Reference order: u (unknown with value) LC123, i (incomplete) LC124, b (bad) LC125.
+
+### Literal order = expand order = block chain order
+
+String labels are numbered when the call is expanded, and expand walks the block chain, so
+the order is the chain order at expand.  The tail's three messages appear nowhere else in
+the object, so no earlier reference can number them first.
+- J25's VRP1 dump: both edges into the join are threaded (`(82,77) -> 78` and
+  `(76,77) -> 80`), the original join is removed, copies are created before EXIT.
+- With -vops the vlen==0 copy is `# .MEM_210 = PHI <.MEM_16(73)>; goto inc`: a degenerate
+  virtual PHI (the join merges the unknown arm's log_printf VDEF with the other path), so
+  tree_forwarder_block_p fails, and cleanup merges inc (single pred) into the copy, at the
+  end of the chain.  A join always has that PHI (the unknown arm has a call), so no join
+  form keeps inc in place.
+- The setBool copies that give inc its other preds in the final code are made by DOM3 and
+  VRP2 (setBoolOption calls per dump: 1 to split-paths, 2 at dom3, 22 at vrp2, 3 after), too
+  late to stop the merge.
+- All attempt 10 V forms re-run with the order (op11v10.py): J1..J27 and J25 are `ubi`
+  4 lines; J26 `iub` 20; P/IE/J2/J10/J11 `uib` 62; N/IEn `iub` 66; Pv/Nv 914.  No ok-flag
+  variant differs from J25 on .rdata.
+
+### No join: the re-test is folded before profile_estimate (op11tail.py T*)
+
+- `if (vlen) { unk; return 0; } if (!vlen) inc;` (T1), `== 0` (T2), with its own return
+  (T4), `else if (!vlen)` (T5), `vlen <= 0` (T7): all 62 lines (plain's profile).  FRE1
+  (034t) removes the second test (dump counts 2 -> 1 at fre1), so profile_estimate sees the
+  plain if/else, unk and inc at 50%.  FRE1 folds any test of vlen dominated by `vlen == 0`.
+- `if (!val) inc` (T6) can't be folded at all (val NULL iff vlen 0 isn't visible): 101.
+
+### Moving the unknown message into the val block (op11tail.py IN*, W*)
+
+- IN/INg/INn/INe (`if (vlen) { unk; return 0; }` at the end of the val block, incomplete
+  after it): 342; the val test's false edge now reaches a call with an early return, so the
+  val test goes from 69.8% to 89.8% and the whole value chain moves.  INv (no vlen test) 516.
+- W1/W2/W5 (unknown in the val block without return, `if (!vlen) inc` after it): the join
+  keeps an unthreadable pred (val false), so inc stays in place, but the vlen test now sits
+  in the val block's f0 tail: unk f0 (needs 19..33) and loses its epilogue copy, 66 lines,
+  order `iub`.  W3 (no vlen test) 120, W4 (`if (!val)`) 36 `ubi`.
+- So the val-false flow must pass the vlen test (f113 there), which puts the join after it.
+
+### Named messages (op11tail.py SA*, SP*)
+
+- A `static const char` array (function or file scope) for bad's or incomplete's message
+  is emitted after every literal, at the end of .rdata (`_badfmt.3708` after loadAddons'
+  literals): 42/44 lines over five functions.  A `const char *` local is folded to the
+  literal (SPb/SPi = J25, `ubi`).
+
+### What would be needed, and why it doesn't exist
+
+The profile wants a call on the unknown edge only (a join after unk, or the incomplete
+block not dominated by the vlen test with no f0 bypass); the chain wants the incomplete
+block not to be a threaded copy.  The join gives the first and breaks the second through
+the virtual PHI; every other spelling either loses the profile (FRE1, val bypass) or the
+.rdata (arrays).  A second incomplete site merged by tail-merge would need a path that
+doesn't bypass the vlen test, and there is none.  Stuck; the setBool expect and the --param
+stay as attempt 10 left them.
+
+### Don't retry (attempt 11)
+
+- Any join/flag/repeated-test tail (the copy's virtual PHI), named arrays or pointers for
+  any of the three messages, the unknown message inside the val block, a second vlen test
+  without a join (FRE1).
 
 ### Result
 
