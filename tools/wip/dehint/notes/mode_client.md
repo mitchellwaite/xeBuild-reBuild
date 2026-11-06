@@ -6,6 +6,103 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 14
+
+**48 tricks** (MATCH, 51 before): clientEraseBlockI's dy block gone (its `if (0)`, its
+`__builtin_unreachable` and its ybk feed; the cebi feed now goes straight to einv), paid for
+by a natural +2 at vrp1: the help test split into one `if` per spelling, each calling
+`client_usage(0, NULL)` (**borderline**, flagged in the source).  Per category: cp feeds
+24 -> 23, `if (0)` 3 -> 2, unreachable 3 -> 2; asm goto 10, pins 6, cold labels 4,
+clientEraseBlockI 1 unchanged.  List labels 48 before and after.  Whole object IDENTICAL
+BYTES, full build SHA256 10dac648...1971c, progress 617/617.  build.sh unchanged.
+
+## Attempt 14
+
+Tools (tools/wip/dehint/, states and logs in build/mc/w14/):
+- `mc14dump.py A.c DIR [-all]`: tree dumps (vrp1-details, or all + rtl bbro) and the
+  thread summary.
+- `mc14combo.py BASE GROUPS.py`: cross product of edit groups with shift, order, score.
+- `mc14rmk.py BASE [-k 0,..,6]`: every single trick removal (mc12rm's list) x k extra
+  vrp1 blocks.  `mc14rmk.add(t, k)` makes k blocks from a k = 0 text (help test in one
+  `||`): k1 help in two ifs, k2 three ifs, k3 + oneArg's first test split, k4 + wbArgs',
+  k5 + the -c arm's, k6 + the -e arm's.
+- `mc14filt.py BASE_k0 -g less,perm,failperm,at,retarget,lists[:SUBSTR],spellN,reloc`:
+  mc12filt's repair families with the block count **corrected** (k = 205 - x0 added)
+  instead of filtered.
+- `mc14shapes.py BASE_k0 -k N`: every combination of the +1 shapes giving N blocks.
+
+**The new mechanism (lead 1 worked): duplicated noreturn calls.**  An `a || b || c` test
+whose body is a noreturn call, split into separate ifs that each make the same call, gives
+one more block per split at vrp1 (the copies are identical blocks with no successors) and
+PRE's tail merge (after vrp1) folds the copies back, so RTL sees the original CFG: the
+only effect is the vrp1 block count, i.e. the switch-thread hash order.  Shapes measured
+on 51 (mc13shift, alone): help 1|23 or 12|3 +1 IDENTICAL, help 1|2|3 +2 IDENTICAL,
+oneArg's `!argv[i + 1] || i + 1 == argc` / `*argv[i + 1] == '-'` +1 IDENTICAL, wbArgs'
+second test +1, -c arm +1, -r / -w arms +1 (0 in combination, mc14shapes), -e arm +1 alone
+but 212 with others (don't use), -ip arm and bpArgs' second test change code (208/212).
+Shapes are interchangeable: every 2-block combination but those with `e` is IDENTICAL on
+48, and on not5 every 3/4-block combination scores the same.  Redundant `if (arg)` before
+a case's call is +1 too but survives to RTL (asm goto edges into the case heads keep VRP
+from knowing arg != NULL): 174+.
+- 51 -> 50: ybk feed removed (-1) + help +1: IDENTICAL (also with dy's unreachable
+  instead of the feed).
+- 50 -> 49: dy's unreachable removed too, k2: IDENTICAL.
+- 49 -> 48: the now-empty `if (0) { dy: ; }` removed and the cebi feed retargeted to einv
+  (`goto einv`), k2: IDENTICAL.  Landed with the 3-way help split (k2).
+- rmk48 (every single removal on 48 x k 0..6): nothing IDENTICAL.  Nearest: c11 feed 18
+  (any k 0..4: the c11-frequency floor of attempts 11/12, not a count problem), t4 feed 26
+  (k5), t5 feed 30 (k3, k4), JMP(dz) or dz's unreachable 60 (k3, k4), first JMP(efail)
+  136, cdef's unreachable... (rmk48.log).  These are all count-corrected now, so what is
+  left in each is a frequency/edge effect.
+- not5 / not4 (t5 / t4 feed gone, 30 / 26): the option loop's latch compare flips
+  (`cmp esi,eax` -> `cmp eax,esi`) and the t4/t5 case blocks swap.  less, perm, failperm,
+  spell1 (each `mode + N` feed respelled `mode`, the `mode` feed `mode + 77`) all 30; the
+  k shapes don't matter (mc14shapes).  lists/at sweep started, stopped at 95/1490 (all 30).
+- nodz3 (JMP(dz), dz's unreachable and its `if (0)` gone: -3 tricks, 60): one block moves,
+  case 7's `clientPatches(NULL)` call, laid out late; `dv` added to any list (lists:dv) 60+;
+  JMP(dz) retargeted to dv (dz block merged) 60; the dv block at every statement position
+  (266, dvpos.log) 60.  The second dead edge into a separate unreachable block from the -e
+  arm is what the layout needs; no free way found.
+- Lead 2 (why `arg = argv[++i]` in -i/-p is -1), from build/mc/w14/d51 (vrp1 details):
+  VRP's edge asserts are committed by gsi_commit_edge_inserts in source-block order, and an
+  edge into a multi-pred block is split.  On 51 the splits are 196 (bb 10, -reboot's
+  `reboot != 1` into the join), 197 / 198 (bb 91 / 96: the -i / -p arms' `argv[i + 1] ==
+  NULL` edge into the option loop's latch, because the else arm's `arg = argv[i + 1]` is
+  the same load (FRE) and feeds the latch PHI), then the switch edges of cases 1..6 (199..
+  204; all six case heads have several preds), c7 205, c9 206, c10 207, c11 208, and 209 /
+  210 (case 7 / 12's `arg != &dummy`).  `argv[++i]` stores i (address-taken: getArgs gets
+  &i) before the load, so the load is a new value, the PHI no longer uses the tested name,
+  and that split disappears.  Its mirror (a tested load reused in a PHI at a join) exists
+  only where an arm can fall through to the latch, i.e. only in -i/-p; the -e/-c/-r/-w/-ip
+  tests lead to noreturn calls.  The duplicated noreturn shape is the easier +1.
+- noc11 with the count correction (less, perm, failperm, at, retarget, f1_noc11.log): only
+  22 of 892 variants were scored, because mc14filt's c7x took the unsplit c11 target (177)
+  as c7 and so computed k out of range (fixed afterwards: targets far below the new blocks
+  are skipped; not re-run).  Of the 22: at 134/135/168/169 10 (the known c11 floor), the
+  rest 26+.
+
+### Don't retry (attempt 14)
+
+- `if (arg)` guards in the switch cases as the +1 (they survive to RTL).
+- Shape choice for a given k (mc14shapes: interchangeable, except the -e arm split).
+- nodz3 repairs: dv in lists, dv position, JMP(dz) -> JMP(dv).
+- not5: less, perm, failperm, spell1, k shapes.
+
+### Ideas for attempt 15
+
+- The block count is now a free knob (k 0..6 with natural shapes; more are possible:
+  any `||` before a noreturn call).  Every older "right order" filter can be replaced by
+  the correction (mc14filt): re-run the big families that attempt 12/13 filtered out on
+  the near states: not5 / not4 lists, at, retarget, reloc (attempt 14 only started lists),
+  nodz3 at/retarget/reloc, and pairs of removals (mc13pairs) with correction.
+- not5/not4's latch-compare flip: find what SSA name the t4/t5 feed removal shifts (the
+  latch `i < argc` operand order follows SSA versions in PRE); a natural temporary that
+  restores the versions would fix half the diff.
+- The u2 (206) and einv cold (214) states, now with any k.
+- Whether the case heads' frequencies (c11's 18 floor) can be moved by a duplicated
+  noreturn shape *inside* the region (the copies are separate blocks at profile_estimate
+  too, so they move frequencies only if they sit on a path: they don't, being noreturn).
+
 ## State after attempt 13
 
 **51 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, full build SHA256

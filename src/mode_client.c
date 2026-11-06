@@ -23,11 +23,13 @@
    goto's list are free (the statement is the hint), so some edges ride in
    another block's list (rk6 in the -r head's, ork6 in case 5's; c3 in its
    own block's, an edge back to the case 3 head; dv in case 3's, for the
-   JMP(dy) clientEraseBlockI's erase-failed block had) where they stand in for a
+   JMP to a dead block clientEraseBlockI's erase-failed block had) where they stand in for a
    removed feed or cold label.  vrp1 threads the mode chain's arms through the
    switch in an order set by the function's block count (a hash on the new
    blocks' indices), and that order sets the case probabilities: a removal
-   that changes the block count needs another edit that changes it back.  String literals land in .rdata in block order, so clientInfo's and
+   that changes the block count needs another edit that changes it back
+   (the help tests' duplicated client_usage calls are two blocks that live
+   until PRE's tail merge, after vrp1).  String literals land in .rdata in block order, so clientInfo's and
    clientWriteBlocks' shapes (early returns) are what fix it there.  The
    option tests get even odds from calls: an arm that starts with a call
    (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
@@ -511,7 +513,7 @@ static void clientEraseBlockI(const char *sblock)
 	if (block != -1) {
 		JMP(efail); if (block < cinfo->nandSize / cinfo->blockSize) {
 
-			if (__builtin_constant_p(block)) goto dy; ybk:;  log_printf(0, "erasing block 0x%x...", block);
+			if (__builtin_constant_p(block)) goto einv;  log_printf(0, "erasing block 0x%x...", block);
 			if (netEraseBlock(block, 1))
 				log_printf(0, "Success!\n");
 			else
@@ -519,7 +521,7 @@ static void clientEraseBlockI(const char *sblock)
 		} else
 			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);  JMP(efail); }
 	} else
-		{ if (0) { dy: if (__builtin_constant_p(block + 901)) goto ybk; __builtin_unreachable(); } einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
+		{ einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
 }
 
 /* the option's argument(s); dies with usage if one is missing or, with
@@ -622,7 +624,14 @@ int mode_client(int argc, char **argv)
 	int kk = __builtin_constant_p(argc);
 	log_set_name("client");
 	for (i = 0; i < argc; i++) {
-		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2))
+		/* borderline: one test and call per spelling; PRE's tail merge
+		   folds the three calls into one, but the two extra blocks are
+		   still there when vrp1 threads the mode chain (see above) */
+		if (!strnicmp(argv[i], "help", 2))
+			client_usage(0, NULL);
+		if (!strnicmp(argv[i], "-?", 2))
+			client_usage(0, NULL);
+		if (!strnicmp(argv[i], "/?", 2))
 			client_usage(0, NULL);
 		if (!strnicmp(argv[i], "-noenter", 8)) {
 			log_printf(0, "<enter> key on completion suppressed\n");
