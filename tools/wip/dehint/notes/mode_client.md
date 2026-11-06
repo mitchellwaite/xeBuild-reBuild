@@ -6,6 +6,85 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 9
+
+**55 tricks** (MATCH, 58 before), all three `__builtin_constant_p`: fail's dtg(156949)
+feed, the mode = 9 chain arm's second term (now 1 term) and one of the mode = 7 arm's
+terms (now 4).  Per category: cp 30 -> 27; asm goto 11, pins 6, cold labels 4, `if (0)` 3,
+unreachable 3, clientEraseBlockI 1 unchanged.  List labels 46 before and after (no list
+edit).  Whole object IDENTICAL BYTES, full build SHA256 10dac648...1971c, progress
+617/617.  build.sh unchanged.  No new hint kind, no borderline shape.  Count-neutral
+moves that came with it: fail's four remaining feeds now sit after its log call (one per
+line), and two feeds are spelled `cp(V)` instead of `cp(V + N)` (clientEraseBlockI's dy
+feed, the after-tail u2 feed: attempt 8's latch-flip repair, still needed: reverting
+either costs 8).
+
+## Attempt 9
+
+58 -> 55.  Tools (tools/wip/dehint/, states and logs in build/mc/w9/, dumps build/mc4/a9*,
+f9a/f9b):
+- `mc9fail.py BASE.c [-o OUT]`: fail's feeds in every order, each before or after the log
+  call (both layouts are read).  The lever.
+- `mc9loop.py BASE OUTDIR [-m 40] [-k 1] [-ml 14]`: greedy over removals generated from
+  the text (every 1-term feed, every `&& cp` term, a 1-term chain arm, mc8comp's named
+  non-cp removals), each alone, then repaired with mc9fail perms, `less` singles, and
+  (within -ml) single list edits and `less` pairs.
+- `mc9rep.py BASE.c -r perm,default,less,lists,reloc,retarget`: every count-neutral repair
+  of one near miss (default = the default case's feeds before/after its log call; retarget
+  = a feed's goto target changed to any other label).
+- `mc9freq.py A.c B.c`: profile_estimate block frequencies of two sources side by side.
+- `mc9chain.py BASE.c [-lt N]`: mc6chain restricted to fewer than N terms, else-chained.
+- `mc9flog.py`: a new label on fail's log call added to one asm goto list (dead end).
+
+What was found:
+1. **The 4-line c9/c11 swap was the call heuristic.**  bbro dumps of the 4 state vs the
+   58 state: the c11 head (bb 140, clientBinPatch) has frequency 8 instead of 7, the c9 head
+   (bb 127) 7 in both, so c11 wins the tie.  profile_estimate: with dtg2 gone, c11's feed
+   is the last one before fail's `log_printf`; its else edge enters a block it dominates
+   that makes a call, so PRED_CALL gives the c11 edge 71% instead of the 50% "no
+   prediction" of the other feeds (in the 58 state that 71% went to dtg2's feed).  Moving
+   all four remaining feeds after the log call (mc9fail, cut 0) gives each 50% of the log
+   block's flow: IDENTICAL -> 57.  Other orders after the log (ndl s5 c11 ndl, ndl first
+   before the log) also hit; feeds before the log in any order: 4+.  A second predecessor of
+   the log block (mc9flog: `flog:` in JMP(fail, flog) etc.) undoes the dominance but moves
+   the return blocks: 26+.
+2. On the 57 state the arm 9 chain's second term was free alone (mc8alone), and after it
+   one arm 7 term (any of four, mc9loop) -> 55 (full build checked).
+3. Stuck at 55 (mc9loop, then mc9rep): c3 12 (its own block moves, plus the c9/c11 swap
+   again), arm 11 terms 22 (list edits 14, less pairs 16), c11 26, t5 28, pins 35/41, dz 60,
+   kk2 78, the rest 120+.  The c3 removal + the t5 feed moved after the default case's log
+   call (same call-heuristic mechanism) is 8: only the c3 (clientKeys) block's position
+   (its frequency 6 -> 4); less singles/pairs, list edits (1217), fail perms, retargets
+   (599): 8.  Draft: drafts/mode_client_a9_c3t5.c.
+4. Chain sweep on 55 (mc9chain, < 10 terms, 685 variants): best 16 with 51 tricks, arm 7
+   dropped entirely, order 9, 11 with 2 + 4 terms (or 11, 9 with 5 + 1).  The 16 lines are
+   the c7 block (the dummy test before clientPatches) placed after c1 instead of near the
+   end: c7 loses the arm's threaded flow.  Repairs on both (lists 1217, retarget 666, less,
+   perms, default): 16 everywhere.  Draft: drafts/mode_client_a9_chain16.c.
+
+### Don't retry (attempt 9)
+
+- New labels on fail's log reached from asm goto lists (mc9flog: 26+).
+- On c3t5 (c3 gone, t5 after the default log, 8): less, list edits, retargets, perms.
+- On the chain-16 states (arm 7 gone): single list edits, retargets, less, perms, default.
+- Single repairs from 55 for arm 11 terms (14 best with list edits).
+
+### Ideas for attempt 10
+
+- Look for every other feed that sits right before a call block it dominates (the call
+  heuristic gives it 71%): the t5 feed before the cdef log, the rok block's feeds after
+  netGetInfo, the -noenter feed.  Each is a count-neutral 71%/50% switch, i.e. a new
+  frequency knob; sweep before/after-call positions for each together with the removals
+  (c3, arm 11 terms, c11, t5).
+- Chain-16: c7 needs the frequency the threaded arm gave it; try c7 in two lists at once
+  (pairs of list adds restricted to c7), or a 1-term feed to c7 placed after a call (one
+  feed for four chain terms would still be -3).
+- c3t5 (8 lines, 54 tricks): the clientKeys block needs ~+2 frequency: pairs of list adds
+  restricted to c3/rk10/ork10, or c3's JMP(hdd4, hdd5) with one label fewer (each list
+  label splits the block's flow).
+- Re-run mc8alone + mc9loop with -ml 22 on every banked state: arm9 only became free after
+  the fail move, so a change anywhere can free terms elsewhere.
+
 ## State after attempt 8
 
 **58 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, still IDENTICAL BYTES).

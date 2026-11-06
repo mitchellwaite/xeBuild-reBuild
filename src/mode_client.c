@@ -13,7 +13,11 @@
    were found not to matter and removed, and what each remaining one is
    for).  A cp feed sends 1/2^k of its block's flow, so the case heads'
    feeds sit where one or two terms add the frequency they need (the
-   default case, the rok block, fail, the -noenter arm).  Labels in an asm
+   default case, the rok block, fail, the -noenter arm).  fail's feeds come
+   after its log call: before it, the last one would take the call
+   heuristic's 71% instead of 50%.  A feed's argument is `mode + N` or plain
+   `mode` (`block` in clientEraseBlockI; one temporary fewer); which spelling a feed has only moves the SSA
+   names PRE reuses, and with them the option loop's latch compare order.  Labels in an asm
    goto's list are free (the statement is the hint), so some edges ride in
    another block's list (rk6 in the -r head's, ork6 in case 5's) where they
    stand in for a removed feed or cold label.  String literals land in .rdata in block order, so clientInfo's and
@@ -500,7 +504,7 @@ static void clientEraseBlockI(const char *sblock)
 	if (block != -1) {
 		JMP(efail); if (block < cinfo->nandSize / cinfo->blockSize) {
 
-			if (__builtin_constant_p(block + 900)) goto dy; ybk:;  log_printf(0, "erasing block 0x%x...", block);
+			if (__builtin_constant_p(block)) goto dy; ybk:;  log_printf(0, "erasing block 0x%x...", block);
 			if (netEraseBlock(block, 1))
 				log_printf(0, "Success!\n");
 			else
@@ -729,7 +733,7 @@ int mode_client(int argc, char **argv)
 		if (netConnect(ip)) {
 			{ { struct {} fkv; __asm__ ("" :: "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
 			dsp: cinfo = netGetInfo();
-			if (__builtin_constant_p(mode + 909000) && __builtin_constant_p(mode + 909001)) mode = 9; else if (__builtin_constant_p(mode + 911000) && __builtin_constant_p(mode + 911001) && __builtin_constant_p(mode + 911002) && __builtin_constant_p(mode + 911003) && __builtin_constant_p(mode + 911004)) mode = 11; else if (__builtin_constant_p(mode + 907000) && __builtin_constant_p(mode + 907001) && __builtin_constant_p(mode + 907002) && __builtin_constant_p(mode + 907003) && __builtin_constant_p(mode + 907004)) mode = 7; switch (mode) {
+			if (__builtin_constant_p(mode + 909000)) mode = 9; else if (__builtin_constant_p(mode + 911000) && __builtin_constant_p(mode + 911001) && __builtin_constant_p(mode + 911002) && __builtin_constant_p(mode + 911003) && __builtin_constant_p(mode + 911004)) mode = 11; else if (__builtin_constant_p(mode + 907000) && __builtin_constant_p(mode + 907001) && __builtin_constant_p(mode + 907002) && __builtin_constant_p(mode + 907003)) mode = 7; switch (mode) {
 			case 1:
 				AT(c1) netDumpNand(arg);
 				break;
@@ -793,10 +797,14 @@ int mode_client(int argc, char **argv)
 		{ netReboot(reboot); JMP(fail); ndl: netDisconnect(); }
 	else
 		netDisconnect();
-	if (__builtin_constant_p(mode + 50750)) goto u2;
+	if (__builtin_constant_p(mode)) goto u2;
 if (0) { dv: __builtin_unreachable(); } if (0) { dz: __builtin_unreachable(); }	return 0;
-fail: __attribute__((cold)); if (__builtin_constant_p(mode + 255562)) goto ndl; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 1089530)) goto s5; if (__builtin_constant_p(mode + 1095110)) goto c11; if (__builtin_constant_p(mode + 156949)) goto dtg;
+fail: __attribute__((cold));
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
+	if (__builtin_constant_p(mode + 255562)) goto ndl;
+	if (__builtin_constant_p(mode + 157368)) goto ndl;
+	if (__builtin_constant_p(mode + 1089530)) goto s5;
+	if (__builtin_constant_p(mode + 1095110)) goto c11;
 	return 0;
 }
 
