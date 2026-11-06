@@ -6,6 +6,103 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 15
+
+**48 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, so the full build is the
+attempt 14 one, SHA256 10dac648...1971c).  List labels 48 before and after.  No new
+borderline shape.  Best near miss: n4cdef, 47 tricks, 10 lines (below).  Found: the option loop's latch-compare flip (8 of the lines in every
+feed removal) is an SSA free-list effect that two `less` toggles or the t4>6 list add
+repair; what is left in not4 / not5 / noc11 is one case block's bbro frequency, and in
+nodz3 a fibheap tie among frequency-0 traces.  Two more clean +1 block shapes (k7, k8).
+
+## Attempt 15
+
+Tools (tools/wip/dehint/, states and logs in build/mc/w15/):
+- `mc15k.py`: `add(t, k)` for k = 0..8 (mc14rmk's six shapes, then k7 = wbArgs' *first*
+  test split `j == argc || !a` / `*a == '-'`, k8 = also the -w arm's `i + 1 == argc || !a`
+  / `*a == '-'`).  Both measured +1 and IDENTICAL on 48 in place of one help split
+  (w15/k7.py); bpArgs' first test split is +1 but changes code (208), getArgs' first
+  test split and `if (mode) if (check)` are +1 at vrp1 but 320 (they survive).
+- `mc15pairs.py BASE_k0 [-n 2]`: every pair (or n-tuple) of removals with the block count
+  corrected (k up to 8).
+- `mc15pins.py BASE_k0`: each pin removed x k 0..6.
+
+Results:
+- **Latch-compare flip (lead 2 solved in mechanism).**  `cmp esi,eax` -> `cmp eax,esi` is
+  `argc_76(D) > prephitmp_619` becoming `prephitmp_58 < argc_72(D)` (tree_swap_operands_p
+  orders two SSA names by version).  prephitmp is PRE's latch PHI and takes its name from
+  the SSA free list (LIFO; PRE pops ~55 names in a fixed order: pretmp_35, 695, 31, ...).
+  In 48 the name it pops is arg_619 (c11's single-arg PHI, released by phicprop1, so >
+  argc); in not4 PRE makes one more pretmp before it and lands on .MEM_58 (c11's virtual
+  PHI).  Repairs that need no new hint: two `less` toggles (mc9loop.less(t, 2): 50 of 190
+  give 26 -> 18 on not4; one toggle is enough on noc11, 18 -> 10), or the t4>6 list add
+  (t4 at either end of case 3's `JMP(hdd4, hdd5, c3, dv)`), 26 -> 18.
+- **not4 / not5 after the latch fix: 18 = the t4 (t5) case block placed after t5/c2.**
+  mc12keys: t4's head has RTL freq 6 with its feed, 4 without (the feed's edge from the
+  post-switch join gives +2); t5, c2 6/5 pop first.  at sweeps (w15/f_not4_at.log,
+  f_not5_at.log, k-corrected, 274 each): best 18; a t4/t5 add into any other list is
+  236+ (the edges live into RTL).  Both feeds gone (t45, -2): k6 needed, 222; with c2
+  dropped from rko's list, c2 ties at 4 and lands between t4 and t5, and k7 is needed.
+- **Best near miss: n4cdef (47 tricks, 10 lines)** = not4 + the default case's t5 feed
+  retargeted to `cdef` (its own case head: `goto cdef`) + two `less` toggles, k4
+  (w15/n4cdef_k0.c, k-applied w15/n4cdef10.c; found by the k-corrected retarget sweep,
+  f_not4_rt.log retarget 270 = 18, then less2: 50 of 190 at 10).  Keys: t4 4 T28, t5 4
+  T29 (now in the right order), but c2 (freq 5, the rko list edge gives it +1) pops first
+  (T27) and its clientWrite block lands before t4's.  c2 dropped from rko's list: c2 4 but
+  it ties between t4 and t5 (T29, 38 lines); c2 at the other end / front of the list: 10.
+  at/less/perm/default/failperm on n4cdef_k0 (f_n4cdef_a.log, ~310) and lists
+  (f_n4cdef_l.log, 1213): 10 at best (189 at 10).  Draft:
+  drafts/mode_client_a15_n4cdef_10.c (k4 shapes applied, not a candidate: `goto cdef` is
+  still a feed, and it adds the k shapes' splits).
+- **nodz3 (60, -3 tricks) is one block**: case 7's `clientPatches(NULL)` (bb 124, freq 0)
+  extracted later in bbro round 4.  In 48 the dz block (bb 74, freq 0, the -e arm's asm
+  goto target) ends trace 47 and the zero-key traces then pop 137, 124, 140, 35, ...;
+  without it 136, 139, 35, 42, 53, 78, 80, 123.  Equal keys, so this is the fibheap's
+  tie order, which depends on what was inserted / consolidated before: any extra
+  zero-frequency block entering the heap at that point could stand in for dz, but it must
+  emit nothing.  at/less/perm/failperm/default on nodz3 (k-corrected, f_nodz3.log, 309):
+  60, one 58 (default 0: the t5 feed moved to the end of the default case, k2; it only
+  reorders other zero-frequency usage blocks, jump displacements).
+- noc11 (k-corrected, f_noc11_partial.log, at + less + perm + failperm + default + part of
+  retarget, 1309 variants): 10 everywhere at best = the known c11 frequency floor (c11's
+  head 4, needs 7).
+- Pairs of removals on 48 (pairs48.log, 376, k up to 8): best the dz group 60, then t5
+  feed + JMP(dz) 90, JMP(efail) + JMP(dz) 138; nothing under 60.
+- Pins x k 0..6 on 48 (pins48.log): bpArgs `"a"` 16, -p `"d"` 35, -i 41, both 52, -r
+  head `"a"(i)` 139, rko `"m"` 253; the right k doesn't change them (register choice,
+  not layout).
+
+### Don't retry (attempt 15)
+
+- not4 / not5 / noc11 latch repairs beyond the two found (it is a free-list position;
+  any count change of PRE's names moves it).
+- t4 / t5 adds into lists other than case 3's (236+); both feeds removed (222).
+- Pins with block count correction (unchanged scores).
+- Pairs of removals on 48 with correction (best 60).
+- New +1 shapes: getArgs' first test split, `if (mode) if (check)`, bpArgs' first test
+  split (they survive to RTL).
+
+### Ideas for attempt 16
+
+- **n4cdef (10 lines, 47 tricks) first**: c2 must pop after t4 and t5 (freq <= 4 with the
+  heap tie in the right place, or t4/t5 raised to 5).  Lists/at are done (10); try
+  retarget/reloc of the remaining feeds on n4cdef_k0, and
+  the symmetric not5 + t4 feed retargeted (to cdef or elsewhere) + less2.  The
+  k-corrected retarget family had not been run before: run it on noc11 and nodz3 too.
+- nodz3's tie: find a code-free zero-frequency block that enters bbro's round-4 heap
+  where dz did (an empty asm goto target is the only kind known; look for a natural
+  noreturn/unreachable shape that leaves an empty block in RTL: e.g. a switch default
+  that VRP proves unreachable survives as `__builtin_unreachable` only via the hint).
+  Reading bbro's find_traces_1_round / fibheap tie handling would say what the heap
+  needs (gcc/bb-reorder.c, gcc/fibonacci_heap.h at releases/gcc-6.2.0).
+- t4 needs +2 frequency at profile_estimate from an edge that is gone by RTL; feeds were
+  the only such edges found.  A natural `goto` into case 4 from a frequent block that a
+  later pass threads away would be one; none known.
+- The not4 retarget sweep (f_not4_rt.log) stopped at about 330 of 552 when n4cdef was
+  found; not5's was not run.
+- Honest odds: low.  Every remaining removal is now pinned to a specific frequency or
+  heap-order effect in bbro, and none of the count-neutral families moves them.
+
 ## State after attempt 14
 
 **48 tricks** (MATCH, 51 before): clientEraseBlockI's dy block gone (its `if (0)`, its
