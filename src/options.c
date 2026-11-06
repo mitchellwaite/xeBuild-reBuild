@@ -2,10 +2,11 @@
    line, options.ini and perbox files, optional patches.  gcc emits the
    string literals in the order it expands their blocks, which gives the
    original's .rdata order.
-   applyIniOptions' cold layout is set by dead zero-byte hints (dead
-   __builtin_constant_p arms and feeds, dummy heap entries), with no
-   profile; tools/wip/aio/p1/NOTES.md has each one (optO's is no longer
-   needed: tools/wip/dehint/notes/options.md). */
+   applyIniOptions' cold layout is set by optIniBool's and optIniBoolG's own
+   profiles and by dead zero-byte hints (dead __builtin_constant_p feeds,
+   dummy heap entries), with no profile file; tools/wip/aio/p1/NOTES.md has
+   each hint (the helpers' arms and copies are gone:
+   tools/wip/dehint/notes/options.md, attempt 7). */
 #include <stdio.h>
 #include <string.h>
 
@@ -260,108 +261,71 @@ int setConsoleType(const char *name)
 }
 
 /* a boolean option from a perbox file or options.ini, unless the command
-   line already set it either way */
+   line already set it either way.  The `on` joins are threaded away after
+   inlining; the profile they leave behind is what the OPT sites' layout
+   needs (tools/wip/dehint/notes/options.md, attempt 7) */
 _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
+	_Bool on;
 
-	if (xb.bootFlags & set) {
-		if (__builtin_constant_p(xb.bootFlags + 1))
-			goto r;
-		return 0;
-	}
-	if (xb.bootFlagsOff & set) {
-		if (__builtin_constant_p(xb.bootFlagsOff + 1))
-			goto r;
-		return 0;
-	}
-	if (perboxExists(name)) {
+	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
+		on = 0;
+	else if (perboxExists(name)) {
 		log_printf(1, "Using %s option (perbox file)\n", name);
+		on = 1;
 	} else {
 		bad = iniBoolInvalid(name);
 		if (!bad) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
+			on = getIniBool(name, def);
+			if (on)
+				log_printf(1, "Using %s option (ini file)\n", name);
 		} else {
 			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
 			return 0;
 		}
 	}
-r:
-	xb.bootFlags &= ~clear;
+	if (on) {
+		xb.bootFlags &= ~clear;
 		xb.bootFlags |= set;
-	return 1;
+	}
+	return on;
 }
 
-/* applyIniOptions' copy of optIniBool for noecdremap: one dead exit
-   (`== 1` gives it the opcode heuristic an expect gave it before) and the
-   expect below shape its profile (tools/wip/aio/p1/NOTES.md) */
-static _Bool optN(const char *name, uint32_t set, uint32_t clear, int def)
-{
-	char *bad;
-
-	if (__builtin_constant_p(xb.bootFlags + 2) == 1) return 0;
-	if (xb.bootFlags & set)
-		return 0;
-	if (xb.bootFlagsOff & set) {
-		if (__builtin_constant_p(xb.bootFlagsOff + 1))
-			goto r;
-		return 0;
-	}
-	if (perboxExists(name)) {
-		log_printf(1, "Using %s option (perbox file)\n", name);
-	} else {
-		bad = iniBoolInvalid(name);
-		if (__builtin_expect(!bad, 0)) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
-			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
-		}
-	}
-r:
-	xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
-	return 1;
-}
-
-/* applyIniOptions' copy of optIniBool for cygnos, smcnoeject, nosecurity
-   and nandmu: the expect lowers their G blocks, which orders the G tie
-   groups (tools/wip/aio/p1/NOTES.md) */
+/* optIniBool for noecdremap, nandmu, nosecurity, cygnos and smcnoeject.
+   Borderline, for review: a second copy of optIniBool that exists to match
+   (only inlined, so it emits no function of its own).  It differs in one
+   statement: the warning arm sets `on` instead of returning, so `!bad`
+   loses the early-return prediction (15% instead of 21.6%), which is the
+   profile these sites need; the code after inlining is the same.  It
+   replaces two hinted copies (optN and optIniBoolG: 6
+   __builtin_constant_p, 2 __builtin_expect) */
 static _Bool optIniBoolG(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
+	_Bool on;
 
-	if (xb.bootFlags & set) {
-		if (__builtin_constant_p(xb.bootFlags + 1))
-			goto r;
-		return 0;
-	}
-	if (xb.bootFlagsOff & set) {
-		if (__builtin_constant_p(xb.bootFlagsOff + 1))
-			goto r;
-		return 0;
-	}
-	if (perboxExists(name)) {
+	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
+		on = 0;
+	else if (perboxExists(name)) {
 		log_printf(1, "Using %s option (perbox file)\n", name);
+		on = 1;
 	} else {
 		bad = iniBoolInvalid(name);
-		if (__builtin_expect(!bad, 0)) {
-			if (!getIniBool(name, def))
-				return 0;
-			log_printf(1, "Using %s option (ini file)\n", name);
+		if (!bad) {
+			on = getIniBool(name, def);
+			if (on)
+				log_printf(1, "Using %s option (ini file)\n", name);
 		} else {
 			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
+			on = 0;
 		}
 	}
-r:
-	xb.bootFlags &= ~clear;
+	if (on) {
+		xb.bootFlags &= ~clear;
 		xb.bootFlags |= set;
-	return 1;
+	}
+	return on;
 }
 
 
@@ -840,7 +804,7 @@ void applyIniOptions(void)
 
 	OPT("nomobile", 0x20000000, 0);
 	OPT("noremap", 0x40000000, 0);
-	if (!(xb.bootFlags & 0x80000000)) optN("noecdremap", 0x80000000, 0, 0);
+	if (!(xb.bootFlags & 0x80000000)) optIniBoolG("noecdremap", 0x80000000, 0, 0);
 	if (!(xb.bootFlags & (0x10000000))) optIniBoolG("nandmu", 0x10000000, 0, 0);
 	if (!(xb.bootFlags & (0x4000000))) optIniBoolG("nosecurity", 0x4000000, 0, 0);
 	OPT("nosusecurity", 0x1000000, 0);

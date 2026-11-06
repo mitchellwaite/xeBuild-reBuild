@@ -3,6 +3,25 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 7
+
+**26 tricks** (34 before).  Removed (8): every hint in the optIniBool helpers.  optIniBool
+and optIniBoolG are now plain result-variable functions (`on` set on every path, one
+`if (on)` at the end); optN is merged into optIniBoolG.  Gone: optIniBool's 2 cp arms,
+optIniBoolG's 2 cp arms and `!bad` expect, optN's entry cp (`== 1`), off-arm cp and expect.
+Full build SHA256 10dac648...1971c; progress 617/617.  See "## Attempt 7".
+
+Remaining: `--param builtin-expect-probability=83`; 7 `__builtin_expect` (parseButtonX's
+power, parseButton's winbutton, parseOption's two, the rev feeds' three); the dead cp feeds
+(parseButtonX's z feed 2, the macid memset 1, the rev feeds 4: 7 in the source, README counted
+14 before, so 8 by its count); 2 `asm goto`, 2 `__builtin_unreachable` (dz1, dz2); 2
+`po_hint()` + no-early-inlining; the hand-written `_parseButton.part.0`.
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| optIniBoolG (noecdremap, nandmu, nosecurity, cygnos, smcnoeject) | a second copy of optIniBool that differs in one statement: the warning arm sets `on = 0` where optIniBool does `return 0` | Borderline: it exists to match.  The G sites need `!bad` at 15% (no early-return prediction), the OPT sites 21.6%; one function for all sites is 120, the G sites unguarded 1789 |
+| optIniBool | result variable `on`, `||` flag test (Linux's), `return 0` only after the bad-value warning | Natural; the one return is what gives the OPT sites their profile, flagged only because the mix of `on` and an early return is a choice that steers |
+
 ## State after attempt 6
 
 **34 tricks, unchanged** (no match; src/ untouched).  Structural attempt: read the Linux
@@ -668,3 +687,128 @@ changes a profile and vanishes before RTL: the G/N copies need a callee profile 
 plain C can't give, and po_hint needs a call that goes away after profile_estimate.  If
 options is retried, start from a new fact about the original (another build of v1.21 or
 a newer source), not from a new spelling.
+
+## Attempt 7
+
+Hypothesis (from attempt 6's diagnosis): the G/N copies are real functions whose own,
+unhinted profile gives what the expects force.  New tools (tools/wip/dehint/): `op7pe.py
+file.c fn...` (a helper's own profile_estimate predictions), `op7g.py G|N|GN` (natural lower
+halves, perbox/ini/bad, for optIniBoolG/optN with their `!bad` expect gone).
+
+### The `!bad` expects: a result variable does their job (IDENTICAL BYTES)
+
+- Read off op7pe: optIniBool's `!bad` test is 21.6% (pointer 15 & early return 61, the call
+  heuristics cancel); G's and N's expect force 17%.
+- op7g `on2`: `if (!bad) on = getIniBool(name, def); else { warning; on = 0; } if (!on)
+  return 0; log ini` is IDENTICAL for G, for N, and for both (also N `on5`).  The warning
+  block no longer goes straight to the return block at profile_estimate, so the bad arm loses
+  the early-return prediction; the `on` join is threaded away after inlining (DOM/VRP), so the
+  code is the same and the blocks keep the stale counts.  `on1`/`on3` (bad arm first) 31 (G) /
+  731 (N); `noexp` 112/146.
+- op7arms.py (arms x entry x lower per helper): with on2, optN's sites take optIniBoolG's
+  shape exactly (`cp cp none on2`), so optN merges into optIniBoolG (its entry cp, off-arm cp
+  and expect go).  ib must keep its own lower (`noexp`/`out2`; on2 for ib: 194, its standalone
+  4 lines + .rdata).  At this step: 4 removed (G's and optN's expects, optN's entry and
+  off-arm cp); the arms follow below.
+
+### Param tests in the arms: the inline-time rebuild (mechanism)
+
+- G's off-arm cp can be any parameter test (`if (clear)`, `if (def)`, `set == clear`, ...):
+  IDENTICAL.  G's on-arm cp only with a two-step test (`set & clear`, `(set & clear) != 0`):
+  a direct parameter test (`clear`, `def`, `def > 0`, `set == clear`) is 321.  So the inliner
+  folds conditions on substituted parameters at inline time and then rebuilds frequencies
+  (TODO_rebuild_frequencies): no stale flow survives.  A condition one statement away from the
+  parameter (`_1 = set & clear; if (_1 != 0)`) is only folded by the next ccp, after the rebuild,
+  so its flow into r stays stale like a cp arm's.  The off arm only needs to not be a plain
+  `return 0` at profile_estimate (no early-return prediction on the off test); the on arm needs
+  its stale flow into r.  Memory tests (`xb.bootFlags & clear`) make the body too big to inline.
+
+### optIniBoolG as a result-variable function: no builtins at all (IDENTICAL BYTES)
+
+op7w.py: tops (T1 `on = 0` for each flag test, T2 Linux's `||` sets `on = 0`, T5/T6 `on = 0`
+then `if (!a && !b)` / nested ifs) x lowers (L1 on2-like without the return, L2 on2, L3 bad
+first, L4-L6 ini log before the warning) x tails (R1 `if (!on) return 0; set; return 1`, R2 `if
+(on) set; return on`, R3).  Every T1/T2/T5/T6 with L1/L2/L4/L5/L6 is IDENTICAL for G; L3 733;
+T3/T4 (one flag test still returning) 943-1724.  Mechanism: no arm returns, so no early-return
+prediction anywhere; the on/off and bad paths reach `if (on)` with on = 0 and are threaded to
+the exit after inlining, leaving the stale counts the cp arms and the expect used to make.
+Landed T2 L1 R2 (src: optIniBoolG).  optIniBoolG now has 0 builtins: removed 6 since attempt 6
+(optN's entry cp, off-arm cp and expect; G's 2 cp arms and expect).  34 -> 28.
+
+### optIniBool (ib) with result variables
+
+- ib's standalone `_optIniBool` is IDENTICAL with T1/T2/T5/T6/T3 x L4/L5/L6 (the ini log
+  must come before the warning in source, or .rdata order and the standalone change: L1/L2
+  188, standalone 16 lines).  Only applyIniOptions' OPT sites differ: 114 (T1/T2/T5/T6), 764
+  (T3), 1230 (T4).  So the standalone no longer needs the cp arms; the OPT sites' profile does.
+- op7pe on ib (cp source vs result variable): the result-variable body gives `!bad` 15%
+  (pointer only), the getIniBool test 29/71 and set 6100, where the OPT sites need 21.6%
+  (pointer & early return), 61/39 and 6002.  op7ib.py: the same result-variable body with
+  `return 0` after the warning (and only there) is IDENTICAL, standalone included, for every
+  top T1/T2/T5 and ini form a/c/d, either tail; with `on = 0` there it's 114.  Landed T2 a
+  ret R2 for optIniBool: its 2 cp arms go (28 -> 26), and optIniBoolG now differs from it in
+  that one statement (src comment: borderline).
+- One function for all sites: 120 (the G sites need the warning arm's `on = 0`); the G sites
+  as unguarded `optIniBool(...)` calls (like olddvd): 1789.
+- Landed: optIniBool T2 a ret R2 and optIniBoolG the same with `on = 0` in the warning arm
+  (op7ib.py's L4 order; op7w T2 L4 R2 is IDENTICAL for G too).  Full build SHA256
+  10dac648...1971c; progress 617/617.  Singles (optricks) on the new source: nothing free
+  (part 14 not real, mG_cygnos/mG_smcne 38, rev2_4 44, po_exp2 62, mG_nosec 62, mG_nandmu 64).
+
+### parseButtonX (xellbutton) as a real second reader: no match
+
+Read off the dumps (run.sh, a7cur vs natural): the hinted copy differs from a natural reader
+only in the cold xellbutton blocks: `!s` (store 0) 37 vs 29, the constant-store join 95 vs
+102, the remopower head 18 vs 17, the part call 0 vs 1.  The power expect only turns 83.2%
+(const return 67 & call 71) into 83.0%, which rounds the remopower head (103.5 x 0.17) to 18;
+the z feed moves ~45% of the else head (71% x 63.4%) to `!s`.
+- op7bx.py, natural bodies (b with `if (s)` / `if (!s) return 0`, returns, `if (s != NULL)`,
+  `if (!s) b = 0; else ...`): all 321 (90 with the power expect kept); default handled in the
+  reader (`d_b`, `d_ret`) 675/749; reader that stores the field itself 741.
+- op7bx2.py (24 forms: the reader stores xb.xellButton and logs the default, b or field,
+  `if (s)`/else/init, with or without the ini read inside): 741-994 (the default's log then
+  gets the reader's profile).
+- op7bx3.py, defensive `s &&` on any subset of the chain (192 forms): with an `if (!s) return
+  0;` head they are inert (folded before profile_estimate: 90 = expect only); without the head
+  the null flow cascades down the guards: 392+.
+- Arithmetic: with no feed the natural constraints are P(!s) = 37/132 = 28% and P(power) =
+  81%; the available predictor mixes give 21.6% / 30.2% / 10.1% for `!s` and 83.2% / 71% /
+  79.3% / 76% for power.  A feed is needed, and in the reader there's nothing that folds late
+  (its only parameter is the ini string; a parameter test folds at inline time, see above).
+
+### parseOption (po_hint) under the new mechanism: not retried
+
+The dominated call po_hint gives cputemp's/gpufan's bad edges has to exist at
+profile_estimate and vanish after it; a natural static helper there would be early-inlined
+(that is what no-early-inlining stops), and the copies draft still has the .rdata order.
+
+### Mechanisms (attempt 7)
+
+- **Result variables are a profile lever.**  An arm that sets a variable and joins a later test
+  gets no early-return prediction (the edge into a `return` block, or into a single-successor
+  block before it, is what PRED_TREE_EARLY_RETURN predicts); DOM/VRP thread the join away after
+  inlining, so the code is the same and the counts are stale.  This replaced cp arms (stale flow
+  into the set block) and `!bad` expects (21.6% -> 15%) at once.  Where a site needs the
+  early-return prediction, a `return` in just that arm gives it back (optIniBool's warning arm).
+- **Inline-time rebuild.**  A condition on a substituted constant parameter is folded during
+  inlining, then TODO_rebuild_frequencies recomputes the counts: such a test leaves no stale
+  flow (only its edge probabilities, as the callee estimated them).  A condition one statement
+  away (`_1 = set & clear; if (_1 != 0)`) is folded by the next ccp, after the rebuild, and acts
+  like a dead cp arm.
+- The standalone `_optIniBool` only needs the ini log before the warning in source order
+  (.rdata, and its block order); the cp arms were for the OPT sites.
+
+### Don't retry (attempt 7)
+
+- One optIniBool for all sites (G sites need the warning arm's join), G sites unguarded.
+- Param tests in the helpers' arms (direct ones fold at inline time; two-step ones are dead
+  tests, not natural); memory tests there (`xb.bootFlags & clear`: not inlined everywhere).
+- parseButtonX: whole natural bodies, default/log in the reader, defensive `s &&` chains.
+
+### Next ideas
+
+- The result-variable lever may apply elsewhere in applyIniOptions: any remaining hint whose
+  job is to remove an early-return prediction or to add stale flow into a join.  The rev feeds
+  sit after `sprintf` in the rev block (their dead arms `return;`), so a natural `rev` reader
+  with a result might replace part of them; the dz dummy entries still need asm-goto edges.
+- parseButtonX still needs a ~45% leak from the else head to `!s` that no natural reader gives.
