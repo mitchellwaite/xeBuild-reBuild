@@ -6,6 +6,77 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 8
+
+**58 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, still IDENTICAL BYTES).
+List labels 46 before and after (efail, dy, efail, -r head 3, dz, rok 7, fkbo 24, hdd4/5 2,
+s4/c12/ork6 3, dsp, c10, fail).  Best near miss: drafts/mode_client_a8_near4.c, 57 tricks,
+4 lines (dtg2 feed removed + two count-neutral `cp(mode)` toggles; c9/c11 call blocks
+swapped).  The latch flip itself is now solvable by count-neutral means (Attempt 8, 2).
+
+## Attempt 8
+
+NO MATCH, 58.  Tools (tools/wip/dehint/, states and logs in build/mc/w8/, dumps
+build/mc4/m8b (58 base), m8d (dtg2 removed)):
+- `mc8comp.py NAME|none [-base F] [-two [TOP]]`: mc7comp with clientEraseBlockI's labels
+  and lists in the edit set (cebi labels into cebi lists), new removals (efc, einv, dyfeed,
+  ybkfeed, efail1/2, dyj, hdd45, pinX, pinm, s4c12o, kk2, and groups dyall, efall), `a+b`
+  combined removals, and pairs of edits from the TOP best singles.
+- `mc8loop.py BASE OUTDIR [-names] [-two N]`: mc7loop over mc8comp.  `mc8alone.py BASE`:
+  every removal alone (quick triage).
+- `mc8tmp.py BASE [-pairs]`: count-neutral toggles of one cp argument's temporaries:
+  `cp(V + N)` -> `cp(V)` (less) or `cp(V * 3 + N)` (more).
+- `mc8less.py BASE OUTDIR NAME[,a+b...] [-k 2]`: a removal + every single/pair of `less`.
+
+What was found:
+1. Removals alone on the 58 state (mc8alone): dtg2 12, c3 20, arm11 22, c11 34, pdpin 35,
+   t5 36, idpin 41, t4 52, dz 60, kk2 86 (2 tricks), dyj 130, dyfeed/ybkfeed 152,
+   efail1 174, dyall 216 (5 tricks), hdd45 216, efall 274, efc 286, pinm 295, einv 314,
+   pinX 357; the rest 200+.  The new cebi removals are not close.
+2. **The latch flip mechanism.**  PRE takes all 20 of its new names from the free list
+   (max version unchanged).  The latch phi is prephitmp_582 in the base (> argc_71(D): the
+   compare is `argc > i`, `cmp esi,eax; jle`), prephitmp_4 after the dtg2 removal (< 71:
+   swapped).  What the free list holds at PRE comes from dce3 (115t) releasing the folded
+   cp feeds' `mode + N` temporaries (the c3 feed's _448/_449 in the base; cp is folded to 0
+   by dom2) and earlier releases (name 4 at cplxlower).  Toggle: `cp(mode + N)` -> `cp(mode)`
+   (one temporary fewer, same count).  On the base one `less` flips the latch (8 lines) at
+   most sites; on removal bases a PAIR of `less` repairs it: dtg2 12 -> 4 (any less + the
+   after-tail u2 feed `cp(mode)`), c3 20 -> 12, t5 36 -> 20, c11 34 -> 26, t4 52 -> 44.
+   `more` (+1 or +2 or +3 temporaries) never changes a removal base.  So the flip is no
+   longer the wall; what remains is the case-head order.
+3. What remains after the flip fix: dtg2 -> c9/c11 call blocks (clientWriteBlocks /
+   clientBinPatch) swapped, 4 lines (drafts/mode_client_a8_near4.c).  c3 and t5 leave the
+   same swap plus their own case block moves.  On the 4 state: every single list edit
+   incl. cebi (960): 4; every 1-term feed relocated (mc7relocall, 9 feeds; the `cp(mode)`
+   ones are not matched by its pattern): 4; less singles/pairs (314+): 4; more singles: 4.
+4. mc8loop with single and pair edits (pairs from the 60 best singles): dtg2 12, c3 20,
+   arm11 14 (`add dtg>4.e + drop c12@8`), c11 18, t5 22.  The 60 best singles are mostly
+   no-op edits (score = alone), so these pairs are weak; a better pair space would take
+   singles that change the output.
+5. Removal pairs + less pairs (mc8less): dtg2+c3 12, dtg2+t5 24, dtg2+arm11 22, c3+t5 28,
+   c11+t5 30, t5+arm11 34, dtg2+c11 250, c3+c11 96.  No hit.
+
+### Don't retry (attempt 8)
+
+- cebi removals (efc, einv, dy/ybk feeds, efail/dy JMPs, groups) with list edits: 130+.
+- `more` toggles; less singles/pairs on the d2l 4 state; list edits / 1-term relocation
+  on the d2l 4 state.
+- Pairs of edits drawn from the best-scoring singles (they are no-ops).
+
+### Ideas for attempt 9
+
+- The c9/c11 swap on the 4 state is a case-head frequency tie (attempt 5): look at the bbro
+  keys of the c9/c11 heads in a profile_estimate/bbro dump of the 4 state vs the reference
+  and find which feed/list moves one of them by one unit; then try the counted-neutral
+  moves aimed at that (relocate the t4 2-term feed, chain arm terms, list labels into
+  c9/c11 specifically).
+- Apply the `less` toggle as a standard repair in mc7comp/mc8loop: removal + list edit +
+  less pair (three steps) for c3, t5, c11, arm11.
+- Extend mc7relocall's pattern to `cp(mode)` feeds, and relocate on the 4 state with
+  `less` kept on the relocated feed.
+- `less` is count-neutral and simpler than `cp(mode + N)`; if a match needs it, it lands
+  as is (no new kind).
+
 ## State after attempt 7
 
 **58 tricks** by README's categories (63 before).  Whole object IDENTICAL BYTES, full build
