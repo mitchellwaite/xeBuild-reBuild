@@ -6,6 +6,25 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 2
+
+**96 tricks** by README's categories (105 before): both literal-order asms, 4 pins and 3
+`__builtin_constant_p` gone, no new hint.  Two borderline shapes (redundant `return;`,
+commented `borderline:`).  Whole object IDENTICAL BYTES, full build SHA256
+10dac648...1971c.  build.sh unchanged.
+
+| Category | Att. 1 | Now | Where |
+|---|---|---|---|
+| `--param builtin-expect-probability=50` | 1 | 1 | build.sh |
+| `__builtin_constant_p` | 56 | 53 | fail's ndl(205562) feed down to one term (255562), fail's `mode + 260` feed gone; rest as after attempt 1 |
+| asm goto statements | 16 | 16 | case 5's former `"a"(cinfo)` asm goto is now `JMP(s4, c12)` |
+| pins | 10 | 6 | bp `"a"(i + 1)`, `-i`/`-p` `"d"(i + 1)`, `"a"(i)` in the `-r` head asm goto, fkbo `"X"(&fkv)`, rok `"m"(rko)` |
+| cold labels | 7 | 7 | |
+| expects | 6 | 6 | |
+| `if (0)` / unreachable | 3 / 3 | 3 / 3 | |
+| literal-order asm "i" | 2 | 0 | |
+| hand-inlined clientEraseBlockI | 1 | 1 | |
+
 ## State after attempt 1
 
 **105 tricks** by README's categories (141 before): 33 `__builtin_constant_p` and 3 asm goto
@@ -31,6 +50,76 @@ clientEraseBlock's unused `kk`/`AT(efail)`, rok's dead trampoline sub-block (rk1
 trampoline that no list reaches (rk/ork, fa/ofa), and the unused plain labels (eerase, esucc,
 eout, lu1, wb3, k55l, k67l, w5x, dvb, fkbo, S761, p0, p0c, i0, i0_c, c8, c8t, c9t).
 Labels nothing jumps to never mattered.
+
+## Attempt 2
+
+105 -> 96.  Tools (tools/wip/dehint/, states and logs in build/mc/, not tracked):
+- `mc2.py singles|near|pairs|triples [-m DIFF]`: mc1's edits on the current base (MCBASE),
+  singles -> build/mc/m2_singles*.json (MC2SINGLES), then pairs / triples over the near
+  misses (MC2SKIP regex drops duplicates such as fa3-fa20).  Hits -> build/mc/m2_hits.json.
+- `mc2try.py VARIANTS.py [names] [-v name [fn]] [-o name out.c]`: score hand-written
+  substitution variants; the variant files are `mc2v_*.py` (ci = clientInfo, wb =
+  clientWriteBlocks, bp/bp2-4 = clientBinPatch, bpa/bpa2 = the -bp arm, ip/ip2 = -i/-p,
+  misc/misc2 = asm operands).
+- `mc2x.py` (term orders of the parser's `||` tests, with removals), `mc2pad.py` (remove a
+  cp chain, pad others with fewer terms), `mc2case.py` (move one switch case), `mc2combo.py`
+  (cross product of hit files), `mc2climb.py BASE.c` (singles + greedy + pairs within
+  diff 250, repeat).
+- mc1.py now tolerates the missing clientWriteBlocks asm (template only).
+
+What moved:
+1. clientInfo's literal asm (ci_lit 4): success first plus a redundant `return;` at the end
+   of the `if (out)` block -> IDENTICAL.  Success first alone flips the branch (6), `if
+   (!out) return;` + success first fixes the tail but swaps the jump-threaded copies of the
+   bad-block head (xor ebp placement, 4).  Mechanism: the arm bb-reorder leaves out of line
+   is the first one expanded unless the return block comes after the forwarder; the extra
+   return puts the forwarder (and return block) after the tail.  Borderline.
+2. clientWriteBlocks' literal asm (wb_lit 14): nest it `if (start != -1) { buf = ...; if (buf
+   && len > 0) { ...; free(buf); return; } read error } else invalid` -> IDENTICAL.  Plain
+   nesting without the return 44-60.  Natural (the return skips the read error).
+3. clientBinPatch's three pins (bp_D x2, bp_rcount; all three off = 8, a robust esi/edi swap
+   in the inlined patchNand tail that no type/order/statement-order sweep moved):
+   `if (cinfo->nandSize == 0x3000000) memcpy else patchNand` in place of the switch AND a
+   redundant `return;` after the write result -> IDENTICAL.  Either alone 147 / 209.
+   Borderline.
+4. case 5's `__asm__ goto ("" :: "a"(cinfo) :: s4, c12)`: the operand never mattered ->
+   `JMP(s4, c12)` (one pin less).  Also free, not counted: fkbo's `"X"(&fko)` operand and
+   `fko`, rok's `"m"(rkv2)` operand and `rkv2`, `rkv0`.  (fkv moved to the outer scope: 358.)
+5. Pairs within diff 250 (attempt 1 only went to 80) on the new base: `cp_k61l_3` (-r's
+   k61l feed) + any one term of the -s k61l chain, and one term of fail's ndl(205562) chain
+   + fail's `mode + 260` feed.  The two pairs don't combine (8).  Took the ndl pair; then
+   a second ndl term was free (climb2: greedy), then stuck (2509 pairs within 250, none).
+   The k61l pair on that base is an 8-line near miss with no compensating single.
+
+### Don't retry (attempt 2)
+
+- Triples within diff 80 on the 102-state base (4031, none); pairs within 250 on the final
+  base (2509, none but label drops).
+- Term-order permutations of the parser's `||` tests: each costs a flat 4, also with
+  near-miss removals (881 variants).
+- Padding cp chains to compensate a removed chain (648 variants): the diffs never move,
+  so term counts are not the lever for t5/mode-chain removals.
+- Switch case order: free (no byte change) except cases 4/5; with near-miss removals 3024
+  variants, none.
+- `-i`/`-p` "d" pins: 12x12 test shapes and default-assignment / mode-first shapes all 52.
+  The pin makes two pseudos for i + 1 (edx for the test, eax for the latch PHI in the
+  arg = dummy paths); every spelling is CSE'd to one.
+- `-bp` "a"(i + 1) pin: `j = i + 2; b = argv[j];` gets it to 20 (eax/edx swap of i + 1 and
+  argv[i + 2]); 30 first/second-test/end shapes stay at 20 or worse; singles on that base
+  no help.  `"r"(i + 1)` 16 (still a pin).
+- clientBinPatch: decl splits, int start/count, uint32_t rlen, (int) casts, increment
+  order of patchNand's loops: all 8 without the return.
+
+### Ideas for attempt 3
+
+- The redundant-return lever worked twice where bb-reorder picks which arm goes out of
+  line; try it on mode_client's tail blocks (the usage(5) / log swaps behind E(reboot) 10,
+  fail's t5 feed 8, the k61l pair's 8).
+- Pairs on top of the k61l near-miss base (build/mc/bC.c, 8 lines) instead of singles.
+- The -bp pin at 20: combine the `j = i + 2; b = argv[j]` shape with the -wb arm's spelling
+  changed the same way (allocation order follows pseudo numbering of both arms).
+- Climbs from other pair choices (the k61l branch, build/mc/bA.c).  Triples within diff 40
+  on the final base were run (1482, none): don't repeat.
 
 ## Attempt 1
 

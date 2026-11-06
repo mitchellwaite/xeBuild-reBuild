@@ -11,8 +11,8 @@
    reached (tools/wip/mc/s150/NOTES.md has the levers, the wip/mc attempts
    before it the search; tools/wip/dehint/notes/mode_client.md which hints
    were found not to matter and removed, and what each remaining one is
-   for).  String literals land in .rdata in block order; two
-   empty asm "i" hints fix that order where the shape alone doesn't. */
+   for).  String literals land in .rdata in block order, so clientInfo's and
+   clientWriteBlocks' shapes (early returns) are what fix it there. */
 #define AT(l) l:
 #define JMP(...) __asm__ goto ("" :::: __VA_ARGS__)
 #define NO_MODE_ARG(m, a) (!((m) && (a)))
@@ -132,12 +132,13 @@ void clientInfo(const char *dir)
 		strcpy(path, dir);
 		strcat(path, "/nanddump.bin");
 		log_printf(0, "dumping console flash to %s\n", path);
-		/* .rdata order hint (testing success first flips the branch) */
-		__asm__("" :: "i"("success!\n"));
-		if (!netDumpNand(path))
-			log_printf(0, "failed!\n");
-		else
+		if (netDumpNand(path))
 			log_printf(0, "success!\n");
+		else
+			log_printf(0, "failed!\n");
+		/* borderline: redundant return (end of the function); without it
+		   bb-reorder puts success out of line */
+		return;
 	}
 }
 
@@ -357,34 +358,27 @@ void clientWriteBlocks(const char *file, const char *sstart)
 	int len;
 	uint8_t *buf;
 
-	if (start == -1) {
-		log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for start block and number of blocks!\n");
-		return;
-	}
-	/* .rdata order hint: these come before the read error (a nested
-	   success-first shape moves the error blocks) */
-	__asm__("" :: "i"("Writing 0x%x (%d) blocks to console starting at block 0x%x (%d)...\n"),
-		"i"("Done! Wrote 0x%x (%d) bytes to console flash!\n"),
-		"i"("\n\n***** ERROR: Writing data to console failed!\n"),
-		"i"("\n\n***** ERROR: File %s size (0x%x) is not a multiple of console block size (0x%x)!\n"));
-	buf = FileToBuffer(file, (size_t *)&len);
-	if (!buf || len <= 0) {
+	if (start != -1) {
+		buf = FileToBuffer(file, (size_t *)&len);
+		if (buf && len > 0) {
+			n = len / cinfo->blockSize;
+			if (!(len % cinfo->blockSize)) {
+				if (start + n <= cinfo->nandSize / cinfo->blockSize) {
+					log_printf(0, "Writing 0x%x (%d) blocks to console starting at block 0x%x (%d)...\n", n, n, start, start);
+					if (netWriteBlocks(buf, len, start, n))
+						log_printf(0, "Done! Wrote 0x%x (%d) bytes to console flash!\n", len, len);
+					else
+						log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
+				} else
+					log_printf(0, "\n\n***** ERROR: This read command will exceed the system area size of 0x%x blocks!\n", cinfo->nandSize / cinfo->blockSize);
+			} else
+				log_printf(0, "\n\n***** ERROR: File %s size (0x%x) is not a multiple of console block size (0x%x)!\n", file, len, cinfo->blockSize);
+			free(buf);
+			return;
+		}
 		log_printf(0, "\n\n***** ERROR: Unable to read file %s!\n", file);
-		return;
-	}
-	n = len / cinfo->blockSize;
-	if (!(len % cinfo->blockSize)) {
-		if (start + n <= cinfo->nandSize / cinfo->blockSize) {
-			log_printf(0, "Writing 0x%x (%d) blocks to console starting at block 0x%x (%d)...\n", n, n, start, start);
-			if (netWriteBlocks(buf, len, start, n))
-				log_printf(0, "Done! Wrote 0x%x (%d) bytes to console flash!\n", len, len);
-			else
-				log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
-		} else
-			log_printf(0, "\n\n***** ERROR: This read command will exceed the system area size of 0x%x blocks!\n", cinfo->nandSize / cinfo->blockSize);
 	} else
-		log_printf(0, "\n\n***** ERROR: File %s size (0x%x) is not a multiple of console block size (0x%x)!\n", file, len, cinfo->blockSize);
-	free(buf);
+		log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for start block and number of blocks!\n");
 }
 
 /* copy data into raw NAND pages (512 data + 16 spare) at logical offset off */
@@ -449,25 +443,20 @@ void clientBinPatch(const char *file, const char *soff)
 				nand = netReadBlocks(&rlen, start, count);
 				if (nand && rlen) {
 					log_printf(0, "Success!\nPatching in binary data...");
-					switch (cinfo->nandSize) {
-					default:
-						patchNand(nand, rem, data, len);
-						break;
-					case 0x3000000:
+					if (cinfo->nandSize == 0x3000000)
 						memcpy(nand + rem, data, len);
-					}
-					/* code-free hints: edi refs raise LRA's edi usage so the
-					   post-loop len - 512 reload takes esi; the count use
-					   orders its reload thread before start's (count esi) */
-					{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }
-					{ int r; __asm__ volatile("" : "=D"(r)); __asm__ volatile("" :: "D"(r)); }
+					else
+						patchNand(nand, rem, data, len);
 					log_printf(0, "Done!\n");
 					log_printf(0, "Writing 0x%x blocks from console starting at block 0x%x...\n", count, start);
-					__asm__("" :: "r"(count));
 					if (netWriteBlocks(nand, rlen, start, count))
 						log_printf(0, "Success! Completed patching NAND!\n");
 					else
 						log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
+					/* borderline: redundant return (nothing follows but the
+					   else arms); it sets the register choices of the inlined
+					   patchNand tail and the count/start reloads */
+					return;
 				} else
 					log_printf(0, "\n\n***** ERROR: Reading data from console failed!\n");
 			} else
@@ -691,14 +680,14 @@ ip = argv[++i];
 			if (netConnect(ip)) {
 			rok: __attribute__((cold));
 				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;  
-				{ struct {} rko; { struct {} rkv0; __asm__ goto ("" :::: dv, c1, c12, s5, c9, c2, c10, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { struct {} rkv2; __asm__ ("" :: "m"(rko), "m"(rkv2)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
+				{ struct {} rko; { __asm__ goto ("" :::: dv, c1, c12, s5, c9, c2, c10, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { __asm__ ("" :: "m"(rko)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
 			} else
 				goto fail;
 		} else
 			{ AT(u2) client_usage(2, NULL); }
 	} else {
 		if (netConnect(ip)) {
-			{ struct {} fko; { struct {} fkv; __asm__ ("" :: "X"(&fko), "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa2, fa3, fa4, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa2: goto ofa2; fa3: goto ofa3; fa4: goto ofa4; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa2: goto fkA2; ofa3: goto fkA2; ofa4: goto fkA2; ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
+			{ { struct {} fkv; __asm__ ("" :: "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa2, fa3, fa4, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa2: goto ofa2; fa3: goto ofa3; fa4: goto ofa4; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa2: goto fkA2; ofa3: goto fkA2; ofa4: goto fkA2; ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
 			dsp: cinfo = netGetInfo();
 			   if (__builtin_constant_p(mode + 930) && __builtin_constant_p(mode + 931) && __builtin_constant_p(mode + 932) && __builtin_constant_p(mode + 933)) goto t4;      
 			           if (__builtin_constant_p(mode + 1210) && __builtin_constant_p(mode + 1211) && __builtin_constant_p(mode + 1212) && __builtin_constant_p(mode + 1213) && __builtin_constant_p(mode + 51213) && __builtin_constant_p(mode + 101213)) mode = 7; else if (__builtin_constant_p(mode + 1230) && __builtin_constant_p(mode + 51230) && __builtin_constant_p(mode + 101230) && __builtin_constant_p(mode + 151230) && __builtin_constant_p(mode + 201230) && __builtin_constant_p(mode + 251230)) mode = 11; else if (__builtin_constant_p(mode + 1221) && __builtin_constant_p(mode + 1222) && __builtin_constant_p(mode + 1223) && __builtin_constant_p(mode + 51223) && __builtin_constant_p(mode + 101223)) mode = 9; switch (mode) {
@@ -719,7 +708,7 @@ ip = argv[++i];
 				break;
 			case 5:
 				AT(t5)  if (cinfo->hwFlags & 0x20)
-					{ __asm__ goto ("" :: "a"(cinfo) :: s4, c12); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
+					{ JMP(s4, c12); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
 				else
 					{ AT(hdd5) { hdd5_c: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); }
 				break;
@@ -762,7 +751,7 @@ ip = argv[++i];
 	ndl: netDisconnect();
 	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 50750)) goto u2; 
 if (0) { dv: asm volatile("" : : : "memory");  __builtin_unreachable(); } if (0) { dz: asm volatile("" : : : "cc"); __builtin_unreachable(); } 	return 0;
-fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 205562) && __builtin_constant_p(mode + 255562) && __builtin_constant_p(mode + 305562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5; if (__builtin_constant_p(mode + 260)) goto ndl;    if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
+fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 255562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5;   if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;
 	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }

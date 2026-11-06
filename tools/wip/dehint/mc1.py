@@ -133,9 +133,10 @@ def build_template(text):
     lit('ci_lit', '\t\t/* .rdata order hint (testing success first flips the branch) */\n\t\t__asm__("" :: "i"("success!\\n"));\n', '')
     # clientWriteBlocks' literal-order asm: a list of "i" operands
     wb_old = re.search(r'\t/\* \.rdata order hint: these come before the read error.*?\n\t__asm__\("" :: (.*?)\);\n', text, re.S)
-    ops = re.findall(r'"i"\(".*?"\)', wb_old.group(1))
-    head = wb_old.group(0)[:wb_old.group(0).find('__asm__')]
-    t._split(re.escape(wb_old.group(0)), lambda m: t.lslot('wb_lit', head + '__asm__("" :: ', ops, ',\n\t\t', ');\n'))
+    if wb_old:  # gone since attempt 2
+        ops = re.findall(r'"i"\(".*?"\)', wb_old.group(1))
+        head = wb_old.group(0)[:wb_old.group(0).find('__asm__')]
+        t._split(re.escape(wb_old.group(0)), lambda m: t.lslot('wb_lit', head + '__asm__("" :: ', ops, ',\n\t\t', ');\n'))
     lit('fk_X', '__asm__ ("" :: "X"(&fko), "X"(&fkv)); ', '')
     lit('rk_m', '__asm__ ("" :: "m"(rko), "m"(rkv2)); ', '')
     m = re.search(r'rkn0: ; \{ struct \{\} rkv1; goto rkn1; .*? \} rkn1: ; ', text)
