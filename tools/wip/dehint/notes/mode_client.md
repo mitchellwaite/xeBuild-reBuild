@@ -6,6 +6,107 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 4
+
+**88 tricks** by README's categories (94 before), **87 once build.sh drops the param**: all 6
+expects gone (the 4 `E()` uses, the macro and its `__builtin_expect`), no new hint.  With no
+`__builtin_expect` left, `--param builtin-expect-probability=50` no longer acts: the object
+is IDENTICAL BYTES with plain `-O3` too, so build.sh's `mode_client)` case can become
+`cflags="-O3"`; the parent dropped the case when landing this (mode_client now uses the default `*` case).  Whole object
+IDENTICAL BYTES, full build SHA256 10dac648...1971c, progress 617/617.
+
+| Category | Att. 3 | Now |
+|---|---|---|
+| `--param builtin-expect-probability=50` | 1 | 0 (inert; dropped from build.sh when attempt 4 landed) |
+| `__builtin_constant_p` | 51 | 51 |
+| asm goto statements | 16 | 16 |
+| pins | 6 | 6 (the -bp `"a"(i + 1)` now inside bpArgs) |
+| cold labels | 7 | 7 |
+| expects | 6 | 0 |
+| `if (0)` / unreachable | 3 / 3 | 3 / 3 |
+| hand-inlined clientEraseBlockI | 1 | 1 |
+
+For review: the `-bp`/`-wb`/`-eb` arms call new static helpers bpArgs/wbArgs/oneArg
+(getArgs-style, `int *pi`; each keeps its arm's own test order), and the reboot tail calls
+`netDisconnect()` in both arms (commented `borderline:`).
+
+## Attempt 4
+
+94 -> 88.  Tools (tools/wip/dehint/, logs in build/mc/, dumps in build/mc4/, not tracked):
+- `mc4dump.py FILE.c TAG [flags]`: compile with `-fdump-tree-profile_estimate-details
+  -fdump-rtl-bbro-details` into build/mc4/TAG/.  The profile_estimate dump's "Predictions
+  for bb N" lists which heuristics set each branch: this is how the expects were understood.
+- `mc4v_tail.py`, `mc4v_eb.py`, `mc4v_wb*.py`, `mc4v_bp*.py`, `mc4v_one*.py`: variants for
+  mc2try.py (MCBASE = the base named in each file's comment).
+- `mc4greedy.py` / `mc4walk.py BASE.c PREFIX`: greedy that also takes count-neutral label
+  drops, and a walk that takes count-neutral pairs when stuck.  `mc4groups.py` /
+  `mc4gpair.py`: mc1's G_* groups with current slot names (mc1.py's G_* entries carry
+  stale indices from attempt 1 and are no-ops on today's base: their "IDENTICAL" in singles
+  output means nothing changed), and each group paired with every single.
+- `mc4render.py KEY OUT.c`: render a hit from m2_hits.json.
+
+Mechanism (profile_estimate dump): with param 50, `__builtin_expect` is first-match and sets
+its branch to exactly 50%.  Without it the branch gets the DS combination of the other
+heuristics.  The call heuristic (PRED_CALL, 71%) predicts an edge not taken when its
+destination block is dominated by the branch, doesn't post-dominate it, and contains a call
+with side effects.  The `-rb` arm is 50% naturally: its first statement is the getArgs call
+and the else edge's block calls strnicmp, so both edges are predicted and cancel.  The
+-bp/-wb/-eb arms started with argv tests (no call), so only the else edge was predicted
+(71% then); E() pinned them to 50%.  Reboot: only the netReboot edge had a call (29%); the
+else edge went to `ndl:`, which has many predecessors (not dominated).
+
+What moved:
+1. E(reboot): `if (reboot) { netReboot(reboot); JMP(fail); ndl: netDisconnect(); } else
+   netDisconnect();` -> IDENTICAL (the else arm's own call is dominated -> both edges
+   predicted -> 50%).  `if (!reboot) netDisconnect(); else {... ndl: netDisconnect(); }` also
+   IDENTICAL; `ndl:` on the else arm's call: 10 (that arm is no longer dominated).
+   Borderline: the duplicated call.
+2. E(-eb): the arm as `arg = oneArg(argc, argv, &i, mode);` with a static helper holding the
+   arm's checks -> IDENTICAL.  einline does not inline it (too big), ipa-inline does (called
+   once), so the call is still there at profile_estimate.  i by value + `i++` at the call is
+   also IDENTICAL; took the `int *pi` form like getArgs.
+3. E(-wb): wbArgs with `int *pi` -> IDENTICAL for several bodies (j = i + 1, `j++` or the
+   scoped `int k = i + 2` for the second argument, `*arg2 = b` before the mode test).  The
+   by-value form with `i += 2` at the call: 258+ (the caller's `i` update is a different SSA
+   shape).  Note: on a base that still had E(reboot) the same helpers left a 6-line flip of
+   the -r/-w arm's `i + 1 == argc || !a` order; it went with the reboot change.
+4. E(-bp): bpArgs (`int *pi`, `!a || j == argc` first test, then the arm's `b = argv[i + 2];
+   j = i + 2;`), with the `"a"(i + 1)` pin kept inside -> IDENTICAL.  Without the pin every
+   shape (36 in mc4v_bp2) is 20: the same eax/edx swap as attempt 2.
+5. With all four gone there is no `__builtin_expect`: the param is inert.
+
+Searched with no hit (attempt 4):
+- Walk from the reboot base and from the final base: pairs within 100 (501 and 1626
+  pairs), only count-neutral label drops (dv's c1 + one fa edge; then c7, fa2-fa4 free).
+  Label drops never opened a counted removal.
+- Dead-construct groups on the final base: G_dz 60, G_dv 34, G_kk 78, G_dy 225, G_efail
+  231, G_hdd 257, G_dsp 263; G_dv/G_dz/G_kk + every single (294): best 28 (G_dz + r_ifkk=4).
+- More arms as helpers: -e or -c through their own copy of oneArg: 6 each (flips the -w
+  arm's test order); both: the second helper is not inlined (ipa-inline growth limit on the
+  large mode_client), 10177.  A shared helper for -bp and -wb (wbArgs twice): not inlined.
+
+### Don't retry (attempt 4)
+
+- bpArgs without the pin (36 shapes, all 20); by-value bpArgs (408).
+- More than one extra helper call site for the same helper, or a fourth inlined helper in
+  the option loop: ipa-inline stops inlining (mode_client is near large-function-growth).
+- Label-only drops in the rok/fkbo lists as stepping stones.
+
+### Ideas for attempt 5
+
+- Read the profile_estimate dump for each remaining feed's target: the cp feeds and asm
+  gotos add edges whose probabilities (and the frequencies of their targets) are what
+  bb-reorder sees.  Natural code that predicts the same edge the same way (a call in the
+  first block of an arm, a dominated block, an early return) may replace a feed; check which
+  heuristic the target branch gets with and without the feed before searching.
+- Cold labels are PRED_COLD_LABEL (first match, very likely).  The only natural first-match
+  predictor with the same weight is a noreturn call (PRED_NORETURN); none of the cold arms
+  ends the program, so look instead at whether a cold label can be traded for a feed edge
+  pattern, not for plain C.
+- The -bp pin: IRA gives i + 1 eax only with the pin; try the caller side (what the call
+  passes, `&i` vs a copy) now that the arm is a call, or the -wb helper's shape changed in
+  step (the two arms' pseudo numbering interacts, attempt 2).
+
 ## State after attempt 3
 
 **94 tricks** by README's categories (96 before): 2 `__builtin_constant_p` gone (the -s k61l

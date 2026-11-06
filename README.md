@@ -122,18 +122,18 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>4. mode_client</b>: 94 tricks, very hard</summary>
+<summary><b>4. mode_client</b>: 87 tricks, very hard</summary>
 
-- `--param builtin-expect-probability=50`
 - 51 `__builtin_constant_p` feeds and 16 `asm goto` edges to dead labels, which
   set bb-reorder's heap keys
 - 6 pins
-- 7 hot and cold labels, 6 expects, 3 `if (0)` blocks and 3 `__builtin_unreachable`
+- 7 hot and cold labels, 3 `if (0)` blocks and 3 `__builtin_unreachable`
 
 The source was fitted to a simulated heap by search, over more than 130
 attempts, and is nowhere near readable. A first de-tricking pass deleted the
 hints that turned out not to matter, and a second found plain-C shapes for
-the literal-order and `clientBinPatch` hints (141 to 94;
+the literal-order and `clientBinPatch` hints; the expects, and with them
+the `--param`, went for arms that start with a call (141 to 87;
 `tools/wip/dehint/notes/mode_client.md`). `clientEraseBlock` is even inlined by hand so its labels can be
 reached. `mode_client` itself is one long option loop and switch, so nearly every
 change moves the rest of the layout. Rewriting it from scratch is probably the

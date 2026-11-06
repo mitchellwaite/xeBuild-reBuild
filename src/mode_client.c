@@ -12,7 +12,10 @@
    before it the search; tools/wip/dehint/notes/mode_client.md which hints
    were found not to matter and removed, and what each remaining one is
    for).  String literals land in .rdata in block order, so clientInfo's and
-   clientWriteBlocks' shapes (early returns) are what fix it there. */
+   clientWriteBlocks' shapes (early returns) are what fix it there.  The
+   option tests get even odds from calls: an arm that starts with a call
+   (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
+   the branch predictions are made) has the call heuristic on both edges. */
 #define AT(l) l:
 #define JMP(...) __asm__ goto ("" :::: __VA_ARGS__)
 #define NO_MODE_ARG(m, a) (!((m) && (a)))
@@ -533,7 +536,62 @@ char *getArgs(int argc, char **argv, int *pi, int mode, int check, char **arg2, 
 	return argv[first];
 }
 
-#define E(x) __builtin_expect((x), 1)
+/* -bp <f> <o>: getArgs' checks for two arguments, in the order the -bp arm
+   tests them (the pin puts i + 1 in eax, attempts 2 and 4 found no shape for
+   it) */
+static char *bpArgs(int argc, char **argv, int *pi, int mode, char **arg2)
+{
+	int i = *pi;
+	int j = i + 1;
+	char *a = argv[j], *b;
+
+	if (!a || j == argc || *a == '-')
+		client_usage(3, argv[i]);
+	__asm__("" :: "a"(i + 1));
+	b = argv[i + 2];
+	j = i + 2;
+	if (j == argc || !b || *b == '-')
+		client_usage(4, argv[i]);
+	*arg2 = b;
+	if (mode)
+		client_usage(5, argv[i]);
+	*pi = j;
+	return argv[i + 1];
+}
+
+/* -wb <f> <b> */
+static char *wbArgs(int argc, char **argv, int *pi, int mode, char **arg2)
+{
+	int i = *pi;
+	int j = i + 1;
+	char *a = argv[j], *b;
+
+	if (j == argc || !a || *a == '-')
+		client_usage(3, argv[i]);
+	j++;
+	b = argv[j];
+	if (!b || j == argc || *b == '-')
+		client_usage(4, argv[i]);
+	*arg2 = b;
+	if (mode)
+		client_usage(5, argv[i]);
+	*pi = j;
+	return argv[i + 1];
+}
+
+/* -eb <b> */
+static char *oneArg(int argc, char **argv, int *pi, int mode)
+{
+	int i = *pi;
+
+	if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
+		client_usage(3, argv[i]);
+	if (mode)
+		client_usage(5, argv[i]);
+	*pi = i + 1;
+	return argv[i + 1];
+}
+
 int mode_client(int argc, char **argv)
 {
 	char dummy[] = "dummy";
@@ -543,8 +601,7 @@ int mode_client(int argc, char **argv)
 	char *ip = NULL;
 	char *arg = NULL;
 	int mode = 0;
-	char *a, *b;
-	int j;
+	char *a;
 
 	int kk = __builtin_constant_p(argc);
 	log_set_name("client");
@@ -561,47 +618,20 @@ if (__builtin_constant_p(i + 321)) goto u2;
 				log_printf(0, "shutdown superseded by reboot, ignoring -s in favor of -reboot\n");
 			log_printf(0, "setting reboot on completion\n");
 			reboot = 2;
-		} else if (E(!strnicmp(argv[i], "-bp", 3))) {
-			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
-				client_usage(3, argv[i]);
-			__asm__("" :: "a"(i + 1));
-			b = argv[i + 2];
-			j = i + 2;
-			if (j == argc || !b || *b == '-')
-				client_usage(4, argv[i]);
-			start = b;
-			if (mode)
-				client_usage(5, argv[i]);
-			i = j;
-			arg = argv[i - 1];
+		} else if (!strnicmp(argv[i], "-bp", 3)) {
+			arg = bpArgs(argc, argv, &i, mode, &start);
 			log_printf(0, "setting binary patch file to %s, offset %s\n", arg, start);
 			mode = 11;
 		} else if (!strnicmp(argv[i], "-rb", 3)) {
 			arg = getArgs(argc, argv, &i, mode, 1, &start, &count);
 			log_printf(0, "reading %s blocks to %s, starting block %s\n", count, arg, start);
 			mode = 8;
-		} else if (E(!strnicmp(argv[i], "-wb", 3))) {
-			j = i + 1;
-			a = argv[j];
-			if (j == argc || !a || *a == '-')
-				{ client_usage(3, argv[i]); }
-			{ int k = i + 2; b = argv[k];
-			if (!b || k == argc || *b == '-')
-				client_usage(4, argv[i]); }
-			start = b;
-			if (mode)
-				client_usage(5, argv[i]);
-			i += 2;
-			arg = argv[i - 1];
+		} else if (!strnicmp(argv[i], "-wb", 3)) {
+			arg = wbArgs(argc, argv, &i, mode, &start);
 			log_printf(0, "writing blocks from %s, starting at block %s\n", arg, start);
 			mode = 9;
-		} else if (E(!strnicmp(argv[i], "-eb", 3))) {
-			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
-				client_usage(3, argv[i]);
-			if (mode)
-				client_usage(5, argv[i]);
-			arg = argv[i + 1];
-			i++;
+		} else if (!strnicmp(argv[i], "-eb", 3)) {
+			arg = oneArg(argc, argv, &i, mode);
 			log_printf(0, "erase block set to %s\n", arg);
 			mode = 10;
 		} else if (!strnicmp(argv[i], "-s", 2)) {
@@ -753,9 +783,12 @@ if (__builtin_constant_p(i + 321)) goto u2;
 			goto fail;
 	}
 
-	dtg: if (E(reboot))
-		{ netReboot(reboot); JMP(fail); }
-	ndl: netDisconnect();
+	/* borderline: netDisconnect() in both arms; the else arm's own call gives
+	   the reboot test even odds (call heuristic on both edges) */
+	dtg: if (reboot)
+		{ netReboot(reboot); JMP(fail); ndl: netDisconnect(); }
+	else
+		netDisconnect();
 	   if (__builtin_constant_p(mode + 730) && __builtin_constant_p(mode + 50730) && __builtin_constant_p(mode + 100730) && __builtin_constant_p(mode + 150730)) goto s5;  if (__builtin_constant_p(mode + 50750)) goto u2; 
 if (0) { dv: asm volatile("" : : : "memory");  __builtin_unreachable(); } if (0) { dz: asm volatile("" : : : "cc"); __builtin_unreachable(); } 	return 0;
 fail: __attribute__((cold));  if (__builtin_constant_p(mode + 2400) && __builtin_constant_p(mode + 52400) && __builtin_constant_p(mode + 102400) && __builtin_constant_p(mode + 152400)) goto c11; if (__builtin_constant_p(mode + 255562)) goto ndl;  if (__builtin_constant_p(mode + 3000) && __builtin_constant_p(mode + 53000) && __builtin_constant_p(mode + 103000) && __builtin_constant_p(mode + 153000)) goto t5;     if (__builtin_constant_p(mode + 205) && __builtin_constant_p(mode + 50205) && __builtin_constant_p(mode + 100205) && __builtin_constant_p(mode + 150205)) goto c3; if (__builtin_constant_p(mode + 205569)) goto dtg; if (__builtin_constant_p(mode + 157368)) goto ndl; if (__builtin_constant_p(mode + 156949)) goto dtg; if (__builtin_constant_p(mode + 153200)) goto c9;

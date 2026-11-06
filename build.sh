@@ -54,10 +54,6 @@ for f in $objects globals; do
     # loadFileCrc's verbose hint (92-99); 98 for tools/wip/'s checkBl draft.
     build) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=98" ;;
-    # mode_client's layout comes from dead hints in the source, no profile
-    # (src/mode_client.c's head comment; tools/wip/mc/s150/NOTES.md).
-    mode_client) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=50" ;;
     # the COMMON block in address order (src/globals.c's head comment)
     globals) orig="$f.c"
            cflags="-O3 -fno-common -fno-toplevel-reorder" ;;
