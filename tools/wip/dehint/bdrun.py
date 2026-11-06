@@ -25,7 +25,8 @@ def ndiff(a, b):
 
 
 def score(text, flags=None):
-    ok, o, d = bdlib.compile_src(text, bdlib.P98 if flags is None else flags)
+    # BDEXTRA: extra gcc flags for diagnostic runs only (attempt 17: -fno-partial-inlining)
+    ok, o, d = bdlib.compile_src(text, bdlib.P98 if flags is None else flags, extra=os.environ.get('BDEXTRA', '').split())
     try:
         if not ok:
             return {'err': o[:300]}
