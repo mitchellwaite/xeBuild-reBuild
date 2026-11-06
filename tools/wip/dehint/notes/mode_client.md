@@ -6,6 +6,93 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 13
+
+**51 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, full build SHA256
+10dac648...1971c).  List labels 48 before and after.  No borderline shape.  Best near
+misses: n49 (attempt 11, 49 tricks, 10 lines) still; new: drafts/mode_client_a13_u2_62.c
+(50 tricks, 62 lines: the -noenter arm's u2 feed gone, `u2` in rok's list, `c1` in case 3's
+JMP, a k61l `less` toggle; 2 list labels).  build.sh unchanged.
+
+## Attempt 13
+
+Tools (tools/wip/dehint/, states and logs in build/mc/w13/): mc13shift.py (shift of given
+edits), mc13nat.py (natural rewrites x shift x score), mc13neg.py (negative-shift removals x
+repairs, filtered), mc13atsh.py (shift of every AT add), mc13pairs.py (pairs of removals).
+
+- Blocks deleted before vrp1 don't count (an unreferenced label, `if (0) log...`, an early
+  dead `return` all shift 0): the CFG is compacted.  What counts is last_basic_block at
+  vrp1 (the two self-loop latches 194/195 are created there) plus VRP's assert edge splits,
+  committed in block order; c7's split is x = 205.
+- mc13nat on 51 (82 rewrites: ==/!= spellings, `argc == i + 1`, `x == NULL`, braces,
+  `strnicmp() == 0`, ternaries, arm swaps, `arg = argv[++i]`): 74 IDENTICAL with shift 0
+  (free), s_swap 20, ternaries 235/338; the only nonzero shift is `arg = argv[++i]` (or
+  `i++` first) in the -i/-p arms: **-1** (320, the order break).  No natural +1.
+- Pins: bpArgs `"a"(i + 1)` alone shift 0, GOOD order, 16 (the eax/edx swap, attempts 2/4);
+  -i/-p "d" 41; `"a"(i)` of the -r head 139; k61l -2 (235), arm 9 -2, rko "m" -3, fkv "X"
+  -17.
+- AT adds' shifts on 51 (mc13atsh, 274): 241 zero, 28 negative, positive only for case-head
+  edges: c10 into list 2 +1, t5 into list 7 +2, s5 into list 8 +3.  They change the case
+  heads' frequencies: with the -1 removals (ybk, dtg, rok's ndl) t5>7 is the only good order
+  and scores 280-455.
+- clientEraseBlockI in the author's early-return style (return after the invalid and/or
+  outside-area message, `block == -1` first, `!netEraseBlock` first, return after
+  Success): all IDENTICAL, shift 0 (free respellings, same GIMPLE).
+- mc12rm on 51 (rm51.log) = attempt 12's list.  Shift-0 GOOD removals x mc12filt repairs
+  (f_<state>.log; full set rep:perm,default,less,at,retarget,lists + cebifeed,failperm for
+  c11 and u2, the cheap set without lists/retarget for the rest):
+  c11 18 -> 10 (the c11 frequency floor of attempts 11/12), u2 206 -> 88, einv 243,
+  efail2 (the outside-area JMP(efail)) 227, efc 221, rok 369.  (mc12filt's dyblock
+  generator no longer matches the dy block, and failperm needs fail's cold label.)
+- Pairs of removals with the right order (mc13pairs, 433, 38 good): c11 + ybk 18, c11 +
+  dy's unreachable 18 (the n49 family), the rest 150+.
+- **u2 climb**: the -noenter arm's u2 feed removed (nou2, 206) + `u2` in rok's list
+  (rko asm goto) 88 + `c1` at the front of case 3's JMP or of rok's list 70 (u2r2.c, 50
+  tricks, 2 list labels).  The 70: the option loop's latch compare flipped (less toggles
+  fix that alone: 88 -> 80) and the c12 block (clientInfo) placed after c9 instead of right
+  after the u2 block.  + a `less` toggle (k61l's first term `cp(i)`): **62** (u2r3.c).
+  Round 3 on u2r2 (lists incl. drops, less, perm, default, failperm, cebifeed, 1314): 62.
+  The remaining u2 feed (`cp(mode)` after netDisconnect) moved anywhere on nou2 (mc13u2,
+  268, 107 right order): 206 in place, the rest 252+.
+- Why u2 (mc12keys -l u2,...): the u2 block's RTL frequency is 2 in the reference (the
+  -noenter arm's feed: half of an option-loop arm), 0 without it (nou2: u2 trace 51), 1
+  with `u2` in rok's list (u2r: trace 37).  With the u2 edge from rok, the c12/i1 trace
+  goes from 24 to 30 (behind c1, t4, t5, c2) though c12's freq (3) is unchanged; `c1` in a
+  list raises c1 6 -> 7 and only partly repairs it.  No other list add (any AT label into
+  any list) is in the right thread order and near.
+- `i + 1 >= argc` for `== argc` (12 sites): shift 0, 2 lines each (jge for je) or 265+.
+- Round 4 on u2r3 (lists, perm, default, retarget, cebifeed, failperm, reloc of every
+  `mode + N` feed: 3722, 2312 right order): 62 everywhere at best.
+
+### Don't retry (attempt 13)
+
+- Looking for a +1 among deleted-early shapes (dead labels, `if (0)` code, dead returns):
+  the CFG is compacted before vrp1.  Natural respellings of mc13nat's list (all shift 0
+  except the -i/-p `argv[++i]`, -1), clientEraseBlockI's early-return forms (identical,
+  shift 0), dead `case 0` / `case 13` (shift 0).
+- AT adds as the +1 for a -1/-2 removal: the only positive ones are case-head edges (c10,
+  t5, s5) and they move the case frequencies (280+).
+- Repairs (mc12filt full or cheap set) of einv, efail2, efc, rok's cold label (220+), c11
+  (10 floor), pairs of removals (mc13pairs on 51).
+- The u2 climb beyond 62: lists/perm/default/retarget/cebifeed/failperm/reloc on u2r3; the
+  remaining u2 feed relocated on nou2.
+
+### Ideas for attempt 14
+
+- The block-count lever needs a shape that is live at vrp1 and gone by RTL.  Candidates
+  not tried: duplicated tails that PRE's tail merge folds back (one call written in both
+  arms, like the dtg arm's netDisconnect, which is already borderline), redundant tests
+  dom2 threads away, an extra VRP assert split (a tested value used again behind a
+  multi-pred block).  mc13shift.py measures any such edit in a second.
+- What makes the -i/-p `argv[++i]` -1 (an assert split around the "d" pins' `i + 1`): its
+  mirror image would be a natural +1; read vrp1's assert list (build/mc/w13/dump) for the
+  -i arm with and without it.
+- u2 needs RTL frequency 2 from somewhere other than the -noenter arm; rok's list gives 1.
+- n49's c11 frequency problem is unchanged (attempts 11, 12).
+- Honest odds: low.  The remaining removals each move a frequency or a block count that
+  bbro or vrp1's thread order is sensitive to, and every count-neutral repair family has
+  been swept on the near states.
+
 ## State after attempt 12
 
 **51 tricks** (MATCH, 52 before): clientEraseBlockI's `JMP(dy)` (erase-failed block) gone,
