@@ -3,6 +3,15 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 10
+
+**22 tricks, unchanged** (no match; src/ untouched).  parseOption's vlen expect has a
+near miss: `if (vlen) unk; if (!vlen) inc;` (or an `ok` join) gives identical .text, but
+VRP1's threading merges the incomplete block into a copy at the end of the block chain, so
+its literal follows bad's (.rdata only; drafts/options_parseOption_vlen_nearmiss.patch).
+The rest (setBool's 17%, the power and winbutton expects, the rev feeds and dz dummies) has
+no join lever: see "## Attempt 10".
+
 ## State after attempt 9
 
 **22 tricks** (25 before, the parent's count).  Removed (3): both `po_hint()` calls (and the
@@ -1029,3 +1038,73 @@ edges; no natural predictor mix gives 17% (attempt 8's arithmetic).
 
 - The early-return lever (a join between the log and the return) may help other edges that
   need a prediction removed: check `bb->next_bb` and the join before writing a dead test.
+
+## Attempt 10
+
+Levers under test: result/flag joins (attempt 7, 9) on the expects that are left.  Tools
+(tools/wip/dehint/): `op10po.py [S,V ...]` (parseOption: setBool test forms S x vlen tail
+forms V; OUT=file writes the last combination).
+
+### parseOption's vlen expect: the code matches with a join, .rdata doesn't (op10po.py)
+
+- Tail forms where the unknown-with-value arm reaches the return through a join while the
+  incomplete arm returns: `ok = 0; if (vlen) { unk; ok = 1; } if (!ok) inc; return 0;` (J1),
+  `ok = 1 ... if (ok) inc` (J1b), if/else setting ok (J1c), `ok = vlen != 0; if (ok) unk; if
+  (!ok) inc;` (J1d), `if (ok) return 0; inc;` (J1f), `if (vlen) unk; if (!vlen) inc;` (J25,
+  repeated test, no flag): **.text identical**, 4 lines, all `.rdata` offsets: the
+  incomplete message's literal comes after bad's.
+- Why: VRP1 threads the join; the threaded copy of the join block is created at the end of
+  the block chain (duplicate_block puts it before EXIT), and cleanup merges the incomplete
+  block (single pred) into that copy, so it is expanded after `bad:` and its literal is
+  numbered last.  Dumps: build/op/a10 (inc-first up to fnsplit, bad-first from vrp1).
+- Counts: E (expect) has unk 19 / inc 94, J1 unk 33 / inc 33, plain (P, IE, J2, J10, J11)
+  56 / 56 = 62 lines.  So the vlen test doesn't need 17%; it needs the unknown block low,
+  which only the join gives without a builtin.
+- setBool test: shared "
+" block with macid's success (label in the arm, or a block at the
+  end) never helps (797 = plain); a result join `ok = setBoolOption() == 1; if (ok) log; if
+  (ok) return 1;` 245.
+- Every natural heuristic on the vlen test points the wrong way for the unknown arm: the
+  pointer heuristic says `val` is non-null (85%), the opcode heuristic says `vlen > 0` /
+  not `vlen <= 0`, and in the plain tail the calls and early returns of the two arms cancel
+  (50%).  Only a call on the unknown edge alone (29%, its arm joins while the incomplete arm
+  reaches the join's test) lowers it, and that join is what VRP1 threads and merges, moving
+  the incomplete literal behind bad's.  bad must stay last in block order (its literal is
+  last), and the incomplete block can't be R's prev or keep a second pred, so no join form
+  can keep the order.  Draft: drafts/options_parseOption_vlen_nearmiss.patch (J25; .text
+  identical, .rdata off: not a match).
+- setBool expect with the vlen join (J25) at other --param values: 82 300 lines (parseOption
+  203), 84 574, 80 840: the setBool test alone needs 17% exactly, and the natural mixes there
+  are 9.2 / 13.7 / 19.9 / 20.7 / 28 / 29%.  Stuck, as attempt 8 said.
+
+### Rev feeds and dz dummies (op10rev.py): no natural feed exists
+
+- profile_estimate counts (src): sprintf block 554, dz1 47 = 554 x 50% x 17%, dz2 8 = 554 x
+  50% x 17% x 17%; the macid and dualboot asm-goto edges add nothing.  So the dummies' keys
+  come from the feeds alone.
+- dz2's feed dropped: 44 (one tie); dz1's dropped (with or without its `return;`, both
+  feeds dropped, `if (!s) return;` around the rev block, a return after sprintf): 508.
+- A label after the function's `return;` is reachable only by goto, so no flag or result join
+  can carry flow into dz1/dz2: the feeds are tied to the dummies, and the dummies to the asm
+  gotos (zero-byte heap entries).  Not a join problem.
+
+### parseButtonX / parseButton (re-checked, nothing new tried with odds)
+
+- `part,m_bx,pb_exp` (natural parseButton, gcc's split): 321, only applyIniOptions, as attempt
+  7 found.  The power expect turns DS(const return 67%, call 71%) = 83.25% into 83.0%, which
+  the remopower head (103.5 x (1-p)) needs to round to 18 (p <= 83.09%); natural mixes are
+  83.25 / 79.3 / 76 / 71%.  The winbutton expect only outweighs PRED_COLD_FUNCTION (first
+  match) on the call to the hand-written cold part; without `cold` the part loses its size
+  optimization (attempt 3).  These are probability values, not early-return edges, so the
+  join levers don't apply.
+
+### Don't retry (attempt 10)
+
+- Join/flag/repeated-test forms of the vlen tail (all .rdata: VRP1 merge, mechanism above).
+- A shared "
+" block for setBool and macid (label in the arm or at the end).
+- Natural code around the rev block in place of the feeds.
+
+### Result
+
+No match; src/ unchanged (22 tricks).
