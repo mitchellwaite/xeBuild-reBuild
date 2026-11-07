@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 18
+
+Attempt 18 landed nothing; src/build.c and build.sh are unchanged, so the count (16) and attempt 15's review table stand.  New: all 220 triples of hints are additive; t5le and exp_pr have a closed form from vrp1's joiner counts (the SE copy's P(<=5) = Xc p (1 - q) / (Xc - S), the signature-failed copy's = Xc p q / S, checked to the digit against the dumps), which says t5le needs p >= 54% or the signature-failed share S / Xc >= 21.6% (15.6%), and exp_pr needs p q <= 3.7%; and defaultBl60 is late inlined (not early, as attempt 17 had it), so lab_none's r = 1 comes from its own profile and can at best tie.  Sweeps gen_bd290 to gen_bd294 (lone `type == 23`, stacked `*pr` tests, a result test for `else if (type)`, defaultBl60 forms, signature-block forms): none better than src.  See "## Attempt 18".
+
 ## State after attempt 17
 
 Attempt 17 landed nothing; src/build.c and build.sh are unchanged, so the count (16) and attempt 15's review table stand.  It settled exp_upd's einline refusal: fnsplit has already split isUpdateBl (isUpdateBl.part.N holds the tail tests), and that call is the "number of calls" (growth 10 x 2 > 14).  Early inlining (forced, or naturally with a `uint32_t` return) gets the head right but costs 177 strict with or without the expect, because the inlined pairs lose isUpdateBl's early-return 39% and the bit test goes to 50%; so the lead is dead.  Sweeps gen_bd280 to gen_bd284 (isUpdateBl bodies, types, range-folded pair orders; defaultBl60 forms for lab_none; calcBlAreaSize locals for pin_size): none better than src.  See "## Attempt 17".
@@ -1011,3 +1015,56 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7
 - Nothing in build has real odds left by the methods used so far: every expect and label is a missing gcc 6 predictor in natural code, and the pins are IRA/PRE ties (attempts 14 to 17).  Park build at 16.
 - The one question not asked by experiment: could addUpdateBls' body (not isUpdateBl) be laid out right at the early-inlined probabilities, now that a natural early-inlined isUpdateBl exists (the `uint32_t` return, gen_bd282)?  Its diff is pure layout (the 16/24 block placed before the latch).  Probably not: the bit test's 50% is set on the pairs' edges at profile_estimate, whose true successor is the inlined `iftmp` join (no statements a predictor reads), so nothing in the body reaches it; and at 50/50 bb-reorder's better_edge_p (from memory, not checked against the 6.2.0 source) falls back to the destination's frequency, lower is better, and then block order, and both favour the body (47 [7941]) over the header-latch (45 [8725]).  If someone checks, read bb-reorder.c's better_edge_p and find_traces_1_round from the official repo first, then run body forms with `BDEXTRA=-fno-partial-inlining`.
 - The bdrun `BDEXTRA` variable is for such diagnostics only.
+
+## Attempt 18
+
+Goal: the tricks closest to matching (t5le, exp_pr, lab_none, exp_upd from the body side), with borderline but natural shapes considered more readily.  Generators from gen_bd290.  Scratch in build/bd/a18 (not kept; `triples.py` there scores every k-subset of bdhints).
+
+### Costs re-measured (src as of 8b56de61)
+
+Singles unchanged: lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.  **All 220 triples** (new): each is the sum of its parts; the cheapest are exp_pr+lab_t5le+x (9 loose and up).  No triple opens anything a pair didn't.
+
+### exp_upd: a lone `type == 23` first block (gen_bd290, three hand runs)
+
+- fold_truth_andor only makes `a || b` into `a | b` when both are simple compares, so a parenthesized group of three or more (`type == 23 || (type == 15 || type == 16 || type == 9) || ..`) keeps `type == 23` as a block of its own, which would get nonequal + early return (19.9%, under the 23.8% rotate_loop needs).  A group of two is a range test (simple) and merges back: `23 || (15 || 16)` is one block `(type == 23) | range` at 39%, the old 12 loose.
+- But a lone `if (type == 23)` is a GIMPLE_COND with no SSA bool, so nothing in addUpdateBls' body can reuse it, and reassoc merges 23 into the mask (0x3818600): 226 to 267 loose for three groupings.  This is attempt 8's rule from the other side: 23 must sit in a pair, as an SSA bool, and then it's 39%.  The full sweep wasn't run; gen_bd290 is kept for the record.
+
+### t5le and exp_pr: the joiner arithmetic, closed form (read from vrp1 and profile_estimate dumps, `build/bd/a18/vrp1_not5.txt`)
+
+- t5le's 7 lines, exactly (`-fdump-rtl-alignments` of src with the label off): the no-key log copy (final bb 112, freq 17) is aligned only when its layout predecessor, fixup_reorder_chain's jmp block after the SE copy (bb 111), has freq <= 1 (`17 > 10 x prev`).  bb 111 is EDGE_FREQUENCY(SE copy -> setFlashBuild) = 4 x 42.04% = 1.68 -> 2.  So t5le needs P(<=5) on the SE copy > 62.5% (has 57.96%), or the SE copy's freq 3 (has 4: SE block 6 -> checkBl's 61% -> 3.66), or the no-key log >= 21.
+- vrp1 makes two joiner copies of the `xb.type <= 5` test X: one for the signature-failed edge (S = 29 at vrp1, `*pr` = -1, threads through T = `if (*pr)` to fail) and one for the four `*pr` = 0 edges (157).  With Xc = S + 157 = 186, base p = P(X <= 5) and q = P(T -> fail), tree-ssa-threadupdate.c's path counts give (sig copy first, then the other, checked against both dumps to the digit):
+  - sig copy: P(<=5) = Xc p q / S = 6.41 p q (src: 0.85 x 0.02 -> 6.41%, final bb 102's 641);
+  - other copy (it becomes the SE copy): P(<=5) = Xc p (1 - q) / (Xc - S) (label off: 186 x 0.5 x 0.98 / 157 = 58.0%; label on: 98.7%, the 9869 in the dump).
+- So t5le needs p (1 - q) >= 0.528, i.e. p >= 54% with q = 2%; at p = 50% (no heuristic: X's arms hold no call and neither goes straight to the return block) no q helps.  exp_pr needs the sig copy's P(<=5) <= about 24% (so its setFlashBuild copy keeps freq >= 3 and the type-11 block after it isn't aligned): p q <= 3.7%.  Natural spellings give q = 28% at best (37.8% with the break's early return).
+- The other lever in the formula is S / Xc (15.6%): with q = 2% and p = 50%, S / Xc >= 21.6% lands t5le.  S is the verify-failed share: (5|17) 50%, 11 28%, pub1bl 85%, verify-failed 29% (PRED_CALL on the failed log; the dead `else if (type)` keeps PRED_CALL off the passed arm).  Diagnostic (a dead `if (type)` before the failed log, so 50%: build/bd/a18/diag_s.py): S doubles, the signature-failed log becomes hot and moves (72 loose with t5le off, 48 with t5le and exp_pr off).  So S has a window; not pursued further.
+- Why X gets no heuristic, read from predict.c's early-return rule (tree_estimate_probability_bb, from memory, consistent with every number above): an edge is predicted not taken when its destination is the return block (and isn't next_bb), or when its destination's single successor is.  X's arms are T and the type == 14 test, neither of which is; T's break edge is, which is why q is pushed up to 61% (not down).
+
+### Sweeps (gen_bd291 to gen_bd293)
+
+- gen_bd291, exp_pr: two or three redundant tests of `*pr` chained (`(int)*pr < 0`, `*pr == -1`, `*pr != 0`, nested or `&&`; they thread away, *pr being known on each path).  `&&` folds back to one test; nested ones do stack at profile_estimate (36.6% x 37.8% = 13.8% for `< 0` then `== -1`) but every two-test form is the old 0/9 with the label and 2/13 without; three nested tests break `fail` (44 loose).  13.8% is far from 2%, and the shape is code nobody writes.  Don't retry.
+- gen_bd292, `else if (type)`: the passed log guarded by a result test instead (`if (!*pr)` after the verify, a local `ok`, the passed arm first, `else if (!*pr)`), with t5le and the `*pr` expect on or off: 56 loose at best (`else if (!*pr)`, which is as dead as `else if (type)`, since `*pr` is 0 there); the live forms 82 and up.  Don't retry.
+- gen_bd293, lab_none: **defaultBl60 is not early inlined** (attempt 17 said it was): loadConsoleBlFiles calls `defaultBl60.isra.0` at profile_estimate and IPA inlines it late, so r = 1's frequency is defaultBl60's own NULL probability (pointer 15% with the early return's 39%: 10.1%) x the two call sites (136): 14 against the not-entered return's 20.  Even without the early return it would be 15% -> 20, a tie.  Seven defaultBl60 forms (positive test, result variable both ways, else, `return e->data == NULL`, `!e->data`) x case 24 with two calls or `||` x precheck kept or not: the first four are the same CFG (IDENTICAL with the label, 4/8 without), the return-value forms 280 and up.  defaultBl60 is shared with loadBl, so its profile also moves loadBlFiles (a diagnostic expect on its NULL test costs loadBlFiles 26 to 300).  Don't retry lab_none through defaultBl60.
+- gen_bd294, t5le through S: the signature block's natural variants with t5le off (6 orders of `type == 5 || 17 || 11`, pub1bl test either polarity, verify test either polarity, `else if (type)` or plain else; 48 cases).  Only src's form is the old 0/7; other type orders change the compare order (4 loose, and the alignment is still missing), the negated pub1bl test moves .rdata (50 and up), a plain else 50 and up.  None moves S into the window.  Don't retry.
+
+### exp_upd from the body side (target 4): looked at, not swept
+
+- The natural early-inlined isUpdateBl (`uint32_t` return, attempt 17) is 177 strict / 102 loose with or without the expect; its diff (`build/bd/a18/ei.c`) is four chunks moved (the 16/24 tail, the imgCfOffset block, the epilogue, `cmp esi,eax` for `cmp eax,esi`), not one placement, so no single body form would close it.  better_edge_p wasn't read.  With late inlining, rotate_loop (bb-reorder.c, from memory) picks the hottest edge leaving the loop's trace: the 23 test's edge to the body (P23 x 8725) must lose to the bit test's (8551 x 50% x 39%), i.e. P23 < 16.3% on the trace's frequencies (attempt 8's 23.8% was measured on another base); the expect gives 2%, a lone `==` would give 19.9%, and the pair gives 39%.
+
+### Don't retry (attempt 18)
+
+- Triples of hints off (all 220 are additive).
+- exp_upd by a lone `type == 23` first block (gen_bd290's idea): 23 then merges into the mask.
+- exp_pr by stacked redundant `*pr` tests (gen_bd291).
+- `else if (type)` by a result test after the verify (gen_bd292).
+- lab_none through defaultBl60's form or NULL probability (gen_bd293): it's late inlined and shared with loadBl.
+- t5le through the signature block's forms (gen_bd294), or by raising the verify-failed share with a dead test (diag_s: the failed log moves).
+
+### Costs now (strict/loose, removed alone; 16 tricks, unchanged)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (4/8 with the precheck gone too).
+
+### What to try next
+
+- t5le has a closed form now: the SE copy's P(<=5) = Xc p (1 - q) / (Xc - S).  The only term not yet moved by a natural shape is S / Xc (needs 15.6% -> 21.6% with nothing else hot enough to move).  A natural way to make the verify-failed path somewhat likelier (not 50%), or the non-signature flow into the tail somewhat smaller, is the one untested lever; check any candidate first with `bddump.sh f loadBlFiles alignments` (bb 111's freq must be <= 1) before scoring.
+- The same formula says exp_pr needs p q <= 3.7%; with p near 50% that's q <= 7%, far below any natural predictor.  exp_pr only goes with a different tail.
+- Otherwise build stays parked at 16, as attempts 14 to 17 said.
