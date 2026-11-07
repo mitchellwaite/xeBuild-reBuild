@@ -113,7 +113,6 @@ int checkBl''', 'int checkBl')],
     # --- the rest
     'nei_blmod': [('''__attribute__((optimize("no-early-inlining")))
 void patchBlsBlmod''', 'void patchBlsBlmod')],
-    'exp_t24': [('type == 25 && __builtin_expect(type != 24, 1) && e->offset', 'type == 25 && e->offset')],
     'pin_size': [('''		__asm__("" : "+b"(size));
 ''', '')],
     'exp_devgl': [('__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0)', 'xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16')],

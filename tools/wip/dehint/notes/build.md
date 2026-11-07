@@ -3,6 +3,14 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 24
+
+**12 tricks** (13 before): `--param builtin-expect-probability=98`, 3 `__builtin_expect` (type == 10, `*pr != 0`, devgl), 2 pins (d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  exp_t24 is gone: addBlsToImage's kit test sits in the else-if chain like the retail one (`else if (xb.type > BUILD_DEVGL16 && (type == 25 || type == 23))`, attempt 16's gen_bd270 shape), so the kit path's other types pass through the xell room test at profile_estimate and the warning gets the frequency it needs; with 25 first, vrp1's first assert on the kit-false edge is `type != 25`, so the threader takes that path past the room test afterwards (with 23 first it can't: 63 loose).  IDENTICAL BYTES, full build SHA256 matches.  addBlsToImage is now param-independent; the object still matches at p = 96, 98, 99 only (loadBlFiles), so the param stays at 98.  See "## Attempt 24".  New borderline shape, marked in src:
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| addBlsToImage's skip tests | `(type == 25 \|\| type == 23)` in both the retail and the kit test | Live and not redundant, but the order is chosen for what gcc does with it: vrp1's threader only sees the first leaf's `!=` assert on the kit test's false edge |
+
 ## State after attempt 23
 
 **13 tricks** (14 before): `--param builtin-expect-probability=98`, 4 `__builtin_expect` (type == 10, `*pr != 0`, type != 24, devgl), 2 pins (d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  exp_upd is gone: isUpdateBl tests 23 and 15 as ifs of their own before the `||` group (gen_bd341, gen_bd342), so the lone `type == 23` gets nonequal + early return (19.9%, inside attempt 22's <= 28% window) at profile_estimate, and ifcombine pairs the two lone tests into the same `(23|15)` OR after inlining, whose `type == 23` the loop body reuses.  IDENTICAL BYTES, full build SHA256 matches.  addUpdateBls is now param-independent; the object still matches at p = 96, 98, 99 only (loadBl's expects), so the param stays at 98.  See "## Attempt 23".  New borderline shape, marked in src:
@@ -1346,3 +1354,39 @@ lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_t24 29/7, exp_devgl 43/7, pin_size 8
 
 - The lever that landed exp_upd is new: a test written as its own `if` gets its own predictor at profile_estimate (here nonequal on a lone `==`), and ifcombine rebuilds the OR after inlining, so the later passes see the same GIMPLE as the folded `||`.  It only helps where a folded OR (an `||` of simple compares) has the wrong probability and the OR's members are cond-only blocks after inlining.  Candidates to check for that shape: the retail arm's `type == 23 || type == 25` in addBlsToImage (exp_t24's path starts after it), and any `||` of compares feeding a frequency hint in loadBl or loadConsoleBlFiles.
 - Otherwise the attempt 22 windows stand for the rest: exp_t24 x1.57 on the warning, exp_devgl 75% (has 73%), lab_none r = 1 >= 21 (has 14).
+
+## Attempt 24
+
+Goal: attempt 23's lever (lone tests get their own predictor, a later pass rebuilds the OR) on exp_t24 first, then exp_devgl, loadBl's hints and lab_none.  Generator gen_bd350 on src as of 892a28f1.  Scratch in build/bd/a24 (not kept).
+
+### exp_t24: landed (13 -> 12, IDENTICAL BYTES)
+
+The lone-if lever itself has nothing to act on in addBlsToImage: the retail-skip flow is only 8% of the chain (bb 36 3762 of 4095), so lone 23/25 tests there could add at most x1.09, and the kit arm's OR isn't on the warning's path.  But re-reading attempt 16's gen_bd270 (the kit arm in the chain, `else if (xb.type > BUILD_DEVGL16 && (type == 23 || type == 25))`) on the current src showed what was left of it:
+
+- At profile_estimate that form sends the kit path's not-23/25 flow into the `type == 25` test (bb 38 3272, against 1881 in src), so the warning gets about 128 with no expect, above the seReplacesCf found-SE block's 114 to 117 that it has to beat (attempt 22's window).  The warning's placement was right in gen_bd270 already; the 27 loose lines were all the kit path's `cmp edi,0x19` copy, i.e. vrp1 not threading the kit-false edge past the `type == 25` test.
+- Why vrp1 didn't (vrp1 dump of gen_bd270's best): the kit test's false edge gets two chained asserts from the folded OR, `type_206 = ASSERT_EXPR <type_21, != 23>; type_207 = ASSERT_EXPR <type_206, != 25>`.  The threader's simplify_control_stmt_condition looks up the operand through lhs_of_dominating_assert (tree-ssa-threadedge.c), which returns the first ASSERT_EXPR whose operand is `type_21` itself, i.e. type_206 with the range ~[23, 23]; that can't decide `type_21 == 25`, so the path isn't threaded.
+- **gen_bd350: IDENTICAL whenever the kit test is written `(type == 25 || type == 23)`**: the first assert is then `!= 25` and the threader takes the kit path straight past the warning test, as the reference has it.  The retail test's order doesn't matter (r23 and r25 both match: its false edge goes through the `xb.type > 5` test first, and the reference keeps it entering the `type == 25` test anyway), nor does `> BUILD_DEVGL16` against `>= BUILD_DEVKIT`, nor the room test flat or nested.  `(type == 23 || type == 25)` in the kit test is the old 63 loose (27 in addBlsToImage, .rdata and buildFlash).
+- Landed `k25 r25 flat`: both skip tests spelled `(type == 25 || type == 23)` so they read alike, the kit test in the chain like the retail one, `else if (type == 25 && e->offset < imgSize())` without the expect.  Same behaviour: a kit entry of another type now reaches the room test, which is false for it.
+- Borderline, marked in src: live and not redundant, but the 25-first order is chosen for vrp1's assert order (as attempt 15's `(e->size & ~3)`).  The kit arm in the chain is arguably the more natural form (it matches the retail arm), not borderline in itself.
+- `bdpwin.py`: addBlsToImage is now 0/0 at every p from 50 to 99.  The whole object matches at p = 96, 98, 99 only (89 to 95 and 97 cost 26 loose in loadBlFiles), so the param stays at 98.
+- **New lever: the order of the leaves in a folded `||` decides which `!=` assert vrp1's threader can use on its false edge (only the first).  Where a hint fixes a path that vrp1 should thread past a later test of one of the OR's leaves, put that leaf first.**  The same applies to any `(a == x) | (a == y)` false edge followed by a test of `a == y`.
+
+### Costs now (strict/loose, removed alone; 12 tricks)
+
+lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (`bdhints.py` on the landed src; exp_t24's entry is gone from bdhints.py and bdtricks.py).
+
+### The assert-order lever on loadBl (gen_bd351, 48 cases)
+
+- loadBl's only folded `||` of a local is the signature test `type == 5 || type == 17 || type == 11` (fold makes `(5|17)` one block and the third leaf a lone cond).  Its six orders crossed with t5le, exp_pr, both, exp_t10, the dead `else if (type)` as a plain else, the barrier, and t5le + exp_pr + plain else off: nothing beats src.  Other orders only change the compare order (4 or 6 loose with every hint on, and the hints cost the same on top: t5le 4/11, exp_pr 6/22, exp_t10 48/118); the plain-else cases are 94 loose and up (56 with t5le and exp_pr off too), the barrier cases 126 and up, src's order best in each.  No later test on the signature path reads one of the leaves the way addBlsToImage's room test reads 25, so the order has nothing to thread.
+- The other folded `||`s left in build.c are of memory (`xb.type == .. || xb.type > ..`: not simple operands, so the front end keeps them as separate conds) or range tests (`xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16`: one `t - 4 <= 1` cond, no assert pair), so the lever doesn't reach exp_devgl, lab_none, exp_t10 or t5le.
+
+### Don't retry (attempt 24)
+
+- exp_t24 is gone; don't revisit the kit-in-chain form with 23 first (vrp1 can't thread it).
+- The signature test's leaf order with loadBl's hints off (gen_bd351).
+- Lone 23/25 tests in addBlsToImage's retail arm for the warning: the retail skip is 8% of the chain's flow, x1.09 at most.
+
+### What to try next
+
+- Two levers now come from reading which predecessor flows into a test at profile_estimate: attempt 23 (a lone `if` gets its own predictor) and this one (a shape that sends extra flow through a test at profile_estimate, which vrp1 threads away later if the assert it needs is the first on that edge).  The second is worth checking wherever a hint raises a block's frequency: give the block a predecessor whose flow is later threaded past it, and check vrp1's ASSERT_EXPRs (`bddump.sh f fn t-vrp1`, grep ASSERT_EXPR) on the new edge.
+- exp_devgl (sink's 75% against 73%) and lab_none (r = 1 at 14 against 20/21) are the cheapest left; neither has a folded `||` of a local on its path.

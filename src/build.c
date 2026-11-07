@@ -1862,6 +1862,12 @@ void fixupPatchSet(void)
 	log_printf(1, "Done!\n");
 }
 
+/* write the flash files' bootloaders into the image.  The kit test sits in
+   the else-if chain like the retail one, so at profile_estimate the kit
+   path's other types pass through the xell room test, which gives the
+   warning the frequency bb-reorder needs to lay it out before
+   seReplacesCf's found-SE block; vrp1 threads that path past the test
+   afterwards (see the order note below) */
 void addBlsToImage(void)
 {
 	struct fileent *e;
@@ -1910,15 +1916,18 @@ void addBlsToImage(void)
 			else
 				off += 0x10;
 		}
-		if (xb.type == BUILD_RETAIL && (type == 23 || type == 25)) {
+		/* Borderline, for review: xell (25) is tested before the patches (23) in
+		   both skip tests.  Live and not redundant, but the order is chosen for
+		   what gcc does with it: vrp1 can only thread the kit path's other types
+		   past the `type == 25` warning test below when its first assert on the
+		   kit test's false edge is `type != 25` (23 first costs 63 lines) */
+		if (xb.type == BUILD_RETAIL && (type == 25 || type == 23)) {
 			log_printf(1, "retail image, skipping %s\n", e->name);
 			continue;
-		} else if (xb.type > BUILD_DEVGL16) {
-			if (type == 23 || type == 25) {
-				log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
-				continue;
-			}
-		} else if (type == 25 && __builtin_expect(type != 24, 1) && e->offset < imgSize()) {
+		} else if (xb.type > BUILD_DEVGL16 && (type == 25 || type == 23)) {
+			log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
+			continue;
+		} else if (type == 25 && e->offset < imgSize()) {
 			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
