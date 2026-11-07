@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 40
+
+Attempt 40 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It took attempt 39's inlining lead and corrected its mechanism: loadBl is **not** inlined for its speedup (the u8 form has big_speedup too, measured with the auto limit raised as a diagnostic) but refused by ipa-inline's early **min_size** check (`min_size - call size > max(insns-single 400, insns-auto 40)`, reported as "max-inline-insns-auto limit reached"): min_size is the size outside every predicate, about 30 in src, 500 when the switch has no case predicates.  A rescan of every generator from gen_bd320 to gen_bd503 that still runs on src (about 80) found **no loadBl refusal row at all**; the only refused families were attempt 39's and attempt 9's gen_bd202 `in` rows (the none test inside a helper returning r).  Rescued so that loadBl stays inlined (the type loaded before strnicmp, or `switch (e->type)` with a narrow local), every one is worse than src: the none test inside loadBl 207 loose with every hint (and the hints stop mattering), narrow locals 138 and up, gen_bd202's `in` 347 and up hint-free (gen_bd520, gen_bd522).  New equal base: loadBl without its `i` parameter (`edata` plus the constant_p entry's first term on `e->crc`, `e->size` or `e->offset` in place of `i`) is IDENTICAL (gen_bd521); it frees nothing.  See "## Attempt 40".
+
 ## State after attempt 39
 
 Attempt 39 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It stepped back from per-hint spellings to how the data reaches loadBl, each form crossed with every loadBl-side trick off alone.  The tail reading `e->data` instead of `xb.files[i].data`, and loadBlFiles' `r` (or `e` and `r`) declared in the loop body (so `&r` gets a scope CLOBBER each iteration), are **equal bases**: IDENTICAL with every hint, and every hint costs what it costs on src (gen_bd510).  A pointer IV is 355 loose.  case 2's slot through a local pointer is 18 loose.  checkBl's type argument as `e->type` (gen_bd512 `fld_ck`) is 9 loose with every hint, and worse than src with the constant_p entry or exp_t10 off.  New reading: **loadBl is inlined only while the IPA inliner can split its size by case predicates** on the parameter load `e->type` (`op0[ref offset: 8224] == N`; unconditional size 29).  loadBl taking `i` and computing `e` itself, any narrow `type` local (uint8_t, uint16_t, signed char, short), or the "none" test moved into loadBl as an early return all make the size unconditional (234.5), and then loadBl stays out of line with "max-inline-insns-auto limit reached" (gen_bd510, gen_bd511).  See "## Attempt 39".
@@ -2158,3 +2162,50 @@ uint8_t, uint16_t, signed char, short, int8_t, int16_t: every one leaves loadBl 
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 34 (src unchanged; re-measured by gen_bd510's `src|` rows): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 and pin_size 82/40 as attempt 38.
+
+## Attempt 40
+
+Goal: attempt 39's lead.  If loadBl is inlined only while the inline summary splits its size by case predicates, earlier sweeps may have rejected good shapes only because loadBl went out of line; find those families, give them a form that stays inlined, and rescore them with the hints on and off.  Then attempt 39's "What to try next".  Generators gen_bd520 to gen_bd522 on src as of 53c5fc43 (`python tools/wip/dehint/bdrun.py tools/wip/dehint/bdgen/gen_bd52N.py`).  Scratch in build/bd/a40 (not kept: `inl.sh file.c` prints loadBl's inline decision from `-fdump-ipa-inline-details`, `d_src`, `d_u8`, `d_u8b` are the inline dumps of src, the uint8_t form, and the uint8_t form with `--param max-inline-insns-auto=2000` (diagnostic only, to print the refused edge's badness), `fd.py file.c fn` is a unified diff of one function against the reference, `scan/` holds the rescan below).  Loose/strict lines in loadBlFiles unless said.
+
+### What really gates loadBl's inlining (read from `-fdump-ipa-inline-details`)
+
+- src: `Considering loadBl/55 with 533 size ... size growth 494, time 37  big_speedup ... time w/o inlining 664, time w inlining 552, overall growth -39`.  It is inlined by the small-function inliner, not as a function called once.
+- The uint8_t form, with the auto limit raised only to print the badness, also has `big_speedup` (671 against 559).  So the speedup isn't what differs.  In the normal compile the edge is refused before badness is computed (`not inlinable: loadBlFiles/56 -> loadBl/55, --param max-inline-insns-auto limit reached`), and its summary has `min size: 500` (src: about 30, the size outside every predicate).  That fits want_inline_small_function_p's early test (from memory, consistent with both dumps): for a callee not declared inline, refuse when `min_size - call_stmt_size > MAX (max-inline-insns-single = 400, max-inline-insns-auto = 40)`.
+- min_size is the size under the `(true)` predicate plus the calls outside a predicate.  In src nearly everything is under a case predicate (`op0[ref offset: 8224] == N`), because the switch index is an unmodified load of the parameter's field.  With no case predicates (a converted index, an index loaded after a call such as strnicmp, `e` not a parameter) the whole body is unconditional, about 500, over 400.  Statements before the switch are fine as long as the switch still gets its predicates and the unconditional part stays under about 400.
+
+### Rescan: which earlier sweeps had a refusal (build/bd/a40/scan/summary.txt)
+
+- Every generator from gen_bd320 to gen_bd503 was rerun against src (`bdrun.py -n 1000`, then the 9999 rows counted).  Those that still run (most of them; gen_bd330, gen_bd340 to gen_bd342, gen_bd350, gen_bd454, gen_bd460 have ERR rows from older bases, gen_bd461 to gen_bd463 stop on bdhints' missing pin_d) have **no loadBl refusal row**.  gen_bd372's two 9999 rows are a `defaultBl60.isra.0` clone, not loadBl.  gen_bd411, gen_bd414 and gen_bd415 (attempt 30's reconstructions) were checked first, by hand: 0 refusals.
+- Older generators mostly don't apply to today's src.  Of the attempt 9 reconstructions, gen_bd202 runs: its 24 `in` rows (the none test inside `static int loadBl(e, i)`, r returned) are refusals, because the type is loaded after strnicmp.  gen_bd204 has none.
+- So the refusals are attempt 39's families (`iarg`, `noneinbl`, narrow locals) and gen_bd202's `in` rows.  The 9999 rows attempt 39 mentioned were in those generators only, not spread through the earlier sweeps.
+
+### gen_bd520: attempt 39's refusals redone so that loadBl stays inlined (56 cases, every hint on and each loadBl-side hint off alone)
+
+- `nib_and` / `nib_nest`: the none test as loadBl's first statement after `type = e->type;` (the load comes before strnicmp, so the case predicates stay), the caller calling loadBl without the test.  Inlined, but **207 loose / 443 strict with every hint, and the same with exp_t10, t5le, exp_pr or cp off**: the hints stop mattering because the whole profile has moved.  In src the none test gets PRED_CALL (29%) from the loadBl call in its guarded block (attempt 9).  Inside loadBl it is an early return.
+- `sw_<type>`: `switch (e->type)` on the field with a narrow `type` local for the rest: inlined; uint8_t 143, uint16_t 138 loose with every hint (byte and word compares, and VRP knows the range).  `unsigned` / `uint32_t` 38 loose, as gen_bd450's retyping.
+- `iarg` (`e` computed from `i` in loadBl) can't be rescued this way: a switch on `xb.files[i].type` isn't a load through a parameter, so it has no predicates.  The natural way to drop the interface change is the next item.
+
+### gen_bd521: loadBl without `i` (98 cases)
+
+- Attempt 39's `edata` (the tail's setFlashBuild reads `e->data`) leaves `i` used only by the constant_p entry.  With that entry's first term on a field (`(char *)__builtin_constant_p(e->crc) == (char *)1 && ..`, also `e->size`, `e->offset`) and `i` dropped from loadBl's parameters (`loadBl(e, &r)`): **IDENTICAL** with every hint, and each hint off costs what it costs on src (t5le 0/7, exp_pr 2/18, lab_none 231/333).  The entry on `e` itself is cp-off's 26/78, and on `type` alone 26/69 (attempt 27's one-constant_p weight).
+- An equal base that frees nothing: the two `__builtin_constant_p` stay, now naming a field.  Note it if the entry is ever replaced: loadBl then needs no `i` at all.
+
+### gen_bd522: attempt 9's reconstruction C with the none test inside, rescued (48 cases, no hints, as gen_bd202)
+
+- With `int type = e->type;` above the none test, the helper returning r is inlined again.  The `in` rows are 347 loose at best against gen_bd202's own `r0` call form at 225 (both are far from src's hint-free 165).  The none test inside the helper is worse for the same reason as gen_bd520's `nib`.
+
+### Don't retry (attempt 40)
+
+- The inlining lead for old sweeps: nothing in gen_bd320 to gen_bd503 was rejected by a refusal, and the families that were (attempt 39's, gen_bd202's `in`) are worse once they stay inlined.
+- The none test inside loadBl in any form that keeps loadBl inlined (gen_bd520, gen_bd522): the call site's PRED_CALL is part of the reference's profile.
+- `switch (e->type)` with a narrow or unsigned `type` local (gen_bd520).
+- loadBl without `i` as a lever (gen_bd521): an equal base only.
+
+### What to try next
+
+- When a reshape scores 9999 on loadBl, check `min size` in the inline summary first: the fix is to keep the switch on an unmodified load of `e->type` (load it before any call or store), not to shrink the body.  The budget for code outside the switch is about 370 size units.
+- Nothing new opened for the remaining tricks.  The closest bases are still attempt 27's exp_t10 weight near miss (block 116 at 99 against 88), attempt 30's c6 vol_fail near miss and attempt 25's windows.  The edata / no-`i` base is an alternative start if the constant_p entry is reworked.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 39 (src unchanged; re-measured by gen_bd520's and gen_bd521's `src|` rows): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 and pin_size 82/40 as attempt 38.
