@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 42
+
+Attempt 42 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It swept hint interactions: every pair of the 9 removable items on src, and every single / pair / triple of the 6 loadBl-side items on the and9, c2, c6, no-`i` and weight bases (gen_bd540, 276 cases), plus the param at 50 to 99 and with no `--param` on the cheap subsets (bdpsweep2.py).  The loadBl items are **not** additive (attempt 18's "all triples additive" no longer holds): with the constant_p entry off, exp_t10 costs only +2 (28 against 46 alone), and once exp_t10 and the entry are both off, exp_pr and t5le add only 2 more.  With exp_t10 and exp_pr both gone the param can go too (buildFlash's exp_devgl matches at gcc's default 90).  **New best composite near miss** (drafts/build_loadBl_wt_noparam_nearmiss.patch): attempt 27's weight form of the entry, exp_t10, exp_pr and t5le off and **no `--param`**: 4 loose in loadBlFiles (the bbro dup of `if (r)`, block 116 at 99 against 88, and the SE copy's `ja`), i.e. 4 tricks for those two effects.  Without the weight the cluster {param, exp_t10, exp_pr, cp, t5le} (6 tricks) is 30 loose (the type-11 block's place on top); with c2 and case 6 through `goto chk` also vol_fail, 7 tricks, 20 loose.  Nothing natural fixed the dup; the SE test's spellings with a 0-compare fold back (closed).  lab_none by case 24's forms with the precheck and label off: no change (gen_bd543).  Full matrix in "## Attempt 42".
+
 ## State after attempt 41
 
 Attempt 41 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It took the two tricks outside loadBl.  exp_devgl from the RTL side: once tree-sink has moved the setne into the non-dev arm, ce1/ce2/ce3 all find the IF-THEN block but can't convert it, because the arm's compare sets the flags the condition uses (gcc 6 refuses any then-block insn that sets the cc register); so the cmovbe needs GIMPLE that sink leaves alone, which is attempts 15, 16 and 25's closed problem.  lab_none: the none test as a `continue`, or the `if (r)` exit inside the none test's block, costs 169 loose and up (the skip path must pass the r test, gen_bd530, gen_bd531), and defaultBl60 written out in case 24 lowers the r = 1 block to 12 (9% in the caller's profile against the helper's 10.1%, gen_bd532).  See "## Attempt 41".
@@ -2253,3 +2257,116 @@ Goal: the two tricks outside loadBl with the least recent work, exp_devgl (build
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 40 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (8/4 with the precheck gone too), etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 (re-measured: `bdlib.py build/bd/a41/nodev.c`), pin_size 82/40 as attempt 38.
+
+## Attempt 42
+
+Goal: interactions, as the brief asked: remove every pair (and the cheap triples) of hints on src and on the known near-miss bases, look for any set whose cost is far below the sum or near 0, check whether the param value interacts once expects go, then attempt 41's "What to try next".  Generators gen_bd540 to gen_bd543 on src as of 92fa270c (`python tools/wip/dehint/bdrun.py tools/wip/dehint/bdgen/gen_bd54N.py -n 1000`), and `tools/wip/dehint/bdpsweep2.py base:hint,hint ... [-r LO-HI]` (bdpsweep.py on gen_bd540's bases with etype / cp, plus a no-`--param` row).  Scratch in build/bd/a42 (not kept: `mk.py base hints out.c` writes one case, `mat.py` / `matf.py` turn bdrun output into the tables below, `np.py` the no-param runs, `u16.py` / `se.py` the SE-test runs).
+
+Items: bdhints' 7 (exp_t10, exp_pr, lab_t5le, vol_fail, lab_none, pin_size, exp_devgl), `etype` (the plain else for `else if (type)`) and `cp` (the constant_p entry as `if (0)`, two tricks).  Bases (gen_bd540's `BASES`): `src`; `and9` (attempt 25's fallback); `c2` (and9 + fail closing case 2, barrier kept; IDENTICAL); `c6` (c2 + case 6 first; a base only once vol_fail is off); `noi` (gen_bd521's `noi_crc`: edata, the entry's first term on `e->crc`, loadBl without `i`; IDENTICAL); `wt` (attempt 27's weight, `.. && __builtin_constant_p(type) == 1`; 26/36 with every hint, the near miss once exp_t10 is off).
+
+### The matrix (gen_bd540, 276 cases)
+
+"+d" = the callers' 40 loose lines of call displacement on top (loadBlFiles changes length; loadConsoleBlFiles 18, buildFlash 20, blmodMissing 2), which is all the other-function cost of the cp-off and exp_t10-off rows.  The src table is the whole object, so its cp, etype and exp_t10 cells carry that 40.
+
+Object loose/strict, src (diagonal = alone):
+
+| | exp_t10 | exp_pr | lab_t5le | vol_fail | etype | cp | lab_none | pin_size | exp_devgl |
+|---|---|---|---|---|---|---|---|---|---|
+| exp_t10 | **46/116** | 70/124 | 68/120 | 144/312 | 114/191 | 68/120 | 277/449 | 86/198 | 53/159 |
+| exp_pr |  | **2/18** | 2/13 | 119/278 | 56/128 | 68/122 | 233/351 | 42/100 | 9/61 |
+| lab_t5le |  |  | **0/7** | 126/296 | 80/146 | 66/118 | 231/340 | 40/89 | 7/50 |
+| vol_fail |  |  |  | **126/296** | 172/339 | 86/257 | 349/625 | 166/378 | 133/339 |
+| etype |  |  |  |  | **94/168** | 120/191 | 317/497 | 134/250 | 101/211 |
+| cp |  |  |  |  |  | **66/118** | 289/447 | 106/200 | 73/161 |
+| lab_none |  |  |  |  |  |  | **231/333** | 271/415 | 238/376 |
+| pin_size |  |  |  |  |  |  |  | **40/82** | 47/125 |
+| exp_devgl |  |  |  |  |  |  |  |  | **7/43** |
+
+loadBlFiles loose/strict on the other bases:
+
+| and9 | exp_t10 | exp_pr | lab_t5le | vol_fail | etype | cp |
+|---|---|---|---|---|---|---|
+| exp_t10 | **28/80+d** | 30/84+d | 28/80+d | 87/234 | 74/151+d | 28/80+d |
+| exp_pr |  | **2/18** | 2/13 | 93/258 | 56/128 | 28/82+d |
+| lab_t5le |  |  | **0/7** | 60/232+d | 54/121 | 26/78+d |
+| vol_fail |  |  |  | **60/232+d** | 132/299+d | 86/257 |
+| etype |  |  |  |  | **54/128+d** | 80/151+d |
+| cp |  |  |  |  |  | **26/78+d** |
+
+| c2 | exp_t10 | exp_pr | lab_t5le | vol_fail | etype | cp |
+|---|---|---|---|---|---|---|
+| exp_t10 | **28/80+d** | 28/80+d | 28/80+d | 35/105+d | 74/151+d | 28/80+d |
+| exp_pr |  | **0/14** | 2/13 | 9/81+d | 54/126 | 26/78+d |
+| lab_t5le |  |  | **0/7** | 9/81+d | 54/121 | 26/78+d |
+| vol_fail |  |  |  | **9/81+d** | 63/175 | 35/119 |
+| etype |  |  |  |  | **54/128+d** | 80/151+d |
+| cp |  |  |  |  |  | **26/78+d** |
+
+| c6 (barrier kept: 80/171) | exp_t10 | exp_pr | lab_t5le | vol_fail | etype | cp |
+|---|---|---|---|---|---|---|
+| exp_t10 | **68/189** | 68/192 | 68/191 | 29/87+d | 104/242 | 28/80+d |
+| exp_pr |  | **40/131+d** | 42/135+d | 1/21 | 84/217+d | 26/78+d |
+| lab_t5le |  |  | **40/131+d** | 1/14 | 84/216+d | 26/78+d |
+| vol_fail |  |  |  | **1/7** | 55/135+d | 35/119 |
+| etype |  |  |  |  | **84/219** | 80/151+d |
+| cp |  |  |  |  |  | **26/78+d** |
+
+| noi | exp_t10 | exp_pr | lab_t5le | vol_fail | etype | cp |
+|---|---|---|---|---|---|---|
+| exp_t10 | **46/116** | 30/84+d | 28/80+d | 104/272+d | 74/151+d | 28/80+d |
+| exp_pr |  | **2/18** | 2/13 | 119/278 | 56/128 | 28/82+d |
+| lab_t5le |  |  | **0/7** | 86/256+d | 80/146 | 26/78+d |
+| vol_fail |  |  |  | **86/256+d** | 132/299+d | 86/257 |
+| etype |  |  |  |  | **54/128+d** | 80/151+d |
+| cp |  |  |  |  |  | **26/78+d** |
+
+| wt (26/36 itself) | exp_t10 | exp_pr | lab_t5le | vol_fail | etype | cp |
+|---|---|---|---|---|---|---|
+| exp_t10 | **2/53+d** | 4/60+d | 2/56+d | 60/234+d | 56/130+d | 28/80+d |
+| exp_pr |  | **28/47** | 28/40 | 111/272 | 56/128 | 28/82+d |
+| lab_t5le |  |  | **26/43** | 86/252+d | 54/121 | 26/78+d |
+| vol_fail |  |  |  | **86/252+d** | 114/279+d | 86/257 |
+| etype |  |  |  |  | **54/128+d** | 80/151+d |
+| cp |  |  |  |  |  | **26/78+d** |
+
+Triples (loadBlFiles loose): on src exp_t10+exp_pr+cp 30, exp_t10+lab_t5le+cp 28, exp_pr+lab_t5le+cp 28, exp_t10+exp_pr+lab_t5le 30; on c2 exp_t10+vol_fail+cp 35, exp_pr+vol_fail+cp and lab_t5le+vol_fail+cp 35, exp_pr+lab_t5le+vol_fail 11; on c6 exp_pr+lab_t5le+vol_fail 3/20.  Every triple with etype is 54 and up; with vol_fail on src / and9 / noi 86 and up.  None is below its cheapest pair.
+
+Readings:
+- **Not additive any more.**  Attempt 18 found all triples additive (16 tricks then); now the loadBl items form one cluster.  cp off makes exp_t10 cost +2 (28 against 46 alone on src and noi), and with exp_t10 and cp both off exp_pr and t5le add only 2 more (30 for 5 tricks).  The 28 is always attempt 27's two effects (bbro's dup of `if (r)` into the merged checkBl call block, block 116 at 99 against 88; the type-11 block moved after the SE copy), so cp off and exp_t10 off are two routes to one layout.  On and9 / c2 exp_t10 alone is already 28: the fallback reshape does half of what cp does.
+- **etype is independent of the cluster** (54 on top of anything), and vol_fail only drops on c2 / c6 (attempts 26 and 30's mechanism, unchanged by the others).  lab_none, pin_size and exp_devgl are additive with everything (other functions).
+- No pair or triple is near 0 except the known alignment-only ones: lab_t5le 0/7 (every base), exp_pr on c2 0/14, exp_pr+lab_t5le 2/13, vol_fail on c6 1/7 (with t5le 1/14, with exp_pr 1/21, both 3/20).
+
+### The param (bdpsweep2.py, 50 to 99 and no `--param`)
+
+- No value makes any near-zero set IDENTICAL: lab_t5le 0/7 at 94 to 98 on and9 / c2, 96 to 99 on noi; c2 exp_pr 0/14 at 94 to 98; c6 vol_fail 1/7 at 96 to 98; exp_pr+lab_t5le 2/13.  Below about 94 they all jump to 26 and up (the remaining expects need the param).
+- **Without `--param` (gcc's 90) every function except loadBlFiles still matches**: exp_devgl only needs the non-dev edge >= 75%, so the param is there for exp_t10 and exp_pr alone.  With both expects off the param can go: src exp_t10+exp_pr at no param 30/84, + cp + lab_t5le 30/82 (6 tricks for 30 lines), c2 + vol_fail 37/109 (7 tricks).  src exp_t10 alone is 46 at p = 98 and 28 at no param (exp_pr's expect at 90 instead of 98).
+- **wt at no param (new near miss, drafts/build_loadBl_wt_noparam_nearmiss.patch):** exp_t10 off 2/55 (the dup only); exp_t10 + exp_pr + lab_t5le off **4/59**, the same at every p from 85 to 99 and with no param (the dup and the SE copy's `ja` for `jbe`).  So on the weight base the param, exp_t10, exp_pr and t5le are one dup and one branch sense away.  BDP=90 bbro dump of that case: block 116 still 99 (`Trace 47 (round 3): 11 [78] 115 [72] 116 [99]`, `Duplicated bb 117`), the frequency attempt 27 read at 98, so the param doesn't touch the dup.
+- On attempt 28's u16 diagnostic (the SE test as one word compare) with wt: exp_t10 off 4/39 at no param, + exp_pr + t5le 6/43 (the word compare's lines and exp_pr's one line).  So a natural SE-frequency fix would take the param, exp_t10 and t5le together (diagnostic only; build/bd/a42/u16.py).  Without wt the u16 base with exp_t10 and cp off is 30 (the type-11 block again).
+
+### Natural changes on the cluster's residue
+
+- gen_bd541 (108 cases): the signature test's leaf order (all six, the Linux build's 17, 5, 11 among them) on src / and9 / c2 with the cluster sets off: nothing below the src order's numbers (each other order adds 4 or 6 loose, as attempt 24 found).
+- gen_bd542 (28 cases): gen_bd502's case 6 through `goto chk` on the bases with the cluster off: c2 + exp_t10 + cp + vol_fail **18/70**, + exp_pr + lab_t5le 20/74 (6 tricks); at no param with exp_t10 + exp_pr off the c6 base is 17/61.  What's left is five separate items (the size log's own -1, the dup, case 6's checkBl crossjumped into the others, the type-11 block, `ja`), and case 6 through chk isn't the reference's structure (attempt 38).  Not taken further.
+- The SE test with a 0-compare spelling (so PRED_TREE_OPCODE_NONEQUAL would not apply; build/bd/a42/se.py): `!(d[0] ^ 'S')` and `d[0] - 'S' == 0` fold back to `== 'S'` before profile_estimate (the same 4/59 on wt); `((d[0] ^ 'S') | (d[1] ^ 'E')) == 0` and `getBeU16(e->data) == 0x5345` change the code (80 and up).  Closed, and the first two would have been hint spellings anyway.
+
+### Attempt 41's "What to try next": lab_none by two factors (gen_bd543, 18 cases)
+
+- Case 24's forms in loadConsoleBlFiles (two calls, `||`, the glitch test folded into the condition, the glitch test as an enclosing if, breaks on the keep path, nested, `r = load; if (r || size)`), each with the precheck + cold label kept or gone: with the label kept two calls and the enclosing-if form are IDENTICAL and the `||` forms 2/2; without it src's two calls (4/8) are still the best (`||` forms 6/10, break forms 10/18).  The residue is the same two tail blocks in the other order (`mov edx,1; jmp` against `xor eax,eax; ret`).  No case 24 form adds the 17% attempt 41 asked for.
+- exp_devgl: nothing new (attempt 41's rule: it needs a second predictor, a use of the flag in bb3 or two edges to the join).
+
+### Don't retry (attempt 42)
+
+- Pair / triple removal sweeps on these bases (the matrix above), and param sweeps of the near-zero sets (none matches at any value).  Dropping the param while exp_t10 or exp_pr stays.
+- The signature test's leaf order with the cluster off (gen_bd541); case 6 through chk with the cluster off (gen_bd542).
+- The SE test through 0-compares, an or of xors, or getBeU16.
+- lab_none by case 24's forms with or without the precheck (gen_bd543).
+
+### What to try next
+
+- The one target worth an attempt is the dup on the wt / no-param base (drafts/build_loadBl_wt_noparam_nearmiss.patch): block 116 at 99 must drop under 88 (attempts 27 and 28's formula: 70.8 from type 9's non-SE path plus 29 from CG success).  If it goes, re-check the `ja` (t5le / exp_pr's line) on that base first; together they would take 11 to 7 (param, exp_t10, exp_pr, t5le) and leave the two constant_p in the weight form.  Read attempt 28's factor list before sweeping: each factor was found fixed by gcc 6's heuristics.
+- If cp is ever replaced naturally, exp_t10 is nearly free with it (28 on any base, the dup and type-11 effects), and the param follows exp_pr.
+- Otherwise attempt 40's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 41 (re-measured by gen_bd540's src rows): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles), exp_devgl 43/7, pin_size 82/40.
