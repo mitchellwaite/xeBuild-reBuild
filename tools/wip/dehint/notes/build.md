@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 21
+
+Attempt 21 landed nothing; src/build.c and build.sh are unchanged, so the count (14) and the review tables stand.  It tried attempt 20's lever (repeat the deciding test so the path exists at profile_estimate) on loadBl's tail and found it doesn't carry over: the tail's paths are split by the caller's `if (r)` after inlining, so a `*pr` re-test inside loadBl only makes new tests with their own wrong probabilities (gen_bd320; diagnostics gen_bd321 show they'd need about 2% and over 50%).  Also measured: attempt 11's kit-first tail (4 loose) is a code-size coincidence (the alignments dump is the same as src minus t5le) plus a PHI-order effect that sends dom2's FSM thread past setFlashBuild (gen_bd322); the could-not-read log inside loadBl (gen_bd323, 95 loose), a plain else with either verify polarity (gen_bd324, 50 and up: bb-reorder's 50/50 tie or .rdata), the SE path with its own checkBl (gen_bd325, 40).  See "## Attempt 21".
+
 ## State after attempt 20
 
 **14 tricks** (16 before): `--param builtin-expect-probability=98`, 5 `__builtin_expect` (type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 2 pins (d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  loadFileCrc's exp_verbose and pin_e are gone: the log choice repeats the pad test, `if (pad && (size & 15) && size != e->size) pad log; else bytes log;` inside `if (verbose)` (gen_bd315, gen_bd316), which gives the non-pad path its own edge to the bytes log at profile_estimate (bytes log 3220, round 2) instead of a later thread (1102).  IDENTICAL BYTES, full build SHA256 matches.  pin_size (gen_bd310 to gen_bd312, whole-function forms) and pin_d (gen_bd317, lifetime and scope) didn't move.  See "## Attempt 20".  New borderline shape, marked in src:
@@ -1185,3 +1189,58 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, exp_t24 29/7, exp_devgl 4
 - **The re-test lever on the other frequency hints.**  Where an expect or label exists because a path is only split by a later thread (vrp1/dom), a natural re-test of the deciding condition at the point of use creates that path before profile_estimate.  loadBl's tail (t5le, exp_pr: vrp1 joiner copies of the `xb.type <= 5` test) is the obvious candidate, as is exp_t10; the brief kept this attempt off loadBl, so it's untried there.
 - pin_size: the kit sum needs its own allocno in ebx (IRA's region split at the 14 loop); whole-function forms don't move it.  If anything, look for a form that changes the 14 loop's region (its frequency or pressure), not the sum's spelling.
 - pin_d stays an IRA pop-order tie.
+
+## Attempt 21
+
+Goal: attempt 20's lever (test the deciding condition again where a path uses it, so the path exists at profile_estimate rather than being made by a later thread) on loadBl's tail (t5le, exp_pr, the barrier), then exp_t10 and the rest.  Generators gen_bd320 to gen_bd325, all on src as of c7114455.  Scratch in build/bd/a21 (not kept; `trk.py dumpdir fn regex [passregex]` there prints, per tree pass, fn's blocks whose statements match regex with frequency and successor probabilities, from the last body in each dump).
+
+### The tail split by `*pr` (gen_bd320, gen_bd321)
+
+- gen_bd320 (132 cases): tail forms that give the signature-failed (`*pr` = -1) and `*pr` = 0 paths their own `xb.type <= 5` test before profile_estimate: `*pr` first with the `<=5` test in each arm (`prfirst`, `prfirst2`), `*pr && <=5` / `<=5 && *pr` as the fail exit plus a second `<=5` test, the `<=5` test twice, the kit test in an else, the whole tail per `*pr` arm (`pr_split`); `*pr` spelled `!= 0`, bare or `== -1`; its expect on or off; the size log through `goto fail` (src) or attempt 10's own `*pr = -1; break;` with the barrier off.  Best: src's own form (0/7 with the expect, 2/13 without, t5le off in both).  `prfirst` with the expect is 2/18, the same bytes as src with exp_pr off; without the expect 48 loose.  Every two-test form is 72 loose and up, `pr_split` 68 (it loses the type-11 copy); with the size log's own -1 everything is 92 and up (the `*pr` test then still reaches `fail`, so fail keeps three predecessors).
+- Read from profile_estimate (`prfirst`): the split works as intended, each `<=5` test gets its own probability: the `*pr` = 0 one is 39% (its `<=5` arm is the `break`, the early-return heuristic), the sig-failed one 50% (fail holds a store, no heuristic), and the outer `*pr` test 50% without its expect.
+- gen_bd321 (diagnostics, expects on each arm's test): with the outer `*pr` expect and `__builtin_expect(<=5, 1)` on the `*pr` = 0 arm, 0/9 (the type-11 block's `.p2align`, exp_pr's old 9 lines: the sig-failed setFlashBuild copy has frequency 1 where src has 4); the sig-failed arm's probability makes no difference (0/9 for 2%, 50% and 98%).  Without the outer expect every case is 48 loose and up.  So the split needs three probabilities that no natural form gives: the outer `*pr` test about 2%, the `*pr` = 0 test's `<=5` side well over 50% (its natural best is 50%, and 39% when that side is the break), and enough sig-failed flow through the shared `type == 14` block.
+- Why the sig-failed setFlashBuild copy needs that flow: at vrp1 the `type == 14` block keeps its profile_estimate count (src 28 = X's `>5` 15% of 186, with t5le; 93 at 50%), and the copies dom2 makes for the sig path are limited by it.
+
+### attempt 11's kit-first tail (4 loose) is not closer: a code-size coincidence plus a PHI-order effect
+
+- Rerun on the current src (gen_bd223, gen_bd322: kit arm spelled 11 ways, the `*pr` arm 3 ways): every `if (xb.type > BUILD_DEVGL16) {..}` form is the same 4/19 in loadBlFiles with the expect (6/23 without), plus call displacements in later functions (44 total); `!(xb.type > 5)` folds back to src's `<= 5` (0/7).  Only the condition's orientation matters.
+- The alignments dump (`bddump.sh f loadBlFiles alignments`) is identical for src minus t5le and the kit form: bb 111 (the jmp after the SE copy) freq 2, bb 112 (the type-11 no-key log) freq 17 and not aligned in either.  So the kit form doesn't fix t5le's alignment; its code is shorter (the IV read), which happens to move the padding.  Don't count it as t5le gone.
+- Why its sig-failed setFlashBuild copy reads through the IV (checked in vrp1, sra and dom2 dumps): vrp1's threads are the same in both forms (only the `*pr` block's number differs), but the join after the tail gets its predecessors in a different order: `r_371 = PHI <.., r_476(set), r_476(type14), ..>` in src, `<.., r_476(type14), r_476(set), ..>` in the kit form.  dom2's FSM backward walk takes the first argument (attempt 6's rule), so in src it threads the sig path `(20,23) (23,24) (24,104)` through setFlashBuild (both blocks copied before ivopts, the copy recomputes `xb.files[i].data` from i), and in the kit form `(20,23) (23,104)` through the false edge (only the type == 14 test copied; setFlashBuild is copied by dom3, after ivopts).  So the `<= 5` orientation is required.
+
+### What the joiner formula leaves for t5le in the `<= 5` orientation (worked out, partly measured)
+
+- With the src structure, attempt 18's formula P(SE copy, <=5) = Xc p (1 - q) / (Xc - S) needs p (1 - q) >= 52.8% at S / Xc = 15.6%.  q can only go towards 0 (the expect gives 2%), so p >= 53% to 54%: X needs a predictor of any strength towards its `<=5` side.  None applies (checked against the predictor list again): neither arm's first block holds a call (PRED_CALL), neither is the return block or a single-successor block before it (early return), `xb.type <= 5` is a compare with 5 (no opcode heuristic, and `< 6` folds to it), there is no loop (continue, loop predictors), and the C front end only emits a predictor for `continue` (no PRED_GOTO: CG's `goto chk` gets plain 61% from the break's early return).
+- Giving the SE path its own `<=5` test (its own checkBl, then `if (xb.type > 5) set; break;`) would combine the early return (39%) and PRED_CALL on the set side (71%) by DS: 61.0%, still under 62.6%.  Built anyway (gen_bd325: three spellings, checkBl's type 14 or `type`, t5le / exp_pr on or off): 40 loose in loadBlFiles plus displacements in every case, the hints make no difference; the second checkBl and setFlashBuild calls change the code before the profile matters.  Don't retry.
+- The other two factors of bb 111 (the jmp after the SE copy, freq 2, must be <= 1 for the no-key log's `.p2align`): the SE copy's 4 (SE block 6 x checkBl's 61%; the SE block is 9.9 at profile_estimate, attempt 19's re-split rule keeps it 6) and the no-key log's 17 (the constant_p weight).  Nothing new.
+
+### The "could not read" log in loadBl (gen_bd323, 48 cases)
+
+- Idea: the `if (r)` that vrp1 threads is the caller's, and its join is drained by ~30 FSM threads before the joiner copies (attempt 11); with the log in loadBl after the switch (`if (*pr) log;`, fail: logging itself, `goto out` back to the test, the switch jumping over fail:, an early-return spelling; the caller only `if (r) return -1;`) the test exists at loadBl's profile_estimate.  Best 95 loose in loadBlFiles plus displacements (`over`, any hints); with t5le, exp_pr and the barrier off 113.  The log's PRED_CALL and the new join reshape the whole profile.  Don't retry.
+
+### `else if (type)` with a plain else, revisited for t5le (gen_bd324, 24 cases)
+
+- A plain else raises S / Xc to 27.2% (Pf 50%), which by the formula is enough for t5le even with q = 2% (P = 67%), and it would remove the dead test too.  Measured: plain else with t5le and exp_pr off is 56 loose (128 strict); with exp_pr kept 56/128; t5le kept 54 plus displacements.  What's left is the verify's layout: at 50/50 bb-reorder's better_edge_p falls through to the failed log (the next block in order), where the reference falls through to the passed log; and with exp_pr off the SE copy's `ja`.
+- The passed arm first (`if (cbVerifySig(..)) passed; else {failed}`, either spelling of the test) wins the tie but moves .rdata (the passed string before the failed one; the reference's order is no-key, failed, passed): 50 loose at best.  `*pr = -1` before or after the failed log: no change.  So the tie can't be broken in natural code; the dead test's 29% stays.  Don't retry plain-else forms (attempts 5, 6, 18, 19 and this one).
+
+### exp_t10: what the CG flow is made of (profile_estimate of src with the expect off)
+
+- CG's checkBl copy is CG's flow at loadBl's profile_estimate: `*pr` after loadInputFile 50% (zero test, no heuristic) x `type == 9` false 86.3% x `type == 10` 19.9% x suGetCG success 61% = 43.6 (44 at bbro; it needs about 22).  The 19.9% is nonequal (28%) + PRED_CALL against the CG block (29%) + the early return on the `else break` (which pushes it up: without it 13.7%); the 61% is the failure break's early return.  Without both early returns the copy would be about 25, so both breaks would have to reach something other than the return, which in this function only the caller's log does (and moving the log in is gen_bd323's 95).  The CG checkBl copy is a joiner copy whose count is its full incoming edge, so threading doesn't help or hurt here: the factor has to be at profile_estimate.  Not swept.
+
+### Don't retry (attempt 21)
+
+- The tail split by `*pr` before the `<=5` test, or the `<=5` test repeated per exit (gen_bd320): each split test then needs its own unnatural probability (gen_bd321: outer `*pr` about 2%, the `*pr` = 0 test's `<=5` side over 50%).
+- The kit-first orientation (`xb.type > BUILD_DEVGL16` first) in any spelling (gen_bd322): the join's PHI order sends dom2's FSM thread past setFlashBuild; and its 4 loose were a code-size coincidence, not t5le.
+- The could-not-read log inside loadBl (gen_bd323).
+- The SE path with its own checkBl and kit test (gen_bd325).
+- Plain else for the passed log, either polarity (gen_bd324).
+- Diagnostic expects can't be stacked to reach t5le's p >= 54% without a hint, so don't sweep spellings of `xb.type <= 5`.
+
+### Costs now (strict/loose, removed alone; 14 tricks, unchanged)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (`bdhints.py`, re-measured on c7114455).
+
+### What to try next
+
+- Attempt 20's lever fits a hint whose path is merged in the source and split by a thread *inside the same function before profile_estimate matters*.  loadBl's tail paths are split by the caller's `if (r)` after inlining, so a re-test inside loadBl creates new tests with their own (wrong) probabilities instead of giving the threaded path its flow (gen_bd320, gen_bd321).  The lever doesn't carry over to t5le, exp_pr or exp_t10.
+- t5le now has every input of its formula checked against natural code (attempts 11, 14, 18, 19, 21): it needs one predictor towards X's `<=5` side, and the tail has none to offer.  exp_pr needs q <= 4.4% with the label (q is a `*pr` zero test: no heuristic, and the break's early return pushes it the wrong way).  exp_t10 needs both of CG's breaks to stop being early returns.
+- Otherwise build stays parked at 14.
