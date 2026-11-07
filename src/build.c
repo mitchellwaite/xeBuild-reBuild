@@ -1211,14 +1211,21 @@ int verifyBlSigs(void)
 	return ok;
 }
 
-/* the default 0x60-byte bootloader (type 24) */
+/* the default 0x60-byte bootloader (type 24).  Borderline, for review: the
+   built-in copies (this one and loadBlFiles' cases 1 and 22) use memmove
+   where memcpy would do (gcc turns it back into memcpy once alias analysis
+   has run).  Until then memmove is a plain call to the inliner, which sizes
+   defaultBl60 at 14 instead of 18, so IPA inlines loadBl24 into
+   loadConsoleBlFiles before loadXell and console's blocks come out in the
+   original's order (it replaces a cold label and an nFiles <= 1 precheck
+   there) */
 static int defaultBl60(struct fileent *e)
 {
 	e->data = malloc(0x60);
 	if (!e->data)
 		return 1;
 	e->size = 0x60;
-	memcpy(e->data, defBl60, 0x60);
+	memmove(e->data, defBl60, 0x60);
 	return 0;
 }
 
@@ -1354,7 +1361,7 @@ int loadBlFiles(void)
 					break;
 				}
 				e->size = 0x200;
-				memcpy(e->data, defPayload, 0x200);
+				memmove(e->data, defPayload, 0x200);
 				break;
 			case 22:
 				if (!loadBinFile(e))
@@ -1366,7 +1373,7 @@ int loadBlFiles(void)
 					break;
 				}
 				e->size = 0xd40;
-				memcpy(e->data, defCore, 0xd40);
+				memmove(e->data, defCore, 0xd40);
 				break;
 			case 25:
 				r = loadXell(e);
@@ -1509,10 +1516,6 @@ int loadConsoleBlFiles(void)
 	uint32_t i;
 	uint32_t r;
 
-	/* the cold label gives the shrink-wrapped return 0 frequency 0, so
-	   bb-reorder lays it out last */
-	if ((uint32_t)xb.nFiles <= 1)
-		goto none;
 	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
 		e = &xb.files[i];
 		r = 0;
@@ -1626,8 +1629,6 @@ int loadConsoleBlFiles(void)
 			return -1;
 		}
 	}
-	return 0;
-none: __attribute__((cold));
 	return 0;
 }
 

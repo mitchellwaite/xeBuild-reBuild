@@ -3,6 +3,18 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 59
+
+**5 tricks** (6 before): `--param builtin-expect-probability=99`, 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash), the empty asm barrier on `fail:`, the hot `devgl` label in loadBlFiles.  Removed: **lab_none** (loadConsoleBlFiles' cold `none:` label and the `nFiles <= 1` precheck that jumped to it).  The three built-in copies (defaultBl60's, loadBlFiles' cases 1 and 22) use `memmove` instead of `memcpy`.  gcc folds memmove back into memcpy only after alias analysis (dce3 / forwprop3 time), so the code is the same, but until then memmove is an ordinary call to the inline-size estimator: defaultBl60 is 14 instead of 18 (einline growth 6 instead of 10), loadBl24 32 instead of 40, so IPA's small-function inliner takes loadBl24 into loadConsoleBlFiles *before* loadXell, and console's blocks come out in the original's order without the label.  defaultBl60's memmove alone does it too (cases 1 / 22 changed for consistency; both IDENTICAL).  IDENTICAL at p95 to p99 (0/7 at p0 and p90, as before); full build SHA256 matches.  Every other hint costs what it did (exp_pr 2/4, vol_fail 58/220, exp_devgl 7/43), except lab_devgl, now 14/34 (57 before).  See "## Attempt 59".
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| defaultBl60, loadBlFiles cases 1 and 22 | `memmove` for the built-in copies into fresh malloc memory | memcpy would do; memmove is chosen for its inline-size estimate (new) |
+| loadBl24 (both loaders' case 24) | two calls where `||` would do | unchanged from attempt 49's table |
+| loadBlFiles case 24, second arm | loadBl24's body written out, leading `r = 0;` | unchanged |
+| loadBlFiles case 27 | the fallbacks as a sequence of `r` tests | unchanged |
+| findFileOffset / findFileSize | return `int` | unchanged from attempt 58 |
+
 ## State after attempt 58
 
 **6 tricks** (7 before): `--param builtin-expect-probability=99`, 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash), the empty asm barrier on `fail:`, 2 hot and cold labels (`devgl` in loadBlFiles, `none` in loadConsoleBlFiles).  Removed: **pin_size** (calcBlAreaSize's `__asm__("" : "+b"(size))`).  findFileOffset (build.h) and findFileSize now return `int`, like findFile: after inlining into calcBlAreaSize each result is converted to the uint32_t sums, and those conversion statements move the SSA names PRE hands out, so the kit sum is `size_273 + prephitmp_282` (the reference's operand order, attempt 35's tie) and IRA keeps it in ebx.  Either return type alone doesn't do it.  image_write's `SWAP32_IMAGE_WRITE(findFileOffset(9))` takes a `(uint32_t)` cast marked `TODO(prototype cast)` (with an int the swap's shifts are arithmetic).  IDENTICAL at p95 to p99 (0/7 at p90 and with no param, as before); full build SHA256 matches.  No borderline shape added or removed; attempt 49's review table stands.  The type sweep of every other shared declaration build.c's tricks touch (a58_types.py, a58_ret.py, a58_none.py) found only equal bases or worse.  See "## Attempt 58".
@@ -3235,3 +3247,55 @@ Goal: the brief's new angle: the *types of shared declarations* (fields of `xb` 
 ### Costs now (strict/loose, removed alone; 6 tricks)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 (7/1 on a55_smc.py's equal bases), lab_devgl 57/14, exp_devgl 43/7, lab_none 351/225 (8/4 with the precheck).
+
+## Attempt 59
+
+Goal (scripts written against cf9d40fe's src, before the landing; their edits no longer apply to the new src): test attempt 58's conclusion (the six left are probability / trace-priority / block-survival / alias-oracle questions) with type- and helper-level levers on the things it named, starting with lab_none's one-call loadBl24 residue (the size store's place, attempt 54's alias reading).  src as of cf9d40fe.  New scripts in `tools/wip/dehint/bdgen`, run with `python tools/wip/dehint/bdgen/a58lib.py <script> [-p ..] [-o "set;set"] [-k label]`: `a59_store.py` (defaultBl60's copy forms x two-call / one-call loadBl24 x lab_none's precheck and label kept / off), `a59_mm.py` (the memmove base x one-call body x arm 2 through loadBl24 x memmove in cases 1 / 22, across hint sets and the param), `a59_mmx.py` (on the landed base, every other memcpy in build.c as memmove, x each remaining hint off).  Scratch in build/bd/a59 (`mc_N/`, `mm_N/`: full `-fdump-tree-all -fdump-ipa-all` of the memcpy and memmove forms without lab_none; not kept).  Loose/strict lines, p99.
+
+### a59_store.py: defaultBl60's copy forms (`_N` = precheck and cold label off)
+
+| defaultBl60 | two-call loadBl24 | `_N` | one-call `||` (either) |
+|---|---|---|---|
+| src (`memcpy(e->data, defBl60, 0x60)`) | IDENTICAL | 4/8 | 66/125 (the size store) |
+| malloc into a local `p`, copy from `p` | IDENTICAL | 4/8 | 66 |
+| `memcpy(.., e->size)` | IDENTICAL | 4/8 | 66 |
+| `sizeof(defBl60)` everywhere | IDENTICAL | 4/8 | 66 |
+| `(char *)` destination cast | IDENTICAL | 4/8 | 66 |
+| byte loop | 470 | 472 | 517 |
+| `return setFileData(e, defBl60, 0x60);` (calloc) | 49 | 49 | 75 |
+| **`memmove`** | IDENTICAL | **IDENTICAL** | 66 |
+
+- The alias-oracle line itself didn't move: the one-call body is 66 loose with every copy form (the destination pointer's type, a typed local or a char cast don't change points-to: it is {HEAP} from malloc whatever its type, and the store is a decl ref into xb).  The store-order route to lab_none stays closed.
+- But **memmove frees lab_none on the two-call form**, by another route.
+
+### Why memmove works (dumps in build/bd/a59)
+
+- memmove stays a call (`memmove (_5, &defBl60, 96)`) through every pass up to dce3, then is folded to memcpy once PTA can tell the destination (malloc) and source (a const decl) apart; from there the code is memcpy's (rep movs), so the object is byte-identical.
+- Before that the inline summaries see it as a plain call: einline's `loadBl24 -> defaultBl60.isra.0` growth is **6 instead of 10**, IPA sizes defaultBl60.isra.0 at **14 instead of 18** and loadBl24 at **32 instead of 40**.  (memcpy is costed as a builtin with a known expansion; memmove isn't.)
+- That reorders IPA's small-function inliner (-.074i.inline): with memcpy it inlines loadXell (29) into loadConsoleBlFiles, then loadBl24 (40); with memmove loadBl24 (32) goes first, then loadXell.  The inline order changes console's block numbering and the profile scaling of the inlined bodies, and bb-reorder then lays out the r = 1 / return blocks as the reference does: no cold label and no `nFiles <= 1` precheck needed.  (Not read further: which bbro tie or trace start flips.  Attempt 51's window analysis was of the precheck route.)
+- So this is an inline-order lever, not a probability or alias one: attempt 58's "probabilities, trace priorities, block survival" verdict was right about what decides each trick, but the *inputs* to those (block numbering, which inlined body scales which profile) also move with IPA's inline order, which a callee's size estimate decides.
+
+### a59_mm.py / a59_mmx.py
+
+- On the memmove base, each remaining hint off costs what it did on src: exp_pr 2/4, vol_fail 58/220, exp_devgl 7/43; lab_devgl **14/34** (57 strict before, the same 14 loose lines).  The param window is unchanged: IDENTICAL at p95 / p97 / p99, 0/7 at p0 and p90.
+- One-call loadBl24 on the memmove base: 66 (the size store again); arm 2 through loadBl24: 65; both: 63.  The two-call and written-out borderline shapes stay.
+- memmove in cases 1 and 22 too: IDENTICAL, every hint the same cost; landed for consistency (the three built-in fallbacks read alike).
+- The other memcpy sites as memmove (a59_mmx.py): setFileData equal base; appendAddonPatches (either copy) 4 to 14 in that function; extractSmcConfig's sector copy 158; patchBlsBlmod 12.  None touches the remaining hints.
+
+### Landed
+
+src/build.c: defaultBl60 and cases 1 / 22 use memmove (Borderline comment on defaultBl60), loadConsoleBlFiles loses the precheck, the cold label and its comment.  bdhints.py: lab_none gone.  README.md: build 5 tricks.  Full build SHA256 10dac648..1c.
+
+### Don't retry (attempt 59)
+
+- lab_none's one-call loadBl24 by defaultBl60's copy form or types (typed local, `e->size` as length, sizeof, char cast, byte loop, setFileData, memmove): the size store stays, 66 and up.
+- memmove at the other memcpy sites in build.c for the remaining hints (a59_mmx.py).
+
+### What to try next
+
+- The inline-size / inline-order lever is new: a callee's size estimate decides IPA's inline order, which moves block numbering and profile scaling in the caller without changing code.  Try it on lab_devgl (loadBlFiles inlines loadBl24, loadXell and defaultBl60 by IPA too; what order does it take them in, and does any size change, e.g. a log_printf in loadXell, a strcpy/strcat vs a sprintf in loadBaseFile/loadBinFile, move arm 2's malloc block's bbro frequency or the r = 1 block's trace position?) and on vol_fail (its 58 came from vrp1's jump threads, which depend on the inlined CFG).  Also exp_devgl: buildFlash's IPA inline order (patchConsoleBlmod, the loaders) could change the profile around the devgl test.
+- Otherwise attempts 54 to 58's per-trick readings stand.
+
+### Costs now (strict/loose, removed alone; 5 tricks)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 (7/1 on a55_smc.py's equal bases, not re-checked on the memmove base), lab_devgl 34/14, exp_devgl 43/7.
