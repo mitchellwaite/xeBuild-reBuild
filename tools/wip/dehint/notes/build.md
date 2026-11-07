@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 50
+
+Attempt 50 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It corrected attempt 49's mechanism: **loadXell, loadBl24, loadBaseFile and defaultBl60 are not early-inlined** (each is a call at profile_estimate in both loaders, then inlined by IPA with its own profile scaled to the call block), so the helpers change case 24's and 25's profiles, not the CF/CG arm's (identical before and after); exp_t10's job was bbro's: without the helpers and the expect, connect_traces copies the shared `if (r)` block (the `test edi,edi; jne` line) into the checkBl block, because case 27's extractSmcConfig trace has already taken it.  Then more sharing: the CF/CG load as a helper (85 loose and up), case 23 as a helper (28 and up), the signature check as a helper (95 and up), the nand-dump moves as `useNandData(e, &xb.kv)` (kv and kvAlt in both loaders: **equal base**; smc: 0/2), the could-not-read log as a helper (equal base), case 24's second arm through loadBl24 (25 loose, as attempt 49).  None frees a hint.  New for lab_none: loadBl24 in its one-call `||` form frees the precheck and cold label (loadConsoleBlFiles then differs only in the size store's place), because its own profile gives the defaultBl60 call 85.9% against the two-call forms' 70% at most; but the one call loses the crossjump that orders the size store (attempt 4's borderline) and moves case 27's block in loadBlFiles (24 loose).  See "## Attempt 50".
+
 ## State after attempt 49
 
 **7 tricks** (8 before): `--param builtin-expect-probability=99`, 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash), 1 pin (size), the empty asm barrier on `fail:`, 2 hot and cold labels (`devgl` in loadBlFiles, `none` in loadConsoleBlFiles).  Removed: **exp_t10** (the `type == 10` expect on the CG fallback).  The two loaders now share two helpers: `loadXell(e)` (case 25's retail/kit test and the three-place xell search, identical in both loaders) and `loadBl24(e)` (case 24's file or defaultBl60, called by loadBlFiles' first arm and by console's case 24 as `if (xb.glitch2mfg) r = loadBl24(e);`).  Both are early-inlined.  IDENTICAL at p95 to p99 (a wider window than before, when 96 to 98 were 60 loose); 0/7 at p90 and with no param (exp_pr's alignment); full build SHA256 matches.  See "## Attempt 49".  Borderline changes: the "two calls where `||` would do" note moved from case 24 to loadBl24; case 24's second arm keeps loadBl24's body written out with its leading `r = 0` (calling loadBl24 there is 25 loose); console's case 24 no longer has its own copy of the body.
@@ -2755,3 +2759,61 @@ src/build.c: `loadXell` and `loadBl24` added after defaultBl60.  loadBlFiles' ca
 ### Costs now (strict/loose, removed alone; 7 tricks)
 
 exp_pr 4/2, vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (8/4 with the precheck gone too).
+
+## Attempt 50
+
+Goal: (1) why attempt 49's helpers freed exp_t10, read from the dumps; (2) more code the two loaders share, as helpers, each with the remaining hints off one at a time; (3) attempt 49's "What to try next".  src as of 26aca4bb, unchanged.  New scripts in `tools/wip/dehint/bdgen`, all run with `python tools/wip/dehint/bdgen/a46run.py <script> [-p ..] [-k label]` on src/build.c unless said: `a50_base.py` (src and each hint off), `a50_share.py` (helpers su / p23 / nand / slot, every subset; it also holds the text pieces the others import), `a50_nand.py` (useNandData at every subset of its sites, two store orders), `a50_su.py` (four CF/CG helper bodies, in one loader or both), `a50_sig.py` (the signature check as a helper), `a50_bl24.py` (eleven loadBl24 bodies), `a50_orc.py` (the `||` loadBl24 with loadBlFiles' arm 1 written out), `a50_arm2.py` (case 24's second arm through loadBl24, three forms), `a50_x1.py` (loadXell's retail test back in the callers, with the barrier and exp_t10), `a50_fail.py` (the could-not-read log as a helper), `a50_eq.py` (the equal bases together, param sweep), `a50_neg.py` (exp_pr's spellings again), `a50_cases.py` (cases 1 / 22 and 3 / 4 as shared helpers); standalone `a50_pebb.py <dump> [fn]` (bb frequencies of a profile_estimate dump) and `a50_bl24share.py` (loadBl24's own defaultBl60 call share per body).  Scratch in build/bd/a50 (not kept: `prev_t10.c` is 26aca4bb^'s src with exp_t10 off, `cur.c` src; `dump.sh` / `split.py` copied from a46; `d_*/` the dumps).  Loose/strict lines; p99 unless said.
+
+### (1) Why loadXell and loadBl24 freed exp_t10
+
+- **The helpers are not early-inlined.**  At profile_estimate both loaders hold calls to loadBl24 and loadXell (and to loadBaseFile and defaultBl60.isra.0, which attempt 18 already had as late-inlined); IPA inlines them later and scales each callee's own profile into the call block.  So attempt 49's "both are early-inlined" is wrong, and so is attempt 49's guess that inlined bodies drop their predictors: the callee's early-return and call predictions shape its blocks, scaled to the caller's call-block count.  This is also why loadBl24's body sets console's r = 1 block (below).
+- The CF/CG arm's profile is **identical** before (26aca4bb^ with exp_t10 off) and after: the same predictions (bdpred.py on both dumps) and the same frequencies for every block of the 5..21 arm (597, 298, 41, 20, 257, ...; a50_pebb.py).  Only case 24 and 25 change (one call block each instead of loadBaseFile + two defaultBl60 calls, and the xell search's three calls).
+- The 2 lines exp_t10 fixed are bbro's: in 26aca4bb^ without it, the shared `if (r)` block after checkBl (freq 95, `p5947`) is copied into the checkBl call block by connect_traces (`Duplicated bb 116`: the extra `test edi,edi; jne`), and case 2's nand-dump group moves.  The copy happens because round 1's trace `122 [571] 97 [398]` (case 27's d test and the extractSmcConfig call) runs on, so in connect_traces `97 116` takes the `if (r)` block first and `115 116` finds it connected; in src round 1 stops at the d block (`118 [571]` alone) and round 2's trace `93 [398] 112 [95]` holds the `if (r)` block mid-trace, so there is nothing to copy.  Why round 1 decides differently isn't settled: both have the same frequencies there, but bdblocks shows the d block's jump as p10000 in the old layout and p6983 in the new, so the CFG around it differs (the scaled-in helper bodies change which blocks are trace starts in round 1).  Next time: dump `-fdump-rtl-bbro-details` with `-dA` and read the d block's successors in both.
+
+### (2) Sharing between the loaders (a50_share.py, a50_nand.py, a50_su.py, a50_sig.py, a50_fail.py, a50_eq.py)
+
+| Helper | Where | Result (all hints on) | Notes |
+|---|---|---|---|
+| `useNandData(e, &xb.kv)` / `&xb.kvAlt` (free, take data and size, clear) | cases 3, 4 of both loaders, any subset | **IDENTICAL** | equal base: each hint costs what it costs on src (pr 2/4, bar 58/220, lab 14/57, none 4/8, dev 7/43), at p0, 90, 95, 99 |
+| the same for `&xb.smc` | loadBlFiles case 2 | 0/2 | a jump displacement |
+| the same for `&xb.smc` | console case 2 | 3/27 | console reloads `e->size` for smcSetLoad after the inlined stores |
+| the same with the clears swapped (size first) | anywhere | 4 to 16 | the reference clears data first |
+| `takeSlot(e)` (the same from xb.files[nFlashFiles]) | loadBlFiles cases 2, 3, 4 | 106 | |
+| `loadUpdateBl(e, type)` (loadInputFile + the CF/CG fallback, four bodies) | both / loadBlFiles / console | 193 / 85 / 64 and up | late-inlined, so the arm becomes one call block at profile_estimate; every body the same |
+| `loadPatchFile(e)` (case 23 with its log and -1) | both | 163 (loadBlFiles 28) | the patch-size -1 no longer reaches `fail:` |
+| `checkBlSig(e)` (three bodies) | loadBlFiles | 95 and up | |
+| `notRead(e, r)` (the could-not-read log; returning -1 or void) | both loops | **IDENTICAL** | equal base, every hint costs the same |
+| `loadBuiltIn(e, fmt, data, size)` (a bin-dir file else the built-in copy; a50_cases.py) | loadBlFiles cases 1 and 22 | 22 loose | the hints off cost what they cost on src on top |
+| `loadKv(e, name1, name2, &xb.kv)` (the keyvault chain; a50_cases.py) | loadBlFiles cases 3 and 4 | not inlined (an out-of-line loadKv, every function moves) | |
+
+Combinations (16 subsets of su, p23, nand, slot) don't beat their parts.  On the two equal bases together the param sweep is unchanged: p0 and p90 leave only exp_pr's 0/7 alignment, p95 and p99 match.
+
+### loadBl24's body and lab_none (a50_bl24.py, a50_bl24share.py, a50_orc.py)
+
+- loadBl24's own profile is what IPA scales into console's case 24, so it sets the r = 1 block.  Its defaultBl60 call blocks get 70% of its entry in src's body (loadBaseFile failed 20.7%: call 29% with early return; size bad 62.2%), and every two-call body tried gets 65 to 70% (`r2`, `r3`, `r4`, `g0`, `n2`, `n3`, `ok1`/`r5`).  The one-call bodies (`||`, `!a && b` then the call, nested) get **85.9%** (the call block has two predecessors, so the size test gets no call heuristic).
+- **With a one-call body the precheck and cold label are free**: loadConsoleBlFiles without them differs only in the size store's place (`mov [ebx+4],0x60` after the copy instead of before); the label makes no difference any more (`or_all` = `or_none`).  But that is attempt 4's borderline in reverse: the two calls are what crossjump merges to keep the size store before the copy (they replace a pin and an assume_aligned), and loadBlFiles moves case 27's config.bin block too (24/83).  With loadBlFiles' arm 1 written out again (a50_orc.py) loadBlFiles is 2/53: bbro's `if (r)` copy, i.e. exp_t10's effect back.
+- So lab_none has a new, exact route: loadBl24's call blocks at about 86% of its entry with two calls kept.  Two calls in dominated blocks each get the call heuristic's 29% on their edge; nothing natural lifts both.
+
+### Case 24's second arm and other items (a50_arm2.py, a50_x1.py, a50_neg.py)
+
+- Arm 2 as `r = loadBl24(e);`: 25/73 with the label, 39/87 without, on src and on the nand base (attempt 49's numbers).  As `if (!DEVGL && !DEVGL16) break;` then loadBl24 67 and up, then the written-out body 42 and up.
+- loadXell's retail test back in both callers (attempt 49's x1, as a `break` or an `if`): exp_t10's expect is needed again (60 loose without), and the barrier off is 59 to 118: x1's old 1/7 for the barrier was without loadBl24.
+- exp_pr's spellings (`r != 0`, `(int)r < 0`, `(int)r <= -1`, `r == (uint32_t)-1`) on src and the equal bases at p0, 95, 99: as attempt 47 (2/4, 0/7, 0/7, 2/11).  At p0 (no `--param`) `(int)r < 0` leaves only its 0/7 in the whole object (buildFlash matches without the param now), so closing that alignment would remove exp_pr and the param together (2 tricks, with the cast as a borderline).
+- The barrier off is 58/220: the size log's own -1 (attempt 10's line) plus a 130-line move of cases 4 and 27's blocks; the same on every base here.
+
+### Don't retry (attempt 50)
+
+- The CF/CG fallback, case 23, the signature check or the spare-slot moves as helpers (above).
+- useNandData / notRead as levers: equal bases, nothing freed, every hint the same cost.
+- Two-call loadBl24 bodies for lab_none (65 to 70% call share; it needs about 86%).
+- Arm 2 through loadBl24 in any form, loadXell's retail test in the callers.
+
+### What to try next
+
+- lab_none: a loadBl24 that keeps two defaultBl60 call sites (for the size store) but whose own profile gives them about 86%, or a natural reason for the size store to stay before the copy with one call (the borderline's crossjump stands in for an alias question: sched2 moves the store because the copy's destination is a fresh malloc).  If a one-call form could keep the store, lab_none goes (precheck + label) and the `||` replaces attempt 4's borderline; loadBlFiles' case-27 block (24 loose) would still need a look.
+- exp_t10's bbro reading isn't finished (why round 1's case 27 trace differs); a `-dA` read of the d block in both layouts may show what else the helpers' scaled profiles change.
+- The late-inlining reading is a lever no earlier attempt used on purpose: a static helper too big for early inlining puts one call block in the caller's profile and brings its own profile in at IPA.  Tried here: cases 1 / 22 as one helper (22 loose), cases 3 / 4 as one (stays out of line).  Left: case 27's fallback chain as a helper, or helpers whose *own* profile is the lever (as loadBl24's is for lab_none above).
+
+### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0, and then no `--param` needed), vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (8/4 with the precheck gone too; 0 loose but the size store with loadBl24's `||` body).
