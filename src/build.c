@@ -1394,24 +1394,34 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
 		appendAddonPatches(e);
 		break;
 	case 27:
-		if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) &&
-		    loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]) &&
-		    (*pr = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]))) {
-			if (!xb.smcConfig.data)
-				break;
-			log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
-			if (xb.files[xb.nFlashFiles].data)
-				free(xb.files[xb.nFlashFiles].data);
-			xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
-			xb.smcConfig.data = NULL;
-			xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
-			xb.smcConfig.size = 0;
-			*pr = 0;
+		/* Borderline, for review: the fallbacks as a sequence of *pr
+		   tests (the && chain of three loads is the same behaviour).
+		   The re-tested *pr sends about half of the first failure's
+		   flow past the smcConfig test at profile_estimate (vrp1
+		   threads it away later), which gives the reloaded
+		   nFlashFiles more weight than the slot address at the join,
+		   so IRA colours n first and the address follows it into edx
+		   (it replaces a register pin on d) */
+		if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles])) {
+			*pr = loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]);
+			if (*pr)
+				*pr = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]);
+			if (*pr) {
+				if (!xb.smcConfig.data)
+					break;
+				log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
+				if (xb.files[xb.nFlashFiles].data)
+					free(xb.files[xb.nFlashFiles].data);
+				xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
+				xb.smcConfig.data = NULL;
+				xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
+				xb.smcConfig.size = 0;
+				*pr = 0;
+			}
 		}
 		{
 			uint8_t *d = xb.files[xb.nFlashFiles].data;
 
-			__asm__("" : "+a"(d));
 			if (d)
 				*pr = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
 		}

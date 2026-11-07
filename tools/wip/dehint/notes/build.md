@@ -3,6 +3,14 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 34
+
+**11 tricks** (12 before): `--param builtin-expect-probability=98`, 3 `__builtin_expect` (type == 10, `*pr != 0`, devgl), 1 pin (size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  pin_d is gone: case 27's fallbacks are written as a sequence of `*pr` tests inside the first load's failure arm (`if (load(name)) { *pr = load("config.bin"); if (*pr) *pr = load("config_raw.bin"); if (*pr) { smc take-over } }`, gen_bd463 `c_seq`).  Mechanism (IRA dump, attempt 33's reading taken one step on): the join's thread {base, n*0x42c, n} pops in ALLOCNO_FREQ order, and the re-tested `*pr` sends half of the first failure's flow past the smcConfig test at profile_estimate (vrp1 threads it away later), so n's reloads on the fallback paths outweigh the base (n pops first and takes edx, the base follows it along the copies, d gets eax).  The same re-test over the whole case (`two_pr`) also flips the registers but lowers the extract block's edge to 320, under the loadBinFile block's 322 in bbro's round 2.  IDENTICAL BYTES, full build SHA256 matches.  Every other hint costs what it cost before.  See "## Attempt 34".  New borderline shape, marked in src:
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| loadBl case 27 | `if (loadBaseFile(name)) { *pr = loadBaseFile("config.bin"); if (*pr) *pr = loadBaseFile("config_raw.bin"); if (*pr) { smc take-over } }` | Same behaviour as the old `&&` chain of the three loads, and nothing in it is dead, but it is chosen for what gcc does with it: the re-tested `*pr` adds flow to the fallback paths at profile_estimate, which sets IRA's pop order at the join |
+
 ## State after attempt 33
 
 Attempt 33 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It swept six angles no earlier attempt had closed, each crossed with the loadBl hints off one at a time: real types in loadBl and both loops (gen_bd450: neutral or worse; `int type`'s retyping costs 38 loose), `else if (type)` by a repeated test of a *local* key copy (gen_bd451: a local's dead re-test folds before profile_estimate, so it scores as the plain else, 54; the `key && !verify` / `else if (key)` join is 50 plus .rdata), defaultBl60 returning a computed value instead of constants (gen_bd452: 142 and up), the author's nested ifs for the SE test, case 25, case 27's chain and the skip test (gen_bd453: equal bases, every hint costs what it costs on src), case 27's smcConfig moves in every order (gen_bd454: cases 2/3/4's data-size-NULL-0 order is an equal base; pin_d still 14), and the CF/CG fallback as an inner switch or `type != 9 && type != 10` guard (gen_bd455: 110 and up).  New reading of pin_d from IRA (`-fdump-rtl-ira`): the join's base is a thread {r535 base, r534 n*0x42c, r125 n} that is popped before n's own constraints apply; n is kept off eax by loadBaseFile's live result, so base takes eax first and d gets edx.  See "## Attempt 33".
@@ -1870,3 +1878,40 @@ Goal: an angle the notes hadn't closed, preferring the brief's list (real types,
 ### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
 
 On src (re-measured by gen_bd450's `src|` rows): lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), the constant_p entry 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 and pin_size 82/40 as attempt 32.
+
+## Attempt 34
+
+Goal: pin_d, from attempt 33's IRA reading (the join's base is popped before n, so it takes eax and d gets edx); then pin_size in the same light.  Generators gen_bd460 to gen_bd464 on src as of 34b3ab10 (`python tools/wip/dehint/bdrun.py tools/wip/dehint/bdgen/gen_bd46N.py`).  Scratch in build/bd/a34 (not kept: `nopind.c` / `nopins.c` are src minus pin_d / pin_size, `*.ira` loadBlFiles' IRA dumps, `bbro_*.txt`, `dd.py` a unified diff of loadBlFiles against the reference).  Loose/strict lines in loadBlFiles unless said.
+
+### Why the base pops first (`-fdump-rtl-ira` of nopind.c, read with the pushes and pops)
+
+- The thread is {r535 base 135, r534 n*0x42c 100, r125 n 131} (r460/r457 join it later by a freq-1 copy; thread freq 422).  Inside one thread bucket_allocno_compare_func falls through to ALLOCNO_FREQ (gcc 6 ira-color.c, from memory; consistent with the push order r534, r125, r535 and the pops r535, r125, r534), so the most frequent member pops first and takes the first free register, eax.  n can't follow it into eax (its conflicts' copies prefer eax) and gets edx; d conflicts with the base and gets edx.
+- The freqs, from loadBlFiles' .optimized (case 27 entry 513, join 509, extract block 355): r534 is a def and a use at the join; the base has those two refs plus the size load in the extract block (35); n has the first block's hoisted load (51), the join's use and the fallback paths' reloads (RTL bbs 107/109/111/112, about 30 together).  So n wins when the fallbacks' refs outweigh the extract block's.  Diagnostic (gen_bd461, not candidates): `__builtin_expect(d != 0, 0)` gives the reference's join registers (the layout moves, 143 loose); `expect(.., 1)` doesn't.
+- Probabilities at loadBl's profile_estimate: load1 and load2 failure 29% (call heuristic), load3 50%, smcConfig null 21.6% (pointer + call + early return), the d test 69.8% (pointer 85% with the call's 29%; its two early returns cancel).  The d test can't be cooled naturally (attempt 29's early-return rule: neither edge can lose its 39%), so the lever is the fallbacks' flow.
+
+### Sweeps
+
+- gen_bd460 (15 cases, pin off and on): the load chain as `||` with an empty then-arm, as gotos to a label before the extract, as `*pr = load; if (*pr) ..` for all three (`seq`) or nested (`seqn`); the d test as `if (!d) break;`.  `||` and the gotos are IDENTICAL with the pin and 14 without (the same CFG); seqn 26, seq 70.
+- gen_bd462 (5 cases, pin off): **`if (l1 && l2) *pr = l3; if (*pr) {..}` (`two_pr`) and its `else *pr = 0;` spelling give case 27 exactly as the reference has it** (base edx, d eax; IRA: n 196 against the base 122), but 26 loose elsewhere: the type-11 block and a log_printf move.  bbro: the extract block's edge into the `if (r)` test (bb 117's priority) falls 355 -> 320, because the `*pr` test (50%, no predictor) sends half of case 27 past the smcConfig test, whose null exit (21.6%) bypasses the join; the loadBinFile block (bb 87, priority 322) now comes first in round 2.  `return` for the smc break: 14 (same as break).  `*pr = -1` after a void chain: 83.
+- Window from the two end points (linear in q, the share of case 27 that reaches the smcConfig test): IRA flips for q above about 0.07, bbro keeps bb 117 first for q under about 0.47; src's q is 0.04, two_pr's 0.5.
+- **gen_bd463 (6 cases, pin off): the `*pr` re-test only inside the first load's failure arm (q about 0.145): `c_seq`, `c_nested` (`if (l2) *pr = l3; if (*pr)`) and `c_else0` (with `else *pr = 0;`) are all IDENTICAL.**  Landed `c_seq` (it doesn't rely on *pr coming in as 0).  `c_and` (`if (l1) { if (l2 && (*pr = l3)) {..} }`) and `c2_nested` (`if (l1 && l2) { *pr = l3; if (*pr) .. }`) are src's CFG again: 14.
+- pin_size, diagnostic (gen_bd464): an expect either way on the JTAG or kit test moves the whole function (190 loose and up), so the arms' frequencies can't be read off this way.  Its mechanism (attempt 12: PRE's operand order puts the kit sum's shuffle copy on the prephitmp, not on the running size; attempt 20: the sum needs its own allocno in ebx at the 14 loop) isn't shown to be a pop-order tie, so the pin_d lever wasn't carried over.  Not swept further.
+
+### Other notes
+
+- `python tools/re/fncmp.py src/build.c loadBlFiles` doesn't print MATCH for this object even at HEAD (with or without the param); bdrun.py's score and the full build are the checks here.
+- bdhints.py has lost its pin_d entry, so generators that call `bdhints.off(.., 'pin_d')` now raise; run them against 34b3ab10's src.
+
+### Don't retry (attempt 34)
+
+- pin_d: done.  For the record: the load chain as `||` or gotos (the same CFG), `seq` / `seqn` (gen_bd460), `two_pr` over the whole case (the bbro tie, gen_bd462).
+- pin_size by the arms' frequencies through expects (gen_bd464, diagnostic).
+
+### What to try next
+
+- The lever that worked: a re-test of a result variable that vrp1 threads away later still changes the flow at profile_estimate, and with it IRA's ALLOCNO_FREQ order inside a copy thread, not only bb-reorder's keys.  Where a pin decides which member of a thread pops first, compare the members' freqs (the "Forming thread" lines print them) and look for natural flow that tips them.  pin_size is the next place to read with this in mind: find the kit sum's thread in `-fdump-rtl-ira` of nopins.c and see whether its register comes from a freq order at all.
+- Otherwise attempt 33's list stands (attempt 25's windows, attempt 27's exp_t10 weight near miss, attempt 30's c6 vol_fail near miss).
+
+### Costs now (strict/loose, removed alone; 11 tricks)
+
+On src (`bdhints.py` on the landed form): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231; etype and the constant_p entry not re-measured (attempt 33's: 128/54 and 78/26 in loadBlFiles).
