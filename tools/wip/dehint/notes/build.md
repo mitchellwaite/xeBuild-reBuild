@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 53
+
+Attempt 53 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It looked for a natural way to keep attempt 52's fuse helper out of early inlining (so IPA scales its early-return profile into buildFlash) and found none: gcc 6's einline refuses a callee only for growth > 14, growth x (calls + 1) > 14, a cold edge (callee cold/hot attributes, noreturn or main: nothing else sets a node's frequency without a profile), a callee not yet in SSA (a call-graph cycle), or uninlinable bodies (va_start, setjmp, alloca, nonlocal labels); the fuse decision is a 6-insn leaf and the only call that runs before it in the reference is the salt memset.  The memset helper is also out on its own terms: with the JTAG test inside and *no* early return on it (`dret2`), the JTAG edge still goes straight to the helper's return block, so it gets early return 61% (80.1% instead of 72%) and the `fuse = 1` block moves out of line (3/285, as `dret`).  In that IPA-inlined form the 5 loop-compare differences of the -fno-early-inlining diagnostic are gone (only the JTAG block differs), so the residue was the diagnostic's.  The Linux v1.16 build (tmp/xeBuild64, gcc 4.9.2) has the same inline `setne; sub 4; cmp 1; mov 1; cmovbe` at buildFlash's start and no fuse helper, and the reference has no fuse/devgl string near buildFlash other than "Virtual Fuses set to:", so nothing suggests the original had a helper there.  See "## Attempt 53".
+
 ## State after attempt 52
 
 Attempt 52 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It applied the sharing lever to calcBlAreaSize and buildFlash.  **exp_devgl has a confirmed mechanism now**: a fuse helper whose dev arm is an early return (`int fuse = xb.glitch2mfg != 0; if (dev) return 1; return fuse;`) gets dev = ds(27, 39) = 19.1% in its *own* profile (opcode positive + early return), and once it is inlined by IPA (not einline) that profile is scaled in, the non-dev arm is 80.9% >= 75%, tree-sink leaves the setne in the def block and ce1 makes the reference's `setne; sub; cmp; mov eax,1; cmovbe` (diagnostic with -fno-early-inlining: buildFlash differs from src only in 5 loop-compare operand orders, i.e. SSA numbering).  But every such helper is a 6-insn leaf, so einline always takes it (growth <= 14, no calls) and then buildFlash's own profile re-predicts it at 27% (7/43, as src without the expect).  A call in the helper keeps it for IPA (a51/a50's loaders); the only call that fits at buildFlash's start is the salt memset (diagnostic `initFlash(salt)`: 3 loose, the JTAG early return's own 19.9% moves the `fuse = 1` block), and a helper that clears the salt and returns the fuse flag isn't something an author writes.  pin_size: the CF-area tail (`setPatchSlot; + 2 * imgCfSize`) shared by kit and retail is early-inlined and an equal base (pin still 40/82); the xell room test as a helper (IPA-inlined: it holds the log call) leaves the kit sum unflipped (46 loose without the pin, 10 with it, the xell block's own registers); retail's whole end as a helper isn't inlined (333).  The shared "virtual fuses in use" predicate in addBlsToImage / addUpdateBls costs 20 to 500 lines there.  See "## Attempt 52".
@@ -2919,3 +2923,40 @@ Goal: the sharing lever (attempts 46, 49) on the two tricks outside the loaders:
 ### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
 
 exp_pr 4/2, vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (re-measured pin and dev with a52_base.py; the rest as attempt 51).
+
+## Attempt 53
+
+Goal: attempt 52's exp_devgl lead: a *natural* fuse helper that stays out of early inlining, so IPA brings in its own profile (dev arm as an early return, 19.1%).  src as of 4ec63755, unchanged.  No new scripts; `a52_devms.py`'s third body `dret2` (not reported by attempt 52) was scored and read with `a51_fpred.py`.  Loose/strict lines, p99.
+
+### Which callees gcc 6's early inliner refuses (read against the einline behaviour seen in attempts 50 to 52)
+
+- want_early_inline_function_p: growth <= 0 is always taken; otherwise refused if the edge is not maybe_hot, if growth > early-inlining-insns (14), or if the callee has n non-inexpensive calls and growth x (n + 1) > 14.  memset counts as a call (attempt 52's initFlash stayed out).
+- maybe_hot_p at einline time: buildFlash has no profile yet, so every edge has frequency CGRAPH_FREQ_BASE; the edge is cold only if the callee's node frequency is UNLIKELY_EXECUTED or EXECUTED_ONCE, and without profile feedback compute_function_frequency sets those only from cold/hot attributes, noreturn, main and static ctors/dtors.  Nothing natural.
+- can_early_inline_edge_p: a callee not yet in SSA form (only in a call-graph cycle), or one inline_forbidden_p rejects (va_start, setjmp, alloca, nonlocal goto / label addresses), which IPA can't inline either.
+- So a call-free fuse helper (size 6, growth ~4) is always einlined, and the only ways out are a call or ~17 insns of body that later passes remove; the latter is dead code.
+
+### Calls a fuse helper could own
+
+- The reference's buildFlash runs only the salt memset before the fuse flag; the next calls are the header log and writeInitialHeader / checkBootImage, which must come after it (they could change xb, so gcc keeps the flag ahead of them), so a helper that computes the flag and then writes the header would need two results (the flag and checkBootImage's r).  The `if (fuse)` block's findFile(24) / setFuseCpuKey come after keysInit, so a helper doing that work computes the flag too late (the reference computes it at entry).
+- **`dret2`** (a52_devms.py): `int fuse = 1; memset(salt, 0, 16); if (xb.type != BUILD_JTAG) { fuse = xb.glitch2mfg != 0; if (dev) return 1; } return fuse;`: **3/285**, the same as `dret`.  The helper's profile (`python tools/wip/dehint/bdgen/a51_fpred.py build/bd/a46/dret2.c initFlash` after `a46run.py a52_devms.py -k dret2`): bb 2 (`_7 != 2`) 80.1% = nonequal 72% + early return 61%, bb 3 (dev) 19.1%.  The JTAG test's not-JTAG side falls to the same return block, so the early-return predictor fires on it whichever way it is spelled; the JTAG 19.9% moves `mov ebx,1` from the entry into an out-of-line block (`je 1320`).  Moving the JTAG test back into buildFlash leaves the memset on one path only.
+- In this IPA-inlined form the diff is only that block: the 5 loop-compare operand orders that `-fno-early-inlining` showed in attempt 52 are absent, so they came from the diagnostic flag (other functions' SSA), not from the helper.
+
+### Evidence about the original
+
+- tmp/xeBuild64 (v1.16, gcc 4.9.2): buildFlash (0x409a70) starts `mov ebp,1; ...; cmp eax,2; je; mov r8d,[glitch2mfg]; xor ebp,ebp; test; setne bpl; sub eax,4; cmp eax,1; mov eax,1; cmovbe ebp,eax`, the same shape, inline; gcc 4.9 kept some helpers gcc 6 inlined, but there is no fuse helper here.
+- build.o's strings with fuse / glitch / devgl / virtual: only "
+Virtual Fuses set to:" (showFuses' title) and the type-24 messages; no log a fuse helper could print.
+
+### Don't retry (attempt 53)
+
+- exp_devgl by any fuse helper kept out of einline: the salt memset is the only call available and makes the JTAG edge an early return in the helper (3/285 with or without the dev early return's JTAG spelling); other calls run after the flag; the einline refusal conditions above leave no natural alternative.
+- Reading the 5 loop compares of the -fno-early-inlining diagnostic: they don't appear in a real IPA-inlined form.
+
+### What to try next
+
+- exp_devgl looks closed by static predictors (attempt 44's audit) and by the callee-profile route (here).  Unless the user accepts a memset-owning helper as borderline (it would still need its JTAG test's 28%, which no helper body gives), spend attempts on the other tricks.
+- exp_pr's `(int)r < 0` near miss (0/7, the no-key log copy's `.p2align`) and lab_none's one-call loadBl24 (size store) remain the closest; attempt 51's list stands.
+
+### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
+
+exp_pr 4/2, vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 52).
