@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 31
+
+Attempt 31 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It took attempt 30's vol_fail near miss (the size log's own -1, 1 loose / 7 strict) through both routes attempt 30 named, and closed them.  (a) Block order can't help: crossjump tries each pred against the log's fallthru predecessor first, so every wholly matched -1 block merges into the fallthru one before the size log could be the 'to' side, and the split -1 blocks always take the fallthru place (rtl_split_edge puts them before the log and force_nonfallthru()s the old one; a diagnostic with case 23 last still has its own -1).  (b) A split needs the size path's last block to end in a test that is gone from the final code, and only a dead test does that.  Case 23's spellings (own -1, return, nested, good path first, `e->size & 3`) and case 2's `{ fail: }` block don't move the line (gen_bd430).  See "## Attempt 31".
+
 ## State after attempt 30
 
 Attempt 30 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It rebuilt loadBl from scratch with all seven of its hints off together and scored the forms hint-free: result through `*pr` or a returned / stored local, fallback, fail's position, the signature block's form, position (after the switch: 220 and up) and a helper for it, case order, case 6 falling into the 5..21 arm.  The best hint-free forms are 67 to 89 loose against src minus hints' 165, but that is attempts 25/26's and9 + c2 reshaping; none removes a hint once the others go back (a returned local leaves 8 loose with every hint, no key first 10), and `else if (type)` is the largest single item hint-free (the verify test is 50/50 by PRED_CALL on both arms and bb-reorder's tie takes the failed log).  New near miss: **on and9 + c2 + case 6 first the barrier costs 1 loose / 7 strict** (drafts/build_loadBl_c6_nobarrier_nearmiss.patch): only the size log's own -1, which jump2 can't crossjump with the shared -1 block because the size log's block is lower in the chain and not wholly matched.  The pins didn't move (pin_d is 14 on every case order).  Sweeps gen_bd410 to gen_bd423.  See "## Attempt 30".
@@ -1708,3 +1712,52 @@ Every whole-function axis tried (result through `*pr` / a returned or stored loc
 ### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
 
 On src (bdhints.py, unchanged src): lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231; etype 128/54, the constant_p entry 78/26.  All seven loadBl hints off together: src 320/165, and9 + c2 199/89, best natural reconstruction 120/67 (+displ, .rdata) or 145/81 (no displacement).  New: **vol_fail on and9 + c2 + case 6 first: 7/1** (exp_pr 21/1, lab_t5le 14/1, pin_d 30/15, cp 119/35, exp_t10 87/29, etype 135/55 on that base with the barrier off).
+
+## Attempt 31
+
+Goal: vol_fail on attempt 30's c6 near miss (drafts/build_loadBl_c6_nobarrier_nearmiss.patch, 1 loose / 7 strict: only the size log's own `mov edi,-1`), by the two routes attempt 30 named: (a) the size log's block after a wholly matched -1 block in the chain, (b) the size log's edge into the log made critical so that expand splits it.  Generator gen_bd430 on src as of 48ce6ada; scratch in build/bd/a31 (not kept: `nm.c` is the near miss, `diag_c23last.c` the diagnostic below).
+
+### Reproduced, and where the -1s are (`bddump.sh .. loadBlFiles t-optimized,jump2`)
+
+- nm.c: 1 loose / 7 strict, as attempt 30 had it.
+- At .optimized the could-not-read log (bb 109) has -1 PHI arguments from the smc test (121, critical edge), the sig-failed `<= 5` test (27, critical), the size log (86: the call and `goto 109`, one successor) and the sig-failed setFlashBuild copy (33, one successor; the reference keeps that one as its own -1 too, 37d9).  At expand the two critical edges are split (blocks placed right before the log); 86's and 33's -1 are appended to their own blocks.  jump2: `Cross jumping from bb 146 to bb 129; 1 common insns` (smc into sig-failed, 129 being the log's fallthru predecessor); the size log (bb 104) is in no crossjump.
+
+### Why route (a) is shut (crossjump's pred loop)
+
+From gcc 6's cfgcleanup.c try_crossjump_bb as I remember it (the official git web is behind a bot wall; consistent with every jump2 dump read so far):
+- try_crossjump_bb walks the log's preds once.  For each pred e it first tries `try_crossjump_to_edge(e, fallthru, dir_forward)`, so e is always 'from' against the fallthru pred, and only then pairs e with the other non-fallthru preds of higher index (dir_both; can_replace_by gives dir_backward only for a constant set against a register set with a REG_EQUAL note, never for two `(set edi (const_int -1))`).
+- So every wholly matched -1 block merges into the fallthru -1 block on its own visit, before any pairing could make the size log the 'to' side.  After that the size log can only be 'from', and it isn't wholly matched (nmatch 1 < min-crossjump-insns 5): no join, whatever its index.
+- The only order that would work is the size log as the log's fallthru predecessor at jump2 (a wholly matched -1 block is then 'from' and the size log is split as 'to').  It can't be: rtl_split_edge puts each split block of a non-fallthru edge right before the log and force_nonfallthru()s the old fallthru predecessor, so the last split -1 block always takes that place.  Diagnostic `diag_c23last.c` (case 23 moved last in the switch, so the size log is the last GIMPLE block before the log; .rdata moves, 353 lines): jump2 still has the size log's own -1 (bb 123) and `146 to 129` as before.  Confirmed.
+- .rdata pins case 23 anyway: its string (0xeb0) sits between case 4's `KV_alt_dec.bin` (0xe9f) and case 27's `config.bin` (0xee8), so the size log is expanded before case 27 and default.  A jump-thread copy of the size log at the chain's end would leave the original as well (two size logs, not the reference) or move the string.
+
+### Why route (b) is shut for natural code
+
+- commit_one_edge_insertion splits an edge only when its source has more than one successor (or ends in a non-simple jump) and its destination more than one predecessor; otherwise the copy goes at the end of the source or at the head of a single-pred destination.  A single-pred destination after the size log is merged into it by GIMPLE cleanup (gimple_can_merge_blocks_p: log_printf doesn't end a block; nothing natural makes the next block a loop header or a forced label).
+- So the size path's last block before the log must end in a conditional at expand that is gone from the final code (the reference's size log is `call; jmp 33d4`).  GIMPLE folds any test whose outcome the size path knows (vrp/dom/threading; a cond whose two edges meet becomes unconditional), and a test it can't resolve (xb.type, or e->size after the call) stays in the code.  A test only RTL folds would be a dead test written for gcc.
+- Put another way: a -1 reaches a split block only through a conditional block that only -1 paths reach (the sig-failed `xb.type <= 5` test is the reference's example).  Case 23 has no such test.
+
+### gen_bd430 (36 cases): case 23's forms and case 2's smc spelling on the near miss
+
+Case 23 as src, `own` (`log; *pr = -1; break;`), `ownpre` (the -1 before the log), `ownret` (`return`), `nest` (`if (!*pr) { if (bad) { log; goto fail; } append; } break;`), `nestelse` (good path first inside), `nestown`, `good` (good path first, the log then `goto fail`), `diag_szfirst` (the size test before the load-result test: it reads a failed load's e->size, diagnostic only); the test as `(e->size & ~3) != e->size` or `e->size & 3`; case 2 as c2 (`if (e->offset) break; fail: ..`) or `c2blk` (`if (!e->offset) { fail: *pr = -1; } break;`).
+- src, nest, nestelse and good with c2: 1/7, the same code as the near miss.  `e->size & 3`: 7/33 (attempt 15's nonequal effect).  Own -1 forms (own, ownpre, ownret, nestown): 53 (loadBlFiles 13 plus displacements, .rdata).  diag_szfirst 69 and up.  c2blk: 89 and up (the smc test no longer falls into fail; attempt 26's split_edge_bb_loc rule).
+- As the mechanism says, no spelling moves the size log's line.
+
+### Not done
+
+- The brief's other items were already measured: fail's position and the size arm's spellings (attempt 30, gen_bd420 and gen_bd421), case order (gen_bd419), and9 / c2 / c6 dropped one at a time (gen_bd420: only all three together give 1/7), t5le and exp_pr on this base (1/14, 1/21).  The size error and the smc error "in one block" would mean cases 2 and 23 sharing code with different strings; the nearest real form is fail itself, which they already share.
+- No other trick was attempted.
+
+### Don't retry (attempt 31)
+
+- vol_fail through crossjump in any block order (route (a)): wholly matched -1 blocks always merge into the fallthru one first, and split blocks always take the fallthru place (diag_c23last).
+- vol_fail by making the size log's edge critical (route (b)) without a test after the log: no natural source; a test GIMPLE can't fold stays in the code.
+- Case 23's spellings on the near miss (gen_bd430): own -1, return, nested, good path first, `e->size & 3`; case 2's smc test as a `{ fail: }` block.
+
+### What to try next
+
+- vol_fail needs a GIMPLE block in front of the log that the size log reaches and that lives to expand (attempt 26's route): a statement at fail that GIMPLE keeps and RTL drops, or a PHI made after mergephi3.  No natural candidate is known, and the asm is the honest form of it.  Unless a new reading of the original's structure turns up (the Linux build has the same single -1 site, attempt 9), leave vol_fail.
+- The c6 near miss stays the best base for vol_fail if that changes; its other costs are attempt 30's.
+
+### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
+
+On src: lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231; etype 128/54, the constant_p entry 78/26 (attempt 30's numbers; src unchanged).  vol_fail on the c6 near miss (and9 + c2 + case 6 first): 7/1, unchanged by every case 23 spelling.
