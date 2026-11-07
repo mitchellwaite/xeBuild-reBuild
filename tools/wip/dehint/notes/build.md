@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 45
+
+Attempt 45 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It rebuilt loadBlFiles in loadConsoleBlFiles' style (the switch in the loop, `r` a loop-body local, one `r = -1` site closing case 2, r tested once after the switch) from src's *current* arms (a45lib.py), and found the closest structure so far: with console's update fallback (a good fallback clears r, then `if (r) break;`), case 23's test as `e->size & 3` and the param at 99, **`else if (type)`, both `__builtin_constant_p` and lab_t5le all go and loadBlFiles is 14 loose / 34 strict, every other function matching** (drafts/build_loadBlFiles_loop_nearmiss.patch).  The one block left is case 24's r = 1 block after the first arm: it needs priority in bbro's round 4, which in src comes from the arm-1 malloc block ending its trace (edge 171 < exec_th 176); in the loop the case arms are 597 instead of 513 (the none test gets no PRED_CALL without a call in the guarded block, attempt 9's reading), so the edge is 199 and the trace runs on.  No natural case 24, fallback, defaultBl60 or guard form moved it (gen_bd560 to gen_bd562, a45_*.py).  Putting the same arms back in a helper (any result form) is 100 loose and up.  See "## Attempt 45".
+
 ## State after attempt 44
 
 Attempt 44 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It audited the static predictors: a table of which gcc 6 predictors fire on every critical test in loadBl, loadBlFiles, loadConsoleBlFiles, defaultBl60, buildFlash and calcBlAreaSize (new tool `bdpred.py` on profile_estimate dumps), the predictor each window would need, and the natural constructs that trigger it.  A probe (drafts/build_pred_probe.c) settled which predictors gcc 6.2 has: no PRED_GOTO, no PRED_INDIR_CALL (indirect calls get the plain call 29%), no loop guard, no cold attributes in the toolchain's headers; noreturn only from exit/abort, which only fit dead paths here.  Every gap needs a predictor that points the other way in gcc 6, a call or return the reference doesn't have, or a cross-object value range (`!= 1` for suGetCG, `<= 0` for glitch2mfg), so nothing natural was left to build.  defaultBl60's result-variable form was re-read for lab_none: its NULL edge still goes straight to the return block (10.1%).  See "## Attempt 44".
@@ -2479,3 +2483,56 @@ Goal: the brief's predictor audit.  Every probability gap left is a static-predi
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 43 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (8/4 with the precheck gone too, with any defaultBl60 body), etype 168/94 in the object, cp 118/66 in the object, exp_devgl 43/7, pin_size 82/40.
+
+## Attempt 45
+
+Goal: the whole-structure hypothesis again, with what attempts 10 to 44 learned: loadBlFiles written like loadConsoleBlFiles (switch in the loop, `r` a loop-body local, one `r = -1` site, r tested once after the switch), built from src's current arms rather than attempt 9's text, scored hint-free and with each hint back, and with the param swept.  src as of e7466e21, unchanged.  New tools in `tools/wip/dehint/bdgen`: `a45lib.py` (`loop(text, fb=, fail=, tail=, c6=, rdecl=, none=, sz=, helper=, off=(..), c24=..)` takes loadBl's switch out of src, `*pr` -> `r`, and writes it into loadBlFiles' loop, or back into a helper; CLI `python tools/wip/dehint/bdgen/a45lib.py out.c fb=con2 sz=and3 off=etype+cp+lab_t5le`), `a45psweep.py` (variants x param values: `python tools/wip/dehint/bdgen/a45psweep.py -p 98,99 'lab:fb=con2,off=etype+cp'`), generators gen_bd560 to gen_bd562, hand-run scripts `a45_c24.py`, `a45_c24b.py`, `a45_dbl.py`, `a45_cf.py`, `a45_bl60.py`, `a45_diag.py` (each reads build/bd/a45/n1.c, written by the CLI line above; run from the repo root).  Scratch in build/bd/a45 (not kept).  Loose/strict lines in loadBlFiles; "+displ" means loadBlFiles changed size and loadConsoleBlFiles / blmodMissing / buildFlash pick up 40 lines of call offsets (not real differences).
+
+### The loop form at the param's 98 (gen_bd560, 342 cases)
+
+Axes: fallback (src's nested with `goto chk`, attempt 25's and9, `con2` = loadConsoleBlFiles' form: `if (r) { if (type == 9) { if (suGetCF(..)) r = 0; } else if (type == 10) { if (suGetCG(..)) r = 0; } } if (r) break;`), the -1 site (`c2`: `fail: r = -1; break;` closing case 2, as attempt 26; `c23`: closing case 23 after the size log; `each`: `r = -1` at every site, as console), tail (src's, `if (xb.type <= 5) break;`, `xb.type > 5 && type == 14`), case 6 first, and the hint set (all on, all off, each off alone).  The loop form has no helper to keep inlined; defaultBl60 and the other callees inline as in the reference (no 9999 rows).
+- Best: `con2 c2 src` with only `else if (type)` off, **108 loose** (no displacement); with every hint on it is 158 (+displ): in the loop form the dead test costs 50 lines instead of saving them.  All off: `con2 c2 src` 107 (+displ), src's fallback 155 (+displ).  c2 and c23 score the same everywhere (the label moves, the code doesn't); `each` is 185 and up.
+- Attempt 9's loop form was 128 hint-free; the gain is case 23's and case 27's current spellings.
+
+### The param on the loop form (a45psweep.py)
+
+- `con2` with etype off: p88 / 92 / 99 **26 loose**, p90 to 98 108, p78 20 (+displ; buildFlash's devgl needs p >= 75).  The param acts here only through exp_t10 and exp_pr: at 99 the CG edge is 1% instead of 2%.
+- With etype and the constant_p entry off (`cp`: the entry as `if (0)`): **p99 18 loose / 60 strict**, no .rdata or other function moved.  Two blocks: the appendAddonPatches call (laid out last) and case 24's r = 1 block.
+- Case 23 as `e->size & 3` (console's spelling; src's `(e->size & ~3) != e->size` is attempt 15's borderline): **p99 14 / 34**, appendAddonPatches back in place, and lab_t5le is then free (14 / 34 with it off).  This is the near miss **n1**: `fb=con2 sz=and3 off=etype+cp+lab_t5le` at p99, drafts/build_loadBlFiles_loop_nearmiss.patch (plus 98 -> 99 for build.c in build.sh).  It would remove 4 tricks (etype, both constant_p, lab_t5le) and the case-23 borderline; exp_t10, exp_pr, the barrier and the param stay (exp_pr off +2 loose, the barrier off +1, both +5, exp_t10 off 98 +displ).
+- Every other function matches at p99 on n1 (attempt 24's "the object matches at 96, 98, 99 only" holds).
+
+### What n1's 14 lines are (bbro, `bdblocks.py`, `-fdump-rtl-rtl_dce-blocks`)
+
+- One block: case 24's r = 1 block after the first arm's malloc fails (`mov eax,xb.type; sub 4; cmp 1; jbe <arm 2>; mov edi,1; jmp <log>`, freq 32).  The reference has it right before the suGetCF block (freq 41); n1 lays it after that block and after appendAddonPatches.  Both are round-4 heap items with no priority, so 41 goes first.
+- In src the same block (51, freq 31) gets priority (`key -1001931`, edge 19) because its predecessor, the arm-1 malloc block (47, freq 191), ends its trace in round 2: the malloc-ok edge is 191 x 0.899 = 171.6, under round 2's exec_th = 882 x 200 / 1000 = 176.4, so the memcpy block starts a trace of its own.  In n1 the malloc block is 221 (the two crossjumped defaultBl60 copies, 98 + 123), the edge 198.6, and the trace runs on through memcpy into arm 2's test, so the r = 1 block never gets priority.
+- 221 / 597 = 191 / 513: the whole case-24 arm is scaled by the arm's frequency.  The switch's 12 edges each get 1/12 of the switch block, 7162 in the loop against 6160 in src: in src the none test's strnicmp edge gets PRED_CALL (29%) because the guarded block is the loadBl call; in the loop the guarded block is the switch (no call, 50%).  This is attempt 9's reading, now down to a single block: every other block of loadBlFiles lines up at the loop's 597 scale with four fewer hints.
+- So the reference's arms were at about 513, which says the guarded block held a call at profile_estimate (src's helper), while the loop's arms match the reference's code with fewer hints.  Neither structure is the whole story yet.
+
+### Sweeps on n1 (p99 unless said)
+
+- gen_bd561 (288 cases): fail site, tail, case 6 first, `r` declared at the top or in the body, case 24's `||` forms (`or1` first arm, `or2` second, `orb` both), exp_pr / vol_fail off.  Best 14 (`or2` is an equal base: the second arm's `||` costs nothing here); `or1` moves the size store as src's borderline comment says (16 +displ, 206 strict); `plain` / `and` tails 48 and up.
+- gen_bd562 (135 cases): the fallback's forms (`con2`, console's own `con` with the SE test after `if (r) break;`, `con2n` with `!= 0`, flat `&&` pairs, `else`-joined pairs, nested `&&`, an inner switch, `brk` = failures break and a good fallback falls to `r = 0`) x c2/each x tail x exp_t10 / exp_pr / vol_fail.  `con`, `con2`, `con2n` are equal (14); `brk` 34; the rest 96 and up.
+- a45_c24.py / a45_c24b.py: arm 2 with `else r = 0` instead of the leading `r = 0;` (18 +displ); arm 2 as `if (!loadBaseFile(..) && e->size == 0x60) r = 0; else r = defaultBl60(e);` (**equal**, 14); arm 1 nested `if (!loadBaseFile(..)) { if (size != 0x60) .. } else ..` (equal); `glitch2mfg != 0`, `r = 0;` before arm 1, `DEVGL16 || DEVGL`, `>= DEVGL && <= DEVGL16`, `!(type != JTAG && !glitch2mfg)` (all equal, 14); `glitch2mfg || type == JTAG` 122 (+displ).
+- a45_dbl.py: defaultBl60 as a result variable, `if (e->data) {..; return 0;} return 1;`, a local pointer, the assignment in the test, `== NULL`: all 14 (the same GIMPLE, attempt 44).
+- a45_cf.py: CG tested first 141 (+displ), `suGetCF(..) == 1` 100, `if (r != 0)` equal, `r && type == 9` pairs 103.
+- a45_bl60.py: a `loadBl60(e)` helper for case 24's arms (five bodies, with and without console's case 24 using it too): 39 at best (`||` bodies), 100 for the two-call bodies.
+- a45_diag.py (diagnostic only): a 1% `__builtin_expect` on arm 1's size, glitch or load test is far too strong to measure the window (14 to 258); not pursued.
+- Guard forms (a45psweep): the r test inside the guard (`rin`) or the none test as a `continue` (`cont`, with r at the top or in the body): 201 at p99.  A diagnostic expect on both none-test edges (p71, i.e. 29%) is 208 and up: an expect is not PRED_CALL (it is first-match and moves the crc edge too).
+- The arms back in a helper (a45lib `helper=`): src's `*pr` helper with n1's arms 202 (116 with src's case 23 and every hint); r a local in the helper with `*pr = r;` at the end, returned (`uint32_t loadBl(e, i)`), the could-not-read log inside the helper, or `if (r) *pr = r;`: 95 (log inside, src's arms) to 418.  The helper's breaks are early returns at its own profile_estimate, which the loop form doesn't have, and n1's arms only line up without them.
+
+### Don't retry (attempt 45)
+
+- The loop form at the param's 98, or with `else if (type)` kept: the dead test costs 50 lines there.
+- n1's last block by case 24's spellings, the fallback's spellings, defaultBl60's bodies, a loadBl60 helper, or the guard's forms (above): the block needs the arm-1 malloc block under 196 (exec_th 176.4 / 0.899), or the r = 1 block over 41, or suGetCF's block under 32; every natural form keeps 221 / 32 / 41.
+- n1's arms in a helper of any kind (`*pr`, a stored or returned local, the log inside, a conditional store).
+- `each` (`r = -1` per site) and the `plain` / `and` tails in the loop form.
+
+### What to try next
+
+- n1 is the closest base found for loadBl's cluster: one block, and it would take etype, both constant_p and lab_t5le (4 tricks) plus the case-23 borderline.  What's missing is a factor of about 0.86 on case 24's arm (597 -> 513), or a natural reason for the arm-1 malloc block to end its trace.  Not tried: a case 24 with one shared defaultBl60 call per arm that still gives the reference's two copies; anything that gives the switch more than 12 edges at profile_estimate and merges them before bbro (tail merge runs in PRE, after profile_estimate), though every case value is already accounted for.
+- Check any idea against `bdblocks.py` on the bbro dump first: the r = 1 block must be laid out right before the suGetCF block, and in round 2 the arm-1 malloc block's trace must stop there.
+- One hint in place of the four (a45_hint1.py, p99): a cold label on the CF fallback 96 (+displ), on arm 1 or on an `if (r)` after it 80 to 466, a hot label there 127, a 1% expect on arm 1's size test 39.  None closes the block, so n1 isn't even a 4-for-1 trade yet.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 44 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object, cp 118/66 in the object, exp_devgl 43/7, pin_size 82/40.  New: the loop form n1 (fb=con2, sz=and3, etype + cp + lab_t5le off, p99) 34/14 in loadBlFiles, nothing else differing; on n1 exp_pr off 38/16, vol_fail off 41/15, both 51/19, exp_t10 off 215/98 (+displ).
