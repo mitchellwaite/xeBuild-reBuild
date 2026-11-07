@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 39
+
+Attempt 39 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It stepped back from per-hint spellings to how the data reaches loadBl, each form crossed with every loadBl-side trick off alone.  The tail reading `e->data` instead of `xb.files[i].data`, and loadBlFiles' `r` (or `e` and `r`) declared in the loop body (so `&r` gets a scope CLOBBER each iteration), are **equal bases**: IDENTICAL with every hint, and every hint costs what it costs on src (gen_bd510).  A pointer IV is 355 loose.  case 2's slot through a local pointer is 18 loose.  checkBl's type argument as `e->type` (gen_bd512 `fld_ck`) is 9 loose with every hint, and worse than src with the constant_p entry or exp_t10 off.  New reading: **loadBl is inlined only while the IPA inliner can split its size by case predicates** on the parameter load `e->type` (`op0[ref offset: 8224] == N`; unconditional size 29).  loadBl taking `i` and computing `e` itself, any narrow `type` local (uint8_t, uint16_t, signed char, short), or the "none" test moved into loadBl as an early return all make the size unconditional (234.5), and then loadBl stays out of line with "max-inline-insns-auto limit reached" (gen_bd510, gen_bd511).  See "## Attempt 39".
+
 ## State after attempt 38
 
 Attempt 38 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  pin_size (gen_bd500): a live type test at retail's start (the xell lookup hoisted, `x = 0; if (xb.type != BUILD_RETAIL) x = findFile(25);`) does open attempt 37's route (kit sum `size_254 + prephitmp_269`) but moves the findFile(25) loop ahead of the sums (313 loose); one-expression sums and the kit/retail tail written once (5-test nested in an else) don't flip or cost more.  So the route needs a statement that is live, isn't a count load, and leaves no code; none was found, and the reasons each kind fails are now listed.  Rotation: `break` after the signature block's no-key and passed logs (same behaviour; gen_bd501) is worse for t5le / exp_pr / `else if (type)` (47 loose and up); case 6's checkBl through `goto chk` (gen_bd502) makes exp_t10 irrelevant once the constant_p entry is off (20/90 either way) but leaves bbro's `if (r)` copy in case 6's checkBl block and the CG/SE checkBl setups crossjumped into it (20 loose with every hint), and the reference keeps case 6 apart from chk anyway; exp_devgl by a re-tested fuse (`if (!fuse && dev) fuse = 1;`, gen_bd503) keeps a branch where the reference has cmovbe (10 loose / 598 strict).  See "## Attempt 38".
@@ -2109,3 +2113,48 @@ Goal: (A) pin_size by a *live* statement at retail's start (attempt 37's route w
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 34 (src unchanged, re-measured with bdhints.py): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
+
+## Attempt 39
+
+Goal: step back from the per-hint levers and change how the data reaches loadBl: parameters against computed locals, a field against a local, the loop's scopes and IV, the split between loadBl and loadBlFiles, the type of the switch variable.  Each form is crossed with the loadBl-side tricks off one at a time (exp_t10, exp_pr, lab_t5le, vol_fail, lab_none, `etype` = plain else, `cp` = the constant_p entry as `if (0)`).  Generators gen_bd510 to gen_bd512 on src as of a9cb46e0 (`python tools/wip/dehint/bdrun.py tools/wip/dehint/bdgen/gen_bd51N.py`; gen_bd511 and gen_bd512 import `off` / `OFFS` from gen_bd510).  Scratch in build/bd/a39 (not kept: `*.inl` are `-fdump-ipa-inline-details` of src and of the uint8_t case).  Loose/strict lines in loadBlFiles unless said.
+
+### gen_bd510: the interface (80 cases)
+
+- **Equal bases (IDENTICAL with every hint; each hint off costs exactly src's 7/0, 18/2, 116/46, 296/126, 333/231, etype 128/54, cp 78/26):**
+  - `edata`: the type-14 tail as `setFlashBuild(getBeU16(e->data + 2))`.  So the reference's `imul` recompute of `xb.files[i].data` (attempts 11, 21) comes from the threads, not from the spelling.  With this form `i` is only used by the constant_p entry, which would make `i` part of the trick if the entry ever goes.
+  - `rscope` / `escope`: `uint32_t r = 0;` (and `struct fileent *e = &xb.files[i];`) declared in loadBlFiles' loop body.  The CLOBBER of the address-taken r at the end of each iteration changes nothing after SRA / into-SSA.
+- `c2slot` (case 2 through `struct fileent *f = &xb.files[xb.nFlashFiles];`): 18 loose, .rdata moves.  The slot address isn't reloaded after the call, and the reference reloads it.
+- `eptr` (`for (i = 1, e = &xb.files[1]; ..; i++, e++)`): 355 loose.
+- `iarg` (`loadBl(uint32_t i, uint32_t *pr)` with `e = &xb.files[i]` inside), `noneinbl` (the strnicmp / crc skip as loadBl's first statement, `if (..) return;`), `noneinbl+iarg`, `iarg+escope`: **loadBl is not inlined** (loadBl / loadBl.constprop out of line, 10000+ lines).
+
+### gen_bd511: narrow `type` locals (48 cases)
+
+uint8_t, uint16_t, signed char, short, int8_t, int16_t: every one leaves loadBl out of line, as `iarg` does.
+
+### Why loadBl is inlined at all (read from `-fdump-ipa-inline-details`, src against the uint8_t case)
+
+- In src, loadBl's inline summary splits its size by predicates on the parameter load `e->type` (`op0[ref offset: 8224] == 27`, `== 24`, `<= 21`, ...): unconditional size 29, plus one entry per case.  The call is enqueued (badness -0.0017) and inlined ("net change of -39").
+- With `uint8_t type` the switch is on a converted value, so ipa-inline-analysis makes no case predicates: unconditional size 234.5, and the edge is refused with "--param max-inline-insns-auto limit reached".  With `iarg`, `e` is no longer a parameter (it is `&xb.files[i]` with i the parameter), so the same thing happens.  With `noneinbl`, the early return comes before the switch.
+- So any reshaping of loadBl must keep `switch (type)` on a full-width copy of the parameter's field load, with nothing before it that the predicates can't see through.  That explains part of the 9999 rows in earlier sweeps too.
+
+### gen_bd512: chk's type from the field (54 cases)
+
+- `fld_ck` (checkBl's argument as `e->type`): 9/58 with every hint, so not an equal base.  cp off 35 (src 26), exp_t10 off 55 (src 46), cp + exp_t10 off 37.  The reload after loadInputFile / suGetCF / suGetCG does take the constant type away from vrp1's shared copy (that is what cp imitates), but it adds a load and moves the 9/10 arms.
+- `rl` (`chk: type = e->type;`), `fld` (all uses after chk), `fld_tail`, `fld_t0`, `fld_t2`: 103 loose and up.
+
+### Don't retry (attempt 39)
+
+- The tail through `e->data`, a loop-body r or e (equal bases: they free nothing).
+- loadBl taking i instead of e, any narrow type for its `type` local, the skip test inside loadBl: loadBl stops being inlined (see the inline reading).  Don't build forms that put a statement before the switch or switch on a converted value without checking the inline dump first (`-fdump-ipa-inline-details`, "Inline summary for loadBl").
+- A pointer IV in loadBlFiles' loop; case 2's slot through a local pointer.
+- chk's type, or the tests after chk, read from e->type (gen_bd512).
+
+### What to try next
+
+- If the constant_p entry is ever replaced, `edata` lets `i` go from loadBl's parameters.  Score that form together with the entry's replacement.
+- The inline reading gives a check for whole-function reshapes (attempt 9's and 30's reconstructions): a reshape that only scores 9999 is an inlining refusal, not a bad shape.  Reconstructions that lost that way might be worth rescoring with the switch kept first on the parameter's field.
+- Otherwise attempt 33's list stands (attempt 25's windows, attempt 27's exp_t10 weight near miss, attempt 30's c6 vol_fail near miss).
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 34 (src unchanged; re-measured by gen_bd510's `src|` rows): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 and pin_size 82/40 as attempt 38.
