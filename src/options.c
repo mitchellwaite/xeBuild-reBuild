@@ -585,10 +585,19 @@ int setBoolOption(const char *name, const char *val)
    then owns an epilogue copy and only edramtemp's -1 test falls into bad;
    gpufan's moves the jump alignment from avregion's test to gameregion's.
    (Every myatou32 arm but edramtemp in this form also matches.)
-   The two __builtin_expect use build.sh's builtin-expect-probability=83:
-   the done edges stay under gputemp's (so its match trace comes first)
-   but above the macid loop exit, and the incomplete block reaches the
-   epilogue-copy threshold.
+   The setBoolOption __builtin_expect uses build.sh's
+   builtin-expect-probability=83: the done edges stay under gputemp's (so
+   its match trace comes first) and the len <= 0 copy's done edge stays
+   above the macid loop exit (1/6, its loop iterations) when bb-reorder
+   connects the "\n" trace; the natural 9.2% (call, early return, `== 1`)
+   loses that.
+   Borderline, for review: the unknown-with-value message tests `val &&
+   vlen`, where vlen alone decides (vlen is 0 whenever val is NULL).  The
+   `val` test lets VRP1 thread the val-null path straight to the
+   incomplete message, so after PRE's tail merge that block has the whole
+   path's frequency and reaches the epilogue-copy threshold (with `vlen`
+   alone it keeps half, one short); it stays in place, so its literal
+   stays between the unknown and bad messages.
    The return is uint32_t, as is parseCmdOptions': with int, uncprop
    returns stricmp's "macid" result for macid's 0s (kept in esi), and
    parseCmdOptions' `return 0` reuses the call's 0 only when the types
@@ -764,7 +773,7 @@ uint32_t parseOption(char *opt)
 			return 1;
 		}
 	}
-	if (__builtin_expect(vlen, 0)) {
+	if (val && vlen) {
 		log_printf(1, "\n\n***** ERROR: unknown option '%s' with value '%s' provided on the command line!\n", opt, val);
 		return 0;
 	}
@@ -877,8 +886,6 @@ void applyIniOptions(void)
 			}
 		}
 		if (!xb.xellAltButton && (xb.bootFlags & 4)) {
-			/* a dead edge into the remopower test: its block keeps a
-			   count above its edge's */
 			xb.xellAltButton = parseButton(getIniValue("xellbutton2"));
 			if (!xb.xellButton)
 				log_printf(1, "alternate xell button is disabled\n");

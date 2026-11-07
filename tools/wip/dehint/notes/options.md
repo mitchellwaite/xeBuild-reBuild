@@ -3,6 +3,39 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 19
+
+**19 tricks** (20 before).  Removed (1): parseOption's vlen `__builtin_expect` (po2).  The
+unknown-with-value test is now `if (val && vlen)`: the `val` test lets VRP1 thread the
+val-null path straight to the incomplete message, and after PRE's tail merge that block has
+the path's whole frequency (113, threshold 57; with `vlen` alone it keeps half, 56) and owns its epilogue
+copy; it keeps a second pred, so it stays in place and its literal stays between the
+unknown and bad messages.  Full build SHA256 10dac648...1971c; progress 617/617.  po1 (the
+setBool expect) is pinned to (16.67%, 18%) by two bb-reorder comparisons; the natural 9.2%
+fails both, and only a non-0/1 constant return gives a value in range.  See "## Attempt 19".
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| parseOption, the unknown-with-value test | `if (val && vlen)` where `vlen` alone decides (vlen is 0 whenever val is NULL) | Borderline: live but redundant, and it matches because the `val` test gives VRP1 a path to thread.  It reads naturally (the message prints val with %s).  `if (val) { if (vlen) ... }` (nested) and `vlen && val` give the same bytes |
+
+Remaining (19 by README's count): `--param builtin-expect-probability=83`; 7
+`__builtin_constant_p` (parseButtonX's z feed 2, the macid memset 1, the rev feeds 4); 5
+`__builtin_expect` (parseButtonX's power, parseOption's setBool, the rev feeds' three); 2
+`asm goto` and 2 `__builtin_unreachable` (dz1, dz2).
+
+## State after attempt 18
+
+**20 tricks, unchanged** (no match; src/ untouched).  Attempt 17's constant-argument lever
+doesn't reach the rest: a test on a constant argument folds when ipa-cp or the inliner copies
+the body, so its edge is gone before the caller's frequencies are rebuilt (parseButtonX with
+`if (def) goto z;` gives exactly the no-feed bytes, 90), and a value-only argument is inert
+(predictors don't see values).  Removal costs are unchanged by attempt 17 (rv2 44 ... po1
+811).  The macid memset exists only because dz1's asm goto ends the validateString false
+edge's first block (gcc 6's call heuristic scans that block alone: 71% with the memset, 50%
+without); moving the asm goto behind a real call loses the crossjump of the two macid
+warnings.  The z feed can't be one cp test (9 forms x 3 places), and parseButtonX at more
+sites is split again.  See "## Attempt 18".
+
 ## State after attempt 17
 
 **20 tricks** (22 before).  Removed (2): the hand-written `_parseButton.part.0` (its `cold`,
@@ -1821,3 +1854,186 @@ IDENTICAL (code, sections up to the name, .eh_frame order); full build SHA256
 ### Result
 
 MATCH: 22 -> 20 tricks (the hand-written part and parseButton's winbutton expect).
+
+## Attempt 18
+
+Focus: attempt 17's lever (a constant extra argument to a static helper: bigger call for
+fnsplit, unlikely-executed promotion, a late ipa-cp clone) applied to the remaining 20
+tricks.  Tools (tools/wip/dehint/): `op18dis.py OBJ FUNC [a-b]` (one function with its
+.rdata immediates shown as strings), `op18rm.py [-b base] [rm|a+b ..]` (op13's removal table
+re-measured on a base), `op18bx.py [variant ..] [-o out.c]` (parseButtonX with a `def`
+argument, tests on it as the z feed, and parseButton's chain as a shared `buttonOf(s, def)`),
+`op18site.py [-r rms] [XPX ..]` (which of xellbutton / xellbutton2 / dualboot call
+parseButtonX, x removals), `op18ms.py` (the dz1 asm goto behind a real call instead of the
+memset), `op18z.py [form:pos ..]` (the z feed as one cp test).  Scratch: build/op/a18.
+
+### Removal costs on today's source (op18rm.py): unchanged by attempt 17
+
+rv2 44, po2 62, bxz 90, rv2i 304, dz2 304, dzall 304, ag2 304, ms 373, ag1 376, dz1 390, rv1ms
+487, rv1 508, feeds 508, bxe 797, po1 811 (bxe+bxz 321, attempt 17).  The new part changed
+nothing the other tricks depend on.
+
+### A test on a constant argument is not a feed (op18bx.py)
+
+- `def` used only as a value (`if (!s) return def;`, `int b = def;`, the part called with
+  `def`), with or without each parseButtonX hint: exactly the hint's own score (no hint 321,
+  no z 90, no power expect 797, both kept IDENTICAL).  Predictors don't see values.
+- `if (def) goto z;` (and `def > 0`, `def < 0`, `def == 1`, `if (def) return def;`) at the
+  power-fail head, called with 0, in place of the z feed: **90, the same bytes as no feed at
+  all** (diff identical to bxz's), with or without `-fno-ipa-cp`.  profile_estimate does give
+  the test 61% (call 71, early return 39) in parseButtonX's own body, but the parameter is a
+  constant when the body is copied (ipa-cp's versioning, or the inliner without it), so the
+  test folds during the copy and its edge is gone before the caller's frequencies are rebuilt
+  (TODO_rebuild_frequencies at inline, attempt 16).  The cp feed works because
+  __builtin_constant_p is folded only at fab, after VRP1 has threaded the z edge into the
+  constant-0 copy.  So a clone is not "a separately estimated body": its counts are the
+  generic body's probabilities minus the folded edges, i.e. the no-feed profile.
+  (`!def`, or `def` with the call passing 1, makes the arm live: other code.)
+- `def` used in a join (`if (!b) b = def;`, `return b ? b : def;`): 705-830, the part loses
+  its unlikely promotion (102) and applyIniOptions changes.
+- parseButton's chain as `static int buttonOf(const char *s, int def)` with parseButton a
+  wrapper, the xellbutton site (S1) or all three sites (S2) calling it: buttonOf is emitted as
+  its own function (`buttonOf.isra.0` / `.constprop`), 30698.
+- So attempt 16's arithmetic stands: the xellbutton header's ratios come from predictors on
+  its code, which no argument changes, and its z flow needs an edge that survives until VRP1
+  (only a builtin does).  Single-test forms of the cp feed (op18z.py: 9 forms x head / part /
+  power-success): best 90 (= no feed: `== 1` and the part position are inert), the rest
+  257-919; the two-test feed stays.
+
+### Button sites calling parseButtonX (op18site.py)
+
+parseButtonX called from two or three sites (XXP, XPX, XXX, PPX), x removals (rv2, dz2,
+dzall, bxz, bxe): 321-21597, never better than the removal alone.  Called twice it is split
+again (the part loses its unlikely promotion, .text.unlikely and FDE order change), so the
+attempt 17 split doesn't carry over to parseButtonX.
+
+### The macid memset is the price of dz1's asm goto (pe dumps a18/pe_cur, a18/pe_ms)
+
+- profile_estimate: with the memset, the validateString test is 71% (call heuristic: the
+  false edge's first block holds a call); without it 50%: the asm goto ends that block on
+  its own, the log calls are in the next block, and gcc 6's call heuristic only scans the
+  edge's destination block.  The true edge's destination is the loop preheader (no call).
+- Natural alternatives for the 71%: none.  validateString is uint32_t (`> 0` folds to `!= 0`),
+  `== 1` gives 28%, a do-while puts myatox8 on the true edge (29%, wrong way), swapping the
+  arms gives 50%, the loop as a helper call (attempt 13, mac_loop) is a call on the true edge.
+- The asm goto behind a real call (op18ms.py: after the first log_printf 634, after
+  showHexPairs 598, at the end 644): the chars warning no longer crossjumps with the length
+  warning (the reference merges them at the first call; a block ending in the asm goto has an
+  extra successor, so outgoing edges don't match): code changes.
+- So ms goes only with ag1 (dz1), and dz1's group goes only with dz2's (dzall = dz2 = 304).
+
+### Don't retry (attempt 18)
+
+- Constant arguments as feeds or profile changers: a test on a constant argument folds when
+  the body is copied (ipa-cp or inline), before the rebuild; a value-only argument is inert.
+- parseButton's chain as a shared static helper (emitted out of line), parseButtonX at more
+  than one site (split again).
+- The z feed as one cp test (9 forms, 3 positions).
+- Moving dz1's asm goto behind a call to drop the memset (crossjump lost).
+
+### Result
+
+No match; src/ unchanged (20 tricks).  The new lever only works where the blocker is a split
+point, a node frequency or an emission order (attempt 17's part); every remaining trick is an
+edge probability (bxe, po1, po2's literal order aside), dead flow that must survive until VRP1
+(bxz, the rev feeds) or a zero-byte heap entry (the dz group, and ms through the call
+heuristic), and a constant argument reaches none of them.  Stale comment noted, not changed:
+the xellbutton2 site's "a dead edge into the remopower test" has no dead edge under it any
+more.
+
+## Attempt 19
+
+Focus: parseOption from the reference (po1 = setBool expect, po2 = vlen expect).  Tools
+(tools/wip/dehint/): `op19.py [-p N|-np] [-d dir] [-o out.c] [-v] variant ..` (variants are
+edits on the attempt's start, i.e. src with the vlen expect put back; `-d` writes
+profile_estimate, vrp1, optimized-blocks-details, jump2 and bbro dumps).  Scratch:
+build/op/a19 (a19ref_po.txt = the reference's parseOption with its strings).
+
+### What the reference does, in order
+
+strlen(opt); `len <= 0` jumps to a setBool(opt, NULL) copy whose failure goes straight to
+the incomplete message; the '=' loop (error return for `=` with no value inside it); strlen
+again; `len == strlen(opt)` (no '=') goes to a setBool(opt, val) copy, then `val` (no value
+options: incomplete, else the chain with vlen = 0 via `xor ebp,ebp`); otherwise strlen(val),
+setBool, and the chain with val known non-null.  The chain ends with `test ebp,ebp` (vlen):
+the incomplete block (already placed in the no-'=' trace, with its own epilogue copy) or the
+unknown message (falls through, shared epilogue).  Literals: unknown 0xab4, incomplete
+0xb08, bad 0xb58; "\n" 0x6ee just before "cputemp".  So the source shape is today's; the
+two expects only set frequencies.
+
+### po2: what the vlen expect does (op19.py po2 -v, bbro dumps)
+
+Without it the only difference is the incomplete block's epilogue copy: bb-reorder copies
+the return block into a trace end when the edge frequency is >= 10% of the entry's (570 ->
+57).  The incomplete block's frequency is fixed at profile_estimate (threading redirects its
+inflow but doesn't change it): the vlen block (113 = the val-null flow; the chain end adds
+~0) x P(incomplete).  Plain: 50% -> 56, one short; the expect: 83% -> 94.  The unknown
+block may have anything below 57 (a cold label on it, `coldu`, also matches).
+
+### MATCH: `if (val && vlen)` (op19.py vv; vvn nested, vlv `vlen && val`: all IDENTICAL)
+
+At profile_estimate the tail is one block (`val != 0 & vlen != 0`, non-short-circuit),
+50/50, unknown 56 / incomplete 56: the same profile as plain.  But VRP1 can decide it on the
+val test's false edge (val == NULL there), so it threads the val-null path (113) straight to
+the incomplete block; the block's own frequency stays 56 until PRE's tail merge folds the
+critical-edge forwarders into it (crited1 splits the edges; build/op/a19/vvall dumps: 56 at
+crited1, 113 after pre).  The unknown block keeps 56.  With `vlen` alone the val-null edge
+doesn't decide vlen (vlen is a PHI of 0 and strlen(val) over the merged setBool block), so
+that path is threaded only by dom3/vrp2 and RTL, after the tail merge, and the block keeps 56.
+The incomplete block keeps the vlen-false edge as a second pred, so it isn't merged into a
+copy at the end (attempt 10/11's J forms) and its literal stays between the unknown's and
+bad's.  Landed with a "Borderline, for review" comment (the `val` test is live but
+redundant).  Full build SHA256 10dac648...1971c.
+
+### po1: the setBool window is (16.67%, 18%), set by two bb-reorder comparisons
+
+- Measured with the vlen edge as a cold label (`coldu`, first match, so `-p N` moves only
+  setBool in parseOption): 82 (18%) 199 lines in parseOption, 84 (16%) 237, 83 IDENTICAL.
+- At 84 the trace list is unchanged; connect_traces picks a different predecessor for the
+  "\n" trace: the best edge by probability among unconnected trace ends, which are the
+  len <= 0 setBool copy (p, inherited unchanged from profile_estimate when dom3/vrp2 copies
+  it) and the macid loop's exit (PRED_LOOP_ITERATIONS for 5 iterations: 1/6 = 1667).  So p
+  must be > 16.67% (a tie goes to the longer trace, macid's).
+- At 82 the "\n" block starts its round-3 trace before gputemp's match (its priority edge,
+  the '=' copy's done edge, passes gputemp's).
+- The natural 9.2% (call 29, early return 39, `== 1` 28) also puts cputemp's head into the
+  round-1 trace: its frequency is 450 x 0.908 x 0.698 = 285.2 against exec_th = 570 x 50% =
+  285 (a knife edge; 17% gives 261).
+- Natural values: 9.2, 13.7 (no early return), 19.9 (no call heuristic), 20.7 (no opcode,
+  e.g. a switch), 28.  None is in range; 16.7/17.08 need a const-return prediction (a success
+  path returning a constant other than 0/1), which the code (`mov eax,1`) rules out.
+- Shapes tried: the setBool success after everything (`end`: `if (setBoolOption() != 1) {
+  ... } log("\n"); return 1;`, no early return, 13.7%) and `goto done` at the end (`endeq`):
+  315, .rdata (the "\n" literal must be numbered before "cputemp", so its block must come
+  first), and bad then gets the early-return prediction; with macid's "\n" sharing it
+  (`endeq+macnl`) 249.  A `done:` label in the setBool arm shared with macid (`lab`): 811 =
+  po1, the setBool test dominates macid, so the call heuristic still applies.  With the new
+  tail (vv+po1) 797.
+- So po1 is closed unless the competitor changes: the macid loop exit (its trip count is the
+  code's) or which trace ends are unconnected when the "\n" trace is joined.
+
+### Lever reuse on parseButtonX (quick probe)
+
+The caller testing s before parseButtonX (`if (s) xb.xellButton = parseButtonX(s);`, or a
+conditional expression), alone and with bxe/bxz removed: 853-932 in applyIniOptions (the
+power/remopower profile moves).  Not pursued.
+
+### Don't retry (attempt 19)
+
+- Any setBool shape that drops a predictor or adds one of the natural ones: the window is
+  (16.67%, 18%) and nothing natural lands there (above).
+- The setBool success at the end of the function (`.rdata`: "\n" before "cputemp").
+- Sharing the "\n" block with macid by label (dominated anyway).
+
+### Next ideas
+
+- The lever that worked: a live, redundant re-test that VRP1 can decide on an existing edge
+  moves a whole path's flow into one block without changing profile_estimate's edge
+  probabilities.  Look for blocks whose final frequency (not an edge probability) is what a
+  trick sets: the dz feeds and bxz need flow that survives until VRP1, which this doesn't
+  give (it removes flow, early), but a block that must reach a threshold might.
+
+### Result
+
+MATCH: 20 -> 19 tricks (parseOption's vlen expect).  The `--param` stays (the setBool,
+power and rev-feed expects remain).
