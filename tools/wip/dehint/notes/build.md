@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 65
+
+Attempt 65 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It tried buildFlash at whole-function level: the header step, the loads, the fuse setup, the glitch blmod step, the encode step and the slot-overflow writers as helpers, and the fuse decision inside a call-holding setup helper (a65_bf.py).  The loading helper is an equal base (IDENTICAL, exp_devgl off 7/43); the rest cost 66 to 838 loose with the expect kept.  The reading that closes this route: tree-sink's decision on the setne depends only on the dev arm's frequency ratio to the def block (73% < 75%, the opcode-positive 27% on the dev test), and nothing outside the fuse decision feeds that ratio.  IPA's frequency rebuild after inlining recomputes from the same edge probabilities, and a fuse decision inside an IPA-inlined setup helper (initFlash(&fuse) with the header step, kept out of einline by its calls, growth 26) brings its own profile, which is 27 / 73 again because the dev arm can't be an early return there.  See "## Attempt 65".
+
 ## State after attempt 64
 
 Attempt 64 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It took attempt 63's second alignment route for exp_pr (the no-key copy at frequency >= 21 with the SE jmp block at 2) with the key in a local, so that the second key test of attempt 63's `ver_flat` is an SSA value vrp1 can thread: `flat_local` gets no-key 29 and the alignment, but the failed / no-key blocks and the signature strings' .rdata order move (89 loose with the expect, 90 without).  Every single-test form keeps the no-key edge's PRED_CALL (its block has one predecessor and holds the log call), so Pk stays at 85% and no-key at 14.  exp_devgl: 20 more natural spellings of the fuse decision (a64_dev.py: range, switch, ternary, `|=`, a dev local, BOOL / uint8_t fuse, else form, JTAG last, `!fuse &&`) are 7/43 at best; the dev test is still positive-27% and tree-sink still moves the setne into the non-dev forwarder (73% < 75%).  See "## Attempt 64".
@@ -3584,6 +3588,49 @@ Goal: the brief's two leads: (1) exp_pr / the param by attempt 63's second closi
 
 - exp_pr: the two closing conditions are both reachable only with a second predecessor of the no-key log (112 >= 21), which costs the layout, or a predictor on the checkBl / tail tests that attempts 61 to 63 showed the code doesn't have.  Unless a whole-tail or whole-signature-region reconstruction turns up, build stays at 3.
 - exp_devgl: unchanged since attempt 53; a second predictor on the dev edge needs something in the dev arm, and the reference's dev arm is a cmov.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
+
+## Attempt 65
+
+Goal: the brief's whole-function lever on buildFlash (restructuring into / out of helpers the way an author might, which landed in attempts 46, 49, 59, 60), aimed at exp_devgl: either the non-dev arm at >= 75% of the dev test's block at sink time (so the setne stays there) or the fuse decision arriving through an IPA-inlined helper with its own profile (attempt 52's 19.1%).  src as of 882d70c9, unchanged.  New script `tools/wip/dehint/bdgen/a65_bf.py` (C text written with 4-space tabs), run with `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a65_bf.py -p 99 -o "-;exp_devgl" [-f label] [-k label]`.  Dumps with `BDP=99 sh tools/wip/dehint/bddump.sh <file> buildFlash t-sink,t-einline,i-inline`.  Scratch in build/bd/a65 (not kept).  Loose/strict lines, p99.
+
+### buildFlash's structure against the reference and the Linux build
+
+- The reference (and tmp/xeBuild64's buildFlash at 0x409a70, gcc 4.9.2) start with the fuse decision inline (`setne; sub 4; cmp 1; mov 1; cmovbe`), then the fromConsole header / checkBootImage branch, suLoadDir, the loaders, verifyBlSigs, fsStartBlock / calcBlAreaSize, the glitch / devgl patch step, patchHeaderOpts, keysInit, the fuse setup (findFile(24), setFuseCpuKey, the offset), the encoders, showFuses, the add step, the FS fixup, the three slot-overflow writers, then the firmware and security-file loops.  Natural sub-steps: header, loads, glitch blmod, fuse setup, encode, overflow writers (three near-identical blocks).  In the reverse direction only patchConsoleBlmod is a static helper (attempt 60: written out 66, reversed test 28).
+- What decides exp_devgl (re-read on src minus the expect, sink dump): bb 2 (entry, freq 1148) tests JTAG (72%), bb 3 (826) holds the glitch2mfg load and the dev test `(unsigned)(type - 4) <= 1` (opcode positive, 27%), the split non-dev edge block bb 4 is 603.  gcc 6's select_best_block sinks a non-memory statement when best->frequency < early->frequency x 75 / 100 at the same loop depth: 603 < 619.5, so `_64 = _63 != 0` and the int conversion go to bb 4 (`Sinking .. from bb 3 to bb 4`).  The only inputs are that ratio (the dev test's probability) and the loop depths; integer rounding could only help if buildFlash's entry frequency were around 10 (inlined loops nested three deep), which no restructure gives and which would move every alignment.
+- IPA inlining doesn't change the ratio: the inline transform asks for TODO_rebuild_frequencies and estimate_bb_frequencies recomputes from the same edge probabilities, so a helper elsewhere in buildFlash can scale the entry frequency but not bb 4 / bb 3.
+
+### a65_bf.py (exp_devgl kept / off)
+
+| Variant | all kept | exp_devgl off |
+|---|---|---|
+| src | IDENTICAL | 7/43 |
+| `ld`: suLoadDir, the loaders, the missing-files log, verifyBlSigs and "done!" as `loadFlashFiles()` returning r / 1 / 0 | **IDENTICAL** (equal base) | 7/43 |
+| `hdr`: the header / checkBootImage branch as `initImage()` (returns 0 or r, logs the error) | 809/1344 (+.rdata) | 824 |
+| `hdr_ld`: both | 809 | 824 |
+| `fz`: the fuse setup as `setVfuses()` under `if (fuse)` | 77/735 | 84 |
+| `blmod`: the blmod.bin / console blmod step as `patchBlmod()` | 66/103 | 73 |
+| `enc`: the two encoders as `encodeFlashBls(salt, blocks)` | 337/1296 | 344 |
+| `ovf`: the three slot-overflow writers as `addSlotOverflow(msg, name, cf, cg, off)` | not inlined (out-of-line copy, every function's displacements move) | the same |
+| `setup_ptr`: the fuse decision and the header step as `initFlash(&fuse)` | 815/1350 | 824 |
+| `setup_ret`: the same returning fuse, r through a pointer | 838/1437 | 845 |
+
+- `setup_ptr` is the brief's "setup helper that computes the fuse flag along with other real work": einline refuses it (growth 26 > 14) and IPA inlines it, so its own profile is what reaches buildFlash.  But in that profile the dev test is still 27% / 73% (sink dump: the same `Sinking .. from bb 3 to bb 4`): the helper's dev arm joins the header step, not a return, so there is no early-return prediction.  The 19.1% of attempt 52 needs the dev arm to be an early return, i.e. the helper's work must all come before the fuse decision, and the only work the reference does before it is the salt memset (attempt 53's dret2 and its JTAG early-return problem).
+- No variant moved loadBlFiles, loadConsoleBlFiles or any other function except `ovf` (out of line); `ld` is the only equal base.
+
+### Don't retry (attempt 65)
+
+- exp_devgl by moving any later part of buildFlash into a helper (header, loads, fuse setup, blmod, encode, overflow writers) or by writing patchConsoleBlmod out: none of them reaches the dev test's probability, which is the only input to sink's decision.
+- exp_devgl by a setup helper that computes the fuse flag and then does the header step (`initFlash(&fuse)` or returning fuse): IPA-inlined with its own profile, but that profile is 27 / 73 with no early return.
+- The overflow writers as one helper: gcc keeps it out of line.
+
+### What to try next
+
+- exp_devgl: the condition is now fully stated in sink's own terms: P(dev) <= 25% at the dev test, a use of the setne in bb 3, the use block at a deeper loop depth than bb 3, or entry frequency ~10.  Nothing in buildFlash's real code gives any of them; only a helper whose dev arm returns early (with all its work before the decision) gets P(dev) under 25%, and the reference has no such work.  Treat exp_devgl as closed unless a reason to doubt the reference's source order turns up.
+- exp_pr / the param: attempts 61 to 64's readings stand.
 
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
