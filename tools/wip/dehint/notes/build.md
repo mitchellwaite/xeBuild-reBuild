@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 57
+
+Attempt 57 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It tried the two loaders at whole-structure level together: the static helpers' definition order (no effect: every placement and order is an equal base, each hint costs what it costs on src), the two loaders as one static loop with a mode parameter (ipa-cp clones it, but the one-line wrappers are inlined into buildFlash first, so the console clone stays out of line: 11600 loose and up), the per-entry work as a static helper with a mode parameter (522 and up), a per-entry helper holding the switch and the could-not-read log so the breaks reach the r test (112 loose and up; the PRED_CALL on the none test it brings doesn't pay for the helper), and the case order of both switches on the loop form (only swapping case 2 and the default is an equal base; console nothing below its 4/8).  See "## Attempt 57".
+
 ## State after attempt 56
 
 Attempt 56 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It took vol_fail on attempt 55's SMC equal base: 13 case-23 forms of the patch-size failure (own -1, -1 before the log, nested, else, good path first, repeated test, ternary, logging or size-check helpers; a56_fail.py) are all the 1/7 or worse, and the dumps (a56_dump.py, a56_trace.py) show the empty `fail` block is removed by mergephi1's CFG cleanup even though the SMC test has a conflicting edge to the switch join (cleanup splits that edge rather than keeping the forwarder), so only a statement RTL drops keeps it, which is the asm.  exp_pr's spellings on the SMC base across p0 to p99 (a56_negp.py) don't interact with the barrier (they add).  See "## Attempt 56".
@@ -3123,3 +3127,46 @@ Goal: (1) vol_fail on attempt 55's SMC equal base: a natural case-23 shape that 
 ### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 on src (7/1 on a55_smc.py's equal bases, every case-23 spelling the same), lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 55).
+
+## Attempt 57
+
+Goal: the brief's structure-level search for the two loaders together (4 of the 7 tricks live there: exp_pr, vol_fail, lab_devgl in loadBlFiles, lab_none in loadConsoleBlFiles): one shared per-entry function or one loader with a mode flag, a per-entry helper both loops call, the static functions' order, a shared r-handling helper (attempt 50's notRead already covers the log alone: equal base).  src as of fc92709b, unchanged.  New scripts in `tools/wip/dehint/bdgen`, run with `python tools/wip/dehint/bdgen/a46run.py <script> [-k label]` on src/build.c: `a57lib.py` (shared: OFFS = the four loader hints, each removable; `cross(name, edits)`; `helpers(t)` cuts the defaultBl60 / loadXell / loadBl24 block out), `a57_base.py` (src and each hint off), `a57_order.py` (helper placement and order), `a57_merge.py` (the loaders as one `loadFiles(int console)` loop, rows `bl_*` / `con_*`; the per-entry `loadEntry(e, console)`, rows `ent_*`), `a57_ent.py` (a per-entry helper holding the switch and the could-not-read log), `a57_corder.py` (case order; `A57_CON=1` for console).  Scratch in build/bd/a46 (`-k` output) and build/bd/a57_corder*.txt (not kept).  Loose/strict lines, p99.
+
+### Baseline (a57_base.py)
+
+As attempt 56: src IDENTICAL; pr 2/4, bar 58/220, lab 14/57, none 4/8 (loadConsoleBlFiles), all four off 80/241.
+
+### Static function order (a57_order.py, 48 rows)
+
+- The three helpers moved as a block (static prototypes ahead of the loaders) to between the loaders, after loadConsoleBlFiles, the end of the file, or right after loadBaseFile; or reordered in place (dbx, xdb, bdx, bxd): **every placement is an equal base**, and each hint off costs exactly what it costs on src (pr 2/4, bar 58/220, lab 14/57, none 4/8, all 80/241).  The out-of-line functions keep their order (build.c has no -fno-toplevel-reorder; the output is in source order anyway), and the helpers' place changes neither einline's nor IPA's decisions.
+
+### The loaders as one function with a mode flag (a57_merge.py)
+
+- `static int loadFiles(int console)` holding the loop, both switches under `if (console)` inside the none test, r in the body or at the top, console's precheck shared or dropped, either switch first; `int loadBlFiles(void) { return loadFiles(0); }` and the same with 1 for console (16 rows).  ipa-cp clones loadFiles per constant and loadBlFiles' clone is inlined into its wrapper (loadBlFiles itself 137/187 with every hint), but the wrappers are tiny and IPA's small-function pass inlines them into buildFlash first, so the console clone has two callers (its wrapper and buildFlash), stays out of line as `loadFiles.constprop.6` (loadConsoleBlFiles is a `jmp` to it, buildFlash calls it directly) and buildFlash changes by 1000 lines: **11600 loose and up**.  The reference's buildFlash calls both loaders, so a one-function-plus-wrappers form is out without an inlining attribute (a trick).
+- The per-entry work as `static uint32_t loadEntry(struct fileent *e, int console)` (both switches, `return r`), both loops calling it (4 rows): 522 loose and up (each loader 235 to 330): the arms' breaks become early returns, attempt 49's 317 for console alone, worse with both.
+
+### A per-entry helper holding the switch and the log (a57_ent.py, 88 rows)
+
+- The idea: attempts 45/46 put the reference's case arms at about 0.86 of the loop form's, which is what PRED_CALL on the none test's strnicmp edge gives (0.29 + 0.71 x 0.5 = 0.645 against 0.75).  A call in the guarded block brings that, and with the could-not-read log inside the helper (`if (r) { log; return -1; } return 0;`) the arms' breaks go to the r test rather than the return block, so they escape the early-return rule that made attempt 45's helpers (log outside) cost 95 and up.
+- Return forms neg (-1 / 0), one (1 / 0), r (`if (r) log; return r;`), first (`if (!r) return 0;` first), each with the call nested in the none test or `&&`-joined to it, loadBlFiles only or both loaders, every hint subset: **112 loose and up** (r: loadBlFiles 112/241; neg, one, first 195 to 212).  pr and lab off cost nothing on these bases (their windows go with the structure), the barrier off adds 16.  Nested and `&&` call sites are identical; console through its own helper adds 172 and up.
+
+### Case order on the loop form (a57_corder.py; 132 moves x 4 hint sets for loadBlFiles, 90 x 2 for console)
+
+- Attempt 30 swept case order on the old helper form only.  loadBlFiles, every case block moved to every other place, with pr, bar or lab off: only swapping case 2 and the default is an equal base (IDENTICAL; pr 2/4, bar 58/220, lab 14/57 there); next, cases 1 and 22 swapped (4 loose with every hint, 6 / 18 with pr / lab off).  The barrier off is best with case 24 moved after case 2 (41/155) or case 2 before case 24 (41 + 4 in console), not under 41.
+- loadConsoleBlFiles with lab_none off: every move is 4/8 at best (as src).  So the source's case order is the reference's (up to the default's place) and is not a lever.
+
+### Don't retry (attempt 57)
+
+- The static helpers' place or order in the file (equal bases).
+- One loader with a mode parameter behind two wrappers (the wrappers are inlined into buildFlash; the console clone stays out of line), or a per-entry function with a mode parameter (early returns).
+- A per-entry helper holding the switch and the could-not-read log, in any of the four return forms, nested or `&&`, for one loader or both (112 and up).
+- Case order in either loader's switch.
+
+### What to try next
+
+- The structure-level list is covered: no whole-function arrangement of the two loaders found beats the current one, and on every equal base found the four loader hints cost what they cost on src.  Attempts 54 to 56's per-trick readings (exp_pr's bb13 share, vol_fail's crossjump rule, lab_devgl's arm-2 malloc block at bbro >= 176, lab_none's size store with a one-call loadBl24) stand as the exact conditions.
+- Giving the none test's strnicmp edge PRED_CALL without a helper would need a call with side effects in the switch block at profile_estimate that is gone by expand; the reference's guarded block holds only the `e->type` load and the jump table, so nothing natural can be that call.
+
+### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 on src (7/1 on a55_smc.py's equal bases), lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 56).
