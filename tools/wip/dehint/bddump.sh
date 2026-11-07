@@ -13,7 +13,7 @@ for p in $(echo "$passes" | tr , ' '); do
     *)   fl="$fl -fdump-rtl-$p-details" ;;
   esac
 done
-( cd $d && { printf '#line 1 "build.c"\n'; cat "$R/$f"; } | gcc -c -O3 --param builtin-expect-probability=98 -I"$R/src" $fl "$@" -x c - -o o.o )
+( cd $d && { printf '#line 1 "build.c"\n'; cat "$R/$f"; } | gcc -c -O3 --param builtin-expect-probability=${BDP:-98} -I"$R/src" $fl "$@" -x c - -o o.o )
 for p in $(echo "$passes" | tr , ' '); do
   n=${p#t-}; n=${n#i-}
   for x in $d/*.$n; do
