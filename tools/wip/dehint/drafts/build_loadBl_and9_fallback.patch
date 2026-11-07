@@ -1,0 +1,23 @@
+diff --git src/build.c build/bd/a25/and9e.c
+index 8206c705..0cfcb151 100644
+--- src/build.c
++++ src/build.c
+@@ -1226,14 +1226,11 @@ static void loadBl(struct fileent *e, uint32_t i, uint32_t *pr)
+ 	case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+ 		*pr = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
+ 		if (*pr) {
+-			if (type == 9) {
+-				if (!suGetCF(&e->data, &e->size))
+-					break;
+-			} else if (__builtin_expect(type == 10, 0)) {
+-				if (!suGetCG(&e->data, &e->size))
+-					break;
++			if (type == 9 && suGetCF(&e->data, &e->size))
++				;
++			else if (__builtin_expect(type == 10, 0) && suGetCG(&e->data, &e->size))
+ 				goto chk;
+-			} else
++			else
+ 				break;
+ 		}
+ 		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {

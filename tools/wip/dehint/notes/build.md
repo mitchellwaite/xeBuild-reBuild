@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 25
+
+Attempt 25 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It tried attempt 24's lever (an extra predecessor at profile_estimate that vrp1 threads away) on exp_devgl, lab_none and loadBl's tail.  exp_devgl: bb3 (def + dev test) has only the entry's JTAG test before it, so no thread through it can know devgl, and sink's 3->5 edge is always critical.  lab_none: r = 1 can't pass the not-entered return without the glitch test reaching 34% (has 29%, PRED_CALL), and its trace-priority route is shut.  New: the and9 family of the update fallback (`if (type == 9 && CF) ; else if (type == 10 && CG) goto chk; else break;` and spellings, gen_bd360 to gen_bd362) is IDENTICAL with the expect and 28 loose without it (src 46), halves vol_fail (60 against 126) and widens the param window to p = 94 to 98; but exp_t10's measured window is <= 6% on the CG edge against the natural 19.9%, so the expect stays (drafts/build_loadBl_and9_fallback.patch).  See "## Attempt 25".
+
 ## State after attempt 24
 
 **12 tricks** (13 before): `--param builtin-expect-probability=98`, 3 `__builtin_expect` (type == 10, `*pr != 0`, devgl), 2 pins (d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  exp_t24 is gone: addBlsToImage's kit test sits in the else-if chain like the retail one (`else if (xb.type > BUILD_DEVGL16 && (type == 25 || type == 23))`, attempt 16's gen_bd270 shape), so the kit path's other types pass through the xell room test at profile_estimate and the warning gets the frequency it needs; with 25 first, vrp1's first assert on the kit-false edge is `type != 25`, so the threader takes that path past the room test afterwards (with 23 first it can't: 63 loose).  IDENTICAL BYTES, full build SHA256 matches.  addBlsToImage is now param-independent; the object still matches at p = 96, 98, 99 only (loadBlFiles), so the param stays at 98.  See "## Attempt 24".  New borderline shape, marked in src:
@@ -1390,3 +1394,46 @@ lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 
 
 - Two levers now come from reading which predecessor flows into a test at profile_estimate: attempt 23 (a lone `if` gets its own predictor) and this one (a shape that sends extra flow through a test at profile_estimate, which vrp1 threads away later if the assert it needs is the first on that edge).  The second is worth checking wherever a hint raises a block's frequency: give the block a predecessor whose flow is later threaded past it, and check vrp1's ASSERT_EXPRs (`bddump.sh f fn t-vrp1`, grep ASSERT_EXPR) on the new edge.
 - exp_devgl (sink's 75% against 73%) and lab_none (r = 1 at 14 against 20/21) are the cheapest left; neither has a folded `||` of a local on its path.
+
+## Attempt 25
+
+Goal: the brief's targets in order (exp_devgl, lab_none, loadBl's tail), using attempt 24's lever (an extra predecessor at profile_estimate whose flow vrp1 threads away later).  Generators from gen_bd360 on src as of 3778d12d.  Scratch in build/bd/a25 (not kept; `singles.py file.c [pairs]` there scores each bdhints entry off on a base).
+
+### exp_devgl: why the lever can't act there (read, not swept)
+
+- At sink (`bddump.sh .. buildFlash t-sink`), the def block is bb3 (826: load, setne, the dev test) and the setne goes to the split 3->5 edge block (603 < 0.75 x 826).  Threading changes that ratio only if a path is threaded *through* bb3 (update_bb_profile_for_threading lowers bb3 and rescales its edges): flow threaded through bb3 along the dev edge would raise the non-dev share (`0.73 (826 + F) / 826 >= 0.75` needs F >= 23), along the non-dev edge it lowers it (gen_bd264's JTAG case).  bb3's only predecessor is the function entry's JTAG test, so no path into bb3 can know the type is devgl; a thread that starts *on* the dev edge (towards `if (fuse)`, after calls) copies blocks after bb3 and leaves its ratio alone.
+- sink only moves the setne because 3->5 is critical (split_critical_edges at the start of the pass; find_bb_for_arg returns the edge's source).  The join always has the JTAG, dev and non-dev predecessors and bb3 always has two successors, so the edge stays critical in any form that keeps the reference's code.
+- Stuck as attempts 15 and 16 said; nothing new to sweep.
+
+### exp_t10: the update fallback's forms (gen_bd360 to gen_bd362, expect off)
+
+- gen_bd360 (11 forms: 10 first, positive call tests with a label, the non-update types first, `else { if (type != 10 || !CG) break; goto chk; }`, `type == 9 && CF` / `type == 10 && CG` arms, an `ok` flag, lone 10 test): **`and9`, `if (type == 9 && CF) ; else if (type == 10 && CG) goto chk; else break;`, is 28 loose in loadBlFiles (src without the expect: 46), and IDENTICAL BYTES with the expect kept** (build/bd/a25/and9e.c).  The other spellings of the same CFG (gen_bd361 `not9`, `not9b`, `nest9`: `if (type != 9 || !CF) { if (type != 10 || !CG) break; goto chk; }`; gen_bd362 `go_or`, `go_in`) are the same 28.  What the family shares: the CF-failure path goes on to the `type == 10` test instead of breaking (an extra predecessor there at profile_estimate, which vrp1 threads to the break since type == 9 is known).  It fixes src's setFlashBuild placement; what's left is the CF path's checkBl result test (bb-reorder copies the `if (r)` test after it: `test edi,edi; je` where the reference jumps) and the type-11 no-key block's place.
+- 10 first (`g10first`, `cg_ret`, `lone10`) 100, the non-update types first 136, an `ok` flag 150, clearing *pr on success then one `if (*pr) break;` (loadConsoleBlFiles' exp_t9 shape, gen_bd361 `clr*`) 116 and up, the same without the CG goto (gen_bd362 `nogo*`) 34.
+- **The window, measured (build/bd/a25/pwin.py):** and9e without the exp_pr expect matches only at p >= 94, so the CG path's `type == 10` edge needs <= 6% at profile_estimate where natural code gives 19.9% (nonequal 28%, PRED_CALL from the suGetCG block, and the else break's early return).  Taking away both early returns (13.7% and CG success 50%) would give x0.56; it needs x0.3.  So exp_t10 isn't a predictor question within the fallback; it would need the CG flow taken out of this path by structure.
+- Side result: and9e (both loadBl expects kept) matches at p = 94 to 98 contiguously, where src matches at 96, 98 and 99 only.  Not landed: it removes nothing, and src's if/else-if reads better.  Note it if the param's value ever matters.
+- gen_bd363 (160 cases): the and9 family (and9, nest9, nogo) x exp_t10 on/off x loadBl's tail (src, without t5le, without exp_pr, both off, attempt 10's plain `if (xb.type <= BUILD_DEVGL16) break;`) x the size error through fail or its own `*pr = -1; break;` x the barrier.  The family doesn't change what t5le and exp_pr cost (0/7, 2/18, 2/13 together, the same as src); the plain tail is 8 loose with and9 (src: 38 with the barrier kept), attempt 10's near miss (plain tail, size break, no barrier) is now 9 on src (it was 3 in attempt 10).  `nogo` (no CG `goto chk`) with src's tail: 8 loose in loadBlFiles plus displacements.  No new match.
+- Read from and9e + plain tail (8 loose): the sig-failed setFlashBuild copy reads e->data (`mov eax,[ebx]`) where the reference recomputes `xb.files[i].data` from i (attempt 21's dom2-before-ivopts thread), and the sig-failed `<= 5` exit gets a `mov edi,-1; jmp` block of its own instead of jumping to the shared one; plus t5le's SE-copy `ja`.  So the plain tail still needs attempt 14's "`<= 5` exit as a statement of its own".
+
+### lab_none: the r = 1 block and the not-entered return, re-read (no sweep)
+
+- bbro of src with precheck and label gone (build/bd/a25/nonone.c, 4 loose / 8 strict): round 4 takes 16 (priority), 27 (priority), 62 (the shrink-wrapped not-entered `xor eax,eax; ret`, key -20), 53 (r = 1, key -14).  53 needs a key below -20: frequency 21 or more, or a predecessor that ends a trace (bb_to_key's priority).  Its only predecessor is the crossjumped malloc test (21), which sits inside trace 28 (20, 21, 22) because 22 (the copy, 90%) always follows it; so the priority route is shut.
+- r = 1's frequency: the two inlined defaultBl60 sites (60 + 76 at .optimized) x 10.1%.  The sites can at most reach the glitch test's true flow (716 x 29% = 207.6) and need about 208, so the glitch test itself has to change: it needs >= 34% with the `||` call form or >= 44.5% with src's two calls, and has 29% from PRED_CALL (the loadBaseFile block is dominated by it and holds a call; the break side goes to the switch join, which isn't).  Attempt 24's lever would need a second predecessor of that loadBaseFile block; the only code that could supply one is case 25's own `loadBaseFile(e->name, e)`, and sharing it means a merged case 24/25 nobody would write.
+- The not-entered side: its 20 is the loop's PRED_LOOP_EXIT (first match, 9% / n_exits = 4.5% with the `i < nFiles` and `if (r) return -1` exits), halved by shrink-wrap's duplicate.  A third exit would give 3%, but diagnostic dead exits (`if (i == 0) return 0;` once or twice, build/bd/a25/diag_x1.c, diag_x2.c) cost 121 and 131 loose: the `if (r)` exit's probability drops too and the whole loop body moves.  An expect on the loop condition (diagnostic) 34.
+- Stuck as attempt 22 said.
+
+### Don't retry (attempt 25)
+
+- exp_devgl by any threading idea: bb3 can't get a predecessor that knows devgl (see above).
+- exp_t10 by the fallback's spelling: the and9 family (gen_bd360 to gen_bd362) is the best natural form at 28 loose and the measured window (<= 6% on the CG path's `type == 10` edge) is out of reach of every predictor combination.  10 first, `ok` flags and clear-on-success forms are 100 and up.
+- loadBl's tail in the and9 family (gen_bd363): t5le and exp_pr cost the same as on src.
+- lab_none by the not-entered return (n_exits; diagnostics only) or by the r = 1 block's trace priority.
+
+### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
+
+lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126 (on and9e: 232/60), lab_none 333/231 (4/8 with the precheck gone too).  On the and9e base (build/bd/a25/and9e.c, IDENTICAL) every other single costs the same as on src.
+
+### What to try next
+
+- exp_t10 is now known to need its CG path at <= 6%, i.e. a structural change, not a predictor; the and9 family (28 loose) is the closest natural fallback.  If loadBl is ever rewritten as a whole (attempt 9's reconstructions), start from and9 + the plain tail (8 loose with exp_t10 kept).
+- vol_fail halves on the and9 family (60 loose against 126): worth a look at the barrier with that fallback, e.g. attempt 10's mergephi2 reading redone on and9e.
+- Otherwise build stays at 12: each remaining frequency hint has a measured window that natural predictors can't reach (exp_devgl 75% against 73%, lab_none's glitch test 34%+ against 29%, exp_t10 6% against 19.9%, t5le/exp_pr per attempt 18's formula), and the pins are IRA ties.
