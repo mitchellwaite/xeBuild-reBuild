@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 37
+
+Attempt 37 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It swept attempt 36's open route for pin_size and confirmed the mechanism: a statement at the start of retail's arm (so its first block isn't the findFileOffset(5) loop header when ch2 runs) gets the kit laid out first *and* flips the kit sum, with src's JKR order.  An unused `n = xb.nFlashFiles;` leaves 10 lines, an unused `n = xb.nFiles;` leaves **2** (drafts/build_calcBlAreaSize_nfiles_load_diag.patch, diagnostic only: a dead load is a trick).  What's left is always the operand order of the loop compares that use the new load as their bound: a source-level load's SSA version is below every inlined loop's `i`, so fold writes `n != i` (`cmp n,i`), where the reference's bound is ch2's guard copy (a high version, `cmp i,n`).  Every natural statement that could sit there is either such a load or folds away before ch2 (constants, a `type != RETAIL` flag, an `xb.type` copy); the helpers reading their count into a local first flip their own standalone compare.  Sweeps gen_bd490, gen_bd491.  See "## Attempt 37".
+
 ## State after attempt 36
 
 Attempt 36 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It worked attempt 35's switch near miss and closed it: gcc 6's switch expansion can't give the reference's `cmp 2; je J; cmp 5; jbe R` from any case set that also lets PRE reach retail first (retail must be the default for that, and a default has no case node, so the kit is tested by its own low bound: `jb; cmp 6; jb` with a range up to 0xffffffff, `lea; cmp 3; ja` with 6..9; a switch's 1/3 edges also give JTAG the wrong frequency).  New mechanism, read from the dumps: in the if-forms PRE's walk and bbro's tie both follow the 5-test's **first edge**, through the loop tree: loops are rebuilt in RPO (edge order), ch2 creates the arms' preheaders in that order and puts each right after the test, so the first edge's arm ends up with the higher block index and PRE (dominator sons, highest index first) walks it first; connect_traces also takes the first edge when probability and trace length tie (both arms' head traces are 4 blocks).  A diagnostic (JRK with the kit at 51-52%) gives the reference's layout with only cold-block order and one register swap in retail's xell loop left.  Sweeps gen_bd480 to gen_bd484.  See "## Attempt 36".
@@ -2016,6 +2020,45 @@ Goal: attempt 35's lead, pin_size by a switch on the build type (sw_JKR_dR, 92 l
 
 - pin_size: the only open route found is a retail arm whose head block isn't the findFileOffset(5) loop header at ch2 time (a statement at retail's start that lives until ch2 and leaves no code, or leaves the reference's), with src's chain order (JKR).  Check with bdorder.py (the kit line must read `size_N + prephitmp_M`) and the ch2 dump (the kit's guard copy must come right after the 5-test).
 - Otherwise attempt 33's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 34 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
+
+## Attempt 37
+
+Goal: attempt 36's open route for pin_size: keep src's JKR chain and give retail's arm a first block that isn't its findFileOffset(5) loop header when ch2 runs, so ch2 makes no preheader on the 5-test's retail edge, the kit's preheader alone goes right after the test (lower index), PRE walks retail first (kit sum flipped) and the kit stays the first edge (bbro's tie winner).  Generators gen_bd490, gen_bd491 on src as of 1bf763ac (`python tools/wip/dehint/bdorder.py tools/wip/dehint/bdgen/gen_bd49N.py`; gen_bd491 with `bdrun.py`, it changes other functions).  Scratch in build/bd/a37 (not kept: `nopins.c`, `n_unused.c`, `nfiles_unused.c`, `off_decl.c`, `all/` a pass list).  Loose/strict lines in calcBlAreaSize unless said; pin_size off throughout.
+
+### The route works (gen_bd490)
+
+- `n = xb.nFlashFiles;` (unused local) as retail's first statement: kit sum `size_248 + prephitmp_264`, **10 loose / 10 strict**, and the whole layout is the reference's.  The 10 lines are retail's five loop compares with the operands swapped (`cmp eax,edx` for `cmp edx,eax`).
+- `n = xb.nFiles;` (unused): flipped, **2 / 2**: only findFile(25)'s compare (`cmp ecx,eax` for `cmp eax,ecx`).  Saved as drafts/build_calcBlAreaSize_nfiles_load_diag.patch (diagnostic: an unused load whose only job is to steer is a trick).  Both loads (`both_loads`): 12.
+- Why the load survives: it is unused in the source, but fre (before ch2) makes it the leader of the later loop-header loads of the same count, so it is live; sink and the guards put it back where the reference loads the count, so it costs no code of its own.  A load nothing later reads (`xb.nFlashFiles2`) is removed by DCE before ch2: 40.
+- Why the compares swap (`.optimized` of n_unused.c: `if (n_47 != i_127)` against src's `if (i_127 != _164)`): tree_swap_operands_p puts the lower SSA version first.  In src the loops' bound is ch2's copy of the header load into the guard (`_164`, a late name); with the source load it is n, numbered at into-SSA, below every name einline makes for the inlined loops (einline works through the callees in reverse source order, so retail's calls are inlined first and get fresh names; only names freed by earlier inlines, as JTAG's i_12, come out low).
+- Folds before ch2, so the route doesn't open (all 40, src's order): `xs = 0x40000;` (constant), `n = xb.type != BUILD_RETAIL;` tested later (forwprop puts the compare into the cond; also used twice, `flag_twice`: 44 with the order unflipped), `n = xb.type;` (fre reuses the chain's load), `size = findFileOffset(5); size += findFileSize(5);` and `findFileSize(5) + findFileOffset(5)` (the first block is still a loop header).
+- The loops' shared guard written out (`size = 0; if (xb.nFlashFiles > 0) { sums }`, and with `else size = 0;`): flipped but 310 loose (the source test is kept as a block of its own, and its load has the low version too).
+- JRK with the nFiles load: 300 (retail is the first edge, bbro lays it out first).
+- `xb.type >= BUILD_GLITCH` for the xell test (record only, type 0 differs): 44.
+
+### Where the order comes from (ch2 details of nopins.c)
+
+- Loop tree order (`FOR_EACH_LOOP`, preorder): JTAG's 4, 1, 2, 3, then the kit's 5..9, then retail's 15, 10..14; within an arm the loops are in reverse code order (9 is the kit's findFile(11), 14 retail's findFileOffset(5), 15 findFile(25)).  flow_loops_find pushes headers in RPO and flow_loop_tree_node_add prepends, so siblings come out in reverse RPO; the 5-test's first edge (kit) is DFS-finished first, is later in RPO, and so is iterated first.  Preheaders are made for loops 4, 3, 9, 15, 14: retail's 14 is made last and split_edge_bb_loc puts it right after the test (its header's layout predecessor is its own latch, which has an edge into it), in front of the kit's 9: retail gets the lower index.  This is the same as attempt 36 found, read from the loop numbers.
+- So the other two ways to keep retail's preheader off the test are closed too: the header's layout predecessor is always the inlined callee's latch, and a second entry edge into retail's head needs a second test whose failure goes there (`&&` in the kit test, a dead or behaviour-changing test; vrp1 runs before ch2 and folds a redundant one).
+
+### gen_bd491: the helpers read the count first
+
+- findFileOffset (and findFileSize) as `int i, n = xb.nFlashFiles; for (i = 0; i < n; i++)` (and `n = ..;` as a statement, in the for's init, declared first): inlined in retail the load is the first block and calcBlAreaSize flips (2 lines left: retail's findFileOffset(5) compare, n's copy numbered before its own loop's i; the later loops and JTAG/kit are fine), but **findFileOffset's own compare swaps** (2 lines there, the same version rule), 4 loose in all; with findFileSize too 6.  findFile in that form: 512 and up (it changes every function that inlines it).
+
+### Don't retry (attempt 37)
+
+- pin_size by a statement at retail's start: any source-level load of a count (nFlashFiles, nFiles, both; unused, or as a written-out guard), constants, a type flag (once or twice), an `xb.type` copy, splitting or reordering the sums (gen_bd490).  The load works for the layout and the kit sum but swaps the loop compares it bounds; the rest fold before ch2.
+- pin_size by the helpers reading the count into a local first (gen_bd491): their own standalone compare swaps.
+- pin_size by the kit arm's first block (the mirror): the kit's preheader is made first because the kit is the first edge; a kit with no preheader leaves retail's alone right after the test, which is worse.
+
+### What to try next
+
+- pin_size: what's needed now is narrow and known: a block at retail's start at ch2 time whose bound for the following loops is *not* a source-level SSA name (or none at all).  Only an inlined helper's load numbered after retail's loops' i would do (a helper called at retail's start is inlined after them, as einline goes in reverse source order), and no natural helper is there to call; I found no other statement kind that survives to ch2 and leaves no code.  Unless a new idea for that turns up, pin_size is as closed as the switch route.
+- Otherwise attempt 33's list stands (attempt 25's windows, attempt 27's exp_t10 weight near miss, attempt 30's c6 vol_fail near miss).
 
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
