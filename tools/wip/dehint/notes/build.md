@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 44
+
+Attempt 44 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It audited the static predictors: a table of which gcc 6 predictors fire on every critical test in loadBl, loadBlFiles, loadConsoleBlFiles, defaultBl60, buildFlash and calcBlAreaSize (new tool `bdpred.py` on profile_estimate dumps), the predictor each window would need, and the natural constructs that trigger it.  A probe (drafts/build_pred_probe.c) settled which predictors gcc 6.2 has: no PRED_GOTO, no PRED_INDIR_CALL (indirect calls get the plain call 29%), no loop guard, no cold attributes in the toolchain's headers; noreturn only from exit/abort, which only fit dead paths here.  Every gap needs a predictor that points the other way in gcc 6, a call or return the reference doesn't have, or a cross-object value range (`!= 1` for suGetCG, `<= 0` for glitch2mfg), so nothing natural was left to build.  defaultBl60's result-variable form was re-read for lab_none: its NULL edge still goes straight to the return block (10.1%).  See "## Attempt 44".
+
 ## State after attempt 43
 
 Attempt 43 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It read attempt 42's wt / no-param near miss (4 loose) and closed it.  Block 116 is the same 72 + 27 = 99 without the param (loadBl's profile has no expect left, so attempts 27 to 29's arithmetic holds to the digit).  The `ja` is the SE copy of the tail's `xb.type <= 5` test: neither successor follows it, so fixup_reorder_chain points the jcc at the edge with P >= 50%, and vrp1's joiner copy gets P(<=5) = Xc p (1 - q) / (Xc - S) = 211 x 0.5 x 0.39 / 178 = 23.2% (attempt 18's formula, read off nm.vrp1 to the digit); `jbe` needs p (1 - q) >= 0.422, and the natural T spellings give q >= 36.6% with p fixed at 50%.  The tail's forms on the near miss (gen_bd550, 10 cases) are all 4 loose or worse.  See "## Attempt 43".
@@ -2408,3 +2412,70 @@ Goal: attempt 42's new near miss (drafts/build_loadBl_wt_noparam_nearmiss.patch:
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 42: lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object, cp 118/66 in the object, exp_devgl 43/7, pin_size 82/40.  Near miss (wt, exp_t10 + exp_pr + lab_t5le off, no param): 4/59 in loadBlFiles, 44/99 in the object.
+
+## Attempt 44
+
+Goal: the brief's predictor audit.  Every probability gap left is a static-predictor question, so: which gcc 6 predictors fire on each critical test, which would be needed to reach the measured window, which natural source constructs trigger those predictors in gcc 6.2, and which of those the notes haven't tried.  src as of 919f620b, unchanged.  New tool `tools/wip/dehint/bdpred.py fn.profile_estimate` (each conditional bb's GIMPLE test with its "Predictions for bb" lines; feed it a `bddump.sh .. fn t-profile_estimate` dump).  New probe `tools/wip/dehint/drafts/build_pred_probe.c` (one tiny function per predictor kind, compiled with the pinned gcc and `-fdump-tree-profile_estimate-details`).  Scratch in build/bd/a44 (not kept: `off.c` is src with exp_t10, exp_pr, lab_t5le, lab_none and exp_devgl off, and `off.<fn>.pe` its dumps at BDP=90).
+
+### Which predictors gcc 6.2 has (build_pred_probe.c, read from its profile_estimate dump)
+
+| Construct | What gcc 6.2 does with it |
+|---|---|
+| call with side effects in a dominated, non-post-dominating dest block | call 29% against that edge (PRED_CALL, hitrate 71); the whole block is scanned, so a statement before the call doesn't help |
+| indirect call (function pointer) | the same call 29% (gcc 6 has no PRED_INDIR_CALL) |
+| pure / const call (strlen) | nothing |
+| `goto` | nothing (no PRED_GOTO from the C front end) |
+| `continue` | continue 50% (no effect on the edge; it only stops PRED_LOOP_EXIT on that block) |
+| `exit()` / `abort()` (noreturn from stdlib.h) | noreturn 0%, first match (every other predictor on the edge ignored) |
+| `return <negative constant>` (int) | negative return 4% |
+| `return NULL` (pointer function) | null return 10% |
+| `return <constant other than 0, 1>` | const return 67% |
+| `return 0` / `return 1` | nothing |
+| `x > 0`, `x <= 0`, `x < 0`, compares with 1 or -1 | opcode positive 73% / 27% |
+| `x == c` (c non-zero, or two non-constants) | opcode nonequal 28% (`!=` 72%) |
+| `x == 0`, `x != 0`, `x < y` (two non-constants) | nothing |
+| `ptr != NULL` / `ptr == NULL` | pointer 85% / 15% |
+| `d == 1.5` | nothing (no FP opcode prediction for an equality) |
+| edge to the return block (not its next_bb), or into a block whose single successor is the return block | early return 39% against it |
+| loop exit / latch / IV compare against a constant | loop exit 9% / n_exits, loop iterations, guess loop iv compare |
+| loop guard (`if (n > x) for (i < n)`) | nothing (no PRED_LOOP_GUARD in gcc 6) |
+| cold attribute | nothing in the toolchain's own headers uses it (only libiberty's ansidecl.h, which the app doesn't include); noreturn comes only from exit, _exit, _Exit, abort, longjmp |
+
+### The critical tests (`bdpred.py build/bd/a44/off.<fn>.pe`; probabilities are of the GIMPLE true edge)
+
+| Trick | Function, test (bb at profile_estimate) | Predictors that fire | Combined | Needed (window from the notes) | Predictor that would close it | Natural constructs that trigger it, and what happened |
+|---|---|---|---|---|---|---|
+| exp_t10 | loadBl, `type == 10` (bb 6) | nonequal 28, call 29 (suGetCG block), early return 61 (on the else break, i.e. towards the test) | 19.9% | <= 6% on src (attempt 25); on the wt near miss p10 x s10 <= 7.0% (p10 <= 11.5% at s10 = 61%) | a second NOT_TAKEN predictor of <= 34% on the true edge (DS), or the else break losing early return | call: one per edge, already used.  early return: the CG arm reaches chk, so it can't be a return; taking it off the else break needs a non-empty block before the return that isn't fail (attempt 29: only an asm block does it).  noreturn/cold: only on a dead path.  opcode: one per test.  pointer: type is an int.  All tried or impossible (attempts 25, 27 to 29) |
+| exp_t10 | loadBl, CG success `suGetCG(..) == 0` (bb 7) | early return 39 (on the failure break) | success 61% | success <= 35% | NOT_TAKEN on the success edge | call in the success dest: the dest is chk, a join, so only CG's own checkBl call gives it (attempts 16, 27, 28: crossjumps with case 6, 83 loose); `!= 1` would get nonequal 72 towards failure (80% failure) but is `cmp eax,1` where the reference has `test eax,eax` (suGetCG returns uint32_t 0/1 from another object, so no VRP range); return predictors: loadBl returns nothing |
+| exp_t10 | loadBl, load result `*pr != 0` (bb 3) | none | 50% | failed >= 65.5% (116 = 132.2 - 67.5 f <= 88) | TAKEN towards failed | call in the load-ok dest: that dest is the SE test, which the CF path also enters, so it isn't dominated; early return on the ok edge: no; loadInputFile's result is an int compared with 0.  Untriggerable (attempt 28) |
+| exp_t10 | loadBl, SE test `type == 9`, `d[0] == 'S'`, `d[1] == 'E'` (bb 8 to 10) | nonequal 28 each | 28% each | P(non-SE) <= 75.5% | anything raising the SE side | 0-compare spellings fold back (attempt 42); `&` / helper / word compare change the code (attempt 28) |
+| etype | loadBl, verify `cbVerifySig(..) == 0` (bb 16) | call 29 (failed log only, because `else if (type)` keeps the passed log out of the dominated block) | 29% | 29% with no dead test | PRED_CALL on the failed edge only | the passed log in a block that isn't dominated (a second predecessor) or holds no side-effect call: nothing natural; a zero test gets no opcode predictor, `== 1` / `!= 1` point the wrong way (nonequal says the `==` side is unlikely) and change the compare; `<= 0` gets positive 27 but is `jle` for `je`.  Tried: flags, re-tests, joins, returns (attempts 6, 8, 18, 30, 32, 33, 38) |
+| lab_t5le | loadBl, tail `xb.type <= BUILD_DEVGL16` (bb 21) | none | 50% | >= 53% on src (q = 2%); p (1 - q) >= 0.422 on the near miss | TAKEN towards `<= 5` of any strength | call in the `> 5` arm's first block: that block is the `type == 14` test and setFlashBuild depends on it; early return on the `> 5` edge: same block; opcode positive needs 0 / 1 / -1 (`< 6`, `- 6 < 0` fold to `<= 5`); no loop.  Untriggerable (attempts 11, 18, 21, 43) |
+| exp_pr | loadBl, tail `*pr != 0` (bb 22) | early return 61 (on the break) | fail 61% | fail <= 4.4% on src, <= 15.6% on the near miss | NOT_TAKEN on the fail edge, at negative-return strength | negative return (4%): loadBl returning int -1 also lands on the size and smc -1 sources (attempt 27); opcode positive `(int)*pr < 0` 36.6%, nonequal `*pr == -1` 37.8% (gen_bd263, gen_bd550); call: fail holds no call; noreturn: dead.  Nothing reaches 15.6% |
+| exp_devgl | buildFlash, dev `(xb.type - 4) <= 1` (bb 3) | opcode positive 27 | dev 27% | dev <= 24.9% | a second predictor <= 47% on the dev edge | call in the dev arm (the reference has cmovbe, no arm); every other kind checked in attempt 16 (no return, loop, pointer; `== 4 || == 5` folds to the range) |
+| lab_none | loadConsoleBlFiles, case 24 `xb.glitch2mfg == 0` (bb 17) | call 71 (loadBaseFile block) | load side 29% | load side >= 44.5% (two calls) or >= 34% (`||`), attempt 25 | TAKEN towards the load side >= 66% (or >= 56% with `||`) | early return on the break edge would give DS(29, 61) = 39%, enough for the `||` form, but the break goes to the `if (r)` test (the loop goes on); opcode positive `glitch2mfg <= 0` / `> 0` would give 52.5% but is `jle` / `jg` for `je` and nobody writes it for a flag; pointer: glitch2mfg is an int.  Tried: case 24's forms (attempts 22, 41, 42) |
+| lab_none | defaultBl60, `e->data != NULL` (isra clone, bb 2) | pointer 85, early return 61 (the NULL edge goes straight to the return block) | NULL 10.1% | r = 1 block >= 21 (14 now): NULL >= 15.2% at the sites' 136 | the NULL edge without early return | the NULL edge must pass a non-empty block before the return, i.e. a statement on the failure path; the result-variable form (`int r = 1; if (e->data) {..; r = 0;} return r;`) still sends the NULL edge to the return block with `r = 1` as a PHI argument: the dump shows the same pointer 85 + early return 61 = 10.1% (re-read this attempt on gen_bd443's `rvar plain`: loadConsoleBlFiles' bbro is identical, block 53 at 14) |
+| lab_none | loadConsoleBlFiles, loop test `i < nFiles` (bb 55) | loop exit 95.5 (9% / 2 exits) | 95.5% | not-entered return < 14 (20 now) | a third exit, or a loop predictor | a third exit moves the `if (r)` exit too (attempts 25, 32); no loop guard predictor in gcc 6; PRED_CONTINUE stops loop exit on its block (attempt 41: 169 loose) |
+| pin_size | calcBlAreaSize | (an IRA copy-order tie, attempt 35, not a frequency) | | | | |
+| vol_fail, cp | loadBl | (block survival and an entry's weight, attempts 26 and 27; no predictor closes them) | | | | |
+
+### Readings
+
+- Every gap is one of three kinds: the predictor that would close it points the other way in gcc 6 (nonequal for the verify and CG tests, early return on the tail's T and on CG's failure), it needs a call or a return where the reference has none (exp_devgl's dev arm, the tail's `> 5` arm, the load-ok edge), or it needs a value range gcc 6 doesn't have across objects (`!= 1` for suGetCG, `<= 0` for glitch2mfg: either would be the reference's code only if VRP knew the value is 0 or 1).
+- The probe rules out the kinds the brief listed beyond the notes: indirect calls give the same 29% as direct ones, `goto` and loop guards give nothing, the toolchain's headers mark nothing cold, and a noreturn call only fits a dead path (a trick), since none of these functions exits.  The return predictors (negative 4, null 10, const 67) need loadBl, buildFlash or defaultBl60 to return a value they don't return: loadBl's int -1 was attempt 27 (it flips the other -1 sources); buildFlash returns r, 1 and 0 at its exits, none near the dev test; defaultBl60 returns 0 and 1 (no prediction), and returning anything else changes the could-not-read log's `%i`.
+- So nothing new was built beyond the probe and the defaultBl60 re-read: every natural construct that triggers a predictor in the needed direction is already in the notes with its cost, or changes the reference's instructions.
+
+### Don't retry (attempt 44)
+
+- Indirect calls, gotos, loop guards, `continue` or cold attributes as predictors at any of these sites: gcc 6.2 has none of them (build_pred_probe.c).
+- defaultBl60's result-variable form for lab_none: its NULL edge still goes straight to the return block (10.1%).
+- Opcode spellings against 1 or 0 for suGetCG, cbVerifySig or glitch2mfg (`!= 1`, `<= 0`, `> 0`): they change the jcc, and the `==` side always comes out unlikely.
+
+### What to try next
+
+- Nothing on the predictor side.  The windows are exact and every gcc 6 predictor has now been checked against each test in the table above; a new attempt should start from a new reading of the original's structure (a different CFG), not from a predictor.
+- Otherwise attempt 40's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 43 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (8/4 with the precheck gone too, with any defaultBl60 body), etype 168/94 in the object, cp 118/66 in the object, exp_devgl 43/7, pin_size 82/40.
