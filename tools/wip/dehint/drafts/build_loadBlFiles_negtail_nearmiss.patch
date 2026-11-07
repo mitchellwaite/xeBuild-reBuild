@@ -1,0 +1,11 @@
+--- src/build.c
++++ src/build.c
+@@ -1267,7 +1267,7 @@
+ 				   >5 edge (else its setFlashBuild copy has frequency 0 and final
+ 				   aligns the type-11 block after it) */
+ 				if (xb.type <= BUILD_DEVGL16) {
+-					if (__builtin_expect(r != 0, 0))
++					if ((int)r < 0)
+ 						goto fail;
+ 					break;
+ 				}

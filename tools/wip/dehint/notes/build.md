@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 47
+
+Attempt 47 landed nothing; src/build.c and build.sh are unchanged, so the count (8) and attempt 46's review table stand.  It took the two cheapest tricks on the loop form.  exp_pr: the tail's test spelled `(int)r < 0` (r is 0 or -1 there) gets opcode-positive 27% in place of the expect's 1% and is **0 loose / 7 strict** (the SE copy's `jbe` comes out right; only the no-key log copy loses its `.p2align`, lab_t5le's old effect), drafts/build_loadBlFiles_negtail_nearmiss.patch; nothing natural closes the alignment (it needs P(<=5) >= 62.5% on the SE copy, i.e. q <= ~9% on the r test or a predictor on the `xb.type` test).  The barrier: every `fail:` placement and -1 spelling in the loop form is attempt 10's 1/7 (mergephi, crossjump rule).  devgl: a none-test predicate helper is 284 loose and up.  See "## Attempt 47".
+
 ## State after attempt 46
 
 **8 tricks** (11 before): `--param builtin-expect-probability=99` (was 98), 3 `__builtin_expect` (type == 10, `r != 0` in the tail, devgl in buildFlash), 1 pin (size), the empty asm barrier on `fail:`, 2 hot and cold labels (the new `devgl` hot label on loadBlFiles' case 24 second arm, and loadConsoleBlFiles' `none`).  loadBl is gone: loadBlFiles is attempt 45's n1 (the switch in the loop as loadConsoleBlFiles has it, `r` a loop-body local, one `fail:` site closing case 2, console's CF/CG fallback, case 23 as `e->size & 3`) plus one hot label at the head of case 24's `DEVGL || DEVGL16` arm, found by a sweep of one hint at every `if` (a46_hint1.py, 146 variants, the only IDENTICAL one).  Removed: `else if (type)`, both `__builtin_constant_p` (with the dead default entry and `chk:`), lab_t5le; added: lab_devgl, so a net of 3.  IDENTICAL BYTES at p95 and p99 (not 96 to 98, 92 and below 42 loose and up); full build SHA256 matches.  See "## Attempt 46".  Borderline changes: loadBl case 23's `(e->size & ~3) != e->size` is gone (console's `e->size & 3` now), the `else if (type)` row below (attempt 26's table) is gone with the dead test; case 24's two calls, arm 2's `r = 0` and case 27's re-tested `r` stay, in loadBlFiles with `r` for `*pr`.  No new borderline shape.
@@ -2595,3 +2599,54 @@ src/build.c: loadBl and its helper call replaced by n1's loop (re-indented as lo
 ### Costs now (strict/loose, removed alone; 8 tricks)
 
 exp_pr 4/2, vol_fail 7/1, lab_devgl 34/14, exp_devgl 43/7, pin_size 82/40, exp_t10 208/102 (+displ), lab_none 333/231.
+
+## Attempt 47
+
+Goal: the two cheapest tricks on attempt 46's loop form (exp_pr 2/4, vol_fail 1/7), then lab_devgl with the 0.86 factor in mind.  src as of 5877c248, unchanged.  New scripts in `tools/wip/dehint/bdgen`, all run with `python tools/wip/dehint/bdgen/a46run.py <script> [-p ..] [-k label]` and reading src/build.c itself (BASE): `a47_pr.py` (the tail's r test and arm forms, each with and without the barrier; `V2` at its end has four more), `a47_fail.py` (the -1 site without the barrier), `a47_neg.py` (`(int)r < 0` with the signature block's and SE test's forms), `a47_rfirst.py` (r tested before `xb.type`), `a47_sigfail.py` (the `<= 5` exit inside the signature-failed arm), `a47_none.py` (the none test through a predicate helper).  Scratch in build/bd/a47 (not kept: `ref_lbf.txt` is the reference's loadBlFiles objdump, `cmp5.py dump.bbro` prints each `xb.type` vs 5 compare's REG_BR_PROB).  Loose/strict lines in loadBlFiles unless said; p99 unless said.
+
+### Re-measured on src (a46_m1hints.py)
+
+As attempt 46: exp_pr 2/4, vol_fail 1/7, both 5/17, exp_devgl 7/43, pin_size 40/82, exp_t10 102/208 (+displ).  lab_none with its `nFiles <= 1` precheck removed too is still 4/8 (loadConsoleBlFiles; the cold label alone is the 231/333 in the table).
+
+### exp_pr: what the 2 lines are and what decides them
+
+- The diff is the SE copy of the tail's `xb.type <= 5` test (reference 388a: `jbe 2f30; jmp 358e`); without the expect it is `ja 358e; jmp 2f30`: fixup_reorder_chain points the jcc at the edge with P >= 50%, so this is attempt 18's closed form again, P(<=5 on the copy) = Xc p (1 - q) / (Xc - S), with p = 50% (bb 26, `xb.type <= 5`, no predictor) and q the r test's probability.
+- In the loop form the r test is bb 27 (`r_3` = PHI of checkBl's r on three edges and -1 from the signature-failed log); `r != 0` / `r` have no predictor (50%), so the copy's P(<=5) is under 50% and the jcc flips (`ja`).
+- **`(int)r < 0`** gets opcode-positive (27%): the copy is 50.23% (`leu 5023`), so the `jbe` is right and loose is **0**; strict 7 is the `.p2align` of the no-key log copy (38a0) that follows the SE copy's jmp block: compute_alignments aligns it (freq 14, no fallthru) only if the previous block's freq is <= 1.4, and the jmp block is 4 x P(>5) = 2.  That needs P(<=5) >= 62.5% on the copy, i.e. (from K = 0.5023 / 0.73 = 0.688) q <= ~9%, or p raised.  attempt 11's t5le margin, now with exp_pr's spelling.  drafts/build_loadBlFiles_negtail_nearmiss.patch.
+- No other predictor fits: `r == -1` (nonequal 28%) is 2/11, `r > 1` 2/4, `(int)r <= -1` and `(int)r < 0 && r != 0` 0/7.  p has no predictor (5 isn't 0/1/-1, neither successor holds a call), and the only way to give it one is a call on the >5 side (attempt 11: `setFlashBuild(0)` as a probe).
+- On `(int)r < 0` (a47_neg.py, 24 cases): the signature block's arm order (`!xb.pub1bl` first: 10 / 23 and up; `cbVerifySig` true arm first: 16 and up), the `5 || 17 || 11` order (4 to 6), the SE test as `!memcmp(e->data, "SE", 2)` (166 and up, memcmp is a call): none moves the no-key log's or the SE copy's frequency the right way.  The param on it (60 to 99): only 95 and 99 give 0/7; 94, 96 to 98 are 60 loose.
+
+### Tail forms (a47_pr.py, a47_rfirst.py, a47_sigfail.py)
+
+- kit arm first (`if (xb.type > 5) { if (type == 14) ..; break; } if (r) goto fail;`): the same as src's (2/4 with `r`, 0/7 with `(int)r < 0`); `if (xb.type > 5 && type == 14) .. else if (r) goto fail;` 2/4 with any spelling.
+- A plain `break` for `<= 5` (r is already -1 or 0): 25 loose (+displ); `xb.type > 5 && type == 14` alone 37 (+displ).
+- r tested first (`if (r && xb.type <= 5) goto fail;`, nested, `else if`, `else if (type == 14)`): 16 to 42 (+displ), `(int)r < 0` first 34 / 192.
+- The `<= 5` exit inside the signature-failed arm (`if (xb.type <= 5) goto fail; r = -1;`, or after it, or `else`), tail without an r test: 23 loose and up (+displ).
+
+### The barrier on the loop form (a47_fail.py)
+
+- Without the asm, `fail:` at the end of case 2 (src), at the end of case 23 after the size log, the size log's own `r = -1; break;` (with r = -1 before or after the log), the tail's own `r = -1;`, or `r = -1` at every site: **all 1/7**, the same line (the size log's `mov edi,-1` before its jmp, where the reference jumps to the shared -1 block).  Attempt 10's mechanism holds unchanged in the loop form: mergephi2 takes the `fail` forwarder (its predecessors bring different memory states, so it has a virtual PHI), the size log's edge isn't critical so its -1 lands in the log's block, and crossjump won't take a 1-insn tail from a block that isn't wholly matched.
+- `if (!e->offset) goto fail;` with `fail:` after the default case, or `if (!e->offset) { fail: r = -1; }`: 59 / 238 (+displ).
+
+### lab_devgl: a none-test predicate (a47_none.py)
+
+- `isNone(e)` (`!strnicmp(..) && !e->crc`, or with an early return) or `isUsed(e)` in loadBlFiles alone or in both loops, with and without the label: **284 loose and up**.  Early inlining keeps it inlined, so the guarded block still has no call, and the predicate's boolean evaluation changes the none test's code itself.
+- Reading the reference's jump table (.rdata 0xf50): entries 0 and 26 are the default case, so no extra case edge (13 or 14 switch edges, which would give 7162 / 14 = 512 per arm) is in the original.
+- Read for arm 2's probability: an edge's predictors that could lift `(type - 4) <= 1` (opcode positive 27%, call 29%) to the label's 46% are a call in the skip edge's destination (DS of 71% and 27% is 47.5%), which in case 24 is the switch's join (not dominated), or a destination without a call (27% alone); every spelling of the devgl test folds to the same range test (attempt 46).  No natural form found.
+
+### Don't retry (attempt 47)
+
+- The tail's r test by spelling: the best is `(int)r < 0` at 0/7, which can't reach q <= 9%; `r == -1` and `r > 1` are worse.
+- Tail arrangements on the loop form (kit first, `else if`, r first, the `<= 5` exit in the signature arm, plain `break`).
+- `fail:` placement or -1 spellings without the barrier: all 1/7 (attempt 10's mechanism, unchanged by the loop form).
+- The signature block's arm orders, the `5 || 17 || 11` order and a memcmp SE test as levers on the no-key log's alignment.
+- A predicate helper for the none test.
+
+### What to try next
+
+- exp_pr: `(int)r < 0` (0/7) only lacks the no-key log copy's `.p2align`.  Any natural change that lowers the SE copy's frequency to 3 or less (jmp block 1), or raises the 5/17 no-key log copy above 20, without moving anything else, would land it; check with `bdblocks.py` (blocks old 17/118 and old 30 in the dump of the near miss).  Whether a cast in `(int)r < 0` reads as natural is for the user: r is uint32_t in src (declaring it `int` costs 117, attempt 46) though loadInputFile returns int; the -1 comes from the signature, size and SMC failures.
+- The barrier and lab_devgl: no new lever; both need either a statement that survives to expand with no code, or a predictor gcc 6 doesn't have for these tests.
+
+### Costs now (strict/loose, removed alone; 8 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 7/1, lab_devgl 34/14, exp_devgl 43/7, pin_size 82/40, exp_t10 208/102 (+displ), lab_none 333/231 (8/4 with the precheck gone too).
