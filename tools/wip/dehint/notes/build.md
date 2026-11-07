@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 66
+
+Attempt 66 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It tried helpers over loadBlFiles' 5..21 arm and signature / tail region (a66_h.py, 49 variants): the signature check with its logs (10 forms), the tail (4), the CF/CG fallback (10), load + fallback, load + fallback + SE + checkBl, the whole arm (8), checkBl / case 6 helpers and call-free predicates, each measured on the SE chain at p90 / p99 with the expect and at p0 with `(int)r < 0`.  Nothing that holds a log call is einlined (growth 7 to 19 against the per-call limit), and every IPA-inlined signature helper removes the vrp1 joiner thread that gives src's SE copy its 38.1% (the copy goes to 50%), so the param-alone condition (< 37.5%) moves the wrong way.  Einlined boolean predicates reach profile_estimate as a 50% PHI test (isSe: SE block 42 instead of 7).  Best non-equal variants: tl_k 4/21, p_se 9 loose in loadBlFiles (+40 displacement lines).  Equal bases: checkEntry, loadChecked, isRetailGlitch.  See "## Attempt 66".
+
 ## State after attempt 65
 
 Attempt 65 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It tried buildFlash at whole-function level: the header step, the loads, the fuse setup, the glitch blmod step, the encode step and the slot-overflow writers as helpers, and the fuse decision inside a call-holding setup helper (a65_bf.py).  The loading helper is an equal base (IDENTICAL, exp_devgl off 7/43); the rest cost 66 to 838 loose with the expect kept.  The reading that closes this route: tree-sink's decision on the setne depends only on the dev arm's frequency ratio to the def block (73% < 75%, the opcode-positive 27% on the dev test), and nothing outside the fuse decision feeds that ratio.  IPA's frequency rebuild after inlining recomputes from the same edge probabilities, and a fuse decision inside an IPA-inlined setup helper (initFlash(&fuse) with the header step, kept out of einline by its calls, growth 26) brings its own profile, which is 27 / 73 again because the dev arm can't be an early return there.  See "## Attempt 65".
@@ -3631,6 +3635,63 @@ Goal: the brief's whole-function lever on buildFlash (restructuring into / out o
 
 - exp_devgl: the condition is now fully stated in sink's own terms: P(dev) <= 25% at the dev test, a use of the setne in bb 3, the use block at a deeper loop depth than bb 3, or entry frequency ~10.  Nothing in buildFlash's real code gives any of them; only a helper whose dev arm returns early (with all its work before the decision) gets P(dev) under 25%, and the reference has no such work.  Treat exp_devgl as closed unless a reason to doubt the reference's source order turns up.
 - exp_pr / the param: attempts 61 to 64's readings stand.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
+
+## Attempt 66
+
+Goal: the brief's whole-structure lever on loadBlFiles' 5..21 arm and its signature / tail region: helpers (early- or IPA-inlined, the useBuiltIn / memmove family of attempts 59-60) for the signature check with its three logs, the tail, the checkBl call, the arm's load + checkBl, the CF/CG fallback and the whole arm, each measured on the SE chain (SE block, its tail-test copy, the jmp block, no-key, the copy's >5 edge) at gcc's default 90 and at 99 with the expect kept, and with the tail as `(int)r < 0` and no param, before scoring.  src as of 0f13d148, unchanged.  New script `tools/wip/dehint/bdgen/a66_h.py` (helpers inserted before loadBlFiles), run with `python tools/wip/dehint/bdgen/a62_semeas.py tools/wip/dehint/bdgen/a66_h.py -x -p 90` (and `-x -p 99`, `-p 0`) for the chains and `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a66_h.py -p 0 -o "-;exp_pr"` (and `-p 99`) for scores; `-f <prefix>` picks a family (sig_, tl_, fb, ld_, ck_, lc_, w, p_).  Einline decisions from `BDP=99 sh tools/wip/dehint/bddump.sh build/bd/a60/<label>.c loadBlFiles t-einline` after `a60lib.py .. -k <label>`.  Scratch in build/bd/a60 (`<label>.c`, not kept).  A compile and score of 60 variants takes about 12 s.  Loose/strict lines; "+40 displ" is loadConsoleBlFiles 18, blmodMissing 2, buildFlash 20: call displacements from loadBlFiles' size.
+
+### Which helpers einline takes
+
+- Every helper holding a log call is IPA-inlined, not einlined: checkBlSig (growth 19 > 14), verifyBl (13, over 14 / (calls + 1)), finishBl.isra (7, the same rule), setKitBuild(e, type).isra (9).  So none of the signature / tail helpers enters loadBlFiles' CFG before profile_estimate; each brings its own profile at IPA, which the chains below show.
+- Einlined: checkEntry (one checkBl call), loadChecked, setKitBuild(e) (one setFlashBuild call), and the call-free predicates isSigBl, isRetailGlitch, isSe.
+
+### Chains and scores (a66_h.py)
+
+| Variant | chain p90 -x: SE / copy / jmp, copy >5, no-key | chain p0 `(int)r < 0` | score p0 all kept / exp_pr off |
+|---|---|---|---|
+| src | 7 / 4 / 2, 38.1%, 14 | 7 / 4 / 2, 49.8% | 0/7 / 2/4 (IDENTICAL at p99) |
+| sig_er: `checkBlSig(e)` with early returns, -1 on failure | 7 / 4 / 2, **50.0%**, 7 + 0 | 7 / 4 / 2, 50% | 103/170 / 103 |
+| sig_nr: the same nested with an `r` local | 7 / 4 / 2, 50.0%, 11 | the same | 94 + 40 displ |
+| sig_ok / sig_okn / sig_oknest: `sigOk(e)` 0 on failure, `&& !sigOk(e)` or nested | 7 / 4 / 2, 50.0% (p99: 46.9 to 48.8%) | 50% | 139 to 160 |
+| sig_t / sig_tn: the type test inside (`r = checkBlSig(e, type)` for every type) | 7 / **2 / 1**, 46.1%, no-key 6 / 9 | 7 / 2 / 1, 35.6%, no-key 6 / 9 | 73/126 + 40 displ, either |
+| sig_bn: `checkBlSig(e->data, e->name)` | 7 / 4 / 2, 50%, 7 | the same | 104/168 |
+| sig_v / sig_vok: the key test stays, verify + two logs in `verifyBl(e)` (-1 / ok) | 7 / 4 / 2, 50%, 14 | the same | 59 + 40 displ / 110 to 132 |
+| tl_fin: `if (r) goto fail; setKitBuild(e, type);` (the kit test inside) | 7 / 4 / 14 (copy gone) | the same | 64 + 40 displ |
+| tl_fin2 / tl_r: `setKitBuild(e, type)` alone, `r = finishBl(e, type, r)` | 7 / 4 / 2, 39.0%, 14 | 39.0% | 40/117 + 40 displ |
+| tl_k: `setKitBuild(e)` for the setFlashBuild line (einlined) | as src | as src | 4/21 / 6/18 |
+| fb_*: the CF/CG fallback as `useSuBl(e, type)` (two bodies, nested or `&&`) or `suFallback(e, type, r)`, both loaders or loadBlFiles only | as src (38.0 to 38.1%) | as src | 134 to 142 (+ console 90 when shared) |
+| ld_su / ld_su2: load + fallback as `loadSuBl(e, type)` (attempt 50's loadUpdateBl) | as src | as src | 85 + 40 / + console 86 |
+| ld_all: load + fallback + SE + checkBl as `loadUpdBl(e, type)`, the caller re-reads `type = e->type` | chain gone (SE 8, copy 298), no-key 29 | the same | 191/369 |
+| ck_all: `checkEntry(e, type)` at all three checkBl sites | as src | as src | **equal base** (0/7, 2/4; IDENTICAL at p99) |
+| lc_6: case 6 as `loadChecked(e, 6)` | as src (38.0%) | as src | **equal base** |
+| w1 to w4 (and `f`: the caller keeps `if (r && xb.type <= 5) goto fail`): the whole arm as `loadCbBl(e, type)`, four tail forms | 8 / 5 / 2, 39 to 40%, no-key 17 to 21 (w1 / w4: 21, aligned) | the same | 168 to 306 |
+| p_sig / p_sigi: an `isSigBl(type)` predicate | 7 / 4 / 2, 42.7%, 11 | 50% | 34/115 + 40 displ |
+| p_kit: `isRetailGlitch()` for the tail test | as src | as src | **equal base** (IDENTICAL at p99) |
+| p_se: `isSe(e->data)` for the 'S' / 'E' tests | **SE 42** / 21 / 8 | the same | 9/177 + 40 displ |
+
+### Readings
+
+- An IPA-inlined signature helper always takes the joiner thread away: the -1 now reaches the tail test X through the helper's return PHI, which vrp1 doesn't thread the way it threads src's `r = -1` (the copy's >5 edge is 50%, or 46.9 to 48.8% at p99, instead of 38.1%).  So no signature helper can even reach the param-alone condition (< 37.5% at p90): the thread that gives src its 38.1% is the one these helpers remove.  This is attempt 63's joiner formula seen from the other side.
+- sig_t is the only family where the jmp block reaches 1 (the copy at 2: checkBlSig(e, type) runs for every type, so the SE path's type 14 threads through the helper's type test), also with `(int)r < 0` and no param (35.6%).  But its no-key copy is 6 and not aligned, and the helper's own blocks cost 73 loose: the layout, not the alignment, is the difference.
+- An einlined boolean predicate reaches profile_estimate as a 0/1 PHI tested at 50% (gcc 6 has no early jump threading), so isSe sends the SE block from 7 to 42 (it needs 6) and isSigBl puts Psig at 50% (S down, the wrong way).  isRetailGlitch folds back into the compare in the early passes (equal base).
+- The whole-arm helper's own profile (early returns on the load and checkBl results) moves the SE block to 8, and its body is new code against the reference (168 and up).
+
+### Don't retry (attempt 66)
+
+- The signature check with its logs as a helper in any form (early returns, nested with `r`, ok-returning, type test inside, (bl, name) parameters, verify + two logs with the key test kept): 59 loose and up, and the IPA-inlined -1 loses vrp1's joiner thread (copy 50%).
+- The tail as a helper (`setKitBuild(e, type)`, `finishBl(e, type, r)`): 40 and up.  `setKitBuild(e)` for the setFlashBuild line: 4/21.
+- The CF/CG fallback as a helper (useSuBl, suFallback), load + fallback (loadSuBl), load + fallback + SE + checkBl (loadUpdBl), or the whole arm (loadCbBl, four tails): 85 and up.
+- Call-free predicates for the SE test or the sig-type test (isSe: SE 42; isSigBl: Psig 50%).
+- checkEntry / loadChecked / isRetailGlitch as levers: equal bases, the chain unchanged.
+
+### What to try next
+
+- exp_pr / the param: the helper lever is closed for this region.  einline can't take anything holding the logs, IPA-inlined helpers lose the joiner thread, and einlined predicates move the profile by whole 50% steps.  Attempts 61 to 64's readings stand; build stays at 3 unless the signature region's or the tail's CFG turns out to have a different reconstruction not yet seen.
+- exp_devgl: closed since attempt 65.
 
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
