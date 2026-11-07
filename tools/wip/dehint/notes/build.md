@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 62
+
+Attempt 62 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It tried attempt 61's lead (a predictor on the checkBl result test) and found it can't be done the way it needs: the closing edge is the *break* side (P(r == 0) has to go under 50%), and every predictor a natural form of that test can get points the other way.  `(int)r < 0` / `<= -1` (opcode positive) sends 73% to r == 0 (215 loose); an `int r` local, checkBl's return type (long, unsigned long, uint32_t, int32_t, ssize_t) and the assignment-in-test spellings leave the test with no predictor (7 / 4 / 2); a static checkBl gets the local calling convention (457 loose).  The new reading is for the param alone: with exp_pr kept at gcc's default 90 (no `--param`), the SE copy's P(>5) is 38.1% and needs < 37.5% (at p91 it is 37.4%).  By the joiner formula that needs S / Xc >= 0.28 (S 41 -> 42 at Xc 149; it is 0.275, Psig 0.64 x Pk 0.85 x Pf 0.5), so freeing the param needs only a 2% rise in the signature-failed share, but Psig, Pk and Pf only take fixed heuristic values (the next one up, Pf = 71%, costs 29 loose).  A diagnostic with 13 switch targets (SE = 6) closes the chain on its own, but the reference's jump table has exactly 12.  See "## Attempt 62".
+
 ## State after attempt 61
 
 Attempt 61 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It measured exp_pr's alignment chain straight off the final `-dA` output for every variant (new `a61_semeas.py`): SE block 109 = 7, the copy of the tail test 110 = RDIV(7 x 50%) = 4 (3.5 rounds up), its jmp block 111 = RDIV(4 x 49.8%) = 2, no-key copy 112 = 14 (aligned only if 14 > 10 x 111).  All 24 of attempt 60's estimate / inline-order / helper edits leave it at exactly 7 / 4 / 2: IPA inlining and its frequency rebuild don't touch loadBlFiles' own blocks (the SE chain is 10000 x 95.5% x 75% / 12 x 50% x 0.28^3 at profile_estimate and nothing after it recomputes those blocks), so that lever can't reach exp_pr.  The only change found that fixes the chain is a call in the SE block (the SE arm calling `checkBl(.., 14, ..)` itself, the else arm the usual one): the 'E' edge gets PRED_CALL (13.7%), SE = 6, 110 = 3, 111 = 1 and the no-key copy is aligned, but the type == 9 test's false edge gets PRED_CALL too (48.8% instead of 28%), and even with that cancelled (diagnostic call) the second call site's CFG moves the 5/17/11 and signature blocks: 124 loose.  exp_devgl: no new lever (attempt 53's einline reading stands).  See "## Attempt 61".
@@ -3422,3 +3426,49 @@ Goal: the brief's two leads on the 3 tricks left: (a) exp_pr's alignment through
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90).
+
+## Attempt 62
+
+Goal: attempt 61's lead (give the checkBl result test in loadBlFiles' 5..21 arm a predictor through checkBl's return type or the test's form), its other two closing conditions, and the param on its own.  src as of d3e56593, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a62_semeas.py` (a61_semeas.py plus the SUCC probabilities of the SE copy's tail test; `python tools/wip/dehint/bdgen/a62_semeas.py <script> [-x] [-p N] [-f substr]`), `a62_ck.py` (forms of the checkBl result test and the r local's type, with each tail spelling), `a62_ret.py` (checkBl's return / local types, static checkBl), `a62_s.py` (S / Xc at the default param: diagnostics and signature-block forms), `a62_diag.py` (13 switch targets; not natural).  Score with `python tools/wip/dehint/bdgen/a60lib.py <script> [-p 0|99] -o "-" [-f substr]`.  Scratch in build/bd/a62 (not kept: `ref_lbf.txt` reference disassembly, `p90.s`..`p95.s` -dA output).  Loose/strict lines.
+
+### Which side of the checkBl test has to rise
+
+- Final -dA (src, `(int)r < 0` tail): block 109 (SE stores + checkBl copy) freq 7, SUCC 61 [50%] (the break, a loop exit by then) and 110 [50%] (r == 0, the copy of the tail test).  So the chain needs **P(r == 0) < 50%**: the break side up.  attempt 61's "continue edge under 50%" means that.
+- Predictors that would do it on `if (r) break;`: TAKEN towards r != 0.  Opcode positive says values tend to be positive (`x < 0` / `x <= 0` unlikely), so with checkBl's -1 / -2 / -3 failures it always points at r == 0.  PRED_CALL would need a call in the r == 0 side's first block (the 5 / 17 / 11 test: none in the reference).  Pointer, loop exit, early return and negative return don't fit (r is an integer, the break isn't a loop exit or a return at profile_estimate, checkBl isn't inlined).  So no natural test form closes it, and the measurements agree:
+
+| Variant (a62_ck.py, a62_ret.py) | SE / copy / jmp, no-key | Score (p99, all hints kept unless noted) |
+|---|---|---|
+| src, `r != 0`, `if ((r = checkBl(..)))`, `!= 0` in the condition | 7 / 4 / 2, 14 not aligned | equal (src) |
+| checkBl test `(int)r < 0`, `(int)r <= -1` | 7 / **5** / 2, 21 aligned | 215/386 (tail `r`), 215/382 + displ (tail `(int)r < 0`) |
+| `int r` loop local | 7 / 4 / 2 | 158/455 (as attempt 46's `int r` 117+) |
+| `int r` + `r < 0` at the checkBl test | 7 / 5 / 2 | 232 to 244 loose |
+| checkBl returning long / unsigned long / uint32_t (with a uint32_t local) / int32_t / ssize_t | 7 / 4 / 2 | not scored (no change in the chain; uint32_t was 390 in attempt 58) |
+| `static int checkBl` | 7 / 4 / 2 | 457/721 (local calling convention, every caller moves) |
+
+### The param on its own (exp_pr kept, gcc's default 90)
+
+- The param exists only for exp_pr, and exp_devgl matched at 90 in attempt 42, so exp_pr's expect working at 90 would free one trick.  The -dA chain with the expect kept (a62_semeas.py -x): p90 copy SUCC 61.9% / **38.1%** (>5, the jmp block 111 = RDIV(4 x 0.381) = 2); p91 37.4% (111 = 1, aligned); p92 36.7%, p93 36.0%, p94 35.3%, p95 34.6%.  The threshold is 37.5% (4 x P < 1.5).
+- Attempt 18's joiner formula fits: P(<=5) = Xc p (1 - q) / (Xc - S) = 149 x 0.5 x 0.9 / 108 = 62.1% (61.9% read).  At q = 10% it needs Xc / (Xc - S) >= 1.389, i.e. **S / Xc >= 0.28** (S 41 -> 42 at Xc 149).  It is 0.275 (real 0.272 = Psig 0.64 x Pk 0.85 x Pf 0.50, rounded up).  Diagnostics confirm it: the pub1bl test under an expect (Pk 90%) gives 36.9% / jmp 1, but the no-key log falls to 10 (needs >= 11); the verify under an expect (Pf 90%) gives 11.2%.
+- Natural values of the three factors (attempt 19's lists, rechecked at profile_estimate on src with bdpred.py): Psig is 50% (5|17 packed) then nonequal 28%, whatever the order of the three compares (5,11,17 / 11,5,17 / 17,5,11 give the same chain); Pk is the pointer 85% (`!= NULL` the same; calls on both arms cancel); Pf is 50% (calls on both arms; `== 0`, `r = -1` before the log the same).  The next value up for any factor is a whole heuristic away: Pf 71% (the passed log out of the first block; diagnostic with a dead `else if (xb.pub1bl)`) costs 29/104 with the param gone, and its chain doesn't even close (46.4%: the dead test adds its own thread).  The window Pk in [0.865, 0.885] (S up, no-key still >= 11) would need a second predictor of 53% to 57% on the pub1bl test; gcc 6 has none that weak.
+- So the param needs +2% on the signature-failed share and the heuristics move it in steps of 20% or more.  Recorded as the cheapest-looking target so far, not as a lead: nothing natural gives a 2% step.
+
+### SE <= 6 (13 switch targets, diagnostic)
+
+- The SE block is 7162 / 12 x 0.5 x 0.28^3 = 6.55 and needs < 6.5.  The 12 is the switch's distinct targets (gcc 6 splits a switch's probability evenly over its edges).  Diagnostic `case 26: break;` or `case 0: break;` (13 targets; behaviour change: no "unhandled" log): SE 6, copy 3, jmp 1, no-key 13 aligned, the chain closes.  But the reference's jump table (.rdata 0xf50, 28 entries for 0..27) has exactly 12 distinct targets, with 0 and 26 on the default.  So a 13th target has to be merged into an existing one after profile_estimate.  A copy of the default log as `case 26:` isn't merged (60/329 at p0 and p99, and every other block scales by 12/13).
+- The other factors are fixed: the loop test is first-match loop exit 95.5% (two exits), the none test 75% (two 50% tests, no call in the switch block), the 0.5 at the fallback join's `if (r) break;` and the three nonequal SE tests.
+
+### Don't retry (attempt 62)
+
+- Predictors on the checkBl result test in loadBlFiles (any compare form, `int r`, checkBl's return type, static checkBl): the side that has to rise is the break's, and opcode positive / call / pointer can't point there with negative failure codes.
+- Signature-test compare order (5/17/11 in any order), `xb.pub1bl != NULL`, `cbVerifySig(..) == 0`, `r = -1` before the failed log: no change to S / Xc.
+- An extra switch target for SE <= 6: the reference has 12; a duplicated default case isn't merged back.
+
+### What to try next
+
+- The param alone is now a 2% problem: S / Xc from 0.275 to 0.28 at the default 90 (or Xc down by 3 with S fixed).  Any natural change to the signature block or to the flows into the tail test X that moves one of them by a little (not a whole heuristic step) is worth `a62_semeas.py -x -p 90` first (it must show the copy's >5 edge under 37.5%, no-key >= 11 and aligned), then `a60lib.py -p 0`.  Watch for a change that moves the integer roundings: S is 40.53 real (rounds to 41) and needs to round to 42.
+- exp_pr itself: the three conditions of attempt 61 stand, each now with its blocking reason (above and attempt 61).
+- exp_devgl: unchanged since attempt 53.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99; p91 to p94 not scored).
