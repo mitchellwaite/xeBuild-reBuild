@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 32
+
+Attempt 32 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It tried four angles the notes hadn't closed, each a quick sweep with every other hint kept: lab_none by the loop's exit count (the console's -1 errors jumping straight to a could-not-read label after the loop, so PRED_LOOP_EXIT's 9% is split over more exits and the not-entered return cools: 69 loose and up, the log and the body move; gen_bd440), `else if (type)` by flag and result-variable joins on src (attempt 30 had scored them only with all seven loadBl hints off: best 25 loose in loadBlFiles plus displacement, `else` 54; gen_bd441), exp_devgl with the dev override tested *before* the glitch2mfg def (no def above the dev test for sink to move: 11 loose at best against src-minus-expect's 7; gen_bd442), and lab_none by defaultBl60's body (nested, result variable: the same 4/8 on the plain-`for` base; gen_bd443).  Also: the param swept 60 to 99 with lab_t5le, exp_pr or pin_d off: none matches at any value.  See "## Attempt 32".
+
 ## State after attempt 31
 
 Attempt 31 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It took attempt 30's vol_fail near miss (the size log's own -1, 1 loose / 7 strict) through both routes attempt 30 named, and closed them.  (a) Block order can't help: crossjump tries each pred against the log's fallthru predecessor first, so every wholly matched -1 block merges into the fallthru one before the size log could be the 'to' side, and the split -1 blocks always take the fallthru place (rtl_split_edge puts them before the log and force_nonfallthru()s the old one; a diagnostic with case 23 last still has its own -1).  (b) A split needs the size path's last block to end in a test that is gone from the final code, and only a dead test does that.  Case 23's spellings (own -1, return, nested, good path first, `e->size & 3`) and case 2's `{ fail: }` block don't move the line (gen_bd430).  See "## Attempt 31".
@@ -1761,3 +1765,49 @@ Case 23 as src, `own` (`log; *pr = -1; break;`), `ownpre` (the -1 before the log
 ### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
 
 On src: lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231; etype 128/54, the constant_p entry 78/26 (attempt 30's numbers; src unchanged).  vol_fail on the c6 near miss (and9 + c2 + case 6 first): 7/1, unchanged by every case 23 spelling.
+
+## Attempt 32
+
+Goal: an angle the notes hadn't closed, on any trick.  Picked by what earlier attempts measured only with other hints off, or not at all: lab_none's exit count, `else if (type)`'s flag joins with every other hint on, exp_devgl with the override first, defaultBl60's body, and the param value with single hints off.  Generators gen_bd440 to gen_bd443 on src as of ccf9746b; `tools/wip/dehint/bdpsweep.py` (param sweep).  Scratch in build/bd/a32 (not kept).  Loose/strict lines in the focus function unless said.
+
+### lab_none by the loop's exit count (gen_bd440, 254 cases)
+
+- The not-entered return's frequency (20, against the r = 1 block's 14) is PRED_LOOP_EXIT's 9% split over the loop's exits (two: `i < nFiles` and `if (r) return -1`), halved by shrink-wrap's duplicate.  Attempt 25 tried dead exits as a diagnostic (121 loose).  Here the exits are real: the console's -1 errors (kv, kvAlt, patch size, smc config, smc load, smcSetLoad) as `r = -1; goto bad;` with `bad:` the could-not-read log after the loop (vrp1 threads `r = -1; break; if (r)` to the log anyway), every subset, with and without the precheck and label, with the in-loop test as `if (r) {log; return -1;}` or `if (r) goto bad;`.
+- Best 69/200 (one goto, `if (r) goto bad;`); every form moves .rdata (the log is now expanded after the loop) and the loop body, as attempt 25's diagnostic did.  With any goto the precheck and label make no difference.  Closed.
+
+### `else if (type)` with every other hint kept (gen_bd441, 15 forms)
+
+- Attempt 30's gen_bd415 scored the flag and `*pr`-as-result forms with all seven loadBl hints off; here only the signature block changes, on src.
+- `else` 54 loose (as before), `ok` local with `else` the same 54, `ok` tested twice (`if (!ok) failed; if (ok) passed;`) 59, `*pr` tested again (`if (!*pr) passed`) 100, `*pr = verify ? 0 : -1; if (*pr) ..` 103, `if (!verify) *pr = -1; if (*pr) ..` 89, no key first 64, `else if (*pr == 0)` (also dead) 40, passed first 66 (no displacement, .rdata order), `int ok = 1; .. if (ok && xb.pub1bl) passed` 25 (+displ): that one re-tests pub1bl in the code (`mov eax,ds:0x29c; test; je` before the passed log) and moves the no-key log, so it isn't closer in kind.
+- So the flag join, the lever in options and mode_client, doesn't act here: vrp1/dom thread the second test, but the passed log's frequency comes out as the plain else's (both are 50/50 from PRED_CALL on the two logs).  Closed.
+
+### exp_devgl with the override first (gen_bd442, 28 cases)
+
+- Attempts 15 and 16 swept the src order (def, then the dev override) and its spellings.  Here the glitch2mfg test is the dev test's else arm or guarded by it (`if (JTAG) 1; else if (dev) 1; else g != 0;`, nested, `fuse = 1; if (!JTAG && !dev) fuse = g != 0;`, `if (!g && !dev) fuse = 0;` ...), memset before or after.  There is then no def above the dev test for sink to move, so the reference's setne-then-cmovbe would have to come from RTL if-conversion speculating the setne.
+- Best 11/46 (`if (JTAG) .. else if (dev) .. else ..` and its nested spellings: the same code as src without the expect plus a moved fuse = 1 block); `&&`-joined conditions 56/686.  If-conversion doesn't speculate it.  Closed.
+
+### lab_none by defaultBl60's body (gen_bd443, 14 cases)
+
+- On src (label kept) nested success-first, a result variable (`int r = 1; .. r = 0; return r;`), `r = 0 .. else` and `== NULL` are IDENTICAL; on the plain-`for` base (no precheck, no label) all are the same 4/8 as src's body (the r = 1 block keeps 14).  uint32_t returns 111 and up (loadBl changes).  Nothing moves the r = 1 block's frequency: it is the malloc test's 10.1% of the case 24 sites, and the body's spelling doesn't change that predictor.
+
+### The param with single hints off (bdpsweep.py)
+
+- lab_t5le, exp_pr, pin_d each off, `builtin-expect-probability` 60 to 99: lab_t5le is 7 strict / 0 loose at 96, 98, 99 and worse elsewhere; exp_pr and pin_d never under 12 strict.  No value makes a hint free.
+
+### Don't retry (attempt 32)
+
+- lab_none by extra loop exits from real error sites (gen_bd440) or by defaultBl60's spelling (gen_bd443).
+- `else if (type)` by flag / result-variable joins, `*pr` re-tests or passed-first forms, with the other hints on (gen_bd441) or off (gen_bd415).
+- exp_devgl by putting the override before the glitch2mfg def, in any nesting (gen_bd442).
+- pin_d by a loop over the case 27 file names (hand run, 228 loose).
+- The param value as a lever for lab_t5le, exp_pr or pin_d alone.
+
+### What to try next
+
+- Nothing new opened.  The windows are attempt 25's; vol_fail's best base is attempt 30's c6 near miss, exp_t10's attempt 27's weight near miss (block 116 at 99 against 88).
+- pin_d with the case 27 fallbacks as a loop over the three names (`static const char *const names[] = { NULL, "config.bin", "config_raw.bin" }`, `*pr = loadBaseFile(k ? names[k] : e->name, ..); if (!*pr) break;`, pin off; one hand run, not kept): 228 loose in loadBlFiles and the whole object displaced.  The loop isn't given back as straight-line calls.  Closed.
+- Otherwise build stays at 12.
+
+### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
+
+On src: lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (4/8 with the precheck gone too); etype 128/54, the constant_p entry 78/26 (re-measured for pin_d, pin_size, lab_none, exp_devgl, lab_t5le; the rest attempt 30's).
