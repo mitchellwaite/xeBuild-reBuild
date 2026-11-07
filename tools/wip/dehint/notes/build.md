@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 48
+
+Attempt 48 landed nothing; src/build.c and build.sh are unchanged, so the count (8) and attempt 46's review table stand.  It scored every combination of exp_pr (expect, `r != 0`, `(int)r < 0`), the barrier, the devgl label and exp_t10, plus lab_none and exp_devgl, at p90 to p99 and no param (a48_combo.py): **no interaction** (loadBlFiles' items add; lab_none and exp_devgl live in other functions; the matching params stay 95 and 99).  Then it read the two near misses' arithmetic exactly.  exp_pr: the no-key copy is aligned only if 14 > 10 x the SE copy's jmp block (2; needs 1), and that 2 comes from the SE block's profile_estimate frequency 7 = 7162 / 12 switch edges x 50% x 0.28^3 = 6.54: it needs 6 (the case arm about 0.8% lower) with the no-key log kept at 11 or more; every factor is a fixed heuristic, the equal-base edits leave it at exactly 7, and a loop-exit r test (first-match 2 to 3%) moves the whole loop (234 loose and up).  lab_none: in bb-reorder's last round the not-entered return (20) goes before the r = 1 block (14); r = 1 would pass at 21, which console's glitch2mfg guard at 50% instead of PRED_CALL's 71% gives, but no natural guard form escapes PRED_CALL (a48_none.py).  See "## Attempt 48".
+
 ## State after attempt 47
 
 Attempt 47 landed nothing; src/build.c and build.sh are unchanged, so the count (8) and attempt 46's review table stand.  It took the two cheapest tricks on the loop form.  exp_pr: the tail's test spelled `(int)r < 0` (r is 0 or -1 there) gets opcode-positive 27% in place of the expect's 1% and is **0 loose / 7 strict** (the SE copy's `jbe` comes out right; only the no-key log copy loses its `.p2align`, lab_t5le's old effect), drafts/build_loadBlFiles_negtail_nearmiss.patch; nothing natural closes the alignment (it needs P(<=5) >= 62.5% on the SE copy, i.e. q <= ~9% on the r test or a predictor on the `xb.type` test).  The barrier: every `fail:` placement and -1 spelling in the loop form is attempt 10's 1/7 (mergephi, crossjump rule).  devgl: a none-test predicate helper is 284 loose and up.  See "## Attempt 47".
@@ -2646,6 +2650,51 @@ As attempt 46: exp_pr 2/4, vol_fail 1/7, both 5/17, exp_devgl 7/43, pin_size 40/
 
 - exp_pr: `(int)r < 0` (0/7) only lacks the no-key log copy's `.p2align`.  Any natural change that lowers the SE copy's frequency to 3 or less (jmp block 1), or raises the 5/17 no-key log copy above 20, without moving anything else, would land it; check with `bdblocks.py` (blocks old 17/118 and old 30 in the dump of the near miss).  Whether a cast in `(int)r < 0` reads as natural is for the user: r is uint32_t in src (declaring it `int` costs 117, attempt 46) though loadInputFile returns int; the -1 comes from the signature, size and SMC failures.
 - The barrier and lab_devgl: no new lever; both need either a statement that survives to expand with no code, or a predictor gcc 6 doesn't have for these tests.
+
+### Costs now (strict/loose, removed alone; 8 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 7/1, lab_devgl 34/14, exp_devgl 43/7, pin_size 82/40, exp_t10 208/102 (+displ), lab_none 333/231 (8/4 with the precheck gone too).
+
+## Attempt 48
+
+Goal: the three near misses jointly (exp_pr as `(int)r < 0` 0/7, vol_fail 1/7, lab_none with its precheck 4/8), every combination with the devgl label, exp_t10 and exp_devgl, and the param at 90 to 99; then the exact frequency arithmetic behind (a) and (c).  src as of 28c25d7f, unchanged.  New scripts in `tools/wip/dehint/bdgen`, all run with `python tools/wip/dehint/bdgen/a46run.py <script> [-p ..] [-k label]` on src/build.c: `a48_combo.py` (the matrix), `a48_exit.py` (the tail's r test as a loop exit), `a48_perturb.py` (equal-base edits around the SE path on `(int)r < 0`), `a48_edges.py` (13-edge switch diagnostic), `a48_none.py` (console case 24 guards without the precheck and label).  Scratch in build/bd/a48 (not kept: `track.py` follows blocks matching a pattern through every `-fdump-tree-all-details-blocks` dump; `dn/`, `dcb*/` the dumps; `n.s` / `m.s` the near miss and src with `-dA`).  Loose/strict lines in the named function; p99 unless said.
+
+### The matrix (a48_combo.py, 27 rows x no param, p90 to p99)
+
+- loadBlFiles rows: exp_pr {expect, `r != 0`, `(int)r < 0`} x barrier {on, off} x devgl label {on, off} x exp_t10 {on, off}.  Nothing beats the single removals.  With exp_t10 on, p95 and p99: expect 0, `r != 0` 2/4, `(int)r < 0` 0/7, barrier off 1/7, `r != 0` + barrier 5/17, `(int)r < 0` + barrier 3/20, and each label-off row is n1's 14/34 plus the rest; p92: 2/53, 4/57, 2/56; p93, 94, 96 to 98: 60 loose and up; p90, 91 and no param: 62 and up.  With exp_t10 off every row is flat in p (62 to 103 loose).
+- So the items don't interact: (a) and (b) add, and (c) is in loadConsoleBlFiles, a separate function (each function's frequencies are normalised to its own loop header, so nothing there can reach loadBlFiles' blocks).  loadConsoleBlFiles without precheck and label is 4/8 at p93 to p99, 22/26 at p92 and below; lab_none's label alone 231/333; exp_devgl 7/43 at p93 to p99, 27/63 below.
+- The matching params stay 95 and 99.
+
+### (a) exactly: what the no-key copy's .p2align needs (the `(int)r < 0` near miss, `-dA` and profile_estimate / vrp1 dumps)
+
+- compute_alignments: block 112 (the 5/17 copy of the no-key log, freq 14, no fallthru predecessor) is aligned only if its branch frequency (14) exceeds max / align-threshold (10000 / 100, never here) or if 14 > 10 x prev with prev <= entry / 2.  prev is block 111, the SE copy's `jmp` block: freq 2 = RDIV(block 110's 4 x P(>5) 49.8%).  The reference has 1 there (src's expect gives P(>5) 31.9%).  So it needs block 110 at 3 or less, or P(>5) under 37.5%, or block 112 at 21 or more.  Hot/cold isn't the limit (the entry is 882, so anything >= 1 is maybe-hot).
+- Block 110's 4 comes straight from profile_estimate: the SE block (bb17 there) is **7** and keeps it through vrp1 (block 109 = 7, block 110 = RDIV(7 x 50%) = 4).  bb17 = bb14 (the `type == 9` test, 298) x 0.28^3 (`type == 9`, 'S', 'E', each nonequal) = 6.54; bb14 = 597 x 50% (bb13, the r test after the CF/CG fallback, no predictor); 597 = the switch block's 7162 / 12 edges; 7162 = 10000 (header) x 95.5% (PRED_LOOP_EXIT 9% / 2 exits) x 75% (the none test's two 50% tests).
+- The window: with A = bb13's 597, the SE block = A x 0.010976 must be under 6.5 (A < 592, i.e. -0.8%), and the 5/17 no-key log = A x 0.5 x 0.5 x (0.5 + 0.5 x 0.28) x 15% = A x 0.024 must stay at 11 or more (A >= 458).  Every factor is a fixed heuristic: the header's 95.5% (3 exits would give 97%, the wrong way; 1 exit 91% would do, but the in-loop `return -1` is always an exit), the switch's 1/12 per edge (the reference's jump table has no 13th target), the none test's 0.75, bb13's 50% (a zero compare gets no opcode predictor; `(int)r < 0` would be 73% to continue, the wrong way), and the three 28%s.
+- a48_edges.py (diagnostic only, not natural): a 13th switch edge (the default's log duplicated under `case 26:`) isn't merged back: 190 loose and up.
+- a48_perturb.py (every subset of up to 3 of: `e->data + 2` in the tail, the SE test nested, the SE stores swapped, `type = 14; e->type = type;`, `xb.type < BUILD_DEVKIT`, the checkBl test as `(int)r < 0`, `e->type == 14` in the tail; 64 cases): the equal-base edits are all exactly 0/7 (same GIMPLE); the SE stores swapped 4/11, the checkBl test 153 loose and up, `e->type == 14` 160 and up.
+- The other routes, from the joiner formula P(<=5) = Xc p (1 - q) / (Xc - S) = 149 x 0.5 x 0.73 / 108: S (signature failed, 41) would need 62, i.e. the verify at about 76% failed (the two arms' logs cancel PRED_CALL to 50%; one-sided gives at most 71%), and a higher Pk for S lowers the no-key log, which has to stay up.  The no-key log at 21 needs the pub1bl test block at 140 (has 95).  p has no predictor (a call on the >5 side would have to be in the test's immediate successor).
+
+### (a) through a loop exit (a48_exit.py, 12 cases at p95 and p99)
+
+- PRED_LOOP_EXIT is first-match, so an r test whose true edge leaves the loop gets 9% / n_exits (2 to 3%), well under the 9% q needs.  The tail jumping straight to the could-not-read log (`bad:` inside the `if (r) {..}` block; r is already -1 there), or a copy of the log and `return -1` in the tail, each spelling of the test, with and without the barrier: **234 loose and up** (+.rdata, displacement): the extra exit changes the loop's whole profile.  The log after the loop (`fail: r = -1; bad: log`) needs r out of the loop body (didn't compile as written); attempts 32 and 46 measured that family at 54 and up.
+
+### (c) exactly (the no-precheck, no-label source; bbro and profile_estimate dumps)
+
+- bb-reorder's round 4 holds the not-entered return (old bb 62, freq 20: entry 880 x 4.5%, halved by shrink-wrap's copy) and the r = 1 block (old bb 53, freq 14).  Neither's predecessor ends a trace (bb 53's is defaultBl60's malloc test inside round 3's trace `20 21 22`), so the heap takes them by frequency, the return first; the reference has r = 1 first (with the cold label the return is 0).
+- r = 1 = (60 + 76, the two defaultBl60 call blocks) x 10.1% (pointer 15% DS early return 39%).  It would pass the return at 21 and up, which console's glitch2mfg guard at 50% would give (about 24): the guard is 71% to break because loadBaseFile's call block is its immediate, dominated successor (PRED_CALL).  loadBlFiles' glitch test escapes PRED_CALL only because the JTAG test also reaches that block.
+- a48_none.py (console case 24 without precheck and label): nested `if (xb.glitch2mfg) {..}` 4/8 (same CFG), `||` 6/10, `glitch && (load || size)` 6/10, `!load && size == 0x60` then break 10/18, the guard repeated in both arms (`glitch && load` / `else if (glitch && size)`) 20/54 (the re-test stays in the code: `mov eax,ds:0x14; test; je` before the size compare, and registers move).
+
+### Don't retry (attempt 48)
+
+- Combinations of exp_pr / vol_fail / lab_none / lab_devgl / exp_t10 / exp_devgl at any param 90 to 99 or none (a48_combo.py): they don't interact.
+- (a) by edits that leave the SE block at 7 at profile_estimate (all equal bases), by a loop-exit r test, or by switch edges.
+- (c) by spellings of console's case 24 guard (a48_none.py) or of defaultBl60 (attempt 32).
+
+### What to try next
+
+- (a) has an exact target: the SE block at 6 or less at profile_estimate (bb13 under 592, -0.8%) with the 5/17 no-key log at 11 or more, or the SE copy's P(>5) under 37.5%.  A natural form that moves bb13 (the r test after the CF/CG fallback) slightly off 50%, adds one more nonequal-class test on the SE path only, or lowers the 5..21 arm's 1/12 share without a new jump-table target would land exp_pr as `(int)r < 0` (borderline cast).  None found.
+- (c): a reason for the glitch2mfg guard's continue edge not to get PRED_CALL (a second predecessor into the loadBaseFile block, or a block between the guard and the call that leaves no code), or r = 1 at 21.
+- (b): unchanged from attempt 47.
 
 ### Costs now (strict/loose, removed alone; 8 tricks, unchanged)
 
