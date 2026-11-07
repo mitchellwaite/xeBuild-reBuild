@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 38
+
+Attempt 38 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  pin_size (gen_bd500): a live type test at retail's start (the xell lookup hoisted, `x = 0; if (xb.type != BUILD_RETAIL) x = findFile(25);`) does open attempt 37's route (kit sum `size_254 + prephitmp_269`) but moves the findFile(25) loop ahead of the sums (313 loose); one-expression sums and the kit/retail tail written once (5-test nested in an else) don't flip or cost more.  So the route needs a statement that is live, isn't a count load, and leaves no code; none was found, and the reasons each kind fails are now listed.  Rotation: `break` after the signature block's no-key and passed logs (same behaviour; gen_bd501) is worse for t5le / exp_pr / `else if (type)` (47 loose and up); case 6's checkBl through `goto chk` (gen_bd502) makes exp_t10 irrelevant once the constant_p entry is off (20/90 either way) but leaves bbro's `if (r)` copy in case 6's checkBl block and the CG/SE checkBl setups crossjumped into it (20 loose with every hint), and the reference keeps case 6 apart from chk anyway; exp_devgl by a re-tested fuse (`if (!fuse && dev) fuse = 1;`, gen_bd503) keeps a branch where the reference has cmovbe (10 loose / 598 strict).  See "## Attempt 38".
+
 ## State after attempt 37
 
 Attempt 37 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It swept attempt 36's open route for pin_size and confirmed the mechanism: a statement at the start of retail's arm (so its first block isn't the findFileOffset(5) loop header when ch2 runs) gets the kit laid out first *and* flips the kit sum, with src's JKR order.  An unused `n = xb.nFlashFiles;` leaves 10 lines, an unused `n = xb.nFiles;` leaves **2** (drafts/build_calcBlAreaSize_nfiles_load_diag.patch, diagnostic only: a dead load is a trick).  What's left is always the operand order of the loop compares that use the new load as their bound: a source-level load's SSA version is below every inlined loop's `i`, so fold writes `n != i` (`cmp n,i`), where the reference's bound is ch2's guard copy (a high version, `cmp i,n`).  Every natural statement that could sit there is either such a load or folds away before ch2 (constants, a `type != RETAIL` flag, an `xb.type` copy); the helpers reading their count into a local first flip their own standalone compare.  Sweeps gen_bd490, gen_bd491.  See "## Attempt 37".
@@ -2063,3 +2067,45 @@ Goal: attempt 36's open route for pin_size: keep src's JKR chain and give retail
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 34 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
+
+## Attempt 38
+
+Goal: (A) pin_size by a *live* statement at retail's start (attempt 37's route without its dead `n = xb.nFiles;`), and (B) a rotation onto the less-recently-worked tricks with attempt 34's lever (a re-tested result) and attempt 37's (a statement that changes ch2 / block order).  Generators gen_bd500 to gen_bd503 on src as of 14d2096d (`python tools/wip/dehint/bdorder.py tools/wip/dehint/bdgen/gen_bd500.py`; the others with `bdrun.py`).  Scratch in build/bd/a38 (not kept: `fd.py file.c fn` a unified diff of one function against the reference, `no_*.c` src minus one hint, `*.s` `-dA` assembly with block frequencies, `c6chk*.c`, `dev_*.c`).  Loose/strict lines in the function named unless said.
+
+### (A) What a retail-start statement has to be, by kind
+
+- It must survive to ch2 (so retail's first block isn't the findFileOffset(5) loop header) and then leave no code, or the reference's.  Kinds, and why each fails:
+  - a constant, a copy, `size = 0`, a constant address (`xb.files`): gone at into-SSA or ccp1.
+  - a flag or compare (`xb.type != BUILD_RETAIL`, used once or twice): forwprop1 puts it into the cond; phiopt1 folds a flag set by an if.
+  - an `xb.type` reload: fre1 (no store or call between it and the chain's load).
+  - a load of a field nothing else reads (`xb.files[0].type`, `nFlashFiles2`): DCE.  The loops' `files[i].type` loads have a PHI index at fre1, so a `files[0]` load isn't their leader.
+  - a load of a count (`nFlashFiles`, `nFiles`): lives as fre1's leader of the later loop-header loads, so it becomes those loops' bound with a source-level (low) version and the compares swap (attempt 37).  Any other spelling of the same load (through a pointer, a cast) value-numbers the same.
+  - a load numbered *above* the loops' `i`: only an inlined helper's, and only for a helper called first in retail (einline goes in reverse source order).  Every helper retail calls starts with a loop header; a helper whose body starts with a load swaps its own standalone compare (attempt 37's gen_bd491; the load, gimplifier temp or into-SSA name, is below the loop's `i_2`).
+  - a call (log, imgCfSize early): code the reference doesn't have there, or a reordered call.
+  - a test whose arms do live work: works for the route, but the work moves (below).
+- gen_bd500 (6 cases, pin off): **`x = 0; if (xb.type != BUILD_RETAIL) x = findFile(25);` first, then the sums, then `if (xb.type != BUILD_RETAIL && xb.files[x].offset > size)` (and the nested spelling): kit sum flipped (`size_254 + prephitmp_269`)**, so a real test at retail's start is enough for PRE's walk; but the findFile(25) loop now runs before the sums, 313 loose / 476 strict.  One-expression sums (`size = findFileOffset(5) + findFileSize(5) + .. + findFileSize(8);`): the same GIMPLE as src (40/82).  The kit's and retail's `setPatchSlot(size); size += 2 * imgCfSize();` written once after a nested 5-test: KR 104 loose (not flipped; the tail becomes a PHI join), RK 312.
+
+### (B) Rotation
+
+- gen_bd501 (32 cases), loadBl's signature block with `break` after the arms that leave `*pr` at 0 (the no-key log, the passed log): the same behaviour (type 5/11/17 with `*pr` 0 does nothing in the tail), it takes those paths off the merge `<= 5` block and gives them the early-return predictor.  Crossed with `else if (type)` / plain else and t5le / exp_pr kept or off.  Nothing better than src: no-key break 16/28 at best (with t5le off) plus .rdata (the jump table moves), passed break 47/117, both 82 and up, plain else 54 and up as before.  The failed arm can't break (attempt 14).
+- Reading for t5le, rechecked with `-dA` (src minus the label): only the no-key log copy's `.p2align` (final bb 112, freq 17, no fallthru; compute_alignments aligns it when 17 > 10 x its layout predecessor, bb 111, the jmp after the SE copy's `<= 5` test, freq 4 x 42% = 2).  As attempt 19 had it; nothing in gen_bd501 moves the SE copy's P(<= 5) above 62.5% or the no-key log to 21.
+- gen_bd502 (11 cases), case 6's checkBl as `if (*pr) break; goto chk;` (the same behaviour: after a good checkBl with type 6 the signature block and the tail do nothing), as a real entry into chk next to the `__builtin_constant_p` one: with every hint 20 loose / 88 strict; with the constant_p entry off **exp_t10 makes no difference** (20/90 with or without it, src minus the entry is 26/78).  What's left in both: bbro copies loadBlFiles' `if (r)` test into case 6's checkBl block (attempt 27's duplication threshold, now on case 6's flow), and the CG and SE paths jump to case 6's checkBl argument setup instead of having their own (crossjump), plus the type-11 block's place when the entry is off.  Case 6's own flow can't be lowered (its load-failure test is a call result, 29%), so not taken further.
+- gen_bd503 (7 cases), exp_devgl by a re-tested result (`if (!fuse && dev) fuse = 1;`, `fuse == 0 &&`, nested, `if (!fuse) fuse = dev;`, the dev test first, raw glitch2mfg): the re-test keeps a branch on the flag (`je`) where the reference has `cmovbe` (10 loose / 598 strict; the `fuse = dev` assignment 12/181).  Expect off throughout; src minus the expect is 7/43.
+- Not swept: lab_none and the barrier (no new lever: lab_none's two round-4 blocks are ordered by frequency, 14 against 20, not by a tie that block numbering could break; the barrier's crossjump order is fixed by the fallthru predecessor, attempt 31).
+
+### Don't retry (attempt 38)
+
+- pin_size by a live test at retail's start that hoists the xell lookup (gen_bd500: the loop moves), by one-expression sums, by the kit/retail tail written once.  The kinds of statement listed above.
+- t5le / exp_pr / `else if (type)` by `break` closing the no-key or passed arm (gen_bd501).
+- The constant_p entry or exp_t10 by case 6 through `goto chk` (gen_bd502).
+- exp_devgl by a `!fuse` re-test (gen_bd503).
+
+### What to try next
+
+- pin_size: the only form found that flips the kit sum with src's chain and no dead code is a real test at retail's start, and the only test retail has is the xell one, whose work can't move.  Unless the program has another reason to test something at retail's start, pin_size stays.
+- gen_bd502 is the first form where exp_t10 is free (with the constant_p entry off), but only because case 6's flow swamps the shared chk copy; the reference's case 6 has its own checkBl call that jumps straight to loadBlFiles' `if (r)` test (`mov edi,eax; jmp b3`), i.e. src's case 6, so this is not the reference's structure.  Worth a look only as a reading of what the shared copy's frequency does.
+- Otherwise attempt 33's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 34 (src unchanged, re-measured with bdhints.py): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
