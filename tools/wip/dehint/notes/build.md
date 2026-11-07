@@ -3,6 +3,26 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 70
+
+**0 tricks** (1 before): exp_devgl is gone; build.c has no hints left and compiles at plain `-O3`.  buildFlash's salt memset and fuse decision are `fuse = initFlash(salt);`, attempt 69's r-class helper with its last line `return fuse & 1;` instead of `return fuse != 0;`.  `!= 0` leaves two statements in the inlined return block after vrp1 (a `_Bool` compare and its int conversion; vrp1 makes the conversion a copy, dce2 deletes the compare, copyprop1 the copy); `& 1` is one statement (vrp1 makes it a copy, copyprop1 deletes it), which takes one name out of the SSA free list that ch2 pops when it copies the six findFile loops' headers, and the findFile(24) loop's nFiles copy then gets a high version again (`i_N != _M` with N < M), as in the original.  `fuse > 1 ? 1 : fuse`, `fuse < 0 ? 0 : fuse`, `fuse % 2`, `fuse &= 1;` and the MIN / MAX spellings are IDENTICAL too.  fncmp MATCH; `sh build.sh` SHA256 matches.  Borderline shapes (attempt 60's table, attempt 68's setKitBuild entries, plus the new row):
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| initFlash (buildFlash's start) | the salt memset and the fuse decision as a helper, `return 1;` for devgl, and a redundant `return fuse & 1;` | new (attempt 70): the helper is chosen so that only IPA inlines it (the memset is its call) and buildFlash gets its profile (devgl as an early return, replaces exp_devgl); `& 1` on a 0/1 value keeps a statement in the return block (JTAG skip off the early-return rule) and is one statement where `!= 0` is two, which is what fixes the loop compare's SSA numbering |
+| setKitBuild (loadBlFiles' tail) | `return type == 14;` ignored at its only call | attempt 68 |
+| loadBlFiles' tail | `(int)r < 0` | attempt 68 |
+| useBuiltIn (loadBlFiles cases 1 and 22) | the built-in payload / core copies as a helper | attempt 60 |
+| defaultBl60 | `memmove` for the built-in copy, and not through useBuiltIn | attempt 60 |
+| loadBl24 (both loaders' case 24) | two calls where `||` would do | attempt 49 |
+| loadBlFiles case 24, second arm | loadBl24's body written out, leading `r = 0;` | attempt 49 |
+| loadBlFiles case 27 | the fallbacks as a sequence of `r` tests | attempt 49 |
+| findFileOffset / findFileSize | return `int` | attempt 58 |
+
+## State after attempt 69
+
+Attempt 69 landed nothing; src/build.c and build.sh are unchanged, so the count (1, exp_devgl) and attempt 60's review table, plus attempt 68's setKitBuild entries, still stand.  It reopened the helper route attempt 53 had closed, using attempt 68's lever, and got to **2 loose / 2 strict**: one loop compare's operand order.  Attempt 53's memset-holding fuse helper (`dret2`, 3/285) failed only because its JTAG skip went straight to the helper's return block, so that edge picked up the early-return prediction too (19.9%) and the JTAG `fuse = 1` ended up in a block shared with the dev arm (ce1's IF-CASE-2 needs the else block to have one predecessor).  Give the helper's return block a non-PHI statement that lasts until profile_estimate (`return fuse != 0;` on an `int fuse` that is already 0/1, a `_Bool` return type, or an out-parameter store `*fuse = f;`) and the JTAG edge no longer goes to the return block, so it keeps 72/28.  The dev arm's `return 1;` still gets early return (19.1%), the setne stays in the dev test's block and ce1 makes the reference's `mov ebx,1 ... setne; sub; cmp; mov eax,1; cmovbe`.  What's left is an SSA-numbering tie: six inlined findFile loops in buildFlash compare `i` with `xb.nFiles` in an order set by version numbers, and every helper class gets some of them wrong (the best, `int initFlash(uint8_t *salt)` returning `fuse != 0`, only the `if (fuse)` block's findFile(24) loop).  Saved as `tools/wip/dehint/drafts/build_buildFlash_initFlash_nearmiss.patch`.  See "## Attempt 69".
+
 ## State after attempt 68 (landed by the orchestrator)
 
 **1 trick** (3 before): exp_devgl in buildFlash.  exp_pr and the `--param` are gone; build.c compiles at plain `-O3` (bdlib's P98 is now `[]`).  The candidate below (drafts/build_loadBlFiles_setKitBuild_candidate.patch) was landed as borderline, at the user's standing rule that plausible author code is landed with a "Borderline, for review:" comment: `static int setKitBuild(uint32_t i, int type)` whose `return type == 14;` is ignored at its only call site, and the tail's `(int)r < 0` (r is 0 or a negative code there).  Both are marked in src.  IDENTICAL; full build SHA256 matches.  The paragraph below is the subagent's, written before landing.
@@ -3813,3 +3833,95 @@ Goal: attempt 67's lead (the IPA-inlined `setKitBuild` closes exp_pr's chain wit
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0; with the void setKitBuild(i, type) and `(int)r < 0`, no param: loadBlFiles 31/6 + 40 displacement; with the candidate's unused `return type == 14;` IDENTICAL and the full build matches), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
+
+## Attempt 69
+
+Goal: exp_devgl (the last trick) with the levers that landed after attempt 65: attempt 68's non-PHI statement in an inlined helper's return block, attempt 59's inline estimates, return types.  src as of 7198bf70, unchanged.  New script `tools/wip/dehint/bdgen/a69_dev.py` (sweeps s1..s22, labels below), run with `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a69_dev.py -p 0 -o "-" [-f label] [-k label]`.  Diffs with `python tools/wip/dehint/bdgen/a52_cmp.py src/build.c <variant.c> _buildFlash`; helper profiles with `python tools/wip/dehint/bdgen/a51_fpred.py <variant.c> initFlash`.  Scratch in build/bd/a69 (not kept; `all/` held the `-fdump-tree-all` runs).  gcc.gnu.org answered with a bot check (Anubis) for predict.c, so nothing was read from the gcc sources; the readings below come from the dumps.  Loose/strict lines in buildFlash, p0 (no param).
+
+### Does tree-sink look at anything but the ratio? (src minus the expect, `-fdump-tree-sink-details-blocks`)
+
+- No.  bb 2 (entry, freq 1148): memset, `_62 = xb.type`, `!= 2` (72%).  bb 3 (826): `_63 = xb.glitch2mfg`, `_67 = _62 - 4`, `_67 <= 1` (opcode positive 27%, the only predictor).  The dev edge goes to an empty forwarder (261, 223) and the non-dev edge to the split block bb 4 (603).  `Sinking fuse_65 = (int) _64; from bb 3 to bb 4`, then `_64`: 603 < 826 x 0.75 = 619.5, all at loop depth 0.  The PHI use sits on one edge, there is no other use and no loop-depth difference, so block order and edge order don't come into it.  P(non-dev) has to be at least 75.06%, or the entry frequency has to be about 10 for rounding to help (attempt 65).  Nothing about ordering will move it; only the dev edge's probability.
+
+### The memset helper revisited: the JTAG edge, not the dev edge, was what broke attempt 53's `dret2`
+
+- `dret2` (`int initFlash(uint8_t *salt)`: `int fuse = 1; memset; if (type != JTAG) { fuse = g != 0; if (dev) return 1; } return fuse;`, `fuse = initFlash(salt);`) is still 3/285.  Its profile: JTAG test 80.1% (nonequal 72 + early return 61), dev 19.1% (positive 27 + early return 39).  At sink time bb 3's non-dev edge is 80.9%, so the setne stays put (optimized dump: `_584 = _583 != 0; fuse_585 = (int) _584;` in bb 3), and ce1 does if-convert the dev arm (`IF-THEN-JOIN ... test 3, then 4, join 6`, succeeded).  What fails is `IF-CASE-2 found, start 2, else 5`: in the RTL the dev arm's `fuse = 1` block falls through into the JTAG edge's `fuse = 1` block (both PHI args are 1, and the GIMPLE dev forwarder sits on the dev edge instead of the non-dev edge as in src).  That leaves the JTAG block with two predecessors, ce1 can't hoist `mov ebx,1` into the entry, and the out-of-line `mov ebx,1; jmp` block is the whole 3/285.
+- Lever (attempt 68's): give the helper's return block a statement other than a PHI, so that the JTAG skip and the non-dev arm reach the return through a block that isn't the return block itself.  Then the JTAG edge doesn't get the early-return prediction (`a51_fpred.py`: bb 2 72.0% nonequal only, bb 3 19.1%), and the CFG at expand matches src's.  Three ways to get that statement:
+
+| Class (sweep labels) | Helper | buildFlash loose/strict | What's left |
+|---|---|---|---|
+| r (e_*, s8_*, s9_*, s18_r_s) | `static int initFlash(uint8_t *salt)`, `int fuse = 1; memset(salt, 0, 16); if (xb.type != BUILD_JTAG) { fuse = xb.glitch2mfg != 0; if (dev) return 1; } return fuse != 0;` (also `!!fuse`, `fuse ? 1 : 0`, `fuse > 0`, `fuse == 1`, BOOL return / local; 135 spellings in s8, every one the same) | **2/2** | the findFile(24) loop in `if (fuse)`: `cmp ecx,eax` for `cmp eax,ecx` |
+| b (rt__Bool_*, t_*__Bool_dret2, c_bi_*) | the same with `static _Bool` and `return fuse;` (or `!= 0`) | 5/41 | the setne writes bl with no `xor ebx,ebx`: PRE moves the `(_Bool)` conversion into the arms, the PHI becomes `_Bool` and the zero extension comes after the join (REE drops it) |
+| o (s13_op3, s14_*, s16 o) | `static void initFlash(uint8_t *salt, int *fuse)`, `int f = 1; memset; if (!JTAG) { f = g != 0; if (dev) { *fuse = 1; return; } } *fuse = f;` | 8/8 | four other loop compares (1057, 1700, 1872, 1887: the overflow writers' findFile loops and one more) |
+| u (rt_uint32_t_*, rt_unsigned_*, s10c) | unsigned / uint32_t return type | 9/44 | ce1 makes `setne dl; movzx; cmp 2; cmovae ebx,edx` (the default the other way round) |
+| short / uint16_t / uint8_t / char return | | 12 to 13 | |
+
+- Without such a statement (plain `return fuse;`, long return, a PHI-only return, the JTAG test as `== JTAG` with `return 1`): 3/285 (`dret`, `dret2`, r_*, t_int_int_*, t_long_*) or the no-early-return form's 11/293 (`flag` bodies: r_flag1, r_jt1, r_nj3).  Callers that test the result (`if (initFlash(salt)) fuse = 1; else fuse = 0;`, `fuse = 0; if (..) fuse = 1;`, s10_1..3): 11/46 (the u class's cmovae).  `fuse = initFlash(salt) != 0` (c_ne_*) or `!!` folds to the plain call.  A raw `fuse = xb.glitch2mfg;` with `return fuse != 0;` (g_*) moves the setne after the dev test: 7/43.
+
+### The tie (SSA numbering)
+
+- Six inlined findFile loops in buildFlash compare the IV with a copy of `xb.nFiles` that ch2 makes when it copies the loop header (found with `-fdump-tree-all`: `_13 = xb.nFiles` first shows up in ch2).  The canonical operand order follows the SSA versions.  In src the first copy gets a fresh name (`_758`); in the r class it reuses a freed low name (`_13`), so the compare is built the other way round.
+- Root, as far as the dumps show it: src's early body has a fuse PHI (`fuse_9`; early PHI versions are handed out in variable order: base 1-2, area 3, raw 4, k 5-8, **fuse 9**, blocks 10, r 11-12, i 13, found 14-15).  With the helper, buildFlash has no fuse PHI before IPA, so every later low version is one less (blocks_9 ... found_13 / found_14).  vrp1 frees the found names and they come back in a different order at ch2.  The helper's inlined names also shift everything allocated after IPA (`fixup_cfg4` max version 644 in src, 651 in r, 715 in o).
+- Sets of wrong loop compares (line numbers in buildFlash's disassembly; src has none):
+
+| Variant | Wrong compares |
+|---|---|
+| r, `(salt)` (s18_r_s, every s8 / s9 / s12 / s16 r spelling) | 123 |
+| r, buildFlash's `fuse` unsigned / uint8_t / uint32_t / char / short (s11, s22) | 123, 173 |
+| r, `(salt, len)` / `(salt, xb.type == JTAG)` (s20, s18_r_sj) | 123, 1700, 1872, 1887 |
+| r, `(salt, xb.type)` (s18_r_st) | 123, 173, 1700, 1872, 1887 |
+| o, `(salt, &fuse)` (s13_op3, s14 int / BOOL, s16 o) | 1057, 1700, 1872, 1887 |
+| o, `(salt, type, &fuse)` / `(salt, len, &fuse)` (s18_o_st, s20) | 1700, 1872, 1887 |
+| o, `(salt, jtag, &fuse)` | 123, 1057, 1700, 1872, 1887 |
+
+  Parameter order doesn't matter, only the count (s20).  None of these change any set: fuse's declaration position (s19, 54 variants), the `if (fuse)` block's spelling (s12: an `i` index, an `e` declared outside, an index local; `xb.files + n` is 15/545), the dev test and glitch spellings, a local for `xb.type`, and attempt 65's `ld` restructure (s21, an equal base).  Attempt 65's other restructures cost what they cost on src (66 to 838).
+- The helper is inlined first of buildFlash's six IPA inlines (ipa-inline dump: `build.c:2529`, net -6), since the inline transform goes in block order, so its names land straight after buildFlash's own.
+
+### Is the r form landable if the tie closes?
+
+- It would be borderline twice.  First, a helper that clears the salt and returns the fuse flag: attempt 53 judged it not something an author writes, though it reads as `initFlash`, "set up the flash build's salt and say whether virtual fuses are used".  Second, `return fuse != 0;` on a value that is already 0 or 1: live but redundant, chosen because gcc keeps it in the return block.  A `_Bool` return (class b) would be the natural way to write the second, and options.c already has `_Bool` helpers, but it loses the zero extension.
+
+### Don't retry (attempt 69)
+
+- Reading tree-sink for an order effect: the decision is the frequency ratio only.
+- The memset helper with a PHI-only return (`dret`, `dret2`, `return fuse;`, long / BOOL return types): the JTAG edge goes to the return block (early return, and the shared `fuse = 1` block).
+- `!= 0` / `!!` / `? 1 : 0` in the caller (folded), caller tests of the result (cmovae), the raw glitch2mfg value tested at the end (setne after the dev test).
+- Spellings inside the r or o class (s8, s9, s14, s16: the GIMPLE is the same), parameter order, fuse's declaration position, the fuse block's spellings, and attempt 65's restructures.
+
+### What to try next
+
+- The tie: the r class's only miss is the findFile(24) loop in `if (fuse)`.  It needs src's free-list state at ch2, which src gets from the early fuse PHI.  Look for a natural statement that gives buildFlash one more early PHI, numbered before `found` (a variable declared before `blocks`, or fuse itself), without changing the code, or for another way to change which name ch2's first header copy gets.  Every parameter added so far also breaks the overflow writers' three loops (1700, 1872, 1887), which the r class with one parameter gets right.
+- If the tie is closed, the result is a candidate for the user's review (the two borderline points above), not a plain landing.
+- The b class (`_Bool` return): find what would put the zero extension back on the setne (after PRE the PHI is `_Bool`, and the int conversion comes after the join).
+
+### Costs now (strict/loose, removed alone; 1 trick, unchanged)
+
+exp_devgl 43/7 (unchanged).  With the r-class initFlash helper in its place: 2/2 (one loop compare's operand order).  The full build was not run for it, since it doesn't match.
+
+## Attempt 70
+
+Goal: attempt 69's r-class near miss (`fuse = initFlash(salt);`, `return fuse != 0;`: 2/2, the findFile(24) loop in `if (fuse)` compares `cmp ecx,eax` for `cmp eax,ecx`).  src as of 7198bf70.  New scripts in `tools/wip/dehint/bdgen`: `a70_dev.py` (sweeps s1..s5, run with `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a70_dev.py -p 0 -o "-" [-f label] [-k label]`), `a70_dump.sh <variant.c> <name> [gcc flags]` (one `-fdump-tree-all` compile into build/bd/a70/<name>), `a70_names.py <dumpdir> [fn] [first] [last]` (per pass, the SSA versions that disappear / appear in a function), `a70_src.py <dumpdir> [pass] [fn]` (for each version a pass (ch2 = 107) reuses, the earlier pass that released it).  Dumps in build/bd/a70 (not kept).  gcc.gnu.org answered tree-ssanames.c with the Anubis bot check, so nothing was read from the gcc sources.
+
+### Readings
+
+- Optimized dump: src `i_205 = i_751 + 1; if (i_205 != _758)`, r `i_197 = i_750 + 1; if (_13 != i_197)`.  The canonical order puts the lower version first, and the IV increment keeps its pre-ch2 version (~200), so the nFiles copy that ch2 makes for loop A (the `if (fuse)` findFile(24) loop) needs a version above it.  ch2 makes 74 names and every one is a recycled version (max version is unchanged); r's loop A gets `_13` (found_13, released by dce2), src's gets `_758` (r_758, a vrp1 copy released by dce2).
+- So it is the order of ch2's free list, not the numbering of any one name.  Moving `found`'s declaration (s1: 15 positions and types) only renames the low name loop A gets (`_3` with found first): always 2/2.
+- What differs between src and r after vrp1 (a70_names.py): r's inlined return block is `_588 = fuse_587 != 0; _589 = (int) _588;` (vrp1 turns `_589` into a copy of fuse_587), so dce2 releases `_588`, copyprop1 one more name (`_589`, 20 against 19), mergephi3 `fuse_587` (now mergeable), which phiopt1 takes back.  The free list is not a plain stack (src's phiopt1 reuses `_70`, released in dce2, although copyprop1 released 19 names after it; r's phiopt1 reuses mergephi3's fuse_587), which looks like released names being queued and flushed at some passes, but the model wasn't needed: one name fewer was enough.
+- s2 / s4 (return expressions): every form whose GIMPLE is a single int statement that vrp1 reduces to a copy is **IDENTICAL**: `fuse & 1` (also `(fuse & 1)`, `& 1u`, `fuse &= 1; return fuse;`, `fuse = fuse & 1; return fuse;`), `fuse > 1 ? 1 : fuse` / `fuse < 1 ? fuse : 1` / `fuse >= 1 ? 1 : fuse` / `fuse <= 1 ? fuse : 1` (MIN), `fuse > 0 ? fuse : 0` / `fuse < 0 ? 0 : fuse` / `fuse >= 0 ? fuse : 0` (MAX), `fuse % 2`.  Compare forms (`!= 0`, `== 1`, `!(fuse == 0)`, `!!`, `? 1 : 0`, `(unsigned)fuse != 0`, `1 - (fuse == 0)`, `fuse ? 1 : fuse`, `if (fuse > 1) fuse = 1;`) stay 2/2; `> 0` / `>= 1` 13/49; folded forms (`| 0`, `^ 0`, `* 1`, `>> 0`, `- 0`, `-(-fuse)`, `& ~0`, `abs`, `fuse ? fuse : 0`, `if (fuse < 0) fuse = 0;`) are PHI-only returns again (3/285).
+- s3 (buildFlash's fuse type x helper return type x helper local type, `!= 0` and plain return): nothing below 2/2 (char / uint8_t / unsigned caller 4/4, `_Bool` returns 5/41, `_Bool` locals 8/290 or 9/44).
+
+### Landed
+
+`static int initFlash(uint8_t *salt)` before patchConsoleBlmod with `return fuse & 1;` and a "Borderline, for review:" comment; buildFlash calls `fuse = initFlash(salt);`.  `python tools/re/fncmp.py src/build.c buildFlash` MATCH, `sh build.sh` ends with 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c, progress 617 / 617.  README's tricks list drops build (options and mode_client renumbered, 2 files listed, 23 without tricks); bdhints.py's H is empty.
+
+### Don't retry (attempt 70)
+
+- `found`'s declaration position or type for the loop compare (renames the low name only).
+- Caller / helper / local type combinations with `!= 0` (s3).
+
+### What to try next
+
+- build has no tricks.  If the user rejects `& 1`, the MIN / MAX / `% 2` spellings are the same lever; a natural form would need some other single-statement int return expression on a 0/1 value that vrp1 reduces to a copy, or one statement fewer elsewhere between vrp1 and ch2.
+
+### Costs now
+
+None: 0 tricks.

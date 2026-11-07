@@ -45,9 +45,9 @@ tricks some functions needed to match, and the checks behind each step.
 
 The application files match, but some only match because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 3 files that still have them from easiest to hardest to match with
+ranks the 2 files that still have them from easiest to hardest to match with
 source shape alone: ordinary C, the same `-O3` as the rest, and none of these
-hints. The other 22 application files build with no tricks.
+hints. The other 23 application files build with no tricks.
 
 Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
 removes any that no longer change the code, but no hint-free source has been
@@ -81,20 +81,7 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. build</b>: 1 trick, very hard</summary>
-
-- 1 `__builtin_expect`, in `buildFlash` (the devgl test)
-
-It's the largest file at 2,800 lines, and now builds at plain `-O3`. `loadBlFiles` is now written like
-`loadConsoleBlFiles` (the switch in the loop, sharing the xell and case-24
-helpers with it, and a `useBuiltIn` helper for its built-in payload and
-core). `tools/wip/dehint/notes/build.md` has the mechanisms and what's
-been tried.
-
-</details>
-
-<details>
-<summary><b>2. options</b>: 22 tricks, very hard</summary>
+<summary><b>1. options</b>: 22 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
 - 7 `__builtin_constant_p`, 7 `__builtin_expect`, 2 `asm goto` and 2
@@ -111,7 +98,7 @@ source would also have to split `parseButton` the way gcc did.
 </details>
 
 <details>
-<summary><b>3. mode_client</b>: 48 tricks, very hard</summary>
+<summary><b>2. mode_client</b>: 48 tricks, very hard</summary>
 
 - 23 `__builtin_constant_p` feeds and 10 `asm goto` edges to dead labels, which
   set bb-reorder's heap keys

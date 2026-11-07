@@ -7,8 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bdlib, bdrun
 
+# none left since attempt 70 (exp_devgl went for the initFlash helper; see notes/build.md)
 H = {
-    'exp_devgl': [('__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0)', 'xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16')],
 }
 
 

@@ -2491,6 +2491,33 @@ uint32_t calcBlAreaSize(void)
 	return size;
 }
 
+/* Borderline, for review: the salt clear and the virtual-fuse decision as a
+   helper, which an author could write ("set up the flash build and say whether
+   it uses virtual fuses"), but which is chosen for what gcc does with it.  It
+   keeps the memset, so only IPA inlines it, and buildFlash then gets the
+   helper's own profile, where the devgl arm is an early return (19.1%; this
+   replaces a __builtin_expect on that test).  The final `fuse & 1` is
+   redundant (fuse is already 0 or 1) and is also chosen for gcc: it keeps a
+   statement in the return block, so the JTAG skip doesn't pick up the early
+   return prediction, and, unlike `fuse != 0` (a compare and a conversion),
+   it is one statement, which leaves the SSA free list as the original's
+   build has it when ch2 copies the findFile loops' headers (with `!= 0` the
+   findFile(24) loop in buildFlash's `if (fuse)` compares the other way
+   round).  `fuse > 1 ? 1 : fuse`, `fuse < 0 ? 0 : fuse` and `fuse % 2` do
+   the same. */
+static int initFlash(uint8_t *salt)
+{
+	int fuse = 1;
+
+	memset(salt, 0, 16);
+	if (xb.type != BUILD_JTAG) {
+		fuse = xb.glitch2mfg != 0;
+		if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+			return 1;
+	}
+	return fuse & 1;
+}
+
 /* no blmod.bin: the console's, if any */
 static void patchConsoleBlmod(void)
 {
@@ -2513,13 +2540,7 @@ int buildFlash(void)
 	uint16_t t;
 	char last;
 
-	memset(salt, 0, sizeof(salt));
-	fuse = 1;
-	if (xb.type != BUILD_JTAG) {
-		fuse = xb.glitch2mfg != 0;
-		if (__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0))
-			fuse = 1;
-	}
+	fuse = initFlash(salt);
 	if (!xb.fromConsole) {
 		log_printf(1, "Writing initial header to flash image\n");
 		writeInitialHeader();
