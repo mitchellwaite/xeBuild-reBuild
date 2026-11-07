@@ -51,9 +51,8 @@ for f in $objects globals; do
     # its data is defined in the original's .data/.bss order, reversed
     image_read) orig="$f.c"
            cflags="-O3" ;;
-    # loadBlFiles' expects (95 to 99 match; 90 and below don't).
     build) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=99" ;;
+           cflags="-O3" ;;
     # the COMMON block in address order (src/globals.c's head comment)
     globals) orig="$f.c"
            cflags="-O3 -fno-common -fno-toplevel-reorder" ;;

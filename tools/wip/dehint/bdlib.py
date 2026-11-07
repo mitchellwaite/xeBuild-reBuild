@@ -23,7 +23,7 @@ REF = os.path.join(BUILD, 'reference.o')
 SRC = os.path.join(R, 'src', 'build.c')
 os.makedirs(BUILD, exist_ok=True)
 # build.sh's value; the name is from before attempt 46, when it was 98
-P98 = ['--param', 'builtin-expect-probability=99']
+P98 = []  # build.c compiles at plain -O3 since attempt 68 (was --param builtin-expect-probability=99)
 
 
 def read_src(path=SRC):

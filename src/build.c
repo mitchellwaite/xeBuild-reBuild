@@ -1275,6 +1275,23 @@ static int loadBl24(struct fileent *e)
 	return 0;
 }
 
+/* a kit build: an SE sets the flash build number (nonzero if it did).
+   Borderline, for review: the status return is ignored at the only call
+   site (ordinary C, but chosen for the match); it is there because the inlined
+   return block then holds a statement until DCE (after vrp1), which keeps
+   the type test's false edge from being the last edge of the switch
+   join when vrp1 threads its first edge (the none skip) away, so dom2
+   threads the signature-failed path through the setFlashBuild block as
+   the original has it.  The helper itself (IPA-inlined, not einlined)
+   gives the tail test the call heuristic, which replaces the expect and
+   the --param; (int)r < 0 is the only -1 failure code */
+static int setKitBuild(uint32_t i, int type)
+{
+	if (type == 14)
+		setFlashBuild(getBeU16(xb.files[i].data + 2));
+	return type == 14;
+}
+
 /* load the input files by their type; the arms only set r, which is
    tested once after the switch (as in loadConsoleBlFiles) */
 int loadBlFiles(void)
@@ -1323,16 +1340,15 @@ int loadBlFiles(void)
 					} else
 						log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
 				}
-				/* the expect leaves vrp1's signature-failed copy of this test a
-				   >5 edge (else its setFlashBuild copy has frequency 0 and final
-				   aligns the type-11 block after it) */
 				if (xb.type <= BUILD_DEVGL16) {
-					if (__builtin_expect(r != 0, 0))
+					/* Borderline, for review: r is 0 or a negative failure
+					   code here; the signed test (not r != 0) is chosen for
+					   the match */
+					if ((int)r < 0)
 						goto fail;
 					break;
 				}
-				if (type == 14)
-					setFlashBuild(getBeU16(xb.files[i].data + 2));
+				setKitBuild(i, type);
 				break;
 			case 6:
 				if (!xb.cbb)

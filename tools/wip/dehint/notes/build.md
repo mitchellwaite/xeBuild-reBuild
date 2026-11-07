@@ -3,6 +3,12 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 68 (landed by the orchestrator)
+
+**1 trick** (3 before): exp_devgl in buildFlash.  exp_pr and the `--param` are gone; build.c compiles at plain `-O3` (bdlib's P98 is now `[]`).  The candidate below (drafts/build_loadBlFiles_setKitBuild_candidate.patch) was landed as borderline, at the user's standing rule that plausible author code is landed with a "Borderline, for review:" comment: `static int setKitBuild(uint32_t i, int type)` whose `return type == 14;` is ignored at its only call site, and the tail's `(int)r < 0` (r is 0 or a negative code there).  Both are marked in src.  IDENTICAL; full build SHA256 matches.  The paragraph below is the subagent's, written before landing.
+
+Attempt 68 (as written by its subagent) landed nothing; src/build.c and build.sh were unchanged, so the count (3) and attempt 60's review table stood.  It found why attempt 67's setKitBuild helper leaves 6/31: the inlined body's return block R' always has preds (false edge, call path) (the inline copy makes edges in callee block order); cleanup removes the empty continuation and then R', which leaves the false edge last at the switch join, and vrp1's first thread (the none skip) moves it into slot 0, ahead of the call path, for dom2's FSM search.  If R' keeps a non-PHI statement until DCE (after vrp1), the call path comes first and dom2 threads through the setFlashBuild block as in src: `static int setKitBuild(uint32_t i, int type)` reading `xb.files[i].data`, with an unused `return type == 14;` (or any other non-PHI return expression), the tail `(int)r < 0`, no expect and no param, is IDENTICAL, and `sh build.sh` with build at plain `-O3` gives the right SHA256.  Not landed: the return value is unused at the only call site, so it is dead code chosen for gcc (a trick); saved for review as `drafts/build_loadBlFiles_setKitBuild_candidate.patch` (2 tricks fewer if accepted).  No natural form with the same effect was found (callee shapes, argument spellings, 0 / 1 and pass-through returns, gotos, the kit test inside the helper, callee return types, 132 case-block moves).  See "## Attempt 68".
+
 ## State after attempt 67
 
 Attempt 67 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  Attempt 66's leads are closed: tl_k's 4/21 (no param, expect kept) is only the setFlashBuild argument read through the IV (`e->data` CSEs with the loop pointer), with the chain unchanged; p_se moves the SE block to 42; 13 sig_t variants (no-key log or key test outside the helper, tri-state, switch, r passed in, + tl_k / p_se) cost 63 to 200 loose.  New mechanism found: the tail's `if (type == 14) setFlashBuild(..)` as an IPA-inlined `setKitBuild(e, type)` (einline refuses it: growth 6 over 14 / calls) puts a call in the tail test X's >5 successor at profile_estimate, so X gets PRED_CALL (71 / 29) and **the alignment chain closes with no expect and no param** (`(int)r < 0`: SE copy 71.0 / 29.0%, jmp block 1, no-key copy aligned; `r != 0`: 87.5 / 12.5%).  It costs 6/31 in loadBlFiles (+40 call displacements from the shorter code), the same with every helper body, argument and tail orientation tried (a67_kx.py): the inlined helper's false edge is appended last to the switch join's predecessors, vrp1's unordered edge removals move it to slot 0, and dom2's FSM threader then takes the `type != 14` path first and never copies the setFlashBuild block before ivopts (so the sig-failed copy reads `e->data` through the IV and its r = -1 lands in the fail block).  See "## Attempt 67".
@@ -3757,3 +3763,53 @@ Goal: attempt 66's leads (tl_k, p_se, a sig_t variant that keeps the SE jmp bloc
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0; with the setKitBuild helper and `(int)r < 0`, no param: loadBlFiles 31/6 + 40 displacement), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
+
+## Attempt 68
+
+Goal: attempt 67's lead (the IPA-inlined `setKitBuild` closes exp_pr's chain with no expect and no param; what's left is the order of the switch join's predecessors after inlining).  src as of 81ed9726, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a68_phi.py` (dumps a variant with `-fdump-tree-all` and prints the join's r PHI, the PHI with the most arguments, after fixup_cfg4 / ccp2 / mergephi2 / vrp1 / dce2 / dom2, plus dom2's FSM registrations; `-a` for every pass), `a68_fsm.py` (the cheap filter: one compile with `-fdump-tree-dom2-details`; 'good' when two of loadBlFiles' FSM paths have three edges, i.e. src's `(19, 22) (22, 23) (23, 100) (100, 101)` through the setFlashBuild block; `-s` scores the good ones), `a68_kit.py` (helper bodies, arguments, return values, caller gotos, the kit test inside the helper, callee return types), `a68_sw.py` (every single move of one case block of the switch, on the void helper).  Runs: `python tools/wip/dehint/bdgen/a68_fsm.py tools/wip/dehint/bdgen/a68_kit.py -s [-f label]`, `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a68_kit.py -p 0 -o "-"`.  Dumps in build/bd/a68 (not kept).  Loose/strict lines, p0 (no param) unless said.
+
+### Where the false edge comes from (exactly)
+
+- The callee's own CFG doesn't decide it.  `if (type == 14) X; else return;` does give the callee's return block preds (call, false) at cfg time, but eipa_sra's isra clone (`struct fileent *e` is only used for `e->data`) rebuilds the body with (false, call); with a pointer or index argument there is no clone and the callee keeps (call, false), but the inline copy (copy_edges_for_bb over the callee's blocks in chain order) recreates the edges source block by source block, so the inlined return block R' always has preds (type test's false edge, call block).
+- In the caller: expand_call_inline splits the call block first, so the continuation K (empty, the `break`) has a lower index than the copied body.  fixup_cfg4's cleanup (index order) removes K first (R' takes K's slot in the join's PHI), then R': its preds are appended in order (false, call) and unordered_remove fills R''s slot with the last one, the call path.  So the false edge is last at the join; vrp1's first thread is the join's first edge (the none skip, `(4, 113)`, the first FSM registration), and the false edge takes slot 0, ahead of the call path, for dom2's FSM search.  (a68_phi.py on k1_n shows it pass by pass.)
+- What fixes it: **R' must not be a forwarder until vrp1 has threaded the join.**  Then fixup_cfg4 leaves R' in place, vrp1 moves src's last edge (a threaded -1 edge) into slot 0, and when R' is cleaned up after vrp1 its preds are appended (false, call) with the call path taking R''s old slot, so the call path comes first and dom2 registers `(19, 22) (22, 23) (23, 100)` as in src.  A PHI in R' doesn't do it (mergephi2 removes PHI forwarders before vrp1: ri_n, ri1, an `int` helper returning 0 / 1); a non-PHI statement that only DCE removes (dce2 runs after vrp1) does.
+- Diagnostics (a68_kit.py; `int setKitBuild(..)` whose return value the call ignores; tail `(int)r < 0`, no param):
+
+| Variant | FSM | Score |
+|---|---|---|
+| `(e, type)`, `return xb.type;` / `return e->crc;` | good | loadBlFiles 4/14 (only the setFlashBuild argument through the IV, `mov eax,[ebp+0x40c]`); the 40 displacement lines are gone |
+| `(e, type)`, `return e->size;` | good | 7/21 |
+| `(e, type)`, `return type;` | bad (the copy is gone before mergephi2) | 6/31 |
+| `(xb.files[i].data, type)`, `return xb.type;` | good | 3/7 |
+| **`(uint32_t i, int type)` reading `xb.files[i].data` inside, `return xb.type;` / `xb.files[i].type` / `type == 14` / `xb.nFiles` / `xb.files[i].data != NULL` / `xb.seReplacesCf`** | good | **IDENTICAL**, every one |
+| the same, tail `r != 0` / `r` | good | 2/11 |
+| the same, the expect kept (no param) | good | IDENTICAL |
+| void `(i, type)` (riv), `(int)r < 0` | bad | 6/31 + 40 displacement lines |
+
+  With `return type == 14;` and build.sh's build flags at plain `-O3`, **`sh build.sh` ends with the right SHA256** (exp_pr and the param both gone, exp_devgl kept; it is 7/43 off as before).  Not landed: the return value is unused at the only call site, so the returned expression is dead code whose only job is to steer gcc (a trick by the README's rules, not a borderline shape).  Saved as `tools/wip/dehint/drafts/build_loadBlFiles_setKitBuild_candidate.patch` (src/build.c and build.sh) for the user's review.
+- The argument matters separately: with `e` (or `&xb.files[i]`) the inlined `e->data` load becomes the IV read (4/14); passing `i` and reading `xb.files[i].data` inside gives the reference's `imul eax,[esp+0x2c],0x42c; mov eax,[eax+0x422bc]`.  The argument alone doesn't help (riv, void `(i, type)`: 6/31); the FSM order comes first.
+
+### Natural forms tried for the same effect (none works)
+
+- Callee bodies with the call path's block first: `if (type == 14) X; else return;`, `if (..) { X; return; } return;`, `if (type != 14) ; else X;`, a switch with the default first or last, `do { if (type != 14) break; X; } while (0);`, each with `e`, `e->data` and `xb.files[i].data` arguments (a68_kit.py b*, p*): 6/31 (switch forms 7/28 or 12/37); the inline copy reorders them as above.
+- An `int` helper returning 0, 1 / 0, or r passed through (`r = setKitBuild(i, type, r)`, `uint32_t` or `int r`): a PHI or a copy, gone before vrp1 (6/31); the pass-through also loses PRED_CALL (50.2%, 6/34).
+- A `goto` after the call (to a label before the `if (r)`), `else goto out;` in the helper: no effect.  C emits no GIMPLE_PREDICT for goto here (only `continue` does; predicts survive to fixup_cfg4 and are stripped before ccp2), so nothing keeps K or a false-path block alive.
+- The kit test inside the helper (`if (xb.type > BUILD_DEVGL16 && type == 14)`, nested, early return), called on every build, the tail testing the build type only for the failure (`if (xb.type <= BUILD_DEVGL16 && (int)r < 0) goto fail;` before the call, or nested): FSM good, but the signature-log copies swap and the kit copy reads through the IV: 40/121.  The call before the failure test: FSM bad.  `type == 14 &&` first: bad.
+- loadXell / loadBl24 / defaultBl60 returning `uint32_t` (their inlined return blocks become PHI forwarders that mergephi2 merges into the join after the false edge): FSM good in some combinations, but 59 to 93 loose in loadBlFiles, on src too (rt_*).
+- a68_sw.py, the 132 single case-block moves on the void helper: 129 FSM bad; the good ones are m2_9 (case 24 after case 27) 30/142 and m2_10 / m2_11 115/280.
+
+### Don't retry (attempt 68)
+
+- Callee body shapes or argument spellings meant to reorder the inlined return block's preds: the inline copy creates edges in callee block order, the test block first.
+- Int helpers whose result is a PHI or a copy (0 / 1, r pass-through): removed before vrp1.
+- Gotos as predict carriers: C emits none.
+- Callee return types of loadXell / loadBl24 / defaultBl60; case-block moves.
+
+### What to try next
+
+- The candidate removes two tricks for one dead return expression.  A natural form needs a statement in the inlined setKitBuild's return block that survives until vrp1 has threaded the join and is gone before dom2 (dce2, cdce, copyprop1 run in between), or anything else that appends an edge to the join after the false edge before vrp1 (mergephi2 merges PHI forwarders into it), or a first join predecessor that vrp1 doesn't thread.  A live use of the return value would keep the statement in the final code unless it is a copy that only copyprop1 removes; every natural use found so far is either dead or a copy the inliner removes at once.  If the user accepts an ignored status return (common C), the candidate lands as it is; `return type == 14;` ("nonzero if it set the build") reads most like a status.
+- exp_devgl: closed since attempt 65.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0; with the void setKitBuild(i, type) and `(int)r < 0`, no param: loadBlFiles 31/6 + 40 displacement; with the candidate's unused `return type == 14;` IDENTICAL and the full build matches), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
