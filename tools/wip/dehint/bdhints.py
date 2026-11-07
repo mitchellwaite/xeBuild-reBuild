@@ -8,7 +8,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bdlib, bdrun
 
 H = {
-    'exp_t10': [('__builtin_expect(type == 10, 0)', 'type == 10')],
     'exp_pr': [('if (__builtin_expect(r != 0, 0))', 'if (r != 0)')],
     'lab_devgl': [('				devgl: __attribute__((hot));\n', '')],
     'vol_fail': [('				__asm__ __volatile__("");\n', '')],

@@ -3,6 +3,16 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 49
+
+**7 tricks** (8 before): `--param builtin-expect-probability=99`, 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash), 1 pin (size), the empty asm barrier on `fail:`, 2 hot and cold labels (`devgl` in loadBlFiles, `none` in loadConsoleBlFiles).  Removed: **exp_t10** (the `type == 10` expect on the CG fallback).  The two loaders now share two helpers: `loadXell(e)` (case 25's retail/kit test and the three-place xell search, identical in both loaders) and `loadBl24(e)` (case 24's file or defaultBl60, called by loadBlFiles' first arm and by console's case 24 as `if (xb.glitch2mfg) r = loadBl24(e);`).  Both are early-inlined.  IDENTICAL at p95 to p99 (a wider window than before, when 96 to 98 were 60 loose); 0/7 at p90 and with no param (exp_pr's alignment); full build SHA256 matches.  See "## Attempt 49".  Borderline changes: the "two calls where `||` would do" note moved from case 24 to loadBl24; case 24's second arm keeps loadBl24's body written out with its leading `r = 0` (calling loadBl24 there is 25 loose); console's case 24 no longer has its own copy of the body.
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| loadBl24 (both loaders' case 24) | `if (loadBaseFile(..)) return defaultBl60(e); if (e->size != 0x60) return defaultBl60(e); return 0;` | two calls where `||` would do (attempt 4's entry, now in the helper) |
+| loadBlFiles case 24, second arm | loadBl24's body written out, with a leading `r = 0;` | the helper isn't called there (25 loose if it is); live, shape chosen for the match |
+| loadBlFiles case 27 | the fallbacks as a sequence of `r` tests | unchanged from attempt 34's entry |
+
 ## State after attempt 48
 
 Attempt 48 landed nothing; src/build.c and build.sh are unchanged, so the count (8) and attempt 46's review table stand.  It scored every combination of exp_pr (expect, `r != 0`, `(int)r < 0`), the barrier, the devgl label and exp_t10, plus lab_none and exp_devgl, at p90 to p99 and no param (a48_combo.py): **no interaction** (loadBlFiles' items add; lab_none and exp_devgl live in other functions; the matching params stay 95 and 99).  Then it read the two near misses' arithmetic exactly.  exp_pr: the no-key copy is aligned only if 14 > 10 x the SE copy's jmp block (2; needs 1), and that 2 comes from the SE block's profile_estimate frequency 7 = 7162 / 12 switch edges x 50% x 0.28^3 = 6.54: it needs 6 (the case arm about 0.8% lower) with the no-key log kept at 11 or more; every factor is a fixed heuristic, the equal-base edits leave it at exactly 7, and a loop-exit r test (first-match 2 to 3%) moves the whole loop (234 loose and up).  lab_none: in bb-reorder's last round the not-entered return (20) goes before the r = 1 block (14); r = 1 would pass at 21, which console's glitch2mfg guard at 50% instead of PRED_CALL's 71% gives, but no natural guard form escapes PRED_CALL (a48_none.py).  See "## Attempt 48".
@@ -2699,3 +2709,49 @@ Goal: the three near misses jointly (exp_pr as `(int)r < 0` 0/7, vol_fail 1/7, l
 ### Costs now (strict/loose, removed alone; 8 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 7/1, lab_devgl 34/14, exp_devgl 43/7, pin_size 82/40, exp_t10 208/102 (+displ), lab_none 333/231 (8/4 with the precheck gone too).
+
+## Attempt 49
+
+Goal: attempts 45/46's lesson (whole-function structure beats local spellings) applied to the functions holding the other tricks: loadConsoleBlFiles (lab_none), buildFlash (exp_devgl), calcBlAreaSize (pin_size), and code the two loaders could share.  src as of a1c62d7f.  New scripts in `tools/wip/dehint/bdgen`, all run with `python tools/wip/dehint/bdgen/a46run.py <script> [-p ..]` on src/build.c: `a49_con.py` (loadConsoleBlFiles restructures without the precheck and label; it also defines `strip`, `c24` and `SH` = loadBl24, which the others use), `a49_con2.py` (console's case 24 through a helper that holds the glitch guard), `a49_con3.py` (case 24 tested before the switch, diagnostic), `a49_share.py` (helpers both loaders call: loadXell `x1` without and `x2` with the retail test, a CF/CG fallback helper `cf`, loadBl24 `24`; `L_` rows keep console's precheck and label, `n_` rows drop them), `a49_shhints.py` (each hint off on those bases; `A49_STAGE=2` runs the second stage on the landed base), `a49_arm2.py` (forms of case 24's second arm on the landed source; written before src was landed, so it reads src/build.c as it is now).  Scratch in build/bd/a49 (not kept).  Loose/strict lines; p99 unless said.
+
+### loadConsoleBlFiles restructured (a49_con.py, a49_con2.py, a49_con3.py; precheck and label off)
+
+- Base 4/8 (attempt 48).  `r` in the loop body, a result variable with `break` (`ret = -1`), and case 24 moved before case 3 are all exactly 4/8 (same CFG).  Case 24 moved to the end or before case 2: 20.  The glitch2mfg load hoisted out of the loop into a local: 80.
+- The switch in a per-entry helper returning r (`static`): 317 loose (inlined; its early returns change the profile).  Not static: 323 plus the out-of-line copy.
+- Case 24 through a helper that holds the glitch guard (`if (!xb.glitch2mfg) return 0; ...`, four bodies): 201 (the guard's skip edge becomes an early return).
+- Case 24 tested before the switch (nonequal 29% instead of 1/10 of the switch, which raises the r = 1 block past 21): 216 and 268.  The arm's frequency rises, but the code moves with it.
+- Shared loadBl24 in console only, or in both loaders: console 4/27 (4 loose, as the base) plus displacement.
+
+### Helpers both loaders share (a49_share.py, a49_shhints.py)
+
+- loadXell (x1 or x2) with console's label kept: IDENTICAL; with loadBl24 as well: IDENTICAL (equal bases).  Without the label all of them are console's 4/8.  The CF/CG fallback as a helper returning 1 on failure is 350 loose and up, and it changes r's value, so behaviour too; dropped.
+- Each hint off on those bases: x1 and x2 alone are as src (pr 2/4, dev 7/43, pin 40/82, lab 14/34, none 4/8; bar 1/7 on x1, 9/74 on x2; t10 102 on x1, 42 on x2).  **x2 + loadBl24 (x2_24) with exp_t10 off: IDENTICAL at p95 to p99**; x1 + loadBl24 with exp_t10 off is 60.  So it takes the retail test inside loadXell and the case-24 helper together.  Landed (below).
+- On the landed base (stage 2, p0, p90, p95 to p99): pr 2/4, dev 7/43, pin 40/82, lab 14/57, none 4/8 (unchanged by the helpers), **bar 58/220** (the barrier is now much dearer than 1/7), pr + bar 62/224.  At p90 and with no param only loadBlFiles' 0/7 is left (exp_pr's 1% expect becomes too weak for the no-key log's alignment), and buildFlash's exp_devgl matches at p90 here too.  So the param stays at 99 (95 to 99 all match).
+- Mechanism: not read this attempt.  The bytes are identical, so the inlining matches the reference.  The CG test's 2% was needed for the CG edge's place, and the inlined helpers' blocks reach profile_estimate in a different order or shape that apparently gives it naturally.  Worth a `bdpred.py` / `bdblocks.py` read next time, together with the vol_fail jump.
+
+### Case 24's second arm on the landed source (a49_arm2.py, p95 and p99)
+
+- `r = loadBl24(e);` with the label 25/73 (+displ), without it 39/87; without the leading `r = 0` 9/59; `else r = 0` at the end 4/19; `||` 14/34.  The written-out body with `r = 0;` stays (flagged).
+
+### buildFlash, calcBlAreaSize
+
+- Not swept.  The notes' mechanisms (sink's 75% rule needs a predictor gcc 6 lacks; pin_size's IRA copy tie) are about one block each, and every decomposition the brief suggested is already covered by gen_bd179, gen_bd192, gen_bd236, gen_bd264 and gen_bd442 (fuse) and by gen_bd105, gen_bd176, gen_bd195, gen_bd310 to gen_bd312 and gen_bd500 (pin_size).  A fuse helper that isn't early-inlined would keep the callee's early-return predictor, but it is a tiny leaf called once, so einline always takes it, and inlined bodies are re-predicted without their GIMPLE_PREDICT hints (attempt 17's isUpdateBl reading).
+
+### Landed
+
+src/build.c: `loadXell` and `loadBl24` added after defaultBl60.  loadBlFiles' case 25 is `r = loadXell(e);` and its case 24 first arm `if (xb.type == BUILD_JTAG || xb.glitch2mfg) r = loadBl24(e);`.  Console's case 25 is the same call and its case 24 `if (xb.glitch2mfg) r = loadBl24(e);`.  The `type == 10` expect is gone.  The case-24 borderline comment moved to loadBl24; the second arm's comment now names the written-out body.  bdhints.py drops exp_t10; README's build entry says 7 tricks.  `sh build.sh` ends with 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c.
+
+### Don't retry (attempt 49)
+
+- loadConsoleBlFiles as a per-entry helper, with a result variable, with case 24 moved, with the glitch load hoisted, with case 24 ahead of the switch, or with a guard-holding case-24 helper (above): lab_none's window isn't reached by structure.
+- Case 24's second arm through loadBl24, or without its `r = 0` (above).
+- A CF/CG fallback helper (it changes r).
+
+### What to try next
+
+- vol_fail is now 58/220 instead of 1/7: read why (the helpers' inlined blocks move the -1 sites).  A different set of shared helpers might make it cheap again or free.  Try the other shareable pieces: case 23's size check (identical except for the retail test and `goto fail`), case 2's and cases 3/4's "from the dump" moves, a helper for the could-not-read log.
+- lab_devgl and exp_pr on helper bases: the sweep only crossed x1, x2 and 24, and more helpers may move case 24's arm frequency (the 0.86 factor).
+
+### Costs now (strict/loose, removed alone; 7 tricks)
+
+exp_pr 4/2, vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (8/4 with the precheck gone too).

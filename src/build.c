@@ -1215,6 +1215,35 @@ static int defaultBl60(struct fileent *e)
 	return 0;
 }
 
+/* xell: the perbuild directory, then the firmware /bin folder, then the base path */
+static int loadXell(struct fileent *e)
+{
+	if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
+		return 0;
+	if (!loadBaseFile(e->name, e))
+		return 0;
+	log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
+	if (!loadBinFile(e))
+		return 0;
+	log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
+	return loadLocalFile(e);
+}
+
+/* case 24's file, or the default 0x60 bytes in its place.  Borderline, for
+   review: two calls where `||` would do.  Crossjump merges the two inlined
+   copies, which drops the copy's memory attributes, so sched2 keeps the size
+   store before the copy (it replaces a pin and an assume_aligned).  Both
+   loaders' case 24 call this; with it and loadXell shared, loadBlFiles'
+   CF/CG fallback needs no __builtin_expect on its type == 10 test */
+static int loadBl24(struct fileent *e)
+{
+	if (loadBaseFile(e->name, e))
+		return defaultBl60(e);
+	if (e->size != 0x60)
+		return defaultBl60(e);
+	return 0;
+}
+
 /* load the input files by their type; the arms only set r, which is
    tested once after the switch (as in loadConsoleBlFiles) */
 int loadBlFiles(void)
@@ -1237,7 +1266,7 @@ int loadBlFiles(void)
 					if (type == 9) {
 						if (suGetCF(&e->data, &e->size))
 							r = 0;
-					} else if (__builtin_expect(type == 10, 0)) {
+					} else if (type == 10) {
 						if (suGetCG(&e->data, &e->size))
 							r = 0;
 					}
@@ -1282,16 +1311,8 @@ int loadBlFiles(void)
 					r = checkBl(e->data, e->size, 6, e->crc);
 				break;
 			case 24:
-				/* Borderline, for review: two calls where `||` would do.  Crossjump merges
-				   the two inlined copies, which drops the copy's memory attributes, so
-				   sched2 keeps the size store before the copy (it replaces a pin and an
-				   assume_aligned).  The same goes for loadConsoleBlFiles' case 24. */
-				if (xb.type == BUILD_JTAG || xb.glitch2mfg) {
-					if (loadBaseFile(e->name, e))
-						r = defaultBl60(e);
-					else if (e->size != 0x60)
-						r = defaultBl60(e);
-				}
+				if (xb.type == BUILD_JTAG || xb.glitch2mfg)
+					r = loadBl24(e);
 				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
 					/* the hot label makes this test's taken edge likely (46%
 					   instead of 13%), so bb-reorder's round-2 trace through
@@ -1305,8 +1326,10 @@ int loadBlFiles(void)
 					   __builtin_constant_p and the hot label on xb.type <= 5
 					   that loadBl's helper form needed */
 				devgl: __attribute__((hot));
-					/* For review: r = 0 stands for what r = loadBl60(e) did on
-					   success; it is live, and the shape is chosen for the match */
+					/* Borderline, for review: loadBl24's body written out here
+					   rather than called (calling it is 25 loose lines); the
+					   leading r = 0 stands for its success return.  Live, and the
+					   shape is chosen for the match */
 					r = 0;
 					if (loadBaseFile(e->name, e))
 						r = defaultBl60(e);
@@ -1339,15 +1362,7 @@ int loadBlFiles(void)
 				memcpy(e->data, defCore, 0xd40);
 				break;
 			case 25:
-				if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
-					break;
-				if (!loadBaseFile(e->name, e))
-					break;
-				log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
-				if (!loadBinFile(e))
-					break;
-				log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
-				r = loadLocalFile(e);
+				r = loadXell(e);
 				break;
 			case 3:
 				if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
@@ -1517,23 +1532,11 @@ int loadConsoleBlFiles(void)
 					r = checkBl(e->data, e->size, type, e->crc);
 				break;
 			case 24:
-				if (!xb.glitch2mfg)
-					break;
-				if (loadBaseFile(e->name, e))
-					r = defaultBl60(e);
-				else if (e->size != 0x60)
-					r = defaultBl60(e);
+				if (xb.glitch2mfg)
+					r = loadBl24(e);
 				break;
 			case 25:
-				if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
-					break;
-				if (!loadBaseFile(e->name, e))
-					break;
-				log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
-				if (!loadBinFile(e))
-					break;
-				log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
-				r = loadLocalFile(e);
+				r = loadXell(e);
 				break;
 			case 3:
 				if (xb.kv.data) {
