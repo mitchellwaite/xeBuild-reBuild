@@ -81,10 +81,10 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. build</b>: 14 tricks, very hard</summary>
+<summary><b>1. build</b>: 13 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
-- 5 `__builtin_expect`, 2 pins, 1 `asm` barrier and 2 hot and cold labels, across
+- 4 `__builtin_expect`, 2 pins, 1 `asm` barrier and 2 hot and cold labels, across
   `loadBl`, `buildFlash` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2

@@ -1956,10 +1956,22 @@ void addBlsToImage(void)
 	}
 }
 
-/* the bootloader types an update (xeBuild's -u) replaces */
+/* the bootloader types an update (xeBuild's -u) replaces.
+   Borderline, for review: the patches (23) and devkit CF (15) tests are ifs of their own
+   rather than the head of the `||` chain.  Live and not redundant, but chosen for what gcc
+   does with it: a lone `type == 23` gets the opcode-nonequal guess at profile_estimate
+   (19.9% where the `(23|15)` pair the front end folds from `||` gets 39%, and addUpdateBls'
+   loop needs 28% or less), and ifcombine pairs the two lone tests after inlining into the
+   same `(23|15)` OR, whose `type == 23` addUpdateBls' body reuses (which keeps 23 out of the
+   loop's bit test).  Splitting more tests out, or putting 9 next to 10 in the chain, doesn't
+   match. */
 int isUpdateBl(int type)
 {
-	return __builtin_expect(type == 23 || type == 15, 0) || type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
+	if (type == 23)
+		return 1;
+	if (type == 15)
+		return 1;
+	return type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
 void addUpdateBls(void)

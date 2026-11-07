@@ -3,6 +3,14 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 23
+
+**13 tricks** (14 before): `--param builtin-expect-probability=98`, 4 `__builtin_expect` (type == 10, `*pr != 0`, type != 24, devgl), 2 pins (d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  exp_upd is gone: isUpdateBl tests 23 and 15 as ifs of their own before the `||` group (gen_bd341, gen_bd342), so the lone `type == 23` gets nonequal + early return (19.9%, inside attempt 22's <= 28% window) at profile_estimate, and ifcombine pairs the two lone tests into the same `(23|15)` OR after inlining, whose `type == 23` the loop body reuses.  IDENTICAL BYTES, full build SHA256 matches.  addUpdateBls is now param-independent; the object still matches at p = 96, 98, 99 only (loadBl's expects), so the param stays at 98.  See "## Attempt 23".  New borderline shape, marked in src:
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| isUpdateBl | `if (type == 23) return 1; if (type == 15) return 1; return type == 16 \|\| ..;` | Live and not redundant, but splits the devkit CF (15) from its CG (16) and is chosen for what gcc does with it: the lone tests get a predictor the folded `\|\|` pair doesn't, and ifcombine re-pairs them |
+
 ## State after attempt 22
 
 Attempt 22 landed nothing; src/build.c and build.sh are unchanged, so the count (14) and the review tables stand.  It tried attempt 20's lever on exp_t24, exp_devgl, exp_upd and lab_none and found no thread-made path in any of them: the blocks the hints fix all exist at profile_estimate, and the missing piece is a predictor.  New: the real windows, measured by varying `builtin-expect-probability` with each function's single expect (tools/wip/dehint/bdpwin.py): exp_t24's middle block needs >= 77% (the warning must beat the seReplacesCf exit block's 117, not reach 87: x1.57 from the natural 75); exp_devgl 75% (attempt 15's margin, confirmed); exp_upd P23 <= 28% (not 23.8%): exactly the nonequal heuristic, which the `(23|15)` OR of bools doesn't get.  lab_none: the case-24 `||` form raises r = 1 from 14 to 18 of the 21 needed and moves the size store (gen_bd331, 6/10).  See "## Attempt 22".
@@ -1304,3 +1312,37 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, exp_t24 29/7, exp_devgl 4
 - Attempt 20's lever needs a path that a thread creates after profile_estimate.  None of these four has one: the exp_t24 warning, the devgl arms, isUpdateBl's pair and the r = 1 block all exist at prediction, and what's missing is a predictor on a block that natural code gives none (exp_t24 and lab_none: PRED_CALL on a single-predecessor call block; exp_upd: an OR of two bools; exp_devgl: two call-free arms).
 - The closest is exp_upd: the window is exactly the nonequal heuristic (28%), so a natural spelling of the `type == 23 || type == 15` pair whose branch compares against a non-zero constant or a variable, while keeping `type == 23` as an SSA bool for the body's reuse, would land it.  None is known; check any candidate in isUpdateBl's profile_estimate (bb 2 must show "opcode values nonequal") before scoring.
 - Otherwise build stays parked at 14.
+
+## Attempt 23
+
+Goal: exp_upd by a spelling whose first branch gets "opcode values nonequal" at isUpdateBl's profile_estimate (attempt 22's lead), then the others with the same lever.  Generators gen_bd340 to gen_bd342 on src as of 604028f1.  Scratch in build/bd/a23 (not kept).
+
+### exp_upd: landed (14 -> 13, IDENTICAL BYTES, full build SHA256 matches)
+
+`if (type == 23) return 1; if (type == 15) return 1; return type == 16 || type == 9 || type == 10 || type == 24 || type == 25;` with no expect.  Mechanism, read from the dumps (`bddump.sh build/bd/a23/land.c isUpdateBl t-profile_estimate`, `.. addUpdateBls t-ifcombine,t-dom2,t-reassoc1`):
+
+- At profile_estimate each lone `if (type == N) return 1;` is a GIMPLE_COND against a non-zero constant: nonequal 28% + early return 39% = 19.9% (bb 2 and bb 3), inside the <= 28% window.
+- Post-IPA, in addUpdateBls, **ifcombine** pairs the two lone tests into `_142 = type == 23; _143 = type == 15; _141 = _142 | _143; if (_141 != 0)`, i.e. the same `(23|15)` OR the front end used to fold from `||`, keeping the outer block's 19.9%.  It only pairs a following block that holds nothing but its cond, so the pair has to be two lone ifs (the `||` group after them is a block of computed bools, so ifcombine stops there).  dom2 then reuses `_142` for the body's `type == 23` (two uses), so reassoc1 keeps 23 out of the bit test as before, and the exported copy (one use) still gets 0x3818600.
+- gen_bd342 (36 cases): the two lone tests in either order, `if`/`else if`/`if (group) return 1; return 0;`, and 6 orders of the group: IDENTICAL whenever 9 and 10 aren't adjacent in the group (`9 10 ..` and `10 9 ..` fold to a range test and cost 109 loose; `25 24 16 10 9` 108).  Landed the order closest to the old one.
+- Flagged in src as "Borderline, for review": live, not redundant, but chosen for what gcc does with it (as attempt 15's `(e->size & ~3)`).
+- `bdpwin.py`: addUpdateBls is now 0/0 at every p from 50 to 99.  The whole object still matches at p = 96, 98, 99 only (loadBlFiles' expects decide: 89 to 94 and 97 cost 35 or 36), so the param stays at 98.
+
+### What didn't work first (gen_bd340): a result variable
+
+- `int r = type == 23; if (!r) r = <rest>; return r;`: forwprop always combines a compare into a cond, so `if (!r)` becomes `if (type != 23)` and gets nonequal (19.9%), while the PHI still takes `r_5`.  addUpdateBls' head is then laid out like the reference (only register choices differ: 69 loose), but 23 stays out of the *exported* isUpdateBl's mask too (`cmp 23; je`), because a non-constant PHI argument breaks reassoc's range chain; sink only moves `r_5` into the branch after reassoc1 (dom3 folds it there).  112 loose.  `if (r) return r;` 171, `if (r) return 1;` (r dead) 264.
+- `(23 || 15) != 0`, a named `cf2 = type == 23` in the `||`, `r = 23 || 15`: all the old 39% (a zero compare on an OR of bools), 12 loose.
+- A lone `if (type == 23) return 1;` before an `||` group starting with 15 (`m 23 | 15 ..`, gen_bd341): 226 or 311: the group's block isn't cond-only, so ifcombine can't pair 23, and a lone GIMPLE_COND joins the mask.  All seven tests as lone ifs: 119 (ifcombine chains them all into one block).  Two-case switch `case 23: case 15:` 303.
+
+### Don't retry (attempt 23)
+
+- exp_upd is gone; don't revisit the result-variable forms (exported copy keeps 23 separate).
+- exp_devgl by fuse as one expression (gen_bd343, 10 forms: `g != 0 || dev`, `dev || g != 0`, ternary, if/else, `!=` chains with JTAG, `|` of the two bools): none better than src without the expect (7 loose); `(g != 0) | (dev)` is 9 (setbe + or where the reference has cmovbe), the `!=` chain 53.  The lone-if lever doesn't help it: two lone dev tests multiply in the wrong direction (52%, attempt 4), and sink needs the non-dev side above 75%.
+
+### Costs now (strict/loose, removed alone; 13 tricks)
+
+lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (`bdhints.py`, unchanged by the landing; exp_upd's entry is gone from bdhints.py and bdtricks.py).
+
+### What to try next
+
+- The lever that landed exp_upd is new: a test written as its own `if` gets its own predictor at profile_estimate (here nonequal on a lone `==`), and ifcombine rebuilds the OR after inlining, so the later passes see the same GIMPLE as the folded `||`.  It only helps where a folded OR (an `||` of simple compares) has the wrong probability and the OR's members are cond-only blocks after inlining.  Candidates to check for that shape: the retail arm's `type == 23 || type == 25` in addBlsToImage (exp_t24's path starts after it), and any `||` of compares feeding a frequency hint in loadBl or loadConsoleBlFiles.
+- Otherwise the attempt 22 windows stand for the rest: exp_t24 x1.57 on the warning, exp_devgl 75% (has 73%), lab_none r = 1 >= 21 (has 14).

@@ -15,7 +15,6 @@ H = {
     'vol_fail': [('	__asm__ __volatile__("");\n', '')],
     'lab_none': [('none: __attribute__((cold));\n', 'none:\n')],
     'exp_t24': [('type == 25 && __builtin_expect(type != 24, 1) && e->offset', 'type == 25 && e->offset')],
-    'exp_upd': [('__builtin_expect(type == 23 || type == 15, 0) || type == 16', 'type == 23 || type == 15 || type == 16')],
     'pin_size': [('		__asm__("" : "+b"(size));\n', '')],
     'exp_devgl': [('__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0)', 'xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16')],
 }
