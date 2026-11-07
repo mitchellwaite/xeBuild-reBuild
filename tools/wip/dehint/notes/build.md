@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 35
+
+Attempt 35 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It read pin_size in IRA as attempt 34 asked and found the mechanism is a copy-order tie, not a frequency: the kit add `r105 = r197 (prephitmp) + r104 (size)` makes two shuffle copies of the same freq (cp30 r197-r105, cp31 r104-r105), copy_freq_compare_func breaks the tie by copy number (operand order), so r105 threads with the prephitmp; r197 conflicts with r104, so cp31 can't merge afterwards, and r105 pops after r99's thread and takes esi.  The reference has r104 = r105 = ebx, the thread {r104, r105}: attempt 7's operand order is the whole question.  New: **the build-type chain's order flips that operand order** (gen_bd470, `bdorder.py`): `if (JTAG) .. else if (xb.type <= BUILD_DEVGL16) retail else kit` (JRK) and a switch with retail as the default (`sw_*_dR`) give `size_N + prephitmp_M` and exactly the reference's kit-arm registers (`mov ebx,esi` before the 14 loop, `add ebx,eax`), but JRK lays the retail arm out first (288 loose) and the switch's kit range test is `lea; cmp 3; ja` (92 loose).  In the if-forms the 5-test's true arm is both the arm PRE's insert walk reaches first (it takes the free SSA names) and bbro's round-2 tie winner, so the kit can't be laid out first and still get fresh names.  Drafts drafts/build_calcBlAreaSize_JRK_nearmiss.patch and drafts/build_calcBlAreaSize_sw_JKR_dR_nearmiss.patch.  Also: lab_none by a re-tested r in loadConsoleBlFiles' case 24 (gen_bd471): no movement.  See "## Attempt 35".
+
 ## State after attempt 34
 
 **11 tricks** (12 before): `--param builtin-expect-probability=98`, 3 `__builtin_expect` (type == 10, `*pr != 0`, devgl), 1 pin (size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  pin_d is gone: case 27's fallbacks are written as a sequence of `*pr` tests inside the first load's failure arm (`if (load(name)) { *pr = load("config.bin"); if (*pr) *pr = load("config_raw.bin"); if (*pr) { smc take-over } }`, gen_bd463 `c_seq`).  Mechanism (IRA dump, attempt 33's reading taken one step on): the join's thread {base, n*0x42c, n} pops in ALLOCNO_FREQ order, and the re-tested `*pr` sends half of the first failure's flow past the smcConfig test at profile_estimate (vrp1 threads it away later), so n's reloads on the fallback paths outweigh the base (n pops first and takes edx, the base follows it along the copies, d gets eax).  The same re-test over the whole case (`two_pr`) also flips the registers but lowers the extract block's edge to 320, under the loadBinFile block's 322 in bbro's round 2.  IDENTICAL BYTES, full build SHA256 matches.  Every other hint costs what it cost before.  See "## Attempt 34".  New borderline shape, marked in src:
@@ -1915,3 +1919,52 @@ Goal: pin_d, from attempt 33's IRA reading (the join's base is popped before n, 
 ### Costs now (strict/loose, removed alone; 11 tricks)
 
 On src (`bdhints.py` on the landed form): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231; etype and the constant_p entry not re-measured (attempt 33's: 128/54 and 78/26 in loadBlFiles).
+
+## Attempt 35
+
+Goal: pin_size from IRA, as attempt 34 asked (the kit sum's copy thread), then attempt 34's lever (a re-tested result whose flow vrp1 threads away) on the frequency hints.  Generators gen_bd470, gen_bd471 on src as of a5bae5e6 (`python tools/wip/dehint/bdorder.py tools/wip/dehint/bdgen/gen_bd470.py` prints each case's score and the statement before each setPatchSlot; `bdrun.py` for gen_bd471).  Scratch in build/bd/a35 (not kept: `nopins.c` is src minus pin_size; `*.ira`, `*.pre`, `*.pe`, `*.bbro` its dumps and those of the JRK case).  Loose/strict lines in calcBlAreaSize unless said.
+
+### pin_size read from IRA (`-fdump-rtl-ira` of nopins.c)
+
+- Pseudos: r99 = the sum after 11, r171 after 12, r104 after 13 (insns 280, 666, 680), r197 = the 14 lookup's prephitmp (files[x].size, PHI'd), r105 = r197 + r104 (insn 360, the kit sum), r338 / r207 = files[0].size loaded early (copies into r197).
+- The reference's registers: r171 esi, r104 ebx (the `mov ebx,esi` before the 14 loop is LRA's output reload of the 13 add, as attempt 7 said, not an IRA region: `-fira-region=all` leaves calcBlAreaSize at 40, and the dump colours only loop 0, pressure 6 of 7), r105 ebx, r197 eax, r338 ebx (the reference's early `mov ebx,ds:0x422c0`).
+- Ours: threads {r104 175, r171 166, r99 175, r135 168} (684) and {r338 16, r207 72, r197 179, r105 264} (531).  r99's thread pops first (r99 esi; r104 and r171 follow into esi); r105 then takes esi too.
+- Why r105 isn't with r104: the add makes cp30 r197-r105 and cp31 r104-r105, both freq 11 (one insn).  copy_freq_compare_func sorts by freq, then by copy number, and the numbers follow operand order, so cp30 merges first; r197 conflicts with r104 (both live into the add), so cp31 can't join the threads afterwards.  There is no frequency to tip here: the operand order (attempt 7: `prephitmp_229 + size_254`, the lower SSA version first) decides it.  With the order flipped, r105 joins r104 and the pair takes ebx (checked below).
+- The `"+r"` diagnostic (attempt 20, 9 loose) isn't a test of this: the asm output is a new pseudo (r254) that takes eax, and the sum then picks ebx alone.
+
+### Where the prephitmp's name comes from (PRE dump of nopins.c)
+
+- The free list at PRE holds about 20 names (136, 243, 242, 237, 236, 229, 228, 227, 226, 129, 92, 51, 48, 33, 32, 31, 24, 18, 17, 16).  The kit's 14 lookup is the first insertion and takes 136 to 229; the rest of the kit arm takes the others (14, 13, 12, 11 in that order); retail then gets fresh 260 to 283 and JTAG 284 to 301 (which is why JTAG's sum is right).  Far too many free names for any form to shorten the list below the 6 the 14 lookup needs.
+- So the kit arm must be reached later in PRE's insert walk.  The visit order isn't plain block-index order (JTAG's head is bb3 and is reached last); read off results instead.
+
+### gen_bd470: the build-type chain's order and nesting, and switches (pin off, 104 cases)
+
+- if-chains: JKR (src) and its nested spelling, nJ_KR_J (`if (type != JTAG) { if (> DEVGL16) K else R } else J`), `>= BUILD_DEVKIT`: 40 loose, kit sum not flipped.  **JRK (`else if (xb.type <= BUILD_DEVGL16)` retail, kit last), JRK nested, `< BUILD_DEVKIT`: kit sum flipped (`size_257 + prephitmp_264`), and the kit arm's code is the reference's** (`mov ebx,esi`, `add ebx,eax`, files[0].size in ebx), but 288 loose: retail is laid out first.  Kit first (KJR, KRJ, nested): flipped, 145 to 153 (the 5-test comes before the JTAG test).  Retail first as filelist_ini spells it (`type != JTAG && type <= DEVGL16`, both orders after it): 304 and up.
+- Why JRK's layout can't be fixed: in the 5-test the true arm is both what PRE reaches first (JKR: kit true, takes the free names; JRK: retail true, takes them) and bbro's round-2 winner (both arm heads are seeds with key -1088880, frequency 880 each, 50/50 with no predictor; the true arm pops).  Breaking it needs a predictor on the 5-test (none for `<=` / `>` against a constant; PRED_CALL needs a call in an arm's first block, and both arms start with an inlined findFile loop).
+- switches (every case order, default retail or kit, the default inside a case list, retail with case 0): the case order doesn't matter (one canonical form each).  **Default retail: flipped, 92 loose** (sw_JKR_dR, drafts/build_calcBlAreaSize_sw_JKR_dR_nearmiss.patch): the kit code is right; what's left is the kit's range test (`jb; lea eax,[ecx-6]; cmp eax,3; ja`, where the reference has `cmp ecx,5; jbe`) and a few cold blocks in another order.  It also sends types above 9 to retail, which src doesn't.  Default kit (the reference's `> 5` test): not flipped, 363 and up.
+- JRK saved as drafts/build_calcBlAreaSize_JRK_nearmiss.patch (288 loose; the kit arm is the reference's).
+
+### gen_bd471: lab_none by a re-tested r in loadConsoleBlFiles' case 24 (12 cases)
+
+- `r = loadBaseFile(..); if (r || e->size != 0x60) r = defaultBl60(e);`, the two-arm and sequence spellings, a dead re-test: without the label all 231/333, the same as src minus the label; with it `r_two` is IDENTICAL and the rest cost 2 to 6.  The loop's own `if (r)` already tests r, so re-testing it adds no flow there.
+
+### Not done
+
+- gcc's bb-reorder.c couldn't be read (the gcc.gnu.org git web answered with a bot check), so the bbro tie rule above is read from the dumps (both seeds equal, the true arm pops).
+- exp_t10, exp_devgl: no new form; attempts 25 to 29 close their frequency side for the re-test lever too (exp_devgl's def block has no thread through it; block 116 needs about 11 off with the tail unchanged).
+
+### Don't retry (attempt 35)
+
+- pin_size through a frequency in the kit sum's thread: the tie is copy order (operand order), not frequency.
+- pin_size by the chain's order or nesting as if-forms (gen_bd470): the kit can't be laid out first and get fresh PRE names at once.  Switch case order (one canonical form).
+- lab_none by a re-tested r in case 24 (gen_bd471).
+
+### What to try next
+
+- pin_size: a form where the kit is reached by the 5-test's false edge but laid out first, or where PRE reaches retail before the kit while the kit is still the true arm.  The switch with retail as default does both (92 loose); what's left is a natural way to get `> 5` as the kit's test with retail as the switch's default.  Check any idea with bdorder.py first: the kit line must read `size_N + prephitmp_M`.
+- A predictor on the 5-test: only worth it with a call that belongs at the start of an arm.
+- Otherwise attempt 33's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 34 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
