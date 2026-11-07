@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 19
+
+Attempt 19 landed nothing; src/build.c and build.sh are unchanged, so the count (16) and attempt 15's review table stand.  It followed attempt 18's lead, t5le through S / Xc, and closed it: at profile_estimate S / Xc = Psig x Pk x Pf, and in natural code each factor takes only fixed values (Psig 64%: fold packs at most two of the 5/17/11 compares into one 50% block, the third gets nonequal; Pk 85%: the pointer heuristic; Pf 29% or 50%: the verify must stay a zero test, so only PRED_CALL moves it), giving 15.8% (src) or 27.2% (plain else, which moves the failed log) where t5le needs 21.6% with the failed log still under bb-reorder's last-round threshold.  The SE copy's frequency (t5le's other factor) can't be lowered either: threading re-splits the `type == 9` test from its total, so the SE block stays 6 even with the CF path at 2% (diagnostic).  Sweeps gen_bd300 (diagnostics) and gen_bd301 (failed-arm spellings): nothing better than src.  See "## Attempt 19".
+
 ## State after attempt 18
 
 Attempt 18 landed nothing; src/build.c and build.sh are unchanged, so the count (16) and attempt 15's review table stand.  New: all 220 triples of hints are additive; t5le and exp_pr have a closed form from vrp1's joiner counts (the SE copy's P(<=5) = Xc p (1 - q) / (Xc - S), the signature-failed copy's = Xc p q / S, checked to the digit against the dumps), which says t5le needs p >= 54% or the signature-failed share S / Xc >= 21.6% (15.6%), and exp_pr needs p q <= 3.7%; and defaultBl60 is late inlined (not early, as attempt 17 had it), so lab_none's r = 1 comes from its own profile and can at best tie.  Sweeps gen_bd290 to gen_bd294 (lone `type == 23`, stacked `*pr` tests, a result test for `else if (type)`, defaultBl60 forms, signature-block forms): none better than src.  See "## Attempt 18".
@@ -1068,3 +1072,45 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7
 - t5le has a closed form now: the SE copy's P(<=5) = Xc p (1 - q) / (Xc - S).  The only term not yet moved by a natural shape is S / Xc (needs 15.6% -> 21.6% with nothing else hot enough to move).  A natural way to make the verify-failed path somewhat likelier (not 50%), or the non-signature flow into the tail somewhat smaller, is the one untested lever; check any candidate first with `bddump.sh f loadBlFiles alignments` (bb 111's freq must be <= 1) before scoring.
 - The same formula says exp_pr needs p q <= 3.7%; with p near 50% that's q <= 7%, far below any natural predictor.  exp_pr only goes with a different tail.
 - Otherwise build stays parked at 16, as attempts 14 to 17 said.
+
+## Attempt 19
+
+Goal: attempt 18's main lead, t5le through S / Xc (the signature-failed share of the flow into the `xb.type <= 5` test X), then any trick with an untested idea.  Generators from gen_bd300.  Scratch in build/bd/a19 (not kept; `meas.py` there prints loadBl's profile_estimate frequencies of the three signature logs and X, the last alignment lines of loadBlFiles, and the bdrun score for each file given).
+
+### t5le through S / Xc: the signature block's factors only take a few values (read from loadBl's profile_estimate)
+
+- S / Xc = Psig x Pk x Pf at profile_estimate (every flow out of checkBl's success reaches X, so the ratio is the product along the failed path): Psig = 64% (`type == 5 || type == 17` is folded into one `_66 | _67` block with no heuristic, 50%, then `type == 11` nonequal, 28%), Pk = 85% (pointer; both arms' first blocks hold a call, so PRED_CALL cancels), Pf = 29% (PRED_CALL on the failed log only, because `else if (type)` keeps the call out of the passed arm's first block).  0.64 x 0.85 x 0.29 = 15.8% (attempt 18's 15.6% at vrp1).  t5le needs 21.6%.
+- What each factor can be in natural code, and why:
+  - Pf: the verify result must stay a zero test (the reference has `test eax,eax`; `!= 1` or `<= 0` change the compare), so no opcode heuristic applies.  Only PRED_CALL moves it: 29% (call in the failed arm only, src), 50% (calls in both, i.e. a plain else, or in neither) or 71%.
+  - Psig: fold_truth_andor packs at most two leaves into a non-IF OR (simple_operand_p_2 refuses a TRUTH_OR operand), so any order or grouping of the three `==` is a 50% pair and a 28% single (64%), or three singles (62.7%), or one block with `|` written out (50%).
+  - Pk: the pointer heuristic, 85%, unless one arm's first block loses its call (69.8% or 93.3%), which needs a test in front of that arm's call.
+- So the natural products are 15.8% (src) and 27.2% (plain else, Pf 50%).  The window is narrower than 21.6% and up: measured with meas.py, raising S also moves the failed log and its copies (plain else with t5le off: 80 loose; `!= 1`, Pf 51.2%, diagnostic only: 76 loose, bb 111 still 4; a dead `if (type)` in front of the failed log, Pf 50%: 72 loose).  Rough bound from bb-reorder: the failed log is 29 at bbro, and round 4 starts at 5% of the entry (44); S >= 40.2 for t5le and S < 44 for the failed log to stay in round 4 would leave Pf in 40% to 44%, which no combination of the heuristics above gives (call against failure with early return for it would be 39.0%, nonequal with call 51.2%).
+- gen_bd300 (diagnostics, not shapes: `!= 1`, dead `if (type)` wrappers in front of the failed log, the no-key log or the verify): none gets bb 111 to 1 without moving other blocks; the cheapest is the no-key wrapper (8 loose, .rdata moves).
+
+### t5le through the SE copy's own frequency (the other factor in bb 111 = freq(SE copy) x P(>5))
+
+- bb 111 is 2 because the SE copy is 4 (the SE block, 6, x checkBl's 61% = 3.66).  An SE block of 5 would make the copy 3 and bb 111 1, i.e. t5le with no change to P(<=5).
+- The SE block's 6 is bb8 x 28% x 28% x 28% in loadBl's profile, where bb8 is the join of `*pr == 0` after loadInputFile (50%, no heuristic) and CF success (61%).  Threading recomputes the split of the `type == 9` test from its total, so taking the CF path's flow away is not enough: diagnostic `__builtin_expect(!suGetCF(..), 1)` (CF success 2%): the type-9 join goes 78 -> 72, the SE block stays 6, bb 111 stays 2 (0/7, as src without the label).  It would take bb8 about 15% lower, i.e. loadInputFile's success under 43%, and nothing natural predicts against it (both arms start with a `type == 9` test).
+- Diagnostic `__builtin_expect(e->data[0] == 'S', 0)`: the SE copy goes to 0 and the alignment comes back on another block (14 loose).
+- gen_bd301 (natural spellings of the failed arm that leave the profile as it is: `*pr = -1` before the log, the verify result in a local `ok` declared in the block or at the top; t5le on or off): all IDENTICAL with the label, all the old 0/7 without.  As expected from the above: nothing here touches Psig, Pk or Pf.
+
+### exp_t24: what a redundant middle test would need (worked out, not swept)
+
+- The expect works by putting a call-free block between `type == 25` and the imgSize() block, so `type == 25` keeps only nonequal (28%).  Attempt 15 put the need at 16% on that edge, so a middle block that folds after profile_estimate would need P(true) >= 57%; its true edge leads to the imgSize() call (PRED_CALL, 29%), so its own heuristic must be >= 76.4% (DS with 29%).  Only the pointer heuristic (85%) is that strong, so it would take a pointer test that VRP later proves non-null (`e` itself, `e->name`), which nobody writes.  The tests that are really redundant there (`xb.type != BUILD_RETAIL`, `xb.type <= BUILD_DEVGL16`) are compares with 0 or 5: no heuristic, 29% with the call, which makes the warning colder, not hotter.
+
+### Don't retry (attempt 19)
+
+- t5le through the signature block (Psig, Pk, Pf): natural code gives S / Xc = 15.8% (src) or 27.2% (plain else) and nothing between; the verify test must stay a zero test (no opcode heuristic), the 5/17/11 test is always a 50% pair and a 28% single, and Pk is the pointer heuristic.
+- t5le through the SE block's frequency: threading re-splits the `type == 9` test from its total, so even the CF path at 2% leaves the SE block at 6.
+- Spellings of the failed arm or a local for the verify result (gen_bd301): same profile, same code.
+- exp_t24 by a redundant test between `type == 25` and the room test: it needs a >= 76% heuristic of its own against the call (only a pointer test of a known non-null pointer).
+
+### Costs now (strict/loose, removed alone; 16 tricks, unchanged)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_verbose 83/18, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (not re-measured: src/build.c is the same as attempt 18's, 9210177c).
+
+### What to try next
+
+- Attempt 18's closed form is now closed on all three of its inputs for natural code: S / Xc (this attempt), p (no heuristic reaches X's arms; attempt 11) and q (attempt 18).  t5le's other two conditions are set by blocks other tricks already pin: the SE copy's frequency (threading keeps the SE block at 6) and the type-11 no-key log's 17 (the constant_p weight, attempt 14).  So t5le only goes with a different tail or a different constant_p entry, i.e. with the source of loadBl's whole tail, not one test.
+- The only multi-trick lead left is still attempt 10's near miss (vol_fail, t5le and exp_pr for 3 loose with the old badsize label, 9 loose on the current case 23).  Its two open questions are the same as attempt 11's: a `fail` block that lives to expand without the asm, and a `<=5` arm block that vrp1's joiner threads pass through.
+- Otherwise build stays parked at 16.
