@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 56
+
+Attempt 56 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It took vol_fail on attempt 55's SMC equal base: 13 case-23 forms of the patch-size failure (own -1, -1 before the log, nested, else, good path first, repeated test, ternary, logging or size-check helpers; a56_fail.py) are all the 1/7 or worse, and the dumps (a56_dump.py, a56_trace.py) show the empty `fail` block is removed by mergephi1's CFG cleanup even though the SMC test has a conflicting edge to the switch join (cleanup splits that edge rather than keeping the forwarder), so only a statement RTL drops keeps it, which is the asm.  exp_pr's spellings on the SMC base across p0 to p99 (a56_negp.py) don't interact with the barrier (they add).  See "## Attempt 56".
+
 ## State after attempt 55
 
 Attempt 55 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It read the two focus tricks on the current form.  **vol_fail's 58/220 is not the barrier's own effect**: with the SMC failure spelled `if (!e->offset) { fail: r = -1; } break;` (or `if (!e->offset) goto fail; break;` with `fail: r = -1; break;` after the default case) the source is an equal base (IDENTICAL with the barrier, every other hint costs the same) and the barrier off is attempt 10's **1/7** again (a55_smc.py).  The 58 came from vrp1: in src's fall-through form the `fail` forwarder is removed early, the SMC block becomes a joiner of jump threads (its two preds, the dump and the nand moves), and the threader's profile update leaves the SMC test at 92.5% / 7.5% instead of 50%, so bbro no longer lays the -1 block before the could-not-read join (in 26aca4bb^ those joiner threads were cancelled).  The 1/7 line is still closed (the size log's -1 is a 1-insn tail; min-crossjump-insns only waives the 5-insn minimum for a *wholly* matched from-block, so the log block can't be redirected into the -1 block unless the -1 sits in a block of its own, which only the asm keeps).  lab_devgl: the r = 1 block (arm 1's retest falls into it, with cases 1 / 22's and arm 2's malloc failures) is placed before the suGetCF block only when its heap key carries a trace-end priority, which it gets from arm 2's malloc block ending a **round-2** trace (bbro freq >= 176 = 0.2 x 882; 180 with the label, 51 without); its own frequency doesn't help (a `useBuiltIn(e, data, size)` helper for cases 1 / 22 / defaultBl60 raises it from 37 to 57, an equal base with the label, still 14 loose without).  See "## Attempt 55".
@@ -3067,3 +3071,55 @@ Goal: the brief's two focus items on the current form: why vol_fail went from 1/
 ### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 on src (7/1 on a55_smc.py's equal bases), lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 54).
+
+## Attempt 56
+
+Goal: (1) vol_fail on attempt 55's SMC equal base: a natural case-23 shape that gives the patch-size failure's -1 a block of its own at expand, or lets crossjump merge the log block; (2) the SMC base + exp_pr's `(int)r < 0` + the barrier off together, across the param; (3) attempt 55's list.  src as of 48b210a4, unchanged.  New scripts in `tools/wip/dehint/bdgen`, run with `python tools/wip/dehint/bdgen/a46run.py <script> [-p ..] [-k label]` on src/build.c: `a56_fail.py` (13 case-23 forms x the `if` / `end` SMC bases from a55_smc.py x exp kept / `(int)r < 0`, barrier off), `a56_negp.py` (the `if` base x barrier on/off x expect / `r != 0` / `(int)r < 0`, for a param sweep); standalone `a56_dump.py <variant.c> <outdir>` (every tree dump with blocks and details, plus expand / jump2 / bbro) and `a56_trace.py <outdir> [text]` (the block holding a statement, by default the size log, through every tree dump: its successor, that block's preds and first statements).  Scratch in build/bd/a56 (not kept: `nb/` and `b/` are the dumps of a55's `if_nb` and `if_b`).  Loose/strict lines in loadBlFiles, p99 unless said.
+
+### (1) Case 23's forms on the SMC bases, barrier off (a56_fail.py; `if` and `end` give the same numbers)
+
+| Form | Result | exp_pr as `(int)r < 0` too |
+|---|---|---|
+| src (`log; goto fail;`) | 1/7 | 3/20 |
+| `own` (`log; r = -1; break;`) | 1/7 | 3/20 |
+| `pre` (`r = -1; log; break;`) | 1/7 | 3/20 |
+| `nest` (`if (!r) { if (bad) { log; goto fail; } append; } break;`) | 1/7 | 3/20 |
+| `else` (`if (bad) { log; goto fail; } else append;`) | 1/7 | 3/20 |
+| `good` (good path first, then `log; goto fail;`) | 59 (+.rdata) | 61 |
+| `rep` (`if (bad) log; if (bad) goto fail;`) | 62 (+.rdata) | 62 |
+| `tern` (`r = bad ? -1 : 0; if (r) { log; break; }`) | 347 | 349 |
+| `h_ret` (`r = badPatchSize(e);`, a helper logging and returning -1) | 7/16 | 9/29 |
+| `h_v` (a void helper for the log, then `goto fail`) | 7/16 | 9/29 |
+| `h_chk` / `h_chkf` / `h_okf` (the size test in a helper returning -1 / 1 / 0 on failure) | 61 (+.rdata) | 63 |
+
+- Every form that keeps the reference's CFG is exactly the 1/7 (the size log's own `mov edi,-1`); the helpers are IPA-inlined but reload `e->size` through another base (`mov eax,[ebp+0x410]`) and move the log's argument stores, so the -1 is still appended.  No form moves the line.
+- Where the empty `fail` block goes (a56_trace.py on `if_nb`): it is a real block up to fre1 (preds: the size log, the sig-failed `r` test, the SMC test), and is removed by mergephi1's CFG cleanup.  Correction to attempts 31 / 55's picture: the SMC test also has an edge straight to the switch join (its `break`, r = r_9) whose PHI argument differs from fail's -1, and that does **not** keep the forwarder: cleanup splits that one edge (a new empty block, `pred: 91` only) and redirects the rest, so fail goes anyway.  So no pred-sharing arrangement keeps an empty fail; only a statement does, and it has to be one RTL drops (the asm is exactly that).
+- At .optimized the could-not-read log's PHI takes -1 from the size log (single successor: appended at expand), the SMC test and the sig-failed `<= 5` test (both critical: split at expand, placed right before the log, the last split being the fallthru), and the setFlashBuild copy (the reference's own -1 at 37d9).  The reference's 564 block is reached by the SMC fallthru, the size log's `jmp` and the sig-failed `jbe`.
+- Crossjump, once more: for the size log to be the 'to' side it would need to be the log's fallthru predecessor or the higher-index member of a dir_both pair with a wholly matched -1 block; split blocks sit right before the log, so after compaction they always have the higher index and the fallthru place.  The only way left is a size log laid out after the log, which needs the could-not-read test before the switch in the source (not the reference's order).
+
+### (2) exp_pr with the SMC base (a56_negp.py, p0, 80, 90, 95, 97, 99)
+
+- Barrier on: expect IDENTICAL at p95 to p99, 0/7 at p90 and below (as src); `(int)r < 0` 0/7 at every p; `r != 0` 2/4 at every p.
+- Barrier off: expect 1/7 (p95 to p99), 1/14 (p0, p90), 3/20 (p80); `(int)r < 0` 3/20 at every p; `r != 0` 5/17.
+- So the new -1 structure doesn't touch exp_pr's alignment: they add, as attempt 48 found on the old base.
+
+### (3) Attempt 55's list
+
+- lab_devgl: an inner `switch (xb.type)` for arm 2 (50% at profile_estimate) was attempt 46's (14/204); not retried.  No new lever for arm 2's malloc block (needs >= 176 at bbro).
+- exp_pr's bb13 share and lab_none's size store: nothing new to try beyond attempt 54's readings; not swept.
+- pin_size re-read (src minus the pin): the reference copies the sum `mov ebx,esi` before the findFile(14) loop and keeps it in ebx across setPatchSlot / imgCfSize, and uses ebx for the first `files[x].size` load; without the pin the sum stays in esi.  The same picture as attempts 33 / 52; not swept.
+
+### Don't retry (attempt 56)
+
+- vol_fail by any case-23 spelling on the SMC bases (own -1, -1 before the log, nested, else, good path first, repeated test, ternary, a logging helper returning -1, a void log helper, a size-check helper in three return forms).
+- vol_fail by giving the SMC test or another pred a conflicting edge to the join: cleanup splits that edge and removes fail anyway.
+- exp_pr's spellings on the SMC base across the param (no interaction with the barrier).
+
+### What to try next
+
+- vol_fail: closed for natural code by four readings now (attempts 10, 31, 55, 56).  The only remaining structural route is the size log after the could-not-read log in layout (the r test ahead of the switch), which is not the reference's source order; leave the asm unless a different whole-loop structure turns up.
+- Otherwise attempt 54's list stands (exp_pr's bb13 share, lab_none's size store), and attempt 55's for lab_devgl.
+
+### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 on src (7/1 on a55_smc.py's equal bases, every case-23 spelling the same), lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 55).
