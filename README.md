@@ -81,18 +81,16 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. build</b>: 5 tricks, very hard</summary>
+<summary><b>1. build</b>: 3 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=99`
-- 2 `__builtin_expect`, 1 `asm` barrier and 1 hot label, across
-  `loadBlFiles` and `buildFlash`
+- 2 `__builtin_expect`, one in `loadBlFiles` and one in `buildFlash`
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
 narrow, unusually high range (95 to 99). `loadBlFiles` is now written like
 `loadConsoleBlFiles` (the switch in the loop, sharing the xell and case-24
-helpers with it), and its hot label stands for a
-factor of about 0.86 that the original's arms seem to get from a call at the
-`none` test. `tools/wip/dehint/notes/build.md` has the mechanisms and what's
+helpers with it, and a `useBuiltIn` helper for its built-in payload and
+core). `tools/wip/dehint/notes/build.md` has the mechanisms and what's
 been tried.
 
 </details>

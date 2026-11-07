@@ -3,6 +3,19 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 60
+
+**3 tricks** (5 before): `--param builtin-expect-probability=99` and 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash).  Removed: **lab_devgl** (the hot `devgl:` label in loadBlFiles' case 24) and **vol_fail** (the empty asm barrier on `fail:`).  loadBlFiles' cases 1 and 22 now call a `useBuiltIn(e, data, size)` helper (malloc, NULL test returning 1, size, memcpy, return 0) that einline takes into loadBlFiles before profile_estimate; with it the r = 1 block is laid out before the suGetCF block without the label.  And case 2's SMC failure is `if (!e->offset) goto fail; break;`, with `fail: r = -1; break;` after the default case (attempt 55's `end` form); on the useBuiltIn base that form needs no barrier at all (attempt 55's base left the size log's 1/7).  IDENTICAL at p95 / p97 / p99 (0/7 at p0 and p90, as before); full build SHA256 matches.  exp_pr 2/4 and exp_devgl 7/43 cost what they did.  See "## Attempt 60".
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| useBuiltIn (loadBlFiles cases 1 and 22) | the built-in payload / core copies as a helper | natural sharing, but chosen because its inlined CFG moves the layout (new; defaultBl60 doesn't use it, see the next row) |
+| defaultBl60 | `memmove` for the built-in copy, and not through useBuiltIn | memcpy would do; memmove is chosen for its inline-size estimate; through useBuiltIn costs loadBlFiles 14/34 and console 4/8 (cases 1 / 22 back to memcpy, inside useBuiltIn) |
+| loadBl24 (both loaders' case 24) | two calls where `||` would do | unchanged from attempt 49's table |
+| loadBlFiles case 24, second arm | loadBl24's body written out, leading `r = 0;` | unchanged |
+| loadBlFiles case 27 | the fallbacks as a sequence of `r` tests | unchanged |
+| findFileOffset / findFileSize | return `int` | unchanged from attempt 58 |
+
 ## State after attempt 59
 
 **5 tricks** (6 before): `--param builtin-expect-probability=99`, 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash), the empty asm barrier on `fail:`, the hot `devgl` label in loadBlFiles.  Removed: **lab_none** (loadConsoleBlFiles' cold `none:` label and the `nFiles <= 1` precheck that jumped to it).  The three built-in copies (defaultBl60's, loadBlFiles' cases 1 and 22) use `memmove` instead of `memcpy`.  gcc folds memmove back into memcpy only after alias analysis (dce3 / forwprop3 time), so the code is the same, but until then memmove is an ordinary call to the inline-size estimator: defaultBl60 is 14 instead of 18 (einline growth 6 instead of 10), loadBl24 32 instead of 40, so IPA's small-function inliner takes loadBl24 into loadConsoleBlFiles *before* loadXell, and console's blocks come out in the original's order without the label.  defaultBl60's memmove alone does it too (cases 1 / 22 changed for consistency; both IDENTICAL).  IDENTICAL at p95 to p99 (0/7 at p0 and p90, as before); full build SHA256 matches.  Every other hint costs what it did (exp_pr 2/4, vol_fail 58/220, exp_devgl 7/43), except lab_devgl, now 14/34 (57 before).  See "## Attempt 59".
@@ -3299,3 +3312,72 @@ src/build.c: defaultBl60 and cases 1 / 22 use memmove (Borderline comment on def
 ### Costs now (strict/loose, removed alone; 5 tricks)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 (7/1 on a55_smc.py's equal bases, not re-checked on the memmove base), lab_devgl 34/14, exp_devgl 43/7.
+
+## Attempt 60
+
+Goal: the brief's inline-order / estimate lever (attempt 59) on the four in-source tricks left (exp_pr, vol_fail, lab_devgl, exp_devgl), plus attempt 55's SMC equal base re-swept on the memmove src.  src as of 862bda0c.  New scripts in `tools/wip/dehint/bdgen`, run with `python tools/wip/dehint/bdgen/a60lib.py <script> [-p ..] [-o "set;set"] [-f substr] [-k label]` (a58lib's runner without header overlays; edits are `(old, new[, count])` lists or callables; a script may give per-label hint sets in `SETS`): `a60_est.py` (24 code-neutral or nearly neutral edits x each hint off), `a60_ub.py` (useBuiltIn: 6 bodies x 4 signatures x 5 site sets, devgl label off), `a60_mc.py` (the a60_ub matches x the SMC `if` / `end` forms x each other hint off), `a60_rest.py` (on the landed src: the still-applicable edits and useBuiltIn's forms, for exp_pr / exp_devgl, with and without `(int)r < 0`).  Scratch in build/bd/a60 (`src/`, `new/`, `ubmm/`: ipa-inline / einline dumps; `ub_nl.c` and its alignments dump; not kept).  Loose/strict lines, p99.
+
+### IPA inline order on 862bda0c (-fdump-ipa-inline-details)
+
+- Out of line for size reasons: loadBaseFile, loadBinFile, loadInputFile, loadLocalFile into the loaders (large-stack-frame-growth: their 0x400-byte paths).  loadXell is fnsplit (loadXell.part.2, 9) and loadBl24 too (loadBl24.part.1, 7).
+- IPA small-function order, with sizes: loadBl24 (32) -> loadConsoleBlFiles, loadXell (29) -> loadConsoleBlFiles, loadBl24 -> loadBlFiles, defaultBl60.isra (14) -> loadBlFiles (the written-out second arm's two calls, line 1351 then 1349), loadXell -> loadBlFiles.  buildFlash takes patchConsoleBlmod (18) early in the queue, then makeTimestamp's copies late.
+- On the landed src the loadBlFiles order is loadBl24, loadXell, then the two defaultBl60 calls (loadXell moved ahead of them); useBuiltIn is not in the IPA list at all: einline takes its isra clone into loadBlFiles before profile_estimate (both with memcpy and with memmove inside).
+
+### a60_est.py (estimate edits on 862bda0c x each hint off)
+
+| Edit | Result |
+|---|---|
+| memcpy back in case 1, case 22 or both; `uint8_t salt[16] = {0}` for the memset; useNandData for kv / kvAlt (both loaders); the could-not-read log as `notRead` (int or void); loadXell nested or with an `r` local; defaultBl60 through a `p` local | **equal bases** (IDENTICAL; every hint costs what it does on src) |
+| SMC failure `if` / `end` forms (attempt 55) | equal bases; vol_fail off **1/7** again (58/220 on src): the memmove src didn't change attempt 55's picture |
+| `struct fileent f = {0}` in buildFlash | 96 (buildFlash) |
+| patchConsoleBlmod written into buildFlash / with the test the other way | 66 / 28 |
+| useNandData for smc too | 3/29 (console) |
+| loadXell's retail test as `< BUILD_JTAG` | 72 |
+| loadBaseFile's baseDir test as an early return | 42 |
+| defaultBl60's size store after the copy | 6 |
+| **useBuiltIn (memmove) for cases 1 and 22** | **loadBlFiles 0 loose / 50 strict with the label kept or off**: the layout is the reference's without the label; the one difference is a `.p2align` on the r = 1 block (`mov edi,1; jmp`), the rest displacements |
+
+- The alignment, from `-fdump-rtl-alignments` of that form minus the label: the r = 1 block (final bb 91) has a fallthru pred of frequency 0 (the retest) and branch frequency 115 > freq_max / 100 = 9550 / 100, so compute_alignments' "internal loop alignment" rule fires (branch > 4 x fallthru).  The reference's r = 1 block must have branch frequency <= 95.  Attempt 55's bbro reading (r = 1 on plain keys needs >= 96 to beat block 15 [95]) says there's no frequency window between bbro and the alignment on that route, so the layout has to come some other way.
+
+### a60_ub.py: useBuiltIn's forms (label off)
+
+- With useBuiltIn in **one** case only (1 or 22), any body (plain, nested, `r` local, assignment in the test, `p` local; int / size_t / void * signatures): **IDENTICAL without the label**.  `uint32_t` return: 14/34 (as without the helper).
+- In both cases: the memmove bodies are 0 loose / 50 strict (the alignment above); the **memcpy body is IDENTICAL** (also with size_t / int sizes).
+- defaultBl60 through useBuiltIn (sites `b`, `12b`): 14/34 and up, and with memcpy console's 4/8 (lab_none) comes back.  So defaultBl60 keeps its own memmove copy.
+- Not read in the dumps: which profile_estimate frequency the einline'd helper moves (its `return 1` / `return 0` arms and return PHI become part of loadBlFiles' CFG, where the source had `r = 1; break;`), and why memcpy vs memmove inside the helper moves the r = 1 block across 95 (both are einline'd, so the difference is in what the early passes and profile_estimate make of the call: memmove is an ordinary call until it folds, memcpy a builtin with a known expansion).
+
+### a60_mc.py: the matches x the SMC forms x each other hint
+
+| Base (label off) | all kept | exp_pr off | vol_fail off | exp_devgl off |
+|---|---|---|---|---|
+| useBuiltIn memcpy, cases 1 + 22 (`mc_12`, also int / size_t sizes) | IDENTICAL | 2/4 | 59/219 | 7/43 |
+| `mc_12` + SMC `if` or `end` form | IDENTICAL | 2/4 | **IDENTICAL** | 7/43 |
+| useBuiltIn in case 1 or 22 only (any body) + SMC `if` / `end` | IDENTICAL | 2/4 | 1/7 | 7/43 |
+
+- So on the two-case memcpy helper the SMC `end` form needs no barrier: the size log's own -1 line (attempts 10 / 31 / 55 / 56's crossjump rule) is gone.  Not read in the dumps (which jump2 crossjump or block index order changed); the helper's inlined blocks and their `return 1` joins change the CFG ahead of the SMC blocks, the kind of index / pred change attempt 56 said the 1/7 depended on.
+
+### Landed
+
+src/build.c: `useBuiltIn` (memcpy) before defaultBl60, cases 1 and 22 call it (memmove gone from them); the devgl hot label and its comment gone; case 2's SMC failure `if (!e->offset) goto fail; break;` and `fail: r = -1; break;` after the default case, the asm and its comment gone.  defaultBl60's Borderline comment updated (memmove now only there; it doesn't use useBuiltIn).  bdhints.py: lab_devgl and vol_fail gone.  README.md: build 3 tricks.  IDENTICAL at p95 / p97 / p99 (0/7 at p0 and p90).  Full build SHA256 10dac648..1c.
+
+### a60_rest.py (on the landed src)
+
+- Equal bases again: salt `= {0}`, useNandData kv / kvAlt, notRead (both forms), loadXell nested / `r`, defaultBl60's `p` local, **useBuiltIn with memmove** (IDENTICAL now, on the `end` SMC form), useBuiltIn nested.  On each, exp_pr 2/4, `(int)r < 0` 0/7, exp_devgl 7/43: unchanged.
+- useBuiltIn returning uint32_t 15/41; defaultBl60 with memcpy 14/34 + console 4/8; patchConsoleBlmod with the test the other way 28.
+
+### Don't retry (attempt 60)
+
+- The a60_est.py edits listed as equal bases, for exp_pr / exp_devgl (no change on either the old or the landed src).
+- defaultBl60 through useBuiltIn, or with memcpy (lab_none and the devgl layout come back).
+- useBuiltIn returning uint32_t.
+- `struct fileent f = {0}` and patchConsoleBlmod's shapes for exp_devgl (28 and up).
+
+### What to try next
+
+- exp_pr: still the SE copy's jmp block (needs frequency 1, has 2) and the no-key log's `.p2align`; `(int)r < 0` stays 0/7.  The einline'd-helper lever that freed lab_devgl changes profile_estimate's input itself; a helper in the 5..21 arm that einline takes (so its arms enter loadBlFiles' own profile) is the untried variant of attempt 50's loadUpdateBl / signature helpers (those were IPA-inlined calls with their own profile, 85 and up).  Check which bodies einline accepts (growth <= 14, `-fdump-tree-einline-details`) before scoring.
+- exp_devgl: attempt 53's einline rules still stand; nothing in buildFlash's IPA order moved it.
+- If the param ever goes (exp_pr gone), check exp_devgl at gcc's default 90 (it matched there in attempt 42).
+
+### Costs now (strict/loose, removed alone; 3 tricks)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90).

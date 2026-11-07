@@ -1211,14 +1211,31 @@ int verifyBlSigs(void)
 	return ok;
 }
 
+/* a built-in copy in place of a file that couldn't be read (loadBlFiles'
+   payload and core).  Borderline, for review: sharing the two copies is
+   natural, but the helper was chosen for the match: early-inlined into
+   loadBlFiles, it changes IPA's later inline order and the layout, so the
+   NULL tests' r = 1 block comes before the suGetCF block, as the original
+   has it, and the SMC failure's fail: block survives (it replaces a hot
+   label in case 24's devkit arm and an empty asm barrier on fail:) */
+static int useBuiltIn(struct fileent *e, const uint8_t *data, uint32_t size)
+{
+	e->data = malloc(size);
+	if (!e->data)
+		return 1;
+	e->size = size;
+	memcpy(e->data, data, size);
+	return 0;
+}
+
 /* the default 0x60-byte bootloader (type 24).  Borderline, for review: the
-   built-in copies (this one and loadBlFiles' cases 1 and 22) use memmove
-   where memcpy would do (gcc turns it back into memcpy once alias analysis
-   has run).  Until then memmove is a plain call to the inliner, which sizes
-   defaultBl60 at 14 instead of 18, so IPA inlines loadBl24 into
-   loadConsoleBlFiles before loadXell and console's blocks come out in the
-   original's order (it replaces a cold label and an nFiles <= 1 precheck
-   there) */
+   copy uses memmove where memcpy would do (gcc turns it back into memcpy
+   once alias analysis has run), and it doesn't go through useBuiltIn (which
+   costs case 24's layout in both loaders).  Until then memmove is a plain
+   call to the inliner, which sizes defaultBl60 at 14 instead of 18, so IPA
+   inlines loadBl24 into loadConsoleBlFiles before loadXell and console's
+   blocks come out in the original's order (it replaces a cold label and an
+   nFiles <= 1 precheck there) */
 static int defaultBl60(struct fileent *e)
 {
 	e->data = malloc(0x60);
@@ -1328,18 +1345,6 @@ int loadBlFiles(void)
 				if (xb.type == BUILD_JTAG || xb.glitch2mfg)
 					r = loadBl24(e);
 				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
-					/* the hot label makes this test's taken edge likely (46%
-					   instead of 13%), so bb-reorder's round-2 trace through
-					   arm 1's malloc block runs on into this arm, and
-					   connect_traces lays arm 1's r = 1 block (which re-tests
-					   xb.type) out before the suGetCF block, as the original
-					   has it.  The original's arms run at about 0.86 of this
-					   loop's frequency, likely from a call at the none test;
-					   with the switch in the loop this label stands in for that,
-					   and replaces the `else if (type)` dead test, both
-					   __builtin_constant_p and the hot label on xb.type <= 5
-					   that loadBl's helper form needed */
-				devgl: __attribute__((hot));
 					/* Borderline, for review: loadBl24's body written out here
 					   rather than called (calling it is 25 loose lines); the
 					   leading r = 0 stands for its success return.  Live, and the
@@ -1355,25 +1360,13 @@ int loadBlFiles(void)
 				if (!loadBinFile(e))
 					break;
 				log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
-				e->data = malloc(0x200);
-				if (!e->data) {
-					r = 1;
-					break;
-				}
-				e->size = 0x200;
-				memmove(e->data, defPayload, 0x200);
+				r = useBuiltIn(e, defPayload, 0x200);
 				break;
 			case 22:
 				if (!loadBinFile(e))
 					break;
 				log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
-				e->data = malloc(0xd40);
-				if (!e->data) {
-					r = 1;
-					break;
-				}
-				e->size = 0xd40;
-				memmove(e->data, defCore, 0xd40);
+				r = useBuiltIn(e, defCore, 0xd40);
 				break;
 			case 25:
 				r = loadXell(e);
@@ -1487,18 +1480,16 @@ int loadBlFiles(void)
 					r = 0;
 				}
 				e->offset = smcSetLoad(e->size);
-				if (e->offset)
-					break;
-				/* one -1 block for the patch size, SMC and (xb.type <=
-				   BUILD_DEVGL16) signature failures: the asm keeps it a block
-				   of its own (else the -1 is appended to the size log, which
-				   crossjump can't then share) */
-			fail:
-				__asm__ __volatile__("");
-				r = -1;
+				if (!e->offset)
+					goto fail;
 				break;
 			default:
 				log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
+				break;
+			fail:
+				/* the patch size, SMC and (xb.type <= BUILD_DEVGL16)
+				   signature failures */
+				r = -1;
 				break;
 			}
 		}
