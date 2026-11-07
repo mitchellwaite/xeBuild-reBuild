@@ -81,14 +81,14 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. build</b>: 7 tricks, very hard</summary>
+<summary><b>1. build</b>: 6 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=99`
-- 2 `__builtin_expect`, 1 pin, 1 `asm` barrier and 2 hot and cold labels, across
-  `loadBlFiles`, `loadConsoleBlFiles`, `buildFlash` and `calcBlAreaSize`
+- 2 `__builtin_expect`, 1 `asm` barrier and 2 hot and cold labels, across
+  `loadBlFiles`, `loadConsoleBlFiles` and `buildFlash`
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
-narrow, unusually high range (95 or 99). `loadBlFiles` is now written like
+narrow, unusually high range (95 to 99). `loadBlFiles` is now written like
 `loadConsoleBlFiles` (the switch in the loop, sharing the xell and case-24
 helpers with it), and its hot label stands for a
 factor of about 0.86 that the original's arms seem to get from a call at the

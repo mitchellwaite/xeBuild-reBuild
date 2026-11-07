@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 58
+
+**6 tricks** (7 before): `--param builtin-expect-probability=99`, 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash), the empty asm barrier on `fail:`, 2 hot and cold labels (`devgl` in loadBlFiles, `none` in loadConsoleBlFiles).  Removed: **pin_size** (calcBlAreaSize's `__asm__("" : "+b"(size))`).  findFileOffset (build.h) and findFileSize now return `int`, like findFile: after inlining into calcBlAreaSize each result is converted to the uint32_t sums, and those conversion statements move the SSA names PRE hands out, so the kit sum is `size_273 + prephitmp_282` (the reference's operand order, attempt 35's tie) and IRA keeps it in ebx.  Either return type alone doesn't do it.  image_write's `SWAP32_IMAGE_WRITE(findFileOffset(9))` takes a `(uint32_t)` cast marked `TODO(prototype cast)` (with an int the swap's shifts are arithmetic).  IDENTICAL at p95 to p99 (0/7 at p90 and with no param, as before); full build SHA256 matches.  No borderline shape added or removed; attempt 49's review table stands.  The type sweep of every other shared declaration build.c's tricks touch (a58_types.py, a58_ret.py, a58_none.py) found only equal bases or worse.  See "## Attempt 58".
+
 ## State after attempt 57
 
 Attempt 57 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It tried the two loaders at whole-structure level together: the static helpers' definition order (no effect: every placement and order is an equal base, each hint costs what it costs on src), the two loaders as one static loop with a mode parameter (ipa-cp clones it, but the one-line wrappers are inlined into buildFlash first, so the console clone stays out of line: 11600 loose and up), the per-entry work as a static helper with a mode parameter (522 and up), a per-entry helper holding the switch and the could-not-read log so the breaks reach the r test (112 loose and up; the PRED_CALL on the none test it brings doesn't pay for the helper), and the case order of both switches on the loop form (only swapping case 2 and the default is an equal base; console nothing below its 4/8).  See "## Attempt 57".
@@ -3170,3 +3174,64 @@ As attempt 56: src IDENTICAL; pr 2/4, bar 58/220, lab 14/57, none 4/8 (loadConso
 ### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 on src (7/1 on a55_smc.py's equal bases), lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 56).
+
+## Attempt 58
+
+Goal: the brief's new angle: the *types of shared declarations* (fields of `xb` and `struct fileent` / `struct netfile`, and the return and parameter types of the functions build.c calls, in their headers) rather than of locals, each crossed with every hint off alone; for anything that moves, a check of every other object.  src as of 69fcd0cf.  New scripts in `tools/wip/dehint/bdgen`: `a58lib.py` (the runner: `python tools/wip/dehint/bdgen/a58lib.py <script.py> [-p 99] [-o "set;set"] [-k label]`; a script defines `V = {label: ({header: [(old, new)]}, [(old, new) for build.c])}`, header edits go to copies of src/*.h in build/bd/a58/ov/<label>/ put ahead of src on the include path, `-o` names the hint sets as bdhints names, default each alone), `a58_types.py` (31 shared-declaration types), `a58_cba.py` (fileent.size spellings and calcBlAreaSize's local types), `a58_ff.py` (findFile* return and loop types), `a58_ret.py` (build.c's own callees' return types, netfile-typed fields as uint32_t, `char *data`), `a58_none.py` (lab_none with loadBl24 / defaultBl60 return types, two-call and `||` bodies), and `a58_objs.sh <overlay dir> [build.c variant]` (every app object compiled with build.sh's flags and the overlay, compared with build/obj).  Scratch in build/bd/a58 (not kept).  Loose/strict lines, p99.
+
+### What the reference fixes (objdump of xeBuild.exe)
+
+- `glitch2mfg` is read as a dword into a register and tested (`mov edx,[..eb4]; test`), and written `mov dword [..],1`: a 4-byte field, so int and uint32_t are the only candidates, and they compile the same here (only zero tests).  No `_Bool` / uint8_t value range is possible.
+- `xb.type`'s relational jumps are all `ja` / `jbe` (29 of them): it stays unsigned.
+- findFile's inlined loops have a signed guard (`test eax,eax; jle`) on nFiles, and findFileOffset's on nFlashFiles (`jl` in one): both counts stay int.
+
+### a58_types.py (31 types x 6 hint sets)
+
+| Change | Result |
+|---|---|
+| fileent.data `unsigned char *`; netfile-typed smc / kv / kvAlt / smcConfig with a uint32_t size; glitch2mfg, glitch2 or fromConsole uint32_t; suGetCF/CG returning int; cbVerifySig uint32_t; smcSetLoad int (return or parameter); setPatchSlot void or int parameter; setFlashBuild uint32_t; log_printf int level; loadBinFile / loadLocalFile uint32_t | **equal bases** (IDENTICAL; every hint costs what it costs on src) |
+| fileent.size int (or int32_t, signed) | **calcBlAreaSize matches without the pin**, but loadBlFiles 10/172, buildFlash 37/369, addUpdateBls, patchBlsResign, fixupPatchSet (loop-compare operand orders), and consoleinfo and keys differ |
+| fileent.size long | loadFileCrc 70 and more on top |
+| fileent.size unsigned long / size_t / unsigned | equal bases (useless conversions: no GIMPLE statement), pin 40/82 |
+| fileent.type uint32_t | 462 (encodeBls 379) |
+| fileent.offset int | 302 (addBlsToImage, addUpdateBls) |
+| fileent.crc int | 50 |
+| netfile.size uint32_t | buildFlash 22/314 |
+| nFiles uint32_t / nFlashFiles uint32_t | 659 / 174 (the signed guards) |
+| xb.type int | 30 (jle for jbe) |
+| cbb int, seReplacesCf int | encodeBls 1/4, 0/2 |
+| imgCfSize int | addUpdateBls 71 |
+| getBeU16 unsigned int | 69 |
+| findFile uint32_t | 697 |
+| findFileOffset/findFileSize with a uint32_t parameter | 36 (the bodies' mixed compare) |
+| loadBaseFile uint32_t | not inlined |
+
+- No change touched exp_pr (2/4), lab_devgl (14/57), vol_fail (58/220), lab_none (225/351; 4/8 with the precheck too) or exp_devgl (7/43): they are probability, trace-priority and block-survival questions, and none of these types changes a predictor (the tests involved are zero tests, nonequal compares or already-unsigned ranges).
+
+### pin_size: the conversion lever (a58_cba.py, a58_ff.py, dumps)
+
+- fileent.size as int frees the pin because each inlined read gets a conversion statement `(unsigned int) load` in calcBlAreaSize.  Read off `-fdump-tree-optimized`: in src minus the pin the kit add is `size_41 = prephitmp_229 + size_254` (PRE's temporary has the lower version, so it comes first and IRA threads the sum with it: esi); with int sizes it is `size_48 = size_272 + prephitmp_278`.  The conversions consume SSA versions (including freed ones PRE would otherwise reuse), so the prephitmp is numbered after the size PHI.  That is attempt 35's operand-order tie, decided by numbering, as attempt 37's dead load had shown.
+- The same through calcBlAreaSize's locals: `int size` 145, `int x` 79, `int xs` 2/2 (pin kept; 42 without), `unsigned long size` / `size_t size` equal bases.  An explicit `(int)` cast on a uint32_t field folds away.
+- **findFileOffset and findFileSize returning `int`** (findFile already does): the inlined `return xb.files[i].offset` / `.size` are converted to the uint32_t sums at every JTAG, kit and retail call, and calcBlAreaSize then matches **without the pin** (`fofs_i`; dump: kit add `size_273 + prephitmp_282`).  findFileOffset alone or findFileSize alone: the pin still costs 40/82.  Their loop variables as uint32_t: 132 and 127.
+- Other objects (a58_objs.sh): only image_write differs: `SWAP32_IMAGE_WRITE(findFileOffset(9))` with an int argument has arithmetic shifts.  `SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(9))` matches; a separate `cf = findFileOffset(9); cf = SWAP32_IMAGE_WRITE(cf);` doesn't.  The cast is marked `TODO(prototype cast)`, as the repo does for prototype disagreements.
+- On that base every other hint costs what it costs on src, and the param window is p95 to p99 (0/7 at p90 and with no param).  Landed: build.h, build.c (both definitions, the pin and its comment gone, a comment on the return types), image_write.c (the cast), build.sh (the param comment, which still said 96 to 98 fail: they have matched since attempt 49).
+
+### Return types of build.c's own callees (a58_ret.py, a58_none.py)
+
+- loadInputFile uint32_t (r is uint32_t): loadInputFile itself 47/181; checkBl uint32_t 390; extractSmcConfig uint32_t 10000+ (not inlined the same way); defaultBl60 uint32_t 115; loadXell uint32_t 70; loadBl24 uint32_t 42 (loadBlFiles 2/53 with every hint, 7/179 with the barrier off: the closest vol_fail number on the helper form, but still the size log's -1 plus a moved block); all three helpers uint32_t 119.
+- lab_none on the two-call and `||` loadBl24 with every int / uint32_t pairing of defaultBl60 and loadBl24 (precheck and label on and off): nothing below src's 4/8 (two-call) or the `||` form's 66; the size store's place doesn't depend on these types.
+
+### Don't retry (attempt 58)
+
+- glitch2mfg, glitch2, fromConsole, cbb, seReplacesCf, xb.type, nFiles, nFlashFiles as other integer types; fileent.type, offset, crc, data; netfile.size; suGetCF/CG, cbVerifySig, smcSetLoad, setPatchSlot, setFlashBuild, log_printf, imgCfSize, getBeU16 signatures; findFile uint32_t (a58_types.py).
+- fileent.size as int: it frees the pin too but moves six functions and two objects; findFile*'s int returns do the same job alone.
+- Return types of loadInputFile, checkBl, extractSmcConfig, loadBinFile, loadLocalFile, defaultBl60, loadXell, loadBl24 for the loader tricks (a58_ret.py, a58_none.py).
+
+### What to try next
+
+- The conversion lever (an int-to-unsigned conversion that a natural type puts in the code, moving SSA numbering) is new to this file's notes as a *type* effect.  It only reaches tricks decided by SSA numbering or operand order, and of the six left none is: exp_pr (an alignment from the SE copy's probability), exp_devgl (tree-sink's 75% rule), lab_devgl and lab_none (bbro trace priorities; lab_none's one-call residue is the alias oracle's store order), vol_fail (block survival).  If any of them ever comes down to an operand order or IRA tie, try types first.
+- Otherwise attempts 54 to 57's per-trick readings stand.
+
+### Costs now (strict/loose, removed alone; 6 tricks)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), vol_fail 220/58 (7/1 on a55_smc.py's equal bases), lab_devgl 57/14, exp_devgl 43/7, lab_none 351/225 (8/4 with the precheck).

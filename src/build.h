@@ -4,7 +4,7 @@
 
 #include "xebuild.h"
 
-uint32_t findFileOffset(int type);
+int findFileOffset(int type);
 int findFile(int type);
 int buildFlash(void);
 

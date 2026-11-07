@@ -1,7 +1,7 @@
 """The hints left in src/build.c as named edits, for generators, and their cost alone when run directly.
 
 python tools/wip/dehint/bdhints.py [name,name ...]: with no arguments every hint's strict/loose lines removed alone; with arguments, score each set.
-Generators: `import bdhints; bdhints.off(text, 'pin_size', ...)`; `off` raises if a hint's text isn't there."""
+Generators: `import bdhints; bdhints.off(text, 'exp_devgl', ...)`; `off` raises if a hint's text isn't there."""
 import os, sys
 from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -12,7 +12,6 @@ H = {
     'lab_devgl': [('				devgl: __attribute__((hot));\n', '')],
     'vol_fail': [('				__asm__ __volatile__("");\n', '')],
     'lab_none': [('none: __attribute__((cold));\n', 'none:\n')],
-    'pin_size': [('		__asm__("" : "+b"(size));\n', '')],
     'exp_devgl': [('__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0)', 'xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16')],
 }
 

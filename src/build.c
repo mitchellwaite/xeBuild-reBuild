@@ -398,7 +398,14 @@ static int loadBaseFile(const char *name, struct fileent *e)
 	return -1;
 }
 
-uint32_t findFileOffset(int type)
+/* Borderline, for review: findFileOffset and findFileSize return int, like
+   findFile (the type is chosen for the match; the values are offsets and
+   sizes, and image_write casts findFileOffset's back to uint32_t): in
+   calcBlAreaSize their inlined results are then converted to the uint32_t
+   sums, and those conversions give the kit sum's PRE temporary a later SSA
+   name than the sum, so IRA keeps the sum in ebx as the original does (it
+   replaces a register pin) */
+int findFileOffset(int type)
 {
 	int i;
 
@@ -408,7 +415,7 @@ uint32_t findFileOffset(int type)
 	return 0;
 }
 
-uint32_t findFileSize(int type)
+int findFileSize(int type)
 {
 	int i;
 
@@ -2448,9 +2455,6 @@ uint32_t calcBlAreaSize(void)
 		x = findFile(13);
 		size += xb.files[x].size;
 		x = findFile(14);
-		/* the sum so far in ebx (esi up to the 13 lookup), as in the
-		   original: IRA otherwise keeps it in esi */
-		__asm__("" : "+b"(size));
 		size += xb.files[x].size;
 		setPatchSlot(size);
 		size += 2 * imgCfSize();

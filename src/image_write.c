@@ -145,7 +145,9 @@ int buildImage(void)
 	   the Jasper case's ebx */
 	if (xb.type != BUILD_JTAG) {
 		hdrTemplate.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
-		cf = SWAP32_IMAGE_WRITE(findFileOffset(9));
+		/* TODO(prototype cast): findFileOffset returns int; the swap's
+		   shifts are unsigned */
+		cf = SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(9));
 		hdrTemplate.sysUpdateCount = 0x0200;
 		hdrTemplate.kvVersion = 0x1207;
 		hdrTemplate.kvAddr = 0x400000;
