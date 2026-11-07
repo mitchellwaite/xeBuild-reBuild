@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 33
+
+Attempt 33 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It swept six angles no earlier attempt had closed, each crossed with the loadBl hints off one at a time: real types in loadBl and both loops (gen_bd450: neutral or worse; `int type`'s retyping costs 38 loose), `else if (type)` by a repeated test of a *local* key copy (gen_bd451: a local's dead re-test folds before profile_estimate, so it scores as the plain else, 54; the `key && !verify` / `else if (key)` join is 50 plus .rdata), defaultBl60 returning a computed value instead of constants (gen_bd452: 142 and up), the author's nested ifs for the SE test, case 25, case 27's chain and the skip test (gen_bd453: equal bases, every hint costs what it costs on src), case 27's smcConfig moves in every order (gen_bd454: cases 2/3/4's data-size-NULL-0 order is an equal base; pin_d still 14), and the CF/CG fallback as an inner switch or `type != 9 && type != 10` guard (gen_bd455: 110 and up).  New reading of pin_d from IRA (`-fdump-rtl-ira`): the join's base is a thread {r535 base, r534 n*0x42c, r125 n} that is popped before n's own constraints apply; n is kept off eax by loadBaseFile's live result, so base takes eax first and d gets edx.  See "## Attempt 33".
+
 ## State after attempt 32
 
 Attempt 32 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It tried four angles the notes hadn't closed, each a quick sweep with every other hint kept: lab_none by the loop's exit count (the console's -1 errors jumping straight to a could-not-read label after the loop, so PRED_LOOP_EXIT's 9% is split over more exits and the not-entered return cools: 69 loose and up, the log and the body move; gen_bd440), `else if (type)` by flag and result-variable joins on src (attempt 30 had scored them only with all seven loadBl hints off: best 25 loose in loadBlFiles plus displacement, `else` 54; gen_bd441), exp_devgl with the dev override tested *before* the glitch2mfg def (no def above the dev test for sink to move: 11 loose at best against src-minus-expect's 7; gen_bd442), and lab_none by defaultBl60's body (nested, result variable: the same 4/8 on the plain-`for` base; gen_bd443).  Also: the param swept 60 to 99 with lab_t5le, exp_pr or pin_d off: none matches at any value.  See "## Attempt 32".
@@ -1811,3 +1815,58 @@ Goal: an angle the notes hadn't closed, on any trick.  Picked by what earlier at
 ### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
 
 On src: lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (4/8 with the precheck gone too); etype 128/54, the constant_p entry 78/26 (re-measured for pin_d, pin_size, lab_none, exp_devgl, lab_t5le; the rest attempt 30's).
+
+## Attempt 33
+
+Goal: an angle the notes hadn't closed, preferring the brief's list (real types, a local through which a test can fold, nested ifs, a helper's return form, statement order in a block no sweep had touched).  Generators gen_bd450 to gen_bd455 on src as of 5a0bc459 (`python tools/wip/dehint/bdrun.py tools/wip/dehint/bdgen/gen_bd45N.py`); each crosses its edits with the loadBl hints off one at a time (bdhints names plus `etype` = plain else and `cp` = the constant_p entry as `if (0)`).  Scratch in build/bd/a33 (not kept: `nopind.c` / `nopins.c` are src minus pin_d / pin_size, `lbf_ira.txt` loadBlFiles' IRA dump).  Loose/strict lines in loadBlFiles unless said.
+
+### Real types (gen_bd450, 99 cases)
+
+- loadBl's `type` local as uint32_t or unsigned: 38/104 plus .rdata and displacement with every hint kept (worse on every single off); loadBl's `i` as int, the console loop's r as int or its `type` as uint32_t: IDENTICAL (equal bases), every hint's cost unchanged; loadBlFiles' or the console loop's `i` as int (no cast): 4/4 (the loop test's signedness); `int *pr` with `int r`: 71/352.
+- No type frees a hint.  Closed for these locals (calcBlAreaSize's, isUpdateBl's and fuse's were closed before: gen_bd283, gen_bd282, gen_bd192).
+
+### `else if (type)` by a re-test of a local key (gen_bd451, 75 cases)
+
+- Attempt 32's `ok && xb.pub1bl` re-tested the global after cbVerifySig, which may change it, so the reload stayed in the code.  Here `struct rsapub *key = xb.pub1bl;` (or const), and the forms `if (key && !verify) {failed} else if (key) passed; else nokey;`, `.. else if (!key) nokey; else passed;`, src's nesting with `else if (key)`, src's nesting with a plain else, and `ok = !key || verify; if (!ok) .. else if (key) ..`.
+- `else if (key)` inside `if (key)` (dead, for the record): 54, the plain else's score: a local's dominated re-test is folded before profile_estimate, so it can't do what `type` does (type's test survives because only vrp1 knows its range).  `else if (xb.pub1bl)` (global, dead only by assumption): 7/82, the reload stays.
+- The `&&` joins with a local key: 50/67 plus .rdata (the passed/no-key logs swap places); `!key` second: 66.  The ok forms are worse.  Closed.
+
+### defaultBl60 returning a computed value (gen_bd452, 15 cases)
+
+- gen_bd281 / gen_bd443 only tried forms that return constants (PRED_CONST_RETURN against the malloc-failed path, directly or through the return PHI).  `return e->data == NULL;`, `return !e->data;`, `e->data ? 0 : 1`, a local `p`: 142/398 in loadBlFiles and 114 in the console function with the label, 222 on the plain-`for` base (the value is computed with setcc, the r = 1 block is gone).  Closed.
+
+### Nested ifs (gen_bd453, 42 cases)
+
+- The SE test as `if (type == 9) { if (S && E) .. }` or three nested ifs, case 25's `RETAIL || > DEVGL16` as two ifs, case 27's `&&` chain as nested ifs: all IDENTICAL with the hints (equal bases), and each hint costs exactly what it costs on src (t5le 0/7, exp_pr 2/18, pin_d 14/23, exp_t10 46/116, etype 54, vol_fail 86/126).
+- loadBlFiles' skip test as `if (!strnicmp(..) && !e->crc) continue;` (or nested): 120/237 (.rdata).  Closed.
+
+### Case 27's smcConfig moves (gen_bd454, 48 cases)
+
+- No sweep had touched the fallback block itself (src: data, NULL, size, 0, unlike cases 2/3/4's data, size, NULL, 0).  Every valid order of the four moves, `*pr = 0` first or last, `if (!xb.smcConfig.data) break;` or nested: with `break`, src's order, data-size-NULL-0 and data-size-0-NULL are IDENTICAL (so cases 2/3/4's order is an equal base) and `*pr = 0` first is the same code; the size move first is 117 loose, the nested forms 127 and up (.rdata).  pin_d off is 14/23 on every equal base.  Closed.
+
+### The CF/CG fallback as an inner switch (gen_bd455, 40 cases)
+
+- `if (*pr) { switch (type) { case 9: if (suGetCF) goto se; break; case 10: if (suGetCG) goto chk; break; } break; }` (case 10 first, `default: break;`, `return` arms), and `if (type != 9 && type != 10) break;` before an if/else: 110/232 at best (the guard form with attempt 27's weight), switches 118 and up; .rdata moves in all.  Attempt 1's gen_bd18 result stands on the current src.  Closed.
+
+### pin_d read from IRA (`-fdump-rtl-ira` of build/bd/a33/nopind.c, pin off)
+
+- The join after the case 27 loads (bb 142) recomputes the base from the reloaded nFlashFiles: r125 (n, pretmp_80) -> r534 = n * 0x42c -> r535 = r534 + xb -> d (r263) = [r535 + 0x422bc], size (r493) = [r535 + 0x422c0].  Copies cp3 (r534-r125) and cp4 (r535-r534) put the three in one thread, which is popped first: r535 gets reg 0 (eax), r125 reg 1 (edx: it is loaded while loadBaseFile's result is live in eax), r534 eax, then d edx and size eax.  The reference has n, base and size in edx and d in eax, i.e. n's register propagated along the thread.
+- So the pin stands for "n's constraint decides the thread's register"; d itself has no preference (all costs 0).  No source form tried in any attempt changes the thread's membership (the smc fallback's own base r477 is a separate allocno: the GIMPLE recomputes the base at the join on every form).
+
+### Don't retry (attempt 33)
+
+- Retyping loadBl's type, i, *pr or the loops' i, r (gen_bd450).
+- `else if (type)` by a local key's re-test or `key && !verify` joins (gen_bd451).
+- defaultBl60 returning a computed value (gen_bd452).
+- Nested ifs for the SE test, case 25, case 27's chain, the skip test (gen_bd453): equal bases, nothing freed.
+- The smcConfig fallback's statement order or nesting for pin_d (gen_bd454).
+- The CF/CG fallback as an inner switch or a `!= 9 && != 10` guard (gen_bd455).
+
+### What to try next
+
+- pin_d: a form where the join's base is *not* recomputed from a reloaded n (so the thread doesn't start at n), e.g. a base the fallback path and the first-load path share as one SSA name; none of the case 27 forms so far does that (every one reloads nFlashFiles after the calls, as the reference does), so this is speculative.
+- Otherwise build stays at 12; attempt 25's windows, attempt 27's exp_t10 weight near miss and attempt 30's c6 vol_fail near miss are the closest bases.
+
+### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
+
+On src (re-measured by gen_bd450's `src|` rows): lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), the constant_p entry 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 and pin_size 82/40 as attempt 32.
