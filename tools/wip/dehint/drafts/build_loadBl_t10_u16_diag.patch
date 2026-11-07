@@ -1,0 +1,28 @@
+--- src/build.c
++++ src/build.c
+@@ -1229,14 +1229,14 @@
+ 			if (type == 9) {
+ 				if (!suGetCF(&e->data, &e->size))
+ 					break;
+-			} else if (__builtin_expect(type == 10, 0)) {
++			} else if (type == 10) {
+ 				if (!suGetCG(&e->data, &e->size))
+ 					break;
+ 				goto chk;
+ 			} else
+ 				break;
+ 		}
+-		if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
++		if (type == 9 && *(uint16_t *)e->data == 0x4553) {
+ 			/* an SE where the CF goes */
+ 			e->type = type = 14;
+ 			xb.cfLdv = 0;
+@@ -1449,7 +1449,7 @@
+ 		   scale the type == 11 test's frequency down to 0 (the original
+ 		   places it by a frequency of ~25). The pointer compares set its
+ 		   weight (tools/wip/README.md, build.c, eleventh pass) */
+-		if ((char *)__builtin_constant_p(i) == (char *)1 && (char *)__builtin_constant_p(type) == (char *)1) {
++		if ((char *)__builtin_constant_p(i) == (char *)1 && __builtin_constant_p(type) == 1) {
+ 			type = (type & 1) + 18;
+ 			goto chk;
+ 		}
