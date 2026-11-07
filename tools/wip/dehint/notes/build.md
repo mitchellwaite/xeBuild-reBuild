@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 22
+
+Attempt 22 landed nothing; src/build.c and build.sh are unchanged, so the count (14) and the review tables stand.  It tried attempt 20's lever on exp_t24, exp_devgl, exp_upd and lab_none and found no thread-made path in any of them: the blocks the hints fix all exist at profile_estimate, and the missing piece is a predictor.  New: the real windows, measured by varying `builtin-expect-probability` with each function's single expect (tools/wip/dehint/bdpwin.py): exp_t24's middle block needs >= 77% (the warning must beat the seReplacesCf exit block's 117, not reach 87: x1.57 from the natural 75); exp_devgl 75% (attempt 15's margin, confirmed); exp_upd P23 <= 28% (not 23.8%): exactly the nonequal heuristic, which the `(23|15)` OR of bools doesn't get.  lab_none: the case-24 `||` form raises r = 1 from 14 to 18 of the 21 needed and moves the size store (gen_bd331, 6/10).  See "## Attempt 22".
+
 ## State after attempt 21
 
 Attempt 21 landed nothing; src/build.c and build.sh are unchanged, so the count (14) and the review tables stand.  It tried attempt 20's lever (repeat the deciding test so the path exists at profile_estimate) on loadBl's tail and found it doesn't carry over: the tail's paths are split by the caller's `if (r)` after inlining, so a `*pr` re-test inside loadBl only makes new tests with their own wrong probabilities (gen_bd320; diagnostics gen_bd321 show they'd need about 2% and over 50%).  Also measured: attempt 11's kit-first tail (4 loose) is a code-size coincidence (the alignments dump is the same as src minus t5le) plus a PHI-order effect that sends dom2's FSM thread past setFlashBuild (gen_bd322); the could-not-read log inside loadBl (gen_bd323, 95 loose), a plain else with either verify polarity (gen_bd324, 50 and up: bb-reorder's 50/50 tie or .rdata), the SE path with its own checkBl (gen_bd325, 40).  See "## Attempt 21".
@@ -1243,4 +1247,60 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, exp_t24 29/7, exp_devgl 4
 
 - Attempt 20's lever fits a hint whose path is merged in the source and split by a thread *inside the same function before profile_estimate matters*.  loadBl's tail paths are split by the caller's `if (r)` after inlining, so a re-test inside loadBl creates new tests with their own (wrong) probabilities instead of giving the threaded path its flow (gen_bd320, gen_bd321).  The lever doesn't carry over to t5le, exp_pr or exp_t10.
 - t5le now has every input of its formula checked against natural code (attempts 11, 14, 18, 19, 21): it needs one predictor towards X's `<=5` side, and the tail has none to offer.  exp_pr needs q <= 4.4% with the label (q is a `*pr` zero test: no heuristic, and the break's early return pushes it the wrong way).  exp_t10 needs both of CG's breaks to stop being early returns.
+- Otherwise build stays parked at 14.
+
+## Attempt 22
+
+Goal: attempt 20's lever (repeat the deciding test, or test it where the value is used, so the path exists at profile_estimate) on the four frequency hints outside loadBl: exp_t24, exp_devgl, exp_upd, lab_none; pins only with a new idea.  Generators gen_bd330, gen_bd331, on src as of c941f014.  Scratch in build/bd/a22 (not kept).  New tool `bdpwin.py [file.c] [p,p,..]`: scores a source at several `builtin-expect-probability` values and prints addBlsToImage, buildFlash, addUpdateBls and loadConsoleBlFiles strict/loose.  That isolates each target because each of those functions holds exactly one of the expects; other functions' changes only show up as call displacements.
+
+### The real windows, measured with the param (new: the earlier margins were derived from dumps)
+
+`bdpwin.py` on src, p = 50 to 99 (function loose/strict):
+
+| p | addBlsToImage (exp_t24) | buildFlash (exp_devgl) | addUpdateBls (exp_upd) |
+|---|---|---|---|
+| 50 to 65 | 7/29 | 7/43 (12/600 at 50) | 12/18 |
+| 70 | 7/29 | 27/63 | 12/18 |
+| 72 | 7/29 | 27/63 | **0/0** |
+| 75 | 7/29 | 20/20, call displacements only: **matches** | 0/0 |
+| 77 | **0/0** | displacements | 0/0 |
+| 90 and up | 0/0 | 0/0 | 0/0 |
+
+- **exp_t24 needs more than attempt 15 said.**  The expect's block probability q has to be >= 77% (75% fails).  The warning's frequency is 1881 x 28% (nonequal only: the call-free middle block sits in front of imgSize()) x q x 29% = 152.7 q, so the window starts between 114.5 and 117.6.  The warning has to beat the seReplacesCf findFile(14) exit block (117) in bb-reorder's heap, not just reach round 2 (87).  From the natural 75 that's x1.57, not x1.16.  Attempt 19's middle-test bound gets worse with it: a call-free middle block now needs P >= 89% of its own against the imgSize() call (pointer 85% gives 69.8% combined; nonequal 72%, e.g. the redundant `xb.type != BUILD_RETAIL`, gives 51.2%, warning 78.  BUILD_RETAIL is 1, so that test does get nonequal, unlike what attempt 19 assumed).
+- **exp_devgl: attempt 15's margin stands.**  p 75 already matches (buildFlash differs only in call displacements caused by other functions' expects), p 72 doesn't, which fits sink's 75.06% rule; the natural test has 73%.
+- **exp_upd's window is P23 <= 28% (p 72 matches, 70 doesn't), not 23.8% (attempt 8) or 16.3% (attempt 18).**  28% is exactly the nonequal heuristic alone.  Natural forms give 39% (the `(23|15)` pair: an OR of two bools, no opcode heuristic, early return only) or 19.9% (a lone `==`, which then merges 23 into the mask).  So the pair needs one more predictor with P <= 39% of its own on top of the early return (DS(39%, x) <= 28.5% needs x <= 39%), and isUpdateBl has no call, loop or non-0/1 return to supply one.
+- gen_bd330 (diagnostic: the expect moved from the first pair to the second, third or fourth test of isUpdateBl, as `, 1`): the third and fourth are the old 12/18; the second pair is 100/177 at every p from 52 to 90, i.e. a structural change (the expect splits the pair that reassoc merges into the mask), not a probability window.  So "raise the mask block's probability instead of lowering P23" can't be measured this way; it would need a TAKEN predictor (only `!=`, or `>`/`>=` against 0/1/-1, give one), which an "is one of" chain doesn't have.
+
+### exp_t24: what would give x1.57, and why the code doesn't have it (read from profile_estimate of src with the expect off)
+
+- Path at profile_estimate: bb 36 `xb.type > 5` (50%, no heuristic: neither arm's first block holds a call) -> bb 39 `type == 25` 13.7% (nonequal 28% with PRED_CALL 29% from imgSize() in bb 40) -> bb 40 room test 29% (PRED_CALL from the warning's log) -> bb 41 warning 75.
+- Either of two single changes would be enough: bb 39 losing PRED_CALL (28%: warning 153, the reference's own number with the expect), or bb 40 losing it (50%: 129).  PRED_CALL (tree_estimate_probability_bb) needs the edge's destination to be dominated by the test and to contain a call.  So bb 40 or bb 41 would need a second predecessor at profile_estimate, or the room test's false side would need a call block of its own.  The room block is only reachable from the `type == 25` test and the warning only from the room test; every reordering tried (retail or kit arm nested, the type test outside, the room test after the chain: gen_bd96, gen_bd147, gen_bd260, gen_bd270) keeps both with one predecessor.  The room test's false edge goes to the shared "adding" join (it's threaded to the adding log only later, which is what IDA shows), so it can't hold a call without a second adding log.
+- Is the warning's path made by threading (the brief's question)?  No: the warning block is never copied.  Threading only removes the retail-not-23/25 flow from bb 36 and bb 39 (vrp1 knows `xb.type == 1` there), and the warning keeps its profile_estimate frequency to the end.  So attempt 20's lever has nothing to act on here: the path already exists at prediction, and it's the predictors on it that are fixed.
+- `e->offset != 0xffffffff &&` in front of the room test would make a call-free middle block (nonequal 72%), but nothing proves it, so it stays in the code, and it skips imgSize() for unplaced entries.  Not a candidate.
+
+### exp_devgl: nothing new
+
+- The window is the old 73% against 75%.  The devgl value is used only at the top (the cmovbe) and by `if (fuse)` far below, after many calls; testing it at the use would reload xb.type there.  The later `else if (xb.type == BUILD_DEVGL || ..)` patch arm comes after calls too.  No predictor is reachable (attempt 16's list).  Not swept.
+
+### lab_none: the call sites' flow (gen_bd331, 9 cases)
+
+- Read from profile_estimate and bbro of src with precheck and label gone: case 24 is 716 (1 of the switch's 10 targets), `!xb.glitch2mfg` sends 29% on to the loadBaseFile block (PRED_CALL), loadBaseFile's test 29% to the first defaultBl60 call (PRED_CALL; the else side has no call), the size test 51.2% (nonequal with PRED_CALL): sites 60 + 76 = 136, r = 1 (bbro bb 53) 136 x 10.1% = 14.  The not-entered return (bb 62) is 20 and was queued in round 1, so bb 53 needs 21 or more (about 205 at the sites).  bb 53's only predecessor, the merged inlined malloc test (bb 21), is in the middle of trace 29 (20, 21, 22), so bb 53 gets no end-of-trace priority either.
+- `if (loadBaseFile(..) || e->size != 0x60) r = defaultBl60(e);`: one call block with two predecessors, so neither test gets PRED_CALL: sites 179, r = 1 18, still under 20.  Measured: 6/10 with precheck and label gone (r = 1 still after the return, and the size store moves: attempt 4's crossjump order), 2/2 with them kept.  `xb.glitch2mfg && (.. || ..)` is the same; the nested `if (xb.glitch2mfg) {..}` is IDENTICAL with the label and 4/8 without (the same CFG as src); the inverted `if (!loadBaseFile(..) && e->size == 0x60) break;` 10/18.
+- The glitch2mfg test's 29% is the factor that would decide it (50% would give 234 at the sites, r = 1 24), but it gets PRED_CALL from loadBaseFile's block in every order that keeps loadBaseFile after it, and its break side has no block of its own.
+
+### Don't retry (attempt 22)
+
+- exp_t24 by any middle test (it needs 89% of its own now), by chain reorderings (the room and warning blocks keep one predecessor in all of them), or as a threading question (the warning is never copied).
+- exp_upd by raising the mask block's probability with a moved expect (gen_bd330: structural, 100/177).
+- lab_none by case 24's forms (gen_bd331): `||` reaches 18 of the 21 needed and moves the size store.
+
+### Costs now (strict/loose, removed alone; 14 tricks, unchanged)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (`bdhints.py`, re-measured on c941f014).
+
+### What to try next
+
+- Use the measured windows above rather than the dump-derived margins: exp_t24 needs the warning above 117 (x1.57), exp_devgl 75% (has 73%), exp_upd P23 <= 28% (has 39%), lab_none r = 1 >= 21 (has 14).  `bdpwin.py`'s method (one expect per function, vary the param, ignore call displacements) is quick and worth rerunning after any landing.
+- Attempt 20's lever needs a path that a thread creates after profile_estimate.  None of these four has one: the exp_t24 warning, the devgl arms, isUpdateBl's pair and the r = 1 block all exist at prediction, and what's missing is a predictor on a block that natural code gives none (exp_t24 and lab_none: PRED_CALL on a single-predecessor call block; exp_upd: an OR of two bools; exp_devgl: two call-free arms).
+- The closest is exp_upd: the window is exactly the nonequal heuristic (28%), so a natural spelling of the `type == 23 || type == 15` pair whose branch compares against a non-zero constant or a variable, while keeping `type == 23` as an SSA bool for the body's reuse, would land it.  None is known; check any candidate in isUpdateBl's profile_estimate (bb 2 must show "opcode values nonequal") before scoring.
 - Otherwise build stays parked at 14.
