@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 43
+
+Attempt 43 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It read attempt 42's wt / no-param near miss (4 loose) and closed it.  Block 116 is the same 72 + 27 = 99 without the param (loadBl's profile has no expect left, so attempts 27 to 29's arithmetic holds to the digit).  The `ja` is the SE copy of the tail's `xb.type <= 5` test: neither successor follows it, so fixup_reorder_chain points the jcc at the edge with P >= 50%, and vrp1's joiner copy gets P(<=5) = Xc p (1 - q) / (Xc - S) = 211 x 0.5 x 0.39 / 178 = 23.2% (attempt 18's formula, read off nm.vrp1 to the digit); `jbe` needs p (1 - q) >= 0.422, and the natural T spellings give q >= 36.6% with p fixed at 50%.  The tail's forms on the near miss (gen_bd550, 10 cases) are all 4 loose or worse.  See "## Attempt 43".
+
 ## State after attempt 42
 
 Attempt 42 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It swept hint interactions: every pair of the 9 removable items on src, and every single / pair / triple of the 6 loadBl-side items on the and9, c2, c6, no-`i` and weight bases (gen_bd540, 276 cases), plus the param at 50 to 99 and with no `--param` on the cheap subsets (bdpsweep2.py).  The loadBl items are **not** additive (attempt 18's "all triples additive" no longer holds): with the constant_p entry off, exp_t10 costs only +2 (28 against 46 alone), and once exp_t10 and the entry are both off, exp_pr and t5le add only 2 more.  With exp_t10 and exp_pr both gone the param can go too (buildFlash's exp_devgl matches at gcc's default 90).  **New best composite near miss** (drafts/build_loadBl_wt_noparam_nearmiss.patch): attempt 27's weight form of the entry, exp_t10, exp_pr and t5le off and **no `--param`**: 4 loose in loadBlFiles (the bbro dup of `if (r)`, block 116 at 99 against 88, and the SE copy's `ja`), i.e. 4 tricks for those two effects.  Without the weight the cluster {param, exp_t10, exp_pr, cp, t5le} (6 tricks) is 30 loose (the type-11 block's place on top); with c2 and case 6 through `goto chk` also vol_fail, 7 tricks, 20 loose.  Nothing natural fixed the dup; the SE test's spellings with a 0-compare fold back (closed).  lab_none by case 24's forms with the precheck and label off: no change (gen_bd543).  Full matrix in "## Attempt 42".
@@ -2370,3 +2374,37 @@ Readings:
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 41 (re-measured by gen_bd540's src rows): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles), exp_devgl 43/7, pin_size 82/40.
+
+## Attempt 43
+
+Goal: attempt 42's new near miss (drafts/build_loadBl_wt_noparam_nearmiss.patch: the `wt` weight of the constant_p entry, exp_t10, exp_pr and lab_t5le off, no `--param`; loadBlFiles 4 loose / 59 strict), i.e. its two effects, the bbro dup of `if (r)` into block 116 and the SE copy's `ja` for `jbe`, by re-reading attempts 18 and 27 to 29 in the no-param context.  Scratch in build/bd/a43 (not kept: `nm.c` is src with the patch, `show.py file fn ctx [-np]` prints a function's diff with context, `nm.bbro` / `nm.vrp1` / `nm.pe` the dumps at BDP=90).  Generator gen_bd550 (run with `BDEXTRA='--param builtin-expect-probability=90'`: bdrun always passes 98 first and the later `--param` wins, and 90 is gcc's default).
+
+### Block 116 on the near miss (bbro, `bdblocks.py build/bd/a43/nm.bbro`, against src's)
+
+- Unchanged from attempt 28: old 115 (type 9's non-SE argument block) 72 and old 114 (CG's argument block) 27, crossjumped into old 116 at 99 against the threshold 88 (entry 882).  On src the CG block is 2 (exp_t10 at 98%), so 116 is 74.  The param doesn't reach these: with no expect left in loadBl, loadBl's profile_estimate is the same at any value (BDP=90 and 98 dumps agree), so attempt 28's formula `116 = 0.2576 x (257 + CFok) + CGok` and attempt 29's "both early returns must go" stand to the digit.  Nothing new to cut: every term is fixed by the nonequal, early-return and call heuristics (attempt 28), and the threshold side needs entry > 990 (fewer predicted iterations), which the loop's fixed exits don't allow.
+
+### The `ja`: which branch it is, and why (bbro RTL, vrp1)
+
+- It is the SE copy of the tail's `xb.type <= BUILD_DEVGL16` test X (final bb 112, old 119), after `call checkBl; test eax,eax; mov edi,eax; jne`.  Neither successor follows it in the layout, so fixup_reorder_chain adds a jmp and points the jcc at the edge with probability >= 50% (it inverts when REG_BR_PROB < 5000).  So the sense isn't a layout choice at all, it's P(<=5) on that copy: src has `leu` 9862 (the hot label plus exp_pr), the near miss `gtu` 7678, i.e. P(<=5) = 23.2%.
+- vrp1 (nm.vrp1 bb 24): X has freq Xc = 211 from five edges (117: 76, 20: 33 the signature-failed path with r = -1, 118: 58, 22: 24, 23: 20), p = 50% (no predictor), and T (`if (*pr != 0)`, bb 25) q = 61% (the break's early return).  Attempt 18's formula for the r = 0 copy, Xc p (1 - q) / (Xc - S) = 211 x 0.5 x 0.39 / 178 = 23.1%, matches the 23.2%.  For `jbe` it needs p (1 - q) >= 0.5 x 178 / 211 = 0.422: with p = 50% that is q <= 15.6%, with PRED_CALL-strength p (71%) q <= 40.6%.  The natural spellings of T give q = 61% (`!= 0`), 37.8% (`== (uint32_t)-1`), 36.6% (`(int)*pr < 0`), and X has no natural predictor (attempt 21's list), so no natural pair reaches 0.422.
+- vrp1 registers only the T-side joiner thread for X's incoming edges (`(e, 24) incoming; (24, 25) joiner; (25, 120) nocopy`), because type isn't known at X yet (the SE copy only becomes the type-14 copy by later threads), so the other successor's count can't set the copy's probability either.
+
+### gen_bd550 (10 cases, the tail's forms on the near miss, no param; loadBlFiles loose/strict)
+
+- `*pr == (uint32_t)-1`, the `<= 5` arm as `if .. else if (type == 14)`, `if (!*pr) break; goto fail;`, nested else: all **4/59**, the same two effects (as the formula says: q moves to 37.8% at best).  `(int)*pr < 0` 4/60.
+- Kit first (`if (xb.type > BUILD_DEVGL16) { .. break; } if (*pr) goto fail;` and its else-if spelling): 44/167 but with no displacement in the other functions: the size log's -1 block moves before the SMC arm, the sig-failed setFlashBuild copy reads through the IV (attempt 21's PHI-order reading), and the dup and `ja` stay.
+- The tail as two `&&` tests: 60/189 and 132/252.
+
+### Don't retry (attempt 43)
+
+- The SE copy's `ja` by the tail's spelling on the near miss (gen_bd550): it is P(<=5) on the copy, fixed by p = 50% and q >= 36.6%; nothing natural gets p (1 - q) to 0.422.
+- Block 116 by anything already in attempts 27 to 29: the no-param base has the same 72 + 27.
+
+### What to try next
+
+- Nothing on this near miss: both effects need a probability that no gcc 6 heuristic gives these blocks (the dup: 11 off block 116; the `ja`: p (1 - q) >= 0.422 on X).  If a natural form ever gives X a predictor towards `<= 5` (a call or an early return on the `> 5` side), re-check the near miss first: with p >= 69% the `== (uint32_t)-1` spelling of T would give `jbe` by the formula.
+- Otherwise attempt 40's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 42: lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object, cp 118/66 in the object, exp_devgl 43/7, pin_size 82/40.  Near miss (wt, exp_t10 + exp_pr + lab_t5le off, no param): 4/59 in loadBlFiles, 44/99 in the object.
