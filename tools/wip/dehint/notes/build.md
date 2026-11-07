@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 64
+
+Attempt 64 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It took attempt 63's second alignment route for exp_pr (the no-key copy at frequency >= 21 with the SE jmp block at 2) with the key in a local, so that the second key test of attempt 63's `ver_flat` is an SSA value vrp1 can thread: `flat_local` gets no-key 29 and the alignment, but the failed / no-key blocks and the signature strings' .rdata order move (89 loose with the expect, 90 without).  Every single-test form keeps the no-key edge's PRED_CALL (its block has one predecessor and holds the log call), so Pk stays at 85% and no-key at 14.  exp_devgl: 20 more natural spellings of the fuse decision (a64_dev.py: range, switch, ternary, `|=`, a dev local, BOOL / uint8_t fuse, else form, JTAG last, `!fuse &&`) are 7/43 at best; the dev test is still positive-27% and tree-sink still moves the setne into the non-dev forwarder (73% < 75%).  See "## Attempt 64".
+
 ## State after attempt 63
 
 Attempt 63 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It read vrp1's joiner update for the param on its own (exp_pr kept, gcc's default 90) down to the integers: the other copy of the tail test gets P(>5) = (freq26 x (1 - p) - S + freq27 x q) / (freq26 - S) = (74.5 - 41 + 7.5) / 108, because the signature-failed thread runs first and takes min(S x p, freq27 x q) = 7.5 off the `<= 5` side (gcc 6's freqs_to_counts_path / compute_path_counts / update_profile).  Every term is a block frequency fixed by Psig 0.64, Pk 0.85, Pf 0.5, p 0.5 and q 0.1, and rounding can't give the +1 on S it needs, so the param alone has no natural route on this CFG.  A second route to the no-key copy's alignment was found: 112 >= 21 (instead of 111 <= 1) works with 111 at 2, and Pk = 69.8% (PRED_CALL off the no-key arm) gives 29, but only forms with a second pub1bl test do that (57 loose).  Target B by the `<= 5` exit inside the failed arm (attempts 14 and 47) re-run on the current src: 22 loose at best, and it can't close the chain at all (no thread on X, so P(>5) is 50%).  See "## Attempt 63".
@@ -3524,6 +3528,62 @@ Goal: the brief's two targets: (A) the param on its own (exp_pr kept, gcc's defa
 - The 112 >= 21 condition is the one new handle: any natural shape where the no-key log isn't dominated by the pub1bl test, or where the no-key flow is otherwise 50% higher, closes the alignment with 111 at 2 (then check the failed / passed blocks' places).  Nothing with a single pub1bl test was found.
 - exp_devgl: unchanged since attempt 53 (not swept this attempt).
 - Otherwise build stays at 3; the remaining tricks need a different CFG for the signature region or the tail, not a predictor.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
+
+## Attempt 64
+
+Goal: the brief's two leads: (1) exp_pr / the param by attempt 63's second closing condition (the no-key log copy, final bb 112, at frequency >= 21 with the SE copy's jmp block 111 left at 2), from a form with a single key test or one vrp1 threads away; (2) exp_devgl by a fuse decision whose dev arm gets <= 24.9% or whose setne tree-sink leaves in place.  src as of 7059a2db, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a64_nk.py` (signature-region forms with the key in a local and the no-key log reached past a second test; chains with `python tools/wip/dehint/bdgen/a62_semeas.py tools/wip/dehint/bdgen/a64_nk.py -x -p 99`, scores with `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a64_nk.py -p 99 -o "-;exp_pr"` and `-p 0`), `a64_dev.py` (buildFlash's fuse decision without the expect, 20 spellings; `python tools/wip/dehint/bdgen/a60lib.py tools/wip/dehint/bdgen/a64_dev.py -p 99 -o "-"`).  Diffs with `a63_diff.py <script> <label> <fn>` (fn without the leading underscore: `loadBlFiles`, `buildFlash`).  Scratch in build/bd/a64 (not kept).  Loose/strict lines.
+
+### exp_pr: the no-key flow (a64_nk.py)
+
+- Why no single-test form moves Pk (re-read on src's profile_estimate dump, `a51_fpred.py` on loadBlFiles): bb 21 `_76 != 0B` has pointer 85% and two call predictions (71 / 29) that cancel, combined 85%.  The no-key edge's PRED_CALL needs its dest block dominated by the test and holding a side-effect call; the no-key log block has the test as its only predecessor and is one block, so every spelling that keeps one test (nested, `!key` first, `== NULL`, a key local, passed first) has 85% and no-key 14.  Only a second predecessor (a second test) or a call-free first block (a branch before the log) changes it; the code has neither.
+- With the key in a local, the second test is vrp1-threadable (no reload across cbVerifySig), unlike attempt 63's `ver_flat`:
+
+| Variant | SE / copy / jmp, copy SUCC, no-key | Score p99 (all / exp_pr off), p0 the same |
+|---|---|---|
+| src | 7 / 4 / 1, 68.1 / 31.9, 14 aligned | IDENTICAL / 2/4 |
+| `flat_local`: `key && !cbVerifySig(..)` fail, `else if (key)` passed, else no-key | 7 / 4 / 2, 57.1 / 42.9, **29 aligned** | 89/120 / 90/111 (+displ in the callers) |
+| `flat_local2`: `key && cbVerifySig(..)` passed, `else if (key)` fail, else no-key | 7 / 4 / **0**, 88.4 / 11.6, 29 not aligned | 74/163 / 76/162 |
+| `flat_local3`: `!key` no-key first (one test) | 7 / 4 / 1, 14 | 10/20 / 12/24 (.rdata order, as attempt 63's nokey_first) |
+| `r_res`: `if (!verify) r = -1; if (r) fail log else passed log` | 7 / 4 / 1, 14 | 42/61 / 44/65 |
+| `flat_xb_ok`: `!xb.pub1bl` no-key, `else if (verify)` passed, else fail | 7 / 4 / 1, 14 | 14/24 / 16/28 |
+
+- `flat_local` does close the alignment the second way (29 > 10 x 2), and with exp_pr off it costs the same as with it, so the alignment itself is no longer the difference; but the higher no-key flow reorders bbro: the sig-failed log block and its setFlashBuild copy move after the type-11 test, the type-11 path's no-key copy is placed before it, and the no-key string is expanded last (every .rdata reference after it moves by 0x24).  So raising the no-key flow by 2x moves more than the padding; the reference's no-key copy is at about 14.
+
+### exp_devgl: spellings (a64_dev.py)
+
+- Re-read the mechanism on src minus the expect (`a51_fpred.py` on buildFlash): bb 3 `(unsigned)(type - 4) <= 1` gets opcode positive 27% and nothing else; the setne pass_sink puts into the split non-dev edge (73% < 75% of the def block; the load stays), after which ce1 has a three-insn else block and keeps the branch (`sub; mov edx; cmp; jbe` for the reference's `setne; sub; cmp; mov eax,1; cmovbe`).
+
+| Variant | buildFlash loose/strict |
+|---|---|
+| src minus the expect, `>= DEVGL && <= DEVGL16`, a `t` local, a `dev` local, `!!glitch2mfg`, `BOOL fuse`, `if (JTAG) fuse = 1; else {..}` | 7/43 (same GIMPLE) |
+| `fuse |= dev` | 9/45 |
+| `fuse = JTAG ? 1 : glitch2mfg != 0; if (dev) fuse = 1;` | 9/45 |
+| `if (!fuse && dev)`, `if (!fuse) { if (dev) }` | 10/598 |
+| `fuse = 0; if (glitch2mfg) fuse = 1; if (dev) fuse = 1;` | 11/47 |
+| `uint8_t fuse` | 12/49 |
+| `switch (xb.type) { case DEVGL: case DEVGL16: fuse = 1; }` inside the JTAG test | 12/600 |
+| `fuse = dev ? 1 : glitch2mfg != 0` | 13/48 |
+| `fuse = glitch2mfg ? 1 : dev` | 14/183 |
+| JTAG last, `fuse = 0; if (glitch2mfg || dev) fuse = 1;`, one switch with JTAG | 25 to 28 |
+| dev test first (`JTAG && !dev` then the setne) | 56/686 |
+
+- Opcode alternatives for the dev test: `< 2u` folds to `<= 1` (positive 27%); `& ~1` would be nonequal 28%; `== 4 || == 5` folds to the range.  None goes under 25%.
+- The helper route (attempts 52, 53, 61) was not rebuilt: nothing new answers attempt 53's objection (the only call before the flag is the salt memset, and a memset-holding helper's JTAG edge becomes an early return).  The 58-60 estimate levers (memmove / helpers / inline order) only change which IPA inliner takes a call-holding helper; a call-free fuse helper is still einlined (growth ~4) and re-predicted at 27%.
+
+### Don't retry (attempt 64)
+
+- exp_pr by a second key test on a local (`flat_local`, `flat_local2`): no-key 29 and the alignment, but 74 to 90 loose from the reordered failed / no-key blocks and the .rdata order.
+- `!key` / `!xb.pub1bl` first, passed first with one test, an `r` result tested for the logs: no change to the chain.
+- exp_devgl by any spelling in a64_dev.py's table, or by the fuse variable's type.
+
+### What to try next
+
+- exp_pr: the two closing conditions are both reachable only with a second predecessor of the no-key log (112 >= 21), which costs the layout, or a predictor on the checkBl / tail tests that attempts 61 to 63 showed the code doesn't have.  Unless a whole-tail or whole-signature-region reconstruction turns up, build stays at 3.
+- exp_devgl: unchanged since attempt 53; a second predictor on the dev edge needs something in the dev arm, and the reference's dev arm is a cmov.
 
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
