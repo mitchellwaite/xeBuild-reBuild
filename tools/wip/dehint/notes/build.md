@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 67
+
+Attempt 67 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  Attempt 66's leads are closed: tl_k's 4/21 (no param, expect kept) is only the setFlashBuild argument read through the IV (`e->data` CSEs with the loop pointer), with the chain unchanged; p_se moves the SE block to 42; 13 sig_t variants (no-key log or key test outside the helper, tri-state, switch, r passed in, + tl_k / p_se) cost 63 to 200 loose.  New mechanism found: the tail's `if (type == 14) setFlashBuild(..)` as an IPA-inlined `setKitBuild(e, type)` (einline refuses it: growth 6 over 14 / calls) puts a call in the tail test X's >5 successor at profile_estimate, so X gets PRED_CALL (71 / 29) and **the alignment chain closes with no expect and no param** (`(int)r < 0`: SE copy 71.0 / 29.0%, jmp block 1, no-key copy aligned; `r != 0`: 87.5 / 12.5%).  It costs 6/31 in loadBlFiles (+40 call displacements from the shorter code), the same with every helper body, argument and tail orientation tried (a67_kx.py): the inlined helper's false edge is appended last to the switch join's predecessors, vrp1's unordered edge removals move it to slot 0, and dom2's FSM threader then takes the `type != 14` path first and never copies the setFlashBuild block before ivopts (so the sig-failed copy reads `e->data` through the IV and its r = -1 lands in the fail block).  See "## Attempt 67".
+
 ## State after attempt 66
 
 Attempt 66 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It tried helpers over loadBlFiles' 5..21 arm and signature / tail region (a66_h.py, 49 variants): the signature check with its logs (10 forms), the tail (4), the CF/CG fallback (10), load + fallback, load + fallback + SE + checkBl, the whole arm (8), checkBl / case 6 helpers and call-free predicates, each measured on the SE chain at p90 / p99 with the expect and at p0 with `(int)r < 0`.  Nothing that holds a log call is einlined (growth 7 to 19 against the per-call limit), and every IPA-inlined signature helper removes the vrp1 joiner thread that gives src's SE copy its 38.1% (the copy goes to 50%), so the param-alone condition (< 37.5%) moves the wrong way.  Einlined boolean predicates reach profile_estimate as a 50% PHI test (isSe: SE block 42 instead of 7).  Best non-equal variants: tl_k 4/21, p_se 9 loose in loadBlFiles (+40 displacement lines).  Equal bases: checkEntry, loadChecked, isRetailGlitch.  See "## Attempt 66".
@@ -3696,3 +3700,60 @@ Goal: the brief's whole-structure lever on loadBlFiles' 5..21 arm and its signat
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
+
+## Attempt 67
+
+Goal: attempt 66's leads (tl_k, p_se, a sig_t variant that keeps the SE jmp block at 1 and restores the no-key copy's frequency, combinations with each other and with `(int)r < 0`), then anything new on the tail.  src as of 75100692, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a67_base.py` (src, `r != 0` and `(int)r < 0` tails, for a63_diff.py), `a67_st.py` (sig_t variants), `a67_kit.py` (the kit arm through a helper), `a67_kx.py` (that helper crossed with bodies, arguments, tails, orientation, the failed arm's r = -1 order, else forms, a pass-through / int return, and the none test as `continue`).  Chains with `python tools/wip/dehint/bdgen/a62_semeas.py <script> -x -p 0` (and `-x -p 90`, `-x -p 99`, `-p 0`), scores with `python tools/wip/dehint/bdgen/a60lib.py <script> -p 0 -o "-;exp_pr"` (and `-p 99`), diffs with `python tools/wip/dehint/bdgen/a63_diff.py <script> <label> loadBlFiles -p 0`.  Dumps: `gcc -c -O3 -fdump-tree-all` (and `-fdump-tree-dom2-details`, `-fdump-ipa-inline-details`) on `#line`-prefixed copies in build/bd/a67 (`ds/` src at p99, `dk/` k1_n at p0, `d3/` the b3 body; not kept); `fx.py` there pulls loadBlFiles' final body out of a dump.  Loose/strict lines.
+
+### Attempt 66's leads
+
+- **tl_k** (`setKitBuild(e)` for the setFlashBuild line, einlined) was scored in a66_h.py's "score p0" column: no `--param` (gcc's 90), expect kept 4/21, exp_pr off 6/18; at p99 4/14.  The whole loose residue is the setFlashBuild argument: `mov eax,[ebp+0x40c]` (e->data through the loop pointer) for the reference's `imul eax,[esp+0x2c],0x42c; mov eax,[eax+0x422bc]`.  Its chain is src's (7 / 4 / 2, 38.1% at p90), so even closed it would be an equal base, not a removal.
+- **p_se** (`isSe(e->data)`): 9/177 at p0 and p99 plus 40 displacement lines; the einlined predicate is a 50% PHI test, SE block 42.  Nothing to work.
+- **sig_t family** (a67_st.py; chain p90 -x / p0 `(int)r < 0`, score p0 kept):
+
+| Variant | chain | score |
+|---|---|---|
+| sig_t (attempt 66) | 7 / 2 / 1, 46.1%, no-key 6 | 73/126 + 40 displ |
+| tk_else / tk_nkfirst / tkn_else: key test before the helper (`if (xb.pub1bl) r = checkBlSig(e, type); else if (sig type) no-key log`), the type test inside | copy 258, jmp 34 (chain gone), no-key 22 | 195 to 200 |
+| t3 / t3b: the helper returns 1 with no key, the caller logs (`r == 1` / `r > 0`) | t3: 7 / 2 / 1, no-key 13 **aligned** at p0 (50.0% at p90); t3b: jmp 0 | 105/172, 151 |
+| tkf: key test first inside the helper, the no-key log there under the type test | chain gone, no-key 6 | 189 |
+| ts: the type test as a switch inside | 7 / 11 / 5 (p90), 7 / 2 / 0 (p0) | 140 |
+| tr: r passed in and returned | 7 / 2 / 0 (p90, no-key 6 aligned) | 152 |
+| sig_t + tl_k / + p_se, tk + p_se | as their parts | 63 / 80 / 197 |
+
+  t3 is the one sig_t form that keeps the jmp block at 1 and gets the no-key copy aligned (13), but its IPA-inlined helper and the caller's `r == 1` test are new code: 105 loose.  The sig_t family is closed.
+
+### The kit arm through an IPA-inlined helper (a67_kit.py, a67_kx.py)
+
+- Form: the tail unchanged up to `break; }`, then `setKitBuild(e, type);` in place of `if (type == 14) setFlashBuild(getBeU16(xb.files[i].data + 2));`, with `static void setKitBuild(struct fileent *e, int type) { if (type == 14) setFlashBuild(getBeU16(e->data + 2)); }`.  einline refuses it (growth 6 exceeds early-inlining-insns divided by number of calls), IPA inlines it first of loadBlFiles' callees, so at profile_estimate the tail test X's >5 successor block is the call: PRED_CALL, P(<=5) 71%.  That is the p attempts 61 to 63 said was missing (with q = 50% the joiner formula wants P(<=5) >= 70.5%), and it holds (`a62_semeas.py`, SE copy's <=5 / >5):
+
+| Tail | p0 | expect kept |
+|---|---|---|
+| src | `(int)r < 0`: 50.2 / 49.8, jmp 2, no-key not aligned; `r != 0`: 34.4 / 65.6 (inverted: jmp 1 and aligned, but `ja` for `jbe`) | p90 61.9 / 38.1 jmp 2; p99 68.1 / 31.9 jmp 1 aligned |
+| k1 `(int)r < 0` | **71.0 / 29.0, jmp 1, no-key 14 aligned** | |
+| k1 `r != 0` | **87.5 / 12.5, jmp 0, aligned** | |
+| k1 with the expect | 87.5 / 12.5 | p90 the same; p99 96.3 / 3.7 |
+
+  So with the helper the alignment needs neither the expect nor the param.
+- Scores: loadBlFiles 6/31 (`(int)r < 0`, or the expect at any param) and 8/38 (`r != 0`, `r`: the 6 plus the SE copy's `ja` / `jbe`), plus loadConsoleBlFiles 18, blmodMissing 2, buildFlash 20 (call displacements: the function is 11 bytes shorter).  exp_devgl still needs its expect (27/63 off at p0).  The residue, the same for every variant:
+  - case 23's size log sets `edi = -1` itself and jumps to the could-not-read log, where the reference jumps to the shared `mov edi,-1` block; and the sig-failed path's `type != 14` / setFlashBuild exits go to that shared block, where the reference sets `edi = -1` before the `jne` (in the sig-failed block) and jumps to the log.
+  - the sig-failed setFlashBuild copy reads `[ebx]` (e->data through the loop pointer) instead of recomputing `xb.files[i].data` from the spilled i.
+- Which pass: dom2 (`-fdump-tree-dom2-details`).  src registers the FSM thread `(19, 22) (22, 23) (23, 100) (100, 101)` (sig-failed log -> the type == 14 test -> **the setFlashBuild block** -> the join's `if (r)` -> the log), so dom2 copies setFlashBuild onto the loop-exit path before ivopts (attempt 11's / 21's reading of the recomputed address).  k1 registers `(19, 22) (22, 100) (100, 101)` instead (the `type != 14` edge) and never copies the setFlashBuild block, so the copy is made after ivopts (IV read) and the -1 reaches the log as a PHI constant that crossjump merges into the fail block.  Every other thread registration is identical.
+- Why: the FSM search walks the join's PHI arguments in order and marks blocks visited, so the first of the two edges from the type test wins.  At fixup_cfg4 the join's PHI is src's with one change: src has the type test's false edge in the middle (`.., -1(89), r_3(28), r_87(31), ..`, made at gimplification), k1 has it appended last (`.., -1(112), r_3(28)`).  The inlined body exits through the call's continuation block, a forwarder; cfg cleanup redirects its predecessors to the join (appending) and then removes its own edge (unordered_remove, so the last-redirected edge, the call path, takes the forwarder's slot 5 as in src, and the false edge stays last).  vrp1's thread updates then remove the join's slot-0 edge (the none skip, `0(4)`), and unordered_remove moves the last edge, the false edge, into slot 0: after vrp1 the PHI reads `r_453(22), .., r_453(23)` where src reads `r_455(23), r_455(22)`.  So the residue is an edge-order artefact of inlining, not a probability.
+- What doesn't move it (a67_kx.py, all 6/31 with `(int)r < 0`, 8/38 with `r` / `r != 0`): helper bodies `if (type == 14) ..`, `if (type != 14) return; ..`, `{ ..; return; }` (all normalised to the same callee CFG by einline time), a `uint16_t build` local, `else return;`; the switch body 7/28; arguments `(e, type)`, `(&xb.files[i], type)`, `(type, xb.files[i].data)`, `(type, i)` with `xb.files[i].data` inside (the inlined load CSEs either way); kit-first orientation (`if (xb.type > BUILD_DEVGL16) { setKitBuild(..); break; }`), `else if` and `else` forms; `r = -1` before the failed log; an `int` helper returning 1 if it set the build.  `r = setKitBuild(e, type, r)` (r passed through) loses the PRED_CALL (49.8%) and is 6/34.  `seBuild(e)` testing `e->type` is 111.  The none test as `if (!strnicmp(..) && !e->crc) continue;` (to change the join's slot 0): 185 loose.
+- The inline copy makes edges in callee block order (copy_edges_for_bb over the callee's blocks), and the type test comes before the call block in every body, so no callee shape makes the call path the appended edge.
+
+### Don't retry (attempt 67)
+
+- tl_k and p_se as levers (above), and the sig_t family: key test before the helper, no-key log outside / inside under the key test, tri-state return, switch type test, r passed in, combined with tl_k / p_se (63 to 200 loose).
+- The kit helper's body spellings, arguments, orientation, else forms and return types (the list above): the false edge's slot is the same in all of them.
+- The none test as a `continue`.
+
+### What to try next
+
+- The kit helper is the first route found that closes exp_pr's chain without the expect *and* without the param (2 tricks).  What's left is one edge's slot in the switch join's predecessor list after IPA inlining.  Levers not tried: something else that appends an edge to the join after setKitBuild's continuation is cleaned up (another IPA-inlined callee whose continuation is a forwarder to the join, e.g. a void helper in a later case arm, if the code has a natural one), so that edge rather than the kit false edge is moved into slot 0 by vrp1; or keeping vrp1 from removing the slot-0 edge.  Check a candidate's dom2 FSM registration for `(22, 23) (23, 100)` before scoring.
+- exp_devgl: closed since attempt 65.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0; with the setKitBuild helper and `(int)r < 0`, no param: loadBlFiles 31/6 + 40 displacement), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
