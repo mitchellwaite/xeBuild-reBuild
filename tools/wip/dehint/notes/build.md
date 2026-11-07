@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 61
+
+Attempt 61 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It measured exp_pr's alignment chain straight off the final `-dA` output for every variant (new `a61_semeas.py`): SE block 109 = 7, the copy of the tail test 110 = RDIV(7 x 50%) = 4 (3.5 rounds up), its jmp block 111 = RDIV(4 x 49.8%) = 2, no-key copy 112 = 14 (aligned only if 14 > 10 x 111).  All 24 of attempt 60's estimate / inline-order / helper edits leave it at exactly 7 / 4 / 2: IPA inlining and its frequency rebuild don't touch loadBlFiles' own blocks (the SE chain is 10000 x 95.5% x 75% / 12 x 50% x 0.28^3 at profile_estimate and nothing after it recomputes those blocks), so that lever can't reach exp_pr.  The only change found that fixes the chain is a call in the SE block (the SE arm calling `checkBl(.., 14, ..)` itself, the else arm the usual one): the 'E' edge gets PRED_CALL (13.7%), SE = 6, 110 = 3, 111 = 1 and the no-key copy is aligned, but the type == 9 test's false edge gets PRED_CALL too (48.8% instead of 28%), and even with that cancelled (diagnostic call) the second call site's CFG moves the 5/17/11 and signature blocks: 124 loose.  exp_devgl: no new lever (attempt 53's einline reading stands).  See "## Attempt 61".
+
 ## State after attempt 60
 
 **3 tricks** (5 before): `--param builtin-expect-probability=99` and 2 `__builtin_expect` (`r != 0` in loadBlFiles' tail, devgl in buildFlash).  Removed: **lab_devgl** (the hot `devgl:` label in loadBlFiles' case 24) and **vol_fail** (the empty asm barrier on `fail:`).  loadBlFiles' cases 1 and 22 now call a `useBuiltIn(e, data, size)` helper (malloc, NULL test returning 1, size, memcpy, return 0) that einline takes into loadBlFiles before profile_estimate; with it the r = 1 block is laid out before the suGetCF block without the label.  And case 2's SMC failure is `if (!e->offset) goto fail; break;`, with `fail: r = -1; break;` after the default case (attempt 55's `end` form); on the useBuiltIn base that form needs no barrier at all (attempt 55's base left the size log's 1/7).  IDENTICAL at p95 / p97 / p99 (0/7 at p0 and p90, as before); full build SHA256 matches.  exp_pr 2/4 and exp_devgl 7/43 cost what they did.  See "## Attempt 60".
@@ -3379,5 +3383,42 @@ src/build.c: `useBuiltIn` (memcpy) before defaultBl60, cases 1 and 22 call it (m
 - If the param ever goes (exp_pr gone), check exp_devgl at gcc's default 90 (it matched there in attempt 42).
 
 ### Costs now (strict/loose, removed alone; 3 tricks)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90).
+
+## Attempt 61
+
+Goal: the brief's two leads on the 3 tricks left: (a) exp_pr's alignment through the inline-order / estimate / helper levers of attempts 58 to 60 (does any of them move the SE block below 6.5, measured directly), with `r != 0` and `(int)r < 0`; (b) exp_devgl through a fuse helper that IPA (not einline) inlines.  src as of a14fd5c7, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a61_freq.py <variant.c> [-p N] [-f fn]` (max block, the 'E' test, no-key and sig-failed blocks' frequencies at profile_estimate, fixup_cfg4 (the first dump after IPA inlining), vrp1 and optimized), `a61_da.py <variant.c> <fn> [out.s]` (one function's `-S -dA` output), `a61_semeas.py <a60-style script> [-x] [-p N] [-f substr]` (for each variant, with the tail's expect replaced by `(int)r < 0` unless `-x`: the final frequencies of the three blocks after `cmpb $69` (SE, its tail-test copy, the jmp block) and of the no-key log blocks, and which no-key block is aligned), `a61_diag.py` (diagnostic: the checkBl r test under an expect at low params; not natural), `a61_secb.py` (the SE arm with its own checkBl call; run with a60lib.py).  Scratch in build/bd/a61 (not kept).  Loose/strict lines in loadBlFiles, p99.
+
+### exp_pr's chain, final RTL (a61_semeas.py on src)
+
+- Without the expect (`(int)r < 0`): block 109 (SE stores + its checkBl copy) freq 7, block 110 (the SE copy of the tail's `xb.type <= 5` test) 4, block 111 (its `jmp`) 2, block 112 (no-key log copy) 14, not aligned.  With the expect: 7 / 4 / **1** / 14, aligned (14 > 10 x 1).
+- 110 is RDIV(7 x 5000 / 10000) = RDIV(3.5) = 4: the checkBl r test is 50/50 (no predictor) and 3.5 rounds up.  So the chain closes with any of: SE <= 6, the checkBl r test's continue edge under 50% by any amount (110 = 3, then 111 = RDIV(3 x 49.8%) = 1), or P(>5) on the copy under 37.5% (attempt 48's figure).
+- a61_freq.py: the SE chain's frequencies are the same at profile_estimate and fixup_cfg4 ('E' test 23, no-key 14, sig-failed 41); the header is the 10000 max both times.  IPA inlining adds callee blocks scaled into their call blocks and the rebuild recomputes from the same edge probabilities, so no IPA-inlined callee can move loadBlFiles' own blocks (only an inlined *loop* hotter than the header would renormalise them, and none of the callees has one).
+- **a60_est.py's and a60_rest.py's 24 edits** (salt `= {0}`, `struct fileent f = {0}`, patchConsoleBlmod inline or reversed, useNandData, notRead, loadXell nested / `r` / range, defaultBl60 local / memcpy / late store, useBuiltIn memmove / uint32_t / nested, the loadBlFiles placement): **every one is 7 / 4 / 2 / 14** (x_range only renumbers the blocks).  The estimate / inline-order family doesn't reach exp_pr.
+
+### The SE arm with its own checkBl call (a61_secb.py)
+
+- `if (type == 9 && S && E) { stores; r = checkBl(e->data, e->size, 14 (or type), e->crc); } else r = checkBl(e->data, e->size, type, e->crc);`: the SE block now holds a call, so the 'E' test's SE edge gets PRED_CALL as well as nonequal: 13.7%, SE = 5.6.  Final chain **6 / 3 / 1**, the no-key copy (11) aligned, exactly what exp_pr needs.
+- But the else block (the usual checkBl) is dominated by the type == 9 test and doesn't post-dominate it, so the test's false edge gets PRED_CALL too: type == 9 is 48.8% instead of 28%.  loadBlFiles is **124 loose / 210 strict** with every tail spelling (expect kept, `r`, `r != 0`, `(int)r < 0`; `14` or `type` as the argument).  The instruction multiset is the reference's but for one `test; jne` and the padding: the loss is layout (the 5 / 17 / 11 tests, the pub1bl and signature blocks and the type-11 test placed in line).
+- Diagnostic (not natural): an extern call in the S test's block cancels the type == 9 test's PRED_CALL (28.0% again), and loadBlFiles still differs in the same region (the second call site's CFG changes vrp1's threads into the 5/17/11 blocks).  So the route isn't a near miss even with the type == 9 probability restored.
+- Ways to keep PRED_CALL off the type == 9 test (the else block reached from outside that test, e.g. the CG fallback's success or case 6 jumping to a shared checkBl) need gotos or change case 6's and the CG arm's own predictions; not built.
+
+### exp_devgl
+
+- Re-read attempt 53's einline rules against gcc 6's want_early_inline_function_p and cgraph_edge::maybe_hot_p: no call-free helper is refused (at einline every edge frequency is CGRAPH_FREQ_BASE, and a node is EXECUTED_ONCE only for main, noreturn or a cold/hot attribute).  The early-return predictor in a call-holding helper fires on every edge to a return block that isn't the test's next block, unless the test is already predicted by NULL / CONST / NEGATIVE_RETURN (CONST_RETURN only for constants other than 0 and 1), so a memset-holding helper's JTAG edge can't keep 28% (attempt 53's dret2).  build.c has no predicate helper that does the kit-type test with a call (isUpdateBl, blmodMissing checked).  Nothing scored.
+
+### Don't retry (attempt 61)
+
+- Inline-size / inline-order / helper edits for exp_pr (all 24 of a60_est / a60_rest): the SE chain is decided at profile_estimate and IPA doesn't change it.
+- The SE arm with its own checkBl call, any argument and tail spelling (124 loose), and cancelling the type == 9 test's PRED_CALL with a call in the S test's block (still the 5/17/11 layout).
+- Expect-at-low-param diagnostics of the checkBl r test (a61_diag.py): the param also moves other functions and the expect changes the test's code; read the -dA frequencies instead.
+
+### What to try next
+
+- exp_pr now has three exact closing conditions on the final chain (above): SE <= 6, the checkBl r test's continue edge a hair under 50%, or the copy's P(>5) under 37.5%.  The second is new: any predictor, however weak, on `r = checkBl(..); if (r) break;` toward the break (a call in the r == 0 side's immediate block, dominated by the test, or an opposing pair whose DS lands just under 50%) would do it, as long as it leaves the non-SE path's layout (the no-key log has to stay at 11 or more).  None is in the reference's code there (the r == 0 side's next block is the 5 / 17 / 11 test).
+- exp_devgl: unchanged since attempt 53.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90).
