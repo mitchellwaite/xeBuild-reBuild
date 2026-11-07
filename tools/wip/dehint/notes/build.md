@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 30
+
+Attempt 30 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It rebuilt loadBl from scratch with all seven of its hints off together and scored the forms hint-free: result through `*pr` or a returned / stored local, fallback, fail's position, the signature block's form, position (after the switch: 220 and up) and a helper for it, case order, case 6 falling into the 5..21 arm.  The best hint-free forms are 67 to 89 loose against src minus hints' 165, but that is attempts 25/26's and9 + c2 reshaping; none removes a hint once the others go back (a returned local leaves 8 loose with every hint, no key first 10), and `else if (type)` is the largest single item hint-free (the verify test is 50/50 by PRED_CALL on both arms and bb-reorder's tie takes the failed log).  New near miss: **on and9 + c2 + case 6 first the barrier costs 1 loose / 7 strict** (drafts/build_loadBl_c6_nobarrier_nearmiss.patch): only the size log's own -1, which jump2 can't crossjump with the shared -1 block because the size log's block is lower in the chain and not wholly matched.  The pins didn't move (pin_d is 14 on every case order).  Sweeps gen_bd410 to gen_bd423.  See "## Attempt 30".
+
 ## State after attempt 29
 
 Attempt 29 landed nothing; src/build.c and build.sh are unchanged, so the count (12) and the review tables stand.  It tested attempt 28's route for exp_t10: take PRED_TREE_EARLY_RETURN off the CG failure and the other types' `else break`.  predict.c skips that predictor only for an edge that reaches the return block through a non-empty block laid out right before it (fail holds that place now).  A diagnostic with a new asm block there confirms attempt 28's arithmetic exactly: block 116 drops to 94 (CG failure only), 90 (else only), and under 88 with both (no copy of 117; drafts/build_loadBl_t10_noearly_diag.patch, diagnostic only).  No natural form gets there.  Joining the failures at checkBl's result test moves the whole tail (159 loose and up, gen_bd400).  Using the existing barrier as that block breaks its -1 block (88 and up, gen_bd402).  The fallback's failures can't be the last code in loadBl.  So exp_t10 stays, and t5le with it.  Sweeps gen_bd400 to gen_bd402.  See "## Attempt 29".
@@ -1629,3 +1633,78 @@ Re-measured on src (`bdhints.py`, 1caeb924): lab_t5le 7/0, exp_pr 18/2, pin_d 23
 - exp_t10: nothing natural is left on the frequency side.  The numbers are now exact (116 = 94 / 90 / under 88 for one, the other, both early returns gone), so a future idea can be checked by arithmetic before it's built: it must take about 11 off block 116 and leave the tail's profile alone.
 - The only structural lever not built is the switch's target count (even probabilities over 12 targets: 14 would put 116 at about 85, and every other arm would move by the same factor).  It needs a case whose body is written twice and merged later, which loadBl doesn't have.
 - Otherwise build stays at 12, with the windows attempt 25 listed.
+
+## Attempt 30
+
+Goal: a fresh whole-function reconstruction of loadBl with all seven of its hints off together (exp_t10, exp_pr, lab_t5le, vol_fail, both `__builtin_constant_p`, `else if (type)`), scored hint-free so the ranking isn't the one measured with the other hints on; then the pins if nothing comes of it.  Generators gen_bd410 on, on src as of 6083630d; `bdgen/a30lib.py` has `off7(text, keep=())` (the seven off; pin_d kept) and `setfn`.  Scratch in build/bd/a30 (not kept).  Loose lines in loadBlFiles unless said; "+displ" means loadBlFiles changed size, so later functions' call offsets add about 40 lines.
+
+### Baseline (gen_bd410)
+
+src off7: **165**.  On attempt 25/26's and9 + c2 base, off7: **89** (no displacement).  Each hint kept back alone on that base: etype 37 (+displ), vol_fail 84, exp_pr / t5le 87, cp 89, exp_t10 89 (+displ); on src: vol_fail 84, etype 88, exp_pr 138, exp_t10 165+.  So with everything off the and9 + c2 base is still the best start, and `else if (type)` is worth about 50 lines on it.
+
+### Whole-structure axes, everything off (gen_bd411, 288 cases)
+
+Result (src's `*pr` / a local `uint32_t r` returned, caller `r = loadBl(e, i);` / `int` returned / a local stored once), fallback (src / and9), fail position (end / c2 / `return -1;` at each site), signature form (src / verify positive / no key first / no key first + verify positive), tail (src's / plain `if (xb.type <= 5) break;` / `xb.type > 5 && type == 14`).
+- Best: `retu and9 c2 nkp plain` 67 (+displ, and 2 .rdata strings move: passed before failed); `ptr and9 c2 nk and` and `retu and9 c2 nk plain` 71 (+displ, .rdata right); `ptr and9 c2 srcp and` 77 (.rdata: passed before failed); `retu and9 c2 src plain` 81 (no displacement; saved as drafts/build_loadBl_a30_hintfree_reconstruction.patch, `patch -p0` on an LF copy of src/build.c: the best hint-free form that keeps .rdata and the function's size).
+- The c2 position decides most of it (every `end` form is 119 and up); `int` returned is 381 and up (NEGATIVE_RETURN, attempt 27's rule); `return -1` at each site is the same as `end`.
+- The signature's polarity is the biggest single item with everything off: the verify test is 50/50 (PRED_CALL on both arms), and bb-reorder's tie (better_edge_p: equal probability and frequency -> the dest that is the next block) takes the failed log, the then-block.  With the positive form the passed log is first and wins the tie, but it is then also first at expand, so its string moves before the failed one in .rdata.  `else if (type)` gives the passed edge a test block, so only the failed edge gets PRED_CALL (29%).
+
+### `else if (type)` back on those structures (gen_bd412), and the other hints back on the best (gen_bd413)
+
+- With etype kept: `retu and9 c2 nk plain` **25** (+displ), `retu and9 c2 src plain` **35** (no displacement; ptr form 43).  What's left on the 35 is the known set: the size log's own -1 (vol_fail), bbro's copy of the `if (r)` test into the type-9 checkBl block (exp_t10's dup, attempt 27), the type-11 block at the end (cp), the SE copy's `ja` (t5le), and one new one: the sig-failed setFlashBuild copy reads `e->data` instead of recomputing `xb.files[i].data` (attempt 25 saw it on the plain tail).
+- **retu is not an equal base:** with every hint back (barrier, cp, exp_t10, src's tail with t5le and exp_pr, etype) it is still 8 loose / 26 strict, only that sig-failed copy (`mov eax,[ebx]` and its own `mov edi,-1; jmp` block).  The ptr form with the same hints is IDENTICAL (attempt 26).  So the returned local trades the CG argument block (right in retu without exp_t10) for the e->data copy.
+- no key first (`nk`) on src with every hint kept (gen_bd416): 10 loose +displ, not an equal base either; its hint costs are no lower.  src's signature form is the original one (it is also the Linux build's .rdata order: failed, passed, no key).
+
+### Signature check moved or factored (gen_bd414, gen_bd415)
+
+- The signature check (and the type-14 tail) after the switch, behind `if (r) return r;` or with `!r &&` in the tests, so every arm passes it at profile_estimate and vrp1 threads the known types past it: **220 and up** in every combination (gen_bd414, 192 cases).  The arm is the only place.
+- A helper for it (`static int|uint32_t checkSig(e)`: no key 0, failed -1, passed 0; nested like src; or a BOOL helper with the caller setting -1), so the failed `return -1` gets a return predictor in the helper's own profile; and `*pr = verify ? 0 : -1; if (*pr) failed log; else passed log;` / `if (!verify) *pr = -1; if (*pr) ..`: 71 (BOOL helper, +displ) to 124, none better than the same base with src's form (81 / 89) (gen_bd415, 32 cases).
+
+### Case order (gen_bd417, 248 cases)
+
+Every arm moved to every other position, the numeric order and the order the .rdata strings imply, with every hint kept and with the seven off.  With hints: only `6, 5..21, 24, ..` (case 6 first) and default moved one place are IDENTICAL (equal bases); everything else 4 loose and up.  With the seven off: 163 (case 6 first) against src's 165, the rest 165 and up.  The order is src's (or equivalent); no gain.
+
+### New near miss: vol_fail at 1 loose / 7 strict (gen_bd418 to gen_bd421)
+
+- gen_bd418 (hint costs on the equal bases: src, case 6 first, default one place up, and9 + c2, and9 + c2 + case 6 first): every single costs the same as on src on each base, **except vol_fail on and9 + c2 + case 6 first: 1 loose / 7 strict** (src 126/296, and9 + c2 9/81).  Oddly that combined base is not IDENTICAL with the barrier (40 loose): case 6 first and and9 each keep the barrier's match, together they don't, and without the barrier they're the best base found.
+- What's left (drafts/build_loadBl_c6_nobarrier_nearmiss.patch, `patch -p0`; vol_fail off, every other hint kept): only the size log's own `mov edi,-1` (scheduled before its call) and `jmp` to the log, where the reference jumps to the shared -1 block (33d4).  The smc test and the sig-failed `<= 5` exit already share that block, made by jump2's crossjump (`Cross jumping from bb 146 to bb 129`: the smc test's split -1 block into the sig-failed one, which is the log's fallthrough predecessor), with no asm.
+- Why the size log doesn't join (jump2 dump): its -1 is an out-of-SSA copy appended to its own block (bb 104: args, call, -1, jmp; one successor, so no split block), and the -1 blocks are the RTL edge splits of the smc and sig-failed critical edges, placed right before the log (bb 129).  try_crossjump_bb pairs the size log's edge with the fallthrough edge as `from` = the size log, and with any other edge only as the lower index = the size log (104 < 129); `from` has to be wholly matched for a 1-insn match, and it isn't.  So the size log joins only if its block comes after a wholly matched -1 block in the chain (case 23 moved after case 2: .rdata moves, gen_bd419), or if one of the -1 copies lands in a block placed early (a GIMPLE forwarder after its source that survives to expand, i.e. one with a PHI made after mergephi3, which is what the barrier's PRE tail merge gives).
+- gen_bd419 (266 cases): every arm moved to every place on the near miss, with the size error through fail or as its own `*pr = -1; break;`: nothing under 1 loose; moving case 23 or 2 later moves .rdata or is 9 and up.
+- gen_bd420 (16 cases): fail's position on the case-6-first base (c2, inside the size log's if, the size arm with its good path first and the log falling into fail, src's end) x src / and9 fallback x barrier: only `and9 c2` without the barrier is close (1/7); `src c2` and `src end` with the barrier are IDENTICAL (equal bases), every other no-barrier form 7/28 (+displ) to 83.
+- gen_bd421 (30 cases): on the near miss, the tail (src's, t5le off 1/14, exp_pr off 1/21, both off 3/20, attempt 10's plain 11/85), the size arm's spelling (src, good path first, `else`) and the sig-failed arm's order (`*pr = -1` before the log): the size arm and sig-failed spellings are the same code; nothing moves the size log's line.
+- Every other hint removed singly on the near miss (build/bd/a30/singles.py, not kept): exp_t10 29 (+displ), exp_pr 1/21, lab_t5le 1/14, cp 35, etype 55 (+displ), pin_d 15, lab_none / exp_devgl / pin_size their usual costs in their own functions.  So the base makes nothing else free.
+- Not landed: the barrier is still needed for the size log's line, and case 6 first plus and9 are two reorderings whose only purpose here would be that line.  If a natural way to get the size log's -1 into a split block (or its block after the -1 block) turns up, this base takes vol_fail.
+- The near miss in the retu form (a local returned): 7 loose (+displ).  Worse.
+
+### Case 6 sharing the 5..21 arm (gen_bd423, 36 cases)
+
+For type 6 the 5..21 arm does exactly case 6's work (load; checkBl(.., 6, ..) if it loaded; no CF/CG, SE, signature or type-14 step applies), so `case 6: if (!xb.cbb) break; /* fall through */ case 5: ..` (or `goto load;` from case 6's old place) is the same behaviour, and vrp1 could thread a type-6 copy like the reference's case 6 code (`[esp+8] = 6`, `jmp 2f23`).  It isn't how it was written: 156 loose with every hint kept (src or and9 + c2), 186 with the seven off.
+
+### pins (gen_bd422 and reading)
+
+- pin_d by the case order (IRA ties may follow pseudo numbers, which expand order sets): every arm moved to every place on src and on and9 + c2, pin_d off, other hints kept (266 cases): 14 loose on every equal base (src, case 6 first, default up, case 2 last), 18 and up elsewhere.  The pop order isn't a numbering tie.  On the c6 near miss pin_d is 15.
+- pin_size: no new idea with real odds beyond attempt 20's (the kit sum needs its own allocno in ebx from IRA's region at the 14 loop; whole-function forms, scopes, types and helpers are measured).  Not swept.
+
+### Why the reconstruction is no closer than src's structure
+
+Every whole-function axis tried (result through `*pr` / a returned or stored local, fallback, fail's position, the signature form, its position, a signature helper, case order, case 6 sharing the arm) either keeps src's structure or is worse once the hints are put back: the returned local leaves the sig-failed setFlashBuild copy reading `e->data` (8 loose with every hint), the no-key-first form 10, the signature after the switch 220, fall-through for case 6 156.  With everything off the best natural forms are 67 to 89 loose against src's 165, but that gain is attempts 25/26's and9 + c2 reshaping, and on those bases each hint costs what it costs on src.  The one thing the reconstruction found is the base where vol_fail is one line (above).
+
+### Don't retry (attempt 30)
+
+- Whole-function reconstructions of loadBl with every hint off over the axes above (gen_bd411, gen_bd414, gen_bd415): result kind, fallback, fail position, signature form or position, a signature helper (int, uint32_t, BOOL, nested), `*pr = verify ? 0 : -1` forms, the type-14 tail's three forms.  Ranking with hints off doesn't open anything that the hints-on ranking hid, except the c6 base below.
+- A returned local (`static uint32_t loadBl(e, i)`) as a base: not an equal base (the sig-failed copy's `e->data`, 8 loose with every hint).
+- No key first in the signature block (gen_bd416: 10 loose with every hint, +displ).
+- The signature check after the switch (gen_bd414, 220 and up).
+- Case 6 falling into or jumping to the 5..21 arm (gen_bd423, 156 and up).
+- Case order for pin_d (gen_bd422) or for the size log's -1 on the c6 near miss (gen_bd419: case 23 later moves .rdata).
+- On the c6 near miss: fail's position (gen_bd420), the size arm's and the sig-failed arm's spellings, the tail's forms (gen_bd421): none moves the size log's line.
+
+### What to try next
+
+- vol_fail on the c6 near miss (drafts/build_loadBl_c6_nobarrier_nearmiss.patch, 1 loose / 7 strict): the size log's -1 has to land in a block of its own that jump2 can crossjump with the shared -1 block, i.e. either the size log's block comes after a wholly matched -1 block in the chain (a thread copy would: jump-thread duplicates go to the chain's end, like the smc test's bb 121), or the size log's edge into the log becomes critical (then expand splits it and its -1 is a wholly matched block).  Neither has a natural source yet; check any idea against the jump2 dump (`bddump.sh .. loadBlFiles jump2`, the `Cross jumping` lines and the `const_int -1` sets) before scoring.  If one turns up, check that the base is still worth it: case 6 first and the and9 fallback are reorderings chosen only for that line.
+- `else if (type)` is still the largest single item with everything off (about 50 lines on any base): the verify test needs one predictor on the failed edge only, and every natural form has PRED_CALL on both arms (50/50, and bb-reorder's tie picks the then-block, which .rdata pins as the failed log).  A non-call first statement on the passed side would do it, but no natural one is known.
+- Otherwise build stays at 12; the windows are as attempt 25 listed.
+
+### Costs now (strict/loose, removed alone; 12 tricks, unchanged)
+
+On src (bdhints.py, unchanged src): lab_t5le 7/0, exp_pr 18/2, pin_d 23/14, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231; etype 128/54, the constant_p entry 78/26.  All seven loadBl hints off together: src 320/165, and9 + c2 199/89, best natural reconstruction 120/67 (+displ, .rdata) or 145/81 (no displacement).  New: **vol_fail on and9 + c2 + case 6 first: 7/1** (exp_pr 21/1, lab_t5le 14/1, pin_d 30/15, cp 119/35, exp_t10 87/29, etype 135/55 on that base with the barrier off).
