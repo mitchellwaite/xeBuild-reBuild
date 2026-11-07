@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 36
+
+Attempt 36 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It worked attempt 35's switch near miss and closed it: gcc 6's switch expansion can't give the reference's `cmp 2; je J; cmp 5; jbe R` from any case set that also lets PRE reach retail first (retail must be the default for that, and a default has no case node, so the kit is tested by its own low bound: `jb; cmp 6; jb` with a range up to 0xffffffff, `lea; cmp 3; ja` with 6..9; a switch's 1/3 edges also give JTAG the wrong frequency).  New mechanism, read from the dumps: in the if-forms PRE's walk and bbro's tie both follow the 5-test's **first edge**, through the loop tree: loops are rebuilt in RPO (edge order), ch2 creates the arms' preheaders in that order and puts each right after the test, so the first edge's arm ends up with the higher block index and PRE (dominator sons, highest index first) walks it first; connect_traces also takes the first edge when probability and trace length tie (both arms' head traces are 4 blocks).  A diagnostic (JRK with the kit at 51-52%) gives the reference's layout with only cold-block order and one register swap in retail's xell loop left.  Sweeps gen_bd480 to gen_bd484.  See "## Attempt 36".
+
 ## State after attempt 35
 
 Attempt 35 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It read pin_size in IRA as attempt 34 asked and found the mechanism is a copy-order tie, not a frequency: the kit add `r105 = r197 (prephitmp) + r104 (size)` makes two shuffle copies of the same freq (cp30 r197-r105, cp31 r104-r105), copy_freq_compare_func breaks the tie by copy number (operand order), so r105 threads with the prephitmp; r197 conflicts with r104, so cp31 can't merge afterwards, and r105 pops after r99's thread and takes esi.  The reference has r104 = r105 = ebx, the thread {r104, r105}: attempt 7's operand order is the whole question.  New: **the build-type chain's order flips that operand order** (gen_bd470, `bdorder.py`): `if (JTAG) .. else if (xb.type <= BUILD_DEVGL16) retail else kit` (JRK) and a switch with retail as the default (`sw_*_dR`) give `size_N + prephitmp_M` and exactly the reference's kit-arm registers (`mov ebx,esi` before the 14 loop, `add ebx,eax`), but JRK lays the retail arm out first (288 loose) and the switch's kit range test is `lea; cmp 3; ja` (92 loose).  In the if-forms the 5-test's true arm is both the arm PRE's insert walk reaches first (it takes the free SSA names) and bbro's round-2 tie winner, so the kit can't be laid out first and still get fresh names.  Drafts drafts/build_calcBlAreaSize_JRK_nearmiss.patch and drafts/build_calcBlAreaSize_sw_JKR_dR_nearmiss.patch.  Also: lab_none by a re-tested r in loadConsoleBlFiles' case 24 (gen_bd471): no movement.  See "## Attempt 35".
@@ -1963,6 +1967,54 @@ Goal: pin_size from IRA, as attempt 34 asked (the kit sum's copy thread), then a
 
 - pin_size: a form where the kit is reached by the 5-test's false edge but laid out first, or where PRE reaches retail before the kit while the kit is still the true arm.  The switch with retail as default does both (92 loose); what's left is a natural way to get `> 5` as the kit's test with retail as the switch's default.  Check any idea with bdorder.py first: the kit line must read `size_N + prephitmp_M`.
 - A predictor on the 5-test: only worth it with a call that belongs at the start of an arm.
+- Otherwise attempt 33's list stands.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 34 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231.
+
+## Attempt 36
+
+Goal: attempt 35's lead, pin_size by a switch on the build type (sw_JKR_dR, 92 loose): keep PRE reaching retail before the kit but get src's semantics (types above 9 to the kit) and the reference's range test and layout.  Generators gen_bd480 to gen_bd484 on src as of 85f296f9 (`python tools/wip/dehint/bdorder.py tools/wip/dehint/bdgen/gen_bd48N.py`; each imports `arms` from gen_bd470).  Scratch in build/bd/a36 (not kept: `nopins.c`, `jrk.c` and `jrk_diag.c`, `max_d_JKR.c`, `all*/` full `-fdump-tree-all` runs, `ch/` the ch2 details dump).  Loose/strict lines in calcBlAreaSize unless said; pin_size off throughout.
+
+### Where the operand order is set (`-fdump-tree-all` of nopins.c)
+
+- The kit sum is `size_41 = size_254 + _40` until PRE, which makes it `prephitmp_229 + size_254`; reassoc2 writes it `size_254 + prephitmp_229` (the order we want) and forwprop4 swaps it back (fold puts the lower SSA version first).  So the order at RTL is purely the two versions.
+- size_254 is a PHI that dom2 makes at the 14 loop's exit: dom2 threads the `nFiles <= 0` path through the 13 add into the 14 guard, so the 13 add has two copies (size_37, size_225) merged by size_253 and size_254.  prephitmp_229 comes off the free list: dom2's released names (its SSA-update list ends `.. size_229 _236 size_237 _242 size_243`, popped from the end) under about five names released between dom2 and PRE (136, 195, 109, 87, 214).  The kit's 14 lookup is PRE's first insertion and the prephitmp is its fifth name.  Neither version can be moved past the other by a few names: the free list would have to be empty (about 20 more names used first), or size's PHI made before dom2.
+
+### Why the 5-test's true arm wins both PRE and bbro (ch2, PRE and bbro dumps)
+
+- PRE's insert walk is a preorder of the dominator tree with sons in **descending block index**: bb2's sons, the 5-test bb20 is walked before the JTAG head bb3 (attempt 35's "JTAG is reached last"); bb20's sons, the kit head bb23 before the retail head bb21 in src.
+- The arms' block order comes from ch2.  Both arms start directly with a loop header, so each needs a preheader on its edge from the 5-test, and split_edge_bb_loc puts both right after the test: the one created last ends up first.  They are created in FOR_EACH_LOOP order (the loop tree's preorder), and the tree is rebuilt in RPO, i.e. by the test's edge order: the first edge's arm is DFS-visited and finished first, so it is iterated first, its preheader is made first and lands *after* the other arm's.  Before ch2 (tailr2) the kit head is bb23 and retail's bb45; after ch2 retail's copied guard is bb23 and the kit's bb25.  The JRK and switch flips follow exactly this (a switch's first edge is its default's).
+- bbro (JRK's dump): both arm heads are round-2 seeds of equal key, and the traces they start are both 4 blocks (guard, copied header, body, latch).  connect_traces joins the test's trace to the successor trace with the higher probability, then the longer trace, then the first edge: in JRK `Connection: 33 37`, retail, the first edge.
+- So in an if-form the first edge decides both, and a GIMPLE_COND's first edge is always its true arm.  Ways to decouple them: a probability (but the arms must stay 50/50 to keep the reference's frequencies), a longer kit head trace (fixed by findFile's loop shape), or a retail arm whose head is not a loop header at ch2 time (then retail needs no preheader, the kit's preheader alone goes right after the test, the kit gets the lower index and PRE walks retail first, while the kit stays the true edge and bbro's winner).  The last needs a statement at retail's start that lives until ch2 and leaves no code; retail's first block in the reference is its findFileOffset(5) guard, and I found no such statement (not swept: the obvious candidate, a `type != RETAIL` flag computed there, would likely be forwprop'd into its test before ch2).
+- Diagnostic (`jrk_diag.c`: JRK with `__builtin_expect(xb.type <= BUILD_DEVGL16, 0)` at `-p 51` / `52`; not a candidate): the kit is laid out first and its code is the reference's; what's left is 36 lines of cold-block order and one register swap in retail's xell loop (`cmp ecx,eax`), probably both from the 52/48 frequencies.  So a 50/50 way to break the tie would very likely be the match.
+
+### gen_bd480: whole switch, retail as default, kit as a GNU case range (66 cases)
+
+- `case BUILD_DEVKIT ... 0xffffffff:` (src's semantics), `... UINT32_MAX`, `... BUILD_TESTKIT16` (attempt 35's semantics); retail as default, listed plus default, or listed with case 0 and no default; every case order: all flip the kit sum; best 91 loose (`max_d_JKR`, `max_d_RJK`).  Expansion: `cmp 2; je J; jb R; cmp 6; jb R; K..` where the reference has `cmp 2; je J; cmp 5; jbe R; K..`, plus cold-block order.
+- Why it can't get closer (the decision tree as gcc 6 emits it): with two case nodes the root is the lowest (JTAG's 2); a single value with only a right child tests `< 2` to the default unless 2 is the type's minimum, and the kit's range is then tested by its own low bound (`< 6`), not by retail's high bound.  Retail is the 5-bound only as a case node, but then it isn't the default, and the default's edge is the one PRE walks first.  Listing every retail type with no default doesn't help: the gimplifier makes the first label (retail's) the default when the labels cover the type contiguously.
+- A switch also gives each edge 1/3, so JTAG is 33% instead of the reference's 28% (nonequal on `== 2`); the cold-block order follows from that.
+
+### gen_bd481 to gen_bd483: JTAG as an if, a switch for the rest (36 cases)
+
+- Inner switch with retail as default (`case BUILD_DEVKIT ... 0xffffffff: K; default: R`, or both listed with `0 ... BUILD_DEVGL16` first, which the gimplifier turns into the same): flipped, but expands to `cmp 6; jae K` and lays retail first, 290 loose.  Retail as `case 0 ... BUILD_DEVGL16` with the kit as default: the same code as src, not flipped (40).
+- Retail listed without 2 (`case 0 ... BUILD_RETAIL: case BUILD_GLITCH ... BUILD_DEVGL16:`, no default; type 2 can't reach the else): the default goes past the switch, retail stays a case node and the test is `cmp 5`, but the three-node tree adds `ja K; cmp 3; jae R; cmp 1; jbe R` and the layout is retail first (304 and up).  Leaving out case 0 changes type 0's behaviour; not pursued.
+- The whole switch with retail as ranges around 2 (`sw_r2*`): the same as gen_bd480 (91); the kit as default 377 and up.
+
+### gen_bd484: an arm through a static helper (12 cases)
+
+- In case an inlined helper's loops keep copy_loops' order instead of the RPO rebuild: the flip still follows the 5-test's true arm, and every helper form moves the setPatchSlot code (134 loose and up).
+
+### Don't retry (attempt 36)
+
+- pin_size by any switch on the build type: whole, inner (after the JTAG if), any case order, GNU ranges, retail or kit listed or as default, case 0, type 2 left out (gen_bd480 to gen_bd483).  The expansion and the default-first walk are incompatible, as above.
+- pin_size by arm helpers (gen_bd484).
+- Moving prephitmp's or size's version past the other by name counts (the free list is about 20 names deep at the kit's insertion).
+
+### What to try next
+
+- pin_size: the only open route found is a retail arm whose head block isn't the findFileOffset(5) loop header at ch2 time (a statement at retail's start that lives until ch2 and leaves no code, or leaves the reference's), with src's chain order (JKR).  Check with bdorder.py (the kit line must read `size_N + prephitmp_M`) and the ch2 dump (the kit's guard copy must come right after the 5-test).
 - Otherwise attempt 33's list stands.
 
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
