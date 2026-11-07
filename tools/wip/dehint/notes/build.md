@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 54
+
+Attempt 54 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It applied the IPA-inlined-helper lever to exp_pr and lab_none.  exp_pr: the signature check as a call-holding helper (six bodies: 1 on failure, 0 on failure, -1 on failure, a result flag; a54_sig.py) is 63 loose and up even with the expect kept, so the inlined body costs more than any probability it brings, and its -1 return is PRED_NEGATIVE_RETURN (4%), which lowers the signature-failed flow S, the wrong way for the joiner formula (S has to rise to about 62).  The tail with `type == 14` tested first, so `xb.type > 5` guards setFlashBuild directly (PRED_CALL), is 114 loose and up (a54_t14.py).  lab_none: console's case 24 written out with `||` (`xb.glitch2mfg && (load || size)`) gets only a 0.80 share (its loadBaseFile test keeps PRED_CALL: it dominates the merged call block), 6/10 without the label and 2/2 (the size store) with it; written out with two calls it is an equal base.  The size store's place is the alias oracle's: the copy's destination is a fresh malloc result (points-to {HEAP}) and the store a decl ref to xb.files[i].size, so nothing orders them with one copy.  See "## Attempt 54".
+
 ## State after attempt 53
 
 Attempt 53 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It looked for a natural way to keep attempt 52's fuse helper out of early inlining (so IPA scales its early-return profile into buildFlash) and found none: gcc 6's einline refuses a callee only for growth > 14, growth x (calls + 1) > 14, a cold edge (callee cold/hot attributes, noreturn or main: nothing else sets a node's frequency without a profile), a callee not yet in SSA (a call-graph cycle), or uninlinable bodies (va_start, setjmp, alloca, nonlocal labels); the fuse decision is a 6-insn leaf and the only call that runs before it in the reference is the salt memset.  The memset helper is also out on its own terms: with the JTAG test inside and *no* early return on it (`dret2`), the JTAG edge still goes straight to the helper's return block, so it gets early return 61% (80.1% instead of 72%) and the `fuse = 1` block moves out of line (3/285, as `dret`).  In that IPA-inlined form the 5 loop-compare differences of the -fno-early-inlining diagnostic are gone (only the JTAG block differs), so the residue was the diagnostic's.  The Linux v1.16 build (tmp/xeBuild64, gcc 4.9.2) has the same inline `setne; sub 4; cmp 1; mov 1; cmovbe` at buildFlash's start and no fuse helper, and the reference has no fuse/devgl string near buildFlash other than "Virtual Fuses set to:", so nothing suggests the original had a helper there.  See "## Attempt 53".
@@ -2960,3 +2964,55 @@ Virtual Fuses set to:" (showFuses' title) and the type-24 messages; no log a fus
 ### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
 
 exp_pr 4/2, vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 52).
+
+## Attempt 54
+
+Goal: the brief's lever, a helper that IPA (not einline) inlines and that brings its own profile, on (a) exp_pr's `(int)r < 0` near miss (the SE copy's P(<=5) needs >= 62.5%: q <= ~9%, or S up, or p up) and (b) lab_none's one-call loadBl24 (the size store), then (c) if time remained.  src as of 762425c6, unchanged.  New scripts in `tools/wip/dehint/bdgen`, run with `python tools/wip/dehint/bdgen/a46run.py <script> [-p ..] [-k label]` on src/build.c: `a54_neg0.py` (baseline: src and `(int)r < 0`), `a54_sig.py` (the signature check as a helper, six bodies x the tail as expect / `r` / `(int)r < 0`), `a54_t14.py` (the tail with `type == 14` first, five orders x three r spellings), `a54_or.py` (console's case 24 forms: loadBl24 `||`, the guard and `||` written out, nested, two calls written out; with and without the precheck and label); standalone `a54_dump.py <variant.c> <fn> [bb lo hi]` (one function's whole profile_estimate dump) and `a54_rdiff.py <variant.c> <_sym> [p]` (one function's diff against build/bd/reference.o).  Scratch in build/bd/a54 (not kept).  Loose/strict lines, p99 unless said.
+
+### (a) exp_pr: the profile it works with (a54_dump.py on `(int)r < 0`)
+
+- loadBlFiles' 5..21 arm at profile_estimate: bb6 (loadInputFile's r, 597, 50%), bb13 (`if (r) break` after the fallback, 50%), bb14 `type == 9` 298 (28%), bb15/16 'S'/'E', bb17 the SE block **7**, bb18 checkBl's r (298, 50%), bb19/20 `5 || 17 || 11` (149), bb21 pub1bl (95, pointer 85%), bb22 the verify (81, call 71/29 both ways, 50%), bb23 failed log S = 41, bb24 passed 41, bb25 no-key 14, bb26 `xb.type <= 5` Xc = 149 (p 50%), bb27 `(int)r < 0` (q 27%), bb28 `type == 14`.  As attempt 48: P(<=5 on the copy) = Xc p (1 - q) / (Xc - S) = 0.50.
+- bb13 is the one free factor left in the SE block: SE = 597 x c x 0.022 must be under 6.5 and the no-key log 597 x c x 0.048 at 10.5 or more, so c (bb13's continue share) in [0.37, 0.496].  ds(72, 29) = 48.8% would do, but that needs a nonequal compare (r against a nonzero constant) and a call in bb14, neither natural (loadInputFile's r is any nonzero on failure, so `if (r)` can't be respelled).
+
+### (a) The signature check as an IPA-inlined helper (a54_sig.py, 18 cases at p0 and p99)
+
+| Body | Call site | expect kept | `r` | `(int)r < 0` |
+|---|---|---|---|---|
+| `sigFailed`: 1 on failure, pass last | `if ((5 or 17 or 11) && sigFailed(e)) r = -1;` | 63/136 | 65/138 | 63/136 |
+| the same, nested call site | `if (..) { if (sigFailed(e)) r = -1; }` | 63 | 65 | 63 |
+| `sigFailed`, failure last | as above | 91 | 93 | 91 |
+| `sigOk`: 0 on failure | `&& !sigOk(e)` | 63 | 65 | 63 |
+| `sigOk` with an `ok` flag | as above | 124 (+displ) | 126 | 124 |
+| `checkBlSig`: -1 on failure, failure last | `r = checkBlSig(e);` | 103 | 103 | 139 |
+
+- The cost is the helper itself (with the expect kept it is already 63 and up): the inlined body's blocks and the caller's test of its result are new code against the reference.  And the lever points the wrong way here: a -1 return is PRED_NEGATIVE_RETURN (4%), so S (the failed flow) falls, where the formula needs S at about 62 of 149 (the verify about 76% failed); a 0/1 return gets no return predictor, and the caller's test of the result is 50% again.  Attempt 50's three bodies (95 and up) agree.
+
+### (a) The tail's order (a54_t14.py, 15 cases at p0 and p99)
+
+- `type == 14` first (r is 0 for type 14: it skips the signature check, and checkBl's failure already broke), so `if (xb.type > 5) setFlashBuild(..)` puts the call in the test's dominated successor (PRED_CALL, which would give P(<=5) 71% on the original): `{ if (> 5) set; break; } if (<= 5 && r) goto fail;` 141 loose; with `else if` 116; `type == 14 && xb.type > 5 .. else if` 114 to 141; nested 141.  The SE path's threading and the block order change wholesale.  Kit first (`e`) is attempt 47's: 2/4 with `r`, 0/7 with `(int)r < 0`, IDENTICAL with the expect.
+
+### (b) lab_none: console's case 24 without loadBl24 (a54_or.py, a54_rdiff.py)
+
+- loadBl24 `||` (attempt 50's body): loadBlFiles 24/83, console 20 (+displ: the only real line is the size store).  Read with a54_rdiff.py: console differs from the reference in `mov [ebx+4],0x60` after the three register sets instead of before them, plus call displacements.
+- Console's case 24 written out, loadBl24 unchanged for loadBlFiles: `if (xb.glitch2mfg && (loadBaseFile(..) || e->size != 0x60)) r = defaultBl60(e);` and the nested form: **6/10 without the precheck and label, 2/2 with them** (only the size store).  Its loadBaseFile test keeps PRED_CALL (29%: it dominates the merged call block even with two predecessors), so the share is 0.29 + 0.71 x 0.72 = 0.80 (call block 166 of 208), not loadBl24's own 85.9%, and the malloc block (166) stays under round 2's 176: the r = 1 block goes after the return again.  Two calls written out (`if (load) r = dB(e); else if (size) r = dB(e);` under the guard): 4/8 without, IDENTICAL with: an equal base for src (console needn't call loadBl24).
+- Why nothing orders the store with one copy: in console e is &xb.files[i], so the store is a decl reference `xb.files[i].size` and the rep movs destination is the malloc result (points-to {HEAP}); the oracle separates them, sched2's ready list puts the three register sets first (they feed the rep movs) and the store last.  Only two crossjumped copies (attempt 51) lose the destination's memory attributes.  Anything that keeps the copy's pointer from being a fresh malloc result (realloc, a pointer through memory, calloc via setFileData) changes behaviour or code.
+
+### (c) Not reached
+
+vol_fail (58/220) and lab_devgl (57/14) were not swept.  lab_devgl's arm-2 test is 13.7% because arm 2's own block holds loadBaseFile (PRED_CALL); joining the arm into arm 1's call block would load twice for a glitch2mfg devgl build (behaviour), and a helper keeps the call in the guarded block, so the lever doesn't reach it.
+
+### Don't retry (attempt 54)
+
+- The signature check as a helper in any return form (63 loose and up even with the expect; its -1 is 4%, the wrong way).
+- The tail with `type == 14` tested first, in any of the five orders (114 and up).
+- Console's case 24 with the guard and `||` written out (share 0.80, PRED_CALL on the load test) or nested: still the size store with the label.
+
+### What to try next
+
+- exp_pr: what is left is bb13's 50% (the r test after the CF/CG fallback; a continue share in [37%, 49.6%] would do) or a predictor on the `xb.type <= 5` test; neither has a natural source here.  An IPA helper only changes frequencies *inside* itself, and every candidate region (the signature check here, the fallback as attempt 50's loadUpdateBl) costs 63 lines and up on its own.
+- lab_none: the size store is the whole problem for every one-call form; look for a natural defaultBl60 whose copy destination is not a fresh malloc result to the alias oracle and that still compiles to the reference's malloc / test / store / rep movs (none found), or a second defaultBl60 copy in console that crossjump could merge.
+- Otherwise attempt 51's list stands.
+
+### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0, then no `--param`), vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (as attempt 53; lab_none with console's case 24 written out with `||` and the label kept: 2/2, the size store).
