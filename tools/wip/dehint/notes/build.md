@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 51
+
+Attempt 51 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It read lab_none's 4/8 directly off bb-reorder and pinned the exact condition: the r = 1 block gets a trace-end priority (key -100xx) only if console's merged defaultBl60 malloc block starts a round-2 trace and its copy block doesn't follow it, i.e. **176 <= malloc < 196** (0.2 x the entry's 880; src 145 = 716 x guard 29% x loadBl24 share 70%), with round 1 also needing the guard's skip edge >= 440 (guard <= 38.5%).  So guard x share has to land in [0.246, 0.272] with the guard in [35.1%, 38.5%] or the share in [0.846, 0.94].  gcc 6's PRED_TREE_EARLY_RETURN rule (an edge that jumps, not falls through in block order, to the return block) caps every two-call loadBl24 at 70.0%, and no predictor combination puts the guard in its window (call + early return in a guard-holding helper = 39.0%: round 1 breaks by 3; `> 0` = 52.5%; `continue` is 50% in gcc 6 and changes the CFG).  The one-call share (85.9%) fixes the order, but the size store then loses its only dependent (sched2's RFS_DEP_COUNT tie-break), and no defaultBl60 spelling gives it one.  New equal bases (IDENTICAL): loadBl24 as g0 (`== 0x60` then `return 0`), r2, r3, r4; the defaultBl60 forms `if (e->data) {..}`, result variable, `== NULL`.  See "## Attempt 51".
+
 ## State after attempt 50
 
 Attempt 50 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It corrected attempt 49's mechanism: **loadXell, loadBl24, loadBaseFile and defaultBl60 are not early-inlined** (each is a call at profile_estimate in both loaders, then inlined by IPA with its own profile scaled to the call block), so the helpers change case 24's and 25's profiles, not the CF/CG arm's (identical before and after); exp_t10's job was bbro's: without the helpers and the expect, connect_traces copies the shared `if (r)` block (the `test edi,edi; jne` line) into the checkBl block, because case 27's extractSmcConfig trace has already taken it.  Then more sharing: the CF/CG load as a helper (85 loose and up), case 23 as a helper (28 and up), the signature check as a helper (95 and up), the nand-dump moves as `useNandData(e, &xb.kv)` (kv and kvAlt in both loaders: **equal base**; smc: 0/2), the could-not-read log as a helper (equal base), case 24's second arm through loadBl24 (25 loose, as attempt 49).  None frees a hint.  New for lab_none: loadBl24 in its one-call `||` form frees the precheck and cold label (loadConsoleBlFiles then differs only in the size store's place), because its own profile gives the defaultBl60 call 85.9% against the two-call forms' 70% at most; but the one call loses the crossjump that orders the size store (attempt 4's borderline) and moves case 27's block in loadBlFiles (24 loose).  See "## Attempt 50".
@@ -2817,3 +2821,62 @@ Combinations (16 subsets of su, p23, nand, slot) don't beat their parts.  On the
 ### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0, and then no `--param` needed), vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (8/4 with the precheck gone too; 0 loose but the size store with loadBl24's `||` body).
+
+## Attempt 51
+
+Goal: attempt 50's lead for lab_none (a loadBl24 with two defaultBl60 call sites whose own profile gives them about 86%), computed from the dumps before full scoring; whether a new loadBl24 body lets the DEVGL arm call it (lab_devgl); whether any of it moves exp_pr's alignment.  src as of b9136db8, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a51_pred.py` (loadBl24's predictions and defaultBl60 call share per body in `a51_bodies.py`), `a51_fpred.py <variant.c> <fn>` (predictions, block frequencies, tests and calls of one function from a variant's profile_estimate dump; works on any `a46run.py -k` output), and, run with `python tools/wip/dehint/bdgen/a46run.py <script>`: `a51_bl60.py` (defaultBl60 forms), `a51_guard.py` (console's case 24 guard spellings), `a51_se.py` (a size test in the SE condition, exp_pr), `a51_arm2.py` (a50_bl24's bodies x arm 2 written or calling loadBl24 x devgl label x console's precheck/label), `a51_store.py` (defaultBl60 store/copy forms on the `||` body), `a51_negb.py` (`(int)r < 0` at p0 on the bodies), `a51_wrap.py` (console's case 24 through a guard-holding helper), `a51_cont.py` (the guard as `continue`).  `bdbbro.sh` now compiles at the build's 99 (was 98).  Probe files in build/bd/a51/probe (not kept).  Loose/strict lines, p99 unless said.
+
+### lab_none read off bb-reorder (bdbbro.sh on src with the precheck and label off, and on a50's `||` body)
+
+- Without the precheck and label the only difference is the order of the last two blocks: round 4 takes the not-entered return (bb 63, freq 20) before the r = 1 block (bb 21, 14).  With the `||` body the r = 1 block (18) goes first although its frequency is lower, because its key carries a trace-end priority (`Possible start point of next round: 53 (key: -1001818)`): its predecessor, the inlined malloc block, ends a round-2 trace.
+- In src's two-call form the two inlined defaultBl60 copies are already one malloc block by bbro (freq 145 = 43 + 102), and it sits mid-trace in round 3 (`22 [165] 20 [145] 24 [131]`: size test, malloc, copy), so the r = 1 block gets no priority.  In the one-call form the malloc block (178) starts a round-2 trace alone and the copy (160) can't follow it (round 2's exec threshold is 0.2 x the entry's 880 = 176).
+- So the exact condition is **176 <= malloc block < 196** (the copy is 0.899 of it and must stay under 176).  malloc = case arm 716 x guard (29%: PRED_CALL alone) x loadBl24's share (70%).  The r = 1 block's own frequency can't do it (it would need 21, i.e. a malloc block of 208, which already meets the condition above).
+- A second constraint, found with the guard helper below: in round 1 the case 24 guard block's trace must run on into the latch block (`18 [716] 57 [9120]`), which needs the skip edge's frequency >= 0.5 x 880 = 440, so the guard <= 38.5%.  So: guard x share in [0.246, 0.272], with the guard at most 38.5% (share >= 0.64).
+
+### loadBl24's share: why two calls stop at 70% (a51_pred.py, probe q.c)
+
+- gcc 6's "early return (on trees)" isn't the front end's: tree_estimate_probability_bb predicts NOT_TAKEN any edge that **jumps** (dest != bb->next_bb) to the return block (a block ending in the return with one successor, EXIT); if the edge's source has a single successor, the prediction goes on that block's incoming edges instead.  Block order is source order.  So exactly one block can fall through to the return block.
+- Values seen: call 29/71, nonequal 72/28, early return 39/61, pointer 85, opcode positive 73, const return 67 (constant other than 0/1), negative return 4.  defaultBl60's NULL edge is 10.1% (pointer 15 + early return 39) in every form returning 0/1 (`if (e->data) {..} return 1`, a result variable, `== NULL`, `return e->data == NULL` all predict the same; a51_bl60.py: all IDENTICAL but the last, all 4/8 without the precheck); only `return 2` / `return -1` change it (behaviour).
+- Two calls: the size test always has PRED_CALL against its call, so it is at most ds(72, 61, 29) = 62.2% (call B falling through to the return, the `return 0` edge jumping); the load test is 20.7% with call A jumping to the return, 29% with A last.  Best: 0.207 + 0.793 x 0.622 = **70.0%** (src, g0, r2..r4), else 0.29 + 0.71 x 0.512 = 65.4% (ok1, n2, n3).  The `||` body: load test 29%, size test ds(72, 61) = 80.1% with no call heuristic (its call block has two predecessors), 85.9%.
+- So the share window [0.846, 0.94] needs one call site, and the guard window needs a guard predictor near 57-61% combined with the call's 29%.
+
+### The guard (a51_guard.py, a51_wrap.py, a51_cont.py)
+
+| Form | Guard | Result (precheck and label off) |
+|---|---|---|
+| src `if (xb.glitch2mfg)` / `!= 0` | 29% | 4/8 |
+| `> 0` / `>= 1` (opcode positive 73%) | 52.5% | 225 (case 24 joins round 1's trace) |
+| `== 1` | 13.7% | 43 |
+| a wrapper `if (!xb.glitch2mfg) return 0; return loadBl24(e);` (three forms) | early-inlined | IDENTICAL with the label, 4/8 without (no change) |
+| a guard-holding copy of loadBl24 (`if (!xb.glitch2mfg) return 0;` then the body; w4, w5), not early-inlined | **39.0%** (call + early return) | 209 to 233: malloc 196 (copy 176, the trace runs on) and round 1's skip edge 716 x 61% = 437 < 440 |
+| `if (!xb.glitch2mfg) continue;` / `{ ..; break; } continue;` | PRED_CONTINUE is 50% in gcc 6 | 313 and up (the skip edge bypasses the r test: CFG change) |
+
+Nothing lands in [35.1%, 38.5%]: no gcc 6 predictor sits between the call's 29% and ds(29, 61) = 39%.
+
+### One call and the size store (a51_store.py, a51_arm2.py)
+
+- The `||` body with loadBlFiles' second arm calling loadBl24 and the devgl label kept: console differs **only in the size store** (2/2), loadBlFiles 61 (the same store in its first arm, plus case 27's and the SE setFlashBuild blocks); with arm 2 written out, loadBlFiles 24 and console 20 (+displ).
+- The store's place is sched2's: in the copy block the ready list is the store, `ecx=0x18`, `edi=eax`, `esi=defBl60`, and rank_for_schedule's RFS_DEP_COUNT tie-break prefers insns with more dependents.  The three register sets feed the rep movs; the store has none (the copy's destination is the malloc result, so points-to separates it from `e->size`), so it goes last.  With two calls crossjump drops the copy's memory attributes, the store gets the rep movs as a dependent, and the tie falls to source order (store first).
+- defaultBl60 spellings (the copy before the store, a local pointer `p` either way, `sizeof(defBl60)`, `e->size` as the copy's length): all the same 2/2 and 61.  Nothing natural gives the store a dependent.
+
+### Other items
+
+- Bodies x arm 2 x labels (a51_arm2.py, 11 bodies x 2 x 2 x 2): with arm 2 written out, g0, r2, r3 and r4 are IDENTICAL (equal bases), n2/n3/ok1 put console at 4/8; arm 2 calling loadBl24 is 25/73 and up with the label, 39 and up without, for every two-call body; the one-call bodies are 61 (above).  So no body frees lab_devgl.
+- exp_pr (a51_negb.py at p0): `(int)r < 0` stays 0/7 on every body and arm form (the 5..21 arm's profile doesn't see case 24).  A size test in the SE condition (a51_se.py) adds a compare the reference doesn't have (72 loose and up), so it can't help: the alignment needs a predictor change on the *existing* tests.
+- exp_devgl's 7 lines re-read: the `sub/cmp/jbe` branch where the reference has `cmovbe`; attempt 41's mechanism, not retried.
+
+### Don't retry (attempt 51)
+
+- Two-call loadBl24 bodies for the share (capped at 70.0% by the early-return rule above; 65.4% is the only other value).
+- Console guard spellings `> 0`, `>= 1`, `== 1`, `!= 0`; wrappers around loadBl24 (early-inlined, no change); a guard-holding loadBl24 copy (39.0%, just past round 1's 38.5%); the guard as `continue`.
+- defaultBl60 forms for the NULL edge (10.1% in every 0/1 form) or for the size store (sched2's tie-break, above).
+- A size test in the SE condition for exp_pr.
+
+### What to try next
+
+- lab_none's condition is now exact (malloc block in [176, 196), guard <= 38.5%, so guard x share in [0.246, 0.272]).  Levers not tried: the case arm's 716 (console's switch has 10 edges; 9 would give 796, i.e. a malloc block of 161 at 29% x 70%, still short; 8 edges, or a higher switch-block frequency from the none test, would be needed), and the entry's 880 (the thresholds are 0.5 and 0.2 of it: a loop predicted to iterate longer, e.g. a third loop exit splitting PRED_LOOP_EXIT's 9% three ways, lowers both thresholds; but every other block of loadConsoleBlFiles is measured against them too).
+- The size store with one call: anything that makes the copy's destination may-alias `e->size` (points-to losing the malloc result), or a natural dependent of the store in the copy block.
+
+### Costs now (strict/loose, removed alone; 7 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0, and then no `--param` needed), vol_fail 220/58, lab_devgl 57/14, exp_devgl 43/7, pin_size 82/40, lab_none 351/225 (8/4 with the precheck gone too; 2 loose, the size store, with loadBl24's `||` body and arm 2 calling it).
