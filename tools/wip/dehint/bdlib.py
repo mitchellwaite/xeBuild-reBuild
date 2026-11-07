@@ -2,7 +2,7 @@
 build/bd/reference.o (a copy of the last matching build/obj/build.o).
 
 python tools/wip/dehint/bdlib.py <file.c> [-p N|-np] [-v [fn]] [-L]
-  -p N  builtin-expect-probability=N (default 98, as build.sh); -np for plain -O3.
+  -p N  builtin-expect-probability=N (default 99, as build.sh since attempt 46); -np for plain -O3.
   -v    print the per-function diff, optionally only for fn.
   -L    loose: ignore jump targets and padding when counting (BDLOOSE=1 does the same).
 
@@ -22,7 +22,8 @@ BUILD = os.path.join(R, 'build', 'bd')
 REF = os.path.join(BUILD, 'reference.o')
 SRC = os.path.join(R, 'src', 'build.c')
 os.makedirs(BUILD, exist_ok=True)
-P98 = ['--param', 'builtin-expect-probability=98']
+# build.sh's value; the name is from before attempt 46, when it was 98
+P98 = ['--param', 'builtin-expect-probability=99']
 
 
 def read_src(path=SRC):

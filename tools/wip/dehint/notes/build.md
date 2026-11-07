@@ -3,6 +3,16 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 46
+
+**8 tricks** (11 before): `--param builtin-expect-probability=99` (was 98), 3 `__builtin_expect` (type == 10, `r != 0` in the tail, devgl in buildFlash), 1 pin (size), the empty asm barrier on `fail:`, 2 hot and cold labels (the new `devgl` hot label on loadBlFiles' case 24 second arm, and loadConsoleBlFiles' `none`).  loadBl is gone: loadBlFiles is attempt 45's n1 (the switch in the loop as loadConsoleBlFiles has it, `r` a loop-body local, one `fail:` site closing case 2, console's CF/CG fallback, case 23 as `e->size & 3`) plus one hot label at the head of case 24's `DEVGL || DEVGL16` arm, found by a sweep of one hint at every `if` (a46_hint1.py, 146 variants, the only IDENTICAL one).  Removed: `else if (type)`, both `__builtin_constant_p` (with the dead default entry and `chk:`), lab_t5le; added: lab_devgl, so a net of 3.  IDENTICAL BYTES at p95 and p99 (not 96 to 98, 92 and below 42 loose and up); full build SHA256 matches.  See "## Attempt 46".  Borderline changes: loadBl case 23's `(e->size & ~3) != e->size` is gone (console's `e->size & 3` now), the `else if (type)` row below (attempt 26's table) is gone with the dead test; case 24's two calls, arm 2's `r = 0` and case 27's re-tested `r` stay, in loadBlFiles with `r` for `*pr`.  No new borderline shape.
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| loadBlFiles case 24 (both arms), loadConsoleBlFiles case 24 | `if (loadBaseFile(..)) r = defaultBl60(e); else if (e->size != 0x60) r = defaultBl60(e);` | unchanged from attempt 4's entry, now in loadBlFiles' switch |
+| loadBlFiles case 24, second arm | leading `r = 0;` | unchanged ("For review" comment), `*pr` -> `r` |
+| loadBlFiles case 27 | the fallbacks as a sequence of `r` tests | unchanged from attempt 34's entry, `*pr` -> `r` |
+
 ## State after attempt 45
 
 Attempt 45 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It rebuilt loadBlFiles in loadConsoleBlFiles' style (the switch in the loop, `r` a loop-body local, one `r = -1` site closing case 2, r tested once after the switch) from src's *current* arms (a45lib.py), and found the closest structure so far: with console's update fallback (a good fallback clears r, then `if (r) break;`), case 23's test as `e->size & 3` and the param at 99, **`else if (type)`, both `__builtin_constant_p` and lab_t5le all go and loadBlFiles is 14 loose / 34 strict, every other function matching** (drafts/build_loadBlFiles_loop_nearmiss.patch).  The one block left is case 24's r = 1 block after the first arm: it needs priority in bbro's round 4, which in src comes from the arm-1 malloc block ending its trace (edge 171 < exec_th 176); in the loop the case arms are 597 instead of 513 (the none test gets no PRED_CALL without a call in the guarded block, attempt 9's reading), so the edge is 199 and the trace runs on.  No natural case 24, fallback, defaultBl60 or guard form moved it (gen_bd560 to gen_bd562, a45_*.py).  Putting the same arms back in a helper (any result form) is 100 loose and up.  See "## Attempt 45".
@@ -2536,3 +2546,52 @@ Axes: fallback (src's nested with `goto chk`, attempt 25's and9, `con2` = loadCo
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 44 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object, cp 118/66 in the object, exp_devgl 43/7, pin_size 82/40.  New: the loop form n1 (fb=con2, sz=and3, etype + cp + lab_t5le off, p99) 34/14 in loadBlFiles, nothing else differing; on n1 exp_pr off 38/16, vol_fail off 41/15, both 51/19, exp_t10 off 215/98 (+displ).
+
+## Attempt 46
+
+Goal: attempt 45's n1 (drafts/build_loadBlFiles_loop_nearmiss.patch: 14 loose / 34 strict in loadBlFiles, case 24's r = 1 block laid out after the suGetCF block): natural ways to give its case-24 arms the reference's frequency, then trades (n1 plus one hint, n1 minus each remaining hint).  src as of d1bcd1e6.  New tools in `tools/wip/dehint/bdgen`: `a46run.py <script.py> [-p ..] [-k label]` (scores `V = {label: [(old, new)..] or fn}` on build/bd/a46/n1.c, written by a45lib's CLI on d1bcd1e6's src, see its docstring), and the scripts `a46_loop.py`, `a46_exit.py`, `a46_a1exp.py`, `a46_a1flag.py`, `a46_hint1.py` (on n1), `a46_m1hints.py`, `a46_devgl.py` (on src after this attempt).  Scratch in build/bd/a46 (not kept: `dump.sh file.c outdir [p]` writes profile_estimate and bbro dumps, `split.py dir [fn]` cuts one function out of them for bdpred.py / bdblocks.py).  Loose/strict lines in loadBlFiles unless said.
+
+### n1's window, read off the dumps (bdpred.py, bdblocks.py)
+
+- The none test is bb 3 / bb 4, 50% each (no predictor); in src the strnicmp edge got PRED_CALL (29%) because its destination was the loadBl call block.  gcc 6's call heuristic only looks at the edge's immediate destination block, which in the loop form is the switch block (no call), and the crc edge's destination isn't dominated by it, so no ordering of the two tests gives it (`crcfirst`: 318).
+- Case 24 at 597: arm 1's tests are JTAG `p1371` (nonequal 28% with call 29%, combined 13.7%: its true edge's destination is arm 1's loadBaseFile block, which it dominates) then glitch2mfg 50% (same destination, not dominated, so no call heuristic).  P(arm 1) = 0.137 + 0.863 x 0.5 = 0.568, 339; the two defaultBl60 copies 98 + 123 = 221.  For the malloc block to stop round 2's trace it needs P(arm 1) about 0.49 (src's 0.568 x 0.86), which is what nonequal alone on the JTAG test and the call heuristic on the glitch test give (0.28 + 0.72 x 0.29 = 0.489), i.e. the glitch test first (`gfirst`, 122: right frequency, wrong test order).
+- So the reference's case 24 is consistent with src's helper scaled by the none test's PRED_CALL, not with any shape of arm 1 in the loop.
+
+### Sweeps on n1 (p99, and p95 where said)
+
+- a46_loop.py: `while` loop, `switch (type = e->type)`, `if (r != 0)`, `!= 0` on the none tests, the none test as `if (!a && !b) ; else {..}`: all equal (14).  Pointer IV 388, crc first 278, `int r` 117 (+displ each).
+- a46_exit.py: the could-not-read exit moved after the loop (`if (r) break;` + log after, 54; log inside then break and `return r ? -1 : 0` or `if (r) return -1`, 54), `i = xb.nFiles` in place of the return (639), r in the loop condition (627).  The `return -1` inside the loop is the reference's shape.
+- a46_a1exp.py / a46_a1flag.py, arm 1's probability: an expect on the glitch test (68 at p95, 258 at p99) or on the whole arm (258), `glitch2mfg == 1` (121), the two arms' bodies duplicated as `if (JTAG) .. else if (glitch) ..` (163), a flag (`g = glitch; if (JTAG) g = 1; if (g)`, 144; `g = JTAG || glitch`, 94).  The arm's window is narrow: too low breaks the rest of case 24's layout.
+- The param on n1 (a45psweep, 50 to 99): only 95 and 99 give 14; nothing lower.
+- **a46_hint1.py**: one hint at every `if` in defaultBl60 and loadBlFiles (`__builtin_expect(c, 0)`, `(c, 1)`, hot and cold labels at each braced then-block), at p95 and p99: **one IDENTICAL**, a hot label at the head of case 24's second arm (`if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) { devgl: __attribute__((hot)); ...`), at both values.  Next best 14 (88 variants, i.e. no effect); nothing else under 14.
+
+### What the hot label does (dumps of the landed source, build/bd/a46/dm2)
+
+- The arm-2 test is `opcode values positive 27%` (the folded `(type - 4) <= 1`) with call 29%: 13.1%; with the label (hot label 85%) DS gives 46.1%.  Arm 2 goes from 78 to 275, and round 2's trace from arm 1's malloc block (`45 48 49`) runs on into arm 2 (`45 48 49 41 51`).  Round 4's traces are unchanged (the r = 1 block 46 is still its own trace, after suGetCF's 10); it's connect_traces that now takes `46 108` before `10 15`, so the r = 1 block lands before the suGetCF block as in the reference.  That's a different route from attempt 45's (round 2's malloc trace ending); no natural form of arm 2 was found that raises its probability (below).
+
+### Landed
+
+src/build.c: loadBl and its helper call replaced by n1's loop (re-indented as loadConsoleBlFiles, `chk:` and the dead `if (0)` entry gone, the case-23 borderline comment gone with the spelling, the `fail:` comment moved over), plus the devgl hot label with a comment; build.sh's param 98 -> 99.  `sh build.sh` ends with 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c.  bdhints.py's table now names exp_pr (`r != 0`), lab_devgl and vol_fail by the new text; bdlib's default flags (`P98`) are now the build's 99.  Tools that edit loadBl's text (a45lib, gen_bd* that use loadBl's lines) need d1bcd1e6's src.
+
+### Trades and costs on the landed source (a46_m1hints.py, a46_devgl.py)
+
+- Each remaining hint removed alone (p99; p95 the same): exp_pr 2/4 (the SE copy's `jbe` becomes `ja; jmp`, lab_t5le's old effect), vol_fail 1/7 (the -1 appended to the size log, attempt 9's reading), both 5/17, lab_devgl 14/34 (= n1), exp_devgl 7/43 (buildFlash), pin_size 40/82 (calcBlAreaSize), exp_t10 102/208 (+displ), lab_none 231/333 (loadConsoleBlFiles).
+- The param: 95 and 99 match; 85, 88, 92 are 42 loose; 90, 96 to 98 60 and up; no `--param` 102.
+- Natural forms for the devgl arm without the label (a46_devgl.py): `!(type != DEVGL && type != DEVGL16)`, `(uint32_t)(type - DEVGL) < 2`, `type > GLITCH && type < DEVKIT` all 14 (the same range test); an inner `switch (xb.type) { case DEVGL: case DEVGL16: .. }` gives the arm 50% at profile_estimate and is 14 loose / 204 strict (+displ): the switch expands to other code.
+
+### Don't retry (attempt 46)
+
+- The none test's 29% in the loop form by test order or spelling: gcc 6's call heuristic needs a call in the edge's immediate destination, which is the switch block.
+- Arm 1's probability by expects, `== 1`, flags or duplicated bodies (above); the glitch test first has the right frequency but the wrong code order.
+- The could-not-read exit anywhere but inside the loop, or the loop as a pointer IV.
+- A single hint elsewhere on n1 (a46_hint1.py covers every `if`).
+
+### What to try next
+
+- lab_devgl: a natural reason for case 24's second arm to be likely (DS ~46% on its test), or for connect_traces to take the r = 1 block's trace before suGetCF's.  The window: the arm-2 test's edge must make round 2's trace from arm 1's malloc block continue through the DEVGL test into arm 2.  Gcc 6 predictors that raise an edge: pointer != NULL (85%), the call heuristic on the *other* edge (71%), opcode positive TAKEN (`x > 0`, `x >= 0`), none of which fits a build-type test.
+- exp_pr (2 lines) and vol_fail (1 line) are the cheapest now; both were looked at before on src (attempts 9, 43); re-read them on the loop form, where the tail and `fail:` sit in the switch.
+- exp_t10 is 102 here; with the cp entry gone it no longer has attempt 42's "nearly free" pairing.
+
+### Costs now (strict/loose, removed alone; 8 tricks)
+
+exp_pr 4/2, vol_fail 7/1, lab_devgl 34/14, exp_devgl 43/7, pin_size 82/40, exp_t10 208/102 (+displ), lab_none 333/231.

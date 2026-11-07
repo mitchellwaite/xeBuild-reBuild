@@ -9,9 +9,9 @@ import bdlib, bdrun
 
 H = {
     'exp_t10': [('__builtin_expect(type == 10, 0)', 'type == 10')],
-    'exp_pr': [('if (__builtin_expect(*pr != 0, 0))', 'if (*pr != 0)')],
-    'lab_t5le': [('		t5le: __attribute__((hot));\n', '')],
-    'vol_fail': [('	__asm__ __volatile__("");\n', '')],
+    'exp_pr': [('if (__builtin_expect(r != 0, 0))', 'if (r != 0)')],
+    'lab_devgl': [('				devgl: __attribute__((hot));\n', '')],
+    'vol_fail': [('				__asm__ __volatile__("");\n', '')],
     'lab_none': [('none: __attribute__((cold));\n', 'none:\n')],
     'pin_size': [('		__asm__("" : "+b"(size));\n', '')],
     'exp_devgl': [('__builtin_expect(xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16, 0)', 'xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16')],
