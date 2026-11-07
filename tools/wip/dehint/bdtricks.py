@@ -29,10 +29,7 @@ def crc(case):
 
 
 T = {
-    # --- loadFileCrc
-    'exp_verbose': [('if (__builtin_expect(verbose, 1)) {', 'if (verbose) {')],
-    'pin_e': [('''			__asm__("" : : "S"(e));
-''', '')],
+    # --- loadFileCrc: exp_verbose and pin_e gone (attempt 20, the pad test repeated in the log choice)
     # --- loadInputFile
     'noclone': [('''__attribute__((noclone))
 int loadInputFile''', 'int loadInputFile')],

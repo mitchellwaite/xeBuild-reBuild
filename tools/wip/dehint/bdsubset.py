@@ -10,7 +10,6 @@ G = {
     'patchsmc': ['nei_smc', 'cb1', 'cb2', 'cb3', 'cb4'],
     'checkbl': ['nei_chk', 'pin_type', 'lab_size', 'cb5', 'pin_m', CRC],
     'loadbl': ['exp_t10', 'lab_t5le', 'exp_pr', 'lab_badsize', 'exp_27', 'pin_d', 'vol_fail'],
-    'crc': ['exp_verbose', 'pin_e'],
     'console': ['exp_t9', 'lab_none'],
 }
 names = sys.argv[1:] or list(G)

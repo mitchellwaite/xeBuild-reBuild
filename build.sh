@@ -51,7 +51,7 @@ for f in $objects globals; do
     # its data is defined in the original's .data/.bss order, reversed
     image_read) orig="$f.c"
            cflags="-O3" ;;
-    # loadFileCrc's verbose hint (92-99); 98 for tools/wip/'s checkBl draft.
+    # loadBlFiles' expects (96, 98 and 99 match; 97 and 95 and below don't).
     build) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=98" ;;
     # the COMMON block in address order (src/globals.c's head comment)

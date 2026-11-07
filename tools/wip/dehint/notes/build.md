@@ -3,6 +3,14 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 20
+
+**14 tricks** (16 before): `--param builtin-expect-probability=98`, 5 `__builtin_expect` (type == 10, `*pr != 0`, type != 24, isUpdateBl, devgl), 2 pins (d, size), the empty asm barrier, 2 hot and cold labels (t5le, none), 2 `__builtin_constant_p`, 1 dead test (`else if (type)`).  loadFileCrc's exp_verbose and pin_e are gone: the log choice repeats the pad test, `if (pad && (size & 15) && size != e->size) pad log; else bytes log;` inside `if (verbose)` (gen_bd315, gen_bd316), which gives the non-pad path its own edge to the bytes log at profile_estimate (bytes log 3220, round 2) instead of a later thread (1102).  IDENTICAL BYTES, full build SHA256 matches.  pin_size (gen_bd310 to gen_bd312, whole-function forms) and pin_d (gen_bd317, lifetime and scope) didn't move.  See "## Attempt 20".  New borderline shape, marked in src:
+
+| Where | Shape | Why it's borderline |
+|---|---|---|
+| loadFileCrc's verbose block | `if (pad && (size & 15) && size != e->size)` picks the pad log | The pad condition is computed twice (once for the store, once for the log), and `size != e->size` can't be false once it holds.  Live, reads naturally; chosen because the repeat creates the non-pad path before branch prediction |
+
 ## State after attempt 19
 
 Attempt 19 landed nothing; src/build.c and build.sh are unchanged, so the count (16) and attempt 15's review table stand.  It followed attempt 18's lead, t5le through S / Xc, and closed it: at profile_estimate S / Xc = Psig x Pk x Pf, and in natural code each factor takes only fixed values (Psig 64%: fold packs at most two of the 5/17/11 compares into one 50% block, the third gets nonequal; Pk 85%: the pointer heuristic; Pf 29% or 50%: the verify must stay a zero test, so only PRED_CALL moves it), giving 15.8% (src) or 27.2% (plain else, which moves the failed log) where t5le needs 21.6% with the failed log still under bb-reorder's last-round threshold.  The SE copy's frequency (t5le's other factor) can't be lowered either: threading re-splits the `type == 9` test from its total, so the SE block stays 6 even with the CF path at 2% (diagnostic).  Sweeps gen_bd300 (diagnostics) and gen_bd301 (failed-arm spellings): nothing better than src.  See "## Attempt 19".
@@ -1114,3 +1122,66 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, exp_t24 29/7
 - Attempt 18's closed form is now closed on all three of its inputs for natural code: S / Xc (this attempt), p (no heuristic reaches X's arms; attempt 11) and q (attempt 18).  t5le's other two conditions are set by blocks other tricks already pin: the SE copy's frequency (threading keeps the SE block at 6) and the type-11 no-key log's 17 (the constant_p weight, attempt 14).  So t5le only goes with a different tail or a different constant_p entry, i.e. with the source of loadBl's whole tail, not one test.
 - The only multi-trick lead left is still attempt 10's near miss (vol_fail, t5le and exp_pr for 3 loose with the old badsize label, 9 loose on the current case 23).  Its two open questions are the same as attempt 11's: a `fail` block that lives to expand without the asm, and a `<=5` arm block that vrp1's joiner threads pass through.
 - Otherwise build stays parked at 16.
+
+## Attempt 20
+
+Goal: the functions that got the least work lately: calcBlAreaSize's pin_size by whole-function forms (image_read's lever), then loadFileCrc's exp_verbose + pin_e by structure, then pin_d.  Generators from gen_bd310.  Scratch in build/bd/a20 (not kept).  New tool: `bdorder.py gen.py [regex]` prints, per case, calcBlAreaSize's statement before each setPatchSlot in the .optimized dump (or the lines matching regex) with the score.
+
+### pin_size: whole-function forms (gen_bd310 to gen_bd312, pin off)
+
+- gen_bd310 (144 cases): kit lookups as a `for (t = 12; t <= 14; t++)` loop (with and without x, `< 15`), a loop over a `static const` table, index locals per bootloader (`cb`, `cd`, `ce`, `cf`) summed at the end in three ways, size locals summed at the end, the sum as one expression, each arm returning through an `alignBlArea` helper, a `?:` return; x as uint32_t or int.  Best is src's own form (40 loose / 82 strict); the running `cb`/`cd` form is the same code, everything else 129 loose and up (loops 238 and up: cunroll doesn't give the straight-line lookups back).
+- gen_bd311 (80 cases): the other arms' forms (retail head as one expression, offset first, a loop; xell block with `xs = 0x40000` first, a pointer, the arms written out, an offset local; JTAG lookups inline): all 40 at best; most are the same GIMPLE.
+- gen_bd312 (16 cases): setPatchSlot / imgCfSize shared by kit and retail (104 and up), each arm as a static helper called once (134 and up).
+- Read from the dumps (`bdpasses.py`, PRE details): reassoc1 is what first writes the kit sum as `_40 + size_254` (rank: the load ranks above the PHI in the same block); PRE then replaces `_40` by prephitmp_229 and fold orders by version.  PRE's insert walk does the kit arm first and pops the free list (243, 242, 237, 236, 229, ...: dom2's retail-arm copies that reassoc1 and dce freed), so the kit names are always below the size PHI's (254); the JTAG arm comes last and gets fresh names (284 to 287), which is why its sum is `size_249 + prephitmp_287`.  `bdorder.py gen_bd311.py`: no arm form flips the kit sum (prephitmp 134 to 243 against size 249 to 255).
+- But the operand order isn't the whole story: diagnostic `"+r"(size)` in place of `"+b"` (order fixed by the asm, no register) fixes the JTAG arm and the early files[0].size load but ties the kit sum to the prephitmp (`add ebx,eax` with size in eax): 9 loose.  So the reference needs size's PHI in its own allocno with ebx, which is IRA's region choice at the 14 loop (attempt 4), not only the version order.
+- Nothing in gen_bd310 to gen_bd312 gets under src's 40 loose; pin_size stays.
+
+### loadFileCrc (exp_verbose + pin_e): structural forms (gen_bd313 to gen_bd315)
+
+- gen_bd313 (64 cases), the logs as a `logReading` helper (verbose outside or inside, if/else or early return, padded size as `e->size`, `align16(size)` or read from e): 67 loose in loadFileCrc at best, and .rdata moves (the helper stays a call in some callers).
+- gen_bd314 (16 cases), attempt 12's goto form with the pad arm nested or `&&`, the pad log's third argument, `size == 0`, `c != crc`: all the old 38 (name and size swapped: IRA pushes name before crc, as its frequency fell with the pad log's).
+- **gen_bd315: IDENTICAL BYTES with both hints off** (`vfirst`): the pad test repeated inside `if (verbose)` to pick the log,
+  ```
+  if (verbose) {
+  	if (!pad || !(size & 15))
+  		bytes log;
+  	else {
+  		if (size != e->size) pad log; else bytes log;
+  	}
+  }
+  ```
+  Either polarity of the inner compare matches.  The forms that give each pad arm its own verbose test and bytes log (non-pad arm first, 104; pad arm first, attempt 12's dup, 79 and .rdata) don't.
+- **gen_bd316, landed (16 -> 14, IDENTICAL BYTES, full build SHA256 matches):** `plain pos_and int`,
+  ```
+  if (verbose) {
+  	if (pad && (size & 15) && size != e->size)
+  		pad log;
+  	else
+  		bytes log;
+  }
+  ```
+  `neg_nest`, `neg_chain` and `pos_nest` (the same test with nested if/else) also match; the compact `&&` form is in src.  The padded arm without the compare (`ponly`, 67) doesn't, so the dead `size != e->size` stays (the reference has its compare at 2a7).  A `padded` flag for the pad condition (int or BOOL, before or after the first store) makes loadFileCrc.constprop clones: 10000+.
+  - Borderline (marked in src): the pad condition is computed twice, and `size != e->size` can't be false once it holds.  It's live code that reads naturally ("log the pad if we padded"), like patchCpuFan's repeated test.
+  - Mechanism (checked in the bbro dump, `bddump.sh src/build.c loadFileCrc bbro`): the re-test gives the non-pad path its own edges to the bytes log at profile_estimate (pad false 50%, `size & 15` false 50%, then nonequal 28% on the rest), so the log gets about 0.82 of the verbose arm: bb 12 [3220], round 2 (needs 2000), against 1102 in the old form, where only a later thread separated the path.  The pad log is 716.  The registers (name edi, size ebp, e esi, f ebx) then come out as the reference has them with no pin, as they did in the old form with both hints off.  The earlier forms gave the non-pad path its own route by a goto (pad log 504: name below crc) or by a second verbose test per arm (dup: .rdata order).
+- **Lesson: when a hint is about a path that only a later thread separates, test the condition that decides the path again where it's needed, so the path exists at profile_estimate.**  Attempt 12's search was for forms that reach the log "directly"; the re-test does it without a goto or a second log.
+- gen_bd313 to gen_bd316 replace the old loadFileCrc text, so they only rerun against src as of a0108d6d (before this landing).
+
+### pin_d: lifetime and scope (gen_bd317, pin off, on the landed src)
+
+- d in its block, assigned in the test, absent (loadConsoleBlFiles' spelling), an early `break`, a file-entry pointer for the tail (with and without the break), `void *` and `const` d, the size in a block local inside `if (d)`: all the old 14 loose / 23 strict (GIMPLE is the same ARRAY_REF loads).  The size in a local read next to d (either order) is 143.  Nothing moves IRA's pop order (attempt 16: the base's thread is popped before n's).
+
+### Don't retry (attempt 20)
+
+- pin_size by whole-function forms: loops over types or a table (cunroll doesn't give the straight-line lookups back), index or size locals summed at the end, one-expression sums, per-arm returns or helpers, a shared setPatchSlot tail (gen_bd310, gen_bd312); by the other arms' forms (gen_bd311: none flips the kit sum's operand order, and the order alone isn't enough, see the `"+r"` diagnostic).
+- loadFileCrc: done.  The `logReading` helper (gen_bd313) and attempt 12's goto form with spellings (gen_bd314) are worse than the landed form anyway.
+- pin_d by d's or the size's lifetime and scope (gen_bd317), on top of attempts 4, 5 and 16.
+
+### Costs now (strict/loose, removed alone; 14 tricks)
+
+lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, exp_t24 29/7, exp_devgl 43/7, pin_size 82/40, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (`bdhints.py` on the landed src).  The two `__builtin_constant_p`, the dead `else if (type)` and the `--param` aren't in bdhints.
+
+### What to try next
+
+- **The re-test lever on the other frequency hints.**  Where an expect or label exists because a path is only split by a later thread (vrp1/dom), a natural re-test of the deciding condition at the point of use creates that path before profile_estimate.  loadBl's tail (t5le, exp_pr: vrp1 joiner copies of the `xb.type <= 5` test) is the obvious candidate, as is exp_t10; the brief kept this attempt off loadBl, so it's untried there.
+- pin_size: the kit sum needs its own allocno in ebx (IRA's region split at the 14 loop); whole-function forms don't move it.  If anything, look for a form that changes the 14 loop's region (its frequency or pressure), not the sum's spelling.
+- pin_d stays an IRA pop-order tie.

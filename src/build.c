@@ -448,14 +448,14 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	e->size = size;
 	if (pad && (size & 15))
 		e->size = align16(size);
-	/* hints: the "bytes" log must be hot enough for bb-reorder's second round
-	   (build.sh's expect probability, 92-99); the pin sets e's register in the
-	   out-of-line copy only (callers with pad == 0 drop this block) */
-	if (__builtin_expect(verbose, 1)) {
-		if (size != e->size) {
+	/* Borderline, for review: the pad test is repeated to pick the log, and
+	   `size != e->size` can't be false once it holds.  Live and natural, but
+	   redundant; it's what lets the non-pad path reach the "bytes" log before
+	   branch prediction, which replaces an expect on verbose and a pin on e */
+	if (verbose) {
+		if (pad && (size & 15) && size != e->size)
 			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, align16(size));
-			__asm__("" : : "S"(e));
-		} else
+		else
 			log_printf(1, "reading %s (0x%x bytes)", name, size);
 	}
 	e->data = calloc(e->size + 0x10000, 1);

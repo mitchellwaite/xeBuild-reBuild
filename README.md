@@ -81,17 +81,17 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. build</b>: 16 tricks, very hard</summary>
+<summary><b>1. build</b>: 14 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=98`
-- 6 `__builtin_expect`, 3 pins, 1 `asm` barrier and 2 hot and cold labels, across
-  `loadFileCrc`, `loadBl`, `buildFlash` and others
+- 5 `__builtin_expect`, 2 pins, 1 `asm` barrier and 2 hot and cold labels, across
+  `loadBl`, `buildFlash` and others
 - 2 `__builtin_constant_p`: a dead entry in `loadBl`'s `checkBl` copy that lives
   until dom2
 - 1 dead test: `else if (type)` in `loadBl`, always true there
 
 It's the largest file at 2,800 lines. The expect probability has to sit in a
-narrow, unusually high range (92-99), and the dom2 entry is there to keep one
+narrow, unusually high range (96, 98 or 99), and the dom2 entry is there to keep one
 frequency from scaling to 0. `tools/wip/dehint/notes/build.md` has the mechanisms
 and what's been tried.
 
