@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 63
+
+Attempt 63 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It read vrp1's joiner update for the param on its own (exp_pr kept, gcc's default 90) down to the integers: the other copy of the tail test gets P(>5) = (freq26 x (1 - p) - S + freq27 x q) / (freq26 - S) = (74.5 - 41 + 7.5) / 108, because the signature-failed thread runs first and takes min(S x p, freq27 x q) = 7.5 off the `<= 5` side (gcc 6's freqs_to_counts_path / compute_path_counts / update_profile).  Every term is a block frequency fixed by Psig 0.64, Pk 0.85, Pf 0.5, p 0.5 and q 0.1, and rounding can't give the +1 on S it needs, so the param alone has no natural route on this CFG.  A second route to the no-key copy's alignment was found: 112 >= 21 (instead of 111 <= 1) works with 111 at 2, and Pk = 69.8% (PRED_CALL off the no-key arm) gives 29, but only forms with a second pub1bl test do that (57 loose).  Target B by the `<= 5` exit inside the failed arm (attempts 14 and 47) re-run on the current src: 22 loose at best, and it can't close the chain at all (no thread on X, so P(>5) is 50%).  See "## Attempt 63".
+
 ## State after attempt 62
 
 Attempt 62 landed nothing; src/build.c and build.sh are unchanged, so the count (3) and attempt 60's review table stand.  It tried attempt 61's lead (a predictor on the checkBl result test) and found it can't be done the way it needs: the closing edge is the *break* side (P(r == 0) has to go under 50%), and every predictor a natural form of that test can get points the other way.  `(int)r < 0` / `<= -1` (opcode positive) sends 73% to r == 0 (215 loose); an `int r` local, checkBl's return type (long, unsigned long, uint32_t, int32_t, ssize_t) and the assignment-in-test spellings leave the test with no predictor (7 / 4 / 2); a static checkBl gets the local calling convention (457 loose).  The new reading is for the param alone: with exp_pr kept at gcc's default 90 (no `--param`), the SE copy's P(>5) is 38.1% and needs < 37.5% (at p91 it is 37.4%).  By the joiner formula that needs S / Xc >= 0.28 (S 41 -> 42 at Xc 149; it is 0.275, Psig 0.64 x Pk 0.85 x Pf 0.5), so freeing the param needs only a 2% rise in the signature-failed share, but Psig, Pk and Pf only take fixed heuristic values (the next one up, Pf = 71%, costs 29 loose).  A diagnostic with 13 switch targets (SE = 6) closes the chain on its own, but the reference's jump table has exactly 12.  See "## Attempt 62".
@@ -3472,3 +3476,55 @@ Goal: attempt 61's lead (give the checkBl result test in loadBlFiles' 5..21 arm 
 ### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
 
 exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99; p91 to p94 not scored).
+
+## Attempt 63
+
+Goal: the brief's two targets: (A) the param on its own (exp_pr kept, gcc's default 90), by moving one factor of the signature-failed share S / Xc a little; (B) exp_pr and the param together.  src as of a17c6183, unchanged.  New scripts in `tools/wip/dehint/bdgen`: `a63_sf.py` (attempt 47's a47_sigfail.py forms on the current src), `a63_sf2.py` (the `<= 5` exit in the failed arm: 4 arm forms x 4 tails x the setFlashBuild argument), `a63_misc.py` (11 natural edits of the 5..21 arm not in a62_s.py), `a63_diff.py` (`python tools/wip/dehint/bdgen/a63_diff.py <script> <label> [fn] [-p N]`: loose unified diff of one function against the reference).  Chains with `a62_semeas.py <script> -x -p 90`, scores with `a60lib.py <script> -p 0 -o "-"`.  Scratch in build/bd/a63 (not kept: `-dA` output of src at p90 / p99 and of s1brk, vrp1 dumps of both).  Loose/strict lines, no param unless said.
+
+### The joiner update in integers (vrp1 dump, `-details-blocks`, p90)
+
+- At vrp1 the tail test X is block 26 (freq 149), its preds 124 (non-signature types, 54), 24 (passed, 41), 25 (no-key, 14) and 23 (failed, S = 41, r = -1); T (`if (r) goto fail`, the expect) is 27 (freq 75, 10% to fail).  Four threads are registered, the failed edge's first (`Threaded jump 23 --> 26`), then the three r = 0 edges into one copy.  The SE path isn't separate yet: at vrp1 the type-9 paths (15 / 16 / 17 -> 18) get their own checkBl copy and join the type-11 test, so the SE flow is part of X's 149.
+- gcc 6 converts frequencies to counts for the path (freqs_to_counts_path: block freq x 10000, edges by probability).  For the failed path (23 -> 26 joiner -> 27 -> 111) compute_path_counts scales the joiner edge by S / freq26 (74.5 x 41 / 149 = 20.5), the normal edge 27 -> 111 isn't scaled (75 x 10% = 7.5), and the path takes the minimum, 7.5; update_profile takes 41 off block 26 and 7.5 off 26 -> 27, and the probabilities are recomputed from those counts.  So the copy the other three edges get has **P(>5) = (freq26 x (1 - p) - S + freq27 x q) / (freq26 - S) = (74.5 - 41 + 7.5) / 108 = 38.0%** (38.1% read; post-vrp1 blocks 130 / 132: 17.5% / 61.9%).  It needs < 37.5%: numerator under 40.5, i.e. S = 42 (37.4%) or freq26 <= 146 with S at 41.  Done in the other order (r = 0 edges first) it would be 50%.
+- S is the failed log block's own frequency (40.53, already rounded up), freq26 and freq27 X's and T's (149.07, 74.5 -> 75).  The ratio S / freq26 is Psig x Pk x Pf whatever the flow into the arm, so rounding can't supply the missing 2.4% (S would need 41.5 real), and every factor takes only fixed values: Psig 0.5 (one packed or switch test), 0.627 (three separate tests) or 0.64 (any 2 + 1 grouping: `a || (b || c)` keeps `a` alone because a TRUTH_OR operand isn't simple for fold_truth_andor, and gives 0.28 + 0.72 x 0.5, the same); Pk 69.8 / 85 / 93.3; Pf 29 / 50 / 71.  The DS pairs that land near 50 (call 71 + nonequal 28 = 48.8, positive 73 + call 29 = 51.8, const return + early return 56.5) each need a predictor kind the test can't get (no opcode heuristic for `_66 != 0` or a zero test, no return on any of these paths).  p (X itself, `xb.type <= 5`) would need only 50.6%, but X gets no opcode heuristic and neither arm's first block can hold a call.
+- So target A has no natural route on this CFG: it needs a second r != 0 flow into X (none is behaviour-preserving: checkBl's or the load's failure would reach `fail` and lose its -2 / -3 in the log) or r = 0 flow that leaves the signature region without X (the reference sends the passed, no-key and non-signature paths through X: final block 77's preds 76, 105, 112).
+
+### A second closing condition for the alignment
+
+- compute_alignments aligns the no-key copy (final bb 112, no fallthru, branch freq 14 < 100) only by `freq > 10 x prev_bb freq`; prev_bb is the SE copy's jmp block 111.  So besides 111 <= 1, **112 >= 21 with 111 at 2** closes it.  112 is the no-key flow (95 x (1 - Pk)); Pk = 69.8% (pointer 85 with only the verify block's PRED_CALL, the no-key arm's call not counted) gives 29.  That needs the no-key log block not dominated by the pub1bl test.  `a63_misc.py`'s `ver_flat` (`if (xb.pub1bl && !cbVerifySig(..)) {fail} else if (xb.pub1bl) passed; else no-key`) gets exactly that: no-key 29, **aligned**, with P(>5) 48.5%, but the second pub1bl test is a real reload and test after the verify call and the failed / passed blocks move: 57 / 127.
+- No form with one pub1bl test can do it (the dest block is scanned whole, a label doesn't split it, and nothing else reaches the no-key log).
+
+### Target B by the failed arm's own `<= 5` exit (a63_sf.py, a63_sf2.py)
+
+- Attempt 14 / 47's form (`log; if (xb.type <= BUILD_DEVGL16) goto fail; r = -1;`, tail `if (xb.type <= 5) break; if (type == 14) setFlashBuild(..); break;`) has no r test left, so exp_pr and the param would both go.  On the current src: **22 / 71** in loadBlFiles (the other functions only move by call displacements), with every arm form (-1 before / after the test, `if (> 5) r = -1; else goto fail;`) and either setFlashBuild argument; the `&&` / nested kit tails 39, `type == 14 &&` first 79.
+- vrp1 registers exactly the same threads as src (`Registering jump thread` lists identical).  The residue is layout: the signature strings' .rdata order (the failed log expanded first), the sig-failed setFlashBuild copy reading `e->data` through the IV (`mov eax,[ebx]`, attempt 11's ivopts line), no duplicate of the pub1bl test and no-key log on the type-11 path, an extra `test edi,edi; jne` after a checkBl.
+- And it can't close the alignment chain at all: with no T there is no joiner thread on X, so both copies keep X's own 50% and 111 = RDIV(4 x 50%) = 2 (needs 1; SE <= 6 would give RDIV(1.5) = 2 as well).
+
+### a63_misc.py (chain at p90 with the expect, score with no param)
+
+| Variant | SE / copy / jmp, P(>5), no-key | Score |
+|---|---|---|
+| `unsigned type`, SE test nested, `type = 14; e->type = 14;`, a `const uint8_t *key = xb.pub1bl` local | 7 / 4 / 2, 38.1%, 14 | equal (0/7) |
+| SE stores reordered (`e->type = type = 14` last) | same chain | 2/9 |
+| checkBl called with `e->type` | same chain | 16/185 |
+| no-key arm first (`if (!xb.pub1bl) .. else if (!verify) ..`) | same chain | 10/23 (.rdata order) |
+| passed arm first (`if (cbVerifySig(..)) passed; else {..}`) | same chain | 16/29 |
+| sig test on `e->type` (three separate tests) | chain gone (SE block 7, copy 258) | 196 |
+| sig types as a nested `switch (type) { case 5: case 11: case 17: }` | 7 / 23 / 11, 49.6%, 6 | 49/215 |
+| `ver_flat` (second pub1bl test) | 7 / 4 / 2, 48.5%, **29 aligned** | 57/127 |
+
+### Don't retry (attempt 63)
+
+- The param alone through S / Xc on this CFG: the joiner update above leaves only Psig, Pk, Pf, p, q and integer roundings, all fixed or too small; this closes attempt 62's "2% problem" as stated.
+- The `<= 5` exit inside the failed arm for target B, any arm form or tail (a63_sf2.py): 22 loose, and the chain can't close without a joiner thread on X.
+- a63_misc.py's edits (the table): none moves the chain; the equal bases are equal.
+- Raising the no-key flow by a second pub1bl test (`ver_flat`).
+
+### What to try next
+
+- The 112 >= 21 condition is the one new handle: any natural shape where the no-key log isn't dominated by the pub1bl test, or where the no-key flow is otherwise 50% higher, closes the alignment with 111 at 2 (then check the failed / passed blocks' places).  Nothing with a single pub1bl test was found.
+- exp_devgl: unchanged since attempt 53 (not swept this attempt).
+- Otherwise build stays at 3; the remaining tricks need a different CFG for the signature region or the tail, not a predictor.
+
+### Costs now (strict/loose, removed alone; 3 tricks, unchanged)
+
+exp_pr 4/2 (`(int)r < 0` in its place 7/0), exp_devgl 43/7; the param only exists for exp_pr (0/7 at p0 and p90, IDENTICAL at p95 / p97 / p99).
