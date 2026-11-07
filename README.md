@@ -81,19 +81,18 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. options</b>: 22 tricks, very hard</summary>
+<summary><b>1. options</b>: 20 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
-- 7 `__builtin_constant_p`, 7 `__builtin_expect`, 2 `asm goto` and 2
+- 7 `__builtin_constant_p`, 6 `__builtin_expect`, 2 `asm goto` and 2
   `__builtin_unreachable`, nearly all setting the cold layout of
   `applyIniOptions`
-- `_parseButton.part.0`, written by hand as a global `cold` function in
-  `.text.startup` rather than coming from gcc's own function split
 
 The main clue that this can work is that natural source (`optIniBool` inlined,
 plain calls) already gives the whole hot layout. The cold layout is the unsolved
-part, and it's a heap-tie problem across a very long function. A hint-free
-source would also have to split `parseButton` the way gcc did.
+part, and it's a heap-tie problem across a very long function. `parseButton`'s
+split part is now a plain static helper whose `def` argument is marked
+"Borderline, for review".
 
 </details>
 

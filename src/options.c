@@ -17,16 +17,20 @@
 #include "log.h"
 #include "options.h"
 
-/* parseButton after its first four names: gcc's ipa-split part in the
-   original.  Written out; cold, and in the original's .text.startup.  Global
-   and first: gcc emits split parts (baseFileExists') first, then the
-   functions in source order, which puts its FDE second as in the
-   original.  regparm(1) is the convention gcc gave the static part */
-__attribute__((cold, section(".text.startup"), regparm(1)))
-int parseButtonPart(const char *s) __asm__("_parseButton.part.0");
-__attribute__((regparm(1))) int parseButtonPart(const char *s)
+/* parseButton after its first four names (gcc's ipa-split part in the
+   original), the button for name s or def.
+   Borderline, for review: def is always 0, so the helper could return 0
+   itself.  The argument steers gcc twice: the bigger call lets fnsplit split
+   parseButton at the call alone, so ipa-profile sees only zero-frequency
+   calls and makes the helper unlikely executed (size optimised, in
+   .text.unlikely, without a cold attribute); and ipa-cp's clone for def = 0
+   is made after baseFileExists' split part, so it is emitted (and its FDE
+   placed) second, as in the original.  Without it the helper needs
+   cold, section, regparm and an asm label, and parseButton a winbutton
+   expect (tools/wip/dehint/notes/options.md, attempt 17) */
+static int parseButtonPart(const char *s, int def)
 {
-	int b = 0;
+	int b = def;
 
 	if (!strnicmp(s, "wirelessx", 9))
 		b = 0x55;
@@ -365,7 +369,7 @@ z:
 		else if (!strnicmp(s, "winbutton", 9))
 			b = 0x24;
 		else
-			b = parseButtonPart(s);
+			b = parseButtonPart(s, 0);
 	}
 	return b;
 }
@@ -382,12 +386,10 @@ int parseButton(const char *s)
 		b = 0x20;
 	else if (!strnicmp(s, "remox", 5))
 		b = 0x22;
-	/* the part is cold (call predicted never taken), the original's split
-	   call was likely: 36 is hoisted above the je only then */
-	else if (__builtin_expect(!strnicmp(s, "winbutton", 9), 1))
+	else if (!strnicmp(s, "winbutton", 9))
 		b = 0x24;
 	else
-		b = parseButtonPart(s);
+		b = parseButtonPart(s, 0);
 	return b;
 }
 

@@ -20,7 +20,8 @@ SECS = ('.text', '.text.startup', '.data', '.rdata', '.bss')
 read_src = bdlib.read_src
 fmt = bdlib.fmt
 norm = bdlib.norm
-PART = re.compile(r'\.part\.\d+')
+# gcc's clone numbers (.part.N, and since attempt 17 the part's .constprop.N) vary with the source
+PART = re.compile(r'\.(part|constprop)\.\d+')
 
 
 def disasm(o):
@@ -30,8 +31,8 @@ def disasm(o):
     fns, order = bdlib.disasm(o)
     f2 = {}
     for n, ls in fns.items():
-        f2[PART.sub('.part', n)] = [l.replace('.text.unlikely', '.text.startup') for l in ls]
-    return f2, [PART.sub('.part', n) for n in order]
+        f2[PART.sub(r'.\1', n)] = [l.replace('.text.unlikely', '.text.startup') for l in ls]
+    return f2, [PART.sub(r'.\1', n) for n in order]
 
 
 def section(o, s):

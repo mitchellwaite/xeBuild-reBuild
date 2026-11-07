@@ -3,6 +3,85 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 17
+
+**20 tricks** (22 before).  Removed (2): the hand-written `_parseButton.part.0` (its `cold`,
+`section(".text.startup")`, `regparm(1)` and asm label) and parseButton's winbutton
+`__builtin_expect`.  The part is now `static int parseButtonPart(const char *s, int def)`
+(`int b = def;`), called as `parseButtonPart(s, 0)` from parseButton and parseButtonX.  The
+always-0 argument does two jobs: the bigger call lets fnsplit split parseButton at the call
+alone (split size 4 > call overhead), so ipa-profile sees only zero-frequency calls and
+promotes the part to unlikely executed (size optimised, .text.unlikely), and ipa-cp's
+`.constprop` clone is created after baseFileExists' split part, so it is expanded (FDE)
+second as in the original.  Without `cold` the winbutton edge needs no expect.  Full build
+SHA256 10dac648...1971c; progress 617/617.  build/op/reference.o is now this build's
+options.o (the old one is reference_a16.o); optlib also normalises `.constprop.N`.
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| parseButtonPart (and its two calls) | a static helper for the names after winbutton with a `def` result parameter that every caller passes as 0 | Borderline: live but redundant (the helper could return 0 itself), and it exists to match: the argument is what makes gcc split parseButton at the call (zero-frequency edge -> unlikely helper) and clone the helper late (emission order).  The helper itself is the original's ipa-split part written out by hand |
+
+Remaining (20 by README's count): `--param builtin-expect-probability=83`; 7
+`__builtin_constant_p` (parseButtonX's z feed 2, the macid memset 1, the rev feeds 4); 6
+`__builtin_expect` (parseButtonX's power, parseOption's two, the rev feeds' three); 2 `asm
+goto` and 2 `__builtin_unreachable` (dz1, dz2).  See "## Attempt 17".
+
+## State after attempt 16
+
+**22 tricks, unchanged** (no match; src/ untouched).  The natural parseButton split (7 tricks
+gone at once) is 321 on today's source, and the fibheap replay shows only two keys differ,
+both in the xellbutton site's inlined split header: its `!s` block must be exactly 37 (is
+29) and its remopower block's key <= -1001718 (is -1001717); the old extra dx entry is no
+longer needed.  Both are closed by arithmetic: the header's ratios are parseButton's own
+(shared with xellbutton2 and dualboot, whatever the spelling), `!s` = G x 21.6% needs G >=
+169 while the call block (<= 146) and the constant-store join (power-success edge <= 86) pin
+G <= 132.6, and the remopower edge needs a power probability <= 83.0%.  OPT/G site flips
+(5506 assignments) can't move those blocks (best 311).  Hints moved into the shared
+parseButton: a two-test feed changes the split (header size limit), single-test feeds give
+61%/80.9% where ~48% is needed, and xellbutton2 then ties.  See "## Attempt 16".
+
+## State after attempt 15
+
+**22 tricks, unchanged** (no match; src/ untouched).  The cheapest removals are closed by
+mechanism: rv2 (dz2's feed) needs dz2 extracted at key -7/-8, and dz2's count can only come
+from a dead feed (its asm goto edge is 0% under PRED_NORETURN); no real key change (singles
+over all entries, pairs within 3, joint +-1 over the 13 getIniBool blocks) and no OPT/G
+assignment of the 14 boolean sites (all 16384, best 20 lines from 44) replaces it.  bxz's
+constant-0 block must be 37 to pop ahead of the key-37 getIniU32 blocks; naturally it's 29.
+pbe is forced by the hand-written part's `cold` (PRED_COLD_FUNCTION outranks every natural
+predictor).  See "## Attempt 15".
+
+## State after attempt 14
+
+**22 tricks, unchanged** (no match; src/ untouched).  No natural zero-byte block reaches bbro:
+a census of every object (op14scan.py, 617 functions, 9777 blocks) finds empty blocks only at
+the hinted asm gotos, because bbro's own CLEANUP_EXPENSIVE removes every empty block with a
+successor, and empty no-successor blocks come only from __builtin_unreachable.  The push
+points (149, 251) have no branch in the reference, so only a zero-byte jump (asm goto) can
+give them the extra successor.  Return-register clobbers (int applyIniOptions), a shared macid
+warning tail and dualboot spellings change code or are inert.  See "## Attempt 14".
+
+## State after attempt 13
+
+**22 tricks, unchanged** (no match; src/ untouched).  applyIniOptions' stretches as static
+helpers (rev, macid, dualboot, dvdkey, cfldv, xellbutton2) are inert or change code; all 12
+dz tricks together cost 304 (= dz2 alone), but a fibheap replay (op13sim.py) shows no key
+change of any real block within 6 (pairs within 1) does a dummy's job: dz2's key must be 7-8,
+and the dummies stand for extra heap operations only a zero-byte block gives.  parseButtonX
+isn't split by gcc (called once); called twice it splits at winbutton and ICF doesn't merge.
+See "## Attempt 13".
+
+## State after attempt 12
+
+**22 tricks, unchanged** (no match; src/ untouched).  build's late levers (attempts 46-70)
+tried on options: helpers with their own IPA-inlined profile for parseOption's setBool test
+and vlen tail, int/uint32_t/_Bool/void types of the inlined helpers, non-PHI return
+statements (`on & 1`, `on != 0`, ...), nested ifs for every `&&` in applyIniOptions, `i = 6`
+loop ends, moving the static helpers in the file.  Everything that keeps the code is inert:
+each removal scores exactly what it scores alone (rv2 44, po2 62, bxz 90, pbe 190, dz2 304,
+ms 373, rv1 508, po1 811, bxe 818).  Measured gcc 6 predictor values rule out a natural 17%
+for setBool unless its success path returns a constant other than 0/1.  See "## Attempt 12".
+
 ## State after attempt 11
 
 **22 tricks, unchanged** (no match; src/ untouched).  The vlen near miss is stuck by
@@ -1191,3 +1270,554 @@ stay as attempt 10 left them.
 ### Result
 
 No match; src/ unchanged (22 tricks).
+
+## Attempt 12
+
+Levers under test: the ones that took build.c to 0 (notes/build.md, attempts 46-70): a
+small static helper holding a call (IPA-inlined, not early-inlined) brings its own
+profile; type changes that renumber SSA or change inline sizes; a non-PHI statement in an
+inlined helper's return block; nested ifs for `&&`; a loop ended by `i = count`.  Tools
+(tools/wip/dehint/): `op12po.py [S:V ...]` (parseOption: setBool forms S x vlen tail forms V,
+with the u/i/b literal order), `op12x.py levers|cross|show` (levers alone and crossed with
+every single removal: rv1, rv2, rv2i, bxe, bxz, pbe, ms, po1, po2, dz2), `op12mv.py`
+(optIniBoolG / parseButtonX moved to 12 places in the file, x removals).  Scratch:
+build/op/a12*.
+
+### Helpers with their own profile for parseOption's two expects (op12po.py): no
+
+- setBool test as a helper (`boolOption(opt, val)`), 10 forms: `if (setBoolOption() == 1)
+  { log; return 1; } return 0;` (int, uint32_t, _Bool), `!= 1` first, an `ok` result,
+  `r = setBoolOption(); if (r == 1) log; return r;` (and `return r == 1`, `if (r)`), plain
+  `if (setBoolOption())`: 246 (H2: the `r` form, caller `== 1`) to 407.  The other functions
+  only move by parseOption's size (call displacements).  A shared `done:` block at the end
+  (R1): 893.
+- vlen tail as a helper (`unknownOption(opt, val, vlen)`, 9 forms: if/else, early return,
+  void/int/uint32_t, `!vlen` first, `vlen > 0`, size_t): 442 (the caller sees one call block
+  at profile_estimate, so the value chain's early-return predictions move); 376 with the
+  incomplete arm first (`iub`).  `unknownValue()` returning whether it printed (U6): 4 lines,
+  `ubi` (it is attempt 10's join again); the unknown message alone as a helper call (U7): 62
+  = plain.
+- So a helper's profile doesn't help here: its edge probabilities come from the same
+  predictors, and wrapping the tail changes the caller's profile above it.
+
+### The predictors gcc 6 has, measured (build/op/a12t/t.c, t2.c, -fdump-tree-profile_estimate-details)
+
+opcode nonequal 28, opcode positive 73, call 29/71, early return 39/61, pointer 15, const
+return 67 (paths to a constant other than 0/1 taken), negative return 4, null return 10,
+loop exit 91, continue 50 (no effect in gcc 6), goto none.  For setBool (needs 17% within
+about 1%; its success arm already has call 29, early return 39 and `== 1` 28, together
+9.2%), the only DS mixes near 17% are call 29 + early return 39 + opcode 28 + const return
+67 = 17.08%, and call 29 + const return 33 = 16.7% (no opcode, which `== 1` always adds).
+Both need a const-return prediction, i.e. a success path returning a constant other than 0
+or 1, which parseOption (0/1, uint32_t; mode_build tests `!parseCmdOptions`) and
+setBoolOption's code don't have.  The power expect (needs 82.13 < p <= 83.09%, natural
+83.25%) has no mix in range either (call 71 + const return 67 = 83.25, x early return =
+76).
+
+### Types, return statements, nested ifs, loop ends (op12x.py): all inert
+
+- IDENTICAL alone (and so usable as bases): nested ifs for xellbutton's and xellbutton2's
+  `&&` (nx1, nx2) and dvdkey's `s &&` (ndk); optIniBool's `||` as two `else if` tests (nib);
+  optIniBoolG returning int / void / uint32_t, `return on & 1`, `on != 0`, `on ? 1 : 0`,
+  `on > 0` (tg, tgr, tgv, gr1-gr5); parseButtonX returning uint32_t with a uint32_t b (tbx);
+  parseButtonX's power arm as `return 0x11` (bxr), `s == NULL` (bxi); macidSet's and
+  applyIniOptions' `i` uint32_t (tmi, tai); the macid loop indexed `s + i * 2` (mac2);
+  `xb.cfLdv == 0`, `xb.dualButton == 0`, the JTAG range as two compares (cfn, dbn, jt).
+- Code changes: optIniBool int (46/88), parseButton's b uint32_t (565), INI_INT's v uint32_t
+  (635), parseButtonX's return or b alone uint32_t / uint8_t (852/853), macidSet with a flag
+  and `i = 6` (1470).
+- Cross (every IDENTICAL lever x every removal, about 240 builds): every removal scores what it
+  scores alone (rv2 44, po2 62, bxz 90, pbe 190, dz2 304, rv2i 304, ms 373, rv1 508, po1 811,
+  bxe 818).  None of these spellings reaches profile_estimate differently, and none changes
+  the inputs of bb-reorder (block order or the heap) that the ties depend on.
+
+### Helper position (op12mv.py): inert
+
+optIniBoolG and parseButtonX at 12 positions each (all before applyIniOptions): IDENTICAL,
+and with each removal exactly the removal's own score.  The cgraph order of the static
+helpers doesn't change inline order or block numbering in a way the layout sees.
+
+### Don't retry (attempt 12)
+
+- Helpers for parseOption's setBool test or vlen tail (own profile: same predictors; the
+  tail as a call changes the value chain's profile).
+- Return types, return-block statements and position of optIniBoolG / parseButtonX; nested
+  ifs for applyIniOptions' `&&`s; uint32_t loop indices: inert for every removal.
+- Looking for a natural 17% (setBool) or 82.1-83.1% (power) mix: the measured predictor
+  table above has none without a non-0/1 constant return.
+
+### Result
+
+No match; src/ unchanged (22 tricks).  The levers that worked on build act on SSA numbers,
+inline order and early-return edges; options' remaining tricks are exact edge
+probabilities (the expects and the param), zero-byte heap entries (the dz dummies and their
+feeds, the memset) and the cold part, which none of them reaches.  A next attempt needs a
+new fact about the original (another build of v1.21 or its source), not a new spelling.
+
+## Attempt 13
+
+Focus: applyIniOptions' cold layout (rev feeds, macid memset, the two asm gotos, dz1/dz2) and
+the hand-written `_parseButton.part.0`, with build's late levers.  Tools (tools/wip/dehint/):
+`op13.py alone|cross|show` (stretches of applyIniOptions as static helpers, crossed with single
+removals; adds removal groups `dz1` (feed, memset, asm goto, label), `dzall` (both dummies and
+everything that feeds them: 12 tricks), `feeds`, `ag1`, `ag2`, `rv1ms`), `op13bx.py` (parseButton
+and parseButtonX as full chains with no hand-written part), `op13bb.py DIR [ids]` (bbro traces
+with each block named by source line, calls and literals, read from the cprop_hardreg dump: the
+names in p1/trl.py's output are stale), `op13sim.py REFTAG TAG [-d D] [-2]` (opsim/sim3 search:
+which single or paired key changes of real heap entries reproduce the reference's extraction
+order).  Dumps: `GFL="-O3 --param builtin-expect-probability=83" sh tools/wip/aio/p1/run.sh
+SRC TAG` (a13cur = src, a13rv2, a13rv1, a13ms, a13bxz, a13dzall).
+
+### Helpers for applyIniOptions' stretches (op13.py): inert or worse
+
+- IDENTICAL alone, and every removal then scores exactly its own value: the two macid warnings
+  through one `macidWarn(msg, s)` helper (mac_w), the macid loop as `setMacid(s)` (mac_loop),
+  dvdkey as `dvdkeyIni()` (dvd_v, dvd_vr), cfldv as `cfldvIni()` (cf_v).  They are early-inlined
+  or inlined before anything the layout sees.
+- Code changes: the rev block as a helper (7 forms, void/int, `s` passed or read inside, a
+  generic `iniSuffix(buf, name)`) 508 with its feeds gone (= rv1 alone; with the feeds kept in
+  the caller, rev_if, 460); the whole macid read as a helper 887, the parse with `s` passed 418
+  (668 as early returns); dualboot as a helper 304 (= dz2 alone) / 428 (value-returning);
+  xellbutton2 as a helper 678; dvdkey with its flag test inside 1128.
+- Removal costs re-measured on 5a795a3f's src: rv2 44, bxz 90, pbe 190, dz2 304, **dzall 304**
+  (all 12 dz tricks at once cost what dz2 alone does), ag2 304, ag1 376, ms 373, dz1 390, rv1ms
+  487, rv1 508.  So a natural fix for dzall's 304 would be worth 12 tricks; nothing found.
+
+### What the dummies do, by name (op13bb.py on a13cur)
+
+- dz1 (bb 261) is pushed with key -47 from the macid chars-warning asm-goto block (149, T64) and
+  popped as its own trace at T69; dz2 (bb 262) with key -8 from dualboot's "ignored" block (251,
+  T67), popped at T103, right after the key-8 getIniBool blocks of noremap .. olddvd.
+- rv2's 44 lines: with dz2 at key 0 the key-4 getIniBool blocks pop smcnoblink, demon, patchsmc
+  instead of demon, patchsmc, smcnoblink (fibheap tie), which moves three cold blocks.
+- op13sim: dz2's key must be exactly -7 or -8 (-6, -9 and further fail).  No single key change
+  of any real heap entry within 6 of its own key, and no pair within 1, reproduces the order
+  for rv2; no single change within 8 for rv1 or ms.  So the dummy entries can't be replaced by
+  a natural count change of an existing block; a replacement needs an extra heap operation
+  (insert/delete) at that point, which only a zero-byte block gives.
+- rv1 changes only the keys of 261/262 (dz1 47 -> 0, dz2 8 -> 16) yet also 7 alignment lines:
+  the feed's `return;` also moves hot counts.  ms changes the keys of 146 and 149 and more
+  (the sim with the old keys put back still differs).
+
+### parseButton split (op13bx.py)
+
+- Full chains in both parseButton and parseButtonX, no hand-written part: parseButtonX is
+  inlined whole (fnsplit dump: "Not splitting: not called directly or called once"), 927 lines.
+- With parseButtonX's chain calling `parseButton(s)` for its tail (re-tests the first names, so
+  other code, a probe only): the layout is IDENTICAL, only the call (cdecl to parseButton
+  instead of regparm to the part) differs (13 lines).  The part's only job is to be the else
+  arm's callee.
+- parseButtonX called from two sites (xellbutton2 or dualboot too) so that fnsplit splits it:
+  it splits, but at winbutton (header 32), not wirelessx, and ipa-icf doesn't merge the two
+  parts (different bodies); 11k lines, the other site's profile changes.  No route there.
+- ipa-split.c couldn't be read (gcc.gnu.org's git web answers with an Anubis bot check);
+  the fnsplit dump gave the reason above instead.
+
+### Don't retry (attempt 13)
+
+- Static helpers for the rev, macid, dualboot, dvdkey, cfldv and xellbutton2 stretches (the
+  inert ones stay inert under every removal; the rest change code).
+- Natural count changes for the dummies' job: op13sim rules out single/paired key changes of
+  real entries; the dummies need extra heap operations.
+- parseButtonX full chain (not split: called once) or called twice (split at winbutton, no
+  ICF merge).
+
+### Result
+
+No match; src/ unchanged (22 tricks).
+
+## Attempt 14
+
+Focus: a natural source of the zero-byte blocks dz1/dz2 stand for.  Tools (tools/wip/dehint/):
+`op14scan.py [obj|file.c ..]` (compiles each object with its build.sh flags, or a file, with
+`-fdump-rtl-cprop_hardreg-blocks-details -fdump-rtl-bbro-details`, and lists every block that
+reaches bb-reorder with no code: only labels, notes, USE/CLOBBER insns or an empty asm, with
+its freq, preds, succs and the source line of each pred), `op14ret.py` (applyIniOptions as an
+int function), `op14mac.py` (macid's warnings with one source copy of their tail),
+`op14db.py` (dualboot's "ignored" path spellings).  Scratch: build/op/a14, build/op/a14scan.
+
+### What dz1/dz2 are at bbro (op14scan on src)
+
+dz1 (bb 261, freq 47) and dz2 (bb 262, freq 8): a code_label with 1 use and the bb note, no
+insns, no successors; their only preds are the asm gotos (149 is a block of its own holding
+just the asm goto at the head of the chars warning; dz2's asm goto ends 251, the "ignored"
+log block).  Their frequencies come from the dead rev feeds (profile_estimate), whose edges
+are gone by RTL.  So bbro sees a block with two successors where the reference has no branch:
+149 and 251 each get one extra non-best successor, pushed into the heap and later popped as
+a one-block trace.
+
+### No natural empty block reaches bbro anywhere in the program (op14scan, all objects)
+
+All 25 app objects and all 41 crypto objects (617 functions, 9777 blocks at cprop_hardreg):
+the only blocks with no code are the hinted ones (options' 149/261/262 and mode_client's
+asm-goto blocks and dz labels).  Nothing in the 0-trick objects or XeCrypt's third-party C
+(edge copies, PHIs, loops, switches, noreturn asserts) leaves an empty block for bbro.
+
+The mechanism, from the dumps: bbro's own `cfg_layout_initialize (CLEANUP_EXPENSIVE)` runs a
+cleanup_cfg right before the traces, which forwards every edge through an empty block with
+one successor and deletes it, so whatever reload, cprop_hardreg, peephole2 or regrename
+empties is gone before bbro looks (edge copies coalesced by IRA/LRA included).  An empty
+block that survives must have no successors, and C only gives those through
+`__builtin_unreachable` (gcc's own: cunroll's unloop latch, removed by fab's
+optimize_unreachable when its pred ends in a gcond; the macid loop isn't unrolled anyway) or a
+noreturn call (the call is code).  And a block that pushes one must end in a jump that emits
+no bytes: only asm goto does.  The reference has no branch at either push point (the ignored
+block is `log; movl $0, xb+112; jmp L679`; the chars warning is `movl $LC, 4(%esp); jmp L670`
+into the crossjumped tail), so a natural edge there would add a jcc.
+
+### Candidates tried (cand.c through op14scan, then in options)
+
+- Return-register clobber (`(clobber (reg ax))`, emitted by expand_null_return and at the
+  fall-off end of a non-void function; flow_active_insn_p keeps it from being a forwarder, and
+  it emits nothing): in cand.c it always lands in an existing block (the epilogue or the last
+  statement's), never a block of its own.  applyIniOptions as int/uint32_t (op14ret.py,
+  options.h's declaration aliased away): with the final `return;` 59 (adds `xor eax,eax`),
+  falling off the end 1562; on the dzall base 357 every way (dzall alone 304).
+- Noreturn call, abort, PHI with different values on two arms, a loop bounded by an array
+  (cunroll), a 4-case switch, a reset-after-log like dualboot's (cand.c): no empty block.
+- macid's warnings with one copy of the tail in the source (op14mac.py: `msg` flag, goto past
+  the tail, else-if chain, default message, ok flag, ternary): the PHI of the message is
+  loaded into a register before the `je` (`mov edx, LC`; the reference stores each literal
+  straight to the stack slot, i.e. two calls crossjumped), so code changes: goto 104 (also
+  .rdata order), the rest 718-924; with ag1/dz1/dzall removed 622-826.
+- dualboot's "ignored" path (op14db.py): operands swapped and `!=` with an empty then-arm are
+  IDENTICAL and inert (ag2 and dzall still 304); a local `b` (3 forms) 368-640; storing 0
+  before the log 308 with or without the dummies (code changes: store order).
+
+### Don't retry (attempt 14)
+
+- Looking for a natural zero-byte block for bbro: none exists in gcc 6 C at -O3 without asm
+  goto or __builtin_unreachable (op14scan's census plus the cleanup at bbro's start); a
+  natural extra successor at 149 or 251 needs a branch the reference doesn't have.
+- applyIniOptions returning int (return-register clobber): code changes.
+- macid's warning tail shared in the source (PHI of the message): register load, code changes.
+- dualboot's ignored path spellings above.
+
+### Result
+
+No match; src/ unchanged (22 tricks).  The dz group (12 tricks) can't be replaced by a
+zero-byte natural block; what's left for it is the original having a different set of real
+heap operations (other blocks, edges or frequencies) elsewhere in applyIniOptions, which
+op13sim's single/paired key changes didn't find.  A next attempt there would have to model
+several simultaneous structural changes (for example how the original's optIniBool sites
+were written) with sim3, not one spot.
+
+## Attempt 15
+
+Focus: the cheapest single removals by things other than key values: rv2 (dz2's feed, 4
+builtins, 44 lines), bxz (parseButtonX's z feed, 2 cp, 90), pbe (parseButton's winbutton
+expect, 190), alone and combined with code-neutral natural changes.  Tools
+(tools/wip/dehint/): `op15heap.py TAG [-at N,..] [-w b,..] [-k keys]` (the round-4 fibheap's
+trees before chosen extractions of p1/sim3's replay), `op15sim.py REFTAG TAG [-lo L -hi H]
+[-2 W] [-map a:b]` (op13sim with any key range, pairs within W, id remaps), `op15site.py`
+/ `op15site2.py` (which optIniBool sites use optIniBool and which optIniBoolG, swept on top of
+a removal).  Dumps: build/v/aio_p1/a15* (GFL="-O3 --param builtin-expect-probability=83").
+
+### rv2: what the tie is, in the heap (op15heap.py, op15sim.py)
+
+- a15cur vs a15rv2 traces (op13bb.py): without dz2's feed, dz2 (262) has freq 0 and is popped
+  last (T111) instead of at T103 (key -8, after olddvd's getIniBool); dz1's freq goes 47 -> 57
+  (dz1's outer test now has a `return` on both arms) and one hot block 925 -> 924.  Only the
+  dz2 change matters: opsim with 262=-8 alone gives the reference order, 261=-47 alone doesn't.
+- The heap before the three key -4 getIniBool blocks (demon 169, patchsmc 179, smcnoblink
+  220): in rv2 the root list after nandmu's extraction is 220 (degree 0), 169 (degree 2,
+  holding 179), 159; consolidation puts the lowest degree first, so 220 wins the tie.  With
+  dz2's extra extraction at key -8 the trees are linked differently and 169 (degree 1) leads.
+- op15sim over every real entry: any single key in -60..0 (53 entries), and every entry
+  within +-40 of its own key (113 entries, hot trace-end keys included): only 262 (dz2) at -8
+  or -7 fixes it.  Pairs within +-3 of entries with keys >= -60: none.
+- dz2's freq can only come from a feed: profile_estimate gives the asm goto edge 0.0%
+  (PRED_NORETURN on the path to its __builtin_unreachable), so a dz2 at key -7/-8 needs a
+  dead edge of 7-8 into it.  Closed by mechanism unless the tie is broken by many key changes
+  at once.
+- Source order: swapping demon and patchsmc (rv2 kept) changes code and relocs (48): the
+  option order is the reference's, as the hot code and the literal order say.
+
+### bxz: what the z feed does, in numbers (a15bxz dumps)
+
+- parseButtonX's own profile_estimate: !s 21.6% (pointer 15, call 71, early return 39),
+  power 83.0% (expect), else head 1332; the feed's outer cp test 71% (call heuristic: the
+  false edge reaches remopower's strnicmp) and inner `> 0` 63.4% (opcode positive 73, early
+  return 39) send 600 of the else head's 1332 to the return-0 PHI arm, remopower's test 733.
+- After the IPA inline the cp tests fold: the empty else head merges into remopower's test
+  block, which keeps the head's count (1332 -> 18 at the call block's 132), and the z edge's
+  600 stays in the threaded constant-0 block (263: 2160 + 600 -> 37, its edge still 21.6%).
+- Without the feed: 263 is 29 and pops after the eleven key-37 getIniU32 blocks instead of
+  before them (their order changes too), remox 2 -> 3 and the part call 0 -> 1.  op15sim
+  (with 263/264 swapped back): only 263 at exactly -37 gives the reference order.
+- So a natural replacement needs two things at once: ~28% of parseButtonX's entry on the
+  constant-0 return (27.65..28.4%) and remopower's failure flow at most 1.89% of entry
+  (remox <= 1.5), with the remopower head still 13.3%.  The !s mixes are 21.6 / 30.2 / 10.1%,
+  and every constant-0 path but !s would be other code; the leak has to be a dead edge.
+
+### pbe: tied to `cold` by predictor rank (a15pbe, part_* variants)
+
+- Without the expect only parseButton's winbutton tail changes (6 lines: the part's tail call
+  moves to the end, 0x24 no longer hoisted) plus applyIniOptions' copies (184).  The part's
+  `cold` makes predict_paths_leading_to put PRED_COLD_FUNCTION (first match, 100%) on the
+  winbutton test's false edge; first-match predictors win by rank and only
+  __builtin_expect and the loop-iteration predictors rank above it, so with `cold` no
+  natural spelling can give that edge 17%.
+- Without `cold` (attempt 3): everything matches but the part's own body (not optimized for
+  size: duplicated returns, constants in eax; 102).  Size optimization without the
+  attribute needs NODE_FREQUENCY_UNLIKELY_EXECUTED from ipa-profile, which only propagates
+  into local (static) functions.  A static part (part_st*.c): without `cold` gcc splits
+  parseButton at winbutton itself (parseButton.part.2) and the part too, and the part stays
+  in .text; with `cold` the code is the same but the FDE order differs (attempt 1).
+- So pbe goes only with the hand-written part (or with gcc's own split, attempt 2-3's 335).
+
+### Site forms as a code-neutral key lever (op15site.py, op15site2.py, op15gx.py)
+
+The choice of optIniBool (OPT) or optIniBoolG at a site gives the same code after inlining
+but other cold keys (G's getIniBool block is 1-2 lower, its warning 1 higher), so it moves
+keys of several blocks at once with no code change, which op13sim's single/pair search
+couldn't model.
+- On the base: nodvd as G and olddvd as OPT are IDENTICAL (free); every other single flip
+  38-204 (as attempt 1-2's m_*).  Unguarded calls (`optIniBool(...)` with no OPT guard) and a
+  guard that also tests bootFlagsOff (`o2`/`g2`) change code at every site but olddvd
+  (600-1600).
+- **rv2 x every OPT/G assignment of the 14 sites (2^14 = 16384 builds):** no match; best
+  **20 lines** (from 44), two families: patchsmc+smcnoblink as G (their getIniBool keys
+  drop to -3: demon pops first, but then patchsmc, smcnoblink, smcnoeject and cygnos tie at
+  -3 in the wrong order) and nandmu as OPT + olddvd as G (the -4 tie comes out right, but
+  nandmu's and olddvd's getIniBool blocks swap keys -8/-6, so they swap places).  Every
+  other assignment 40+.  op15sim on both 20-line dumps: no single key in -80..0, no pair
+  within 2.
+- bxz x assignments up to 3 flips: best 90 (= bxz alone).  bxz can't be helped by any
+  structure: its 263 at key -29 can never pop before the eleven key -37 blocks the
+  reference pops it ahead of.
+- optIniBoolG's 126 whole-body shapes (op7w.py tops x lowers x tails) on rv2: all 44 or
+  worse (the IDENTICAL ones are inert, as attempt 12 found for other levers); attempt 12's
+  IDENTICAL levers (nested ifs, return types, ...) on both 20-line bases: all 20.
+- op15grp.py: every joint change within +-1 of the 13 getIniBool blocks' keys (demon,
+  patchsmc, smcnoblink, smcnoeject, cygnos, nandmu, nosecurity, olddvd, noremap,
+  nosusecurity, nomobile, smcnocheck, noecdremap; 1.6M replays) on rv2: 0 hits; the JTAG
+  five within +-2: 0 hits.  So no profile change of those blocks does dz2's job; it needs
+  the extra extraction.
+
+### Don't retry (attempt 15)
+
+- rv2 by keys or site forms: single keys of every real entry (wide), pairs within 3, joint
+  +-1 over the getIniBool group, all 16384 OPT/G site assignments, G body shapes.
+- Reordering the boolean options in the source (code and relocs change).
+- bxz by anything that leaves the constant-0 block below 37: it must pop ahead of the key-37
+  getIniU32 blocks; the !s mixes give 21.6/30.2/10.1% and a natural constant-0 path is code.
+- pbe while the part is `cold` (PRED_COLD_FUNCTION outranks every natural predictor); a
+  static part (gcc then splits parseButton and the part itself; FDE order with cold).
+- Unguarded or bootFlagsOff-guarded optIniBool sites (code changes).
+
+### Result
+
+No match; src/ unchanged (22 tricks).  The three cheapest removals are each closed by a
+mechanism, not by a missing spelling: rv2 needs a zero-byte entry extracted at key -7/-8
+(only a dead feed gives dz2 a count, the asm goto edge is 0% by PRED_NORETURN), bxz needs
+37 in a block whose natural count is 29 and which no tie can lift past 37-key blocks, and
+pbe is the price of the hand-written part's `cold`.  The site-form lever (OPT vs G) is the
+one new code-neutral lever that moves cold keys in groups; it halves rv2's diff (44 -> 20)
+but no assignment closes it.  A next attempt should only come back here with a different
+set of real heap operations (the original's structure), e.g. a natural parseButton split
+(the 335 route) where the dummies' jobs change as a whole.
+
+## Attempt 16
+
+Focus: the natural parseButton split as a base (parseButtonX deleted, gcc's own split of a
+plain parseButton, no hand-written `_parseButton.part.0`, no winbutton expect: 7 tricks gone,
+15 left), crossed with attempt 15's OPT/optIniBoolG site lever, modelled first with the
+fibheap replay.  Tools (tools/wip/dehint/): `op16nat.py [-x edits] [-f sites] [-o out.c] [-v]`
+(builds the natural base from today's src; edits rv1, rv2, ms, ag1, ag2 and parseButton-side
+hints pe/pz/pzs/pz2; site flips as op15site.py), `op16sim.py REFTAG TAG [-map a:b] [-k b=key]
+[-keys ..] [-scan LO HI]` (p1/sim3 replay with explicit key overrides; -scan: every single
+entry over a range on top of the overrides), `op16site.py [-x ..] [-k K|-all] [-out f]` (OPT/G
+assignments on the natural base).  Scratch build/op/a16; dumps build/v/aio_p1/a16nat (GFL="-O3
+--param builtin-expect-probability=83").
+
+### The natural base on today's source: 321, two keys
+
+- `op16nat.py`: 321 lines, all in applyIniOptions (as attempt 4's nat2.c).  Block ids are
+  the same as a15cur's except 263 <-> 264 (`-map 263:264,264:263`).
+- Traces (op13bb.py on a15cur and a16nat): the xellbutton site's remopower block 188 is 17
+  (key -1001717, edge 103 x 16.8%) where the reference has 18 (-1001818), its `!s` block 264
+  is 29 (edge 132 x 21.6%) where the reference has 37; remox 3 vs 2 and the part call 1 vs 0
+  don't reach the heap.
+- op16sim: with 188 = -1001818 and 264 = -37 the replay gives the reference order; **the old
+  extra round-4 entry (dx, attempt 2) is no longer needed** on today's source.  Ranges, each
+  with the other fixed: 264 exactly -37; 188 any key <= -1001718 (edge 17 with block >= 18, or
+  edge >= 18).  The other xellbutton blocks: the call block 186 (priority = freq) 103..146,
+  the constant-store join 263 priority <= 86 (key >= -1008702), 193 free.  With 264 = -37
+  alone, 188's job could also be done by xellbutton2's 198 at <= -147 (not real).  188 and
+  198 at equal keys (16..19, any freq) fail: xellbutton2 pops first on a tie, so the
+  xellbutton site must differ from xellbutton2's.  No single entry change does it (scan
+  -80..0: 0 hits).
+
+### Why no natural spelling can give those two keys (arithmetic)
+
+The xellbutton site's blocks 186..191 and 264 are parseButton's split header inlined at IPA
+time; their counts are the header's edge probabilities (estimated once in parseButton, shared
+by all three sites) times the call block's count G, rebuilt by TODO_rebuild_frequencies at
+inline time.  The header's probabilities don't depend on parseButton's spelling (attempt 3)
+or on the call site.  So at the xellbutton site 264 = G x 21.6% and the power test block 187
+= G x 78.4%, with power 83.2% / 16.8%:
+- 264 = 37 needs G >= 169, but the call block (186, the same block) must stay <= 146, and the
+  join's priority is the power-success edge G x 78.4% x 83.2%, which must stay <= 86, i.e. G
+  <= 132.6.
+- 188 needs the power-fail edge >= 17.5 (or the block >= 18): 187 >= 105 with 16.8%, which
+  makes the success edge 87 (the join then fails), or 187 = 103 with a power probability
+  <= 83.0%: that is the bxe expect (no natural predictor mix lies in 82.13..83.09%, attempt
+  12).  And a power probability changed in the shared header changes xellbutton2's 198 the
+  same way, which is the losing tie above.
+- Extra flow into 264 can't come from the call site: the threaded copy takes the count of
+  the edges threaded into it (only the `!s` edge carries b = 0), and a dead edge from the
+  caller can't reach a block inside the inlined header.  Only a dead edge inside the header
+  that folds after the inline rebuild (a cp feed: parseButtonX's z) does it, and in the shared
+  parseButton that changes the split (below).
+- So the call-site levers (nested ifs, test order, helpers with calls, wrappers, result
+  variables) can only move G, which is pinned to 103..132 by the other keys; none of them can
+  change the header's internal ratios.  The xellbutton site needs a header of its own, i.e.
+  parseButtonX, which can only call a hand-written part.
+
+### Hints moved into the shared parseButton (op16nat.py -x pe, pz, pzs, pz2)
+
+- `pe` (parseButtonX's power expect on parseButton's power test): 369 (188 and 198 both 18:
+  the tie, and 264 still 29).
+- Any `z:` feed in parseButton (`pz` as an else-if, `pz2` in a block around the rest of the
+  chain, `pzs` from the power-success arm; with or without `pe`): 1631-1773, parseButton,
+  its split part and every function after them change (gcc splits parseButton differently).
+
+### OPT/optIniBoolG sites on the natural base (op16site.py)
+
+Every assignment of up to 5 flips and part of the 6-flip ones (5506 of 16384, results in
+build/op/a16/site_all.txt; stopped there): no IDENTICAL, best 311 (nandmu as OPT, with or
+without demon/patchsmc/nodvd), floor 311-333 everywhere.  As the model predicts: a flip moves
+getIniBool and warning keys but not the xellbutton site's 264 (29) or the eleven key -37
+INI_INT blocks it must pop ahead of, so no assignment can work on this base.  Also checked:
+the thirteen key -37 blocks moved together to -36..-21 (with 264 at its own 29 or one
+below): no hit.
+
+### parseButton's split is fragile: what a hint in the shared header does (op16nat.py -x feed)
+
+Keeping some tricks on the natural base (net gain if fewer than 7): parseButtonX's two jobs
+moved into parseButton itself, so all three sites get them.
+- The header limit: fnsplit picks the deepest split point whose header is an inline
+  candidate; the natural header (`!s`, power, remopower, remox, winbutton) is size 31 and 38
+  is refused.  The two-test z feed (bxz's nested form, or any two cp, or one cp plus a dead
+  plain test) costs 7, so winbutton moves into the part: parseButton, its part and every
+  later function change (1631-1773 lines).  A single-test feed fits (split unchanged).
+- Single-test feeds at the power-fail head (`FEED='...' -x pe,feed`): `if (cp((int)s + 1))
+  goto z;` 61% (call 71 & early return 39; dumps a16pef1, 663 lines), `> 0` / `- 1 >= 0`
+  80.9% (897), `== c`, `< 0` folded at once (inert), `<= 0`, `!= 1`, `< 1` change parseButton;
+  z placed inside the feed's then-arm (`FEED_AT=in`, `!s` jumps there) still gets the
+  early-return prediction (the `return 0`s are lowered to one return block at the end).  A
+  pointer cp (`cp(s + 1)`) folds at once (inert).  The needed share of the head is 45.5..51.2%
+  (`!s` = (2165 + f x 1333) x 131.66 / 10000 in [36.5, 37.5)); no single test gives it.
+- a16pef1 (pe + the 61% feed): `!s` 40, 188 = 198 = 18 (-1001818: xellbutton2 gets the same
+  head, the losing tie), dualboot's remopower 246 20 (was 19); op16sim with `!s` at -37 still
+  fails on that tie.  Breaking the tie needs xellbutton2's call block (131.85) below 131.3
+  while xellbutton's stays above (131.66), or a heap-history change.
+- So the shared-header route needs a 2-test feed (split changes) and a tie breaker; closed.
+
+### Don't retry (attempt 16)
+
+- The natural parseButton split with any call-site spelling, helper, wrapper, result
+  variable, nested ifs or test order at the xellbutton site, or any OPT/G assignment: the
+  arithmetic above (264 = G x 21.6%, the join <= 86 and the call block <= 146 pin G to
+  <= 132.6) closes it.  The site sweep is futile on that base.
+- parseButtonX's hints moved into the shared parseButton: two-test feeds change the split,
+  single-test feeds give 61% / 80.9% (need ~48%), and 188/198 then tie.
+- Looking for the dx-like extra entry: on today's source the natural base needs only the two
+  xellbutton keys.
+
+### Result
+
+No match; src/ unchanged (22 tricks).  The natural-split route is closed by arithmetic, not
+by a missing spelling: the xellbutton site's two differing keys sit inside parseButton's
+inlined split header, whose ratios are shared with xellbutton2 and dualboot and can't be
+moved from the call site, and the neighbouring keys pin the call block's count.  The
+xellbutton site needs a header of its own with a late-folding edge (parseButtonX and its
+z feed) and a power probability <= 83.0% (bxe), and a header of its own can only call a
+hand-written part, which brings `cold` and pbe with it.  So the 7 parseButton-side tricks
+stand or fall together, and nothing natural replaces them; a next attempt on options needs a
+new fact about the original (a build or the source), not another route here.
+
+## Attempt 17
+
+Focus: the hand-written part (cold, section, regparm, asm label) and pbe, via gcc's node
+frequency and emission-order machinery.  Tool: `tools/wip/dehint/op17.py [variant ..]`
+(variants of src with the part's declaration replaced; for each: optlib score after renaming
+the part's symbol with objcopy, the .eh_frame section order, gcc's expansion order from
+`-fdump-ipa-cgraph`'s "Time profile order in expand_all_functions", ipa-profile's
+"Processing frequency"/"promoted" lines, fnsplit's choice, the sections).  Dumps under
+build/op/a17/<variant>/.  gcc.gnu.org answered ipa-split.c with the Anubis bot page again; not
+retried, everything below is from dumps.
+
+### What each part form gives (op17.py)
+
+- `st_cold` (static + cold, attempt 1): code identical, but expanded first (FDE order).
+- `st` / `st_np` (static, no attributes, with or without pbe): **parseButton and
+  applyIniOptions identical but for the call's reloc** (so without `cold` the winbutton
+  expect is free, as attempt 3 found for gcc's own split); only the part's body differs (102:
+  not size optimised) and it is expanded first.
+- `gl` (global, no attributes): 120 (cdecl calls, not size optimised); `gl_cold` 29 (cdecl).
+- `gl_cold_rp` (`__attribute__((cold, regparm(1)))`, no section, no asm label): identical
+  (.text.unlikely instead of .text.startup, same place in the exe).  Not landed: same count.
+
+### Why a static part isn't unlikely: parseButton's own split
+
+- ipa-profile promotes a local function to unlikely only if every caller edge has frequency
+  0 (call block freq x 1000 / caller entry freq, integer) or comes from an unlikely caller.
+- parseButtonX's call edge is 0.  parseButton's call block is 6 of 10000 (edge 0), but
+  fnsplit splits parseButton at the winbutton test (BB 6; BB 7, the call alone, is refused:
+  split size 3 is not more than the call overhead), so at ipa-profile time the part is called
+  from parseButton.part.2, whose entry is the winbutton block (37): edge 6 x 1000 / 37 = 162.
+  part.2 itself is called with edge 3 from parseButton, so it stays normal, and so does the
+  part.  The inliner later re-propagates frequency only for the nodes it inlines (part.2's
+  copies are promoted then), never for the offline part.
+- Probe (`-fno-partial-inlining`, not usable): the static attribute-free part is promoted to
+  unlikely and its body matches.
+
+### Why a static part is expanded first
+
+- expand_all_functions (and the early local passes) go through ipa_reverse_postorder in
+  reverse: externally visible functions (pass 0, walking callers) in source order, but local
+  functions only called directly are reached in pass 1, which iterates the symbol list
+  newest first and is expanded oldest first, before every pass-0 function.  A source static
+  is older than baseFileExists.part.1 (made during early opts), so it comes before it.  A
+  local function newer than the split part (an IPA clone), or one that calls a newer node,
+  comes after it.
+
+### MATCH: an always-0 `def` argument (op17.py st_cp, st_cpb, st_cpd, st_cp_last)
+
+`static int parseButtonPart(const char *s, int def)` with `int b = def;`, both calls
+`parseButtonPart(s, 0)`, no attributes, parseButton's plain `!strnicmp(s, "winbutton", 9)`:
+IDENTICAL (code, sections up to the name, .eh_frame order); full build SHA256
+10dac648...1971c.
+- The call with two arguments has split size 4, so fnsplit now splits parseButton at the
+  call alone (BB 7, accepted, lowest frequency); part.2 is entered from a block of
+  frequency 6 (edge 0) -> part.2 promoted to unlikely, then the part (second iteration),
+  then its own split part.  Size optimisation and .text.unlikely follow.
+- ipa-cp clones the part for def = 0 for all contexts (`parseButtonPart.constprop.5`); the
+  clone is the newest node, so pass 1 visits it first and it is expanded right after
+  baseFileExists.part.1: the original's order.
+- `b = parseButtonPart(s, b)` (b is 0 there), `int b` as the parameter itself, and the
+  definition at the end of the file all give the same bytes.  Landed the `def` form (it
+  reads like getIniU32's def).  Flagged borderline in the source.
+- parseButtonX's tricks don't move: bxe 797, bxz 90, both 321 (= attempt 16's natural base),
+  as before.
+
+### Don't retry (attempt 17)
+
+- A static or global part without the extra argument and without `cold`: parseButton's
+  split at winbutton keeps it normal (above), whatever its position.
+- Reading ipa-split.c from gcc.gnu.org (bot check).
+
+### Next ideas
+
+- The lever generalises: a constant extra argument makes a local helper an IPA clone
+  (emitted after every split part, in front of the pass-0 functions) and enlarges its call
+  for fnsplit.  Worth remembering wherever a static helper's FDE/emission order or a split
+  point is the blocker in another object.
+- parseButtonX's power expect and z feed still need the xellbutton site's own header
+  (attempt 16's arithmetic is unchanged).
+
+### Result
+
+MATCH: 22 -> 20 tricks (the hand-written part and parseButton's winbutton expect).
