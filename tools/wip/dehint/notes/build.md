@@ -3,6 +3,10 @@
 Goal: `build/bd/reference.o` (copy of a matching build/obj/build.o) byte-identical from plain
 `-O3`, with fewer hints.  52 tricks at the start of attempt 1.
 
+## State after attempt 41
+
+Attempt 41 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It took the two tricks outside loadBl.  exp_devgl from the RTL side: once tree-sink has moved the setne into the non-dev arm, ce1/ce2/ce3 all find the IF-THEN block but can't convert it, because the arm's compare sets the flags the condition uses (gcc 6 refuses any then-block insn that sets the cc register); so the cmovbe needs GIMPLE that sink leaves alone, which is attempts 15, 16 and 25's closed problem.  lab_none: the none test as a `continue`, or the `if (r)` exit inside the none test's block, costs 169 loose and up (the skip path must pass the r test, gen_bd530, gen_bd531), and defaultBl60 written out in case 24 lowers the r = 1 block to 12 (9% in the caller's profile against the helper's 10.1%, gen_bd532).  See "## Attempt 41".
+
 ## State after attempt 40
 
 Attempt 40 landed nothing; src/build.c and build.sh are unchanged, so the count (11) and the review tables stand.  It took attempt 39's inlining lead and corrected its mechanism: loadBl is **not** inlined for its speedup (the u8 form has big_speedup too, measured with the auto limit raised as a diagnostic) but refused by ipa-inline's early **min_size** check (`min_size - call size > max(insns-single 400, insns-auto 40)`, reported as "max-inline-insns-auto limit reached"): min_size is the size outside every predicate, about 30 in src, 500 when the switch has no case predicates.  A rescan of every generator from gen_bd320 to gen_bd503 that still runs on src (about 80) found **no loadBl refusal row at all**; the only refused families were attempt 39's and attempt 9's gen_bd202 `in` rows (the none test inside a helper returning r).  Rescued so that loadBl stays inlined (the type loaded before strnicmp, or `switch (e->type)` with a narrow local), every one is worse than src: the none test inside loadBl 207 loose with every hint (and the hints stop mattering), narrow locals 138 and up, gen_bd202's `in` 347 and up hint-free (gen_bd520, gen_bd522).  New equal base: loadBl without its `i` parameter (`edata` plus the constant_p entry's first term on `e->crc`, `e->size` or `e->offset` in place of `i`) is IDENTICAL (gen_bd521); it frees nothing.  See "## Attempt 40".
@@ -2209,3 +2213,43 @@ Goal: attempt 39's lead.  If loadBl is inlined only while the inline summary spl
 ### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
 
 As attempt 39 (src unchanged; re-measured by gen_bd520's and gen_bd521's `src|` rows): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231, etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 and pin_size 82/40 as attempt 38.
+
+## Attempt 41
+
+Goal: the two tricks outside loadBl with the least recent work, exp_devgl (buildFlash) and lab_none (loadConsoleBlFiles), from the RTL if-conversion side for exp_devgl and by natural loop / case 24 shapes for lab_none.  Generators gen_bd530 to gen_bd532 on src as of 932a083f (`python tools/wip/dehint/bdrun.py tools/wip/dehint/bdgen/gen_bd53N.py`; gen_bd531 and gen_bd532 import PRECHECK / TAIL from gen_bd530).  Scratch in build/bd/a41 (not kept: `nodev.c` is src without exp_devgl, `nonone.c` src without the precheck and the cold label, `hand2.c` gen_bd532's `plain two_fail1st`).  Loose/strict lines in the focus function unless said.
+
+### exp_devgl: why if-conversion can't make the cmovbe once sink has moved the setne (read, `bddump.sh build/bd/a41/nodev.c buildFlash ce1,ce2,ce3`)
+
+- Without the expect, ce2 (after combine) sees `IF-THEN-JOIN block found, pass 1, test 3, then 4, join 5`: test 3 is the dev test (`add -4; cmp 1; jleu`), then-block 4 is sink's split edge holding `(set flags (compare g 0))` and `(set fuse (ne:SI flags 0))` (`*setcc_si_1_movzbl`), and `fuse = 1` is already set in the entry block (insn 33, moved up by ce1's IF-CASE-2 on the JTAG test, which is why `mov ebx,1` leads both versions).  The conversion fails and nothing is logged for it: gcc 6's multi-insn then-block support (bb_valid_for_noce_process_p / insn_valid_noce_process_p, from memory, consistent with the dump) refuses any insn that sets the condition's cc register, and the setne's compare sets flags.  ce1 sees the same block before combine; ce3 after reload too.  noce_convert_multiple_sets has the same cc rule.
+- So the reference's `setne` above the test followed by `cmovbe` can only come from GIMPLE that keeps `_64 = _63 != 0` in bb3 (the dev test's block) through sink: the dev arm is then an empty block, out-of-SSA puts `fuse = 1` on it, and ce1 if-converts a one-insn arm with a constant (the cmovbe from `mov eax,1`).  That is attempt 15's rule again (non-dev edge >= 75% of bb3, has 73%), or a second use of the value in bb3, or the value reaching the PHI on two edges; attempt 16 and 25 closed those.  No RTL-side shape is left to try: every then-block that computes the flag contains a compare.
+- Not swept (each was already tried or follows from the above): ternary / min-max / `|` forms all fold to the same GIMPLE (gen_bd236, gen_bd343); the override first (gen_bd442); `!fuse` re-tests (gen_bd503); the def hoisted above the JTAG test (bb2 is hotter, so sink moves it further).
+
+### gen_bd530: lab_none by the none test as a `continue` (28 cases)
+
+- Idea: PRED_CONTINUE on the skip edge would raise the switch's share of the loop body (75% from the `||`), and so case 24's sites and the r = 1 block (14, needs 21), without moving the not-entered return (20).  Forms `!strnicmp && !crc` continue, `== 0` spelling, nested; crossed with case 24 two calls / `||`, the precheck + label kept or gone, and loadBlFiles spelled the same or not.
+- All 169 loose and up in loadConsoleBlFiles (buildFlash and blmodMissing move too, .rdata changes); loadBlFiles with continue +120.  The skip path no longer passes the `if (r)` test at profile_estimate, and that test's frequency is part of the reference's layout.  Src's `label src or lb` (the `||` case 24 with the label) is 2/2, irrelevant.
+
+### gen_bd531: the `if (r)` exit inside the none test's block (4 cases)
+
+- `if (r) { log; return -1; }` moved inside the `if (strnicmp || crc)` block, r = 0 at the top or inside the block: 169 / 173 loose, the same as gen_bd530's continue: it is the skip path's pass through the r test that matters, not the continue predictor.
+
+### gen_bd532: defaultBl60 written out in loadConsoleBlFiles' case 24 (8 cases)
+
+- Idea: the malloc NULL test predicted in loadConsoleBlFiles' own profile instead of the late-inlined defaultBl60.isra.0's 10.1%.  Two copies or one under `||`, failure or success first, precheck + label kept or gone.
+- Worse: the inlined test gets 9% (bbro `call malloc p9100`), so r = 1 drops to 12; plain base 8/16 (the two error logs' order flips too), `||` 6/10, with the label 2/2 (`||`) and 4/8 (two copies).  So the helper's own profile is already the more favourable one for r = 1.
+
+### Don't retry (attempt 41)
+
+- exp_devgl by any shape whose setne ends up in the non-dev arm: RTL if-conversion refuses a then-block containing the compare (ce1 / ce2 / ce3 dumps); only GIMPLE that sink leaves alone can give the cmovbe.
+- lab_none by a `continue` for the none test, or by testing r only inside the none test's block (gen_bd530, gen_bd531): the skip path must pass the `if (r)` test.
+- lab_none by defaultBl60's body written out in case 24 (gen_bd532): 9% instead of 10.1% for the NULL arm.
+
+### What to try next
+
+- exp_devgl stays where attempts 15, 16 and 25 put it: a second predictor on the dev test, a use of the flag in bb3, or the flag reaching the join on two edges, each by code with no other effect; none is known.  Don't spend another attempt on it without one of those three.
+- lab_none: the r = 1 block (14) and the not-entered return (20) are set by defaultBl60's own profile (10.1%), case 24's PRED_CALL tests (29% each) and the loop's two exits (4.5%); attempts 18, 22, 25, 32, 35 and 41 have now moved each factor alone with no natural form.  A route would have to change two factors at once (for example the `||` case 24, 18 of 21, plus anything worth 17% more at the sites).
+- Otherwise attempt 40's list: the closest bases are still attempt 27's exp_t10 weight near miss, attempt 30's c6 vol_fail near miss and attempt 25's windows.
+
+### Costs now (strict/loose, removed alone; 11 tricks, unchanged)
+
+As attempt 40 (src unchanged): lab_t5le 7/0, exp_pr 18/2, exp_t10 116/46, vol_fail 296/126, lab_none 333/231 (8/4 with the precheck gone too), etype 168/94 in the object (128/54 in loadBlFiles), cp 118/66 in the object (78/26 in loadBlFiles); exp_devgl 43/7 (re-measured: `bdlib.py build/bd/a41/nodev.c`), pin_size 82/40 as attempt 38.
