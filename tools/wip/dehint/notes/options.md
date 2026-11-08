@@ -3,6 +3,58 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 22
+
+**18 tricks** (19 before).  Removed (1): parseOption's setBool `__builtin_expect` (po1).
+Attempt 21's "one knife edge" was wrong: the binding constraint is the "\n" block's own
+epilogue copy (its count must reach 57, 10% of the entry 570; the natural 9.22% gives 41,
+and no entry scaling helps: 570 x 0.789 x 9.22% < 57 always), so the setBool edge needs
+>= ~12.7%, i.e. no early-return prediction (13.7% = call + `== 1`).  The "\n" block can't
+simply move to the end (`goto done` after bad: same .text, but the "\n" literal is then
+first expanded in macid's block and .rdata moves).  The shape that works keeps it early
+and sends it to a join: `ok = 0; if (setBoolOption(opt, val) == 1) { log "\n"; ok = 1; }
+else if (val) { ..value options.. }  if (ok) return 1;`, with attempt 21's macid helper
+(`macidRest(&xb.macid[1], val, 5)`, trip count unknown at profile_estimate).  `val &&
+vlen` stays (still needed), vvn isn't needed.  Full build SHA256 10dac648...1971c;
+progress 617/617.  See "## Attempt 22".
+
+| Where | Shape | Why it's worth a look |
+|---|---|---|
+| parseOption, the bool option | `ok = 1` in the setBoolOption arm, the value options in its `else`, `if (ok) return 1;` after them | Borderline: live but redundant (a `return 1` in the arm would do).  The join takes the early-return prediction off the setBool edge (13.7% instead of 9.2%); VRP1 threads it away.  A new `set` flag, `set = setBoolOption() == 1` or `== 1` re-tests all give the same bytes |
+| parseOption, macid | `static void macidRest(uint8_t *mac, const char *val, int n)`, called once with 5 | Borderline: a helper that exists to match, with a constant argument.  Its loop exit is 9% (unknown trip count) instead of 1/6.  A never-written `static int macidRestLen = 5` bound (sp5) gives the same bytes but reads as a dead hint, so the helper landed |
+
+Remaining (18 by README's count): `--param builtin-expect-probability=83`; 7
+`__builtin_constant_p` (parseButtonX's z feed 2, the macid memset 1, the rev feeds 4); 4
+`__builtin_expect` (parseButtonX's power, the rev feeds' three); 2 `asm goto` and 2
+`__builtin_unreachable` (dz1, dz2).
+
+## State after attempt 21
+
+**19 tricks, unchanged** (no match; src/ untouched).  Table loops that gcc unrolls don't
+reach bxe/bxz: strnicmp isn't pure, so a name loop unrolls only with 2 entries (cunroll's
+size rule), and loop predictors predict *no* match where power needs 83%.  New facts: cunroll
+(late, after VRP1/dom2/PRE) unrolls loops whose calls are off the hot path, so a guard that
+folds only after unrolling is a natural count lever (nodvd/olddvd as a table loop: same code,
+other layout); macidSet's loop header sets applyIniOptions' whole scale (do-while: x1.125,
+inert crossed).  po1 is down to one knife edge: with parseOption's macid loop trip count
+unknown at profile_estimate (helper or never-written static bound, pointer store: exit 9%)
+and nested `if (val) { if (vlen)` (unknown 34), both IDENTICAL with the expect kept, the
+natural setBool 9.22% fails only because cputemp's head is 285 against exec_th 285 (needs
+P(setBool) >= 9.26%, P(val) <= 69.56% or the '=' loop's normal exit <= 78.7%).  See
+"## Attempt 21".
+
+## State after attempt 20
+
+**19 tricks, unchanged** (no match; src/ untouched).  Attempt 19's lever (a live,
+redundant re-test that VRP1 threads) only moves counts onto thread *targets*: an original
+block keeps the share its estimate gave it after the threader reroutes its real inflow.
+Jump-thread *copies* get only real incoming-edge counts.  bxz's constant-0 block is a copy (the
+null path's copy of the store-and-test block; its 37 is the null edge's 28.5 plus the z
+feed's dead edge), so a live test can't lift it.  Its only real flow is G x P(null), pinned
+by power = 103.  For bxe, retention adds a whole predictor split (remopower 34-63 where 18 is
+needed).  The rev/dz group's blocks are unreachable (no live flow), and the memset and
+setBool expects set edge probabilities.  See "## Attempt 20".
+
 ## State after attempt 19
 
 **19 tricks** (20 before).  Removed (1): parseOption's vlen `__builtin_expect` (po2).  The
@@ -2037,3 +2089,299 @@ power/remopower profile moves).  Not pursued.
 
 MATCH: 20 -> 19 tricks (parseOption's vlen expect).  The `--param` stays (the setBool,
 power and rev-feed expects remain).
+
+## Attempt 20
+
+Focus: attempt 19's lever (a live, redundant re-test that VRP1 threads) on the tricks that set
+a block's final count: bxz (the xellbutton constant-0 block, 29 -> 37), bxe (remopower >= 18),
+the rev feeds and the dz/macid group.  Tool: `tools/wip/dehint/op20.py [-m] variant ..`
+(`px:NAME` replaces parseButtonX with a body from BODIES, `pxe:NAME` the same without the
+power expect, `cs_*` call-site spellings; `-m` prints the score and the xellbutton site's
+counts from the optimized dump: c0 = the `xb.xellButton = 0` block, power, remopower, remox,
+winbutton, the part call, the log block).  Scratch build/op/a20 (d_* dumps), traces
+build/v/aio_p1/a20*.
+
+### How threading moves counts (dumps, then measured)
+
+- A jump-thread *copy* gets the summed counts of the incoming edges grouped into it, as they
+  are when VRP1 runs; the *original* blocks keep their stored counts minus the threaded
+  paths.  So a re-test merging two flows (say the null path and power-fail) leaves its
+  estimated split in the thread *targets* (the chain head keeps the share the estimate gave
+  it, real or not: "retention"), while every copy carries only real entry-edge counts.
+  Attempt 19's incomplete block was a target (plus PRE's tail merge); that's why it worked.
+- The threader extends a path only through empty blocks, so the copy for the null path is
+  the merge block that holds the `xb.xellButton = b` store and the `!xb.xellButton` test.
+- c0 in the reference is that copy: its only pred is the null edge (132 x 21.6% = 28.5) but
+  its count is 37, because the z feed's edge (600 of 10000, still live at VRP1, folded at
+  fab) was grouped into the same copy.
+
+### bxz: c0 is a copy, so a live test can't lift it (closed)
+
+- The only real path with b = 0 is the null path.  A live re-test can only route real flow
+  into a copy; extra (estimated, unreal) flow lands only on targets.  So c0 = G x P(null at
+  the first test) with G the call block.  The power block is G x (1 - P), and it must stay
+  103 (remopower 18 and the 0x11 join <= 86 need it: attempt 16), so c0 = 37 would need
+  G ~ 140 and P ~ 26.4% at once; today G = 132 (the bootFlags & 4 test) and P is 21.6%
+  (pointer 15, call 71, early return 39) or 30.2% (no early return).
+- Measured (score, c0, power, remopower): nat (no feed) 90, 29, 103, 18.  `s &&` on the
+  power test, then `else if (s)` or `else if (!s) return 0;` (sand, srt): 839, **40**, 92, 43
+  (the null edge without the early-return predictor is 30.2%, the chain head keeps the
+  re-test's estimate), and the part loses its unlikely promotion (102).  `s &&` on every
+  name (sall) 514, 40.  Nested `if (s)` with `if (!b && s)` / `if (s && !b)` 989.  b as a
+  flag (`if (!b) {chain}`, bflag) 206: c0 29, remopower 40.  `if (s) {...}` with no early
+  return, every arm returning, returns per arm: all 90 (same bytes as no feed).
+- Call sites (with the feed gone): `s` local, `int i` result, `if (!(xb.xellButton = ..))`,
+  `== 0`: 90.  `if (!s || !xb.xellButton)` (cs_ors): **90, same bytes**, with the log block
+  70 and the part 21 (retention lands there, and those counts don't matter); `!xb.xellButton
+  || !s` 665.  The caller testing s (`if (s) .. = parseButtonX(s);`, with `else = 0`, `s ?
+  parseButtonX(s) : 0`, with or without the body's own null test): 683-932, c0 40 (the
+  caller's null edge is 30.2% too) and power 72 or 92.
+- op16sim on srt: c0 40 is not the only change (power 92, the join 119, remopower 43, an extra
+  block); overriding three keys still differs.
+
+### bxe: retention is far too coarse (closed)
+
+- Natural power is 83.25% (call 71 + const return 67) and remopower then 17 (needs >= 17.5).
+  With the z feed kept the else head's first block has no call, so without the expect the
+  power test is const return alone (67%): bxe 797, c0 44, remopower 34.
+- A re-test that gives the else head extra estimated flow adds a whole predictor split of
+  another flow (2160 or 6500 of 10000), not the ~0.2 count needed: b1 (flag, no feed, no
+  expect) 678, remopower 52; with the z feed (zb1/zb2 `if (!b)`, zr1 `r` re-tested) 1123,
+  c0 58, remopower 63; zb3 / zr2 (else-if forms) are the plain bxe bytes (797).  In the
+  flag forms the power test itself goes to 50% (both arms reach the re-test block).
+
+### The rest, by mechanism
+
+- Rev feeds (rv1, rv2) and dz1/dz2: their job is the dummies' counts (dz1 47, dz2 8), and
+  a dummy is reached only by its asm goto and the dead feed.  A live edge into it would be
+  a real path to `__builtin_unreachable` (gcc gives it 0%, PRED_NORETURN), and a dummy is
+  never a thread target, so threading can't give it count.  The getIniBool tie rv2 settles
+  needs the extra extraction (attempts 13/15), and threading adds no heap entry without code.
+- Macid memset: it sets validateString's split (71/29) through the call heuristic; the
+  needed counts are 146 up *and* 149 down from 51/51, and retention only raises targets.
+- po1 (setBool): connect_traces compares edge probabilities, not counts (attempt 19), so
+  there's no count for a re-test to move.
+
+### Don't retry (attempt 20)
+
+- Re-tests of s or b in parseButtonX or at the xellbutton call site for bxz: c0 is a copy
+  (only real entry-edge counts) and its only real flow is G x P(null), pinned by power = 103.
+- Re-test retention for bxe: it moves whole predictor splits (remopower 34-63), and the
+  feed's call-free head takes the call heuristic off the power test.
+- Threading for the dummies' feeds or the macid memset (unreachable gets no live flow;
+  retention can't lower a count).
+
+### Result
+
+No match; src/ unchanged (19 tricks).  The lever works only where a trick's job is a
+thread *target's* count (an original block that keeps an estimated share after its inflow
+is rerouted), as with attempt 19's incomplete block.  None of the remaining tricks has that
+job: bxz's block is a thread copy, bxe needs ~0.2 count where retention gives tens,
+the rev/dz group's blocks are unreachable, and the memset and setBool expects set edge
+probabilities.  A free fact: the xellbutton log block's and the part call's counts don't
+reach the bytes (cs_ors moves them to 70 and 21 with identical bytes to plain bxz).
+
+## Attempt 21
+
+Focus: small constant-table loops that gcc unrolls completely, as a new source of edge
+probabilities (loop exit / loop iterations predictors, cunroll's per-copy frequency scaling),
+for bxe/bxz (parseButtonX), po1 (parseOption) and the rev/dz group (applyIniOptions' OPT
+sites).  Tools (tools/wip/dehint/): `op21.py [-m] [-p N] [-d dir] [-v fn] variant ..`
+(`px:NAME` = parseButtonX table bodies; `ms_*` = macidSet loop forms; `opt2`, `opt2b`, `optd`,
+`optj`, `optg*` = OPT/optIniBoolG sites as table loops; `hm5`, `hm6`, `hp5`, `sv5`, `sp5` =
+parseOption's macid loop with a trip count unknown at profile_estimate; `vvn`, `n1`, `n2`,
+`eq*` = parseOption tail / setBool / '=' loop forms; every op13.RM removal by name),
+`op21ms.py` (stdin `op21.py -v FN v`: instruction multiset difference, tells layout-only
+diffs from code diffs).  Scratch build/op/a21 (dumps per variant).
+
+### Where unrolling happens, and what it allows (dumps)
+
+- profile_estimate (042) runs long before cunrolli (087) and cunroll (151); VRP1 is 096, dom2
+  110, PRE 123, dom3 166, vrp2 168, fab 174.  A loop's copies inherit the loop body's
+  estimated probabilities; duplicate_loop_to_header_edge scales copy k by
+  prob_pass_wont_exit^k (= 1 - the in-body exit share), and the folded exit edges leave
+  their destinations' counts as estimated (inconsistent flow).
+- cunrolli unrolls outermost loops only when the size doesn't grow (UL_NO_GROWTH):
+  2/3 x (n x (size - eliminated) + last) <= size.  cunroll (late) allows growth only with no
+  non-pure call on the loop's hot path.  strnicmp/stricmp are not pure (mingw's string.h),
+  so a name-matching loop (call + test = 7 kept per copy, 5 folded) unrolls at cunrolli for 2
+  entries only (t2ret); 3 or 4 entries are refused ("size would grow" at cunrolli, "contains
+  call and code would grow" at cunroll; t4ret: size 12-5, unrolled 20).  The static table is
+  dropped once unrolled (toplevel reorder is on for options), and its strings fold to the
+  shared literals.
+- A loop whose calls sit behind a test predicted not taken (OPT's `!(xb.bootFlags & set)`)
+  has no call on the hot path, so cunroll (late, after VRP1/dom2/PRE) unrolls it with growth
+  (optj: size 47 -> 56).
+
+### parseButtonX as a table loop: closed
+
+- Loop predictors predict *no match*: the match is an in-body exit (loop exit heuristic,
+  first match, 9% / number of exits = 4.5%), the opposite of power's needed 82.13-83.09%
+  match.  t2ret ({power, remopower} as a loop, the rest explicit): power 119, remopower 116,
+  remox 111 (each copy keeps ~95% of the flow).  t1ret/t3ret/t4ret/t4sz: 911-1224.
+- A no-break loop (match inside, keep scanning) would test the later names after a match:
+  other code.  So no loop shape gives the power edge, and the z feed's +8 counts need an edge
+  alive at VRP1, which a cunrolli loop doesn't leave (its exits are gone at 087).
+- Fresh look at the reference (op18dis): the xellbutton site is today's chain exactly (null ->
+  `xellButton = 0` copy -> log; each name `mov edx,X; je join`; part call stored and
+  tested).  Nothing new for the source shape.
+
+### OPT sites as table loops (applyIniOptions)
+
+- opt2 (nomobile/noremap), opt2b (nosusecurity/smcnocheck), optd (demon/patchsmc), optg3,
+  optg12, optg23 (the optIniBoolG triple): 1087-1769, all code changes (bootFlags in edx
+  instead of eax: the loop changes register allocation).
+- optj (nodvd and olddvd as `for (i = 0; i < 2; i++) if (!(xb.bootFlags & t[i].set))
+  optIniBool(t[i].name, t[i].set, 4, 0);`, olddvd's set 0): **same code, other layout (597)**.
+  The second copy's guard folds only at cunroll (bootFlags & 0), so olddvd's blocks keep the
+  guarded count: a test that is dead only after unrolling, a new count lever.  Crossed with
+  every removal: 457 (rv1ms, alone 487) to 999; none below the removal's own cost.
+
+### macidSet's loop forms: a whole-function scale lever
+
+- macidSet is early-inlined, so its loop header is applyIniOptions' hottest block at
+  profile_estimate (10000; entry 1815): the function's counts are 10000 / (header visits per
+  entry, 5.51).  Forms with the same CFG are IDENTICAL (break + `i < 6`, `i < 6 &&` in the
+  condition, while, set+break flag, pointer, `< 0xff`, sizeof, `!(==)`, `return i != 6`).
+  The do-while (`do { .. } while (++i < 6)`, PRED_LOOP_ITERATIONS 5/6) gives the same code
+  and 4.90 visits: every applyIniOptions count x 1.125 (495 lines, rounding and ties).  Others
+  change code (brkne, set, cont, and, cnt, rev).
+- ms_do and ms_brkne crossed with every removal: none below the removal alone (ms_do+ms 605,
+  ms_do+bxe 868).  A uniform scale can't do bxe's job (remopower >= 17.5 needs power >= 104.5
+  at 83.25%, the 0x11 join <= 86 needs power <= 103.3) or any tie that needs one key moved.
+
+### po1: two of its three constraints have natural fixes now; a knife edge remains
+
+- The competitor (parseOption's macid loop exit, 1/6 by PRED_LOOP_ITERATIONS, or by the
+  guessed-iterations predictor from the xb.macid[i + 1] array bound) drops to the plain loop
+  exit heuristic (9.0%, below the natural setBool 9.22%) when the trip count is unknown at
+  profile_estimate and the store isn't an array ref: `sp5` (`static int macidRestLen = 5;`
+  never written, promoted read-only at IPA and folded by ccp2; `m = &xb.macid[1]; m[i] = ..`)
+  or `hp5` (a static helper `macidRest(uint8_t *mac, const char *val, int n)` called with 5).
+  Both are IDENTICAL with the expect kept; with po1 removed 340 (from 797).  `hm5`/`sv5`
+  (array store) keep the guessed 1/6.
+- The unknown-with-value block (must stay < 57, 10% of the entry, or it gets an epilogue copy)
+  is 62 at the natural 9.22%; nested `if (val) { if (vlen) { unknown } }` (vvn) gives the
+  vlen test the call heuristic (29/71): unknown 34.  vvn is IDENTICAL with the expect.
+- What's left (sp5+vvn+po1, 305 lines): bb-reorder round 1 takes cputemp's head (450 x 0.908
+  x 0.698 = 285.48 -> 285) into the round-1 trace, because exec_th = 570 x 500 / 1000 = 285
+  and the test is `freq < exec_th`.  It needs P(setBool) >= ~9.26% (natural 9.22%), or
+  P(val) <= 69.56% (natural 69.8 = pointer 85 + call 29), or the '=' loop's normal exit
+  <= 78.7% (natural 450/570 = 78.95).  -p sweep with sp5: 84-86 (16-14%) differ only by the
+  unknown epilogue (which vvn fixes), 88-90 (12-10%) 85 lines, 91 (9%, a tie with the 9%
+  exit) 797.  Rounding can't help: for any entry E, round(0.50084 E) >= floor(E / 2).
+- Natural setBool values in the new window (>= 9.26, < 18): 13.7 (no early return) and 17.08
+  (const return).  `n1` (`if (setBoolOption(..) == 1) log("\n"); else { ..rest.. } return 1;`)
+  gives the same CFG as today (still early return 39%); `n2` (log at the end, attempt 19's
+  `end`) moves the "\n" literal (.rdata).  '=' loop forms: `break` 442 (3 exits), while /
+  `i = len` 18 (code), `&& !val` in the condition 188: none moves the 450 cleanly.  The '='
+  test as a one-case switch (eqsw: no opcode predictor, '=' 50%, entry 665) changes the
+  loop's code (413 alone); `if (opt[i] != '=') continue;` (eqne) is IDENTICAL (same CFG).
+
+### Don't retry (attempt 21)
+
+- Table loops over button or option names: strnicmp/stricmp aren't pure, so more than 2
+  entries never unroll, and the loop predicts no match.
+- OPT pairs as loops outside the JTAG block (register allocation changes); macidSet forms for
+  scale (only one alternative scale, inert crossed).
+- po1 via the competitor or the unknown epilogue alone: both are handled above and the
+  cputemp knife edge still holds it.
+
+### Next ideas
+
+- po1 needs one natural probability over a threshold: P(setBool) >= 9.26%, P(val) <= 69.56%
+  or the '=' loop's normal exit <= 78.7%, together with sp5/hp5 + vvn.  Look for a predictor
+  on the val test or the '=' loop that costs no code (e.g. the '=' test's own predictor, the
+  `*val` test inside the loop), measured on sp5+vvn+po1.
+- optj's late-folding guard is a natural count lever for blocks inside the JTAG block; it
+  didn't help any removal crossed alone, but it could pair with another lever.
+
+### Result
+
+No match; src/ unchanged (19 tricks).  New facts: late cunroll (after VRP1/dom2/PRE) unrolls
+loops whose calls are off the hot path, and a guard that folds only after unrolling is a
+natural count lever (optj); macidSet's loop sets applyIniOptions' whole scale; po1 is now
+down to one knife edge (cputemp's head 285 against exec_th 285) once its competitor and the
+unknown block are handled (sp5/hp5 + vvn, both IDENTICAL with the expect kept).
+
+## Attempt 22
+
+Focus: po1 (parseOption's setBool expect) from attempt 21's near miss.  Tool:
+`tools/wip/dehint/op22.py [-m] [-p N|-np] [-d dir] [-o out.c] [-v fn] variant ..` (op21's
+variants plus this attempt's, joined by `+`; prints parseOption's line count; `-m` adds
+block counts from the optimized dump: C = cputemp's head, G = gputemp's success log, nl =
+the "\n" blocks, unk, inc).  Scratch build/op/a22 (base, p86, p88 dumps; land.c).
+
+### Modelling first: attempt 21's knife edge was not the only constraint
+
+- `-p` sweep on sp5+vvn (the expect kept, so P(setBool) = 100 - N): parseOption matches for
+  N = 83..87 (17%..13%); 88 (12%) differs by 70 lines, 82 (18%) by 199.  (applyIniOptions
+  moves with N too; only parseOption's count matters here.)
+- The 70 lines at 12% are the "\n" block's epilogue copy: bb-reorder copies the return block
+  into a trace end only when the edge count is >= 10% of the entry (570 -> 57), and nl =
+  450 x P(setBool) (450 = 570 x the '=' loop's 78.9% normal exit; the len <= 0 copy's flow
+  isn't added).  nl: 13% 58, 12% 54, natural 9.22% 41.  Since nl <= 570 x 0.789 x P, no
+  P under 12.7% can pass, whatever C, Rexit or P(val) do.
+- Emulation (an expect on the val test, `xval`, -p sets P(val), po1 removed): P(val) 64-69%
+  moves C from 282 to 261 and G to 26, and parseOption still differs by the same 70 lines.
+  So C < 285 (attempt 21's edge) is real but secondary; G's round-3 threshold isn't binding.
+- So P(setBool) must be in about [12.7%, 18%): of the natural mixes (attempt 12's table) only
+  13.7% (call 29 + `== 1` 28, no early return) and 17.08% (needs a non-0/1 constant return).
+
+### Taking the early-return prediction off the setBool edge
+
+The early-return heuristic (tree_estimate_probability_bb) fires for the "\n" block because
+it has a single successor, the return block, which isn't its next_bb; it then predicts all
+the block's incoming edges.  Ways out: the "\n" block right before the return block, or the
+"\n" block going somewhere other than the return block.
+
+- `gd` / `gd2` (the setBool success at the very end: `goto done;` with `done:` after bad, or
+  the rest inside `!= 1`): P = 13.7%, C 271, nl 62, and the .text is the reference's except
+  literal addresses (16 lines, all `.rdata` offsets).  But the "\n" literal is then first
+  expanded in macid's "\n" block (strings are emitted in expansion order, the bb chain order
+  at expand; gd's goes after macid's ":"), and nothing after profile_estimate moves the
+  block back up (thread copies are appended, merges keep the first block's place).
+- `a1`/`a3` (`set = setBoolOption(); if (set == 1) log("\n"); if (set == 1) return 1;`): the
+  re-test gets opcode 28 + early return 39 = 19.9%, so the value options get 80.1% of 450:
+  C 252, 97 lines.  `a1x` (that re-test with an expect, -p sweep): matches for 11%..18%, so
+  the re-test's own prediction decides the chain's count (retention: the val test keeps its
+  estimate after VRP1 threads the join).  `a2` (flag in the arm, `if (ok)` join: 39%) C 192.
+- `b1` (`return set;` in the arm) = po1 (305); `b2` (a nested `if (set)` re-test in the arm)
+  228.
+- **`c1`..`c5` (MATCH)**: the join *after* the value options: `if (setBoolOption(opt, val)
+  == 1) log("\n"); else if (val) { ..value options.. }  if (..) return 1;`.  The setBool
+  test's false edge goes straight to the val test (no prediction of its own in between), so
+  the value options get the test's whole false share (C 271, as gd), the "\n" block keeps
+  its early place (literal order right) and goes to the join (no early return: 13.7%, nl 62),
+  and VRP1 threads the join away.  All IDENTICAL with sp5 or hp5: c1 (`set` result, `set ==
+  1` twice), c2 (`set = setBoolOption() == 1`, `if (set)`), c3 (`ok` as the result), c4 (a new
+  `set` flag set in the arm), c5 (the existing `ok` as that flag).  With c4/c5 vvn isn't
+  needed (unk 55 < 57); c1-c3 need it (unk 72 without).  `val && vlen` is still needed
+  (`vl`, plain `vlen`: inc 55, 62 lines).  Without sp5/hp5: 237 (the macid exit 1/6 beats the
+  len <= 0 copy's 13.7% edge).
+- Landed hp5+c5 (the helper over the never-written static; `ok` reused, no new variable).
+  `hp5` objects differ only in a clone number (`_parseButtonPart.constprop.5/.6`); the link
+  strips symbols.  Full build SHA256 10dac648...1971c.
+
+### Don't retry (attempt 22)
+
+- Reaching po1 through C (cputemp's head), G or P(val) alone: the "\n" block's epilogue copy
+  needs P(setBool) >= 12.7% regardless.
+- The setBool success at the end of the function (gd, n2): .rdata ("\n" expanded late).
+- A re-test of the setBool result right after the "\n" arm (a1-a3) or inside it (b2): the
+  re-test's own prediction (19.9% or 39%) sets the value options' count.
+- Helpers for the setBool test (attempt 12's h1-h4 again with sp5+vvn: 216-377, unchanged).
+
+### Next ideas
+
+- The lever: an arm whose block would go straight to the return goes to a join that a later
+  test decides (threaded away by VRP1), placed so that no new prediction sits on the path
+  whose count matters.  It removes exactly one early-return prediction.  It doesn't reach
+  power (needs 82.13-83.09%; natural 83.25% has no early return to remove, and adding one
+  gives 76%) or the zero-byte feeds.
+
+### Result
+
+MATCH: 19 -> 18 tricks (parseOption's setBool expect).  The `--param` stays (power and the
+rev feeds' expects remain).  Borderline shapes landed: the `ok` join (c5) and the
+macidRest helper (hp5), both commented in src/options.c.

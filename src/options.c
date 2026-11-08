@@ -574,6 +574,19 @@ int setBoolOption(const char *name, const char *val)
 	return 0;
 }
 
+/* bytes 1 .. n of a macid from the hex pairs at val, logged as ":%02x"
+   (parseOption's comment says why it is a helper) */
+static void macidRest(uint8_t *mac, const char *val, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		log_printf(1, ":");
+		mac[i] = myatox8(val + i * 2);
+		log_printf(1, "%02x", mac[i]);
+	}
+}
+
 /* one name[=value] from the command line option string.  The `if (val)`
    around the value options is in the Linux build (gcc 4.9 keeps the test);
    gcc 6 threads it away.
@@ -585,12 +598,21 @@ int setBoolOption(const char *name, const char *val)
    then owns an epilogue copy and only edramtemp's -1 test falls into bad;
    gpufan's moves the jump alignment from avregion's test to gameregion's.
    (Every myatou32 arm but edramtemp in this form also matches.)
-   The setBoolOption __builtin_expect uses build.sh's
-   builtin-expect-probability=83: the done edges stay under gputemp's (so
-   its match trace comes first) and the len <= 0 copy's done edge stays
-   above the macid loop exit (1/6, its loop iterations) when bb-reorder
-   connects the "\n" trace; the natural 9.2% (call, early return, `== 1`)
-   loses that.
+   Borderline, for review: a bool option sets `ok` after its "\n" (the
+   value options are its else) and `if (ok) return 1;` comes after them,
+   where a `return 1` in the arm would do.  The "\n" block then goes to that
+   join, not straight to the return, so the setBoolOption edge gets no
+   early-return prediction: 13.7% (call, `== 1`) instead of 9.2%.  The
+   "\n" block reaches the epilogue-copy threshold (62, 10% of the entry is
+   57), cputemp's head stays out of bb-reorder's first trace (271 under
+   285), and, with the join after the value options, they get the whole
+   false share; VRP1 threads the join away.  The "\n" block must stay ahead
+   of cputemp (its literal comes before "cputemp" in .rdata).
+   Borderline, for review: macid's last five bytes are a helper with the
+   count as an argument (macidRest, called once, with 5).  Its loop's trip
+   count isn't known at profile_estimate, so its exit is 9% (loop exit),
+   not 1/6 (5 iterations); the len <= 0 setBoolOption copy's "\n" edge
+   (13.7%) beats it when bb-reorder connects the "\n" trace.
    Borderline, for review: the unknown-with-value message tests `val &&
    vlen`, where vlen alone decides (vlen is 0 whenever val is NULL).  The
    `val` test lets VRP1 thread the val-null path straight to the
@@ -623,11 +645,11 @@ uint32_t parseOption(char *opt)
 		vlen = 0;
 	else
 		vlen = strlen(val);
-	if (__builtin_expect(setBoolOption(opt, val) == 1, 0)) {
+	ok = 0;
+	if (setBoolOption(opt, val) == 1) {
 		log_printf(1, "\n");
-		return 1;
-	}
-	if (val) {
+		ok = 1;
+	} else if (val) {
 		if (!stricmp(opt, "cputemp")) {
 			xb.cpuTemp = myatou32(val, -1);
 			ok = 0;
@@ -752,11 +774,7 @@ uint32_t parseOption(char *opt)
 					xb.macid[0] = myatox8(val);
 					val += 2;
 					log_printf(1, "%02x", xb.macid[0]);
-					for (i = 0; i < 5; i++) {
-						log_printf(1, ":");
-						xb.macid[i + 1] = myatox8(val + i * 2);
-						log_printf(1, "%02x", xb.macid[i + 1]);
-					}
+					macidRest(&xb.macid[1], val, 5);
 					log_printf(1, "\n");
 					return 1;
 				}
@@ -773,6 +791,8 @@ uint32_t parseOption(char *opt)
 			return 1;
 		}
 	}
+	if (ok)
+		return 1;
 	if (val && vlen) {
 		log_printf(1, "\n\n***** ERROR: unknown option '%s' with value '%s' provided on the command line!\n", opt, val);
 		return 0;
