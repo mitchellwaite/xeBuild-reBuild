@@ -3,6 +3,27 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 23
+
+**17 tricks** (18 before).  Removed (1): the rev feeds' e1 `__builtin_expect` (dz1's inner
+test).  New fact: a test whose two arms both go to dummies gets PRED_NORETURN on both edges,
+so first match ignores it and the test keeps its own (natural) prediction; dz2's inner test
+now sends its other arm to dz1 (`if (expect(cp(+15), 0)) { if (expect(cp(+16), 0)) goto
+dz2; goto dz1; }`), which gives dz1 its count (39, window 39..79), so dz1's own test needs no
+expect (it gets no flow; it only keeps that return from being an early return).  Windows
+(heap replay, one key at a time): dz1 39..79, dz2 7..8 only; e2/e3 each [13.8%, 18.05%) with
+the other at 17%; bxe (82.13%, 83.09%], and its natural value can never fit (the 0x11 join
+and remopower scale together: P <= 83.17% for any call-site count; natural 83.25%).  Full
+build SHA256 10dac648...1971c; progress 617/617.  Candidate (not landed, for review):
+drafts/options_applyIniOptions_candidate.patch, the rev feeds with no expect at all (a dead
+`sprintf` in dz2's arm for the call heuristic, the dummies' labels swapped so gcc doesn't
+round the split's probability; full build matches).  See "## Attempt 23".
+
+Remaining (17 by README's count): `--param builtin-expect-probability=83`; 7
+`__builtin_constant_p` (parseButtonX's z feed 2, the macid memset 1, the rev feeds 4); 3
+`__builtin_expect` (parseButtonX's power, the rev feeds' two); 2 `asm goto` and 2
+`__builtin_unreachable` (dz1, dz2).
+
 ## State after attempt 22
 
 **18 tricks** (19 before).  Removed (1): parseOption's setBool `__builtin_expect` (po1).
@@ -2385,3 +2406,130 @@ the block's incoming edges.  Ways out: the "\n" block right before the return bl
 MATCH: 19 -> 18 tricks (parseOption's setBool expect).  The `--param` stays (power and the
 rev feeds' expects remain).  Borderline shapes landed: the `ok` join (c5) and the
 macidRest helper (hp5), both commented in src/options.c.
+
+## Attempt 23
+
+Focus: the remaining `__builtin_expect`s (parseButtonX's power, bxe; the rev feeds' three:
+e1 = dz1's inner test, e2 = dz2's outer test, e3 = dz2's inner test), their real windows
+and natural replacements.  Tools (tools/wip/dehint/): `op23.py [-m] [-e] variant ..` (edits
+on src; `-m` counts from the optimized dump: dz1/dz2, the rev block, the return block, the
+xellbutton site; `-e` the profile_estimate succ probabilities and predictors of every cp test
+and the power test), `op23g.py [-m] [-max N] STRUCT[:forms] ..` (the rev feeds as templates
+in S x test forms: p plain, lt `< 0`, eq `== 5`, gt `> 0`, ne `!= 5`, e `expect(.., 0)`;
+all combinations of cost < 7), `op23win.py REFTAG TAG blocks LO HI` (op16sim key window of
+one block at a time).  Scratch build/op/a23 (g1.txt = the structure sweep), dumps
+build/v/aio_p1/a23cur.
+
+### The rev feeds: what each expect is for (profile_estimate, a23cur)
+
+- Flow: the sprintf block 554; A (`cp(+1)`, no predictor: 50%) -> B (e1, 17%) -> dz1 47 or
+  return; A false -> C (e2, 17%) -> D (e3, 17%) -> dz2 8 or return.  The return block is
+  1807 - dz1 - dz2 (1760).
+- Natural probabilities with the expect removed: e1 and e3 are 0.0% (PRED_NORETURN, first
+  match, on every edge into a block that leads to __builtin_unreachable; only
+  __builtin_expect and the loop-iteration predictors outrank it), e2 is 61% (early return:
+  its false edge goes straight to the return block).  Measured: e1 508 (dz1 0), e2 245 (dz2
+  29), e3 44 (dz2 0); bxe 797.
+- Windows (op23win on a23cur, one key at a time): dz1 -79..-39 (any count 39..79), dz2 -8 or
+  -7 only.  So e1 alone has P(B) in [14.1%, 28.5%] (with P(A) 50%) and e2, e3 each [13.8%,
+  18.05%) with the other at 17%.  Probes agree: dz2 16-19 always gives the same 38-line
+  getIniBool tie, dz1 86/89 gives 333, dz1 39 and 79 are fine.
+- **A test whose two arms both go to dummies gets PRED_NORETURN on both edges**, and the
+  first-match rule excludes a predictor that predicts both directions, so such a test keeps
+  its other predictors.  DS still combines the two noreturn predictions (4 and 9996 of
+  10000) in list order: when the TRUE arm goes to the later-numbered dummy (dz2) the
+  integer rounding quantises the result (c -> k = round(4c/(9996(1-c))), P = k/(k+4): 0, 20,
+  33.3, 42.9, 50, 55.6 ..%; `== 5` 28% -> 33.3%), with the TRUE arm to dz1 it gives back
+  about c.
+
+### MATCH: dz2's inner test as a split (op23g.py dd2:p,p,e,e; landed)
+
+`if (cp(+1)) { if (cp(+2)) goto dz1; return; }  if (expect(cp(+15), 0)) { if
+(expect(cp(+16), 0)) goto dz2; goto dz1; }`: dz1's own test has no expect (noreturn: 0%, no
+flow), and dz2's inner test sends its other arm (83%) to dz1, so dz1 = 277 x 17% x 83% = 39
+(the bottom of its window) and dz2 stays 8.  The return block is 1767 (was 1760).  dz1's
+plain test is still needed: without it (`if (cp(+1)) return;`, `ar`) A's then-edge goes
+straight to the return block and gets the early-return prediction (A 39%: dz 48/10, 38
+lines).  `p,lt,e,e` and `p,gt,e,e` (B as `< 0` / `> 0`) are the same bytes.  Full build
+SHA256 10dac648...1971c.  Rev feeds now 4 cp + 2 expects (was 4 + 3).
+
+### Why the rev feeds can't lose another expect (arithmetic, then the sweep)
+
+- Natural dz sources: an edge into a dummy from a test with one live arm is 0% unless an
+  expect sets it; a split test (both arms dummies) keeps its other predictors, which for a
+  cp test are only the compare's: c in {50 (plain), 73/27 (`> 0`/`< 0`), 72/28 (`!= 5`/`==
+  5`)} (no call can sit in a dummy, no early return); pointer compares (`(void *)(long)cp
+  == 0`, 15%) change the code (321-720).  So a split's dz2 share is 20% at best (TRUE arm to
+  dz2, `< 0`: k = 1), or 27% (TRUE arm to dz1, `> 0`, fine order).
+- dz1 must be >= 39 and dz2 <= 8, so dz2's share of the dummies' flow must be <= 17.9%:
+  natural splits alone give dz1 <= 4 x dz2 <= 34 (q1/q2 probes: dz1 18-36 -> 460-484 lines).
+  So at least one expect-driven edge is needed, and with D as the only split, D's 17% is it.
+- C (dz2's outer test, 17%) natural: its false edge goes to the return block (early return
+  toward then), so C is 61 / 36.6 (`< 0`) / 37.8 (`== 5`) / 80.9 / 80.1%; with A's forms
+  R2 = 554 x {50, 73, 72, 27, 28}% the split's inflow R2 x P(C) must be in [47, 50) (dz2 =
+  17% of it in [6.5, 8.5), dz1 = 83% of it >= 39): no product lands there (nearest 54.9:
+  A `> 0`, C `< 0`, dz 46/9, 38 lines).
+- The op23g sweep (cur, dd1, dd2, rv1, rv2, tri1, tri2, sp1-sp4 x {p, lt, eq, gt, e} with
+  cost < 7; build/op/a23/g1.txt, scores <= 120 kept): the only IDENTICAL results are dd2
+  with B plain / `< 0` / `> 0` and C, D expects (cost 6).  Every cost-4/5 near miss is the
+  38-line getIniBool tie (dz2 9-19) or dz1 out of its window.
+
+### Candidate: no rev expect at all, with a dead call (drafts/options_applyIniOptions_candidate.patch)
+
+- The rounding above depends on which noreturn prediction comes first in the edge's list:
+  predictions are prepended, and tree_bb_level_predictions adds them in block order, so the
+  later dummy's comes first.  With the TRUE arm to dz2 and dz2's label *before* dz1's (the
+  labels swapped at the end of the function, IDENTICAL by itself), the first factor is 9996
+  on the TRUE edge and small probabilities come back unrounded (P(TRUE) ~ c).
+- A split's c can only be < 17.9% with a second predictor, and the only one that fits a
+  dummy's arm is the call heuristic: a call with side effects in the dz2 arm (dead, like the
+  arm).  `if (cp(+16) < 0) { sprintf(xb.blSuffix, "_%s", s); goto dz2; } goto dz1;`: opcode
+  27 + call 29 = 13.1% to dz2.  Its inflow 150 x 36.6% = 55 (A `> 0`: 73%, so R2 150; C `< 0`
+  with the early return: 36.6%) gives dz2 7, dz1 48.
+- `if (cp(+1) > 0) { if (cp(+2)) goto dz1; return; }  if (cp(+15) < 0) { if (cp(+16) < 0) {
+  sprintf(..); goto dz2; } goto dz1; }` + dz2 before dz1: IDENTICAL, and the full build
+  matches (SHA256 10dac648...1971c, built with it in src/ and then restored).  `!= 5` for A,
+  `== 5` for C or D: also IDENTICAL.  Without the swap the same feed rounds to 20% (dz2 11,
+  44 lines); without the call (D plain / `< 0`) dz2 16-18.
+- Cost: 4 cp + 0 expect (the landed shape is 4 + 2), but the sprintf is a dead block whose
+  only job is a prediction, so it is a candidate, not landed: by README's kinds it removes
+  two more expects; counted as a dead-block trick it is one net.  With it, parseButtonX's
+  power is the only expect left and the --param stays (power needs 83).
+- Not possible without it: no cost-5 shape exists without a dead call (C natural needs the
+  split's inflow in [47, 50) with D 17%; D natural needs a share <= 17.9%).
+
+### bxe (parseButtonX's power): closed by a ratio, not a threshold
+
+- Real window (dumps, callee scale): the else head E = 7836 x (1 - P) is kept by the
+  remopower block after the feed folds (count E x 132/10000, must be >= 17.5: E >= 1326, P <=
+  83.08%) and the z feed takes 45% of E into c0 (37: P >= ~82%).  The power-success edge
+  7836 x P x 132/10000 must round to <= 86 (the 0x11 join's priority, attempt 16).
+- Without the expect P is 67% (const return only): the z feed's cp test is the else head's
+  first block, so the call heuristic sees no call (op23 -e).  With the remopower call ahead of
+  the feed (`bxc`, `int r = strnicmp(..)` first) the power test is 83.2% (call 71 + const
+  return 67) and remopower is 17 (321 = bxe+bxz: the feed's outer test loses its own call
+  heuristic, 50%, c0 35).
+- The join and remopower both scale with the power block, so their ratio is P / (1 - P) and
+  must be <= 86.49 / 17.5 = 4.94, i.e. P <= 83.17% for *any* call-site count or `!s` share;
+  the natural 83.25% (4.97) is out, and no predictor available on the power edges (call,
+  const return, early return 39, negative/null return need other return values) moves it by
+  the 0.1-1.1% needed.  A feed in the power-success arm (to cut the join's edge) takes the
+  const-return prediction off the power edge (it lands on the feed's test): 71%.
+- bxz as one cp test with a dead call in its arm (op23 probes, 15 forms): c0 36 or 40,
+  never 37 (as attempt 18).
+
+### Don't retry (attempt 23)
+
+- Natural replacements for the rev feeds' C/D expects without a dead call: the arithmetic
+  above and the sweep (g1.txt, g2.txt: cur, dd1, dd2, rv1, rv2, tri1, tri2, sp1-sp4, ar, ar1,
+  a2, a21 x {p, lt, eq, gt, ne, e, e1}).
+- Pointer compares on a cp result (code changes); a dz feed whose then-arm returns directly
+  (early return); natural splits alone (dz1 <= 4 x dz2).
+- bxe by any predictor mix (ratio bound 83.17%); bxz as one test.
+
+### Result
+
+MATCH: 18 -> 17 tricks (the rev feeds' e1 expect: dz1's inner test).  Landed dd2:p,p,e,e
+(no borderline shape: the feed is still a counted hint, only its arms changed).  Candidate
+saved: the rev feeds with no expect (a dead sprintf in dz2's arm, the dummies' labels
+swapped): 17 -> 15 by README's kinds, 16 if the dead call counts.

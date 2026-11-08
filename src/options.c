@@ -939,9 +939,14 @@ void applyIniOptions(void)
 			sprintf(xb.blSuffix, "_%s", s);
 			/* dead feeds that key the dummies dz1 and dz2; dz1's return
 			   takes its flow off dz2's feed, which settles the demon and
-			   patchsmc getIniBool tie (no dummy in parseButtonX needed) */
-			if (__builtin_constant_p(xb.blSuffix[1] + 1)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 2), 0)) goto dz1; return; }
-			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 16), 0)) goto dz2; }
+			   patchsmc getIniBool tie (no dummy in parseButtonX needed).
+			   dz1's own test gets no flow (noreturn, 0%) and keeps that
+			   return from being an early return; dz2's inner test sends
+			   its other arm to dz1, which gives dz1 its count, so it needs
+			   no expect of its own (tools/wip/dehint/notes/options.md,
+			   attempt 23) */
+			if (__builtin_constant_p(xb.blSuffix[1] + 1)) { if (__builtin_constant_p(xb.blSuffix[1] + 2)) goto dz1; return; }
+			if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 15), 0)) { if (__builtin_expect(__builtin_constant_p(xb.blSuffix[1] + 16), 0)) goto dz2; goto dz1; }
 		}
 	}
 	return;

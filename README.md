@@ -81,10 +81,10 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. options</b>: 18 tricks, very hard</summary>
+<summary><b>1. options</b>: 17 tricks, very hard</summary>
 
 - `--param builtin-expect-probability=83`
-- 7 `__builtin_constant_p`, 4 `__builtin_expect`, 2 `asm goto` and 2
+- 7 `__builtin_constant_p`, 3 `__builtin_expect`, 2 `asm goto` and 2
   `__builtin_unreachable`, nearly all setting the cold layout of
   `applyIniOptions`
 
