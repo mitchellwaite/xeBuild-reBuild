@@ -348,8 +348,10 @@ int optIniInt(const char *name, int def)
 }
 
 /* applyIniOptions' copy of parseButton for xellbutton: the expect and the
-   dead feed into z set its frequencies (z needs 3/8 of the else arm: 50%
-   for the outer test, 75% for `> 0` from the opcode heuristic) */
+   dead feed into z set its frequencies (the feed sends 45% of the else
+   arm to z: 71% for the outer test, from the call heuristic on remopower's
+   strnicmp, and 63.4% for `> 0`, the opcode heuristic's 73% against the
+   early return's 39%) */
 static int parseButtonX(const char *s)
 {
 	int b = 0;

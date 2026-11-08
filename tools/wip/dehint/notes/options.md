@@ -3,6 +3,71 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 27
+
+**17 tricks, unchanged** (no match; src/ untouched).  Audit of attempts 24-26's closures:
+op25map.py's maps are unsafe (unmatched TAG ids keep their own id and collide; a TAG head
+mapped to a REFTAG non-head never compares), and of the files it wrote m_dzall.txt,
+m_nodz2a.txt, m_xa.txt (and m_nodz1c.txt) fail a positive control (the known answer
+injected: no hit).  Fixed generator op27map.py (gap pairs, head fix, drop list, collision
+check) and op27ctl.py (controls).  Every attempt-25/26 replay re-run with a map that passes
+its control: **no verdict changes** (dzall: -ext 0, drop 0, move 0, swaps 0/0, op15sim
+singles 0 and pairs +-4 0, deleted-entry hits = attempt 25's window; xa/xb/xc joint dz1 x
+dz2 keys 0 with the control passing; attempt 26's a26m map passes).  Attempt 24's dominance
+argument confirmed in profile_estimate dumps (op27dom.py: a live call block the test doesn't
+dominate gets no call heuristic; the opposite, dominated edge does).  Attempt 26's untried
+private parseButton copy for xellbutton2 (op27y.py, 57 feed shapes x 2 copy positions): the dummy needs its own
+asm goto to survive (a feed-only dummy is gone by bbro), and a dummy fed mid-function drains
+its flow from every later block (rev 554 -> 546-550): best 304, 850-1000 with dz2 in its
+window.  See "## Attempt 27".
+
+## State after attempt 26
+
+**17 tricks, unchanged** (no match; src/ untouched).  Attempt 25's last lead (dz2 pushed
+from xellbutton's trace after the bootFlags reload) is closed by the CFG: the reload block
+193 joins the parseButtonPart-nonzero path (191's ne edge) and the default arm (192), and an
+asm goto can only push after 193's deletion from a block that is on those paths and *not*
+on the matched-name paths (262, the jump-threaded store copy).  Every test gcc can decide
+on those paths is `v != 0`, which the matched constants and an unknown nonzero part result
+share, so no source shape separates them (else arm, end of block, nested ifs, re-tests,
+local flags copy all put the asm goto on 262's paths too, which moves 262's reload: `xk`).
+Full replay map (op26inj.py, every position of every r3/r4 event group, extracted dummy):
+the only pushes that work are 188 after `visit 193` (-8..-19), anywhere in 198's trace
+(xellbutton2's inlined parseButton: -6..-8, -12..-19) and inside dualboot's parseButton
+(244/245, -8..-19), plus today's 251 (-6..-8).  The wide windows are all in parseButton's
+inlined body, where no applyIniOptions statement can sit.  See "## Attempt 26".
+
+## State after attempt 25
+
+**17 tricks, unchanged** (no match; src/ untouched).  The whole dummy group (dzall, 11
+tricks, 304 lines) can't go: every block count is the same with and without it, and the
+p1/sim3 replay of the dzall heap finds no real-key fix (singles, pairs +-4, any one insert
+dropped or moved, one or two push-order swaps, all 8192 OPT/G assignments: best 280).  The
+only single operation that reproduces the reference order is an entry pushed in the macid
+chars warning's trace (149, dz1's push point) and visited by xellbutton2's or dualboot's
+trace, and 149's trace has no other successor.  dz1's push point is unique in every
+replay; dz2 could also be pushed from xellbutton's trace (keys -8..-19, wide enough for the
+rev feeds to lose both expects), but only after the threaded bootFlags-reload copy that ends
+that trace, which no statement maps to (`xa`-`xc` 191 lines, joint key replay 0 hits; `xk`
+changes code).  See "## Attempt 25".
+
+## State after attempt 24
+
+**17 tricks, unchanged** (no match).  The rev feeds' last two expects (e2, e3) can't be
+replaced by a *live* call: gcc 6's call heuristic predicts an edge only when its source
+dominates the call block, and a dead test's edge dominates only dead blocks, so a call that
+helps a dummy's edge is always a dead call (attempt 23's candidate).  Without a call, every
+split (both arms to dummies) gives dz2 >= 20% of its flow (DS rounding k = 1; unrounded 27%
+with the labels swapped), so dz2 <= 8 with dz1 >= 39 needs a call, an expect or a
+loop-iteration predictor; nothing else exists in gcc 6 (no PRED_GOTO from the C front end:
+measured).  Two-label asm gotos get even probabilities (a third each) and wreck the live
+flow (887-1092 lines).  New fact: the live rev code as early returns (`if (xb.blSuffix[0])
+return; s = getIniValue("rev"); if (!s) return; sprintf ..`) with the feeds after it is
+IDENTICAL, not landed (nested ifs read as the author's).  src/ change: parseButtonX's
+comment now gives the z feed's measured numbers (45% of the else arm: 71% and 63.4%; the old
+text said 3/8: 50% and 75%); bytes identical, full build SHA256 10dac648...1971c.  See
+"## Attempt 24".
+
 ## State after attempt 23
 
 **17 tricks** (18 before).  Removed (1): the rev feeds' e1 `__builtin_expect` (dz1's inner
@@ -2533,3 +2598,364 @@ MATCH: 18 -> 17 tricks (the rev feeds' e1 expect: dz1's inner test).  Landed dd2
 (no borderline shape: the feed is still a counted hint, only its arms changed).  Candidate
 saved: the rev feeds with no expect (a dead sprintf in dz2's arm, the dummies' labels
 swapped): 17 -> 15 by README's kinds, 16 if the dead call counts.
+
+## Attempt 24
+
+Focus: the rev feeds' last two `__builtin_expect`s (e2 = dz2's outer test C, e3 = its inner
+split D) with a *live* call doing the dead sprintf's job (attempt 23's candidate).  Tool:
+tools/wip/dehint/op24.py [-m] [-e] [-show] variant .. (edits on today's src/options.c: the
+two feed lines and the dummies' labels, or the whole rev stretch, or the asm goto label
+lists; `-m`/`-e` are op23's counts and predictions).  Scratch build/op/a24 (ref.txt = the
+reference's rev stretch, s1.txt, s2.txt = the sweeps).
+
+### Why a live call can't do it (gcc 6's call heuristic, then the shares)
+
+- The reference's rev stretch is plain: `"rev"` getIniValue, `je` to the shared epilogue,
+  sprintf with its own epilogue copy (ref.txt 26c0-26f1).  Nothing in it but the live code.
+- The call heuristic predicts edge e only if e->src dominates e->dest (and e->dest doesn't
+  post-dominate it), scanning e->dest's statements.  A feed test is dead (cp folds to 0), so
+  every block it dominates through its dummy-ward edge is dead too: a call there is a dead
+  call by construction.  The live sprintf can sit only on a feed test's *live* edge, which
+  makes the dummy-ward edge *more* likely (call 29% on the live edge -> 71% to the dummies),
+  and on a test with one live arm the dummy edge is noreturn 0% anyway (first match).
+- The shares are fixed elsewhere: dz2 <= 8 and dz1 >= 39 (attempt 23's windows, set by the
+  getIniBool tie and other blocks' keys, not by the rev code), so dz2's share of the splits'
+  flow must be <= 17.9%.  Flow reaches a dummy only through splits (both arms dummies), an
+  expect, or loop-iteration predictors (first match beats noreturn).  A split's predictors
+  are noreturn on both edges (cancel up to rounding), the opcode heuristic (27/28/50/72/73%)
+  and a call in an arm.  DS rounding (TRUE arm to the later dummy): first step
+  c x 4 / (c x 4 + (1-c) x 9996) rounds to k, result k/(k+4): k = 0 needs c < 11.1%, so
+  natural splits give 20% at best; with the TRUE arm to dz1 (the earlier dummy) the 9996 comes
+  first and the residual r = 10000 - round(..) gives dz1 4/(4 + r) roughly: `< 0` 26.6% (dz2
+  73.4%), plain 50%, `> 0` r = 1 -> 80% (dz2 20%); dz2 0% would need c >= 88.9%.  Any mixture
+  of splits is >= its smallest share: >= 20% > 17.9%.
+  Closed without a call (or an expect) in a split arm.
+- No PRED_GOTO: gcc 6's C front end adds no goto prediction (op24 `gi:`/`gv:`: dz1's label
+  inline after dz2's goto, so only one arm has a goto; the profile_estimate dump lists no goto
+  heuristic, and D stays 20%: dz 44/11, 44 lines).
+
+### Probes (s1.txt, s2.txt)
+
+- Feeds ahead of the live sprintf (`pre:`: B1 + split feed, then the sprintf; `mid:` split
+  first, B1 after the sprintf): C's false edge now enters the call block, so the call heuristic
+  sends C's true edge 71%+: natural forms 304-484 lines (dz1 93-458); with both expects kept
+  `pre:e,e` is 38 (dz 45/9, the sprintf block 636: its count rises with the feed's false edge
+  into it).
+- The live code as early returns (`er:`, feeds after the sprintf): `er:e,e` IDENTICAL (dz
+  39/8, ret 1767), same cost; natural forms 304-493.  Not landed: no trick goes, and the
+  nested ifs are the shape the author seems to have used.
+- Two-label asm gotos (`ag:`: macid `:::: dz1, dz2`, dualboot `:::: dz1, dz2`, either order,
+  with and without the rev feeds): a block with more than two successors gets even
+  probabilities (no noreturn), so the live fallthrough keeps a third: 687-1092 lines (rev
+  490, dz 7-55).  Dead end.
+
+### Secondary: parseButtonX's comment (fixed, comment only)
+
+profile_estimate (op23 -e on today's source): the z feed's outer test 71.0% (the call
+heuristic on its false edge, remopower's strnicmp), the inner `> 0` 63.4% (DS of the opcode
+heuristic's 73% and the early return's 39%), so 0.71 x 0.634 = 45% of the else head (1332 ->
+600) goes to z.  The comment said 3/8 (50% and 75%); now gives the measured numbers.
+optlib IDENTICAL, full build SHA256 10dac648...1971c.
+
+### Don't retry (attempt 24)
+
+- A live call (the sprintf, getIniValue, a log_printf, kvSetDvdKey) on a dummy-ward edge:
+  impossible by dominance; feeds before / around the live sprintf; early-return forms of the
+  live code (only `e,e` matches, no gain).
+- PRED_GOTO (not in gcc 6's C front end); inline dummy labels.
+- Multi-label asm gotos (even probabilities).
+- Any natural split form for D (>= 20% by the rounding arithmetic above), or mixtures of
+  splits.
+- What's left for e2/e3: a call in a dummy arm (attempt 23's candidate, a dead call), a
+  third dummy (`__builtin_unreachable`, +1 trick, and it needs >= 6 cp for the flows:
+  no net gain), or keeping the expects.
+
+### Result
+
+NO MATCH: 17 tricks.  src/options.c changed only in parseButtonX's comment (bytes
+identical).
+
+## Attempt 25
+
+Focus: the whole dummy group at once (`dzall`: dz1, dz2, both asm gotos, the macid memset,
+the rev feeds and their expects: 11 tricks), with the many-key levers found since attempt
+13.  Tools (tools/wip/dehint/): `op25.py [-d] [-o out.c] [-v fn] variant ..` (`dzall`, the
+OPT/G flips `f_<site>`, `msdo`, joined by `+`; `-d` writes p1/run.sh dumps as
+build/v/aio_p1/a25_<variant>), `op25site.py BASE [-x extra] [-s sites]` (every OPT/G
+assignment on a base), `op25inj.py` / `op25inj2.py` (p1/sim3 replay of a tag's round-4 heap
+with an injected virtual entry: inserted after one head's events, deleted after another's
+or left to be extracted).  Scratch build/op/a25 (a25map.txt = the dzall -> base block id
+map for the replays).
+(Attempt 27: op25map.py's own outputs in build/op/a25/m_*.txt are faulty: m_dzall.txt maps
+149:150, m_nodz2a/m_nodz1c/m_xa collide; a25map.txt is sound.  Every replay below re-run
+with controlled maps: the verdicts stand.  See "## Attempt 27".)
+
+### dzall on today's source
+
+- 304 lines (applyIniOptions only), as attempt 13.  Block ids: dzall's 149 is base's 149
+  (the warning block, which in base has the asm goto block in front), 150..250 -> +1,
+  251..258 -> +2, 259..261 -> +4 (a25map.txt).  r3 is the reference's; r4 differs in three
+  tie groups only: the key-37 getIniU32 blocks with parseButtonX's constant-0 block (c0 pops
+  9th instead of 1st), the key-19 iniBoolInvalid group (smcnoeject moves up after cygnos)
+  and the key 4/3 getIniBool group (smcnoblink first; cygnos before smcnoeject).
+- All block frequencies are the same in dzall and base (every block, after the id map): the
+  304 lines are only the heap's structure (two fewer extractions), no count moves.
+
+### What the dummies do to the heap, and what could replace them (replays on a25_dzall)
+
+- op15sim: no single key change of any of the 75 entries with keys in -200..0 (any value in
+  -200..0), and no pair within +-4, gives the reference order (0 hits; 1m40 of replays).
+- op25mut.py: dropping any one round-3/4 insert (68) or moving any one insert to any other
+  position of any group (20k replays): 0 hits.
+- op25inj.py `-ext` (one extra entry left to be extracted, i.e. one dummy doing both jobs):
+  any push point (end of any r3/r4 head's events) x key -400..0: 0 hits.  So one dummy
+  can't replace the two.
+- op25inj.py / op25inj2.py (one extra entry inserted, then *deleted*, as a real block that
+  a later trace visits): **hits, but only one window**: inserted after 149's extraction (the
+  macid chars warning's trace, dz1's push point), key -38 .. -100, and deleted anywhere in
+  the trace of 197 (xellbutton2's parseButton chain) or, for keys -38 .. -60, early in the
+  trace of 243 (dualboot, up to its `remopower` push); 100 hits, every one there.  An
+  insert anywhere else (any head, any position of 155, 187, 197, 243, 74, 202's events) does
+  nothing.  So one live entry that is in the heap during the consolidation at 187's
+  extraction and gone before 243's 249 visit would do both dummies' jobs.
+- Why no real block can be that entry: inserts come only from a trace's blocks' unvisited
+  successors, and 149's trace is 149 alone (it ends in `jmp` to the crossjumped tail, placed
+  in round 3); a block with key -38..-100 (freq 38..100, no trace-end pred) visited in 197's
+  trace (freqs 17, 3, 0, 0) or 243's (147, 115) doesn't exist either.  Only a zero-byte
+  successor of 149 that a later trace visits would fit, and a dummy has no preds to be
+  visited through.
+- op25swap.py (two inserts of one trace step swapped: the succ edge order, which an arm
+  swap in the source changes with the same code; 202 candidate swaps in rounds 1-4):
+  0 single hits, 0 pair hits (20k pairs).
+
+### Subsets: one dummy group at a time (op25.py nodz1*/nodz2*/onedz*)
+
+- nodz2a (dz2, its asm goto and label gone; dz1 fed by `if (cp1) { if (expect(cp2, 0))
+  goto dz1; return; }`, dz1 57): 304; nodz2b (+ `return` form) 304; nodz2c (`> 0`, no
+  expect, dz1 0) 333.  nodz1a/b/d (memset, dz1's asm goto and label gone; dz2 fed alone)
+  376-474 (nodz1b has dz2 at 8 like base and is still 376); nodz1c 304 (dz2 94).  One dummy
+  for both asm gotos (dualboot's targets dz1, onedza-c): 304-333 (the second push of an entry
+  already in the heap is a no-op: its key doesn't change).
+- op25inj on nodz1b (dz2 kept at 8, what replaces dz1): every one of 1763 hits inserts at
+  149 (extracted: keys -39..-79, dz1's known window; deleted: the dzall window).  dz1's push
+  point is unique.
+- op25inj on nodz2a (dz1 kept at 57, what replaces dz2): extracted hits at three push
+  points: 244 (dualboot, today's, keys -6..-8), **188** (xellbutton's parseButtonX trace,
+  keys -8..-19 but -11) and 198 (xellbutton2's parseButton trace, -6..-8, -12..-19).  The
+  wider -8..-19 window at 188 would let the rev feeds lose both expects: A `> 0` (R2 = 27%
+  of 554 = 150), C plain (early return 61%: F = 92), D split `> 0` with its TRUE arm to dz1
+  (80/20): dz1 73, dz2 18.
+- But the push at 188 must come *after* the trace's last block, 193, is visited (insert
+  position sweep in 188's events: only after `visit 193` hits).  193 is the jump-threading
+  copy of the xellbutton/xellbutton2 join that reloads xb.bootFlags (preds: 191's
+  xellButton != 0 edge and the default arm 192), pushed at 191 and deleted at its visit.  An
+  asm goto in the default arm (`mv:xa`/`xb`/`xc`: before/after the log, after the store)
+  pushes at 192, before 193's deletion: 191 lines at best, and the joint dz1 x dz2 key replay
+  of those dumps (dz1 -120..-15 x dz2 -40..0, dummies dropped from the comparison) has no
+  hit at all.  In the join itself (`xk`, end of the outer block) the bootFlags reload goes
+  and the code changes (1002); between the statements (`xj`) 1144.  198's trace is
+  parseButton's inlined body only (no applyIniOptions statement to hold an asm goto), and
+  the "alternate xell button" block is a trace of its own (`ya`/`yb` 304/681).
+- The feed x placement sweep (5 places x 5 x 5 x 5 forms x arm x label order) stopped after
+  the model closed it; its first 600 rows: best 191 (`xa`), as the replay predicts.
+
+### OPT/G site assignments on dzall (op25site.py, all 8192 of the 13 sites)
+
+No match; best 280 (smcnoblink as G, with or without smcnoeject as OPT / nodvd as G), then
+282, 286, 304 (= dzall).  Single levers on dzall: msdo (macidSet as do-while, x1.125) 485,
+the 13 single flips 280-408.
+
+### Don't retry (attempt 25)
+
+- The whole dummy group by real keys or structure: singles over -200..0, pairs +-4, drop or
+  move of any one insert, swaps of any one or two inserts of a trace step (arm order), all
+  OPT/G assignments, the macidSet scale.  The replay's only fix is an entry pushed in 149's
+  trace (dz1's push point) that a later trace visits, and 149's trace has no other
+  successor: closed by the CFG.
+- One dummy for both jobs (extracted at any push point, any key -400..0); dualboot's asm
+  goto to dz1.
+- dz2 moved into the xellbutton site (wider key window, natural feeds): the push has to
+  follow the bootFlags-reload copy's visit; no statement lands there without changing code.
+- dz1 without its push at 149 (unique in every replay).
+
+### Result
+
+NO MATCH: 17 tricks, src/ unchanged by this attempt.  The dz group's job is pinned to two
+heap operations no natural CFG gives (replays above), so the 11 tricks behind the dummies
+stay.  Next attempts on options have little left with real odds; if any, look at the
+original's xellbutton/xellbutton2 statements (a shape whose join has no threaded reload
+copy would let an asm goto in the default arm push after the trace's end, and the rev feeds
+could then lose both expects: A `> 0`, C plain, D `> 0` split, dz1 73 / dz2 18).
+
+## Attempt 26
+
+Focus: attempt 25's last lead, a shape for the xellbutton / xellbutton2 statements that
+lets dz2's asm goto push from xellbutton's trace after the bootFlags-reload block (wider key
+window, so the rev feeds could lose e2 and e3).  Tools (tools/wip/dehint/): `op26blk.py TAG
+FROM TO` (one line per cprop_hardreg block: preds/succs with probabilities, calls, xb
+fields read/written, literals), `op26inj.py REFTAG TAG -map .. [-heads ..] [-lo -hi] [-r3]`
+(extracted virtual entry inserted at *every* position of every r4 event group, or with
+`-r3` pushed into the round-4 heap at every position of every r3 group).  Scratch
+build/op/a26ref.txt (reference disassembly), a26m_nodz2a.txt (the nodz2a -> base block map:
+op25map.py's plus `260:261` for dz1, which it leaves unmatched; attempt 25's
+m_nodz2a.txt lacks it and replays give 0 hits with it), a26inj_all.txt.
+
+### The stretch in the reference (a26ref.txt 24b4-26b8, 2c50, 3100)
+
+- 24b4 `xellButton != 0` -> 2650; 24c2 `test al,4` (bootFlags still in eax from 248e) ->
+  2570, else falls into 24ca (smcnoeject: the xellbutton2 test is threaded away).
+- Matched names (power/remopower/remox/winbutton) set edx and jump to 2c50: `mov
+  [xellButton],edx; mov eax,[bootFlags]; jmp 2650` (nodz2a block 262: the threaded copy of
+  the store-and-test block, with PRE's reload on its edge).
+- parseButtonPart path (191): `call; test; mov [xellButton],eax; jne 2648`; default arm
+  (192: log, `mov [xellButton],0x12`) falls into 2648 `mov eax,[bootFlags]` (193, the
+  reload), then 2650 (194: xellAltButton test), 265e `test al,4` (195: a retest of the
+  reloaded value).  So the original reads bootFlags in both conditions: a local copy read
+  once would drop that retest; the reloads are PRE insertions on the call paths' edges.
+- 2672-26b8 xellbutton2: parseButton inlined, store, `xellButton` test (the log at 3100),
+  reload 26b3, back to 24ca.
+
+### Why no source position lands after 193 (the mechanism)
+
+- Events of 188's trace (nodz2a): visit 188..191, `ins 193 (-38)` (191's ne edge, 0%),
+  visit 192, visit 193 (delete: consolidation).  A push after that is a successor of 193
+  or of a block between 193 and 194.  194 was placed in round 2, so the trace ends there.
+- Such a block N must be on 191's ne edge and the default arm (193's preds) but not on 262
+  (the matched names' copy), or 262 loses its own reload (attempt 25's `xk`, 1002 lines:
+  the reload moves after the asm goto, one copy for all paths).
+- 262 and 191's ne edge leave the store-and-test block by the same edge (`v != 0`); the
+  only predicates gcc can decide on these paths are about v, and v is {0x11, 0x20, 0x22,
+  0x24} on one and an unknown nonzero value on the other, so they agree on every
+  decidable test: any block after the test's false edge (an `else`, the end of the
+  outer block, a statement before the xellbutton2 test, a re-test of `xb.xellButton`,
+  which VRP1 threads on every incoming path) is on both.  Only a test on the value
+  (`v > 0x24`) separates them, and that stays in the code on the part path.
+- The default arm alone (`xa`-`xc`) pushes before 193's deletion; nested ifs instead of
+  `&&` lower to the same CFG; an asm goto at the end of an outer `if (!xb.xellButton)` (a
+  nested form) also sits on the bootFlags&4 == 0 path, which can then no longer be
+  threaded past the xellbutton2 test (asm goto blocks can't be threaded through); the two
+  sites can't swap (the second's log reads the first's result).
+
+### Full position map (op26inj.py, a25_nodz2a against a25_base, keys -60..0)
+
+- r4, every position of every group: 188 @7 only (after `visit 193`: -8..-19 but -11);
+  198 @0..@4, i.e. anywhere in xellbutton2's parseButton trace (198-201: remopower, remox,
+  winbutton, parseButtonPart; -6..-8, -12..-19); 244 @2..@4 (dualboot's parseButton:
+  after 244 pushes 250, before 250's visit: a block between the null test and the power
+  test, or on the power-match edge; -8..-19); 244 @0/@1/@5/@6 (-6..-8; @6 is today's
+  asm goto in the "dualboot setting ignored" block).  13 positions, all listed.
+- r3 (pushed into the round-4 heap), every position of every group, plain keys -60..0
+  and trace-end priority keys -1000060..-1000000: 0 hits (so 196's getIniValue, 202's
+  store-and-test and 204's reload, the xellbutton2 statements' own blocks, are out).
+- So every wide window except 188 @7 is inside parseButton's inlined body (shared with
+  parseOption; an asm goto there can't name applyIniOptions' label, and a dummy defined
+  inside a private parseButton copy can't be fed by the rev feeds).
+
+### Not tried (no real odds)
+
+- A private parseButton copy for xellbutton2 holding dz2 and its own feed: the feed must
+  sit in 198's trace (freq 17) and needs P >= 70% to give 12..19, which takes the flow
+  of 199-201; dz1 would need its own expect back (nodz2a's e1); the copy exists only to
+  match (a candidate at best), net at most one trick.
+
+### Don't retry (attempt 26)
+
+- dz2's asm goto anywhere in or around the xellbutton / xellbutton2 statements: else arm,
+  end of the outer block, between the statements, nested-if forms, a re-test of
+  `xb.xellButton`, a local bootFlags copy (the reference reloads and retests it), helpers
+  for the xellbutton2 site (its blocks are parseButton's).  Closed by the `v != 0` argument
+  above and the full position map.
+
+### Result
+
+NO MATCH: 17 tricks, src/ unchanged by this attempt.  The lead closes by the CFG; the dz
+group has no route left that the replays allow.
+
+## Attempt 27
+
+Focus: audit of the recent closures, starting from attempt 26's finding that attempt 25's
+m_nodz2a.txt lacks `260:261`.  Tools (tools/wip/dehint/): `op27map.py REFTAG TAG` (fixed map
+generator: map line, drop line; stderr lists gap pairs, head fixes, drops, collisions),
+`op27ctl.py REFTAG TAG [-map FILE|auto] SPEC ..` (Replay class; positive controls: virtual
+entries injected at HEAD@POS:KEY, optionally deleted), `op27joint.py REFTAG TAG DZ1,DZ2`
+(joint.py with op27map's map), `op27dom.py` (dominance probes for the call heuristic),
+`op27y.py` (the private parseButton copy).  Scratch build/op/a27 (re-run outputs),
+build/op/a27m_<tag>.txt/.log (fixed maps for every a25 dump).  op25map.py now prints a
+superseded warning (its output is unchanged).
+
+### What was wrong with op25map.py
+
+- It aligns (freq, signature) and prints only matched ids.  The replays do `MAP.get(x, x)`,
+  so an unmatched TAG block keeps its own id, which collides when another TAG block maps to
+  that id: nodz2a's dz1 260 vs 259:260 (base's sprintf), xa's asm goto block 193 vs 194:193,
+  nodz1c's dz2 260 vs 259:260; xb would have had three.
+- The replays compare trace *heads*.  dzall's 149 is base's 150 by content, but base's trace
+  149-150 has head 149, so `149:150` (m_dzall.txt) leaves a TAG head that never appears in
+  the reference's head list: every replay fails.  a25map.txt (149:149, hand-corrected) is
+  right.
+- Fix (op27map.py): equal-length gaps between anchors are paired in order (the dummies),
+  unequal gaps by unique signature; a TAG head mapped to a non-head takes its REFTAG
+  trace's head if free; leftover TAG blocks are a drop list; targets checked unique.
+- Positive controls (op27ctl.py): base vs base True; dzall + dz1 at 149@1:-39 + dz2 at
+  243@6:-8 True with a25map.txt and auto, **False with m_dzall.txt**; nodz2a + 244@6:-8 True
+  with a26m_nodz2a.txt and auto, **False with m_nodz2a.txt**; xa with its dz2 insert removed
+  and a virtual dz2 at 245's end (-8) True for dz1 -39/-57/-73 (auto map, drop 193).
+
+### Re-runs (controlled maps)
+
+| Replay | Attempt | Map now | Result |
+|---|---|---|---|
+| op25inj -ext on dzall, keys -400..0 | 25 | a25map.txt | 0 (stands) |
+| op25inj deleted-entry on dzall, -100..0 | 25 | a25map.txt | 63 hits, all at 149 -> 197 (= attempt 25's window -38..-100) |
+| op25mut drop / move on dzall | 25 | a25map.txt | 0 / 0 (stand) |
+| op25swap singles / pairs on dzall | 25 | a25map.txt | 0 / 0 (stand) |
+| op15sim singles -200..0, pairs +-4 on dzall | 25 | a25map.txt | 0 / 0 (stand) |
+| joint dz1 x dz2 keys (-120..-15 x -40..0): xa-112, xa-121, xb-112, xc-112 | 25 | auto (drop 193 / 192 / none) | 0 each (stand; xa's control passes) |
+| op26inj r4/r3 position map on nodz2a | 26 | a26m_nodz2a.txt (passes) | as attempt 26 (not re-run: same map bar dz1's pairing) |
+| op26inj with op25map's raw nodz2a map | (demo) | collides | 0 positions (build/op/a27/n2_inj_collide.txt) |
+
+So no "0 hits" verdict of attempts 25-26 changes, and there are no new hits to follow.
+inj1/inj_nodz1b/inj_nodz2a (attempt 25, all with hits) must have used sound maps already.
+
+### Attempt 24's dominance argument, from the dump (op27dom.py, -fdump-tree-profile_estimate)
+
+- `dom` (C's true arm into a block holding a call it dominates): "call: 29.0%", combined
+  39% with the early return.  The heuristic fires.
+- `nodom` (a cp test whose true edge jumps to a label on dualboot's live "setting ignored"
+  log block, which it doesn't dominate): "no prediction: 50.0%".  No call heuristic.
+- `nodom2` (a cp test in dualboot's block, true edge to a label on the live rev sprintf):
+  "call: 71.0%" towards the sprintf, i.e. the heuristic predicts the *other* edge (into the
+  log block, which the test dominates) not taken.  So a live call acts only through
+  dominated blocks, as attempt 24 said: the argument stands.
+
+### The private parseButton copy (attempt 26's untried idea; op27y.py)
+
+parseButtonY = parseButton with a dz label of its own, used for xellbutton2; dualboot's asm
+goto removed; the rev feeds as nodz2a's (`if (cp1) { if (expect(cp2, 0)) goto dz1; return;
+}`).  Feeds: expect(cp, 1|0), nested with/without `return 0`, `> 0`; at the top, in the
+power-failed arm, in the remopower-failed arm; with and without an asm goto to dz; copy
+before parseButton or before applyIniOptions (same results in y1; y2.txt keeps only the
+`before` rows).  build/op/a27/y1.txt, y2.txt.
+
+- Without an asm goto the dummy is gone by bbro (dz=[57] only: a block reached only by a dead
+  feed dies with it).  So the copy needs its own asm goto: the dualboot one moves, it doesn't
+  go.
+- With it, a feed that gives dz2 its window count (14-20: `ag`+`n2e`/`e1` in the else arm)
+  drains that flow from every later block (noreturn mid-function: rev 554 -> 546-550, the
+  return block 1757 -> 1730-1744): 850-1000 lines.  Today's dummies get their counts from
+  feeds at the very end, where nothing is downstream; a copy's feed can't be there.
+  Best overall 304-368 (dz2 0-1, i.e. no count).  Net trick count would have been -1 at
+  best (rev -3, copy +1 cp +1 expect, asm goto moved) with a duplicated function: no odds.
+
+### Don't retry (attempt 27)
+
+- Any replay with op25map.py's m_*.txt files; use op27map.py and check a positive control
+  (op27ctl.py) before trusting a 0.
+- The attempt-25 replays above (all re-run: they stand); the xa/xb/xc joint keys.
+- A live call for e2/e3 (dominance confirmed in the dump).
+- A dz2 fed inside a parseButton copy (needs its own asm goto; mid-function flow drain).
+
+### Result
+
+NO MATCH: 17 tricks, src/ unchanged.  The audit found three faulty map files (and the
+generator's two flaws) but every closure they fed still holds with sound maps.
