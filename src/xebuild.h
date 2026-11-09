@@ -298,10 +298,10 @@ struct xebuild {
 /* ---- Globals (src/globals.c) ---- */
 extern int *blOrder;			/* filelist_ini: one of the bl* tables */
 extern struct xebuild xb;
-extern struct fsent fsFiles[256];	/* image_write */
-extern uint16_t fsTable[0x1000];
-extern struct flashhdr hdrTemplate;
-extern uint32_t imgEnd;
-extern struct manifest manifest;	/* console_hdd */
+extern struct fsent fsFileEnts[256];	/* image_write */
+extern uint16_t fsChain[0x1000];
+extern struct flashhdr flashHdr;
+extern uint32_t imgUsed;
+extern struct manifest consoleManifest;	/* console_hdd */
 
 #endif

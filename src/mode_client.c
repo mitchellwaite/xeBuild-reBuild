@@ -195,9 +195,9 @@ void clientManifest(const char *dir)
 
 	if (!loadManifest(dir, cinfo->kernel & ~0xf))
 		return;
-	for (i = 0; i < manifest.count; i++)
-		log_printf(1, "item %03d: %08x %08x %s\n", i + 1, manifest.e[i].len, manifest.e[i].data, manifest.e[i].path);
-	log_printf(1, "manifest, %08x %08x %s\n", manifest.size, manifest.size, manifest.path);
+	for (i = 0; i < consoleManifest.count; i++)
+		log_printf(1, "item %03d: %08x %08x %s\n", i + 1, consoleManifest.e[i].len, consoleManifest.e[i].data, consoleManifest.e[i].path);
+	log_printf(1, "manifest, %08x %08x %s\n", consoleManifest.size, consoleManifest.size, consoleManifest.path);
 	freeManifest();
 }
 

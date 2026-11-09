@@ -21,7 +21,7 @@ SOCKET netSock = INVALID_SOCKET;
 /* gcc emits the statics in reverse: netInfo ends up first in .bss */
 static uint32_t netEmpty;	/* returned for a zero-length reply */
 static struct consoleinfo *netInfo;
-time_t netStartTime;
+extern time_t netTimeStart;	/* globals.c */
 
 void netFree(void *p)
 {
@@ -94,7 +94,7 @@ uint32_t netFindBeacon(void)
 
 void netTimerStart(void)
 {
-	time(&netStartTime);
+	time(&netTimeStart);
 }
 
 void netTimerEnd(void)
@@ -102,7 +102,7 @@ void netTimerEnd(void)
 	time_t now;
 
 	time(&now);
-	log_printf(0, "Completed in %.0fs\n", difftime(now, netStartTime));
+	log_printf(0, "Completed in %.0fs\n", difftime(now, netTimeStart));
 }
 
 double netTimerElapsed(void)
@@ -110,7 +110,7 @@ double netTimerElapsed(void)
 	time_t now;
 
 	time(&now);
-	return difftime(now, netStartTime);
+	return difftime(now, netTimeStart);
 }
 
 int netSendStr(const char *s)

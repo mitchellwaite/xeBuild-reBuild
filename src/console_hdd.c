@@ -200,7 +200,7 @@ void parseManifestEntries(const char *dir, struct mfHeader *h, uint32_t len, uin
 	uint32_t i, id, type;
 
 	log_printf(1, "parsing %d entries in system.manifest\n", SWAP32(h->count));
-	for (i = 0; i < SWAP32(h->count) && manifest.count < 256; i++) {
+	for (i = 0; i < SWAP32(h->count) && consoleManifest.count < 256; i++) {
 		e = &h->e[i];
 		id = SWAP32(e->idOff);
 		if (id)
@@ -211,27 +211,27 @@ void parseManifestEntries(const char *dir, struct mfHeader *h, uint32_t len, uin
 		if (strcmp(name, "flash")) {
 			strcpy(path, dir);
 			strcat(path, name);
-			log_printf(1, "%03d: %s ", manifest.count + 1, path);
+			log_printf(1, "%03d: %s ", consoleManifest.count + 1, path);
 			readManifestString((uint8_t *)h + SWAP32(e->pathOff), name);
 			switch (SWAP32(e->type)) {
 			case 2:
-				manifest.e[manifest.count].data = loadStfsChecked(path, SWAP32(e->size), e->stfsHash);
-				if (manifest.e[manifest.count].data) {
-					manifest.e[manifest.count].len = SWAP32(e->size);
-					sprintf(manifest.e[manifest.count].path, "%s:\\%s%08X\\%08X\\%s", SYSEX,
+				consoleManifest.e[consoleManifest.count].data = loadStfsChecked(path, SWAP32(e->size), e->stfsHash);
+				if (consoleManifest.e[consoleManifest.count].data) {
+					consoleManifest.e[consoleManifest.count].len = SWAP32(e->size);
+					sprintf(consoleManifest.e[consoleManifest.count].path, "%s:\\%s%08X\\%08X\\%s", SYSEX,
 						"Content\\0000000000000000\\", SWAP32(e->titleId),
 						SWAP32(e->contentType), name);
-					manifest.count++;
+					consoleManifest.count++;
 				}
 				break;
 			case 3:
-				manifest.e[manifest.count].data = loadFileChecked(path, SWAP32(e->size), e->sha);
-				if (manifest.e[manifest.count].data) {
-					manifest.e[manifest.count].len = SWAP32(e->size);
-					sprintf(manifest.e[manifest.count].path, "%s:\\%08X\\%s", SYSEX, id, name);
+				consoleManifest.e[consoleManifest.count].data = loadFileChecked(path, SWAP32(e->size), e->sha);
+				if (consoleManifest.e[consoleManifest.count].data) {
+					consoleManifest.e[consoleManifest.count].len = SWAP32(e->size);
+					sprintf(consoleManifest.e[consoleManifest.count].path, "%s:\\%08X\\%s", SYSEX, id, name);
 					if (id != ver)
 						addTitleId(id);
-					manifest.count++;
+					consoleManifest.count++;
 				}
 			}
 		}
@@ -259,7 +259,7 @@ uint32_t parseManifest(const char *dir, struct mfFile *m, uint32_t len, int ver)
 			log_printf(0, "\n\n***** ERROR: loading manifest content encountered problems!\n");
 			return 0;
 		}
-		log_printf(1, "found %d items to send to xbox!\n", manifest.count);
+		log_printf(1, "found %d items to send to xbox!\n", consoleManifest.count);
 		return 1;
 	}
 	log_printf(1, "manifest header check failed!\n");
@@ -270,13 +270,13 @@ void freeManifest(void)
 {
 	int i;
 
-	if (manifest.data)
-		free(manifest.data);
-	for (i = 0; i < manifest.count; i++) {
-		if (manifest.e[i].data)
-			free(manifest.e[i].data);
-		manifest.e[i].data = 0;
-		manifest.e[i].len = 0;
+	if (consoleManifest.data)
+		free(consoleManifest.data);
+	for (i = 0; i < consoleManifest.count; i++) {
+		if (consoleManifest.e[i].data)
+			free(consoleManifest.e[i].data);
+		consoleManifest.e[i].data = 0;
+		consoleManifest.e[i].len = 0;
 	}
 }
 
@@ -289,7 +289,7 @@ uint32_t loadManifest(const char *dir, uint32_t ver)
 	strcpy(path, dir);
 	strcpy(base, path);
 	strcat(path, "system.manifest");
-	memset(&manifest, 0, sizeof(manifest));
+	memset(&consoleManifest, 0, sizeof(consoleManifest));
 	if (!FileExists(path)) {
 		log_printf(1, "manifest not found at %s\n", path);
 		strcat(base, "$SystemUpdate/");
@@ -302,14 +302,14 @@ uint32_t loadManifest(const char *dir, uint32_t ver)
 		}
 	}
 	log_printf(1, "loading manifest %s\n", path);
-	manifest.data = FileToBuffer(path, &manifest.size);
-	if (!manifest.data || !manifest.size) {
+	consoleManifest.data = FileToBuffer(path, &consoleManifest.size);
+	if (!consoleManifest.data || !consoleManifest.size) {
 		log_printf(0, "***** WARNING: could not read manifest data for sysex!\n");
 		return 0;
 	}
-	log_printf(1, "loaded system.manifest, 0x%x bytes\n", manifest.size);
-	ret = parseManifest(base, manifest.data, manifest.size, ver);
-	sprintf(manifest.path, "%s:\\system.manifest", SYSEX);
+	log_printf(1, "loaded system.manifest, 0x%x bytes\n", consoleManifest.size);
+	ret = parseManifest(base, consoleManifest.data, consoleManifest.size, ver);
+	sprintf(consoleManifest.path, "%s:\\system.manifest", SYSEX);
 	if (!ret)
 		freeManifest();
 	return ret;
@@ -353,20 +353,20 @@ long sendAvatarData(const char *dir, uint32_t ver)
 		log_printf(0, "success!\nFormatting HDD partition...\n");
 		if (prepSysex()) {
 			log_printf(0, "success!\nSending avatar files to HDD partition...\n");
-			log_printf(1, "sending %d items to xbox\n", manifest.count);
-			for (i = 0; i < manifest.count; i++) {
-				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, manifest.e[i].len, manifest.e[i].len, manifest.e[i].path);
-				ret = netSendFile(manifest.e[i].path, manifest.e[i].data, manifest.e[i].len);
+			log_printf(1, "sending %d items to xbox\n", consoleManifest.count);
+			for (i = 0; i < consoleManifest.count; i++) {
+				log_printf(1, "sending %03d: 0x%08x (%d) bytes, %s\n", i + 1, consoleManifest.e[i].len, consoleManifest.e[i].len, consoleManifest.e[i].path);
+				ret = netSendFile(consoleManifest.e[i].path, consoleManifest.e[i].data, consoleManifest.e[i].len);
 				if (!ret) {
-					log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.e[i].path);
-					i = manifest.count;
+					log_printf(0, "aborting sending avatar data, failed to send %s\n", consoleManifest.e[i].path);
+					i = consoleManifest.count;
 				}
 			}
 			if (ret) {
-				log_printf(1, "sending manifest to %s\n", manifest.path);
-				if (!netSendFile(manifest.path, manifest.data, manifest.size)) {
+				log_printf(1, "sending manifest to %s\n", consoleManifest.path);
+				if (!netSendFile(consoleManifest.path, consoleManifest.data, consoleManifest.size)) {
 					ret = 0;
-					log_printf(0, "aborting sending avatar data, failed to send %s\n", manifest.path);
+					log_printf(0, "aborting sending avatar data, failed to send %s\n", consoleManifest.path);
 				} else {
 					log_printf(0, "success! Avatar data is successfully sent to the console!\n");
 					netTimerEnd();

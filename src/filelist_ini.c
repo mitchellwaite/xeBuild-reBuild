@@ -56,6 +56,7 @@ int blDevk[6] = {3, 4, 5, 6, 7, 8};
 int blTestk[6] = {4, 5, 6, 7, 8, 9};
 int blDevgl[6] = {3, 4, 5, 6, 8, 9};
 int blJtag[9] = {4, 5, 6, 7, 8, 15, 16, 9, 10};
+int *blOrder;	/* COMMON: 479e84, ahead of globals.c's block */
 
 extern const char *const consoleNames[8];
 extern const unsigned char validChars[74];

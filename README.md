@@ -119,9 +119,10 @@ only way to find the natural shape.
 
 </details>
 
-`src/globals.c` isn't ranked because it holds only data: it uses zero initializers,
-reverse definition order, `aligned(4)` and padding arrays to put the COMMON block
-in address order, because the original's order came from a linker hash table.
+`src/globals.c` isn't ranked because it holds only data: plain COMMON
+definitions, laid out by ld in its symbol hash-table order. The original names
+are unknown, so the ones there were picked so that order is the original's
+address order (its head comment lists the buckets).
 
 ## Repository layout
 

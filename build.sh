@@ -17,7 +17,7 @@ objects="
   image_write keyvault image_read mode_ini mode_build
   keys net fileutil options build consoleinfo
   console_hdd log crc32
-  crypto/xecrypt crypto/xecryptBn
+  globals crypto/xecrypt crypto/xecryptBn
   crypto/aes/aes_modes crypto/aes/aestab crypto/aes/aescrypt crypto/aes/aeskey
   crypto/bign/mpSubtract crypto/bign/pkcs1-rsa crypto/bign/mpMultiply
   crypto/bign/mpShortMod crypto/bign/mpModExp crypto/bign/mpSetZero
@@ -32,7 +32,7 @@ objects="
   crypto/bign/mpSetEqual crypto/bign/mpShiftRight crypto/bign/mpDivide
   crypto/bign/spDivide crypto/bign/mpShortCmp crypto/bign/spPseudoRand"
 objs=
-for f in $objects globals; do
+for f in $objects; do
   mkdir -p "$OBJ/$(dirname "$f")"
   [ -f "src/$f.c" ] || { echo "build.sh: no src/$f.c" >&2; exit 1; }
   case "$f" in
@@ -53,9 +53,6 @@ for f in $objects globals; do
            cflags="-O3" ;;
     build) orig="$f.c"
            cflags="-O3" ;;
-    # the COMMON block in address order (src/globals.c's head comment)
-    globals) orig="$f.c"
-           cflags="-O3" ;;
     # the rest of the app: original path unknown (no assert in the app);
     # timeutil needs -O3
     *) orig="$f.c"
@@ -63,7 +60,7 @@ for f in $objects globals; do
   esac
   { printf '#line 1 "%s"\n' "$orig"; cat "src/$f.c"; } |
     "$TC/gcc.exe" -c $cflags -I"src/$(dirname "$f")" -x c - -o "$OBJ/$f.o"
-  [ "$f" = globals ] || objs="$objs $OBJ/$f.o"
+  objs="$objs $OBJ/$f.o"
 done
 # Link as gcc does: crt2.o and crtbegin.o, the program, the libraries (gcc's
 # defaults, ws2_32), the default manifest and crtend.o, with ld's default
@@ -73,7 +70,7 @@ done
 # (src/globals.c).
 libs="-lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt -lpthread
       -ladvapi32 -lshell32 -luser32 -lkernel32"
-"$TC/gcc.exe" -s -o build/xeBuild.exe $objs -lws2_32 $libs $OBJ/globals.o \
+"$TC/gcc.exe" -s -o build/xeBuild.exe $objs -lws2_32 $libs \
   -Wl,--no-insert-timestamp,-Map,build/xeBuild.map
 # original link time; ld 2.27 can't take a fixed timestamp itself
 python tools/re/stamp.py build/xeBuild.exe 0x5DCAB029

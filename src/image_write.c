@@ -134,34 +134,34 @@ int buildImage(void)
 		return -1;
 	memset(spare, 0xff, spareSize);
 	memset(hdr, 0xff, userSize);
-	memset(fsFiles, 0, sizeof(fsFiles));
-	memset(fsTable, 0, sizeof(fsTable));
-	memset(&hdrTemplate, 0, sizeof(hdrTemplate));
-	hdrTemplate.magic = 0x4fff;
-	hdrTemplate.build = 0x6007;
+	memset(fsFileEnts, 0, sizeof(fsFileEnts));
+	memset(fsChain, 0, sizeof(fsChain));
+	memset(&flashHdr, 0, sizeof(flashHdr));
+	flashHdr.magic = 0x4fff;
+	flashHdr.build = 0x6007;
 	memset(xb.mmcAnchor, 0, sizeof(xb.mmcAnchor));
 	/* JTAG last: peephole2 walks the blocks backwards, and its rotating
 	   scratch register for `cmp mem,0` gives JTAG's bigBlock test edx and
 	   the Jasper case's ebx */
 	if (xb.type != BUILD_JTAG) {
-		hdrTemplate.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
+		flashHdr.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
 		/* TODO(prototype cast): findFileOffset returns int; the swap's
 		   shifts are unsigned */
 		cf = SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(9));
-		hdrTemplate.sysUpdateCount = 0x0200;
-		hdrTemplate.kvVersion = 0x1207;
-		hdrTemplate.kvAddr = 0x400000;
-		hdrTemplate.smcBootSize = 0x300000;
-		hdrTemplate.smcBootAddr = 0x100000;
-		imgEnd = 0x8000;
-		hdrTemplate.kvSize = xb.type - BUILD_TESTKIT < 2 ? 0x800000 : 0x400000;
-		hdrTemplate.cfOffset = cf;
-		hdrTemplate.sysUpdateAddr = cf;
+		flashHdr.sysUpdateCount = 0x0200;
+		flashHdr.kvVersion = 0x1207;
+		flashHdr.kvAddr = 0x400000;
+		flashHdr.smcBootSize = 0x300000;
+		flashHdr.smcBootAddr = 0x100000;
+		imgUsed = 0x8000;
+		flashHdr.kvSize = xb.type - BUILD_TESTKIT < 2 ? 0x800000 : 0x400000;
+		flashHdr.cfOffset = cf;
+		flashHdr.sysUpdateAddr = cf;
 		switch (xb.flags & CONSOLE_MASK) {
 		case CONSOLE_XENON:
 		case CONSOLE_ZEPHYR:
 			copyright[10] = '5';
-			hdrTemplate.kvSize = 0;
+			flashHdr.kvSize = 0;
 			break;
 		case CONSOLE_FALCON:
 			copyright[10] = '7';
@@ -169,66 +169,66 @@ int buildImage(void)
 		case CONSOLE_JASPER:
 			if (xb.flags & NAND_BB_CONTROLLER) {
 				xb.bbController = 1;
-				hdrTemplate.patchSlotSize = 0x100;
+				flashHdr.patchSlotSize = 0x100;
 			}
 			if (xb.bigBlock)
-				hdrTemplate.patchSlotSize = 0x200;
+				flashHdr.patchSlotSize = 0x200;
 			copyright[10] = '9';
 			break;
 		case CONSOLE_TRINITY:
 			xb.bbController = 1;
-			hdrTemplate.patchSlotSize = 0x100;
+			flashHdr.patchSlotSize = 0x100;
 			copyright[9] = '1';
 			copyright[10] = '0';
 			break;
 		case CONSOLE_CORONA:
 		case CONSOLE_WINCHESTER:
 			xb.bbController = 1;
-			hdrTemplate.patchSlotSize = 0x100;
+			flashHdr.patchSlotSize = 0x100;
 			copyright[9] = '1';
 			copyright[10] = '0';
-			hdrTemplate.smcBootAddr = 0x800;
-			hdrTemplate.smcBootSize = 0x3800;
+			flashHdr.smcBootAddr = 0x800;
+			flashHdr.smcBootSize = 0x3800;
 			break;
 		}
 	} else {
-		hdrTemplate.cbOffset = 0x800000;
-		hdrTemplate.cfOffset = 0x700;
-		hdrTemplate.kvSize = 0x400000;
-		hdrTemplate.sysUpdateAddr = 0x700;
-		hdrTemplate.sysUpdateCount = 0x0200;
-		hdrTemplate.kvVersion = 0x1207;
-		hdrTemplate.kvAddr = 0x400000;
-		hdrTemplate.smcBootSize = 0x300000;
-		hdrTemplate.smcBootAddr = 0x100000;
-		imgEnd = 0x8000;
+		flashHdr.cbOffset = 0x800000;
+		flashHdr.cfOffset = 0x700;
+		flashHdr.kvSize = 0x400000;
+		flashHdr.sysUpdateAddr = 0x700;
+		flashHdr.sysUpdateCount = 0x0200;
+		flashHdr.kvVersion = 0x1207;
+		flashHdr.kvAddr = 0x400000;
+		flashHdr.smcBootSize = 0x300000;
+		flashHdr.smcBootAddr = 0x100000;
+		imgUsed = 0x8000;
 		if ((xb.flags & CONSOLE_MASK) == CONSOLE_JASPER) {
 			if (xb.flags & NAND_BB_CONTROLLER) {
 				xb.bbController = 1;
-				hdrTemplate.patchSlotSize = 0x100;
+				flashHdr.patchSlotSize = 0x100;
 			}
 			if (bigBlock)
-				hdrTemplate.patchSlotSize = 0x100;
+				flashHdr.patchSlotSize = 0x100;
 			copyright[10] = '8';
 		} else if ((xb.flags & CONSOLE_MASK) == CONSOLE_XENON ||
 			   (xb.flags & CONSOLE_MASK) == CONSOLE_ZEPHYR) {
 			copyright[10] = '5';
-			hdrTemplate.kvSize = 0;
+			flashHdr.kvSize = 0;
 		} else
 			copyright[10] = '7';
 	}
 	if (xb.type > BUILD_DEVGL16) {
 		copyright[9] = '1';
-		hdrTemplate.qfe = 0x80;
+		flashHdr.qfe = 0x80;
 		copyright[10] = '0';
-		hdrTemplate.patchSlotSize = xb.bigBlock ? 0x200 : 0x100;
+		flashHdr.patchSlotSize = xb.bigBlock ? 0x200 : 0x100;
 	} else if (!checkZeros(xb.cpuKey, 16) && !xb.cfLdv) {
 		log_printf(0, "***** WARNING: cfldv was not set anywhere, setting it to 1\n");
 		if (xb.type != BUILD_JTAG)
 			log_printf(0, "      please set it in ini or on command line and rebuild!\n");
 		xb.cfLdv = 1;
 	}
-	memcpy(hdrTemplate.copyright, copyright, sizeof(copyright));
+	memcpy(flashHdr.copyright, copyright, sizeof(copyright));
 	if (xb.type != BUILD_RETAIL) {
 		xb.hdr[0x49] = 0;
 		xb.hdr[0x4a] = 0;
@@ -400,9 +400,9 @@ void setBlockSpare(uint8_t *blk, uint32_t lba, int bigBlock)
 
 uint32_t imgSizeAligned(void)
 {
-	uint32_t r = imgEnd % 0x4000;
+	uint32_t r = imgUsed % 0x4000;
 
-	return r ? imgEnd + 0x4000 - r : imgEnd;
+	return r ? imgUsed + 0x4000 - r : imgUsed;
 }
 
 void setFlashBuild(uint16_t build)
@@ -438,7 +438,7 @@ uint32_t setPatchSlot(uint32_t off)
 	uint32_t v;
 
 	if (!off)
-		off = imgEnd;
+		off = imgUsed;
 	if (xb.bigBlock) {
 		off = (off + 0x1ffff) & ~0x1ffff;
 		if (xb.type == BUILD_RETAIL) {
@@ -472,12 +472,12 @@ uint32_t imgCfSize(void)
 
 uint32_t imgSize(void)
 {
-	return imgEnd;
+	return imgUsed;
 }
 
 uint32_t imgSetSize(uint32_t size)
 {
-	return imgEnd = size;
+	return imgUsed = size;
 }
 
 int imgBigBlock(void)
@@ -619,16 +619,16 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 
 		for (i = 0; i < blocks; i++) {
 			if (next != 0 && next != 0xffff) {
-				fsTable[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(next);
+				fsChain[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(next);
 			} else {
-				fsTable[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(start + i - xb.fsStart + 1);
+				fsChain[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(start + i - xb.fsStart + 1);
 			}
 		}
 		if (next == 0xffff) {
-			fsTable[start - xb.fsStart + blocks - 1] = SWAP16_IMAGE_WRITE(0x1fff);
+			fsChain[start - xb.fsStart + blocks - 1] = SWAP16_IMAGE_WRITE(0x1fff);
 		}
 	}
-	imgEnd = off + len;
+	imgUsed = off + len;
 	return 0;
 }
 
@@ -647,10 +647,10 @@ void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32
 	uint32_t off = imgSizeAligned();
 
 	if (imgFits(off, len)) {
-		fsFiles[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
-		fsFiles[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
-		strcpy(fsFiles[nFsFiles].name, name);
-		fsFiles[nFsFiles].time = *time;
+		fsFileEnts[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
+		fsFileEnts[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
+		strcpy(fsFileEnts[nFsFiles].name, name);
+		fsFileEnts[nFsFiles].time = *time;
 		if (!xb.bigBlock)
 			imgAdd(off, data, len, 0, 0xffff, 1);
 		else
@@ -713,8 +713,8 @@ void fixupFsTable(uint32_t off)
 	uint32_t i;
 
 	for (i = 0; i < off >> 14; i++)
-		if (fsTable[i - xb.fsStart] != SWAP16_IMAGE_WRITE(0x1ffb))
-			fsTable[i - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffb);
+		if (fsChain[i - xb.fsStart] != SWAP16_IMAGE_WRITE(0x1ffb))
+			fsChain[i - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffb);
 }
 
 void fixupEmptyFsBlocks(uint32_t off)
@@ -722,13 +722,13 @@ void fixupEmptyFsBlocks(uint32_t off)
 	uint32_t b, i, n;
 
 	for (b = off >> 14; b < xb.fsEnd; b++)
-		fsTable[b - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffe);
+		fsChain[b - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffe);
 	if (!xb.bigBlock) {
 		n = (xb.flags & NAND_MMC) ? 6 : 4;
 		if (xb.type > BUILD_DEVGL16)
 			n = xb.blocks - xb.fsEnd;
 		for (i = 0; i < n; i++)
-			fsTable[xb.fsEnd + i] = SWAP16_IMAGE_WRITE(0x1ffb);
+			fsChain[xb.fsEnd + i] = SWAP16_IMAGE_WRITE(0x1ffb);
 	}
 	if (xb.type == BUILD_JTAG) {
 		xb.spare[26] = 3;
@@ -749,9 +749,9 @@ int addSmcConfig(const uint8_t *cfg, uint32_t len)
 void writeInitialHeader(void)
 {
 	if (xb.bigBlock)
-		imgAdd(0, &hdrTemplate, sizeof(hdrTemplate), 0, 0xf1f1, 1);
+		imgAdd(0, &flashHdr, sizeof(flashHdr), 0, 0xf1f1, 1);
 	else
-		imgAdd(0, &hdrTemplate, sizeof(hdrTemplate), 0, 0x1ffb, 1);
+		imgAdd(0, &flashHdr, sizeof(flashHdr), 0, 0x1ffb, 1);
 	if (xb.netKd.data && xb.netKd.size) {
 		log_printf(1, "Inserting netKd data from dump into header\n");
 		if (xb.bigBlock)
@@ -835,13 +835,13 @@ void writeFsTable(uint32_t off)
 		off = (off + 0x20000) & ~0x1ffff;
 		blk = off >> 14;
 	}
-	fsTable[blk - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffd);
+	fsChain[blk - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffd);
 	buf = malloc(0x4000);
 	p = buf;
 	for (i = 0; i < 16; i++) {
-		memcpy(p, (uint8_t *)fsTable + i * 0x200, 0x200);
+		memcpy(p, (uint8_t *)fsChain + i * 0x200, 0x200);
 		p += 0x200;
-		memcpy(p, (uint8_t *)fsFiles + i * 0x200, 0x200);
+		memcpy(p, (uint8_t *)fsFileEnts + i * 0x200, 0x200);
 		p += 0x200;
 	}
 	log_printf(1, "offset 0x%x len 0x4000 (end 0x%x)...", off, off + 0x4000);
