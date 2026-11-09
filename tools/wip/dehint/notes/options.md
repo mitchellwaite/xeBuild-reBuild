@@ -3,6 +3,14 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 28
+
+**16 tricks** (17 before).  The user accepted attempt 23's dead-sprintf candidate
+(drafts/options_applyIniOptions_candidate.patch, now in src): the rev feeds' last two expects
+are gone and a dead `sprintf` in dz2's arm takes their place (counted as one dead block).
+parseButtonX's power expect is the only reader of the --param left; attempt 28 found no
+spelling that frees it (see "## Attempt 28").
+
 ## State after attempt 27
 
 **17 tricks, unchanged** (no match; src/ untouched).  Audit of attempts 24-26's closures:
@@ -2959,3 +2967,45 @@ before parseButton or before applyIniOptions (same results in y1; y2.txt keeps o
 
 NO MATCH: 17 tricks, src/ unchanged.  The audit found three faulty map files (and the
 generator's two flaws) but every closure they fed still holds with sound maps.
+
+## Attempt 28 (2026-11-09): the `--param builtin-expect-probability=83` alone
+
+Goal: plain `-O3`.  Scratch: the session scratchpad's `pw/` (run.py swaps parseButtonX's
+body into a base file and runs optlib; v1-v6 are the variant sets).  Base: src + the
+dead-sprintf candidate (drafts/options_applyIniOptions_candidate.patch), which is IDENTICAL
+at -p 83 and leaves parseButtonX's power expect as the only reader of the param.
+
+- `-p N` sweep on src: only 83 is IDENTICAL (82: 67 lines, 81: 235, 84: 466, 90/-np: 862,
+  all in applyIniOptions).  With the candidate, -np is 883.
+- Without the param an expect is 90/10 (first match, no DS), and the power edge can't use 90:
+  the 0x11 join is 187 x P <= 86.49, so P <= 83.5% whatever else the else arm does.
+- `callfirst` (`int r = strnicmp(s, "remopower", 9)` ahead of the z feed, `!r` after it):
+  power 83.2% (call 71 + const return 67) with no expect, 321 lines.  The z feed's spelling
+  (8 x 8 outer/inner forms) doesn't move those 321: the remopower head (1313 at callee scale,
+  17 at the site) is the whole difference.
+- Extra flow into the else head, to lift 1313 to >= 1326 at 83.25%:
+  - from the `!s` arm (`if (!s) { if (cp) goto el; z: return 0; }`, 20 forms): the head then
+    has a predecessor that the power test doesn't dominate, so PRED_CALL drops off the power
+    edge (67% only) and `!s` loses its early return (30.2%).  497-1000 lines, and big inflows
+    change parseButtonPart's clone.
+  - from the power-success arm (`b = 0x11; if (cp) goto el;`, depth 1-5 nests, 4 x 4 x 4 x 2
+    forms): the 0x11 PHI edge now leaves the dead test, so predict_paths_leading_to_edge puts
+    const return on the dead test (33% to el) and the power edge has only call (71%).  Head
+    3167, part call 8 (needs 3): 497-1183 lines, and parseButtonPart.constprop changes.
+  - Flow budget: with P = 71% the 29% not on the success edge must go to c0 (264, exactly 37)
+    or into the chain (remopower 733, part call ~3).  No z-feed split satisfies both, so a
+    success-arm feed can't work at any q.
+- Fixed-probability mechanisms at gcc 6's defaults: expect 90, PRED_LOOP_ITERATIONS 1/n (5/6 =
+  83.33% is above the 83.17% ratio limit), a switch's even 1/n edges, hot/cold labels and
+  noreturn at the extremes.  None lands in (82.13, 83.08].  So at default params the power edge
+  can't be given its probability by any spelling, hinted or not, within the constraints
+  attempt 16 measured (remopower >= 17.5, join <= 86.49, c0 = 37).
+- The rev feeds' expects (e2/e3, 17%) would also break at 90/10; only the dead-sprintf
+  candidate frees them, and the user has not ruled on it yet.
+
+### Result
+
+NO MATCH: the param stays (17 tricks, src/ unchanged).  To remove it, one of the three keys
+attempt 16 measured has to change: the 0x11 join's competitor (key -1008702), the remopower
+threshold, or c0.  That is the heap-model search (p1/sim3, op16sim) with other entries moved
+too, not a parseButtonX spelling.

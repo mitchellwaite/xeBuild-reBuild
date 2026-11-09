@@ -81,12 +81,13 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. options</b>: 17 tricks, very hard</summary>
+<summary><b>1. options</b>: 16 tricks, very hard</summary>
 
-- `--param builtin-expect-probability=83`
-- 7 `__builtin_constant_p`, 3 `__builtin_expect`, 2 `asm goto` and 2
-  `__builtin_unreachable`, nearly all setting the cold layout of
-  `applyIniOptions`
+- `--param builtin-expect-probability=83`, for `parseButtonX`'s power test,
+  which needs 82.1-83.1% (gcc 6's predictors give it 83.25% at best)
+- 7 `__builtin_constant_p`, 1 `__builtin_expect`, 1 dead `sprintf` call,
+  2 `asm goto` and 2 `__builtin_unreachable`, nearly all setting the cold
+  layout of `applyIniOptions`
 
 The main clue that this can work is that natural source (`optIniBool` inlined,
 plain calls) already gives the whole hot layout. The cold layout is the unsolved
