@@ -119,8 +119,8 @@ only way to find the natural shape.
 
 </details>
 
-`src/globals.c` isn't ranked because it holds only data: it uses `-fno-common`,
-`-fno-toplevel-reorder`, `aligned(4)` and padding arrays to put the COMMON block
+`src/globals.c` isn't ranked because it holds only data: it uses zero initializers,
+reverse definition order, `aligned(4)` and padding arrays to put the COMMON block
 in address order, because the original's order came from a linker hash table.
 
 ## Repository layout

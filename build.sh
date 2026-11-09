@@ -55,7 +55,7 @@ for f in $objects globals; do
            cflags="-O3" ;;
     # the COMMON block in address order (src/globals.c's head comment)
     globals) orig="$f.c"
-           cflags="-O3 -fno-common -fno-toplevel-reorder" ;;
+           cflags="-O3" ;;
     # the rest of the app: original path unknown (no assert in the app);
     # timeutil needs -O3
     *) orig="$f.c"
