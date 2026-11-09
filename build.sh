@@ -46,15 +46,7 @@ for f in $objects; do
     # from dead hints in the source (tools/wip/aio/p1/NOTES.md)
     options) orig="$f.c"
            cflags="-O3 --param builtin-expect-probability=83" ;;
-    image_write) orig="$f.c"
-           cflags="-O3" ;;
-    # its data is defined in the original's .data/.bss order, reversed
-    image_read) orig="$f.c"
-           cflags="-O3" ;;
-    build) orig="$f.c"
-           cflags="-O3" ;;
-    # the rest of the app: original path unknown (no assert in the app);
-    # timeutil needs -O3
+    # the rest of the app: original path unknown (no assert in the app)
     *) orig="$f.c"
        cflags="-O3" ;;
   esac
