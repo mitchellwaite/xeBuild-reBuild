@@ -3,6 +3,15 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 29
+
+**15 tricks** (16 before), and **plain `-O3`**: the `--param builtin-expect-probability=83` and
+parseButtonX's power expect are gone; three dead `__builtin_constant_p` tests in parseButtonX
+(one more than before) take their place.  Attempt 28's "the power edge needs 82.13-83.09%"
+holds only while the power block stays at 103: bbro never keys that block, so its count is
+free, and at 52 the constant-return heuristic alone (67%) gives the else edge its 17.  See
+"## Attempt 29".
+
 ## State after attempt 28
 
 **16 tricks** (17 before).  The user accepted attempt 23's dead-sprintf candidate
@@ -3009,3 +3018,113 @@ NO MATCH: the param stays (17 tricks, src/ unchanged).  To remove it, one of the
 attempt 16 measured has to change: the 0x11 join's competitor (key -1008702), the remopower
 threshold, or c0.  That is the heap-model search (p1/sim3, op16sim) with other entries moved
 too, not a parseButtonX spelling.
+
+### Attempt 28, continued: heap keys on the no-expect base (after 466b8dce)
+
+Dumps: build/v/aio_p1/r28 (src at -p 83, the reference trace), cf28 (`callfirst` at plain
+-O3), cfgg (callfirst with the z feed as `cp(+1) > 0` / `cp(+2) > 0`, 333 lines).
+op16sim on cf28: two keys are off: xellbutton's remopower 188 (17/17) ties xellbutton2's
+198 (17/17), and c0 263 is 35.  In cfgg the `> 0` outer test (73% x 63.4% = 46%) puts c0 back
+at 37, so **only 188-vs-198 is left**: the replay matches for any 198 below 17/17 (edge <= 16,
+or edge 17 with block <= 16), with every other key as compiled.
+
+Why 198 can't move:
+- Both sites have the same call-block count (132 = 907 x 50% x 29%) and the same callee head
+  (1313 = 7836 x 16.75%), so they round to the same 17.  188 can't go up (the ratio limit
+  above), so 198 must go down: G2 <= 125.6 or parseButton's head <= 1249.
+- G2 is pinned from below: 203 (the "alternate xell button is disabled" block, G2 x 29%) must
+  stay >= 38 and 202 (the store after parseButton, priority from the power-success edge
+  197 x 83.25%) must keep priority >= 87 (replays with 203 <= 37 or 202 at 86 fail).
+- parseButton's header profile doesn't change with spelling: nested `if (s)`, return-only
+  arms, `b = 0` arm, `return 0` last (w3/w4 sets): the same 21.6% / 83.2% predictions and
+  the same keys.  Raising its `!s` share (dead feed in the `!s` arm: DS(15, 71) = 30.2%) drops
+  197 and with it 202's priority; any dead test ahead of the power call removes PRED_CALL
+  from the power edge; one in the success arm takes const return.
+- So with today's applyIniOptions the two sites can't be told apart without an
+  exact-probability hint inside one header.  The param (or a hint on 202/203 that the source
+  can't make) stays.  A route that's still open: anything that changes the heap order of
+  equal keys (the tie goes to xellbutton2: insertion order), which no source lever found so
+  far reaches.
+
+### Attempt 28, last: the tie order, and why the sites need different power odds
+
+- Tie order (scanpw scripts scanbig/scanins/scanmove on cfgg): no single key change of any
+  other heap entry (large -100xxxx keys +-300 included), no dropped entry and no inserted
+  dummy entry (every event position, 14 keys, push and ins) flips 188/198.  Moving 198's key
+  change works only if it happens in round 4 after 188 is popped, which no source shape
+  controls (it follows from 197's trace end in round 3).
+- The constant-store joins pair up the same way: xellbutton's 264 (86/95) must pop after
+  xellbutton2's 202 (87/32), and 264 at priority 87 works only with a frequency below ~32
+  (it's 95, the whole nonzero-b flow).  So the xellbutton site needs a *lower* join and a
+  *higher* remopower than xellbutton2, with the same call count (132) and the same `!s`
+  share: that is exactly P(xellbutton) < P(xellbutton2), whatever G does.
+- The other way round (parseButtonX natural at 83.25%, an expect in parseButton): at -p 84-86
+  that is 162 lines, and the replay fixes 188/198 (198 at 15) but dualboot's remopower 246
+  drops to 17 and needs 19 (its natural 83.25%); -p 87-89 is 511-597.  So the three
+  parseButton sites need three different power probabilities (xellbutton <= 83.08%,
+  xellbutton2 >= 84.06%, dualboot 83.25%), and the param plus parseButtonX's expect is the
+  cheapest way found to give them.
+
+Closed: the param can't go without reshaping the button-parsing sites altogether (for
+example a different copy per site, which would cost more tricks than it saves).
+
+## Attempt 29 (2026-11-09): the `--param` removed
+
+Goal: plain `-O3` for options.  Tools: `op29gen.py` (parseButtonX bodies with up to three dead
+tests in four slots), `op29fast.py` (profile model from a standalone compile, 0.25 s each),
+`op29run.py` (real compile against the reference).  bbro dumps: build/v/aio_p1/n1hit, n1hit0.
+
+### What attempt 28's wall rests on, and where it's open
+
+- Confirmed: with the power block at 103 the else edge and the success edge come from the
+  same block, so success <= 86 and else >= 17.5 need P <= 83.17%, and no predictor mix on
+  an `== 0` test of a call result lands in 82.13-83.09% (call 71, constant return 67, one
+  opcode heuristic of 72 or 73 in either direction: the sums of their log-odds miss the
+  window; the constant return can't be doubled, and any branch in the success arm takes it
+  off the power test).
+- Confirmed: the other way (else edge 17 with the else head's block at 18) needs dead flow
+  into the block that holds remopower's call.  A source outside the power test's dominance
+  drops the call heuristic; one in the success arm takes the constant return; one in the
+  else arm is a loop, whose preheader is empty.  A dead `memset` block ahead of the else
+  head keeps the call heuristic, but the memset lasts until expand, so cleanup merges the
+  head into it and the merged block keeps the memset block's count (a `for (;;)` with a
+  dead `continue` inflates the head by 1.37 in the profile and still scores cfgg's 333).
+- Open: the power block itself (187) is never in the heap (`op16sim.py r28 TAG -keys 187`:
+  None), so nothing pins it at 103.  The keys are 186 (the call block, 132), 188 (else
+  head: 100 x edge + block in 1718..1918), 263 (constant-0 block, exactly 37), 264 (join,
+  priority <= 86) and the part's call (< 10 at callee scale, so its cgraph frequency is 0).
+  A dead test at the function's entry halves everything behind it without touching 186.
+
+### The model (op29fast.py)
+
+Block counts at the site are round(freq x 132.3 / entry) and edge counts round(block x
+probability); 263's count is the sum of the *rounded* edges that carry b = 0 (the threaded
+copy takes its edges' counts), which is why a real-valued 36.52 can be 36.  Checked against
+bbro: n1hit gives 188 = -1001727, 263 = -36, 264 = -1003596, as the model says, and
+`op16sim.py r28 n1hit -k 263=-37` replays the reference order.
+
+### Search and MATCH
+
+- All bodies with up to three tests of the forms cp, `> 0`, `< 0` (24453 per call
+  position): three fit every key but 263 (36), all with an entry test split between j and
+  el and one `> 0` test to z at the else head.
+- The 263 pieces are `!s` 14 (66 x 21.6%) and the feed's round(el x 80.9%): el 27 gives 22,
+  el 28 gives 23.  el is 1293 + 5000 x c at callee scale, c the inner test's share to el:
+  15.4% for `> 0` (27), 16.1% for `== 1` (28: nonequal's 28% in place of positive's 27%).
+- `if (cp) { if (cp == 1) goto el; goto j; }` at entry + `if (cp > 0) goto z;` at the else
+  head: **IDENTICAL at plain -O3** (model: N 52, ps 67.0, succ 35, fail 17, el 28, z 37,
+  part 2).  Full build SHA256 matches.
+
+### Result
+
+MATCH, landed: 15 tricks (param and expect out, one `__builtin_constant_p` in), build.sh's
+options case removed, optlib.py's default flags now plain `-O3`.  Not natural code: the
+three tests are dead hints like the two they replace, and parseButtonX is still a private
+copy of parseButton.
+
+### Don't retry (attempt 29)
+
+- Dead inflow into the else head by a `memset` block, a loop or a success-arm feed (above).
+- Up to three tests with remopower's call ahead of the else-arm feed (CF=1): no fit in a
+  full run of the first, real-valued model (the rounded model's run was stopped at the
+  match); the call heuristic there keeps the power test at 83.25% or 71%.

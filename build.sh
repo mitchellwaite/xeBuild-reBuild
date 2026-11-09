@@ -41,11 +41,6 @@ for f in $objects; do
     # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
     crypto/*) orig="H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/${f#crypto/}.c"
               cflags="-O3 -Isrc/crypto" ;;
-    # for the remaining expect (parseButtonX's power test needs 82.1-83.1%);
-    # applyIniOptions' layout comes
-    # from dead hints in the source (tools/wip/aio/p1/NOTES.md)
-    options) orig="$f.c"
-           cflags="-O3 --param builtin-expect-probability=83" ;;
     # the rest of the app: original path unknown (no assert in the app)
     *) orig="$f.c"
        cflags="-O3" ;;

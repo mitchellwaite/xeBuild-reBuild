@@ -2,7 +2,8 @@
 the last matching build/obj/options.o).
 
 python tools/wip/dehint/optlib.py <file.c> [-p N|-np] [-v [fn]] [-L]
-  -p N  builtin-expect-probability=N (default 83, as build.sh); -np for plain -O3.
+  -p N  builtin-expect-probability=N; the default is plain -O3, as build.sh (since attempt 29);
+        -np is kept and means the same.
 Same report as bdlib.py; .text.startup is compared too."""
 import difflib, os, re, subprocess, sys, tempfile
 
@@ -14,7 +15,7 @@ BUILD = os.path.join(R, 'build', 'op')
 REF = os.path.join(BUILD, 'reference.o')
 SRC = os.path.join(R, 'src', 'options.c')
 os.makedirs(BUILD, exist_ok=True)
-P83 = ['--param', 'builtin-expect-probability=83']
+P83 = []  # was --param builtin-expect-probability=83 until attempt 29
 SECS = ('.text', '.text.startup', '.data', '.rdata', '.bss')
 
 read_src = bdlib.read_src

@@ -347,23 +347,33 @@ int optIniInt(const char *name, int def)
 	return getIniU32(name, def);
 }
 
-/* applyIniOptions' copy of parseButton for xellbutton: the expect and the
-   dead feed into z set its frequencies (the feed sends 45% of the else
-   arm to z: 71% for the outer test, from the call heuristic on remopower's
-   strnicmp, and 63.4% for `> 0`, the opcode heuristic's 73% against the
-   early return's 39%) */
+/* applyIniOptions' copy of parseButton for xellbutton: three dead tests set
+   its frequencies at plain -O3, with no __builtin_expect (at the site the
+   call block is 132; tools/wip/dehint/notes/options.md, attempt 29).
+   - The entry test has no predictor, so half the flow skips the real
+     tests: the `!s` block is 66 and the power test 52.
+   - Of that half, `== 1` sends 16.1% to el (the opcode heuristic's 28%
+     against the constant return's 67% on j's side) and the rest to j.
+   - el starts with a dead test, not a call, so the power test has the
+     constant return heuristic alone (67%): its else edge is 17 and el's
+     block 28 with the feed, which sorts it after xellbutton2's 17/17.
+   - `> 0` sends 80.9% of el to z (call, early return and opcode), 23,
+     which with `!s`' 14 makes the constant-0 block 37. */
 static int parseButtonX(const char *s)
 {
 	int b = 0;
 
+	if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2) == 1) goto el; goto j; }
 	if (!s) {
 z:
 		return 0;
 	}
-	if (__builtin_expect(!strnicmp(s, "power", 5), 1)) {
+	if (!strnicmp(s, "power", 5)) {
+j:
 		b = 0x11;
 	} else {
-		if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2) > 0) goto z; }
+el:
+		if (__builtin_constant_p(xb.xellButton + 3) > 0) goto z;
 		if (!strnicmp(s, "remopower", 9))
 			b = 0x20;
 		else if (!strnicmp(s, "remox", 5))
