@@ -130,14 +130,18 @@ int netSendStr(const char *s)
    each one leaves the loop.  Those tests thread away after profile_estimate,
    so the arms keep their own frequencies (R above J and the log), and the
    break reaches the post-loop test, whose stale share puts got over IRA's
-   caller-save threshold in the clone: size/buf/got go to ebx/esi/edi.  status
-   is compared with 1, not 0, since only that gets an opcode prediction: it
-   keeps the store under the clone's alignment threshold.
-   Borderline, for review: the select failure leaves through `size = got`
-   and `if (got >= size) return NULL`, an odd way to write a return (live;
-   a flag or a plain return there doesn't match), and status is
-   tested with `!= 1` where `!status` says the same (it is only 0 or 1).
-   The status flag itself is the form of myatou32's `hex`. */
+   caller-save threshold in the clone: size/buf/got go to ebx/esi/edi.  The
+   select arm clears size rather than setting status: status on both arms
+   swaps the operands of the verbose loop's latch compare (SSA names, see
+   tools/wip/dehint/notes/net_netRecvVerbose.md, "Review").  The
+   test after the loop compares status with 1, not 0, since only that gets an
+   opcode prediction: it keeps the clone's store block under its alignment
+   threshold (`!status`, `== 0` or `< 1` there, or size cleared on both arms
+   and no status, each give it a .p2align).
+   Borderline, for review (approved): each failure arm sets a value that the
+   next statement tests, the form of myatou32's `hex`.  0 is the function's
+   own empty-reply size and status is 1 for OK; the loop's `status != 1`
+   reads like the one after it (`!status` there is the same bytes). */
 uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
@@ -176,9 +180,9 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 				log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
 				if (buf != (uint8_t *)&netEmpty)
 					free(buf);
-				size = got;
+				size = 0;
 			}
-			if (got >= size)
+			if (!size)
 				return NULL;
 			r = recv(netSock, (char *)buf + got, size - got, 0);
 			if (r == SOCKET_ERROR) {
@@ -529,9 +533,12 @@ uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 /* rlen's scope ends before the tail, so its clobber keeps the two `mov eax,1`
    from being head-merged. `<= 0` takes the opcode predictor (`!` takes none),
    which lifts the free block over bbro's copy threshold for the epilogue.
-   Borderline, for review: netSendStr only returns 0 or 1, so `<= 0` is
-   redundant with `!`, which the file's other tests of it use; the three
-   `<= 0` are here, in netSendFile and in netWritePatches. */
+   Borderline, for review (approved): `<= 0` on netSendStr's 0 or 1, where
+   `!` says the same.  No other test or netSendStr body gives the prediction.
+   The uploads here, in netSendFile and in netWritePatches need it,
+   netSendFlash's matches either way, and the command-only senders
+   (netEraseBlock, netFormatSysex, netFormatCompat, netReboot) need `!`, so
+   the two spellings split by the kind of function. */
 int netWriteBlocks(const uint8_t *buf, uint32_t len, uint32_t start, uint32_t count)
 {
 	int ret;
@@ -595,9 +602,10 @@ uint8_t *netGetBadBlocks(int *len)
    the opcode predictor (`!` takes none), which lifts netSendData's block far
    enough for the return-0 block to be aligned. rlen's scope ends before the
    tail, so its clobber keeps the two `mov eax,1` from being head-merged.
-   Borderline, for review: the `ok` flag is redundant (`if (name && buf) {`
-   is the same logic), the form of myatou32's `hex`; and `<= 0` on
-   netSendStr's 0 or 1, as in netWriteBlocks. */
+   Borderline, for review (approved): the `ok` flag is redundant (`if (name
+   && buf) {` is the same logic), the form of myatou32's `hex`: the test
+   must guard no call (`&&` and `ok = name && buf;` are 19 lines, nested
+   ifs 21-23); and `<= 0` on netSendStr's 0 or 1, as in netWriteBlocks. */
 int netSendFile(const char *name, const void *buf, uint32_t len)
 {
 	int ret, ok = 0;
@@ -724,7 +732,7 @@ int netReboot(int how)
    profile_estimate (`!` takes none) and folds away once it's inlined. That lifts
    the free block above 10% of the entry, so bbro copies the epilogue after it
    instead of a jmp, as in netWriteBlocks.
-   Borderline, for review: `<= 0` on netSendStr's 0 or 1, as in
+   Borderline, for review (approved): `<= 0` on netSendStr's 0 or 1, as in
    netWriteBlocks. */
 int netWritePatches(const uint8_t *buf, uint32_t len)
 {

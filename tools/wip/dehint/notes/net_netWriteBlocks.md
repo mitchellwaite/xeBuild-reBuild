@@ -49,3 +49,32 @@ Full build: SHA256 10dac648... matches (plain fncmp on src/net.c shows only the 
 Borderline, for review: the 16 other tests of netSendStr in src/net.c use `!` or truth. This is the only `<= 0`, and netSendStr only
 returns 0 or 1, so the compare is redundant. It reads as ordinary socket-style code, but its effect here is the predictor.
 For queue 6 (netSendFile), the same scoped rlen + `<= 0` may be worth trying: same OK-reply tail, not tested here.
+
+## Review (2026-11-10): `<= 0` approved, for all three uploads
+
+The user asked for net's four borderline items to be reviewed and settled. Tools: `tools/wip/dehint/nbsweep.py`
+(whole net.c variants against build/obj/net.o, per-function lines with .p2align padding), `gen_nb1.py`, `gen_nb2.py`.
+
+gen_nb1 (160): netSendStr's body x `int`/`uint32_t` return x `!` or `<= 0` at each of the three uploads. Bodies: the
+current if/return, `return send(..) == len;`, `if (== len) return 1; return 0;` (and with else), a variable for the
+result, an `ok` set to 0 or 1 by an if, a ternary, `sent == len`, and strlen twice with no `len`. Only the current
+body, the result variable and `ok = 0; if (==) ok = 1;` keep the file at 0, and all of them only with `<= 0` at all
+three sites; with `!` netWriteBlocks is 6, netSendFile 2, netWritePatches 10 in every body with an if (the success-first
+ones are 2 off with `<= 0`, in netSendFile). The branchless bodies (`return send(..) == len;`, the ternary,
+`sent == len`) change 13 callers (102-156 lines), and strlen twice changes netSendStr itself (562+), so the original's
+body has a branch. A `uint32_t` return makes `<= 0` fold to `== 0` before profile_estimate, so it loses the prediction
+(18 with either spelling).
+
+gen_nb2 (32): every other netSendStr test as a compare with 0 (`!x` to `x <= 0`, `x` to `x > 0`; also `< 1`/`>= 1`):
+
+| Site | Lines |
+|------|-------|
+| netDisconnect, netMount, netUnmount, netGetFile, netGetBldrs, netSendFlash, netReadBlocks, netGetBadBlocks, netMkdir | 0 either way |
+| netFormatSysex, netFormatCompat | 30 |
+| netEraseBlock | 32 |
+| netReboot (either test) | 35 |
+
+So the file can't use one spelling throughout, but the binary splits the tests by the kind of function: the four
+uploads (WRFL, WBLK, SNDF, WBPT: command, netSendData, reply) take the compare (three need it, netSendFlash matches
+either way), and the command-only senders with a reply test need `!`. Approved: the compare is the only spelling
+with the prediction, and it is the same at all three sites that need it. netSendFlash keeps `!` (no evidence either way).

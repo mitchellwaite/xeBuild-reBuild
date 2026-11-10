@@ -62,3 +62,20 @@ Borderline, for review:
 build.sh's comment at line 75 ("netSendFile's !name hint (55-65)") is stale now; left for the user, as build.sh was out of scope.
 
 Next, if anyone wants the `<= 0` gone: margin -53 (oknest + `!`) needs U up by about 90, or P(send fails) down from .622. A second flag on netSendStr would likely do it (its test would guard no call), not tried, as `<= 0` is simpler. Not worth retrying: `||`/`&&` heads without a flag (pass 3898 < 4000), seq heads (T 8918 keeps buf in a register), `!= 1` (lowers only what's after netSendData's block).
+
+## Review (2026-11-10): flag and `<= 0` approved
+
+The user asked for net's four borderline items to be reviewed and settled. gen_nb3 (20; `tools/wip/dehint/nbsweep.py`,
+whole object against build/obj/net.o) tried heads without the flag, nested ifs first (the author seems to have favoured
+them), each with `<= 0` or `!`:
+
+| Head | `<= 0` | `!` |
+|------|--------|-----|
+| flag (`if (name && buf) ok = 1; if (ok) {`) | 0 | 2 |
+| `if (name && buf) {`, `!= NULL` spelled out, `ok = name && buf;` | 19 | 26 |
+| `if (buf) { if (name) {`, `if (name) { if (!buf) return 0;` | 21 | 30 |
+| `if (name) { if (buf) {` (with or without `else return 0`), `if (!name) return 0; if (buf) {`, nested with `return ret` | 23 | 32 |
+
+`ok = name && buf;` missing by as much as `&&` confirms the mechanism above: what matters is that the flag is set by
+an `if` whose arm holds no call (50%, no call heuristic). Approved: it is the form of myatou32's `hex` and prepSysex's
+`r`, both approved. The `<= 0` as netWriteBlocks' review.

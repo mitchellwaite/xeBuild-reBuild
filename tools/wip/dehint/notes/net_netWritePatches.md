@@ -33,3 +33,8 @@ Borderline, for review: `netSendStr(...) <= 0`, the third in the file (netWriteB
 multi-step upload; netSendStr only returns 0 or 1, so the compare is redundant. The other tests of netSendStr in net.c use `!` or truth.
 
 Next, if anyone wants `<= 0` gone: not tried, a flag on netSendStr's result might move the predictor as netSendFile's `ok` did, but it reads worse than `<= 0`.
+
+## Review (2026-11-10): approved
+
+`<= 0` approved with netWriteBlocks' and netSendFile's: see net_netWriteBlocks.md, "Review" (no netSendStr body makes
+`!` match, 10 lines here; the compare is needed or neutral at every upload and wrong at the command-only senders).

@@ -1,10 +1,11 @@
 # net netRecvVerbose (queue 4)
 
-**Current state:** matched, landed with no dead test and no asm (attempt 12, at the end of this file; SHA256 matches,
-not committed). The loop's two failure arms assign and rejoin, and a test after each leaves the loop: `size = got;`
-then `if (got >= size) return NULL;`, and `status = 0;` then `if (status != 1) break;`, with `if (status != 1) return NULL;`
-after the loop. Every test is live, but `size = got` and `status != 1` are there for the bytes, so it's flagged for
-the user's review. Attempt 10's `if (!len)` is gone. Older sections' "current" descriptions of `src/net.c` are out of date.
+**Current state:** matched, no dead test and no asm; borderline review settled (2026-11-10, "Review" at the end of
+this file). The loop's two failure arms assign and rejoin, and a test after each leaves the loop: `size = 0;` then
+`if (!size) return NULL;` (attempt 12 had `size = got;` and `if (got >= size)`, same bytes), and `status = 0;` then
+`if (status != 1) break;`, with `if (status != 1) return NULL;` after the loop. Approved as borderline: the arms are
+myatou32's `hex` form, and `!= 1` after the loop is needed. Older sections' "current" descriptions of `src/net.c` are
+out of date.
 
 Tools: `tools/wip/dehint/nrsweep.py <gen.py>` (compiles the file, compares netRecvVerbose and the
 clone; outputs in build/nr/<gen>/), generators `gen_nr*.py`. NR_DIAG="--param ..." for diagnostics only.
@@ -522,3 +523,35 @@ Reproduce: python tools/re/fncmp.py src/net.c netRecvVerbose ; FNCMP_GCCSYM=_net
 
 If `size = got` is rejected, try next: another way to change what's on the free list at unswitch with a plain select arm or a flag on it, starting from gen_nr119's `ok-ret|!|!=1|brk|ret` (text 4, only V's latch cmp).
 Don't retry: arms that only leave through the head (gen_nr110); a bottom `got >= size` exit (4 exits lose V's .p2align, gen_nr112); locals and casts for the free list (gen_nr115); moving the free or the log after the loop (gen_nr118). Check every fncmp MATCH with nrobj: two in this attempt were .p2align off.
+
+## Review (2026-11-10): the select arm clears size; approved
+
+The user asked for net's four borderline items to be reviewed and settled. Tools: `tools/wip/dehint/nbsweep.py <gen.py>`
+(whole net.c variants, plain -O3, scored against build/obj/net.o per function, .p2align padding included; data too),
+generators `gen_nb4.py` to `gen_nb7.py`. Lines below are nbsweep's (V = netRecvVerbose, C = the clone).
+
+| Form | Lines |
+|------|-------|
+| select arm `size = 0;` + `if (!size) return NULL;` (or `size == 0`), any status init (decl, before the loop, in the `if (size)` block), loop test `!= 1`, `!` or `== 0` | 0 |
+| attempt 12's `size = got;` + `if (got >= size)` (control) | 0 |
+| status on both arms (`status = 0;` + `!= 1` or `!`, return or break, `got < size` or `size > got`) | 4 (V) |
+| select arm unchanged, the test after it repeated (`r == SOCKET_ERROR \|\| r == 0`) | 4 (V) |
+| one `if (status != 1)` after an if/else (or `else if ((r = recv(..)) == SOCKET_ERROR)`) of the two arms | 15 |
+| `size = 0` on both arms, no status, `!size` or `size == 0` after the loop | 3 (C) |
+| the same with the recv arm returning, or ended by the loop condition alone | 52, 523 |
+| after the loop `!status`, `status == 0` or `status < 1` (with the size-0 select arm) | 3 (C) |
+| `r <= 0`, `r < 1` after the select arm; `size = 0` + `got >= size`; `buf = NULL` + `!buf` | 55, 612, 178+ |
+
+What the misses are:
+- 4 (V): only the verbose loop's latch compare, `cmp ebx,esi; jge` for the reference's `cmp esi,ebx; jle`. gcc orders the
+  two SSA names by version, so it is attempt 12's naming effect (the threaded flag PHIs on the free list), not frequency.
+  Clearing size makes no loop-carried flag on the select path: like `size = got`, the test folds on both incoming edges
+  (size is 0 on the arm's and nonzero under `if (size)` on the other).
+- 3 (C): one `.p2align` before the clone's store block (`mov eax,[esp+0x2c]; mov [eax],ebx`). After the loop only
+  `status != 1` gets PRED_TREE_OPCODE_NONEQUAL, which lowers P(stay) to about .78 (attempt 12); comparisons with 0
+  get none. No compare of size predicts that way: its normal value isn't a constant.
+
+So `size = 0` lands in place of `size = got`: a constant, the function's own empty-reply size, tested the way the
+enclosing `if (size)` tests it, where `got >= size` could only be true after the arm. The rest is approved: each arm
+sets a value the next statement tests (myatou32's `hex`, approved 2026-11-02), and `status != 1` after the loop is
+needed. The loop's `status != 1` could be `!status` (same bytes); it stays `!= 1` to read like the test after the loop.

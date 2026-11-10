@@ -5,7 +5,8 @@ left are **borderline shapes**: ordinary C that an author could have written, bu
 the source because of what gcc does with it. They aren't counted as tricks. Each one is for
 the user to review: keep it as the author's likely shape, or try for a plainer one.
 
-State: commit `4c1e221d` (2026-11-10; mode_client's lines are of its review the same day).
+State: commit `4c1e221d` (2026-11-10; mode_client's and net's lines are of their reviews the
+same day).
 Line numbers are that commit's and will drift; the tags don't:
 
 ```
@@ -14,7 +15,7 @@ grep -n "Borderline, for review" src/*.c
 
 There are two kinds of item here:
 
-1. **Tagged shapes** (38, 8 of them approved): each has a `Borderline, for review:` comment
+1. **Tagged shapes** (38, 12 of them approved): each has a `Borderline, for review:` comment
    in the source saying what it does and what it replaced.
 2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
    section says what went and what is left (two prototypes that are needed).
@@ -66,14 +67,14 @@ original's. Worth one attempt from the natural `parseOption` before accepting th
 | 590 | `imgAdd` | redundant `(int)pages` casts, and `len >> 9` next to `len % 512` (also a `TODO`) |
 | 1005 | `finalizeImage` | `pageErased(..) <= 0` on a 0-or-1 result; `calcPageEcc` written out though the function exists; `xb.spare` and `xb.hdr` re-read after the stores; `const` on `q` and not `h` |
 
-### net (4) — `src/net.c`, notes in `notes/net_*.md`
+### net (4, all approved 2026-11-10) — `src/net.c`, notes in `notes/net_*.md` ("Review")
 
-| Line | Where | Shape |
-|---|---|---|
-| 137 | `netRecvVerbose` | the select failure leaves through `size = got` and `if (got >= size) return NULL`; `status != 1` where `!status` says the same |
-| 533 | `netWriteBlocks` | `netSendStr(cmd) <= 0`, though it only returns 0 or 1 and the file's other tests use `!` |
-| 599 | `netSendFile` | redundant `ok` flag (`if (name && buf) {` is the same logic), and the same `<= 0` |
-| 728 | `netWritePatches` | the same `<= 0` |
+| Line | Where | Shape | Why it stays |
+|---|---|---|---|
+| 140 | `netRecvVerbose` | each failure arm sets a value that the next statement tests: the select arm `size = 0;` then `if (!size) return NULL;` (was `size = got;` and `if (got >= size)`, same bytes), the recv arm `status = 0;` then `if (status != 1) break;`; `status != 1` again after the loop | A plain return in an arm loses the clone's registers (48 lines). status on both arms is 4 (V's latch compare swaps its operands: SSA names). After the loop only `!= 1` gets an opcode prediction; `!status`, `== 0`, `< 1` there, or size cleared on both arms with no status, give the clone's store block a `.p2align` (3). The loop's own test can be `!status`, kept `!= 1` to read like the other |
+| 535 | `netWriteBlocks` | `netSendStr(cmd) <= 0`, though it only returns 0 or 1 | The opcode prediction on a call compared with 0 (folds once netSendStr is inlined). No netSendStr body (10 shapes, `int` or `uint32_t`) makes `!` match (6). Over the file, `<= 0` is needed at the three uploads, either way at netSendFlash (the fourth upload) and 8 other sites, and wrong at the command-only netEraseBlock, netFormatSysex, netFormatCompat and netReboot (30-35): the split follows the kind of function |
+| 604 | `netSendFile` | redundant `ok` flag (`if (name && buf) {` is the same logic), and the same `<= 0` | The flag's `if` must guard no call (50%): `&&` and `ok = name && buf;` 19 lines, nested ifs in either order or with an early return 21-23. Same form as myatou32's `hex` and prepSysex's `r`. `!` for the `<= 0` is 2 (an alignment) |
+| 734 | `netWritePatches` | the same `<= 0` | As netWriteBlocks; `!` is 10 |
 
 ### keys (3, all approved 2026-11-10) — `src/keys.c`, notes in `notes/keys.md` ("Review")
 
