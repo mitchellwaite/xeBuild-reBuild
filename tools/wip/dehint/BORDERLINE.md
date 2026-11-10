@@ -103,7 +103,7 @@ original's. Worth one attempt from the natural `parseOption` before accepting th
 |---|---|---|---|---|
 | `src/image_read.c` | 239 | `getImageSmc` | dead `excess` addend, always 0 (the head comment at line 176 also has a live but redundant `addr != lim` / `addr >= lim` pair) | kept and not counted, by the user's call |
 | `src/filelist_ini.c` | 697 | `findKey` | dead `key == NULL` test | approved: the author may well have written it |
-| `src/fileutil.c` | 307 | `myatou32` | `int hex` (was `BOOL`) set by one `if` and tested by the next | approved 2026-11-02 |
+| `src/fileutil.c` | 307 | `myatou32` | `bool hex` (was `BOOL`) set by one `if` and tested by the next | approved 2026-11-02 |
 
 ## 2. Redundant file-local definitions: removed (2026-11-10)
 
@@ -118,7 +118,7 @@ The user counted these as borderline too. All of them went, with the same bytes;
   emit their out-of-line copies (without it both copies vanish). Their definitions now say
   `extern inline`, which is the same thing in one place. The scan can't see this.
 - `image_write.c`'s unused `ALIGN_BLOCK` and `setSpareLba` macros.
-- `fileutil.c`'s `typedef int BOOL` / `TRUE` / `FALSE`: the uses are `int` and `1`/`0` now.
+- `fileutil.c`'s `typedef int BOOL` / `TRUE` / `FALSE`: the uses are `<stdbool.h>` `bool`/`true`/`false` now (`validateString` keeps its `uint32_t` return: a `bool` one changes five callers' objects).
 - `image_read.c`'s `fseeko64` prototype (`<stdio.h>` declares it).
 - `net.c`'s `extern time_t netTimeStart`: now in `xebuild.h`'s Globals block, which
   includes `<time.h>` for it.

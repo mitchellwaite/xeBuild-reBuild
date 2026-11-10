@@ -7,6 +7,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -306,9 +307,9 @@ uint32_t myatou32(const char* dat, uint32_t defValue)
 {
 	if((dat[0]&0xFF) == '0')
 	{
-		int hex = 0;
+		bool hex = false;
 		if(myatol(dat[1]&0xFF) == 'x')
-			hex = 1;
+			hex = true;
 		if(hex)
 		{
 			if(validateString(&dat[2]))
@@ -330,23 +331,23 @@ uint32_t myatoh32(const char* dat, uint32_t defValue)
 	return defValue;
 }
 
-// checks chars are valid
+// checks chars are valid (a bool return changes the callers' code: keep uint32_t)
 uint32_t validateString(const char* nString)
 {
 	int i, len;
 	if(nString == NULL)
-		return 0;
+		return false;
 	len = strlen(nString);
 	if((nString[0] != 0x0) && (len != 0))
 	{
 		for(i = 0; i < len; i++)
 		{
 			if(myatox(nString[i]) == 0xFF)
-				return 0;
+				return false;
 		}
-		return 1;
+		return true;
 	}
-	return 0;
+	return false;
 }
 
 int checkZeros(const unsigned char *p, unsigned int len)
