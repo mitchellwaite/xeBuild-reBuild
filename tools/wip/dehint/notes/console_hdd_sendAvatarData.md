@@ -365,3 +365,26 @@ Why dropping n fixed the cmp is not understood beyond the versions: `prephitmp_6
 Variations with the same bytes: `struct manifestItem *e = &manifest.e[i]` in the body, `if (ret == 0)`, `ret = 1` at both old spots, `long ret; int i;`, prepSysex h5d or h1d.
 
 Reproduce: python tools/re/fncmp.py src/console_hdd.c sendAvatarData ; python tools/wip/dehint/caobj.py src/console_hdd.c ; sh build.sh ; python tools/wip/dehint/casweep.py tools/wip/dehint/gen_ca86.py ; python tools/wip/dehint/cachains.py src/console_hdd.c vrp2 cddce2 forwprop4 optimized
+
+## Review (2026-11-10): both borderline shapes approved, no code change
+
+The user asked for the two console_hdd borderline items to be reviewed and settled. Both stay as they are, with `(approved)` added to their tags. Compared with `python tools/wip/dehint/caobj.py` against build/obj/console_hdd.o; the counts below are caobj text lines (addresses included, so one changed instruction shifts everything after it).
+
+### sendAvatarData's long
+
+- Only the local's type counts. `int sendAvatarData` with `long ret` is text 0. An `int`, `uint32_t`, `unsigned`, `unsigned long` or `_Bool` ret is 314-745.
+- **sendCompatData needs long in both places.** An `int` return with `long ret` is 94, `long` return with `int ret` 135, `int` for both 202, `uint32_t` for both 199. These are real code differences (frame 0x18 vs 0x28, registers), not addresses. sendCompatData was never tagged, so this is the author's type for these results, and `long` for both in sendAvatarData is the same form. Recorded in a comment above sendCompatData.
+
+### sendAvatarData's `i = consoleManifest.count`
+
+No new test: attempt 6 swept the stops (`break` 39 lines, pointer IV; `n = 0` 20). It's live, ordinary code, an older idiom for leaving a `for` loop.
+
+### prepSysex's r
+
+New spellings, on top of gen_ca86 s1-s6 (10 lines at best) and gen_ca10's heads:
+- Flag-free, `if (!format) {log; return 0;} if (!mount) {log; return 0;} return dirs();`: 1014, data 148. The nested form with `return dirs()` after both tests: 1004.
+- Fully chained, the mount failure without its early return (`r = mount; if (!r) log;` then `if (r) r = dirs(); return r;`): 784. The mount failure's early return is needed.
+- Same bytes as the landed form: `if (r) r = createSysexDirs(); return r;` (the textbook status chain), `return r ? createSysexDirs() : 0;`, `return r;` in the mount arm, and `int ok = 0; ... ok = 1;` after the mount test. The landed form was kept, since it's the shape of the approved `hex`.
+- Why no flag-free form can work, from predict.c's heuristics as the attempts measured them: P(mount success) .793 is the call heuristic (71) and the early-return heuristic (61) together on the mount failure. If `createSysexDirs()` sits in a block guarded by the mount test, its edge gets the call heuristic as well and the two cancel. So the call has to come after a join with the format-failure path, and that path must not call it, which needs a value that carries the format result past the join.
+
+Scratch generator for these (not kept): string replacements on src/console_hdd.c fed to caobj.py.

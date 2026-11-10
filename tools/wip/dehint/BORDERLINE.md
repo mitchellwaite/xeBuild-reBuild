@@ -83,12 +83,12 @@ original's. Worth one attempt from the natural `parseOption` before accepting th
 | 839 | `daeEncrypt` | a bad header ends the loop with `off = size; len = 0;`, and the warning sits in the loop's exit arm, not after the loop |
 | 897 | `fcrtEncrypt` | the encrypt calls written out in both arms, where an `\|\|` would need one copy |
 
-### console_hdd (2) — `src/console_hdd.c`, notes in `notes/console_hdd_sendAvatarData.md`
+### console_hdd (2, both approved 2026-11-10) — `src/console_hdd.c`, notes in `notes/console_hdd_sendAvatarData.md` ("Review")
 
-| Line | Where | Shape |
-|---|---|---|
-| 321 | `prepSysex` | `r` kept as a flag with a second `if (r)`, where the mount arm could return `createSysexDirs()` itself |
-| 346 | `sendAvatarData` | returns `long` next to `netSendFile`'s `int`; a failed send ends the loop with `i = consoleManifest.count`, not `break` |
+| Line | Where | Shape | Why it stays |
+|---|---|---|---|
+| 323 | `prepSysex` | `r` kept as a flag with a second `if (r)`, where the mount arm could return `createSysexDirs()` itself | No spelling without a flag matches (8 tried), and the reason is known: the mount test mustn't guard the call. Same form as `myatou32`'s approved `hex` |
+| 350 | `sendAvatarData` | returns `long` next to `netSendFile`'s `int`; a failed send ends the loop with `i = consoleManifest.count`, not `break` | `sendCompatData` needs `long` for its return and its `ret`, so `long` is the author's type for these results. `break` makes a pointer IV (39 lines) |
 
 ### mode_client (2) — `src/mode_client.c`, notes in `notes/mode_client.md`
 
