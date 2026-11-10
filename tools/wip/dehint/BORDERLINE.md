@@ -14,8 +14,8 @@ grep -n "Borderline, for review" src/*.c
 
 There are two kinds of item here:
 
-1. **Tagged shapes** (39): each has a `Borderline, for review:` comment in the source saying
-   what it does and what it replaced.
+1. **Tagged shapes** (39, 7 of them approved): each has a `Borderline, for review:` comment
+   in the source saying what it does and what it replaced.
 2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
    section says what went and what is left (two prototypes that are needed).
 
@@ -75,13 +75,13 @@ original's. Worth one attempt from the natural `parseOption` before accepting th
 | 599 | `netSendFile` | redundant `ok` flag (`if (name && buf) {` is the same logic), and the same `<= 0` |
 | 728 | `netWritePatches` | the same `<= 0` |
 
-### keys (3) — `src/keys.c`, notes in `notes/keys.md`
+### keys (3, all approved 2026-11-10) — `src/keys.c`, notes in `notes/keys.md` ("Review")
 
-| Line | Where | Shape |
-|---|---|---|
-| 649 | `kvPrepare` | two `alt` tests at the end where one if/else would hold `kvSet` and both encrypt calls |
-| 839 | `daeEncrypt` | a bad header ends the loop with `off = size; len = 0;`, and the warning sits in the loop's exit arm, not after the loop |
-| 897 | `fcrtEncrypt` | the encrypt calls written out in both arms, where an `\|\|` would need one copy |
+| Line | Where | Shape | Why it stays |
+|---|---|---|---|
+| 648 | `kvPrepare` | two `alt` tests at the end where one if/else would hold `kvSet` and both encrypt calls | Only `if (!alt) kvSet` has a call on just one arm, so the call heuristic gives alt 71%; every single if/else has calls on both arms (50%). 8 one-test forms tried (128-398) |
+| 840 | `daeEncrypt` | a bad header ends the loop with `off = size; len = 0;`, and the warning sits in the loop's exit arm, not after the loop | The binary's failed-decrypt arm computes `size + 1 + len` at the latch, so the author ends this loop through `off`. With the warning in the exit arm a `break` would skip it, which the binary prints after a bad header; `len = size - off` is 551 |
+| 902 | `fcrtEncrypt` | the encrypt calls written out in both arms, where an `\|\|` would need one copy | The call heuristic counts only on arms the test dominates, so a shared encrypt block drops the warning edge to 875, under the 1000 its own epilogue copy needs (`\|\|` 25 lines). Helpers 50-100 |
 
 ### console_hdd (2, both approved 2026-11-10) — `src/console_hdd.c`, notes in `notes/console_hdd_sendAvatarData.md` ("Review")
 

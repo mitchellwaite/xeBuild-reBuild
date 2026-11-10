@@ -148,3 +148,74 @@ Tools: `keysend.py` + `keysend_forms.py` (forms), `keysshowdae.py` (reference li
 
 Next: nothing left to remove in keys. To land: copy the draft to `src/keys.c`, run `sh build.sh`,
 drop keys from README.md's trick list (renumber, update the count), run `tools/re/progress.py`.
+
+## Review (2026-11-10): all three borderline shapes approved, no code change
+
+The user asked for the three keys borderline items to be reviewed and settled. All three
+stay as they are, with `(approved)` added to their tags and the reason in each comment.
+Scored at plain `-O3` against `build/keys/reference.o` (`keyslib.fndiff` lines; a scratch
+`v.py` replaced one function of src/keys.c per `//== tag` block, not kept).
+
+### fcrtEncrypt's two encrypt copies
+
+| Form | Lines |
+|------|-------|
+| `memcmp(..) == 0 \|\| verifyFcrt(..) == 1`, one copy | 25 |
+| helper taking the computed hash (`return 1` first, `\|\| `, `!= 0` first, both tests returning, `== 1` at the call), or doing the SHA too with `hash` from the caller | 50 |
+| the same with the arms swapped (`if (!ok) warn else encrypt`) | 75 |
+| helper with its own `hash` (shares a slot with `aes`, frame 0x22c) | 77-100 |
+| encrypt helper called once or twice (not inlined: `aes` is too large a frame) | 93-97 |
+
+Why, from `-fdump-tree-profile_estimate-details`: each of the four exits needs its own
+epilogue copy, so each exit edge must be at least 1000 (10% of entry). The call heuristic
+applies to an edge only when its test dominates the destination. The memcmp test dominates
+the shared encrypt block, but the verifyFcrt test doesn't, so in the `||` form that test
+gets the call heuristic on the warning edge alone (with early return and opcode, 62.2%).
+The warning is 1407 x 62.2% = 875 and gets a `jmp` to the shared epilogue, which is the whole
+25-line diff. With two copies each encrypt block is dominated by its test, the call
+heuristics cancel, and the warning has 1127. The helper forms do get all four epilogues, but
+the helper's own profile puts memcmp == 0 at 61% (call 71 against early return 39, dumped
+for the first helper form), so the success path falls through after memcmp (the original
+has 39%). keysfcgrid.py had already tried the flag forms (h6, h7) and the `||` forms with
+every size and offset shape.
+
+### kvPrepare's two alt tests
+
+| Form | Lines |
+|------|-------|
+| `if (alt) kvEncryptAlt; else { kvSet; kvEncrypt; }`, with or without braces or a trailing `return` | 128 |
+| the alt arm returning early, `kvSet; kvEncrypt` after it | 129 |
+| `if (!alt) { kvSet; kvEncrypt; } else kvEncryptAlt` | 231 |
+| `free(buf)` before a single if/else | 372 |
+| `if (!alt) kvSet;` then `(alt ? kvEncryptAlt : kvEncrypt)(..)` | 383 |
+| a function pointer set next to `file`/`name` | 398 |
+
+Why: `if (!alt) kvSet(..)` is the only test with a call on one arm and none on the other, so
+the call heuristic gives `!alt` 29% (bb 17 in the dump). After threading, the joined branch
+keeps those probabilities. Every single if/else has calls on both arms (kvEncryptAlt against
+kvSet + kvEncrypt), so its heuristics cancel at 50%. Reading the two tests as two concerns
+(set the reference keyvault for the main kv; pick the salt for both) is plausible author code.
+
+### daeEncrypt's `off = size; len = 0;` and the warning in the exit arm
+
+| Bad-header arm | Lines |
+|---|---|
+| `off = size; len = 0;` (landed), or the same plus `continue` | 0 |
+| `len = size - off;`, with or without `continue` | 551 |
+| the same in the failed-decrypt arm too | 550 |
+
+| Failed-decrypt arm | Lines |
+|---|---|
+| `n = 0; off = size + 1; continue;` (landed) | 0 |
+| `off = size` | 35 |
+| `len = size - off` | 43 |
+| `off = size; len = 0;` | 332 |
+
+The evidence that settles it: the binary's failed-decrypt arm loads `size + 1` (`lea
+edx,[ebp+0x1]`) and jumps to the latch's `add edx,[esp+0x28]` (`off += len`) and the exit
+compare. So the original computes `size + 1 + len`, and no `break` can produce that: the
+author ended this loop by setting `off`, and the bad header doing the same with `off = size;
+len = 0;` (which gcc threads straight to the `n != 2` test, as in the binary) is the same
+idiom. Given the warning in the exit arm (attempt 2, needed for the 51% branch), a `break` at
+the bad header would skip the warning, which the binary prints after a bad header. Same
+call as console_hdd's approved `i = consoleManifest.count`.
