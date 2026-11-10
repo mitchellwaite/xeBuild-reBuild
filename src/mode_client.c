@@ -472,46 +472,46 @@ void clientEraseBlock(const char *sblock)
 		log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n");
 }
 
-/* the option's argument(s); dies with usage if one is missing or, with
-   check, if a mode was already set */
+/* the option's argument(s), `first` being the option's own index; dies with
+   usage if one is missing or, with check, if a mode was already set.  The
+   three tests are written alike: gcc merges each one's first two conditions
+   and orders them itself (the count first in the first test, the pointer
+   first in the others), so an edit here can swap them. */
 char *getArgs(int argc, char **argv, int *pi, int mode, int check, char **arg2, char **arg3)
 {
-	int first = *pi + 1;
-	int i = first;
-	char *a = argv[i];
+	int first = *pi;
+	int i = first + 1;
 
-	if (i == argc || !a || *a == '-')
-		client_usage(3, argv[first - 1]);
+	if (!argv[i] || i == argc || *argv[i] == '-')
+		client_usage(3, argv[first]);
 	if (arg2) {
 		i++;
-		a = argv[i];
-		if (!a || i == argc || *a == '-')
-			client_usage(4, argv[first - 1]);
-		*arg2 = a;
+		if (!argv[i] || i == argc || *argv[i] == '-')
+			client_usage(4, argv[first]);
+		*arg2 = argv[i];
 	}
 	if (arg3) {
 		i++;
-		a = argv[i];
-		if (!a || i == argc || *a == '-')
-			client_usage(4, argv[first - 1]);
-		*arg3 = a;
+		if (!argv[i] || i == argc || *argv[i] == '-')
+			client_usage(4, argv[first]);
+		*arg3 = argv[i];
 	}
 	if (mode && check)
-		client_usage(5, argv[first - 1]);
+		client_usage(5, argv[first]);
 	*pi = i;
-	return argv[first];
+	return argv[first + 1];
 }
 
-/* Borderline, for review: bpArgs, wbArgs, oneArg and fileArg are getArgs'
-   checks again, as four static helpers that differ only in which of the
-   pointer and the count is tested first.  Each arm of the option loop has
-   its own order (-bp and -wb mirror each other, -eb and -ip test the pointer
-   first, -r and -w the count), and with `j` and `a` as plain locals a test
-   keeps the order it is written in.  The call also gives the arm even odds
-   against the next option's test.  getArgs itself is not inlined with two
-   arguments and is cloned when both -bp and -wb call it; one helper for
-   several arms gives them all one order
-   (tools/wip/dehint/notes/mode_client.md, attempt 17). */
+/* bpArgs, wbArgs, oneArg and fileArg are getArgs' checks again for the
+   options below, differing only in which of the pointer and the count is
+   tested first: each option's arm has its own order in the binary (-bp and
+   -wb mirror each other, -eb and -ip test the pointer first, -r and -w the
+   count).  Written with plain locals, or with the pointer's load in the first
+   test, a test keeps the order it has here, and the call gives the arm even
+   odds against the next option's test.  getArgs called from these arms gives
+   the same code but for those orders (gcc orders its merged tests itself),
+   and is never inlined at -wb (tools/wip/dehint/notes/mode_client.md,
+   attempt 17). */
 
 /* -bp <f> <o> */
 static char *bpArgs(int argc, char **argv, int *pi, int mode, char **arg2)

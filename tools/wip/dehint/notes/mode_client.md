@@ -13,20 +13,23 @@ clientEraseBlockI inlined by hand).
 clientEraseBlockI is gone (gcc inlines clientEraseBlock itself).  Whole object IDENTICAL
 BYTES (`cmp build/obj/mode_client.o build/mc/w17/reference.o`), full build SHA256
 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c, progress 617 / 617.
-build.sh unchanged.  Borderline shapes, tagged `Borderline, for review:` in the source:
+build.sh unchanged.  Borderline shapes, tagged `Borderline, for review:` in the source: the
+two redundant `return;` of attempt 2 (clientInfo, clientBinPatch), still load-bearing (6
+and 147 lines without them).
 
-- four static argument helpers (bpArgs, wbArgs, oneArg, fileArg) that differ only in the
-  order of the pointer and the count tests; fileArg is new, bpArgs lost its pin for
-  `j++; b = argv[j];`, and -ip now calls `oneArg(argc, argv, &i, 0)`;
-- the two redundant `return;` of attempt 2 (clientInfo, clientBinPatch), still load-bearing
-  (6 and 147 lines without them).
+Not tagged (the user's decision, 2026-11-10): the four static argument helpers bpArgs,
+wbArgs, oneArg and fileArg, which differ only in the order of the pointer and the count
+tests.  fileArg is new, bpArgs lost its pin for `j++; b = argv[j];`, and -ip calls
+`oneArg(argc, argv, &i, 0)`.  Whether getArgs can take their place is the open question
+of the second part; a plain comment above them says why they are there.
 
 Gone: the help test in three ifs (attempt 14's borderline; the `||` form is identical now),
 `netDisconnect()` in both reboot arms (211 lines now), NO_MODE_ARG, AT / JMP.
 
 A second part the same day tried getArgs in place of the helpers and was parked with
-near misses (4 and 6 lines) and a same-bytes respelling of getArgs as a draft; see
-"Attempt 17, second part".  It changed nothing in `src/`.
+near misses (4 and 6 lines); see "Attempt 17, second part".  Its one landing is getArgs
+itself, respelled with the same bytes: `first` is the option's index and the three tests
+are written alike.
 
 ## Attempt 17 (2026-11-10): the whole function from the natural file
 
@@ -204,11 +207,12 @@ after the comment edits: SHA256 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd
   start; `mc17.py` has the axes (`bp`, `wb`, `eb`, `r`, `w`, `e`, `c`, `ipa` = getargs).
   The second part below took this up.
 
-## Attempt 17, second part (2026-11-10): getArgs in the arms (parked, src unchanged)
+## Attempt 17, second part (2026-11-10): getArgs in the arms (parked)
 
 Asked for after the landing: replace the four static helpers with getArgs calls.  Stopped
-at the user's request with a 4-line and a 6-line near miss and a candidate respelling of
-getArgs; nothing landed, `src/mode_client.c` is commit 96c65024's.  Tools:
+at the user's request with a 4-line and a 6-line near miss; the arms are commit 96c65024's.
+The respelling of getArgs found on the way landed afterwards, also at the user's request
+(same bytes, below).  Tools:
 
 - `mc17arm.py [-s ARM] VARIANT..`: each option arm's instructions against the reference's
   (jump targets dropped), and the usage blocks, so an arm's own code shows apart from layout.
@@ -218,8 +222,9 @@ getArgs; nothing landed, `src/mode_client.c` is commit 96c65024's.  Tools:
   clone evaluation (read from the ipa dumps with the auto limit raised; measuring only).
 - `mc17gl.py [-arms ..] [-n N]`: random behaviour-neutral spellings of mode_client around
   a getArgs spelling, with the arms that differ.
-- Drafts (tools/wip/dehint/drafts/): `mode_client_a17_getargs_uniform.c` (IDENTICAL BYTES),
-  `mode_client_a17_getargs_g1_4.c` (4 lines), `mode_client_a17_getargs_g2_6.c` (6 lines).
+- Drafts (tools/wip/dehint/drafts/): `mode_client_a17_getargs_g1_4.c` (4 lines),
+  `mode_client_a17_getargs_g2_6.c` (6 lines).  Both have the helpers' old comment and a
+  getArgs with its first test written count-first, not the landed one.
 
 ### getArgs itself: `first` is the option's index, and one spelling for all three tests
 
@@ -241,16 +246,18 @@ getArgs; nothing landed, `src/mode_client.c` is commit 96c65024's.  Tools:
     return argv[first + 1];
 
 keeps getArgs' own code, and the whole object with the landed arms is IDENTICAL BYTES
-(`mc17ga.py` name `f0-x-i-n-xn-a`; draft `..._getargs_uniform.c`).  The binary's test
-orders (count first in the first test, pointer first in the other two) come out of three
-identically written tests: `!argv[i]` is not a simple operand, so the front end leaves two
-jumps, ifcombine merges them, and the order follows the SSA versions it is handed (below).
-Today's getArgs gets the same code by writing the orders out (`i == argc || !a`, then
-`!a || i == argc` twice, all folded by the front end) with `first = *pi + 1` and
-`argv[first - 1]`.  Not landed: it is the same bytes and reads better, but its order then
-rests on getArgs' own free list instead of on the text; the user's call when this is
-picked up again.  Of 780 + 390 spellings, 124 + 78 keep getArgs' code; with folded tests
-only (count, pointer, pointer) does, with merged ones only pointer-first throughout.
+(`mc17ga.py` name `f0-x-i-n-xn-a`).  The binary's test orders (count first in the first
+test, pointer first in the other two) come out of three identically written tests:
+`!argv[i]` is not a simple operand, so the front end leaves two jumps, ifcombine merges
+them, and the order follows the SSA versions it is handed (below).  The getArgs before it
+got the same code by writing the orders out (`i == argc || !a`, then `!a || i == argc`
+twice, all folded by the front end) with `first = *pi + 1` and `argv[first - 1]`.
+**Landed** on the user's request the same day (`src/mode_client.c`, full build SHA256
+10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c): it reads better, and
+the price is that its order now rests on getArgs' own free list and not on the text, so an
+edit inside getArgs can swap a test's two conditions (its comment says so).  Of 780 + 390
+spellings, 124 + 78 keep getArgs' code; with folded tests only (count, pointer, pointer)
+does, with merged ones only pointer-first throughout.
 
 ### What gcc's inliner allows (mc17gs.py; the limit is 40)
 
@@ -332,8 +339,10 @@ block (check is 0), and it is the odd arm in both families.
   `first + 1 == argc || !a` then `!argv[i] || i == argc` is 4 lines off in getArgs itself).
 - -wb: a twin of -bp's inlined code that is not a second caller of the clone.  A static
   single-caller function is what the landed wbArgs is; nothing better is known.
-- If the uniform getArgs is wanted on its own, the draft is ready: same bytes, no arm
-  changed.
+- The landed getArgs is pointer-first in all three tests; the near misses above (4 and 6
+  lines) used a count-first first test with the rest folded, so they start from another
+  getArgs than the one in `src/`.  With the landed spelling the same arms are 16 and 22
+  lines off (the table's third and fourth rows).
 
 ## State after attempt 16
 

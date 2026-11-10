@@ -30,8 +30,9 @@ When the last hint in an object goes, its `--param` options in `build.sh` go too
 The whole-file efforts have their own notes (`notes/build.md`, `options.md`,
 `image_read.md`, `image_write.md`, `keys.md`, `filelist_ini.md`, `mode_client.md`).
 `mode_client` was the last file with tricks and has none since its attempt 17
-(borderline: the four static argument helpers bpArgs, wbArgs, oneArg and fileArg,
-and the redundant returns in clientInfo and clientBinPatch). Its lesson, after
+(borderline: the redundant returns in clientInfo and clientBinPatch; its four
+static argument helpers stand in for getArgs calls, an open question that is
+not tagged). Its lesson, after
 options' attempt 30: when every remaining hint sets a frequency or a heap tie,
 stop repairing the fitted CFG and look for the natural source with another
 shape (there, one connect and the switch's empty case in place of a connect

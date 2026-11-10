@@ -12,7 +12,8 @@ The file is commit e8c0b8d8's src/mode_client.c up to clientEraseBlock (the head
 and the AT / JMP macros dropped), then the helpers and mode_client built from the axes: no
 hint anywhere.  The landed source is
   conn=six,six=usage1,test=pos,ipa=onearg,bps=inpcbr,r=onec,w=onec,o2=jcr
-with oneArgC named fileArg."""
+with oneArgC named fileArg, and since the second part getArgs respelled (mc17ga.py's
+f0-x-i-n-xn-a; the variants here keep the older getArgs, which compiles to the same code)."""
 import os, re, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

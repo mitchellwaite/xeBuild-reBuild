@@ -79,8 +79,8 @@ feeds and `asm goto` edges setting each cold block's key. The natural source
 differs in shape, not in detail: it makes one connection for both kinds of
 run and gives a run with only a reboot or shutdown mode 6, the switch's empty
 case, where the fitted source had a connect on each path
-(`tools/wip/dehint/notes/mode_client.md`, attempt 17). Its four static
-argument helpers and two redundant returns carry the borderline tag.
+(`tools/wip/dehint/notes/mode_client.md`, attempt 17). Its two redundant
+returns carry the borderline tag.
 
 `src/globals.c` was never ranked because it holds only data: plain COMMON
 definitions, laid out by ld in its symbol hash-table order. The original names

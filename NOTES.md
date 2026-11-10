@@ -256,7 +256,10 @@ take arguments start with a helper call, which gives each even odds against
 the next option's test. The order of an arm's `!a` and `j == argc` tests is
 the source's only when both operands are plain locals (the front end folds
 the `||` at once); with `i + 1 == argc` ifcombine merges the tests later and
-their order follows the SSA names it is handed from the free list.
+their order follows the SSA names it is handed from the free list. getArgs'
+own three tests are written alike (`!argv[i] || i == argc || ..`) and get
+their orders in the binary that way: count first in the first, pointer first
+in the other two.
 getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the
 original's is. Its strings are plain literals: the functions whose
