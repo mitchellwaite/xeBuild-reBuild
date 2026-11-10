@@ -194,20 +194,20 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
 `findInst`. And `options` (whole object in C now, no `.s`):
 
 - Its strings are literals in the original's `.rdata` order:
-  parseOption's macid branch is written success-first, and
-  applyIniOptions' macid test has one `asm "i"` hint.
-- `baseFileExists` is ipa-split; its `.part.0` (4236f0) is in `C_FUNCS`
-  under gcc's name.
-- `parseButton`'s split part (449640) is gcc's `.text.unlikely`. It is
-  written out as a `cold` function in
-  `.text.startup` under gcc's name (`_parseButton.part.0`). It is global
-  (with `regparm(1)`, the static's convention) and defined first, so its
-  FDE comes right after the split `baseFileExists.part.0`'s.
+  parseOption's macid branch is written success-first.
+- `baseFileExists` is ipa-split by gcc; its part (4236f0) is
+  `baseFileExists.part.0`.
+- `parseButton` is one else-if chain, and gcc splits the names after
+  winbutton off itself: `parseButton.part.1` (449640), unlikely executed, in
+  `.text.unlikely`, with its FDE right after `baseFileExists.part.0`'s.
 - gcc emits the functions in source order, so applyIniOptions sits after
   parseCmdOptions as in the original.
-- `applyIniOptions` is a plain compile with no profile: its option guards
-  call an inlined `optIniBool`, which gives the hot layout, and dead zero-byte
-  hints set the cold layout and label alignment (tools/wip/aio/p1/NOTES.md).
+- `applyIniOptions` is a plain compile with no profile and no hints. gcc
+  inlines `optIniBool`, `optIniInt` and `parseButton`'s head into it, each
+  with its own profile, and those give both the hot and the cold layout:
+  no arm of `optIniBool` returns early, and `optIniInt` returns the good
+  value first, with the warning as its tail
+  (tools/wip/dehint/notes/options.md, attempt 30).
 - `strcat(xb.outName, "name")` is expanded inline: short names become
   immediate stores, longer ones copy from the (merged) literal, as in the
   original, so it stays a plain strcat.
@@ -1044,7 +1044,7 @@ Objects built entirely from C, in link order.
 <details>
 <summary><code>options</code>: 19 functions</summary>
 
-- ✅ `baseFileExists.part.1` (0x4236f0)
+- ✅ `baseFileExists.part.0` (0x4236f0)
 - ✅ `baseFileExists` (0x423730)
 - ✅ `perboxExists` (0x423750)
 - ✅ `iniConsoleType` (0x423830)
@@ -1062,7 +1062,7 @@ Objects built entirely from C, in link order.
 - ✅ `parseRawPatches` (0x4271a0)
 - ✅ `addPatch` (0x427260)
 - ✅ `loadAddons` (0x427340)
-- ✅ `parseButton.part.0` (0x449640)
+- ✅ `parseButton.part.1` (0x449640)
 
 </details>
 <details>

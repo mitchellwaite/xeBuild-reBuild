@@ -2,11 +2,10 @@
    line, options.ini and perbox files, optional patches.  gcc emits the
    string literals in the order it expands their blocks, which gives the
    original's .rdata order.
-   applyIniOptions' cold layout is set by optIniBool's and optIniBoolG's own
-   profiles and by dead zero-byte hints (dead __builtin_constant_p feeds,
-   dummy heap entries), with no profile file; tools/wip/aio/p1/NOTES.md has
-   each hint (the helpers' arms and copies are gone:
-   tools/wip/dehint/notes/options.md, attempt 7). */
+   applyIniOptions' cold layout comes from the profiles of the helpers gcc
+   inlines into it (optIniBool, optIniInt, parseButton), with no hint and
+   no profile file; tools/wip/dehint/notes/options.md says how each shape
+   was found (attempts 7 and 30). */
 #include <stdio.h>
 #include <string.h>
 
@@ -16,43 +15,6 @@
 #include "keyvault.h"
 #include "log.h"
 #include "options.h"
-
-/* parseButton after its first four names (gcc's ipa-split part in the
-   original), the button for name s or def.
-   Borderline, for review: def is always 0, so the helper could return 0
-   itself.  The argument steers gcc twice: the bigger call lets fnsplit split
-   parseButton at the call alone, so ipa-profile sees only zero-frequency
-   calls and makes the helper unlikely executed (size optimised, in
-   .text.unlikely, without a cold attribute); and ipa-cp's clone for def = 0
-   is made after baseFileExists' split part, so it is emitted (and its FDE
-   placed) second, as in the original.  Without it the helper needs
-   cold, section, regparm and an asm label, and parseButton a winbutton
-   expect (tools/wip/dehint/notes/options.md, attempt 17) */
-static int parseButtonPart(const char *s, int def)
-{
-	int b = def;
-
-	if (!strnicmp(s, "wirelessx", 9))
-		b = 0x55;
-	else if (!strnicmp(s, "wiredx", 6)) {
-		if (!strnicmp(s, "wiredxb1", 8))
-			b = 0x59;
-		else if (!strnicmp(s, "wiredxb2", 8))
-			b = 0x58;
-		else if (!strnicmp(s, "wiredxb3", 8))
-			b = 0x5a;
-		else if (!strnicmp(s, "wiredxf1", 8))
-			b = 0x56;
-		else if (!strnicmp(s, "wiredxf2", 8))
-			b = 0x57;
-		else
-			b = 0x5a;
-	} else if (!strnicmp(s, "eject", 5))
-		b = 0x12;
-	else if (!strnicmp(s, "kiosk", 5))
-		b = 0x41;
-	return b;
-}
 
 int baseFileExists(const char *name)
 {
@@ -265,46 +227,13 @@ int setConsoleType(const char *name)
 }
 
 /* a boolean option from a perbox file or options.ini, unless the command
-   line already set it either way.  The `on` joins are threaded away after
-   inlining; the profile they leave behind is what the OPT sites' layout
-   needs (tools/wip/dehint/notes/options.md, attempt 7) */
+   line already set it either way.  Every arm sets `on` and the one test
+   after them applies it: no arm returns, so no test in the inlined copies
+   has gcc's early-return prediction (the getIniBool call is 15% of its
+   block), and the `on` joins are threaded away after inlining.  The
+   profile this leaves is what orders the options' cold blocks in
+   applyIniOptions (tools/wip/dehint/notes/options.md, attempts 7 and 30) */
 _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
-{
-	char *bad;
-	_Bool on;
-
-	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
-		on = 0;
-	else if (perboxExists(name)) {
-		log_printf(1, "Using %s option (perbox file)\n", name);
-		on = 1;
-	} else {
-		bad = iniBoolInvalid(name);
-		if (!bad) {
-			on = getIniBool(name, def);
-			if (on)
-				log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
-			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-			return 0;
-		}
-	}
-	if (on) {
-		xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
-	}
-	return on;
-}
-
-/* optIniBool for noecdremap, nandmu, nosecurity, cygnos and smcnoeject.
-   Borderline, for review: a second copy of optIniBool that exists to match
-   (only inlined, so it emits no function of its own).  It differs in one
-   statement: the warning arm sets `on` instead of returning, so `!bad`
-   loses the early-return prediction (15% instead of 21.6%), which is the
-   profile these sites need; the code after inlining is the same.  It
-   replaces two hinted copies (optN and optIniBoolG: 6
-   __builtin_constant_p, 2 __builtin_expect) */
-static _Bool optIniBoolG(const char *name, uint32_t set, uint32_t clear, int def)
 {
 	char *bad;
 	_Bool on;
@@ -332,60 +261,30 @@ static _Bool optIniBoolG(const char *name, uint32_t set, uint32_t clear, int def
 	return on;
 }
 
-
-
-
+/* an int option from options.ini, def if it is absent or invalid.  The
+   good value returns first and the warning is the function's tail: gcc
+   predicts an early return unlikely, so in applyIniOptions' inlined copies
+   the getIniU32 call is 10% of its block (25 of 249; with the warning arm
+   returning first it is 22%, with no return in either arm 15%).  That
+   count places the eleven -1 options' calls in applyIniOptions' cold
+   layout: after the block for a missing xellbutton value (29) and before
+   the JTAG options' invalid-value tests (19)
+   (tools/wip/dehint/notes/options.md, attempt 30) */
 int optIniInt(const char *name, int def)
 {
 	char *bad;
 
 	bad = iniU32Invalid(name);
-	if (bad) {
-		log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
-		return def;
-	}
-	return getIniU32(name, def);
+	if (!bad)
+		return getIniU32(name, def);
+	log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
+	return def;
 }
 
-/* applyIniOptions' copy of parseButton for xellbutton: three dead tests set
-   its frequencies at plain -O3, with no __builtin_expect (at the site the
-   call block is 132; tools/wip/dehint/notes/options.md, attempt 29).
-   - The entry test has no predictor, so half the flow skips the real
-     tests: the `!s` block is 66 and the power test 52.
-   - Of that half, `== 1` sends 16.1% to el (the opcode heuristic's 28%
-     against the constant return's 67% on j's side) and the rest to j.
-   - el starts with a dead test, not a call, so the power test has the
-     constant return heuristic alone (67%): its else edge is 17 and el's
-     block 28 with the feed, which sorts it after xellbutton2's 17/17.
-   - `> 0` sends 80.9% of el to z (call, early return and opcode), 23,
-     which with `!s`' 14 makes the constant-0 block 37. */
-static int parseButtonX(const char *s)
-{
-	int b = 0;
-
-	if (__builtin_constant_p(xb.xellButton + 1)) { if (__builtin_constant_p(xb.xellButton + 2) == 1) goto el; goto j; }
-	if (!s) {
-z:
-		return 0;
-	}
-	if (!strnicmp(s, "power", 5)) {
-j:
-		b = 0x11;
-	} else {
-el:
-		if (__builtin_constant_p(xb.xellButton + 3) > 0) goto z;
-		if (!strnicmp(s, "remopower", 9))
-			b = 0x20;
-		else if (!strnicmp(s, "remox", 5))
-			b = 0x22;
-		else if (!strnicmp(s, "winbutton", 9))
-			b = 0x24;
-		else
-			b = parseButtonPart(s, 0);
-	}
-	return b;
-}
-
+/* the button code for a name, 0 if s is NULL or unknown.  gcc splits the
+   names after winbutton off into parseButton.part (unlikely executed, in
+   .text.unlikely) and inlines the head at the three sites in
+   applyIniOptions; parseOption calls the function */
 int parseButton(const char *s)
 {
 	int b = 0;
@@ -400,28 +299,27 @@ int parseButton(const char *s)
 		b = 0x22;
 	else if (!strnicmp(s, "winbutton", 9))
 		b = 0x24;
-	else
-		b = parseButtonPart(s, 0);
+	else if (!strnicmp(s, "wirelessx", 9))
+		b = 0x55;
+	else if (!strnicmp(s, "wiredx", 6)) {
+		if (!strnicmp(s, "wiredxb1", 8))
+			b = 0x59;
+		else if (!strnicmp(s, "wiredxb2", 8))
+			b = 0x58;
+		else if (!strnicmp(s, "wiredxb3", 8))
+			b = 0x5a;
+		else if (!strnicmp(s, "wiredxf1", 8))
+			b = 0x56;
+		else if (!strnicmp(s, "wiredxf2", 8))
+			b = 0x57;
+		else
+			b = 0x5a;
+	} else if (!strnicmp(s, "eject", 5))
+		b = 0x12;
+	else if (!strnicmp(s, "kiosk", 5))
+		b = 0x41;
 	return b;
 }
-
-/* optIniInt's body for applyIniOptions' int options, as a macro.
-   Borderline, for review: optIniInt itself is never early-inlined (it has
-   three calls, so gcc 6's early inliner always refuses it), and the
-   original's 15% profile for these blocks needs the code in
-   applyIniOptions before profile_estimate; this replaced an always_inline
-   copy of optIniInt.  The temporary is the inlined function's return
-   value: storing var in both arms gives other code */
-#define INI_INT(var, name, def) do { \
-	char *bad = iniU32Invalid(name); \
-	int v; \
-	if (bad) { \
-		log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad); \
-		v = def; \
-	} else \
-		v = getIniU32(name, def); \
-	var = v; \
-} while (0)
 
 #define OPT(name, set, clear) if (!(xb.bootFlags & (set))) optIniBool(name, set, clear, 0)
 
@@ -840,7 +738,8 @@ uint32_t parseCmdOptions(const char *opts)
 }
 
 /* options from perbox files and options.ini that the command line didn't
-   set.  The cold block layout comes from the hints in the head comment. */
+   set.  optIniBool, optIniInt and parseButton's head are inlined here with
+   their own profiles, which give the cold block layout. */
 void applyIniOptions(void)
 {
 	char *s;
@@ -848,40 +747,40 @@ void applyIniOptions(void)
 
 	OPT("nomobile", 0x20000000, 0);
 	OPT("noremap", 0x40000000, 0);
-	if (!(xb.bootFlags & 0x80000000)) optIniBoolG("noecdremap", 0x80000000, 0, 0);
-	if (!(xb.bootFlags & (0x10000000))) optIniBoolG("nandmu", 0x10000000, 0, 0);
-	if (!(xb.bootFlags & (0x4000000))) optIniBoolG("nosecurity", 0x4000000, 0, 0);
+	OPT("noecdremap", 0x80000000, 0);
+	OPT("nandmu", 0x10000000, 0);
+	OPT("nosecurity", 0x4000000, 0);
 	OPT("nosusecurity", 0x1000000, 0);
 	OPT("smcnocheck", 0x200000, 0);
 	if (!xb.cfLdv) {
-		INI_INT(xb.cfLdv, "cfldv", 0);
+		xb.cfLdv = optIniInt("cfldv", 0);
 		if (xb.cfLdv > 32) {
 			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of 32\n", xb.cfLdv);
 			xb.cfLdv = 32;
 		}
 	}
 	if (xb.cpuFan == -1)
-		INI_INT(xb.cpuFan, "cpufan", -1);
+		xb.cpuFan = optIniInt("cpufan", -1);
 	if (xb.gpuFan == -1)
-		INI_INT(xb.gpuFan, "gpufan", -1);
+		xb.gpuFan = optIniInt("gpufan", -1);
 	if (xb.cpuTemp == -1)
-		INI_INT(xb.cpuTemp, "cputemp", -1);
+		xb.cpuTemp = optIniInt("cputemp", -1);
 	if (xb.gpuTemp == -1)
-		INI_INT(xb.gpuTemp, "gputemp", -1);
+		xb.gpuTemp = optIniInt("gputemp", -1);
 	if (xb.edramTemp == -1)
-		INI_INT(xb.edramTemp, "edramtemp", -1);
+		xb.edramTemp = optIniInt("edramtemp", -1);
 	if (xb.overCpuTemp == -1)
-		INI_INT(xb.overCpuTemp, "overcputemp", -1);
+		xb.overCpuTemp = optIniInt("overcputemp", -1);
 	if (xb.overGpuTemp == -1)
-		INI_INT(xb.overGpuTemp, "overgputemp", -1);
+		xb.overGpuTemp = optIniInt("overgputemp", -1);
 	if (xb.overEdramTemp == -1)
-		INI_INT(xb.overEdramTemp, "overedramtemp", -1);
+		xb.overEdramTemp = optIniInt("overedramtemp", -1);
 	if (xb.avRegion == -1)
-		INI_INT(xb.avRegion, "avregion", -1);
+		xb.avRegion = optIniInt("avregion", -1);
 	if (xb.gameRegion == -1)
-		INI_INT(xb.gameRegion, "gameregion", -1);
+		xb.gameRegion = optIniInt("gameregion", -1);
 	if (xb.dvdRegion == -1)
-		INI_INT(xb.dvdRegion, "dvdregion", -1);
+		xb.dvdRegion = optIniInt("dvdregion", -1);
 	if (!macidSet()) {
 		s = getIniValue("macid");
 		if (s) {
@@ -893,8 +792,6 @@ void applyIniOptions(void)
 						s += 2;
 					}
 				} else {
-					__builtin_memset(s, 0, __builtin_constant_p(xb.macid[1] + 9));
-					__asm__ goto ("" :::: dz1);
 					log_printf(0, "***** WARNING: invalid characters in macid '");
 					showHexPairs(0, s);
 					log_printf(0, "' provided in ini file! Discarding!\n", s);
@@ -907,11 +804,11 @@ void applyIniOptions(void)
 		}
 	}
 	if (xb.type - BUILD_JTAG <= 3) {
-		if (!(xb.bootFlags & (1))) optIniBoolG("cygnos", 1, 0, 0);
+		OPT("cygnos", 1, 0);
 		OPT("demon", 8, 0);
 		OPT("patchsmc", 0x8000000, 0);
 		if (!xb.xellButton && (xb.bootFlags & 4)) {
-			xb.xellButton = parseButtonX(getIniValue("xellbutton"));
+			xb.xellButton = parseButton(getIniValue("xellbutton"));
 			if (!xb.xellButton) {
 				log_printf(1, "default console DVD eject button is being used to start xell\n");
 				xb.xellButton = 0x12;
@@ -922,7 +819,7 @@ void applyIniOptions(void)
 			if (!xb.xellButton)
 				log_printf(1, "alternate xell button is disabled\n");
 		}
-		if (!(xb.bootFlags & (0x400000))) optIniBoolG("smcnoeject", 0x400000, 0, 0);
+		OPT("smcnoeject", 0x400000, 0);
 		OPT("smcnoblink", 0x800000, 0);
 	}
 	/* outside the block above: VRP threads its range test past this one
@@ -935,7 +832,6 @@ void applyIniOptions(void)
 			xb.dualButton = parseButton(getIniValue("dualboot"));
 			if (xb.xellButton == xb.dualButton) {
 				log_printf(1, "dualboot setting ignored!\n");
-				__asm__ goto ("" :::: dz2);
 				xb.dualButton = 0;
 			}
 		}
@@ -947,30 +843,9 @@ void applyIniOptions(void)
 	}
 	if (!xb.blSuffix[0]) {
 		s = getIniValue("rev");
-		if (s) {
+		if (s)
 			sprintf(xb.blSuffix, "_%s", s);
-			/* dead feeds that key the dummies dz1 and dz2; dz1's return
-			   takes its flow off dz2's feed, which settles the demon and
-			   patchsmc getIniBool tie (no dummy in parseButtonX needed).
-			   Borderline, for review: the sprintf is never executed (its
-			   test is dead); it is there for gcc's call heuristic, which
-			   predicts a guarded call unlikely, so dz2's test gives dz2 13 percent
-			   of its flow and its other arm (to dz1) the rest, with no
-			   __builtin_expect.  A test whose arms both go to the dummies
-			   keeps its own predictions (noreturn predicts both edges), and
-			   dz2 placed before dz1 makes gcc combine them without rounding
-			   (tools/wip/dehint/notes/options.md, attempt 23) */
-			if (__builtin_constant_p(xb.blSuffix[1] + 1) > 0) { if (__builtin_constant_p(xb.blSuffix[1] + 2)) goto dz1; return; }
-			if (__builtin_constant_p(xb.blSuffix[1] + 15) < 0) { if (__builtin_constant_p(xb.blSuffix[1] + 16) < 0) { sprintf(xb.blSuffix, "_%s", s); goto dz2; } goto dz1; }
-		}
 	}
-	return;
-	/* the dummy heap entries: zero-byte, reached only by the asm gotos and
-	   the dead feeds above */
-dz2:
-	__builtin_unreachable();
-dz1:
-	__builtin_unreachable();
 }
 
 int parseRawPatch(char *pat)

@@ -43,17 +43,17 @@ tricks some functions needed to match, and the checks behind each step.
 
 ## Compiler tricks by component
 
-The application files match, but some only match because of hints that steer
+The application files match, but one only matches because of hints that steer
 gcc and that the original source almost certainly didn't contain. This list
-ranks the 2 files that still have them from easiest to hardest to match with
-source shape alone: ordinary C, the same `-O3` as the rest, and none of these
-hints. The other 23 application files build with no tricks.
+has the 1 file that still has them, to be matched with source shape alone:
+ordinary C, the same `-O3` as the rest, and none of these hints. The other 24
+application files build with no tricks.
 
-Every hint in these files has been tried on its own, and `tools/wip/hintsearch.py`
-removes any that no longer change the code, but no hint-free source has been
-attempted for them, so the ranking is an estimate. Trick count isn't the only
-factor: a single hint can be harder to replace than several others if it sets
-something like register ties or bb-reorder's heap order.
+Every hint in it has been tried on its own, and `tools/wip/hintsearch.py`
+removes any that no longer change the code. Trick count isn't the only
+factor in how hard a file is: a single hint can be harder to replace than
+several others if it sets something like register ties or bb-reorder's heap
+order.
 
 **How tricks are counted:** one for each non-default gcc option in `build.sh`,
 and one for each use of a hint in the source (macro uses count individually).
@@ -81,23 +81,7 @@ its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
 <details>
-<summary><b>1. options</b>: 15 tricks, very hard</summary>
-
-- 8 `__builtin_constant_p`, 1 dead `sprintf` call, 2 `asm goto` and 2
-  `__builtin_unreachable`, nearly all setting the cold layout of
-  `applyIniOptions`. It builds with plain `-O3` like the rest: three of the
-  dead tests in `parseButtonX` replaced its `--param` and `__builtin_expect`
-
-The main clue that this can work is that natural source (`optIniBool` inlined,
-plain calls) already gives the whole hot layout. The cold layout is the unsolved
-part, and it's a heap-tie problem across a very long function. `parseButton`'s
-split part is now a plain static helper whose `def` argument is marked
-"Borderline, for review".
-
-</details>
-
-<details>
-<summary><b>2. mode_client</b>: 48 tricks, very hard</summary>
+<summary><b>1. mode_client</b>: 48 tricks, very hard</summary>
 
 - 23 `__builtin_constant_p` feeds and 10 `asm goto` edges to dead labels, which
   set bb-reorder's heap keys

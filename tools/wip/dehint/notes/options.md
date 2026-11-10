@@ -3,6 +3,21 @@
 Goal: `build/op/reference.o` (copy of a matching build/obj/options.o) byte-identical with fewer
 hints.  69 tricks at the start of attempt 1 (README.md's list).
 
+## State after attempt 30
+
+**0 tricks** (15 before), plain `-O3`, and three borderline shapes fewer.  The closures of
+attempts 13-29 held two counts fixed that were ours, not the original's: the int options'
+getIniU32 blocks at 37 (the INI_INT macro's 15%) and, read off the layout against them,
+xellbutton's constant-0 block at "exactly 37".  With optIniInt returning early on the *good*
+path (`if (!bad) return getIniU32(name, def);`, then the warning) gcc predicts the call at
+10.1%, the eleven blocks are 25, a natural parseButton's constant-0 block (29) pops ahead of
+them with no tie, and the natural heap gives every other tie order of the reference.  Gone:
+parseButtonX and its three dead tests, the macid memset and asm goto, dualboot's asm goto,
+the rev feeds and dead sprintf, dz1/dz2; and with them the INI_INT macro (optIniInt is
+called), parseButtonPart (parseButton is one else-if chain, split by gcc) and optIniBoolG
+(one optIniBool whose warning arm sets `on = 0`).  Full build SHA256 10dac648...1971c.  See
+"## Attempt 30".
+
 ## State after attempt 29
 
 **15 tricks** (16 before), and **plain `-O3`**: the `--param builtin-expect-probability=83` and
@@ -3128,3 +3143,162 @@ copy of parseButton.
 - Up to three tests with remopower's call ahead of the else-arm feed (CF=1): no fit in a
   full run of the first, real-valued model (the rounded model's run was stopped at the
   match); the call heuristic there keeps the power test at 83.25% or 71%.
+
+## Attempt 30 (2026-11-10): the whole function, not one key
+
+Focus A (a whole-function view of the dummy group), started from the fully natural file
+and not from today's CFG.  Tools (tools/wip/dehint/):
+
+- `op30.py [-d] [-o out.c] [-v fn] variant ..`: edits joined by `+` on commit 80a383bf's
+  src/options.c (the 15-trick source): `dzall` the dummy group gone, `natx` parseButtonX
+  gone, `nat` both, `int{b,c,d,e}` optIniInt forms called directly with the INI_INT macro
+  gone (`ifn{b..}` the form alone, `icalls` the calls alone), `pbfold`/`pbfoldi`
+  parseButtonPart folded back into parseButton, `f_<site>` OPT <-> optIniBoolG, `allopt`;
+  `src` is today's file; `-d` writes plain -O3 p1/run.sh dumps as
+  build/v/aio_p1/a30_<variant>.
+- `op30tr.py TAGA TAGB [-r N]`: two dumps' trace heads side by side by block name.
+- `op30site.py [-all] [-base V]`: OPT / optIniBoolG assignments on the natural base.
+- `op30chk.py`: which of the landed shapes are load-bearing (one edit each on today's src).
+
+Scratch build/op/a30 (options.orig.c = the source before this attempt).
+
+### What the closures of attempts 13-29 all assumed
+
+Every replay (op13sim .. op29fast) changed one or two keys on the hinted source's CFG, kept
+every other block's count, and asked for the hinted dump's trace *extraction order*.  Three
+of the things held fixed were never facts about the original:
+
+- **GU = 37** (the eleven `-1` options' getIniU32 blocks; p1/NOTES.md "GU must be 37", the
+  INI_INT macro's 15%).  The layout only says the blocks come after the 38-group and before
+  the 19-group.
+- **c0 = 37 exactly** (the block that stores xellbutton's 0 for a missing value; "must pop
+  ahead of the key-37 getIniU32 blocks").  c0 sits right before the getIniU32 blocks, and
+  with GU fixed at 37 that reads as "c0 wins their tie".  With a natural parseButton c0 is 29
+  (132 x 21.6%), so all the layout needs is 29 > GU > 19: no tie at all.
+- **188 before 198** (attempt 28: xellbutton's remopower trace must pop before
+  xellbutton2's, so the two sites need different power odds).  In the natural source both
+  keys are -1001717 and 198 pops *first*, with identical bytes: 188's trace is connected
+  behind 187 by connect_traces ("Connection: 187 188"), so its own position in the trace
+  list places nothing.  The reference is the layout, not a dump's extraction order; the
+  order only mattered on the hinted heap, through what it did to later ties.
+
+The dummies, parseButtonX's feeds and the G/OPT split were all repairs of tie orders on a
+heap that had c0 inside an eleven-block tie.
+
+### The getIniU32 blocks at 10.1%: optIniInt returns early on the good path
+
+- Direct `optIniInt()` calls with the warning arm going to the return (the old `if (bad) {
+  log; return def; } return getIniU32();`, or a result variable with the bad arm first):
+  the early-return heuristic sits on the edge into the log block, DS(85% pointer, 39%) =
+  78.4%, so GU is 21.6% of 249 = 54 and the eleven blocks pop ahead of the 38-group (595
+  lines on the hinted source).  That is why attempt 3 wrote the body out as a macro (15%: no
+  return after it), and 15% x 249 = 37 is where the tie with c0 came from.
+- `if (!bad) return getIniU32(name, def); log; return def;` (op30's form `b`; `d` and `e`
+  are the result-variable and `def =` spellings with the good arm first): the return block
+  now follows the log block, so the early return is predicted on the *good* edge: DS(15%,
+  39%) = 10.1%, GU = 25 (cfldv's 53).  The standalone optIniInt is byte-identical in all
+  three forms.
+- Results (optlib, plain -O3; op30.py): `intb` on the hinted source IDENTICAL (the macro was
+  never needed); `dzall+intb` 44 (parseButtonX's hints without the dummies); `natx+intb` and
+  **`nat+intb`: every section and relocation of the object equal to the reference's**.
+  Only the split part's symbol name differs (`_parseButton.part.1`, gcc's own split, for
+  `_parseButtonPart.constprop.N`), and build.sh links with -s.  `nat+intb+pbfoldi` (the
+  part's body back in parseButton's else-if chain) is the same object.  `nat+ifnb` (form b
+  with the macro kept: GU 37) 359, `nat+intc` (bad arm first: GU 54) 732.
+- a30_src's round 4 (op30tr.py a30_base a30_src -r 4): 150 (macid chars warning), 198, 188,
+  244 (dualboot), 73 (cfldv getIniU32, 53), 203, the six 38s, **c0 29 alone**, the eleven
+  25s, the 19s, nodvd 11, noecdremap 10, then the getIniBool blocks.  Every tie group comes
+  out in the reference's order with no dummy: the 38s, the 25s (gputemp, cputemp,
+  gameregion, avregion, overedramtemp, overgputemp, gpufan, cpufan, overcputemp, edramtemp,
+  dvdregion), the 19s (cygnos, demon, dualboot's remopower, smcnoblink, patchsmc,
+  smcnoeject).
+
+### One optIniBool: optIniBoolG goes too
+
+- op30site.py (the 32 subsets of the five optIniBoolG sites flipped to OPT, on
+  nat+intb+pbfoldi): 9 are the same object, among them nandmu + nosecurity + cygnos +
+  smcnoeject all through OPT.  Only noecdremap needed the copy: its getIniBool block is 69 x
+  15% = 10 and must pop after nodvd's iniBoolInvalid block (11); with optIniBool's old
+  warning arm (`return 0`: early return, 21.6%) it is 15 (`allopt` 172).
+- So one helper with the copy's body, the warning arm setting `on = 0` like every other
+  arm, at every site (OPT and olddvd's direct call): **same object**.  The getIniBool blocks
+  are then 6 at the top level and 3 in the JTAG block (were 8/6 and 4/3 to force the order
+  by key), and the natural heap gives the reference's order of both ties (6s: noremap,
+  nosusecurity, nomobile, smcnocheck, olddvd, nosecurity, nandmu; 3s: demon, patchsmc,
+  smcnoblink, smcnoeject, cygnos).  The standalone optIniBool is byte-identical too.
+
+### What is load-bearing in the landed source (op30chk.py, one edit each)
+
+| Edit on today's src | Result |
+|---|---|
+| optIniInt with the warning arm returning first (the old function) | applyIniOptions 736 |
+| optIniInt with a result variable, bad arm first | 736 |
+| optIniInt with a result variable or `def =`, good arm first | same object |
+| optIniBool's warning arm `return 0` (the old optIniBool at every site) | 172 |
+| optIniBool with early returns throughout (the Linux build's shape) | 1136, and optIniBool itself 12 |
+| int options with the field as the default (`optIniInt("cpufan", xb.cpuFan)`, Linux's) | same object |
+| olddvd through OPT (guard on a zero mask) | same object |
+| rev as `if ((s = getIniValue("rev")))` | same object |
+
+So two things carry the cold layout, both of the same kind: which arm of a helper reaches
+its return first (optIniInt: the good one, 10.1%; optIniBool: none, 15%).  gcc 6 has three
+values for one `if (bad)` around a call: 21.6% (warning arm returns), 15% (no arm returns)
+and 10.1% (good arm returns), and they scale every inlined copy at once.
+
+### Landed (src/options.c, full build SHA256 10dac648...1971c)
+
+- optIniInt: `if (!bad) return getIniU32(name, def);` then the warning and `return def`;
+  the twelve int options call it (`xb.cpuFan = optIniInt("cpufan", -1)`); the INI_INT macro
+  is gone.
+- parseButton: one function with the whole else-if chain; parseButtonX and parseButtonPart
+  are gone; gcc splits the chain after winbutton itself (`parseButton.part`,
+  .text.unlikely) and inlines the head at the three sites.
+- optIniBool: the warning arm sets `on = 0`; optIniBoolG is gone and every site uses OPT.
+- applyIniOptions: the macid memset and asm goto, dualboot's asm goto, the rev feeds and the
+  dummies dz1/dz2 are gone.
+- No `Borderline, for review:` shape was added; three went (parseButtonPart's `def`,
+  the INI_INT macro, optIniBoolG).  The ones left are parseOption's and parseCmdOptions'
+  (attempts 9, 19, 22), untouched.
+- Checks: optlib on src: only the part's symbol name differs; `objdump -h/-s/-r` of the
+  object equal to build/op/reference.o's; `sh build.sh` after each step (the trick removal,
+  optIniBoolG's removal, the last comment): SHA256
+  10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c each time;
+  progress.py on a scratch copy of NOTES.md: 617 / 617 (its only change is gcc's clone number,
+  `baseFileExists.part.1` -> `.part.0`).  fncmp on applyIniOptions prints the same two
+  0x400000 immediates as before the attempt (it reads smcnoeject's bit as an address).
+- For the session that commits: README.md's options entry (0 tricks now, and its text on
+  parseButton's split part), NOTES.md's Progress section and its parseButton.part text are
+  stale.  build/op/reference.o is now this build's options.o (optlib on src: IDENTICAL
+  BYTES; the old one is reference_a29.o, which differs only in the part's symbol name), so
+  op30.py's results above read "new fn _parseButtonPart.constprop" the other way round for
+  the hinted variants.
+
+### Don't retry (attempt 30)
+
+- Nothing is left to remove in options.c's applyIniOptions group.  Don't bring back the
+  INI_INT macro (GU 37 ties c0), a warning arm that returns in optIniBool, or an optIniInt
+  whose bad arm reaches the return first.
+- Replays that take a hinted dump's extraction order as the reference, or that hold counts
+  fixed which our own borderline shapes produced.  The reference is the binary's layout; a
+  trace that connect_traces attaches to its predecessor can be created at any time.
+
+### Next ideas
+
+- mode_client (48 tricks) is the last file with tricks.  Run the same audit there before
+  any sweep: list every "block X must be N" in its notes, mark the ones that come from a
+  hinted or borderline shape and not from the layout, build the fully natural file first
+  and vary the inlined helpers' return shapes (bad arm returns / no arm returns / good arm
+  returns) wholesale, scoring whole objects.
+- options' remaining borderline shapes are all in parseOption (the `ok` flags, macidRest,
+  `val && vlen`, the uint32_t returns).  They were found the same way as the dummies (keys
+  pinned on one CFG), so the same question is open for them: which callee's return shape
+  (setBoolOption, myatou32, kvSetDvdKey) or which early return in parseOption gives 13.7%
+  and the 57 threshold without the flags.
+
+### Result
+
+MATCH: **0 tricks** (15 before).  All of parseButtonX's three `__builtin_constant_p`, the
+macid memset's one and its asm goto, dualboot's asm goto, the rev feeds' four
+`__builtin_constant_p` and dead sprintf, and both `__builtin_unreachable` dummies are gone,
+replaced by nothing: optIniInt returns early on the good path, and the code around them is
+plain.

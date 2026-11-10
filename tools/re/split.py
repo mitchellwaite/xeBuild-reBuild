@@ -310,7 +310,7 @@ SYMBOLS = {
     0x4236f0: '_baseFileExists.part.0',   # gcc's ipa-split tail of baseFileExists
     0x423730: '_baseFileExists', 0x423750: '_perboxExists',
     0x424930: '_optIniBool', 0x424a10: '_optIniInt', 0x424a70: '_parseButton',
-    0x449640: '_parseButton.part.0',  # gcc's ipa-split tail of parseButton
+    0x449640: '_parseButton.part.1',  # gcc's ipa-split tail of parseButton
     0x424b20: '_stripColons', 0x424b60: '_macidSet', 0x424bb0: '_setBoolOption',
     0x425110: '_parseOption', 0x427000: '_parseRawPatch', 0x427260: '_addPatch',
     0x40aad0: '_getIniBool', 0x40abf0: '_iniBoolInvalid', 0x40acf0: '_getIniU32',
