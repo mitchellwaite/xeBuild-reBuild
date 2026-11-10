@@ -375,8 +375,8 @@ struct fan {
 	uint8_t speed:7, override:1;
 };
 
-/* round up to the 16 bytes bootloaders are padded to.  For review: a natural
-   helper, but it steers gcc.  Being a call until the
+/* round up to the 16 bytes bootloaders are padded to.
+   Borderline, for review: a natural helper, but it steers gcc.  Being a call until the
    early inliner matters to patchBlsBlmod: inlining it too changes which findFile
    copy reuses freed low SSA names, so pt's partition sorts after cd's, and that
    orders two spill stores (it replaces no-early-inlining there). */
@@ -561,8 +561,8 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	return r;
 }
 
-/* For review: crc is an int on purpose (it is compared as unsigned through the
-   usual conversions): with a uint32_t, ipa-cp clones this for crc == 0 and
+/* Borderline, for review: crc is an int on purpose (it is compared as unsigned
+   through the usual conversions): with a uint32_t, ipa-cp clones this for crc == 0 and
    that needed a noclone attribute */
 int loadInputFile(const char *name, struct fileent *e, int pad, int crc, uint8_t *meta,
 		  int su, int fs, int common)
@@ -938,8 +938,8 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	uint32_t i, j;
 	int found;
 
-	/* For review: size is an int on purpose: its conversion in the scan loops' bound tests
-	   gives next <= size in both loops.  The struct copy matters too: memcpy
+	/* Borderline, for review: size is an int on purpose: its conversion in the scan loops'
+	   bound tests gives next <= size in both loops.  The struct copy matters too: memcpy
 	   there allocates the copy's registers differently (18 lines). */
 	if (e->data)
 		free(e->data);
@@ -1260,8 +1260,8 @@ static int loadXell(struct fileent *e)
 	return loadLocalFile(e);
 }
 
-/* case 24's file, or the default 0x60 bytes in its place.  Borderline, for
-   review: two calls where `||` would do.  Crossjump merges the two inlined
+/* case 24's file, or the default 0x60 bytes in its place.
+   Borderline, for review: two calls where `||` would do.  Crossjump merges the two inlined
    copies, which drops the copy's memory attributes, so sched2 keeps the size
    store before the copy (it replaces a pin and an assume_aligned).  Both
    loaders' case 24 call this; with it and loadXell shared, loadBlFiles'

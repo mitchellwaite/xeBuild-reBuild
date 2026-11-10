@@ -694,7 +694,8 @@ static int findKey(unsigned char *buf, const char *key)
 				unsigned char *q = &buf[i + len];
 
 				/* NOTE: dead, since key was read above, but kept and not counted as a
-				   trick: the author may well have written a check like this.  It's a third
+				   trick.  Borderline, for review (approved): the author may well have
+				   written a check like this.  It's a third
 				   loop exit when gcc estimates branch probabilities, and that sets the block
 				   frequencies the getters' registers follow.  Without it, findKey is 41 lines
 				   off at best (notes/filelist_ini.md) */
