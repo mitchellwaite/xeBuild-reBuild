@@ -116,8 +116,16 @@ void clientInfo(const char *dir)
 			log_printf(0, "success!\n");
 		else
 			log_printf(0, "failed!\n");
-		/* Borderline, for review: redundant return (end of the function);
-		   without it bb-reorder puts success out of line */
+		/* Without this return the failed arm sits just before the return
+		   block, so the early-return heuristic cools only success (39%)
+		   and bb-reorder moves it out of line.  The return leaves a block
+		   between both arms and the return block, which keeps them at 50%.
+		   No live form matches: `if (!out) return;` before the dump (4
+		   lines) shields the no-dump path instead, and failed first swaps
+		   the two strings in .rdata.
+		   Borderline, for review (approved): redundant return (end of the
+		   function), where clientWriteBlocks and clientBinPatch end their
+		   success blocks with one too. */
 		return;
 	}
 }
@@ -433,17 +441,18 @@ void clientBinPatch(const char *file, const char *soff)
 						log_printf(0, "Success! Completed patching NAND!\n");
 					else
 						log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
-					/* Borderline, for review: redundant return (nothing
-					   follows but the else arms); it sets the register
-					   choices of the inlined patchNand tail and the
-					   count/start reloads */
-					return;
 				} else
 					log_printf(0, "\n\n***** ERROR: Reading data from console failed!\n");
 			} else
 				log_printf(0, "\n\n***** ERROR: File %s size patched into offset 0x%x will exceed NAND system area (0x%x)!\n", file, off, size);
-		} else
-			log_printf(0, "\n\n***** ERROR: Unable to read file %s!\n", file);
+			/* clientWriteBlocks' shape: the read error follows the data
+			   block, which returns.  Written as an else, every arm reaches
+			   the return block directly and the early-return heuristic
+			   cools the error arms, which moves registers in the inlined
+			   patchNand */
+			return;
+		}
+		log_printf(0, "\n\n***** ERROR: Unable to read file %s!\n", file);
 	} else
 		log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n");
 }

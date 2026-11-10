@@ -15,7 +15,8 @@ BYTES (`cmp build/obj/mode_client.o build/mc/w17/reference.o`), full build SHA25
 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c, progress 617 / 617.
 build.sh unchanged.  Borderline shapes, tagged `Borderline, for review:` in the source: the
 two redundant `return;` of attempt 2 (clientInfo, clientBinPatch), still load-bearing (6
-and 147 lines without them).
+and 147 lines without them).  Both settled in "Review" below: clientBinPatch's return is
+live now (clientWriteBlocks' shape), clientInfo's is approved.
 
 Not tagged (the user's decision, 2026-11-10): the four static argument helpers bpArgs,
 wbArgs, oneArg and fileArg, which differ only in the order of the pointer and the count
@@ -37,6 +38,96 @@ finds it by itself: client_usage ends in `exit(1)`, so local-pure-const1 reports
 found to be noreturn: client_usage" before any caller is optimised (callees go first), and
 each caller's fixup_cfg then cuts the edge after its calls.  The profile and every "noreturn
 call" remark in these notes are unchanged by it.
+
+## Review (2026-11-10): the two redundant returns
+
+The user asked for the two borderline items to be reviewed and resolved.  clientBinPatch
+now has a live return in clientWriteBlocks' shape (same bytes, tag gone); clientInfo's
+stays, with `(approved)` and the reason in its comment.  Scored with a scratch `v.py`
+(substitutions on src/mode_client.c, mc17lib's report; not kept); lines are mc17lib's
+differing disassembly lines.
+
+### The mechanism: an explicit return shields arms from the early-return heuristic
+
+From `-fdump-tree-profile_estimate-details`.  The early-return heuristic predicts an edge
+NOT_TAKEN when it leads, directly or through a single-successor block, into the return
+block and that return block is not the next block.  With no `return;` statement in a void
+function the end of the body is the return block, and every arm jumps straight into it.
+An explicit `return;` is lowered to a goto to a shared return label at the end.  The blocks
+holding those gotos survive until profile_estimate as blocks of their own in front of the
+return block, and an arm that flows into one of them gets no early-return prediction.
+
+- **clientInfo**: with the return, success (bb 14) and failed (bb 15) both go to the
+  return's block (17), then to the return block (18): no prediction, 50%, and bb-reorder
+  keeps the then-arm (success) in line, as the binary has it.  Without it both go straight
+  to the return block; failed is the block just before it, so only success is predicted
+  (39%) and moves out of line (6 lines).
+- **clientBinPatch**: with the return, the write arms go to the return's block and the
+  error arms to the end-of-body block, both in front of the return block: no predictions.
+  Without it all of them go straight to the return block, the error arms are cooled (61%
+  for the main path at five tests), and the new frequencies move registers in the inlined
+  patchNand and the count/start reloads (147).
+
+So both returns do the same thing, and a matching form must keep some `return;` statement
+where these arms flow through it.
+
+### clientBinPatch: a live return, clientWriteBlocks' shape (landed)
+
+| Form | Lines |
+|---|---|
+| no return | 147 |
+| `return;` at the very end of the function | 147 |
+| `return;` closing the `if (off != -1)` block | 133 |
+| `return;` closing the read block, the size block or the data block, or after the read else (all redundant) | 0 |
+| `return;` in the write-failed arm only (`else { ..; return; }`) | 0 |
+| `return;` in the success arm, or in both write arms | 6 |
+| the write result in an `ok` local, no return | 147 |
+| `!netWriteBlocks(..)` first, with or without the return | 149 / 6 |
+| **live**: the data block ends with `return;` and the read error follows it, not in an else | 0 |
+| live, one level in (size block) or two (read block) | 0 / 0 |
+
+Every match keeps a return inside the `if (data && len)` block.  That points to a form
+where the return isn't redundant, and clientWriteBlocks already has it, with the same
+error message:
+
+```c
+data = FileToBuffer(file, &len);
+if (data && len) {
+	...
+	return;
+}
+log_printf(0, "\n\n***** ERROR: Unable to read file %s!\n", file);
+```
+
+Landed that one (the data-block level, as in clientWriteBlocks; the two deeper live forms
+match too).  The .rdata order agrees with the nested form: the invalid-arguments message
+is clientBinPatch's last string, so it can't be an early return at the top.
+
+### clientInfo: approved
+
+| Form | Lines |
+|---|---|
+| no return; also with `out != NULL`, `!= 0`, an `ok` local | 6 |
+| `return;` after the `if (out)` block (end of the function) | 6 |
+| `if (!out) return;` before the dump, no `if (out)` block (36 variants: declaration order, `len > 0`, `len && bad`, loop as `while`, `i > 0`, `out == NULL`) | 4 |
+| the same with a `return;` at the end | 6 |
+| failed first (`!netDumpNand`), no return | 4 (.rdata: "failed!" before "success!") |
+| `return;` in the success arm, with or without the else (live) | 10 |
+| `return;` in the failed arm (live, failed first) | 8 |
+| `return;` in the failed arm's else only | 4 |
+| `return;` in both arms, or in the success arm plus one after | 0 |
+| the message chosen by `?:` or a `msg` local | 382 |
+| `strcpy(path, out)` | 90 |
+
+The early return is the natural live form, and it gets the dump arms right, but it moves
+the shield: its `return;` block shields the no-dump edge, which the binary has predicted
+(early return 61% with pointer 85% = 78.3% for the dump; the early return gives 69.8%), and
+the lower frequency moves a register copy in the bad-block loop's threaded head (`xor
+ebp,ebp` before the "Bad Block list" call, not after the `js`).  Failed first has the
+right layout, but the string literals go out in expansion order, so "failed!\n" comes
+first in .rdata.  Every match keeps a `return;` after the dump result inside `if (out)`,
+redundant in each.  It stays: the author ends the success blocks of clientWriteBlocks and
+clientBinPatch with `return;` too, where it is live.
 
 ## Attempt 17 (2026-11-10): the whole function from the natural file
 

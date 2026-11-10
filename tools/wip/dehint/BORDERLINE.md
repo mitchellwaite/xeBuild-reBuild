@@ -5,8 +5,8 @@ left are **borderline shapes**: ordinary C that an author could have written, bu
 the source because of what gcc does with it. They aren't counted as tricks. Each one is for
 the user to review: keep it as the author's likely shape, or try for a plainer one.
 
-State: commit `4c1e221d` (2026-11-10). Line numbers are that commit's and will drift; the
-tags don't:
+State: commit `4c1e221d` (2026-11-10; mode_client's lines are of its review the same day).
+Line numbers are that commit's and will drift; the tags don't:
 
 ```
 grep -n "Borderline, for review" src/*.c
@@ -14,7 +14,7 @@ grep -n "Borderline, for review" src/*.c
 
 There are two kinds of item here:
 
-1. **Tagged shapes** (39, 7 of them approved): each has a `Borderline, for review:` comment
+1. **Tagged shapes** (38, 8 of them approved): each has a `Borderline, for review:` comment
    in the source saying what it does and what it replaced.
 2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
    section says what went and what is left (two prototypes that are needed).
@@ -90,12 +90,15 @@ original's. Worth one attempt from the natural `parseOption` before accepting th
 | 323 | `prepSysex` | `r` kept as a flag with a second `if (r)`, where the mount arm could return `createSysexDirs()` itself | No spelling without a flag matches (8 tried), and the reason is known: the mount test mustn't guard the call. Same form as `myatou32`'s approved `hex` |
 | 350 | `sendAvatarData` | returns `long` next to `netSendFile`'s `int`; a failed send ends the loop with `i = consoleManifest.count`, not `break` | `sendCompatData` needs `long` for its return and its `ret`, so `long` is the author's type for these results. `break` makes a pointer IV (39 lines) |
 
-### mode_client (2) — `src/mode_client.c`, notes in `notes/mode_client.md`
+### mode_client (1, approved 2026-11-10) — `src/mode_client.c`, notes in `notes/mode_client.md` ("Review")
 
-| Line | Where | Shape |
-|---|---|---|
-| 125 | `clientInfo` | redundant `return;` at the end of the function |
-| 442 | `clientBinPatch` | redundant `return;` with nothing after it but the else arms |
+| Line | Where | Shape | Why it stays |
+|---|---|---|---|
+| 126 | `clientInfo` | redundant `return;` at the end of the function | Its block stands between both dump arms and the return block, so the early-return heuristic leaves them at 50%. Without it only success is cooled (39%) and goes out of line (6). `if (!out) return;` shields the no-dump path instead (4, 36 variants); failed first swaps the .rdata strings. clientWriteBlocks and clientBinPatch end their success blocks with `return;` too |
+
+The second item, clientBinPatch's redundant `return;`, is gone: its data block now
+returns and the read error follows it, as in clientWriteBlocks, so the return is live
+(same bytes).
 
 ### One each
 
