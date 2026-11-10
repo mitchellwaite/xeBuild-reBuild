@@ -31,6 +31,13 @@ near misses (4 and 6 lines); see "Attempt 17, second part".  Its one landing is 
 itself, respelled with the same bytes: `first` is the option's index and the three tests
 are written alike.
 
+Later the same day, at the user's request: client_usage's prototype lost its
+`__attribute__((noreturn))`, with the same bytes (also with no prototype at all).  gcc
+finds it by itself: client_usage ends in `exit(1)`, so local-pure-const1 reports "Function
+found to be noreturn: client_usage" before any caller is optimised (callees go first), and
+each caller's fixup_cfg then cuts the edge after its calls.  The profile and every "noreturn
+call" remark in these notes are unchanged by it.
+
 ## Attempt 17 (2026-11-10): the whole function from the natural file
 
 The approach of options' attempt 30: audit what the notes hold fixed, build the fully

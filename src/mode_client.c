@@ -14,7 +14,7 @@
 #include "net.h"
 
 
-void client_usage(int err, const char *arg) __attribute__((noreturn));
+void client_usage(int err, const char *arg);
 int dumpKey(const char *name, const char *file, const uint8_t *key, size_t len, uint32_t sum);
 int checkPatches(uint8_t *buf, size_t *len, uint32_t type);
 void updatePatches(const char *file, uint32_t type);
