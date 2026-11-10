@@ -16,9 +16,8 @@ There are two kinds of item here:
 
 1. **Tagged shapes** (39): each has a `Borderline, for review:` comment in the source saying
    what it does and what it replaced.
-2. **Redundant file-local definitions** (not tagged in the source): declarations and
-   definitions at file scope in a `.c` that the code doesn't need. The user counts these as
-   borderline too. See the second section.
+2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
+   section says what went and what is left (two prototypes that are needed).
 
 When an item is settled, delete its tag (or mark it `(approved)`) and update this file.
 
@@ -104,50 +103,34 @@ original's. Worth one attempt from the natural `parseOption` before accepting th
 |---|---|---|---|---|
 | `src/image_read.c` | 239 | `getImageSmc` | dead `excess` addend, always 0 (the head comment at line 176 also has a live but redundant `addr != lim` / `addr >= lim` pair) | kept and not counted, by the user's call |
 | `src/filelist_ini.c` | 697 | `findKey` | dead `key == NULL` test | approved: the author may well have written it |
-| `src/fileutil.c` | 307 | `myatou32` | `BOOL hex` set by one `if` and tested by the next | approved 2026-11-02 |
+| `src/fileutil.c` | 307 | `myatou32` | `int hex` (was `BOOL`) set by one `if` and tested by the next | approved 2026-11-02 |
 
-## 2. Redundant file-local definitions (not tagged in the source)
+## 2. Redundant file-local definitions: removed (2026-11-10)
 
-**These are borderline items too** (the user's call, 2026-11-10): a declaration or
-definition at file scope in a `.c` that the code doesn't need. The original author may have
-had them, they may be leftovers of the reconstruction, or they may matter to gcc.
+The user counted these as borderline too. All of them went, with the same bytes; the scan
+(`python tools/wip/dehint/localdefs.py`) now flags none. What was removed:
 
-The list comes from a syntactic scan, `python tools/wip/dehint/localdefs.py`. **None of them
-has been tested**: nobody has yet removed one and checked whether the bytes change. That is
-the first thing to do with each (compare the object with `build/obj/<obj>.o`, then
-`sh build.sh`). CLAUDE.md also says exported prototypes belong in `src/<obj>.h`, not in a
-`.c`.
-
-### Forward prototypes of functions defined before their first use (36)
-
-The definition comes first, so the prototype does nothing for the C.
-
-| File | Lines | Functions |
-|---|---|---|
-| `src/image_read.c` | 37-57 | 21: `fsFindFile`, `loadFlashFile`, `findAnchor`, `mmcFindMobiles`, `spareVersion`, `showMobilePages`, `scanMobiles`, `setFsOffset`, `findFsRoot`, `imgGetSecurityFiles`, `findSmcConfig`, `checkBlock`, `addRemap`, `findFreeRemap`, `notZeropair`, `spareLbaOk`, `copyMmcImage`, `parseDump`, `detectController`, `checkHeader`, `getNonces` |
-| `src/mode_client.c` | 17-21 | 5: `client_usage` (its `noreturn` attribute went in `4c1e221d`), `dumpKey`, `checkPatches`, `updatePatches`, `patchNand` |
-| `src/filelist_ini.c` | 63, 163-165 | 4: `iniPreParse`, `memFindStr`, `memFindChar`, `checkFileCase` |
-| `src/build.c` | 27, 370 | 2: `showSmcConfig`, `patchSmcConfig` |
-| `src/bootloaders.c` | 16, 331 | 2: `fcrtVerifySig`; `cbDecrypt`, whose prototype is the line right above its own definition |
-| `src/keys.c` | 17 | 1: `cfPatchSlots` |
-| `src/mode_update.c` | 25 | 1: `getSecurityFiles` |
-
-### Other redundant definitions
-
-| File | Line | What | Why it's redundant |
-|---|---|---|---|
-| `src/image_write.c` | 48 | `#define ALIGN_BLOCK(x)` | never used |
-| `src/image_write.c` | 51 | `#define setSpareLba(sp_, block)` | never used |
-| `src/fileutil.c` | 19-21 | `typedef int BOOL`, `#define TRUE 1`, `#define FALSE 0` | local copies of standard names, there for `myatou32`'s `hex` flag and a few others |
-| `src/image_read.c` | 35 | `int fseeko64(FILE *, long long, int)` | a local prototype for a libc function |
-| `src/net.c` | 24 | `extern time_t netTimeStart;` | declares a `src/globals.c` global in the `.c`, not in a header |
-| `src/filelist_ini.c` | 61-62 | `extern` for `consoleNames` and `validChars` | both are defined later in the same file |
+- **Forward prototypes of functions defined before their first use** (36): 21 in
+  `image_read.c`, 5 in `mode_client.c`, 4 in `filelist_ini.c`, 2 each in `build.c` and
+  `bootloaders.c`, 1 each in `keys.c` and `mode_update.c`.
+- **Two of them were not redundant**: `cfPatchSlots` (`keys.c`) and `imgGetSecurityFiles`
+  (`image_read.c`) are C99 `inline` definitions, and the plain prototype is what made gcc
+  emit their out-of-line copies (without it both copies vanish). Their definitions now say
+  `extern inline`, which is the same thing in one place. The scan can't see this.
+- `image_write.c`'s unused `ALIGN_BLOCK` and `setSpareLba` macros.
+- `fileutil.c`'s `typedef int BOOL` / `TRUE` / `FALSE`: the uses are `int` and `1`/`0` now.
+- `image_read.c`'s `fseeko64` prototype (`<stdio.h>` declares it).
+- `net.c`'s `extern time_t netTimeStart`: now in `xebuild.h`'s Globals block, which
+  includes `<time.h>` for it.
+- `filelist_ini.c`'s `extern`s for `consoleNames` and `validChars`: moved to
+  `filelist_ini.h`. They're still needed, since both are defined at the end of the file for
+  the .rdata order and used before there.
 
 ### Needed where they are, but could move to a header
 
 The first use comes before the definition, so these prototypes are needed unless a header
-declares the function: `loadFileCrc` (`src/build.c:371`) and `pageErased`
-(`src/image_write.c:36`).
+declares the function: `loadFileCrc` (`src/build.c`) and `pageErased`
+(`src/image_write.c`).
 
 ### Related, for the same review (not file-local, or not strictly redundant)
 

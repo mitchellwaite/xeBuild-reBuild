@@ -16,10 +16,6 @@
 #include "fileutil.h"
 #include "log.h"
 
-typedef int BOOL;
-#define TRUE 1
-#define FALSE 0
-
 const char *consoleTypeStr[] = {
 	"Unknown", "Xenon", "Zephyr", "Falcon", "Jasper", "Trinity", "Corona",
 	"Winchester"
@@ -310,9 +306,9 @@ uint32_t myatou32(const char* dat, uint32_t defValue)
 {
 	if((dat[0]&0xFF) == '0')
 	{
-		BOOL hex = FALSE;
+		int hex = 0;
 		if(myatol(dat[1]&0xFF) == 'x')
-			hex = TRUE;
+			hex = 1;
 		if(hex)
 		{
 			if(validateString(&dat[2]))
@@ -339,18 +335,18 @@ uint32_t validateString(const char* nString)
 {
 	int i, len;
 	if(nString == NULL)
-		return FALSE;
+		return 0;
 	len = strlen(nString);
 	if((nString[0] != 0x0) && (len != 0))
 	{
 		for(i = 0; i < len; i++)
 		{
 			if(myatox(nString[i]) == 0xFF)
-				return FALSE;
+				return 0;
 		}
-		return TRUE;
+		return 1;
 	}
-	return FALSE;
+	return 0;
 }
 
 int checkZeros(const unsigned char *p, unsigned int len)

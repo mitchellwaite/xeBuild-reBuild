@@ -32,30 +32,6 @@ struct mobile {
 	uint32_t spare;
 };
 
-int fseeko64(FILE *f, long long off, int whence);
-
-int fsFindFile(const char *name, uint32_t *block, uint32_t *size, uint32_t *time, int quiet);
-int loadFlashFile(int i, uint32_t block);
-int findAnchor(void);
-int mmcFindMobiles(void);
-uint32_t spareVersion(uint8_t *s);
-void showMobilePages(void);
-int scanMobiles(void);
-void setFsOffset(void);
-int findFsRoot(void);
-void imgGetSecurityFiles(void);
-void findSmcConfig(void);
-int checkBlock(uint8_t *blk, int block, int numBlocks);
-int addRemap(int block, int dest, int numBlocks);
-int findFreeRemap(int numBlocks);
-int notZeropair(void);
-unsigned long spareLbaOk(int pages);
-uint32_t copyMmcImage(uint8_t *raw);
-unsigned long parseDump(uint8_t *raw);
-int detectController(uint8_t *raw, int size);
-int checkHeader(const char *name, FILE *fp);
-void getNonces(void);
-
 /* .bss and .data in the original's order, reversed (gcc emits data last to first) */
 static int dumpSize;
 static struct fsroot fsBuf;
@@ -739,7 +715,7 @@ int findFsRoot(void)
 	return 0;
 }
 
-inline void imgGetSecurityFiles(void)
+extern inline void imgGetSecurityFiles(void)
 {
 	uint32_t i, block;
 

@@ -12,4 +12,8 @@ unsigned int getIniU32(const char *key, unsigned int def);
 char *iniU32Invalid(const char *key);
 int loadUserIni(void);
 
+/* defined at the end of filelist_ini.c for .rdata order, used before there */
+extern const char *const consoleNames[8];
+extern const unsigned char validChars[74];
+
 #endif

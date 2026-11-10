@@ -13,9 +13,6 @@
 #include "log.h"
 #include "smc.h"
 
-/* external copy of the inline cfPatchSlots */
-short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max);
-
 uint8_t pairing[3] = { 0 };
 uint8_t zeroKey[16] = { 0 };
 uint8_t infoKey0[16] = {
@@ -546,7 +543,7 @@ void ceEncrypt(uint8_t *ce, uint8_t *prevKey, uint8_t *key, uint32_t size)
 /* The slot index i and the count n are separate (the original computes
    the last index as trips + 2 but n as (trips + 1) + 1); n is 16-bit, so
    its add isn't CSE'd with the index's. */
-inline short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max)
+extern inline short cfPatchSlots(struct fileent *cf, uint32_t extra, uint16_t block, uint32_t max)
 {
 	uint8_t *buf = cf->data;
 	uint32_t end = cf->size + extra;

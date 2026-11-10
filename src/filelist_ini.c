@@ -58,9 +58,6 @@ int blDevgl[6] = {3, 4, 5, 6, 8, 9};
 int blJtag[9] = {4, 5, 6, 7, 8, 15, 16, 9, 10};
 int *blOrder;	/* COMMON: 479e84, ahead of globals.c's block */
 
-extern const char *const consoleNames[8];
-extern const unsigned char validChars[74];
-int iniPreParse(unsigned char *buf, int size);
 
 /* copy the base dir's casing of the smc, kv and patches file names */
 void fixFileCase(void)
@@ -159,10 +156,6 @@ int iniPreParse(unsigned char *buf, int size)
 	}
 	return n;
 }
-
-int memFindStr(unsigned char *buf, int size, const char *key, int label);
-int memFindChar(unsigned char *buf, char c, int size);
-void checkFileCase(void);
 
 /* offset after `str` in buf (past its NUL if skipNul and it ends a line), or -1 */
 int memFindStr(unsigned char *buf, int size, const char *str, int skipNul)

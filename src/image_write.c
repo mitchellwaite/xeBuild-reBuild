@@ -45,23 +45,6 @@ int nFsFiles = 0;
 uint32_t mobileOffset = 0;
 static uint8_t smcPage[0x1000];
 
-#define ALIGN_BLOCK(x) (((x) & 0x3fff) ? (x) + 0x4000 - ((x) & 0x3fff) : (x))
-
-/* the LBA in the spare bytes of a block's pages */
-#define setSpareLba(sp_, block) do { \
-	struct sp *s_ = (sp_); \
-	memset(s_, 0, 16); \
-	if (xb.bigBlock) { \
-		s_->b2lo = (block) >> 8; \
-		s_->b0 = 0xff; \
-		*((uint8_t *)s_ + 1) = (block); \
-	} else { \
-		s_->b1lo = (block) >> 8; \
-		s_->b5 = 0xff; \
-		s_->b0 = (block); \
-	} \
-} while (0)
-
 int buildImage(void)
 {
 	uint32_t rawSize, spareSize, userSize, cf;

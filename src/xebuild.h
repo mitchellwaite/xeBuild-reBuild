@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 /* ---- Shared macros ----
 
@@ -303,5 +304,6 @@ extern uint16_t fsChain[0x1000];
 extern struct flashhdr flashHdr;
 extern uint32_t imgUsed;
 extern struct manifest consoleManifest;	/* console_hdd */
+extern time_t netTimeStart;		/* net */
 
 #endif

@@ -21,7 +21,6 @@ SOCKET netSock = INVALID_SOCKET;
 /* gcc emits the statics in reverse: netInfo ends up first in .bss */
 static uint32_t netEmpty;	/* returned for a zero-length reply */
 static struct consoleinfo *netInfo;
-extern time_t netTimeStart;	/* globals.c */
 
 void netFree(void *p)
 {

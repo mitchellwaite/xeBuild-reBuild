@@ -13,8 +13,6 @@
 #include "log.h"
 #include "xboxrom.h"
 
-int fcrtVerifySig(uint8_t *fcrt);
-
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
 #define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
 
@@ -328,7 +326,6 @@ uint32_t shaSelfCheck(uint8_t *p)
 }
 
 /* decrypted copy of a CB/SB (free it), checked against the 1BL RSA key */
-uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey);
 uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 {
 	if (cb) {

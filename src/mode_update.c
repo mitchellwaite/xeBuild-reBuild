@@ -22,8 +22,6 @@
 #include "net.h"
 #include "smc.h"
 
-uint32_t getSecurityFiles(const char *dir);
-
 int useConsoleAddons = 1;
 
 /* .bss in the original's order, reversed (gcc emits data last to first);
