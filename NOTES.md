@@ -159,7 +159,7 @@ does nothing.
   mode_update, filelist_ini, net, options, image_read, build). Where the
   shape is pinned by layout, an empty
   `__asm__("" :: "i"("literal"))` pulls a literal earlier without
-  touching codegen (it makes no SSA names; mode_client needs only two).
+  touching codegen (it makes no SSA names; no file needs one now).
   A function spliced from a second compile can use literals too:
   `splice.py --whole` renames its `LCn` to the main compile's label with
   the same contents. Every object's strings are literals now; the only
@@ -240,6 +240,23 @@ bb-reorder's Fibonacci-heap ties, and plain source shapes set them (the
 `flashConsole` helper, `if (ret) *pret = ret`, tools/wip/mu/d1/NOTES.md; the
 older dead-hint version is tools/wip/mu/p1/NOTES.md). No object is built with a
 profile now.
+
+And `mode_client` (whole object in C, no hints since
+tools/wip/dehint/notes/mode_client.md's attempt 17).
+`mode_client` connects once for both kinds of run: with a reboot or shutdown
+and no command the mode becomes 6, the switch's empty `case 6`, and the code
+goes through the same connect and switch. vrp1 threads that path through the
+connect block (a joiner) and the netGetInfo block behind it, which is why the
+binary has two connects, two netGetInfo calls and one failure block, and the
+thread's frequency update is what places the cold blocks: the switch block
+ends up hotter than its own connect, so the cases are 8, the HDD errors 4 and
+they tie with usage(2). A source with a connect on each path can't get those
+numbers (the fitted version used dead edges for them). The option arms that
+take arguments start with a helper call, which gives each even odds against
+the next option's test. The order of an arm's `!a` and `j == argc` tests is
+the source's only when both operands are plain locals (the front end folds
+the `||` at once); with `i + 1 == argc` ifcombine merges the tests later and
+their order follows the SSA names it is handed from the free list.
 getBadBlocks is written success-first (no early-return predictor),
 which puts its error block over the default align-threshold, as the
 original's is. Its strings are plain literals: the functions whose

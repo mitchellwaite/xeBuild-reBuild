@@ -43,20 +43,13 @@ tricks some functions needed to match, and the checks behind each step.
 
 ## Compiler tricks by component
 
-The application files match, but one only matches because of hints that steer
-gcc and that the original source almost certainly didn't contain. This list
-has the 1 file that still has them, to be matched with source shape alone:
-ordinary C, the same `-O3` as the rest, and none of these hints. The other 24
-application files build with no tricks.
+Every application file now matches as ordinary C, built with the same `-O3`
+as the rest and with none of the hints that steer gcc and that the original
+source almost certainly didn't contain. This section listed the files that
+still needed such hints; `mode_client` was the last, so the list is empty.
 
-Every hint in it has been tried on its own, and `tools/wip/hintsearch.py`
-removes any that no longer change the code. Trick count isn't the only
-factor in how hard a file is: a single hint can be harder to replace than
-several others if it sets something like register ties or bb-reorder's heap
-order.
-
-**How tricks are counted:** one for each non-default gcc option in `build.sh`,
-and one for each use of a hint in the source (macro uses count individually).
+**How tricks were counted:** one for each non-default gcc option in `build.sh`,
+and one for each use of a hint in the source (macro uses counted individually).
 These are the hints:
 
 - **Branch hints:** `__builtin_expect`, hot and cold labels, and calls to
@@ -80,30 +73,16 @@ which keeps `addr`'s conversion in the block PRE would otherwise move it out of;
 its comment marks it "Borderline, for review", the tag the other borderline
 shapes in `src/` use too.
 
-<details>
-<summary><b>1. mode_client</b>: 48 tricks, very hard</summary>
+`mode_client` went from 141 tricks to none. Its option loop and switch were
+first fitted to bb-reorder's heap by search, with dead `__builtin_constant_p`
+feeds and `asm goto` edges setting each cold block's key. The natural source
+differs in shape, not in detail: it makes one connection for both kinds of
+run and gives a run with only a reboot or shutdown mode 6, the switch's empty
+case, where the fitted source had a connect on each path
+(`tools/wip/dehint/notes/mode_client.md`, attempt 17). Its four static
+argument helpers and two redundant returns carry the borderline tag.
 
-- 23 `__builtin_constant_p` feeds and 10 `asm goto` edges to dead labels, which
-  set bb-reorder's heap keys
-- 6 pins
-- 4 hot and cold labels, 2 `if (0)` blocks and 2 `__builtin_unreachable`
-
-The source was fitted to a simulated heap by search, over more than 130
-attempts, and is nowhere near readable. A first de-tricking pass deleted the
-hints that turned out not to matter, and a second found plain-C shapes for
-the literal-order and `clientBinPatch` hints; the expects, and with them
-the `--param`, went for arms that start with a call; feeds moved to colder blocks need
-fewer terms, and some removals pay for themselves with one more label
-on an existing `asm goto`, or with a test split into ifs that
-repeat the same noreturn call (141 to 48;
-`tools/wip/dehint/notes/mode_client.md`). `clientEraseBlock` is even inlined by hand so its labels can be
-reached. `mode_client` itself is one long option loop and switch, so nearly every
-change moves the rest of the layout. Rewriting it from scratch is probably the
-only way to find the natural shape.
-
-</details>
-
-`src/globals.c` isn't ranked because it holds only data: plain COMMON
+`src/globals.c` was never ranked because it holds only data: plain COMMON
 definitions, laid out by ld in its symbol hash-table order. The original names
 are unknown, so the ones there were picked so that order is the original's
 address order (its head comment lists the buckets).

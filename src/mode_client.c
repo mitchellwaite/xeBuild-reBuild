@@ -3,41 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* mode_client is built with no profile, but its cold blocks need bb-reorder's
-   heap keys set by hand.  Its blocks get labels (AT) reached by empty asm
-   gotos (JMP) and by __builtin_constant_p gotos: dead edges that emit nothing
-   and only change priority keys and the frequencies of the blocks they enter.
-   clientEraseBlockI is clientEraseBlock inlined by hand so its labels can be
-   reached (tools/wip/mc/s150/NOTES.md has the levers, the wip/mc attempts
-   before it the search; tools/wip/dehint/notes/mode_client.md which hints
-   were found not to matter and removed, and what each remaining one is
-   for).  A cp feed sends 1/2^k of its block's flow, so the case heads'
-   feeds sit where one or two terms add the frequency they need (the
-   default case, the rok block, fail, the -noenter arm, the end of the
-   connected branch).  A feed right before a call it dominates takes the
-   call heuristic's 71% instead of 50%: fail's ndl feed sits there on
-   purpose, its other feeds (and the default case's) come after the log
-   call.  A feed's argument is `mode + N` or plain
-   `mode` (`block` in clientEraseBlockI; one temporary fewer); which spelling a feed has only moves the SSA
-   names PRE reuses, and with them the option loop's latch compare order.  Labels in an asm
-   goto's list are free (the statement is the hint), so some edges ride in
-   another block's list (rk6 in the -r head's, ork6 in case 5's; c3 in its
-   own block's, an edge back to the case 3 head; dv in case 3's, for the
-   JMP to a dead block clientEraseBlockI's erase-failed block had) where they stand in for a
-   removed feed or cold label.  vrp1 threads the mode chain's arms through the
-   switch in an order set by the function's block count (a hash on the new
-   blocks' indices), and that order sets the case probabilities: a removal
-   that changes the block count needs another edit that changes it back
-   (the help tests' duplicated client_usage calls are two blocks that live
-   until PRE's tail merge, after vrp1).  String literals land in .rdata in block order, so clientInfo's and
-   clientWriteBlocks' shapes (early returns) are what fix it there.  The
-   option tests get even odds from calls: an arm that starts with a call
-   (getArgs, bpArgs, wbArgs, oneArg; the static ones are inlined only after
-   the branch predictions are made) has the call heuristic on both edges. */
-#define AT(l) l:
-#define JMP(...) __asm__ goto ("" :::: __VA_ARGS__)
-#define NO_MODE_ARG(m, a) (!((m) && (a)))
-
 #include "xebuild.h"
 #include "console_hdd.h"
 #include "consoleinfo.h"
@@ -157,8 +122,8 @@ void clientInfo(const char *dir)
 			log_printf(0, "success!\n");
 		else
 			log_printf(0, "failed!\n");
-		/* borderline: redundant return (end of the function); without it
-		   bb-reorder puts success out of line */
+		/* Borderline, for review: redundant return (end of the function);
+		   without it bb-reorder puts success out of line */
 		return;
 	}
 }
@@ -474,9 +439,10 @@ void clientBinPatch(const char *file, const char *soff)
 						log_printf(0, "Success! Completed patching NAND!\n");
 					else
 						log_printf(0, "\n\n***** ERROR: Writing data to console failed!\n");
-					/* borderline: redundant return (nothing follows but the
-					   else arms); it sets the register choices of the inlined
-					   patchNand tail and the count/start reloads */
+					/* Borderline, for review: redundant return (nothing
+					   follows but the else arms); it sets the register
+					   choices of the inlined patchNand tail and the
+					   count/start reloads */
 					return;
 				} else
 					log_printf(0, "\n\n***** ERROR: Reading data from console failed!\n");
@@ -499,29 +465,11 @@ void clientEraseBlock(const char *sblock)
 			if (netEraseBlock(block, 1))
 				log_printf(0, "Success!\n");
 			else
-				{ log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
+				log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block);
 		} else
-			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block); }
+			log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);
 	} else
 		log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n");
-}
-
-static void clientEraseBlockI(const char *sblock)
-{
-	uint32_t block = myatoh32(sblock, -1);
-
-	if (block != -1) {
-		JMP(efail); if (block < cinfo->nandSize / cinfo->blockSize) {
-
-			if (__builtin_constant_p(block)) goto einv;  log_printf(0, "erasing block 0x%x...", block);
-			if (netEraseBlock(block, 1))
-				log_printf(0, "Success!\n");
-			else
-				{ AT(efail) { efc: __attribute__((cold)); } log_printf(0, "\n\n***** ERROR: Failed to erase block 0x%x!\n", block); }
-		} else
-			{ log_printf(0, "\n\n***** ERROR: Block 0x%x is outside system area!\n", block);  JMP(efail); }
-	} else
-		{ einv: __attribute__((cold)); log_printf(0, "\n\n***** ERROR: Invalid arguments specified, please provide hex only for offset!\n"); }
 }
 
 /* the option's argument(s); dies with usage if one is missing or, with
@@ -554,9 +502,18 @@ char *getArgs(int argc, char **argv, int *pi, int mode, int check, char **arg2, 
 	return argv[first];
 }
 
-/* -bp <f> <o>: getArgs' checks for two arguments, in the order the -bp arm
-   tests them (the pin puts i + 1 in eax, attempts 2 and 4 found no shape for
-   it) */
+/* Borderline, for review: bpArgs, wbArgs, oneArg and fileArg are getArgs'
+   checks again, as four static helpers that differ only in which of the
+   pointer and the count is tested first.  Each arm of the option loop has
+   its own order (-bp and -wb mirror each other, -eb and -ip test the pointer
+   first, -r and -w the count), and with `j` and `a` as plain locals a test
+   keeps the order it is written in.  The call also gives the arm even odds
+   against the next option's test.  getArgs itself is not inlined with two
+   arguments and is cloned when both -bp and -wb call it; one helper for
+   several arms gives them all one order
+   (tools/wip/dehint/notes/mode_client.md, attempt 17). */
+
+/* -bp <f> <o> */
 static char *bpArgs(int argc, char **argv, int *pi, int mode, char **arg2)
 {
 	int i = *pi;
@@ -565,9 +522,8 @@ static char *bpArgs(int argc, char **argv, int *pi, int mode, char **arg2)
 
 	if (!a || j == argc || *a == '-')
 		client_usage(3, argv[i]);
-	__asm__("" :: "a"(i + 1));
-	b = argv[i + 2];
-	j = i + 2;
+	j++;
+	b = argv[j];
 	if (j == argc || !b || *b == '-')
 		client_usage(4, argv[i]);
 	*arg2 = b;
@@ -597,7 +553,8 @@ static char *wbArgs(int argc, char **argv, int *pi, int mode, char **arg2)
 	return argv[i + 1];
 }
 
-/* -eb <b> */
+/* -eb <b>; -ip <add> passes 0 for mode: it sets no command, so it may
+   follow one */
 static char *oneArg(int argc, char **argv, int *pi, int mode)
 {
 	int i = *pi;
@@ -610,6 +567,25 @@ static char *oneArg(int argc, char **argv, int *pi, int mode)
 	return argv[i + 1];
 }
 
+/* -r <f>, -w <f> */
+static char *fileArg(int argc, char **argv, int *pi, int mode)
+{
+	int i = *pi;
+	int j = i + 1;
+	char *a = argv[j];
+
+	if (j == argc || !a || *a == '-')
+		client_usage(3, argv[i]);
+	if (mode)
+		client_usage(5, argv[i]);
+	*pi = j;
+	return argv[i + 1];
+}
+
+/* The command's number is `mode`, its first argument `arg` (`dummy` where it
+   has none); -s and -reboot set `reboot` instead.  One connection serves
+   both: with a reboot and no command the mode is 6, the switch's empty
+   case. */
 int mode_client(int argc, char **argv)
 {
 	char dummy[] = "dummy";
@@ -619,23 +595,14 @@ int mode_client(int argc, char **argv)
 	char *ip = NULL;
 	char *arg = NULL;
 	int mode = 0;
-	char *a;
 
-	int kk = __builtin_constant_p(argc);
 	log_set_name("client");
 	for (i = 0; i < argc; i++) {
-		/* borderline: one test and call per spelling; PRE's tail merge
-		   folds the three calls into one, but the two extra blocks are
-		   still there when vrp1 threads the mode chain (see above) */
-		if (!strnicmp(argv[i], "help", 2))
-			client_usage(0, NULL);
-		if (!strnicmp(argv[i], "-?", 2))
-			client_usage(0, NULL);
-		if (!strnicmp(argv[i], "/?", 2))
+		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2))
 			client_usage(0, NULL);
 		if (!strnicmp(argv[i], "-noenter", 8)) {
 			log_printf(0, "<enter> key on completion suppressed\n");
-			promptEnter = 0; if (__builtin_constant_p(mode + 321)) goto u2;
+			promptEnter = 0;
 		} else if (!strnicmp(argv[i], "-reboot", 7)) {
 			if (reboot == 1)
 				log_printf(0, "shutdown superseded by reboot, ignoring -s in favor of -reboot\n");
@@ -658,7 +625,6 @@ int mode_client(int argc, char **argv)
 			log_printf(0, "erase block set to %s\n", arg);
 			mode = 10;
 		} else if (!strnicmp(argv[i], "-s", 2)) {
-			if ((char *)__builtin_constant_p(i + 300) == (char *)1 && (char *)__builtin_constant_p(i + 300 + 1) == (char *)1) goto k61l;
 			if (reboot == 2)
 				log_printf(0, "reboot has already been set on command line, ignoring -s\n");
 			else {
@@ -669,37 +635,26 @@ int mode_client(int argc, char **argv)
 			mode = 3;
 			arg = dummy;
 		} else if (!strnicmp(argv[i], "-ip", 3)) {
-			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
-				client_usage(3, argv[i]);
-			ip = argv[i + 1];
-			i++;
+			ip = oneArg(argc, argv, &i, 0);
 			log_printf(0, "setting forced IP to %s\n", ip);
-		} else { __builtin_memset(argv, 0, kk); if (!kk) { __asm__ goto ("" :: "a"(i) :: rk6, r5x, r3x); } if (!strnicmp(argv[i], "-r", 2)) {
-			a = argv[i + 1];
-			if (i + 1 == argc || !a || *a == '-')
-				{ r3x: client_usage(3, argv[i]); }
-			if (mode) { r5x: client_usage(5, argv[i]); }
-			arg = argv[i + 1];
-			i++;
+		} else if (!strnicmp(argv[i], "-r", 2)) {
+			arg = fileArg(argc, argv, &i, mode);
 			log_printf(0, "setting read filename to %s\n", arg);
 			mode = 1;
-		} else { k61l: if (!strnicmp(argv[i], "-w", 2)) {
-			a = argv[i + 1];
-			if (i + 1 == argc || !a || *a == '-')
-				client_usage(3, argv[i]);
-			if (mode) { client_usage(5, argv[i]); }
-			arg = argv[i + 1];
-			i++;
+		} else if (!strnicmp(argv[i], "-w", 2)) {
+			arg = fileArg(argc, argv, &i, mode);
 			log_printf(0, "setting write filename to %s\n", arg);
 			mode = 2;
-		} else { if (!strnicmp(argv[i], "-e", 2)) {
+		} else if (!strnicmp(argv[i], "-e", 2)) {
+			/* -e and -c test in place: with oneArg at both, a copy of it
+			   stays out of line */
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				client_usage(3, argv[i]);
 			if (mode)
 				client_usage(5, argv[i]);
 			arg = argv[i + 1];
 			i++;
-			log_printf(0, "setting avatar/kinect files base path to %s\n", arg); JMP(dz);
+			log_printf(0, "setting avatar/kinect files base path to %s\n", arg);
 			mode = 4;
 		} else if (!strnicmp(argv[i], "-c", 2)) {
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
@@ -711,7 +666,7 @@ int mode_client(int argc, char **argv)
 			log_printf(0, "setting xbox compatibility files base path to %s\n", arg);
 			mode = 5;
 		} else if (!strnicmp(argv[i], "-i", 2)) {
-			if (!argv[i + 1] || i + 1 == argc || ({ __asm__ ("" :: "d"(i + 1)); 0; }) || *argv[i + 1] == '-')
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				arg = dummy;
 			else {
 				arg = argv[i + 1];
@@ -720,7 +675,7 @@ int mode_client(int argc, char **argv)
 			}
 			mode = 12;
 		} else if (!strnicmp(argv[i], "-p", 2)) {
-			if (!argv[i + 1] || i + 1 == argc || ({ __asm__ ("" :: "d"(i + 1)); 0; }) || *argv[i + 1] == '-')
+			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 				arg = dummy;
 			else {
 				arg = argv[i + 1];
@@ -731,97 +686,75 @@ int mode_client(int argc, char **argv)
 		} else if (!strnicmp(argv[i], "-v", 2))
 			log_verbose_flag(argv[i][2]);
 		else
-			client_usage(1, argv[i]); } } }
+			client_usage(1, argv[i]);
 	}
-	if (NO_MODE_ARG(mode, arg)) {
-
-		if (__builtin_constant_p(mode + 130)) goto dtg;
-		if (reboot) {
-			if (netConnect(ip)) {
-			rok: __attribute__((cold));
-				cinfo = netGetInfo(); if (__builtin_constant_p(mode + 620)) goto ndl;
-				{ struct {} rko; { __asm__ goto ("" :::: dv, c12, s5, c9, c2, rk6, rk10); goto rkn0; rk6: goto ork6; rk10: goto ork10; } rkn0: ; { __asm__ ("" :: "m"(rko)); goto rkn2; } rkn2: ; goto rkE; ork6: goto c12; ork10: goto c3; } rkE: ; 
-			} else
-				goto fail;
-		} else
-			{ AT(u2) client_usage(2, NULL); }
-	} else {
-		if (netConnect(ip)) {
-			{ { struct {} fkv; __asm__ ("" :: "X"(&fkv)); __asm__ goto ("" :::: p1, i1, ndl, c10, c9, c1, c7, cdef, fa5, fa6, fa7, fa8, fa9, fa10, fa11, fa12, fa13, fa14, fa15, fa16, fa17, fa18, fa19, fa20); fkA2: goto fkN; fa5: goto ofa5; fa6: goto ofa6; fa7: goto ofa7; fa8: goto ofa8; fa9: goto ofa9; fa10: goto ofa10; fa11: goto ofa11; fa12: goto ofa12; fa13: goto ofa13; fa14: goto ofa14; fa15: goto ofa15; fa16: goto ofa16; fa17: goto ofa17; fa18: goto ofa18; fa19: goto ofa19; fa20: goto ofa20;  } ofa5: goto fkA2; ofa6: goto fkA2; ofa7: goto fkA2; ofa8: goto fkA2; ofa9: goto fkA2; ofa10: goto fkA2; ofa11: goto fkA2; ofa12: goto fkA2; ofa13: goto fkA2; ofa14: goto fkA2; ofa15: goto fkA2; ofa16: goto fkA2; ofa17: goto fkA2; ofa18: goto fkA2; ofa19: goto fkA2; ofa20: goto fkA2;  fkM: ; } fkN: ;
-			dsp: cinfo = netGetInfo();
-			if (__builtin_constant_p(mode + 909000)) mode = 9; else if (__builtin_constant_p(mode + 911000) && __builtin_constant_p(mode + 911001) && __builtin_constant_p(mode + 911002) && __builtin_constant_p(mode + 911003) && __builtin_constant_p(mode + 911004)) mode = 11; else if (__builtin_constant_p(mode + 907000) && __builtin_constant_p(mode + 907002) && __builtin_constant_p(mode + 907003) && __builtin_constant_p(mode + 907004)) mode = 7; switch (mode) {
-			case 1:
-				AT(c1) netDumpNand(arg);
-				break;
-			case 2:
-				AT(c2) clientWrite(arg);
-				break;
-			case 3:
-				AT(c3)  { JMP(hdd4, hdd5, c3, dv); clientKeys(); }
-				break;
-			case 4:
-				AT(t4)  if (cinfo->hwFlags & 0x20)
-					s4: { sendAvatarData(arg, cinfo->kernel); }
-				else
-					{ AT(hdd4) log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n"); }
-				break;
-			case 5:
-				AT(t5)  if (cinfo->hwFlags & 0x20)
-					{ JMP(s4, c12, ork6); AT(s5)JMP(dsp);  { sendCompatData(arg); } }
-				else
-					{ AT(hdd5) log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n"); }
-				break;
-			case 6:
-				break;
-			case 7:
-				AT(c7)  if (arg == dummy)
-					clientPatches(NULL);
-				else
-					{ AT(p1) clientPatches(arg); }
-				break;
-			case 8:
-				clientReadBlocks(arg, start, count);
-				break;
-			case 9:
-				AT(c9) clientWriteBlocks(arg, start);
-				break;
-			case 10:
-				AT(c10)JMP(c10);  clientEraseBlockI(arg);
-				break;
-			case 11:
-				AT(c11) clientBinPatch(arg, start);
-				break;
-			case 12:
-				AT(c12) if (arg == dummy)
-					clientInfo(NULL);
-				else
-					{ AT(i1) clientInfo(arg); }
-				break;
-			default:
-				AT(cdef) log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
-				if (__builtin_constant_p(mode + 1084170)) goto t5;
-				break;
-			}
-		} else
-			goto fail; if (__builtin_constant_p(mode + 987330)) goto t4;
+	if (!mode || !arg) {
+		if (!reboot)
+			client_usage(2, NULL);
+		mode = 6;
 	}
-
-	/* borderline: netDisconnect() in both arms; the else arm's own call gives
-	   the reboot test even odds (call heuristic on both edges) */
-	dtg: if (reboot)
-		{ netReboot(reboot); JMP(fail); ndl: netDisconnect(); }
-	else
+	if (netConnect(ip)) {
+		cinfo = netGetInfo();
+		switch (mode) {
+		case 1:
+			netDumpNand(arg);
+			break;
+		case 2:
+			clientWrite(arg);
+			break;
+		case 3:
+			clientKeys();
+			break;
+		case 4:
+			if (cinfo->hwFlags & 0x20)
+				sendAvatarData(arg, cinfo->kernel);
+			else
+				log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n");
+			break;
+		case 5:
+			if (cinfo->hwFlags & 0x20)
+				sendCompatData(arg);
+			else
+				log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n");
+			break;
+		case 6:
+			break;
+		case 7:
+			if (arg == dummy)
+				clientPatches(NULL);
+			else
+				clientPatches(arg);
+			break;
+		case 8:
+			clientReadBlocks(arg, start, count);
+			break;
+		case 9:
+			clientWriteBlocks(arg, start);
+			break;
+		case 10:
+			clientEraseBlock(arg);
+			break;
+		case 11:
+			clientBinPatch(arg, start);
+			break;
+		case 12:
+			if (arg == dummy)
+				clientInfo(NULL);
+			else
+				clientInfo(arg);
+			break;
+		default:
+			log_printf(0, "\n\n***** ERROR: invalid mode specified, please inform author\n");
+			break;
+		}
+		if (reboot)
+			netReboot(reboot);
 		netDisconnect();
-	if (__builtin_constant_p(mode)) goto u2;
-if (0) { dv: __builtin_unreachable(); } if (0) { dz: __builtin_unreachable(); }	return 0;
-fail: __attribute__((cold)); if (__builtin_constant_p(mode + 157368)) goto ndl;
-	log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
-	if (__builtin_constant_p(mode + 1089530)) goto s5;
-	if (__builtin_constant_p(mode + 1095110)) goto c11;
+	} else
+		log_printf(0, "\n\n***** ERROR: unable to connect to xbox server\n");
 	return 0;
 }
 
 /* 16 zero bytes end the original object's .rdata (global: gcc drops an unused
    static) */
 const char mc_rdpad[16] = {0};
-

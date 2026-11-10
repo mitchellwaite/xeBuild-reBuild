@@ -6,6 +6,199 @@ builtin-expect-probability=50`, 89 `__builtin_constant_p` feeds, 19 asm goto, 10
 hot/cold labels, 6 expects, 3 `if (0)`, 3 `__builtin_unreachable`, 2 literal-order asm "i",
 clientEraseBlockI inlined by hand).
 
+## State after attempt 17
+
+**0 tricks** (MATCH, 48 before).  `src/mode_client.c` is plain C at plain `-O3`: no
+`__builtin_constant_p`, asm, label attribute, `if (0)` or `__builtin_unreachable`, and
+clientEraseBlockI is gone (gcc inlines clientEraseBlock itself).  Whole object IDENTICAL
+BYTES (`cmp build/obj/mode_client.o build/mc/w17/reference.o`), full build SHA256
+10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c, progress 617 / 617.
+build.sh unchanged.  Borderline shapes, tagged `Borderline, for review:` in the source:
+
+- four static argument helpers (bpArgs, wbArgs, oneArg, fileArg) that differ only in the
+  order of the pointer and the count tests; fileArg is new, bpArgs lost its pin for
+  `j++; b = argv[j];`, and -ip now calls `oneArg(argc, argv, &i, 0)`;
+- the two redundant `return;` of attempt 2 (clientInfo, clientBinPatch), still load-bearing
+  (6 and 147 lines without them).
+
+Gone: the help test in three ifs (attempt 14's borderline; the `||` form is identical now),
+`netDisconnect()` in both reboot arms (211 lines now), NO_MODE_ARG, AT / JMP.
+
+## Attempt 17 (2026-11-10): the whole function from the natural file
+
+The approach of options' attempt 30: audit what the notes hold fixed, build the fully
+natural file, compare final layouts, and vary whole shapes.  Tools (tools/wip/dehint/,
+states and logs in build/mc/w17/):
+
+- `mc17lib.py FILE [-v [fn]] [-l] [-d TAG]`: mc1lib at plain `-O3` against
+  build/mc/w17/reference.o (the matching object of commit e8c0b8d8; build/mc/reference.o is
+  stale: its clientManifest predates the app headers, 10 lines).  `-l` prints mode_client's
+  blocks in address order, named by the strings and callees they reach, as a diff against
+  the reference's: the final layout, not a dump's trace order.
+- `mc17.py [-o F] [-v] [-l] [-d] VARIANT..`: the natural file from axes (`axis=value,..`;
+  `src` today's file, `old` the 48-trick one, `nat` every hint removed and nothing else).
+- `mc17sw.py [-n TOP] [-log F] axis=v1,v2 ..`: a product of axis values, scored by lines,
+  `moved` (layout blocks out of place), `pre` (blocks equal from the start; the hot part
+  comes first), `cas` (the eleven switch cases in the reference's order), `nc` (netConnect
+  calls, 2 in the reference).  Cached by source text in build/mc/w17/cache.json.
+- `mc17tr.py TAG [-r N] [-k] [-f]`: bbro's traces / heap events / final order of a `-d`
+  dump, blocks named the same way.
+- `mc17xp.py [-both] [-l] [-d] VARIANT N..`: a measuring device, not a candidate: a
+  two-connect variant with the switch path's connect N% likely to succeed (and with
+  `-both` the reboot path's N% likely to fail), through `__builtin_expect` and `--param
+  builtin-expect-probability=N`.
+- `mc17chk.py`: the landed shapes, one edit each on today's source.
+
+### The audit: what the notes held fixed, and where each came from
+
+| Constraint in the notes | Came from | What the layout itself says |
+|---|---|---|
+| Case heads c1/c3/t4/t5 6, c2 5, case 8 4 ("pops 111, 113, 115, 118, 112, 126"); "t4 must reach t5's 6", "c2 must pop after t4 and t5", "c11 needs 7" (the 18 / 10 floor), "c9 7 -> 8", "clientKeys needs +2" (attempts 9-16) | the hinted dump: feeds gave every case head its own frequency | Only the order 12, 1, 3, 4, 5, 2, 8, 9, 11, 7, default.  Eleven heads at one key (8) come out in exactly that order when they pass through round 3's heap once (inserted in round 2, popped LIFO and pushed on in round 3, popped in round 4), i.e. when the switch block is laid out in round 2. |
+| "vrp1 threads the mode chain's arms through the switch in a hash order set by the block count" (205, the k correction, attempts 12-15) | the hinted source: the mode chain is the cp-feed construct before the switch | Nothing.  The natural file has no chain; its one thread is the reboot path through the connect to `case 6`. |
+| dz's empty block must enter the round-4 heap with key 0 so the zero-key traces pop 137, 124, 140, 35.. (nodz3, attempts 14-16) | the hinted dump's extraction order | Only where clientPatches(NULL), clientInfo(NULL), the erase errors and the usage blocks end up.  Naturally they are frequency 1 (after -e) and 0 (before -c). |
+| "u2 needs RTL frequency 2" (attempt 12/13) | hinted heap: usage(2) had to sit under HDD errors that were 4 there | usage(2) follows both HDD errors and precedes -r.  Naturally all four are 4 (cases 8) and the heap orders the tie. |
+| "usage(2) is 4, an HDD error is <= 3 under any heuristic; the switch path is <= 1/3 of the post-loop flow" (wip/mc sessions 3-10) | our two-connect CFG: a case is the switch-path connect x P(ok) / 13 | The 1/3 cap on the arg test's split is real (the reboot test falls through).  The rest assumed the switch block can't be hotter than its connect.  With one connect in the source, dom2's thread through the connect leaves the switch-path copy at 58 and the block after it at 92 / 88: cases 8, HDD errors 4. |
+| Switch block 46 / 44 in round 2, rok 20 and fail 51 under cold labels | hinted | The round is evidence (above); the numbers are not.  Natural: 88, rok's copy 8 in round 4 with priority, connected to netReboot. |
+| "an arm that starts with a call has even odds" for -bp, -wb, -eb (attempt 4's helpers) | borderline shapes | Evidence, and it reaches further than the old source had it: -ip, -r and -w need the even odds too (the chain -ip 7, -r 4, -w 2, -e 1, -c 0 places the erase errors after -r, usage(4) / usage(3) after -w and the NULL-argument calls after -e).  The old source wrote them out (71 / 29) and repaired the cold tail with feeds. |
+| Pins: `"a"(i + 1)` in bpArgs, `"d"(i + 1)` in -i / -p, `"a"(i)` at the -r head | hinted source: register choices next to dead edges | None in the natural file: -i / -p match as written, bpArgs with `j++; b = argv[j];`. |
+| The help test in three ifs (+2 blocks at vrp1), `netDisconnect()` in both arms (even odds for the reboot test) | borderline shapes of attempts 14 and 3 | Neither.  The `||` form is identical; the duplicated disconnect is now 211 lines off. |
+| clientEraseBlock inlined by hand | hinted (labels for the edges) | gcc inlines it. |
+
+### The natural file (`mc17.py nat`): 454 lines, the hot part right
+
+Every hint removed, clientEraseBlock called, the tail as it was (two connects, shared
+`fail`): 454 lines, 31 of 55 layout blocks out of place, but the layout matches through
+the -s arm.  What differs is the order behind it:
+
+- the switch block's cases come 12, 11, 9, 7, 5, default, 4, 3, 2, 1, 8 (all key 1, one
+  pass through the heap; the switch is 16, round 3);
+- rok (41, round 3 with priority) is laid out before the join, which the reference has
+  first with netDisconnect behind it;
+- the cold chain -ip 7, -r 2, -w 1, -e 0 decays by 29% a step where the reference's
+  positions want halves.
+
+Forcing probabilities on that shape (`mc17xp.py -both nat N`: the switch path's connect
+N% likely to succeed, the reboot path's N% likely to fail) gives the reference's layout
+through -ip for N = 76..85 (`pre` 32, case order right; 74 and below 13).  One direction
+alone does not: the switch path alone at 79% has the hot part (pre 20) but rok's extraction
+first in round 3 reorders the cases.  So the two paths need opposite odds of about 79% each, which no pair of separate
+connects gives: with a shared `fail` both get the call heuristic's 29%, with their own
+failure blocks both get 61% (648 two-connect tails in sw1.log: the ones with the right
+case order have the wrong hot layout and the reverse).
+
+### One connect, and mode 6
+
+The jump table has thirteen targets and entry 6 goes straight to the join: an empty
+`case 6: break;` that no option sets.  It is the mode of a run with nothing to do but a
+reboot or shutdown:
+
+    if (!mode || !arg) {
+        if (!reboot)
+            client_usage(2, NULL);
+        mode = 6;
+    }
+    if (netConnect(ip)) {
+        cinfo = netGetInfo();
+        switch (mode) { ... case 6: break; ... }
+        if (reboot)
+            netReboot(reboot);
+        netDisconnect();
+    } else
+        log_printf(0, "... unable to connect to xbox server\n");
+    return 0;
+
+vrp1 threads the reboot path (mode known 6) through the connect block as a joiner and the
+netGetInfo / switch block behind it (`Registering jump thread: (139, 102) incoming edge;
+(102, 103) joiner; (103, 130) normal`), and dom2 the reboot test after that (reboot known
+nonzero): two netConnect calls, two netGetInfo calls and one failure block, as in the
+binary.  The thread's profile update
+is what no direct source could give: the reboot path's copy of the connect keeps 142 with
+the failure block in its trace (134), its netGetInfo copy is 8 (round 4, priority,
+connected to netReboot), the switch path's connect is 58 and the netGetInfo / switch block
+after it 92 / 88 (round 2), the join 92 with netDisconnect 100 behind it.  `conn=six`
+alone: 226 lines, `pre` 35, case order right, two connects, HDD errors (4, 4) ahead of
+usage(2) (4).  Every guard spelling is the same object (`!(mode && arg)`, usage in the
+else, else-if); the connect has to be `if (netConnect(ip)) { .. } else log` (failure first,
+or with its own return: 248).  A second guard in place of mode 6 (`if (mode && arg)`
+around the switch, `conn=one`) threads nothing through the connect (one netConnect in the
+object).
+
+### The arms: calls for even odds, and what orders the tests
+
+- -ip, -r and -w have to start with a call (the chain above).  `ipa=onearg` (-ip through
+  `oneArg(argc, argv, &i, 0)`) and -r through a helper: 22 lines, every block in place
+  (`moved` 0).  -w need not (written out, every block is still in place; only its own test
+  order was off), -e and -c must not both call oneArg: gcc then keeps a copy of it out of
+  line (10158; either one alone is the same object).
+- getArgs for these arms: inlined in -ip, -r, -w with other tie orders behind them (190 and
+  up), left as a call in -e, -c and -wb, and cloned (`getArgs.constprop`) when -bp and -wb
+  both use it.  The original very likely used getArgs throughout; what its inliner did
+  with it is not reproduced, hence the static helpers.
+- **What orders `!a` and `j == argc`.**  With both operands plain locals (`j`, `a`) the
+  front end folds the `||` to a non-short-circuit OR at once and the order is the source's,
+  in every inlined copy.  With `i + 1 == argc` (not a simple operand) the two tests stay
+  jumps until ifcombine merges them, and the merged OR's operands are ordered by the SSA
+  versions ifcombine is handed from the free list: -r through `char *a = argv[i + 1]; if
+  (i + 1 == argc || !a ..)` came out count-first and -w with the same text pointer-first
+  (`_299 = a == 0B; _411 = argc == i.38; _410 = _299 | _411`), whatever the source order.
+  `!argv[i + 1] || i + 1 == argc` (the load in the first test) is not merged and keeps the
+  source order.  So the landed helpers are spelled the deterministic ways: bpArgs, wbArgs
+  and fileArg with `j`, oneArg and the written-out arms with `!argv[i + 1]` first.
+- bpArgs: `j++; b = argv[j];` (wbArgs' advance) in place of `b = argv[i + 2]; j = i + 2;`
+  gives the arm's registers without the pin (16 lines with the old advance).
+- -i / -p: as written; the `"d"` pins have nothing left to do.
+- One shared helper is not available: bpArgs for both -bp and -wb changes the layout (471;
+  with some spellings a copy stays out of line), oneArg for -eb, -ip, -r and -w keeps the
+  layout but leaves -eb or -w with the other order (10 to 12 lines, whichever spelling).
+
+### Landed (src/mode_client.c)
+
+`mc17.py conn=six,six=usage1,test=pos,ipa=onearg,bps=inpcbr,r=onec,w=onec,o2=jcr` with
+oneArgC named fileArg: the tail above; -ip `oneArg(.., 0)`; -r and -w `fileArg`; bpArgs
+without the pin; the help test one `||`; one `netDisconnect()`; clientEraseBlock called.
+Natural round 4 (mc17tr.py src): the eleven cases 8 (12, 1, 3, 4, 5, 2, 8, 9, [10], 11, 7,
+default), rok's copy 8, -ip 7, HDD errors 4 4, usage(2) 4, -r 4, erase outside 3, erase
+failed 2, -w 2, usage(4) 1, usage(3) 1, -e 1, erase invalid 1, clientPatches(NULL) 1,
+clientInfo(NULL) 1, five usage blocks 0, -c, -i, -p, the dummy arms, -v, usage(1): the
+reference's order, every tie included.
+
+What is load-bearing (mc17chk.py, one edit each on the landed file):
+
+| Edit | Result |
+|---|---|
+| `mode = 6;` removed, or `case 6: break;` removed | 426 / 425 |
+| `netDisconnect()` in both reboot arms (the old borderline) | 211 |
+| -ip written out | 262 (moved 15) |
+| -r / -w through oneArg | 12 (test order only) |
+| -eb through fileArg | 4 (test order only) |
+| bpArgs with `b = argv[i + 2]; j = i + 2;` | 16 |
+| clientInfo's / clientBinPatch's redundant return removed | 6 / 147 |
+| -e through oneArg; the help test in three ifs; guard as `!(mode && arg)`; usage in the else | same object |
+
+Checks: `mc17lib.py src/mode_client.c` IDENTICAL BYTES; `sh build.sh` after the landing and
+after the comment edits: SHA256 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c;
+`python tools/re/progress.py`: 617 / 617, NOTES.md's Progress section unchanged.
+
+### Don't retry (attempt 17)
+
+- Nothing is left to remove.  Don't bring back a second connect (any failure form), the
+  duplicated disconnect, a written-out -ip, or `i + 1 == argc || !a` with `a` a local in an
+  arm whose test order matters (ifcombine's order follows the free list).
+- Replays against a hinted dump's keys or extraction order: every per-case frequency, the
+  block count at vrp1 and the dz insert were repairs on our own CFG.
+- getArgs in place of the static helpers without a new idea about its inlining (calls
+  left in -e, -c, -wb; a constprop clone with -bp and -wb).
+
+### Next ideas
+
+- The four helpers are the remaining borderline: the original probably called getArgs in
+  every arm.  What would have to hold: no ipa-cp clone, the two-argument call inlined in
+  -bp and -wb but not the three-argument one in -rb, the cold -e and -c inlined, and each
+  inlined copy's test order as found (free-list luck is plausible there, since the tests
+  of an inlined getArgs get their names in the caller).  A getArgs spelled with fewer
+  statements (a smaller inline estimate) and its own code unchanged would be the place to
+  start; `mc17.py` has the axes (`bp`, `wb`, `eb`, `r`, `w`, `e`, `c`, `ipa` = getargs).
+
 ## State after attempt 16
 
 **48 tricks, unchanged** (NO MATCH; src/mode_client.c untouched, full build is still the
