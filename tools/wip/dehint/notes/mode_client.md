@@ -24,6 +24,10 @@ build.sh unchanged.  Borderline shapes, tagged `Borderline, for review:` in the 
 Gone: the help test in three ifs (attempt 14's borderline; the `||` form is identical now),
 `netDisconnect()` in both reboot arms (211 lines now), NO_MODE_ARG, AT / JMP.
 
+A second part the same day tried getArgs in place of the helpers and was parked with
+near misses (4 and 6 lines) and a same-bytes respelling of getArgs as a draft; see
+"Attempt 17, second part".  It changed nothing in `src/`.
+
 ## Attempt 17 (2026-11-10): the whole function from the natural file
 
 The approach of options' attempt 30: audit what the notes hold fixed, build the fully
@@ -198,6 +202,138 @@ after the comment edits: SHA256 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd
   of an inlined getArgs get their names in the caller).  A getArgs spelled with fewer
   statements (a smaller inline estimate) and its own code unchanged would be the place to
   start; `mc17.py` has the axes (`bp`, `wb`, `eb`, `r`, `w`, `e`, `c`, `ipa` = getargs).
+  The second part below took this up.
+
+## Attempt 17, second part (2026-11-10): getArgs in the arms (parked, src unchanged)
+
+Asked for after the landing: replace the four static helpers with getArgs calls.  Stopped
+at the user's request with a 4-line and a 6-line near miss and a candidate respelling of
+getArgs; nothing landed, `src/mode_client.c` is commit 96c65024's.  Tools:
+
+- `mc17arm.py [-s ARM] VARIANT..`: each option arm's instructions against the reference's
+  (jump targets dropped), and the usage blocks, so an arm's own code shows apart from layout.
+- `mc17ga.py [-arms bp,eb,ip,r,w] [-only S] [-o NAME FILE]`: spellings of getArgs, kept only
+  if getArgs' own code stays identical, then tried with the named arms calling getArgs.
+- `mc17gs.py FILE.c`: the inline growth gcc estimates for each getArgs call, and ipa-cp's
+  clone evaluation (read from the ipa dumps with the auto limit raised; measuring only).
+- `mc17gl.py [-arms ..] [-n N]`: random behaviour-neutral spellings of mode_client around
+  a getArgs spelling, with the arms that differ.
+- Drafts (tools/wip/dehint/drafts/): `mode_client_a17_getargs_uniform.c` (IDENTICAL BYTES),
+  `mode_client_a17_getargs_g1_4.c` (4 lines), `mode_client_a17_getargs_g2_6.c` (6 lines).
+
+### getArgs itself: `first` is the option's index, and one spelling for all three tests
+
+    int first = *pi;
+    int i = first + 1;
+
+    if (!argv[i] || i == argc || *argv[i] == '-')
+        client_usage(3, argv[first]);
+    if (arg2) {
+        i++;
+        if (!argv[i] || i == argc || *argv[i] == '-')
+            client_usage(4, argv[first]);
+        *arg2 = argv[i];
+    }
+    ... (arg3 the same) ...
+    if (mode && check)
+        client_usage(5, argv[first]);
+    *pi = i;
+    return argv[first + 1];
+
+keeps getArgs' own code, and the whole object with the landed arms is IDENTICAL BYTES
+(`mc17ga.py` name `f0-x-i-n-xn-a`; draft `..._getargs_uniform.c`).  The binary's test
+orders (count first in the first test, pointer first in the other two) come out of three
+identically written tests: `!argv[i]` is not a simple operand, so the front end leaves two
+jumps, ifcombine merges them, and the order follows the SSA versions it is handed (below).
+Today's getArgs gets the same code by writing the orders out (`i == argc || !a`, then
+`!a || i == argc` twice, all folded by the front end) with `first = *pi + 1` and
+`argv[first - 1]`.  Not landed: it is the same bytes and reads better, but its order then
+rests on getArgs' own free list instead of on the text; the user's call when this is
+picked up again.  Of 780 + 390 spellings, 124 + 78 keep getArgs' code; with folded tests
+only (count, pointer, pointer) does, with merged ones only pointer-first throughout.
+
+### What gcc's inliner allows (mc17gs.py; the limit is 40)
+
+- Growth of a getArgs call: one argument 23, two 41 to 43 (42 with `first = *pi`), three
+  60.  So -eb, -ip, -r, -w inline; a two-argument call does not (limit reached), -rb never.
+- A call in an arm of frequency 0 is not inlined at all ("call is unlikely and code size
+  would grow"): -e and -c stay calls, so in the original they were written out as they are
+  now.
+- ipa-cp clones getArgs for `arg3 == NULL` when the calls passing it are frequent enough:
+  evaluation 14 x freq_sum / 58 against 500.  -bp alone carries it (3350 of 4633: 1099 to
+  1118); without -bp it is 304 to 309 and there is no clone.
+- A two-argument call is inlined only as the clone's last caller: once the one-argument
+  callers are inlined, `estimate_growth` of the clone is 42 - 58 < 0 with -bp alone and
+  2 x 42 - 58 > 0 with -bp and -wb.  So -bp through getArgs is inlined (the clone goes),
+  -wb through getArgs never is (alone: no clone, the global getArgs, limit; with -bp: the
+  clone stays as `getArgs.constprop`).  -wb's code is -bp's twin in the binary all the
+  same; what it called is open.
+- Spellings that bring the two-argument growth under 40 (`return argv[first]` with
+  `first = *pi + 1` and `argv[*pi]` or an `opt` variable for the usage calls: 36 to 39)
+  inline both, but then the arms lose the reload of `argv[first + 1]` after `start` is
+  stored and take other registers (473 and up).  Nested `if (mode) if (check)` saves two
+  more and breaks the hot layout (the usage(5) block gets a real frequency).
+
+### With the arms calling getArgs
+
+`first = *pi` is what makes an inlined copy look like the binary's arm: `argv[first]` in
+the usage calls folds to the arm's `argv[i]`, the usage blocks are shared as in the
+reference (10), and the layout is unchanged (`moved` 0).  With `first = *pi + 1` the
+inlined arms take other registers and 11 to 14 usage blocks (191 and up).
+
+| Arms on getArgs | getArgs spelling | Result |
+|---|---|---|
+| -eb -ip -r -w | first test `first + 1 == argc \|\| !a` (merged), the rest folded pointer-first (`f0-d-f-c-fn-a`) | 4 lines: -ip's test order |
+| -bp -eb -ip -r -w | the same | 6 lines: -bp's second test (pointer first, the binary has count first) and its load |
+| -eb -ip -r -w | all three `!argv[i] \|\| i == argc` (`f0-x-i-n-xn-a`) | 16 lines: -eb, -r, -w orders |
+| -bp -eb -ip -r -w | the same | 22 lines: -bp, -eb, -r, -w orders |
+| -bp -wb + the four | any | `getArgs.constprop` stays (10446 and up) |
+| -wb + the four | any | -wb's call stays (303) |
+
+Every remaining difference is the order of one merged test.  In the second row all five
+first tests are right and only -bp's second is wrong, which a folded pointer-first test
+cannot give and a folded count-first one gives at the cost of getArgs' own second test.
+
+### What orders a merged test
+
+ifcombine builds `t = inner | outer` with three new names taken from the free list (in the
+order result, outer test, inner test; outer is the test written first), and the operand
+with the lower version is tested first.  The names it gets are the ones copyprop1 released
+just before: the degenerate PHIs vrp1 leaves at each inlined copy's usage blocks
+(`# first_462 = PHI <first_299(14), first_299(15), first_299(16)>`, `# i_568 = PHI <..>`),
+in copyprop1's order.  For the uniform spelling with -bp, -eb, -ip, -r, -w the list is, top
+first: 462 463 332 | 333 568 73 | 401 571 96 | 107 413 414 | 412 331 573 | 74 460 461, so
+the first three merges test the inner (second-written) test first and the last three the
+outer one.  With the first test written count-first that is pointer, pointer, pointer,
+count, count for -bp, -eb, -ip, -r, -w: the binary's, which is why that spelling has all
+five right when -bp's second test is folded and takes nothing from the list.  The binary
+needs outer, inner, outer, outer, inner, inner over six merges in pointer-first spelling.
+The list is structural, not noise: 240 random neutral spellings of mode_client (the -e /
+-c tests, the help test, the guard, the -i / -p arms, bpArgs / wbArgs spellings, NULL or 0,
+-ip's mode argument, getArgs spellings of one family) all gave the same arms (mc17gl.py).
+What changes it is what each copy uses in its usage blocks: -ip's copy has no usage(5)
+block (check is 0), and it is the odd arm in both families.
+
+### Don't retry (second part)
+
+- getArgs at -wb, or at -e / -c, or at both -bp and -wb; a spelling with the two-argument
+  growth under 40; nested `if (mode) if (check)`.
+- Neutral respellings of mode_client to flip an arm's merged test (the list above doesn't
+  move); `first = *pi + 1` in getArgs for inlined arms.
+
+### Next ideas (second part)
+
+- The PHI list is the lever: count the degenerate PHIs vrp1 leaves per inlined copy
+  (`first` and `i` at usage(3), usage(4), usage(5)) and find what gives the binary's
+  pattern.  Candidates: -ip called as `getArgs(argc, argv, &i, 0, 1, NULL, NULL)` or with
+  its result used differently (its copy lacks the usage(5) block), the usage calls'
+  argument spelled so one name fewer reaches a block, getArgs' second test merged with -bp
+  on getArgs (six merges; needs getArgs' own code checked each time: the mixed spelling
+  `first + 1 == argc || !a` then `!argv[i] || i == argc` is 4 lines off in getArgs itself).
+- -wb: a twin of -bp's inlined code that is not a second caller of the clone.  A static
+  single-caller function is what the landed wbArgs is; nothing better is known.
+- If the uniform getArgs is wanted on its own, the draft is ready: same bytes, no arm
+  changed.
 
 ## State after attempt 16
 
