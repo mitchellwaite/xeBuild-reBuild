@@ -645,7 +645,9 @@ static int kvHashOk(uint8_t *kv, uint32_t size)
    jump threading: a colder main path makes alt a caller-saved ecx).  The
    two alt tests at the end do the same for the encrypt arms: threaded into
    one branch, they leave bb-reorder the original's trace order and LRA its
-   spill-slot order (tools/wip/dehint/notes/keys.md). */
+   spill-slot order (tools/wip/dehint/notes/keys.md).
+   Borderline, for review: the two alt tests are live but redundant (one
+   if/else would hold kvSet and both encrypt calls). */
 void kvPrepare(struct fileent *kv, int alt)
 {
 	const char *file = "kv.bin", *name = "kv";
@@ -833,7 +835,10 @@ void daeEncryptOne(uint8_t *dae, uint32_t size, uint8_t *date)
    through its test (off = size), not a break.  The warning sits in the
    loop's exit arm: there the early-return predictor counts against both of
    the n != 2 edges, since neither the warning nor the test falls into the
-   free block, so the branch stays at 51% and the warning lands out of line. */
+   free block, so the branch stays at 51% and the warning lands out of line.
+   Borderline, for review: both shapes are unusual but live and not
+   redundant; with the warning after the loop, a break would do what
+   `off = size; len = 0;` does. */
 void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 {
 	uint8_t *orig = malloc(size);
@@ -889,6 +894,9 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 	free(orig);
 }
 
+/* Borderline, for review: the encrypt calls are written out in both arms,
+   where `memcmp(..) == 0 || verifyFcrt(..) == 1` would need one copy; no
+   shape with one copy matched (tools/wip/dehint/notes/keys.md). */
 void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
 {
 	uint8_t iv[16];

@@ -536,7 +536,9 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		   and 50% on small. ifcombine merges them keeping the inner test's 50%, so t's two
 		   tests are 450 + 450 in the optimized dump (657 + 243 lost 1 to rounding, and t
 		   took the wrong stack slot). imgAddFile, where small is known, needs the len
-		   test's 73%: at 50% it's off (tools/wip/dehint/notes/image_write.md, Attempt 25) */
+		   test's 73%: at 50% it's off (tools/wip/dehint/notes/image_write.md, Attempt 25).
+		   Borderline, for review: `> 0` on a 0-or-1 flag, where `if (partial)` says
+		   the same; it is there for the 73% */
 		npages = 32;
 		if (partial > 0) {
 			if (small) {
@@ -571,7 +573,9 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						   compare's order (tools/wip/dehint/notes/image_write.md, Attempt 23).
 						   TODO: revisit the 0 entry. It does nothing except keep the array alive
 						   until cunrolli; find a real second value, or a real reason for the block.
-						   It replaced optimize("no-tree-scev-cprop") on writeFsTable */
+						   It replaced optimize("no-tree-scev-cprop") on writeFsTable.
+						   Borderline, for review: the array is one entry longer than it needs to be
+						   (not counted as a trick) */
 						if (off & 0x1ffff) {
 							int used[2] = { (off & 0x1ffff) / 512, 0 };
 							int k;
@@ -582,7 +586,8 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						} else
 							left = 256;
 						/* TODO: the (int) casts and `len >> 9` above have no reason but SSA
-						   names, which set compare orders: 26 lines without the casts */
+						   names, which set compare orders: 26 lines without the casts.
+						   Borderline, for review: redundant casts, and `>> 9` next to `% 512` */
 						if ((int)pages & 3)
 							pages = ((int)pages + 4) & ~3;
 						s[9] = (left - pages) >> 2;
@@ -996,7 +1001,11 @@ int finalizeImage(void)
 			   the arm has no call for the call heuristic, and `<= 0` alone gives it
 			   27% (profile_estimate dump); a calcPageEcc call here is 377 lines off,
 			   `== 0` 687. Re-reading both after the stores, spare first at the top
-			   and q const: 437, 207, 4, 55 without each (measured) */
+			   and q const: 437, 207, 4, 55 without each (measured).
+			   Borderline, for review: `<= 0` on pageErased's 0 or 1; calcPageEcc
+			   written out though the function exists above; xb.spare and xb.hdr
+			   re-read after the stores though they can't have changed; const on q
+			   and not on h */
 			const uint8_t *q = xb.spare;
 			uint8_t *h = xb.hdr;
 
