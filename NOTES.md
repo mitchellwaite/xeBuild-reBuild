@@ -287,10 +287,11 @@ order).
   and `small` (50%). ifcombine merges them with the inner 50%, which gives `t`
   its stack slot, while imgAddFile knows `small` and sees only the 73% it needs.
   `&&` forms fold `> 0` to `!= 0` first, so both tests would be 50%.
-- imgAdd's `used[2]` table has a `0` entry it doesn't need, marked `TODO` and not
-  counted as a trick. Its scope clobber keeps the nonzero arm in the CFG past lim2, which
-  gives unswitch the empty forwarder that orders sccp's names for writeFsTable's
-  FS loop exits. It replaced `optimize("no-tree-scev-cprop")`.
+- imgAdd's `used[2]` table has a `0` entry it doesn't need, not counted as a
+  trick (approved on review, 2026-11-10: no form without the array matches).
+  Its scope clobber keeps the nonzero arm in the CFG past lim2, which gives
+  unswitch the empty forwarder that orders sccp's names for writeFsTable's FS
+  loop exits. It replaced `optimize("no-tree-scev-cprop")`.
 - Spare byte 12 is a bitfield (`struct spt`: 6-bit type, 2 bits of ECC), as the
   older Linux build's stores suggest. It emits the same read-modify-write as a
   byte mask, but with no load in gimple, so imgAdd's SSA numbers all move.

@@ -5,7 +5,7 @@ left are **borderline shapes**: ordinary C that an author could have written, bu
 the source because of what gcc does with it. They aren't counted as tricks. Each one is for
 the user to review: keep it as the author's likely shape, or try for a plainer one.
 
-State: commit `4c1e221d` (2026-11-10; mode_client's and net's lines are of their reviews the
+State: commit `4c1e221d` (2026-11-10; mode_client's, net's and image_write's lines are of their reviews the
 same day).
 Line numbers are that commit's and will drift; the tags don't:
 
@@ -15,7 +15,7 @@ grep -n "Borderline, for review" src/*.c
 
 There are two kinds of item here:
 
-1. **Tagged shapes** (38, 12 of them approved): each has a `Borderline, for review:` comment
+1. **Tagged shapes** (38, 16 of them approved): each has a `Borderline, for review:` comment
    in the source saying what it does and what it replaced.
 2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
    section says what went and what is left (two prototypes that are needed).
@@ -58,14 +58,14 @@ When an item is settled, delete its tag (or mark it `(approved)`) and update thi
 Attempt 30's lead applies here: these came from fitting to counts that may not be the
 original's. Worth one attempt from the natural `parseOption` before accepting them.
 
-### image_write (4) — `src/image_write.c`, notes in `notes/image_write.md`
+### image_write (4, all approved 2026-11-10) — `src/image_write.c`, notes in `notes/image_write.md` ("Review")
 
-| Line | Where | Shape |
-|---|---|---|
-| 540 | `imgAdd` | `partial > 0` on a 0-or-1 flag, where `if (partial)` says the same |
-| 577 | `imgAdd` | `int used[2] = { .., 0 }`: one entry longer than needed (also a `TODO`; not counted, by the user's rule on over-long arrays). It sets a compare's order in `writeFsTable` |
-| 590 | `imgAdd` | redundant `(int)pages` casts, and `len >> 9` next to `len % 512` (also a `TODO`) |
-| 1005 | `finalizeImage` | `pageErased(..) <= 0` on a 0-or-1 result; `calcPageEcc` written out though the function exists; `xb.spare` and `xb.hdr` re-read after the stores; `const` on `q` and not `h` |
+| Line | Where | Shape | Why it stays |
+|---|---|---|---|
+| 523 | `imgAdd` | `partial > 0` on a 0-or-1 flag, where `if (partial)` says the same | Only opcode positive gives the len test the 73% imgAddFile needs, nested so imgAdd keeps the inner 50%: `if (partial)`, `!= 0`, `== 1` or `len < 0x4000` itself 619, `&&` 595, counts in `partial` 213-639. image_read tests six flags the same way (`ok <= 0` .. `used <= 0`) |
+| 560 | `imgAdd` | `int used[2] = { .., 0 }`: one entry longer than needed (not counted, by the user's rule on over-long arrays; its `TODO` is gone) | The arm needs a local array its loop indexes until cunrolli (the scope clobber orders writeFsTable's FS-exit names): the one statement 6, a struct 30, counting loops 785+, `{ 256, x / 512 }` from k = 1 453-717; a real `pages` entry puts a sub in each arm (112) |
+| 578 | `imgAdd` | redundant `(int)pages` casts (`len >> 9` now tested with `len & 511`, same bytes, not `% 512`; its `TODO` is gone) | SSA names only: no casts 26, no casts with `len / 512` 4; 16 other roundings 26-184; a pairs search from the 4-line state found only the casts |
+| 995 | `finalizeImage` | `pageErased(..) <= 0` on a 0-or-1 result; `calcPageEcc` written out though the function exists; `xb.spare` and `xb.hdr` re-read after the stores; `const` on `q` and not `h` | P(ECC) has to be 23-28.7%: `<= 0` is opcode positive's 27% (`!` 687, `!= 1` 794); a calcPageEcc call adds the call heuristic (377, `!` 232), calcEcd is pure; pageEccOk writes calcEcd out too. Re-reads: none 468, h only 437, q only 207; the copy reading `xb.hdr` itself is 4 (preheader loads swap). `const` follows the prototypes: `h` goes to calcEcd's non-const parameter (q non-const 55) |
 
 ### net (4, all approved 2026-11-10) — `src/net.c`, notes in `notes/net_*.md` ("Review")
 

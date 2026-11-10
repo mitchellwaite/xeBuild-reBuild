@@ -1632,3 +1632,66 @@ Reproduce from src: q1.c = `python tools/wip/dehint/iw23state.py tools/wip/dehin
 Lessons: **measure each function's view of a probability on its own.** Twenty attempts treated P as one number; imgAdd reads the merged test's inner edge and imgAddFile the test that survives constant propagation, so two tests give each its own value. Attempt 24's c3/c4 had this in hand (imgAdd 4) and read imgAddFile's 126 as a floor. **Print frequencies at two passes for every state**: `iw25fr` showed 50-then-73 ending at 657, which is what gave the rule. **A wrong number from memory blocks a route**: pointer at "70" looked on the grid and wasn't; one compile settled it. **Trace the first break even in a route you expect to drop:** the rescale table's 44.505 ruled out a whole family in an hour.
 
 Landed after attempt 25: drafts/image_write_a25.c is now src/image_write.c (0 tricks, full build matches), so the draft is removed. What's left is optional cleanup: the TODOs on `used[2]`'s 0 and on the `(int)pages` casts and `len >> 9`.
+
+## Review (2026-11-10): all four borderline shapes approved, one respelling
+
+The user asked for the four image_write borderline items to be reviewed and settled. All four stay, with `(approved)` on their tags and the reason in each comment; the two TODOs went with them. The one source change is `if (len & 511)` for `if (len % 512)` in the big-block page count, same bytes, so `len >> 9` is tested with a mask and not next to a `% 512`. Scored at plain -O3 with `tools/wip/dehint/iwrev.py` (variant files `iwrev_a.py` .. `iwrev_d2.py`, written against afaa16c3's source; the docstring says how to rerun them). build/iw/reference.o was stale (2026-11-03) and is now a copy of the matching build/obj/image_write.o; the old one is build/iw/reference_nov3.o.
+
+Another argument for the first and last items: image_read.c, the sibling object, tests six flags the same way (`ok <= 0`, `bad <= 0`, `o > 0`, `out <= 0`, `newer > 0`, `used <= 0`, each set from a comparison just before), untagged, and net.c's approved `netSendStr(cmd) <= 0` is the same idiom on a call's 0 or 1. The older Linux build doesn't help on either: gcc 4.9 inlines pageErased and calcEcd into finalizeImage (0x41e4e0), and its not-erased path reloads xb.hdr and xb.spare after the stores, as any source must (the stores are through `uint8_t *`).
+
+### imgAdd's `partial > 0`
+
+| Form | Lines |
+|---|---|
+| `partial > 0` (landed), `partial >= 1`, `_Bool partial` with `> 0` | 0 |
+| `if (partial)`, `partial != 0`, `partial == 1`, `if (len < 0x4000)` with no flag, `_Bool partial` with a plain test | 619 |
+| `partial && small` in one test, `partial > 0 && small` | 601, 595 |
+| `partial` as a count, `> 0` natural: `0x4000 - len` | 213 |
+| the same with `(int)len`, `(0x4000 - len) / 512`, `32 - len / 512` | 239, 639, 377 |
+
+Why: attempt 25. The len test needs opcode positive's 73% for imgAddFile (where small is known) and the inner small test 50% for imgAdd (ifcombine keeps the inner probability); comparisons with 0 by `==`/`!=` get no prediction, `&&` folds `> 0` to `!= 0` first, and a count keeps its subtraction in the code.
+
+### imgAdd's `used[2]`
+
+| Arm | Lines |
+|---|---|
+| `int used[2] = { x / 512, 0 }` summed from 256 (landed), or the loop bound `sizeof(used) / sizeof(used[0])` | 0 |
+| `left = 256 - x / 512;` | 6 (writeFsTable) |
+| `struct { int used, total; }` | 30 |
+| `{ 256, x / 512 }`, `left = n[0]`, k from 1 (int or uint32_t, `< 2` or `!= 2`) | 453-717 |
+| counting loops (`left--` per used page, by k up or down, by page or by 512) | 785-11504 |
+| a page map, `if (k >= used) left++` over 256 | 2660 |
+
+Why: attempt 23. The scope clobber of a local array whose loop indexes it until cunrolli keeps the nonzero arm alive past lim2, which orders the PHI names unswitch frees, and so writeFsTable's FS-exit compare. Constant indexes are SRA'd early (struct, one-element arrays: clobber gone). Attempt 24 showed a real second entry can't be `pages` (left's PHI is before the rounding, so the table puts a sub in each arm: 112), and the store route needs a memset on both arms (6 lines, not landed). Over-long arrays aren't counted (the user's rule), so with the alternatives measured the TODO is settled.
+
+### imgAdd's `(int)pages` casts and `len >> 9`
+
+| Form | Lines |
+|---|---|
+| casts, `len >> 9` with `len % 512` or `len & 511` | 0 |
+| casts, `len / 512` | 8 (writeFsTable) |
+| no casts; one cast on either side; `pages % 4`; `& ~3u`; `& -4`; `int r = pages & 3`; `(int)(pages + 4) & ~3` | 26-28 |
+| no casts with `len / 512` (or `pages % 4` with `len / 512`) | 4 (.constprop.1, two `cmp` operand orders) |
+| `pages += 4 - (pages & 3)` and the `%` form | 32 |
+| `left -= pages; s[9] = left >> 2`; `(left - (int)pages)` | 26, 99 |
+| an int local for the count, an int `pages` for the function | 34, 212 |
+| `pages = (pages + 3) & ~3` (no test), ternaries | 154-184 |
+| the small arm's `len % 512 ? len / 512 + 1 : len / 512` here | 587 |
+
+Why: names only (attempt 25). `iw25pairs.py` from the 4-line state (build/iw/rv/both.c, gen_iw100-316, 579 singles, 26 classes within 30, 316 pairs) found one IDENTICAL pair: gen_iw234 `f3` + gen_iw233 `bm`, the landed casts with `len & 511`. Its best other pair was 2 lines, by `unsigned t` with a `(uint8_t)t` cast.
+
+### finalizeImage's page body
+
+| Form | Lines |
+|---|---|
+| landed; `< 1`; `h` re-read before `q`; `s = (uint8_t *)q + ..` | 0 |
+| `!pageErased(..)`, `== 0` | 687 |
+| `!= 1` | 794 |
+| calcPageEcc called, with `<= 0` / with `!` | 377 / 232 |
+| no re-reads / `q` only / `h` only | 468 / 437 / 207 |
+| the copy reads `xb.hdr` itself, `q` re-read (with or without `h` in the test) | 4 (the preheader's two loads swap) |
+| the copy reads both, no re-reads | 369 |
+| no locals at all; no `q`, `h` re-read | 57 |
+| `q` non-const, or the stores through `q` | 55 |
+
+Why: attempts 9 and 19. P(ECC) has to be 23-28.7%; opcode positive alone gives 27%, and calcEcd is pure, so the written-out arm has no call for the call heuristic. pageEccOk writes calcEcd's loop out too, so the hand copy is in character. The re-reads set the IRA costs that break the hdr/spare tie and PRE's load order (spare first, as Linux's preheader also has it); with xb.hdr read in place it's attempt 9's load-order problem (a named variable's versions follow the temporaries). `iw25pairs.py` from that form with no `h` at all (build/iw/rv/noh_all.c, gen_iw100-316: 553 singles, 24 classes within 30, 271 pairs) stays at 4, so the second re-read stays too. `const` on q and not h follows the prototypes: pageErased and the copy take const pointers, calcEcd's data parameter is `uint8_t *`, so h can't be const without a cast. That part isn't really borderline.

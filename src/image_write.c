@@ -520,8 +520,10 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		   tests are 450 + 450 in the optimized dump (657 + 243 lost 1 to rounding, and t
 		   took the wrong stack slot). imgAddFile, where small is known, needs the len
 		   test's 73%: at 50% it's off (tools/wip/dehint/notes/image_write.md, Attempt 25).
-		   Borderline, for review: `> 0` on a 0-or-1 flag, where `if (partial)` says
-		   the same; it is there for the 73% */
+		   Borderline, for review (approved): `> 0` on a 0-or-1 flag, where `if (partial)`
+		   says the same. Only opcode positive gives the 73%: a plain test, `!= 0`, `== 1`
+		   or `len < 0x4000` itself is 619 lines, `&&` 595. image_read tests its flags
+		   this way six times (ok, bad, o, out, newer, used) */
 		npages = 32;
 		if (partial > 0) {
 			if (small) {
@@ -548,17 +550,19 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 					((struct spt *)s)->type = type;
 					if (type != 0x2a && type != 0x2c) {
 						pages = len >> 9;
-						if (len % 512)
+						if (len & 511)
 							pages++;
 						/* the array's scope clobber keeps the nonzero arm in the CFG past lim2 (no code;
 						   the dce4 dump still has it, it's gone by the optimized dump): sccp's dump then
 						   has this PHI's old name on writeFsTable's second FS loop exit, which sets a
 						   compare's order (tools/wip/dehint/notes/image_write.md, Attempt 23).
-						   TODO: revisit the 0 entry. It does nothing except keep the array alive
-						   until cunrolli; find a real second value, or a real reason for the block.
 						   It replaced optimize("no-tree-scev-cprop") on writeFsTable.
-						   Borderline, for review: the array is one entry longer than it needs to be
-						   (not counted as a trick) */
+						   Borderline, for review (approved): the array is one entry longer than it
+						   needs to be (not counted as a trick). The arm needs a local array the loop
+						   indexes until cunrolli: the one statement is 6 lines, a struct 30, counting
+						   loops 785 or more. No real second entry fits: left's PHI comes before the
+						   rounding, so `pages` there puts a sub in each arm (112), and `{ 256, x / 512 }`
+						   summed from k = 1 is 453-717 */
 						if (off & 0x1ffff) {
 							int used[2] = { (off & 0x1ffff) / 512, 0 };
 							int k;
@@ -568,9 +572,12 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 								left -= used[k];
 						} else
 							left = 256;
-						/* TODO: the (int) casts and `len >> 9` above have no reason but SSA
-						   names, which set compare orders: 26 lines without the casts.
-						   Borderline, for review: redundant casts, and `>> 9` next to `% 512` */
+						/* the (int) casts and `len >> 9` above have no reason but SSA names,
+						   which set compare orders: 26 lines without the casts, 8 with `len / 512`,
+						   4 with neither (.constprop.1).
+						   Borderline, for review (approved): redundant casts. Sixteen other
+						   spellings of the rounding are 26-184 lines (an int `pages` 212), and a
+						   pairs search from the 4-line state (579 moves) found only these casts */
 						if ((int)pages & 3)
 							pages = ((int)pages + 4) & ~3;
 						s[9] = (left - pages) >> 2;
@@ -985,10 +992,13 @@ int finalizeImage(void)
 			   27% (profile_estimate dump); a calcPageEcc call here is 377 lines off,
 			   `== 0` 687. Re-reading both after the stores, spare first at the top
 			   and q const: 437, 207, 4, 55 without each (measured).
-			   Borderline, for review: `<= 0` on pageErased's 0 or 1; calcPageEcc
-			   written out though the function exists above; xb.spare and xb.hdr
-			   re-read after the stores though they can't have changed; const on q
-			   and not on h */
+			   Borderline, for review (approved): `<= 0` on pageErased's 0 or 1 (`!`
+			   687, `!= 1` 794; image_read's flags and net's netSendStr tests are the
+			   same idiom); calcPageEcc written out though the function exists above,
+			   as pageEccOk writes calcEcd out; xb.spare and xb.hdr re-read after the
+			   stores though they can't have changed (the copy reading xb.hdr itself
+			   is 4, the preheader's loads swapped). const on q and not on h follows
+			   the prototypes: h goes to calcEcd's `uint8_t *` */
 			const uint8_t *q = xb.spare;
 			uint8_t *h = xb.hdr;
 

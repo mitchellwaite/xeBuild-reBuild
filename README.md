@@ -65,7 +65,7 @@ These are the hints:
 Writing a function success-first, duplicating a block, inlining a helper by
 hand and spelling a byte swap differently are source shape, so they aren't
 counted. Neither are plain type casts, or an array longer than it needs to be,
-which gets a `TODO` comment explaining it instead. `filelist_ini`'s `findKey`
+which gets a comment explaining it instead. `filelist_ini`'s `findKey`
 keeps one dead `key == NULL` test that also isn't counted, because the author may
 well have written a check like it; a comment on the test explains it. Likewise
 `image_read`'s `getImageSmc` keeps an `excess` added to `addr` that is always 0,
