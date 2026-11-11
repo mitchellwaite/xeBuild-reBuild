@@ -1,6 +1,0 @@
-sh r.sh b01 d01.c 's4: { JMP(i0); sendAvatarData' 's4: { sendAvatarData'
-sh r.sh b02 d01.c 'if (arg == dummy || ({JMP(p0); 0;}))' 'if (arg == dummy)'
-sh r.sh b03 d01.c '{ AT(i0) { i0_c: __attribute__((cold)); } clientInfo' '{ AT(i0) clientInfo'
-sh r.sh b04 d01.c 'clientPatches(NULL); JUMP(i0); }' 'clientPatches(NULL); JUMP(i0); JMP(i0); }'
-sh r.sh b05 d01.c 's4: { JMP(i0); sendAvatarData' 's4: { JMP(i0); JMP(i0); sendAvatarData'
-sh r.sh b06 d01.c '{ AT(p0) { p0c: __attribute__((cold)); } clientPatches' '{ AT(p0) clientPatches'

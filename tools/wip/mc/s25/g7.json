@@ -1,1 +1,0 @@
-[["c3<", ["hdd5", "s5"]], ["c10>", ["p1", "i1", "c12"]], ["s5<", ["hdd4", "c3", "c12"]], ["esucc>", ["efail"]], ["!ebtop:q", ["esucc", "eout", "eerase"]], ["c8>", ["p1", "cdef"]], ["eerase<", ["eout", "esucc", "efail"]], ["eerase>", ["eout", "esucc"]], ["eout>", ["eerase"]]]

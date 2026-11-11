@@ -374,7 +374,7 @@ SYMBOLS = {
     0x41f330: '_netCheckOk', 0x41f390: '_netOpenSocket', 0x41f470: '_netReadInfo',
     0x41fa00: '_netClose', 0x44a6c0: '_netSock', 0x479574: '_netInfo',
     0x479578: '_netEmpty', 0x4cd844: '_netStartTime', 0x448190: '__difftime32',
-    # image_read (tools/wip/image_read.c) and what it calls; names are ours
+    # image_read (src/image_read.c) and what it calls; names are ours
     0x4136a0: '_fsFind', 0x4138c0: '_getImageLdv', 0x413ad0: '_getImageSmc',
     0x413d30: '_getImageKv', 0x414050: '_getImageMobiles', 0x414300: '_getNetKd',
     0x4144e0: '_loadFlashFile', 0x414610: '_fsFindFile', 0x414760: '_fsGetFile',
@@ -491,7 +491,7 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
     ('recvfrom', 24), ('select', 20), ('send', 16), ('setsockopt', 20), ('socket', 12))})
 # Functions already in C inside objects that are otherwise still assembly
 # (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
-# build.sh fills from `gcc -S` of src/<obj>.c (tools/wip/splice.py); data, the
+# build.sh fills from `gcc -S` of src/<obj>.c (tools/wip/splice.py, now in the wip-archive-2026-11 tag); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = set()
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')
@@ -850,7 +850,7 @@ def main():
               irename.sub(lambda m: IAT_NAMES[m.group(1)], l) for l in ls]
         piece_lines[pc] = [rename.sub(lambda m: SYMBOLS[int(m.group(1), 16)], l) for l in ls]
 
-    # a C function's jump tables: gcc writes its own, which tools/wip/splice.py puts
+    # a C function's jump tables: gcc writes its own, which tools/wip/splice.py (wip-archive-2026-11 tag) put
     # at the `#@J name k n` marker (the function's k-th table, n entries)
     jt_count = collections.Counter()
     LONG = re.compile(r'^\s*\.long\s+([\w$.@]+)\s*$')

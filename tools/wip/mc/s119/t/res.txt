@@ -1,6 +1,0 @@
-18 t/u2x1.c
-54 t/nou2.c
-88 t/r5top0.c
-88 t/u2x3.c
-98 t/r3top.c
-98 t/r5top.c

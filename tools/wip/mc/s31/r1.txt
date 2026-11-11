@@ -1,8 +1,0 @@
-rok=
-rok=c1,c3,hdd4,hdd5
-rok=c1,c3,hdd4,hdd5 | L=keys:c12
-rok=c1,c3,hdd4,hdd5 | L=keys:c12/sig:c11,c7
-rok=c1,c3,hdd4,hdd5;c2,c8,c9,c10 | L=keys:c12/sig:c11,c7
-rok=c1,c3,hdd4,hdd5,c2,c8,c9,c10 | L=keys:c12/sig:c11,c7
-rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5
-rok=c12,c11,p0,i0,c9,hdd4,hdd5,c2,c1,c10,u2,cdef,c8,c7,c3,s5 | L=keys:c12

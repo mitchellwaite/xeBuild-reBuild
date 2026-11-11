@@ -1,6 +1,0 @@
-v01|z3|{ wb3: client_usage(3, argv[i]); }|{ wb3: JMP(k67l); client_usage(3, argv[i]); }
-v02|z3|client_usage(4, argv[i]); }|JMP(k67l); client_usage(4, argv[i]); }
-v03|z3|{ AT(u2) client_usage(2, NULL); }|{ AT(u2) JMP(k67l); client_usage(2, NULL); }
-v04|d2|{ wb3: client_usage(3, argv[i]); }|{ wb3: JMP(k67l); client_usage(3, argv[i]); }
-v05|d2|client_usage(4, argv[i]); }|JMP(k67l); client_usage(4, argv[i]); }
-v06|d2|{ AT(u2) client_usage(2, NULL); }|{ AT(u2) JMP(k67l); client_usage(2, NULL); }

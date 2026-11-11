@@ -1,5 +1,0 @@
-3 3 extra ins 29(k-1) by 118@99 ; extra ins 80(k1) by 55@0 ; pre ('push', 53, 0)->before ('push', 141, -1000306)
-3 3 extra ins 138(k-1) by 134@0 ; extra ins 78(k0) by 141@0 ; pre ('push', 53, 0)->before ('push', 129, -1000404)
-3 3 extra ins 78(k0) by 126@99 ; key 33=-2 ; pre ('push', 53, 0)->before ('get', 141)
-3 4 extra ins 29(k-1) by 129@0 ; extra ins 78(k0) by 125@99 ; key 78=1 ; pre ('push', 35, 0)->before ('push', 29, -2)
-3 3 extra ins 138(k-3) by 115@99 ; extra ins 80(k1) by 55@0 ; pre ('push', 53, 0)->before ('push', 131, -1000308)

@@ -46,7 +46,7 @@ src/globals.c            the program's COMMON (uninitialized global) block, in
 tools/re/ddfix.py              ddisasm output -> build/xeBuild.s + .lines.json (see below)
 tools/re/split.py              build/xeBuild.lines.json -> src/ (object boundaries, names)
 tools/re/units.py              objects from .eh_frame CIEs; profile of each for naming
-tools/wip/gcda.py              crafted .gcda for a profile build (unused by build.sh now)
+tools/wip/gcda.py              crafted .gcda for a profile build (unused; in the wip-archive-2026-11 tag)
 tools/re/objcmp.py             section-by-section compare of a .o against the exe
 tools/re/execmp.py             header/section/byte compare of two exes
 tools/re/stamp.py              set PE timestamp and recompute checksum
@@ -128,9 +128,10 @@ pulled log's strings into console_hdd).
 #### Mixed objects: moving a file to C one function at a time
 
 (History: every object is whole C now, and `build.sh` no longer assembles
-`.s` files or splices C functions into them, so `tools/wip/splice.py` is unused;
+`.s` files or splices C functions into them, so `tools/wip/splice.py` is unused
+(it and the other wip scripts are in the `wip-archive-2026-11` tag);
 `build` compiles plainly since the eleventh pass in tools/wip/README.md, and
-`mode_client` since tools/wip/mc/s150/NOTES.md.)
+`mode_client` since s150 in tools/wip/mc/NOTES.md.)
 
 An object doesn't have to move to C all at once. Functions listed in
 `split.py`'s `C_FUNCS` (named in `SYMBOLS`) are written in `src/<obj>.c`.

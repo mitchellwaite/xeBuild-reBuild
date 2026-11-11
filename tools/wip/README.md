@@ -1,11 +1,23 @@
 # Work in progress
 
-C ports that don't match yet, kept out of `src/` so `build.sh` still uses
-the generated asm (and still reproduces the SHA256).
+Notes from the matching work. Every object is built from `src/` now, so
+this folder keeps only the write-ups: this file, `dehint/` (the de-hinting
+notes and `BORDERLINE.md`), `aio/`, `mu/` and `mc/NOTES.md` (the mode_client
+attempts s1 to s150, one section each).
 
-`hintsearch.py <obj> [ifs] [pairs]` removes each hint in `src/<obj>.c` in turn,
-keeps the removals that leave the object unchanged and lists the closest misses.
-Its docstring says what to check before copying the result back.
+The scripts, drafts, sweep variants and logs these notes mention are in the
+`wip-archive-2026-11` tag. To get them back:
+
+    git checkout wip-archive-2026-11 -- tools/wip/<path>
+
+or browse the tag on GitHub (GitHub's code search only covers `master`).
+A new draft that doesn't match yet can still be parked here as
+`tools/wip/<obj>.c`; `tools/re/progress.py` counts it.
+
+`hintsearch.py <obj> [ifs] [pairs]` (in the tag) removes each hint in
+`src/<obj>.c` in turn, keeps the removals that leave the object unchanged and
+lists the closest misses. Its docstring says what to check before copying the
+result back.
 
 The sections below describe how each object first matched. `fileutil`, `net`,
 `console_hdd` and `bootloaders` have since lost most or all of those hints, so

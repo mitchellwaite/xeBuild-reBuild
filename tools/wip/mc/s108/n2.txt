@@ -1,9 +1,0 @@
-a_eerase_hot
-a_eerase_cold
-a_esucc_hot
-a_esucc_cold
-a_efail_hot
-a_efail_cold
-a_eout_hot
-a_eout_cold
-a_einv_hot

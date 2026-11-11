@@ -1,7 +1,0 @@
-A=$'\n\n\n\n\tif (block != -1) {'
-sh r.sh a14 d01.c "$A" $'\n\tif (__builtin_constant_p(block + 79) && __builtin_constant_p(block + 80)) goto efail;\n\n\n\tif (block != -1) {'
-sh r.sh a15 d01.c "$A" $'\n\tif (__builtin_constant_p(block + 79) && __builtin_constant_p(block + 80)) goto eout;\n\n\n\tif (block != -1) {'
-sh r.sh a16 d01.c "$A" $'\n\tif (__builtin_constant_p(block + 79) && __builtin_constant_p(block + 80) && __builtin_constant_p(block + 81)) goto efail;\n\n\n\tif (block != -1) {'
-sh r.sh a17 d01.c "$A" $'\n\tif (__builtin_constant_p(block + 79) && __builtin_constant_p(block + 80) && __builtin_constant_p(block + 81)) goto eout;\n\n\n\tif (block != -1) {'
-sh r.sh a18 d01.c "$A" $'\n\tif (__builtin_constant_p(block + 79)) goto efail; if (__builtin_constant_p(block + 82)) goto eout;\n\n\n\tif (block != -1) {'
-sh r.sh a19 d01.c "$A" $'\n\tif ((char *)__builtin_constant_p(block + 79) == (char *)1) goto efail;\n\n\n\tif (block != -1) {'

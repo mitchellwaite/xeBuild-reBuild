@@ -1,147 +1,0 @@
-x0 fncmp=26 sig2=6 inv=5 | inv:4 -ip:7 hdd5:4 hdd4:4 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 Info145:0 CU79:0 CU81:0 -c:0 -i:0
-z01 fncmp=334 sig2=30 inv=27 | inv:4 -ip:7 Blk:3 CU108:3 :2 Pat127:2 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 -c:0 CU42:0 CU53:0 -i:0 Info145:0 CU79:0 CU81:0 CU35:0 :0
-za_00b fncmp=276 sig2=24 inv=33 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 Pat127:2 -w:2 CU33:1 CU29:1 -e:1 CU53:0 -c:0 CU81:0 CU79:0 -i:0 Inv:0 CU35:0 CU42:0 Info145:0 :0 :0
-za_00f fncmp=276 sig2=24 inv=32 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 Pat127:2 -w:2 CU33:1 CU29:1 -e:1 CU53:0 -c:0 CU81:0 CU79:0 -i:0 Inv:0 CU35:0 CU42:0 Info145:0 :0 :0
-za_01f fncmp=180 sig2=18 inv=18 | inv:4 :0 -ip:7 CU108:3 Blk:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Pat127:0 Inv:0 CU81:0 CU35:0 CU79:0 CU42:0 CU53:0 Info145:0 -c:0 -i:0 -p:0
-za_01b fncmp=180 sig2=18 inv=18 | inv:4 :0 -ip:7 CU108:3 Blk:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Pat127:0 Inv:0 CU81:0 CU35:0 CU79:0 CU42:0 CU53:0 Info145:0 -c:0 -i:0 -p:0
-za_02f fncmp=9999 sig2=0 inv? | 
-za_02b fncmp=9999 sig2=0 inv? | 
-za_03f fncmp=114 sig2=20 inv=23 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 CU81:0 -c:0 Info145:0 :0 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 CU79:0 -i:0 -p:0
-za_03b fncmp=114 sig2=20 inv=23 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 CU81:0 -c:0 Info145:0 :0 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 CU79:0 -i:0 -p:0
-za_04f fncmp=9999 sig2=0 inv? | 
-za_04b fncmp=9999 sig2=0 inv? | 
-za_05f fncmp=158 sig2=18 inv=18 | inv:4 -ip:7 Blk:3 CU108:3 :2 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 CU79:0 CU35:0 Inv:0 Info145:0 Pat127:0 CU42:0 CU53:0 CU81:0 -c:0 -i:0 -p:0
-za_05b fncmp=158 sig2=18 inv=18 | inv:4 -ip:7 Blk:3 CU108:3 :2 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 CU79:0 CU35:0 Inv:0 Info145:0 Pat127:0 CU42:0 CU53:0 CU81:0 -c:0 -i:0 -p:0
-za_06f fncmp=176 sig2=16 inv=26 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Info146:0 CU35:0 Pat128:0 -c:0 -i:0 -p:0
-za_06b fncmp=176 sig2=16 inv=26 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Info146:0 CU35:0 Pat128:0 -c:0 -i:0 -p:0
-za_07f fncmp=176 sig2=16 inv=26 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Info147:0 CU35:0 Pat129:0 -c:0 -i:0 -p:0
-za_07b fncmp=176 sig2=16 inv=26 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Info147:0 CU35:0 Pat129:0 -c:0 -i:0 -p:0
-za_08f fncmp=158 sig2=20 inv=20 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 -c:0 CU79:0 Pat127:0 :0 Info145:0 CU35:0 CU42:0 CU53:0 CU81:0 -i:0 -p:0
-za_08b fncmp=158 sig2=20 inv=20 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 -c:0 CU79:0 Pat127:0 :0 Info145:0 CU35:0 CU42:0 CU53:0 CU81:0 -i:0 -p:0
-za_09f fncmp=108 sig2=16 inv=19 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 :1 -e:1 CU33:1 CU29:1 Inv:0 CU81:0 CU79:0 Pat129:0 Info147:0 CU35:0 CU42:0 CU53:0 -c:0 -i:0 -p:0
-za_09b fncmp=108 sig2=16 inv=19 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 :1 -e:1 CU33:1 CU29:1 Inv:0 CU81:0 CU79:0 Pat129:0 Info147:0 CU35:0 CU42:0 CU53:0 -c:0 -i:0 -p:0
-za_10f fncmp=176 sig2=14 inv=17 | inv:4 :1 -ip:7 CU108:3 Blk:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Pat127:0 Inv:0 CU81:0 Info145:0 CU79:0 CU42:0 CU53:0 CU35:0 -c:0 -i:0 -p:0
-za_10b fncmp=176 sig2=14 inv=17 | inv:4 :1 -ip:7 CU108:3 Blk:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Pat127:0 Inv:0 CU81:0 Info145:0 CU79:0 CU42:0 CU53:0 CU35:0 -c:0 -i:0 -p:0
-za_11f fncmp=176 sig2=14 inv=17 | inv:4 :1 -ip:7 CU108:3 Blk:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Pat127:0 Inv:0 CU81:0 Info146:0 CU79:0 CU42:0 CU53:0 CU35:0 -c:0 -i:0 -p:0
-za_11b fncmp=176 sig2=14 inv=17 | inv:4 :1 -ip:7 CU108:3 Blk:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Pat127:0 Inv:0 CU81:0 Info146:0 CU79:0 CU42:0 CU53:0 CU35:0 -c:0 -i:0 -p:0
-za_12f fncmp=172 sig2=26 inv=23 | inv:4 -ip:7 CU108:3 Blk:3 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Info147:0 -c:0 CU79:0 Pat127:0 CU35:0 Inv:0 :0 CU42:0 CU53:0 CU81:0 -i:0 -p:0
-za_12b fncmp=172 sig2=26 inv=23 | inv:4 -ip:7 CU108:3 Blk:3 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Info147:0 -c:0 CU79:0 Pat127:0 CU35:0 Inv:0 :0 CU42:0 CU53:0 CU81:0 -i:0 -p:0
-za_13f fncmp=114 sig2=16 inv=17 | inv:4 :1 :1 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 -e:1 CU29:1 CU53:0 Pat127:0 Info146:0 CU35:0 CU42:0 Inv:0 CU81:0 CU79:0 -c:0 -i:0
-za_13b fncmp=114 sig2=16 inv=17 | inv:4 :1 :1 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 -e:1 CU29:1 CU53:0 Pat127:0 Info146:0 CU35:0 CU42:0 Inv:0 CU81:0 CU79:0 -c:0 -i:0
-za_14f fncmp=110 sig2=14 inv=17 | inv:4 :1 :1 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 -e:1 CU29:1 CU53:0 Pat128:0 Info147:0 CU35:0 CU42:0 Inv:0 CU81:0 CU79:0 -c:0 -i:0
-za_14b fncmp=110 sig2=14 inv=17 | inv:4 :1 :1 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 -e:1 CU29:1 CU53:0 Pat128:0 Info147:0 CU35:0 CU42:0 Inv:0 CU81:0 CU79:0 -c:0 -i:0
-za_15f fncmp=178 sig2=16 inv=25 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Info145:0 CU35:0 Pat127:0 -c:0 -i:0 -p:0
-za_15b fncmp=178 sig2=16 inv=25 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Info145:0 CU35:0 Pat127:0 -c:0 -i:0 -p:0
-za_16f fncmp=174 sig2=18 inv=22 | inv:4 -ip:7 CU108:3 Blk:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Pat127:0 Info145:0 CU35:0 -c:0 -i:0 -p:0
-za_16b fncmp=174 sig2=18 inv=22 | inv:4 -ip:7 CU108:3 Blk:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Pat127:0 Info145:0 CU35:0 -c:0 -i:0 -p:0
-za_17f fncmp=176 sig2=16 inv=25 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Pat127:0 CU35:0 Info145:0 -c:0 -i:0 -p:0
-za_17b fncmp=176 sig2=16 inv=25 | inv:4 -ip:7 Blk:3 CU108:3 Fer:2 -r:2 -w:2 :1 CU33:1 CU29:1 -e:1 Inv:0 CU79:0 CU81:0 CU42:0 CU53:0 Pat127:0 CU35:0 Info145:0 -c:0 -i:0 -p:0
-za_18f fncmp=122 sig2=16 inv=17 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 -e:1 CU29:1 CU53:0 Pat127:0 Info145:0 CU35:0 CU42:0 Inv:0 CU81:0 CU79:0 -c:0 -i:0 -p:0 :0
-za_18b fncmp=122 sig2=16 inv=18 | inv:4 -ip:7 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 -e:1 CU29:1 CU53:0 Pat127:0 Info145:0 CU35:0 CU42:0 Inv:0 CU81:0 CU79:0 -c:0 -i:0 -p:0 :0
-za_19f fncmp=334 sig2=30 inv=27 | inv:4 -ip:7 Blk:3 CU108:3 Pat127:2 :2 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 -c:0 CU42:0 CU53:0 -i:0 Info145:0 CU79:0 CU81:0 CU35:0 :0
-za_19b fncmp=334 sig2=30 inv=27 | inv:4 -ip:7 Blk:3 CU108:3 :2 Pat127:2 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 -c:0 CU42:0 CU53:0 -i:0 Info145:0 CU79:0 CU81:0 CU35:0 :0
-zb_efailb fncmp=26 sig2=0 inv? | 
-zb_efaila fncmp=26 sig2=0 inv? | 
-zb_efailb fncmp=26 sig2=0 inv? | 
-zb_efaila fncmp=26 sig2=0 inv? | 
-zb_u2b fncmp=26 sig2=0 inv? | 
-zb_u2a fncmp=26 sig2=0 inv? | 
-zb_c1b fncmp=168 sig2=0 inv? | 
-zb_c1a fncmp=26 sig2=0 inv? | 
-zb_c2b fncmp=160 sig2=0 inv? | 
-zb_c2a fncmp=26 sig2=0 inv? | 
-zb_c3b fncmp=140 sig2=0 inv? | 
-zb_c3a fncmp=26 sig2=0 inv? | 
-zb_t4b fncmp=170 sig2=0 inv? | 
-zb_t4a fncmp=26 sig2=0 inv? | 
-zb_hdd4b fncmp=164 sig2=0 inv? | 
-zb_hdd4a fncmp=26 sig2=0 inv? | 
-zb_t5b fncmp=150 sig2=0 inv? | 
-zb_t5a fncmp=26 sig2=0 inv? | 
-zb_s5b fncmp=26 sig2=0 inv? | 
-zb_s5a fncmp=26 sig2=0 inv? | 
-zb_hdd5b fncmp=144 sig2=0 inv? | 
-zb_hdd5a fncmp=26 sig2=0 inv? | 
-zb_c7b fncmp=158 sig2=0 inv? | 
-zb_c7a fncmp=26 sig2=0 inv? | 
-zb_p0b fncmp=318 sig2=0 inv? | 
-zb_p0a fncmp=318 sig2=0 inv? | 
-zb_p1b fncmp=26 sig2=0 inv? | 
-zb_p1a fncmp=26 sig2=0 inv? | 
-zb_c8b fncmp=158 sig2=0 inv? | 
-zb_c8a fncmp=26 sig2=0 inv? | 
-zb_c9b fncmp=168 sig2=0 inv? | 
-zb_c9a fncmp=26 sig2=0 inv? | 
-zb_c10b fncmp=160 sig2=0 inv? | 
-zb_c10a fncmp=26 sig2=0 inv? | 
-zb_c11b fncmp=26 sig2=0 inv? | 
-zb_c11a fncmp=26 sig2=0 inv? | 
-zb_c12b fncmp=134 sig2=0 inv? | 
-zb_c12a fncmp=26 sig2=0 inv? | 
-zb_i0b fncmp=158 sig2=0 inv? | 
-zb_i0a fncmp=158 sig2=0 inv? | 
-zb_i1b fncmp=26 sig2=0 inv? | 
-zb_i1a fncmp=26 sig2=0 inv? | 
-zb_cdefb fncmp=158 sig2=0 inv? | 
-zb_cdefa fncmp=26 sig2=6 inv=5 | inv:4 -ip:7 hdd5:4 hdd4:4 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 Info145:0 CU79:0 CU81:0 -c:0 -i:0
-zb_c12b fncmp=134 sig2=12 inv=15 | inv:4 -ip:7 hdd5:4 hdd4:4 Blk:3 CU108:3 Fer:2 -r:2 -w:2 CU29:1 CU33:1 -e:1 CU53:0 Pat127:0 Info146:0 CU35:0 CU42:0 CU79:0 CU81:0 Inv:0 -c:0 -i:0
-p528_39 fncmp=28 sig2=0 inv? | 
-p533_51 fncmp=29 sig2=0 inv? | 
-p535_3 fncmp=29 sig2=0 inv? | 
-p535_59 fncmp=29 sig2=0 inv? | 
-p542_4 fncmp=39 sig2=0 inv? | 
-p542_5 fncmp=39 sig2=0 inv? | 
-p580_1 fncmp=30 sig2=0 inv? | 
-p581_24 fncmp=28 sig2=0 inv? | 
-p582_35 fncmp=28 sig2=0 inv? | 
-p583_11 fncmp=28 sig2=0 inv? | 
-p584_16 fncmp=28 sig2=0 inv? | 
-p585_17 fncmp=28 sig2=0 inv? | 
-p586_18 fncmp=28 sig2=0 inv? | 
-p587_14 fncmp=28 sig2=0 inv? | 
-p588_13 fncmp=28 sig2=0 inv? | 
-p589_7 fncmp=28 sig2=0 inv? | 
-p591_24 fncmp=28 sig2=0 inv? | 
-p599_19 fncmp=28 sig2=0 inv? | 
-p603_51 fncmp=30 sig2=0 inv? | 
-p604_14 fncmp=30 sig2=0 inv? | 
-p610_19 fncmp=28 sig2=0 inv? | 
-p611_13 fncmp=28 sig2=0 inv? | 
-p614_13 fncmp=28 sig2=0 inv? | 
-p618_21 fncmp=32 sig2=0 inv? | 
-p622_58 fncmp=28 sig2=0 inv? | 
-p627_15 fncmp=30 sig2=0 inv? | 
-p632_19 fncmp=28 sig2=0 inv? | 
-p632_32 fncmp=28 sig2=0 inv? | 
-p635_13 fncmp=28 sig2=0 inv? | 
-p639_21 fncmp=32 sig2=0 inv? | 
-p647_19 fncmp=32 sig2=0 inv? | 
-p656_54 fncmp=30 sig2=0 inv? | 
-p657_15 fncmp=30 sig2=0 inv? | 
-p658_4 fncmp=28 sig2=0 inv? | 
-p675_19 fncmp=32 sig2=0 inv? | 
-p679_19 fncmp=28 sig2=0 inv? | 
-p683_19 fncmp=32 sig2=0 inv? | 
-p691_19 fncmp=32 sig2=0 inv? | 
-p699_19 fncmp=32 sig2=0 inv? | 
-p706_20 fncmp=32 sig2=0 inv? | 
-p708_4 fncmp=39 sig2=0 inv? | 
-p709_13 fncmp=39 sig2=0 inv? | 
-p714_20 fncmp=32 sig2=0 inv? | 
-p716_4 fncmp=41 sig2=0 inv? | 
-p717_12 fncmp=41 sig2=0 inv? | 
-p721_32 fncmp=42 sig2=0 inv? | 
-p721_34 fncmp=32 sig2=0 inv? | 
-p738_29 fncmp=28 sig2=0 inv? | 
-p739_196 fncmp=28 sig2=0 inv? | 
-p739_352 fncmp=28 sig2=0 inv? | 
-p760_152 fncmp=28 sig2=0 inv? | 
-p794_2 fncmp=32 sig2=0 inv? | 
-p796_1 fncmp=32 sig2=0 inv? | 
-p797_20 fncmp=32 sig2=0 inv? | 
-p798_1 fncmp=32 sig2=8 inv=5 | inv:4 -ip:7 hdd5:4 hdd4:4 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 Info145:0 CU79:0 CU81:0 -c:0 -i:0
-p533_51 fncmp=29 sig2=6 inv=5 | inv:4 -ip:7 hdd5:4 hdd4:4 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 Info145:0 CU79:0 CU81:0 -c:0 -i:0
-p535_3 fncmp=29 sig2=6 inv=5 | inv:4 -ip:7 hdd5:4 hdd4:4 Blk:3 CU108:3 -r:2 Fer:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 Pat127:0 CU35:0 CU42:0 CU53:0 Info145:0 CU79:0 CU81:0 -c:0 -i:0
-z02 fncmp=332 nb=154 inv=28 | inv:4 -ip:7 Blk:3 :3 Pat127:3 CU108:3 Fer:2 -r:2 -w:2 CU33:1 CU29:1 -e:1 Inv:0 -c:0 CU42:0 CU53:0 -i:0 Info145:0 CU79:0 CU81:0 CU35:0 :0
-c3a fncmp=202 sig2=11 inv=3 | inv:4 -ip:7 hdd5:4 hdd4:4 :4 CU112:3 Blk:3 -r:2 Fer:2 -w:2 CU29:1 CU33:1 -e:1 Inv:0 Pat132:0 Info156:0 CU42:0 CU35:0 CU53:0 CU79:0 CU81:0 -c:0
-rdbest fncmp=219 sig2=11 inv=3 | inv:4 -ip:7 :4 hdd5:4 hdd4:4 CU110:3 Blk:3 -r:2 Fer:2 -w:2 CU29:1 CU33:1 -e:1 Inv:0 Pat129:0 Info150:0 CU42:0 CU35:0 CU53:0 CU79:0 CU81:0 -c:0

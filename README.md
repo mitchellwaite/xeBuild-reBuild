@@ -53,7 +53,7 @@ tricks some functions needed to match (and how they were removed, under
 | `build.sh` | builds everything and checks the result |
 | `tools/re/` | reverse-engineering and verification scripts |
 | `tools/` | the toolchain's packages and setup, and ddisasm setup |
-| `tools/wip/` | experiments and notes from the matching work |
+| `tools/wip/` | notes from the matching work (the experiments themselves are in the `wip-archive-2026-11` tag) |
 
 ## Building
 

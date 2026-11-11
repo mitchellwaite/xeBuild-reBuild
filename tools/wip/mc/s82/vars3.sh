@@ -1,7 +1,0 @@
-ES='esucc: log_printf(0, "Success!\n"); }'
-EE='eerase: log_printf(0, "erasing block 0x%x...", block);'
-sh r.sh v13 b2.c "$ES" 'esucc: if (__builtin_constant_p(block + 7)) goto efail; log_printf(0, "Success!\n"); }'
-sh r.sh v14 b2.c "$EE" 'eerase: if (__builtin_constant_p(block + 7)) goto eout; log_printf(0, "erasing block 0x%x...", block);'
-sh r.sh v15 b2.c "$EE" 'eerase: if (__builtin_constant_p(block + 7) && __builtin_constant_p(block + 8)) goto eout; log_printf(0, "erasing block 0x%x...", block);'
-sh r.sh v16 b2.c "$EE" 'eerase: if (__builtin_constant_p(block + 7)) goto eout; log_printf(0, "erasing block 0x%x...", block);' "$ES" 'esucc: if (__builtin_constant_p(block + 7)) goto efail; log_printf(0, "Success!\n"); }'
-sh r.sh v17 b2.c "$EE" 'eerase: if (__builtin_constant_p(block + 7) && __builtin_constant_p(block + 8)) goto eout; log_printf(0, "erasing block 0x%x...", block);' "$ES" 'esucc: if (__builtin_constant_p(block + 7)) goto efail; log_printf(0, "Success!\n"); }'
