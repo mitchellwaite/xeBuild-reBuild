@@ -487,7 +487,7 @@ only the alias and its `__builtin_unreachable` removed together, so try removals
 in combination. The last ones went by typing the data as it's used:
 the RSA keys are XeCrypt's `XECRYPT_RSAPUB_2048` and `XECRYPT_RSAPRV_2048`,
 in `xb` and in the verify and sign helpers' parameters (the generic
-`loadPubKey` fills them through a `void **`; returning the buffer instead
+`loadKey` fills them through a `void **`; returning the buffer instead
 changes its code); the signing helpers' keys and `rotSumSha`'s
 inputs aren't `const`; `romSalts` and mode_ini's `keys` are bytes;
 `getBeU32`/`getLeU32` load through `memcpy`; the 13 words set to -1 are
@@ -973,7 +973,7 @@ Objects built entirely from C, in link order.
 
 - ✅ `build_usage` (0x418a10)
 - ✅ `loadKeyFile` (0x418ee0)
-- ✅ `loadPubKey` (0x418fd0)
+- ✅ `loadKey` (0x418fd0)
 - ✅ `loadPubKeys` (0x419150)
 - ✅ `mode_build` (0x419230)
 
