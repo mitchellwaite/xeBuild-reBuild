@@ -100,7 +100,8 @@ Makefile's `PLATFORM` (detected: `win32`, `linux`, `macos`; or
 MSYS2 gcc on PATH) picks the compiler and link;
 only `win32` is the reference build; the others, `win32fixes` (the pinned
 toolchain) among them, compile with `-DXEBUILD_FIXES` for new behaviour and
-bug fixes. All of them write `build/obj/` and
+bug fixes (`#ifdef XEBUILD_FIXES` compiles new code in, `#ifndef` compiles
+original code out; README.md lists the fixes). All of them write `build/obj/` and
 `build/xeBuild[.exe]`, and `build/obj/platform` makes a platform change
 recompile everything. Compiles every object in
 the `Makefile`'s `OBJECTS` (the original's link order, which decides where ld

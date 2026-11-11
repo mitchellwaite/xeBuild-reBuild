@@ -173,7 +173,7 @@ the CB_B slot)".
 
 ## Matching
 
-As in the other plans: everything sits behind `#ifdef XEBUILD_EXT`, the
+As in the other plans: everything sits behind `#ifdef XEBUILD_FIXES`, the
 default build's preprocessed source must not change, and `make check` must
 still end with
 `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
@@ -191,7 +191,7 @@ the `#ifdef`. Don't add fields to `xb` (its layout is the original's).
 In src/build.h:
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 /* -cbx: put a CB_X between the CB_A and the CB_B; -cbxfile: a custom one
    instead of the built-in defCbx */
 extern int cbxOn;
@@ -199,7 +199,7 @@ extern char cbxName[0x400];
 #endif
 ```
 
-In `mode_build`'s argument loop, under `XEBUILD_EXT`, two branches
+In `mode_build`'s argument loop, under `XEBUILD_FIXES`, two branches
 **before** the `-c` one, `-cbxfile` first (the loop compares prefixes, so
 `-c` would take both and `-cbx` would take `-cbxfile`):
 
@@ -220,11 +220,11 @@ In `mode_build`'s argument loop, under `XEBUILD_EXT`, two branches
 `-cbx` takes no argument, so it can't swallow the output name. `-cbxfile`
 implies `-cbx`; giving both is fine.
 
-After the loop (once `-t` is known), under `XEBUILD_EXT`: if `cbxOn` and
+After the loop (once `-t` is known), under `XEBUILD_FIXES`: if `cbxOn` and
 not `xb.type == BUILD_GLITCH && xb.glitch2`, error ("-cbx needs -t glitch2
 or glitch2m") and `build_usage()`.
 
-In `build_usage`, under `XEBUILD_EXT`, after the `-8` line:
+In `build_usage`, under `XEBUILD_FIXES`, after the `-8` line:
 
 ```
    -cbx     : glitch2/glitch2m: put a CB_X between the CB_A and the CB_B (the CB_B is stored in plaintext)
@@ -237,7 +237,7 @@ nothing to insert.
 
 ### 2. The built-in CB_X and loading (src/build.c)
 
-After the existing build.c data, under `XEBUILD_EXT`:
+After the existing build.c data, under `XEBUILD_FIXES`:
 
 ```c
 /* the built-in CB_X, decrypted, nonce zero (-cbx without -cbxfile) */
@@ -281,11 +281,11 @@ A `static int loadCbx(void)`:
 - log `"loaded CB_X %s, version %d (0x%x bytes)\n"` (version at +2;
   "built-in" for the name).
 
-In `buildFlash`, under `XEBUILD_EXT`, after `loadBlFiles`/`verifyBlSigs`
+In `buildFlash`, under `XEBUILD_FIXES`, after `loadBlFiles`/`verifyBlSigs`
 succeed and before `calcBlAreaSize` (which needs the size):
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 	if (cbxOn && loadCbx())
 		return -1;
 #endif
@@ -294,7 +294,7 @@ succeed and before `calcBlAreaSize` (which needs the size):
 ### 3. Encrypting (src/keys.c, src/keys.h, src/build.c `encodeBls`)
 
 Two functions at the end of src/keys.c, prototypes in src/keys.h, all under
-`XEBUILD_EXT`:
+`XEBUILD_FIXES`:
 
 ```c
 /* a CB_X sits where the CB_B would, so the CB_A derives its key as for a
@@ -333,11 +333,11 @@ The CB_X must not change either.
 keeps everything `cbbEncrypt` wrote (pairing, LDV, per-box hash), as
 JRunner's `DecryptCBB` output of an xeBuild image does.
 
-In `encodeBls`, glitch branch, `case 6:`, under `XEBUILD_EXT`, right after
+In `encodeBls`, glitch branch, `case 6:`, under `XEBUILD_FIXES`, right after
 the `cbbEncrypt(...)` call (`j` is the CB_A there):
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 			if (cbx.data) {
 				log_printf(1, "encoding CB_X size 0x%x\n", cbx.size);
 				cbxEncrypt(cbx.data, xb.files[j].key, xb.files[j].data, cbx.key, cbx.size);
@@ -360,15 +360,15 @@ plaintext; only its encryption differs.
 
 ### 4. Image layout (src/build.c)
 
-- `calcBlAreaSize`, glitch branch: under `XEBUILD_EXT`, after
+- `calcBlAreaSize`, glitch branch: under `XEBUILD_FIXES`, after
   `size += findFileSize(6);`, add `cbx.size`. Without it the patch slot
   position and the xell room check ignore the CB_X.
-- `addBlsToImage`: under `XEBUILD_EXT`, after the retail/devkit skip tests
+- `addBlsToImage`: under `XEBUILD_FIXES`, after the retail/devkit skip tests
   and before the generic "adding %s" log (so the CB_B's logged offset is
   its real one):
 
   ```c
-  #ifdef XEBUILD_EXT
+  #ifdef XEBUILD_FIXES
   		if (type == 6 && xb.cbb && cbx.data) {
   			log_printf(1, "adding CB_X at raw offset 0x%08x len 0x%x (end 0x%x)\n",
   				   off, cbx.size, off + cbx.size);
@@ -380,7 +380,7 @@ plaintext; only its encryption differs.
 
   The CB_B, CD and CE then follow at the running offset, as JRunner's
   splice leaves them.
-- Overflow check, `buildFlash`, under `XEBUILD_EXT`, right before
+- Overflow check, `buildFlash`, under `XEBUILD_FIXES`, right before
   `addBlsToImage()`: a `static uint32_t blChainEnd(void)` that walks
   `xb.files[]` from the CB_A as `addBlsToImage` does (running offset,
   skipping `none` entries and the CB_B slot when `!xb.cbb`, plus
@@ -391,11 +391,10 @@ plaintext; only its encryption differs.
   `patchBlsBlmod` has grown the CB_B/SB. The built-in 0x400 bytes won't
   trigger it on any stock layout; a large custom CB_X could.
 
-### 5. Build the variant (Makefile)
+### 5. Build it (Makefile)
 
-Same `make ext` target as plans/header-fixes.md step 2. If that plan
-lands first, nothing to add here; otherwise do that step as part of this
-one.
+Nothing to add: every platform but win32 already compiles with
+`-DXEBUILD_FIXES` (on Windows, `make win32fixes`).
 
 ### 6. A checker (tools/)
 
@@ -422,18 +421,18 @@ re-ECC), for verification step 3.
 
 ### 7. Document it
 
-- README.md: in the `XEBUILD_EXT` section, `-cbx` and `-cbxfile`, what the
+- README.md: in the list of fixes under Building, `-cbx` and `-cbxfile`, what the
   image then contains, the errors, and that a custom CB_X is a decrypted
   CB_X taken as is.
 - NOTES.md: point to this plan from Status.
 
 ## Verification
 
-1. `make check` (without the variant) still ends with the reference SHA256.
-2. Ext build without `-cbx`: retail, glitch2, glitch2m and a single-CB
+1. `make check` (the win32 reference build) still ends with the reference SHA256.
+2. Fixes build without `-cbx`: retail, glitch2, glitch2m and a single-CB
    glitch build match the reference `xeBuild.exe` byte for byte (same
    inputs, `-norandom`).
-3. Ext build with `-cbx`, `-norandom`, glitch2 (retail CB_A, real CPU key)
+3. Fixes build with `-cbx`, `-norandom`, glitch2 (retail CB_A, real CPU key)
    and glitch2m (mfg CB_A):
    - the log shows "using built-in CB_X", "encoding CB_X", "storing ... in
      plaintext" and `adding CB_X at raw offset 0x...` right after the

@@ -91,9 +91,20 @@ The Makefile detects the platform (or set `PLATFORM=`):
 
 Only `win32` reproduces the reference, so it builds the original's
 behaviour. Every other platform compiles with `-DXEBUILD_FIXES`, which turns
-on new behaviour and bug fixes (so far: the version banner names the build
-and the compiler's target triple, e.g.
-`xeBuild reBuild (x86_64-linux-gnu)`). Every platform puts its objects in
+on new behaviour and bug fixes. So far:
+
+- the version banner names the build and the compiler's target triple, e.g.
+  `xeBuild reBuild (x86_64-linux-gnu)`;
+- the flash header: the patch slot size defaults to 0x10000 (the original
+  left it 0 for Xenon, Zephyr, Falcon and Jasper XSB images), and Xenon and
+  Zephyr images keep their KV size instead of 0. JRunner patched both after
+  every build (`fixBuggyXeBuildImage`); XeLL needs the KV size to find the
+  KV.
+
+Every fix or enhancement goes under `XEBUILD_FIXES`: `#ifdef XEBUILD_FIXES`
+compiles in new behaviour (with the original in an `#else` where it
+replaces something), and `#ifndef XEBUILD_FIXES` compiles out original
+behaviour that a fix drops. Every platform puts its objects in
 `build/obj/`; switching platforms recompiles them all. `CC`, `CFLAGS`, `LDFLAGS` and
 `LDLIBS` can be overridden on the command line or in an untracked
 `config.mk`. Re-disassembling the binary also needs ddisasm under WSL;

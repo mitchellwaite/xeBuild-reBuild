@@ -99,8 +99,8 @@ SD/SE in types 7/8.
 
 ## Matching
 
-As in plans/cb-ldv-1888.md and plans/header-fixes.md: everything below sits
-behind `#ifdef XEBUILD_EXT`, the default build's preprocessed source must
+As in plans/cb-ldv-1888.md: everything below sits
+behind `#ifdef XEBUILD_FIXES`, the default build's preprocessed source must
 not change, and `make check` must still end with
 `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
 `parseIni`, `encodeBls`, `calcBlAreaSize` and `verifyBlSigs` are matched
@@ -112,7 +112,7 @@ inside the `#ifdef` (filelist_ini.c is built with `-fno-toplevel-reorder`).
 
 ### 1. The SC layout and its flag (filelist_ini.c, filelist_ini.h)
 
-After `locRetail`, under `XEBUILD_EXT`:
+After `locRetail`, under `XEBUILD_FIXES`:
 
 ```c
 /* glitch2m with a devkit chain: locRetail with an SC (type 12) after the
@@ -129,7 +129,7 @@ int blSc;
 and in src/filelist_ini.h:
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 /* the bl section has an SC: CB_A > SB (CB_B slot) > SC > SD > SE */
 extern int blSc;
 #endif
@@ -143,7 +143,7 @@ index 12 does in `locRetail`.
 
 ### 2. Pick it from the section's line count (filelist_ini.c)
 
-A `static` helper, under `XEBUILD_EXT`:
+A `static` helper, under `XEBUILD_FIXES`:
 
 ```c
 /* the entries from off to the next label; iniPreParse has made every line
@@ -160,7 +160,7 @@ static int iniCountLines(unsigned char *buf, int off, int size)
 }
 ```
 
-In `parseIni`, under `XEBUILD_EXT`, right after
+In `parseIni`, under `XEBUILD_FIXES`, right after
 `xb.nFlashFiles = xb.nFiles - 2;` (before the files loop, which assigns the
 slots):
 
@@ -176,12 +176,12 @@ slots):
   and that an SC chain needs `-t glitch2m`, then carry on as today;
 - any other count: nothing changes.
 
-In the files loop's last `else`, under `XEBUILD_EXT`, take
+In the files loop's last `else`, under `XEBUILD_FIXES`, take
 `locRetailSc[i]` when `blSc`. The bl loop itself needs no change: it
 already reads `nbl` lines into `blOrder`'s slots, so the SC lands at index
 5, the SD at 6, the SE at 7 and the two `none` lines in the CF/CG slots.
 
-After the `xb.cbb` test, under `XEBUILD_EXT`: if `blSc && !xb.cbb`, error
+After the `xb.cbb` test, under `XEBUILD_FIXES`: if `blSc && !xb.cbb`, error
 ("the SB goes in the CB_B slot") and return 0.
 
 ### 3. Loading (src/build.c)
@@ -194,7 +194,7 @@ The `seReplacesCf` path isn't reached: the CF slot holds the 6th line (`none`).
 
 ### 4. Encrypting (src/build.c, `encodeBls`)
 
-Glitch branch, under `XEBUILD_EXT`:
+Glitch branch, under `XEBUILD_FIXES`:
 
 - new `case 12:` (only `blSc` builds have a type 12 here). Devkit
   bootloaders decrypt the SC with the zero key:
@@ -226,7 +226,7 @@ that part of today's output already works.
 
 - `addBls`: nothing to add. The SC's offset is -1, so it lands right after
   the SB and pushes the SD and SE along, as in a devkit image.
-- `calcBlAreaSize`, glitch branch: under `XEBUILD_EXT`, add
+- `calcBlAreaSize`, glitch branch: under `XEBUILD_FIXES`, add
   `findFileSize(12)` when `blSc`. Without it the patch slots and the xell
   room check are computed as if the SC weren't there, and can overlap the
   SE.
@@ -257,10 +257,10 @@ This plan doesn't: like XDKbuild, it changes only the vfuses, and
 `xb.cfLdv` (and every other file that carries it) stays as it is.
 
 In `buildFlash`'s `if (fuse)` block, after `setFuseCpuKey(e->data)`, under
-`XEBUILD_EXT`:
+`XEBUILD_FIXES`:
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 	if (blSc) {
 		/* an SE chain boots with no LDV in the vfuses (lines 7-11) */
 		memset(e->data + 56, 0, 40);
@@ -287,19 +287,18 @@ same two header fields, so nothing to fix up.
 ### 7. Signature check (src/build.c, `verifyBlSigs`), optional
 
 `case 12` looks up the SB as type 11 and today would log "could not locate
-SB data". Under `XEBUILD_EXT`, use `findFile(6)` when `blSc` so the SC is
+SB data". Under `XEBUILD_FIXES`, use `findFile(6)` when `blSc` so the SC is
 checked (and resigned with `xb.prvKey`) against the SB's key as in devkit
 builds.
 
-### 8. Build the variant (Makefile)
+### 8. Build it (Makefile)
 
-Same `make ext` target as plans/header-fixes.md step 2. If that plan
-lands first, nothing to add here; otherwise do that step as part of this
-one.
+Nothing to add: every platform but win32 already compiles with
+`-DXEBUILD_FIXES` (on Windows, `make win32fixes`).
 
 ### 9. Document it
 
-- README.md: in the `XEBUILD_EXT` section, the 7-line bl section for
+- README.md: in the list of fixes under Building, the 7-line bl section for
   glitch2m, with the example above, the warning/errors, and that the
   vfuses' LDV lines are zeroed for it (`cfldv` still applies to
   everything else).
@@ -307,14 +306,14 @@ one.
 
 ## Verification
 
-1. `make check` (without the variant) still ends with the reference SHA256.
-2. Ext build, controls that must match the reference `xeBuild.exe` byte for
+1. `make check` (the win32 reference build) still ends with the reference SHA256.
+2. Fixes build, controls that must match the reference `xeBuild.exe` byte for
    byte (same inputs, `-norandom`):
    - the 6-line g2m ini (CB_A, SB, SD, SE, none, none);
    - retail and glitch2 CB_A > CB_B builds with a stray 7th line (the
      warning, then the same output as today);
    - a single-CB retail build and a devkit build.
-3. Ext build, the 7-line ini, `-norandom`:
+3. Fixes build, the 7-line ini, `-norandom`:
    - the log shows the "has 7 entries" line and
      `adding SC_17489.bin at raw offset ...` between the SB and the SD;
    - compare against the image from the current post-build step, made from

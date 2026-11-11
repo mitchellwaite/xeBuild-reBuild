@@ -458,7 +458,7 @@ at compile time:
 - `buildImage`'s 28 header values are written as what they mean:
   `flashHdr.magic = BE16C(0xff4f)`, `flashHdr.kvAddr = BE32C(0x4000)`,
   `flashHdr.patchSlotSize = BE32C(0x10000)`, and so on (the table in 3).
-  This also helps plans/header-fixes.md, which had to decode these values.
+  It also spells the header fix's `patchSlotSize = 0x100` (0x10000 on disk) as what it means.
   The constants fold to the same numbers, so the code should be identical;
   `make check` decides. Any site where it isn't gets a per-site `#if
   XB_BIG_ENDIAN`.

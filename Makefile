@@ -34,7 +34,8 @@
 #   macos        macOS (detected): the installed clang.
 #
 # Fixes: every platform but win32 compiles with -DXEBUILD_FIXES, which turns
-# on the new behaviour and bug fixes (#ifdef XEBUILD_FIXES in the source);
+# on the new behaviour and bug fixes (#ifdef XEBUILD_FIXES compiles new code
+# in, #ifndef XEBUILD_FIXES compiles original code out);
 # win32 builds the original's behaviour, as the reference bytes need.
 #
 # Only win32 and win32fixes fix the bitness (its toolchain is i686-only).  The others set

@@ -22,7 +22,7 @@ testkit build types reach it. The plan ties it to a console flag as well.
 ## Matching
 
 Any behaviour change moves `make check` off the reference SHA256. Put the
-whole feature behind a compile-time switch (e.g. `#ifdef XEBUILD_EXT`) so
+whole feature behind a compile-time switch (`#ifdef XEBUILD_FIXES`, which every platform but win32 defines) so
 the default build stays byte-identical, or keep it on its own branch.
 
 ## Changes

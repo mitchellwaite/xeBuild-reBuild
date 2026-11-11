@@ -43,8 +43,11 @@ NOTES.md has the findings, layout and the pipeline.
   <name> [flags]` (MATCH or a diff against the original). For a whole file,
   compare its `.text` against `build/obj/<obj>.o` from the last matching
   build (objdump without addresses). Then run the full build.
-- New behaviour and bug fixes go under `#ifdef XEBUILD_FIXES` (with the
-  original code in the `#else`), so `make check` still matches. The Makefile
+- Every fix or enhancement goes under the `XEBUILD_FIXES` define (no other
+  switch), so `make check` still matches: `#ifdef XEBUILD_FIXES` compiles in
+  new behaviour (with the original code in an `#else` when it replaces
+  something), and `#ifndef XEBUILD_FIXES` compiles out original behaviour
+  a fix drops. Add a line for each to README.md's list of fixes. The Makefile
   defines it for every platform but `win32`; `make win32fixes` builds it with
   the pinned toolchain.
 - File names and boundaries live in `tools/re/split.py` (`NAMES`, with the evidence

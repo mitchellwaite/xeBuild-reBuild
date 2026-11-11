@@ -73,8 +73,8 @@ so the plan tracks where the value came from instead of testing for 0.
 ## Matching
 
 `make check` must keep producing the reference SHA256. As in
-plans/xenon64.md and plans/header-fixes.md, every change sits behind
-`#ifdef XEBUILD_EXT`, and the default build doesn't define it. `encodeBls`,
+plans/xenon64.md, every change sits behind
+`#ifdef XEBUILD_FIXES`, and the default build doesn't define it. `encodeBls`,
 `getImageLdv`, `buildImage` and the option parsers are matched through
 code-free hints, so keep the new code in separate `#ifdef` blocks or
 `static` helpers and don't reshape the code around them. The default
@@ -84,11 +84,11 @@ build's preprocessed source has to stay exactly the same.
 
 ### 1. Track where the LDV came from (options.c, options.h)
 
-An ext-only global, defined in src/options.c and declared in
+An fixes-only global, defined in src/options.c and declared in
 src/options.h:
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 /* where xb.cfLdv came from; LDV_NONE also covers the guessed 1 */
 enum { LDV_NONE, LDV_OPTION, LDV_DUMP };
 extern int ldvFrom;
@@ -101,10 +101,10 @@ options.ini read (only if the value it read isn't 0).
 
 ### 2. Keep the dump's LDV, including 0 (bootloaders.c, image_read.c)
 
-- `cbGetPairing`: under `XEBUILD_EXT`, return `getBeU32(buf + 32)` without
+- `cbGetPairing`: under `XEBUILD_FIXES`, return `getBeU32(buf + 32)` without
   the mask, so the low byte is the CB's LDV. Its only caller is
   `getImageLdv`.
-- `getImageLdv`, under `XEBUILD_EXT`:
+- `getImageLdv`, under `XEBUILD_FIXES`:
   - When `xb.cfLdv` is still 0 and the CF or the CB decrypted (`pairing`
     nonzero), take its low byte as today (capped at 32) and set
     `ldvFrom = LDV_DUMP`. This now includes a CB with LDV 0, which leaves
@@ -117,16 +117,16 @@ options.ini read (only if the value it read isn't 0).
 ### 3. Don't turn a known 0 into 1 (image_write.c)
 
 In `buildImage`, the "cfldv was not set anywhere" fallback: under
-`XEBUILD_EXT`, skip it when `ldvFrom != LDV_NONE`. That way a dump CB with
+`XEBUILD_FIXES`, skip it when `ldvFrom != LDV_NONE`. That way a dump CB with
 LDV 0 stays 0. Builds with no known LDV still get the guessed 1 and the
 warning, as today. Step 4 then refuses them in the CE 1888 case.
 
 ### 4. Detect the case and set the LDV (src/build.c)
 
-A `static` helper under `XEBUILD_EXT`, next to `findFileN`:
+A `static` helper under `XEBUILD_FIXES`, next to `findFileN`:
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 /* retail CE 1888 with no CF/CG: the CB carries the LDV */
 static int cbCarriesLdv(void)
 {
@@ -152,7 +152,7 @@ static int cbCarriesLdv(void)
 At the top of `encodeBls`, before the loop:
 
 ```c
-#ifdef XEBUILD_EXT
+#ifdef XEBUILD_FIXES
 	if (cbCarriesLdv()) {
 		if (ldvFrom == LDV_NONE) {
 			log_printf(0, "\n******* ERROR: CE 1888 with no patch slots: the CB needs the console's LDV,"
@@ -182,28 +182,27 @@ Notes:
 - Optional: show it in `main.c`'s summary next to `CF LDV`, under the same
   `#ifdef`.
 
-### 5. Build the variant (Makefile)
+### 5. Build it (Makefile)
 
-Same target as plans/header-fixes.md step 2 (`make ext`, adds
-`-DXEBUILD_EXT`, writes to `build/ext/`, skips the SHA256 check). If that
-plan lands first, nothing to add here; otherwise do that step as part of
-this one.
+Nothing to add: every platform but win32 already compiles with
+`-DXEBUILD_FIXES` (on Windows, `make win32fixes` builds `build/xeBuild.exe`
+with the pinned toolchain and skips the SHA256 check).
 
 ### 6. Document it
 
-- README.md: add a line to the `XEBUILD_EXT` section, including the new
+- README.md: add a line to the list of fixes under Building, including the new
   error and that `cfldv` (or a dump) is required for a CE 1888 image
   without patch slots.
 - NOTES.md: point to this plan from Status.
 
 ## Verification
 
-1. `make check` (without the variant) still ends with
+1. `make check` (the win32 reference build) still ends with
    `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
-2. Ext build, retail filelist with a CE 1888 and CF/CG set to `none`, CPU
+2. Fixes build, retail filelist with a CE 1888 and CF/CG set to `none`, CPU
    key, `cfldv=N`:
    - the log shows `no patch slots, CB LDV set to N`;
-   - feed the output back as `nanddump.bin` to `build/ext/xeBuild.exe`:
+   - feed the output back as `nanddump.bin` to the fixes build's `build/xeBuild.exe`:
      "setting LDV from image CB to N";
    - a small script in `tools/`: decrypt the CB (or CB_B) with the 1BL
      key / CB_A key, check byte 0x23 == N, and recompute HMAC(CPU key; RC4
@@ -216,7 +215,7 @@ this one.
 5. Controls that must match the reference `xeBuild.exe` byte for byte
    (same inputs, random keys off): retail with a CF/CG, a CE newer than
    1888, a glitch build, a JTAG build.
-6. Hardware, if available: the ext image boots on the console the LDV
+6. Hardware, if available: the fixes image boots on the console the LDV
    came from.
 
 Needs real inputs (a CE 1888 + bootloaders, a CPU key, ideally a matching
@@ -229,11 +228,11 @@ dump), which the repo doesn't have.
   including one that adds a CF. A CB LDV of 0 then also skips the guessed
   1 for that CF. That should be closer to the CPU than the guess, but it
   changes output outside the CE 1888 case. To keep it narrow instead,
-  store the dump's CB byte in its own ext-only global and use it only in
+  store the dump's CB byte in its own fixes-only global and use it only in
   step 4, leaving `xb.cfLdv` and the fallback as they are.
 - **`cfldv=0` is still rejected** on the command line. A console with LDV 0
   can only be built from its dump. If that should also work from just a
-  CPU key, accept `cfldv=0` under `XEBUILD_EXT` (it sets
+  CPU key, accept `cfldv=0` under `XEBUILD_FIXES` (it sets
   `ldvFrom = LDV_OPTION`).
 - **Glitch builds** with a CE 1888 use `cbaEncryptZero`, so there's no LDV
   to set. Out of scope.
