@@ -83,11 +83,15 @@ The Makefile detects the platform (or set `PLATFORM=`):
 | Platform | Compiler | Output | Checked |
 |---|---|---|---|
 | `win32` (Windows) | the pinned toolchain | `build/xeBuild.exe` | yes, by default |
+| `win32fixes` (`make win32fixes`) | the pinned toolchain, with fixes | `build/xeBuild.exe` | no |
 | `win32latest` (`make win32latest`) | the MSYS2 `gcc` on PATH | `build/xeBuild.exe` | no |
 | `linux` | the installed `gcc` | `build/xeBuild` | no |
 | `macos` | the installed `clang` | `build/xeBuild` | no |
 
-Only `win32` reproduces the reference. Every platform puts its objects in
+Only `win32` reproduces the reference, so it builds the original's
+behaviour. Every other platform compiles with `-DXEBUILD_FIXES`, which turns
+on new behaviour and bug fixes (so far: the banner names the build, e.g.
+`xeBuild reBuild (linux-amd64)`). Every platform puts its objects in
 `build/obj/`; switching platforms recompiles them all. `CC`, `CFLAGS`, `LDFLAGS` and
 `LDLIBS` can be overridden on the command line or in an untracked
 `config.mk`. Re-disassembling the binary also needs ddisasm under WSL;

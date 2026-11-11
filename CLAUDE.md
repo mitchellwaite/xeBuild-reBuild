@@ -43,6 +43,10 @@ NOTES.md has the findings, layout and the pipeline.
   <name> [flags]` (MATCH or a diff against the original). For a whole file,
   compare its `.text` against `build/obj/<obj>.o` from the last matching
   build (objdump without addresses). Then run the full build.
+- New behaviour and bug fixes go under `#ifdef XEBUILD_FIXES` (with the
+  original code in the `#else`), so `make check` still matches. The Makefile
+  defines it for every platform but `win32`; `make win32fixes` builds it with
+  the pinned toolchain.
 - File names and boundaries live in `tools/re/split.py` (`NAMES`, with the evidence
   for each). Data boundaries are inferred; keep 4-byte alignment of every
   section piece (gas pads sections to 4).

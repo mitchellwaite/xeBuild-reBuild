@@ -20,7 +20,34 @@
 #include "mode_update.h"
 #include "sysupdate.h"
 
+#ifdef XEBUILD_FIXES
+/* the target as <os>-<arch>, as in a release file name */
+#if defined(_WIN32)
+#define XEBUILD_OS "windows"
+#elif defined(__APPLE__)
+#define XEBUILD_OS "macos"
+#elif defined(__linux__)
+#define XEBUILD_OS "linux"
+#elif defined(__FreeBSD__)
+#define XEBUILD_OS "freebsd"
+#else
+#define XEBUILD_OS "unknown"
+#endif
+#if defined(__x86_64__) || defined(_M_X64)
+#define XEBUILD_ARCH "amd64"
+#elif defined(__i386__) || defined(_M_IX86)
+#define XEBUILD_ARCH "x86"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define XEBUILD_ARCH "arm64"
+#elif defined(__arm__) || defined(_M_ARM)
+#define XEBUILD_ARCH "arm"
+#else
+#define XEBUILD_ARCH "unknown"
+#endif
+#define XEBUILD_NAME "xeBuild reBuild (" XEBUILD_OS "-" XEBUILD_ARCH ")"
+#else
 #define XEBUILD_NAME "xeBuild"
+#endif
 #define XEBUILD_MAJOR 1
 #define XEBUILD_MINOR 21
 #define XEBUILD_BUILD "810"

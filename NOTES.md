@@ -95,8 +95,11 @@ GNU make; `-j8` builds in parallel, and only changed objects are rebuilt
 (`-MMD` tracks headers). `check` runs `execmp.py` after the link and stamp
 and fails unless the SHA256 matches; on Windows it is the default goal. The
 Makefile's `PLATFORM` (detected: `win32`, `linux`, `macos`; or
-`win32latest`, a current MSYS2 gcc on PATH) picks the compiler and link;
-only `win32` is the reference build. All of them write `build/obj/` and
+`win32fixes`, the pinned toolchain with the fixes; `win32latest`, a current
+MSYS2 gcc on PATH) picks the compiler and link;
+only `win32` is the reference build; the others, `win32fixes` (the pinned
+toolchain) among them, compile with `-DXEBUILD_FIXES` for new behaviour and
+bug fixes. All of them write `build/obj/` and
 `build/xeBuild[.exe]`, and `build/obj/platform` makes a platform change
 recompile everything. Compiles every object in
 the `Makefile`'s `OBJECTS` (the original's link order, which decides where ld

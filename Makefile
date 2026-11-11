@@ -7,6 +7,8 @@
 #   make check      win32 only: build, compare with xeBuild.exe, check SHA256
 #   make win32latest   build with the gcc on PATH (a current MSYS2), same as
 #                   `make PLATFORM=win32latest`
+#   make win32fixes    build with the pinned toolchain and the fixes, same as
+#                   `make PLATFORM=win32fixes`
 #   make clean      remove the platform's objects and executable
 #   make V=1        print each full command, not just the file it works on
 #   make QUIET_WARNINGS=1   (or QUIET_WARNINGS=1 in the environment) turn off
@@ -21,6 +23,8 @@
 #                tools/toolchain-4745 (run tools/fetch_toolchain.sh first,
 #                from Git Bash); the only build that reproduces the reference
 #                bytes.
+#   win32fixes   Windows with the pinned toolchain, and the fixes (below).
+#                Never matches.
 #   win32latest  Windows with the latest MSYS2 gcc on PATH.  The gcc driver
 #                picks its own default target and libraries: a MINGW32 shell
 #                builds a 32-bit exe like the original, a MINGW64 or UCRT64
@@ -28,7 +32,11 @@
 #   linux        Linux (detected): the installed gcc.
 #   macos        macOS (detected): the installed clang.
 #
-# Only win32 fixes the bitness (its toolchain is i686-only).  The others set
+# Fixes: every platform but win32 compiles with -DXEBUILD_FIXES, which turns
+# on the new behaviour and bug fixes (#ifdef XEBUILD_FIXES in the source);
+# win32 builds the original's behaviour, as the reference bytes need.
+#
+# Only win32 and win32fixes fix the bitness (its toolchain is i686-only).  The others set
 # no -m32/-m64 or target and build for the compiler's default, 32- or
 # 64-bit; pass e.g. CFLAGS=-m32 LDFLAGS=-m32 for a different one.
 #
@@ -84,6 +92,10 @@ MAP := build/xeBuild.map
 #   STAMP          1 to stamp the reference link time into the exe
 #   CHECK          1 when `make check` can reproduce the reference
 #   ORIG_PATHS     1 to compile with the original source paths (__FILE__)
+#   FIXES          1 to compile in the new behaviour and bug fixes
+#                  (-DXEBUILD_FIXES); all but win32
+
+FIXES := 1
 
 # --- win32: the pinned toolchain (reference build) -------------------------
 ifeq ($(PLATFORM),win32)
@@ -105,6 +117,20 @@ MAP_FLAGS := -Wl,--no-insert-timestamp,-Map,$(MAP)
 STAMP := 1
 CHECK := 1
 ORIG_PATHS := 1
+FIXES := 0
+
+# --- win32fixes: the pinned toolchain, with the fixes ----------------------
+# The reference build's compiler and link, without the stamp or the original
+# paths.
+else ifeq ($(PLATFORM),win32fixes)
+TC_BIN ?= tools/toolchain-4745/mingw32/bin
+ifdef CC_UNSET
+CC := $(TC_BIN)/gcc.exe
+endif
+EXE := build/xeBuild.exe
+PLAT_LDFLAGS := -s
+PLAT_LIBS := -lws2_32
+MAP_FLAGS := -Wl,-Map,$(MAP)
 
 # --- win32latest: the latest MSYS2 gcc on PATH -----------------------------
 else ifeq ($(PLATFORM),win32latest)
@@ -144,7 +170,11 @@ PLAT_LIBS :=
 MAP_FLAGS := -Wl,-map,$(MAP)
 
 else
-$(error unknown PLATFORM '$(PLATFORM)': use win32, win32latest, linux or macos)
+$(error unknown PLATFORM '$(PLATFORM)': use win32, win32fixes, win32latest, linux or macos)
+endif
+
+ifeq ($(FIXES),1)
+PLAT_CFLAGS += -DXEBUILD_FIXES
 endif
 
 # QUIET_WARNINGS=1: warnings the code was never written against (glibc's
@@ -198,7 +228,7 @@ OBJECTS := \
 	crypto/bign/spDivide crypto/bign/mpShortCmp crypto/bign/spPseudoRand
 OBJS := $(OBJECTS:%=$(OBJ)/%.o)
 
-.PHONY: all check clean win32latest
+.PHONY: all check clean win32fixes win32latest
 .DELETE_ON_ERROR:
 
 ifeq ($(CHECK),1)
@@ -278,6 +308,9 @@ check:
 	@echo "make check: only PLATFORM=win32 (the pinned toolchain) reproduces" \
 	  "the reference; this is $(PLATFORM)" >&2; exit 1
 endif
+
+win32fixes:
+	$(MAKE) PLATFORM=win32fixes
 
 win32latest:
 	$(MAKE) PLATFORM=win32latest
