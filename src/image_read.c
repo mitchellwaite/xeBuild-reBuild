@@ -212,7 +212,7 @@ check:
 	log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	return;
 sizeOk:
-	/* NOTE: dead, kept and not counted as a trick.  Borderline, for review:
+	/* NOTE: dead, kept and not counted as a trick.
 	   excess is always 0, size being 0x3000 or 0x3800 here, and the reference has
 	   no code for it.  It is there for PRE: its second operand has no value on
 	   either incoming edge, so the sum stays in this block with addr's PHI, and

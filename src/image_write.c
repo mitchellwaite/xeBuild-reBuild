@@ -520,7 +520,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		   tests are 450 + 450 in the optimized dump (657 + 243 lost 1 to rounding, and t
 		   took the wrong stack slot). imgAddFile, where small is known, needs the len
 		   test's 73%: at 50% it's off (tools/wip/dehint/notes/image_write.md, Attempt 25).
-		   Borderline, for review (approved): `> 0` on a 0-or-1 flag, where `if (partial)`
+		   `> 0` on a 0-or-1 flag, where `if (partial)`
 		   says the same. Only opcode positive gives the 73%: a plain test, `!= 0`, `== 1`
 		   or `len < 0x4000` itself is 619 lines, `&&` 595. image_read tests its flags
 		   this way six times (ok, bad, o, out, newer, used) */
@@ -557,7 +557,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						   has this PHI's old name on writeFsTable's second FS loop exit, which sets a
 						   compare's order (tools/wip/dehint/notes/image_write.md, Attempt 23).
 						   It replaced optimize("no-tree-scev-cprop") on writeFsTable.
-						   Borderline, for review (approved): the array is one entry longer than it
+						   The array is one entry longer than it
 						   needs to be (not counted as a trick). The arm needs a local array the loop
 						   indexes until cunrolli: the one statement is 6 lines, a struct 30, counting
 						   loops 785 or more. No real second entry fits: left's PHI comes before the
@@ -575,7 +575,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						/* the (int) casts and `len >> 9` above have no reason but SSA names,
 						   which set compare orders: 26 lines without the casts, 8 with `len / 512`,
 						   4 with neither (.constprop.1).
-						   Borderline, for review (approved): redundant casts. Sixteen other
+						   Redundant casts. Sixteen other
 						   spellings of the rounding are 26-184 lines (an int `pages` 212), and a
 						   pairs search from the 4-line state (579 moves) found only these casts */
 						if ((int)pages & 3)
@@ -992,7 +992,7 @@ int finalizeImage(void)
 			   27% (profile_estimate dump); a calcPageEcc call here is 377 lines off,
 			   `== 0` 687. Re-reading both after the stores, spare first at the top
 			   and q const: 437, 207, 4, 55 without each (measured).
-			   Borderline, for review (approved): `<= 0` on pageErased's 0 or 1 (`!`
+			   `<= 0` on pageErased's 0 or 1 (`!`
 			   687, `!= 1` 794; image_read's flags and net's netSendStr tests are the
 			   same idiom); calcPageEcc written out though the function exists above,
 			   as pageEccOk writes calcEcd out; xb.spare and xb.hdr re-read after the

@@ -373,7 +373,7 @@ struct fan {
 };
 
 /* round up to the 16 bytes bootloaders are padded to.
-   Borderline, for review (approved): a natural helper, but it steers gcc.  Being a call
+   A natural helper, but it steers gcc.  Being a call
    until the early inliner matters to patchBlsBlmod: inlining it too changes which findFile
    copy reuses freed low SSA names, so pt's partition sorts after cd's, and that orders two
    spill stores (it replaces no-early-inlining there).  As a macro at every site it is
@@ -396,7 +396,7 @@ static int loadBaseFile(const char *name, struct fileent *e)
 	return -1;
 }
 
-/* Borderline, for review (approved): findFileOffset and findFileSize return
+/* findFileOffset and findFileSize return
    int, like findFile, the same loop over the same table (the values are
    offsets and sizes, and image_write casts findFileOffset's back to
    uint32_t): in calcBlAreaSize their inlined results are then converted to
@@ -454,7 +454,7 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	e->size = size;
 	if (pad && (size & 15))
 		e->size = align16(size);
-	/* Borderline, for review (approved): `pad` is tested again before
+	/* `pad` is tested again before
 	   `size != e->size`, though only padding changes the size.  The compare
 	   is the original's (the Linux build keeps it on the pad path, as the
 	   reference does); the pad test is what lets the non-pad path reach the
@@ -565,7 +565,7 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	return r;
 }
 
-/* Borderline, for review (approved): crc is an int on purpose (it is compared as
+/* crc is an int on purpose (it is compared as
    unsigned through the usual conversions; int is the author's usual parameter type,
    as for the sizes and lengths of patchBlsBlmod, patchFreeboot and readFileInTo): with a
    uint32_t, ipa-cp clones this for crc == 0 and that needed a noclone attribute */
@@ -829,7 +829,7 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 }
 
 /* the cpu fan setting; returns 1 if it changed the config.
-   Borderline, for review (approved): the caller tests xb.cpuFan != 0xffffffff too.
+   The caller tests xb.cpuFan != 0xffffffff too.
    This test is folded once this is inlined, and the blocks behind it keep the lower
    frequency, which puts the section's blocks where the original has them (it
    replaces no-early-inlining on patchSmcConfig and 4 hint calls).  Without this
@@ -941,7 +941,7 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	uint32_t i, j;
 	int found;
 
-	/* Borderline, for review (approved): size is an int on purpose: its conversion in
+	/* size is an int on purpose: its conversion in
 	   the scan loops' bound tests gives next <= size in both loops (uint32_t swaps both
 	   compares' operands, 8 lines).  int is the author's usual type for a size or a length
 	   (patchBlsBlmod, patchFreeboot, patchPayloadSize, findInst, readFileInTo,
@@ -1217,7 +1217,7 @@ int verifyBlSigs(void)
 }
 
 /* a built-in copy in place of a file that couldn't be read (loadBlFiles'
-   payload and core).  Borderline, for review (approved): sharing the two
+   payload and core).  Sharing the two
    copies is natural (setFileData above is the same helper with calloc), but
    the helper was chosen for the match: early-inlined into loadBlFiles, it
    changes IPA's later inline order and the layout, so the NULL tests' r = 1
@@ -1236,7 +1236,7 @@ static int useBuiltIn(struct fileent *e, const uint8_t *data, uint32_t size)
 }
 
 /* the default 0x60-byte bootloader (type 24).
-   Borderline, for review (approved): the copy uses memmove where memcpy would
+   The copy uses memmove where memcpy would
    do (gcc turns it back into memcpy once alias analysis has run), and it
    doesn't go through useBuiltIn (which costs case 24's layout in both
    loaders).  Until then memmove is a plain call to the inliner, which sizes
@@ -1270,7 +1270,7 @@ static int loadXell(struct fileent *e)
 }
 
 /* case 24's file, or the default 0x60 bytes in its place.
-   Borderline, for review (approved): two calls where `||` would do.  Crossjump merges the
+   Two calls where `||` would do.  Crossjump merges the
    two inlined copies, which drops the copy's memory attributes, so sched2 keeps the size
    store before the copy (it replaces a pin and an assume_aligned).  Every one-call form
    (`||`, nested ifs, the good case first, an r local) is 139 lines.  Both loaders'
@@ -1286,7 +1286,7 @@ static int loadBl24(struct fileent *e)
 }
 
 /* a kit build: an SE sets the flash build number (nonzero if it did).
-   Borderline, for review (approved): the status return is ignored at the
+   The status return is ignored at the
    only call site (ordinary C, but chosen for the match; build.c ignores
    setPatchSlot's, imgAdd's and suLoadDir's too); it is there because the
    inlined return block then holds a statement until DCE (after vrp1), which
@@ -1351,7 +1351,7 @@ int loadBlFiles(void)
 					} else
 						log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
 				}
-				/* Borderline, for review (approved): r is 0 or the
+				/* r is 0 or the
 				   signature check's -1 here, so `r == -1` says what `r`
 				   would (`if (r)` is 11 lines: its block order; the
 				   tested -1 gets the opcode prediction) */
@@ -1443,7 +1443,7 @@ int loadBlFiles(void)
 				appendAddonPatches(e);
 				break;
 			case 27:
-				/* Borderline, for review (approved): the fallbacks as a
+				/* The fallbacks as a
 				   sequence of r tests (the && chain of three loads is the
 				   same behaviour).  The re-tested r sends about half of the
 				   first failure's flow past the smcConfig test at
@@ -1934,7 +1934,7 @@ void addBlsToImage(void)
 			else
 				off += 0x10;
 		}
-		/* Borderline, for review (approved): xell (25) is tested before the
+		/* xell (25) is tested before the
 		   patches (23) in both skip tests.  Live and not redundant, and neither
 		   order is the plainer one, but this one is chosen for what gcc does
 		   with it: vrp1 can only thread the kit path's other types past the
@@ -1985,7 +1985,7 @@ void addBlsToImage(void)
 }
 
 /* the bootloader types an update (xeBuild's -u) replaces.
-   Borderline, for review (approved): the patches (23) and devkit CF (15) tests are ifs of
+   The patches (23) and devkit CF (15) tests are ifs of
    their own rather than the head of the `||` chain.  Live and not redundant, but chosen for
    what gcc does with it: a lone `type == 23` gets the opcode-nonequal guess at
    profile_estimate (19.9% where the `(23|15)` pair the front end folds from `||` gets 39%,
@@ -2495,7 +2495,7 @@ uint32_t calcBlAreaSize(void)
 	return size;
 }
 
-/* Borderline, for review (approved): the salt clear and the virtual-fuse decision as a
+/* The salt clear and the virtual-fuse decision as a
    helper, which an author could write ("set up the flash build and say whether
    it uses virtual fuses"), but which is chosen for what gcc does with it.  It
    keeps the memset, so only IPA inlines it, and buildFlash then gets the

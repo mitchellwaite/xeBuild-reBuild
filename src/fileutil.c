@@ -301,7 +301,7 @@ char myatol(char c)
 // converts a decimal or 0x-prefixed hex string into a uint32_t
 // (opt_idx's myatou32, which tests the prefix in one condition; this build's
 // layout needs the 'x' result in a flag, see tools/wip/dehint/notes)
-// Borderline, for review (approved): hex is set by one if and tested by the
+// hex is set by one if and tested by the
 // next, where one condition would do.
 uint32_t myatou32(const char* dat, uint32_t defValue)
 {

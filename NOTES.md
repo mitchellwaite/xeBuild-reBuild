@@ -536,6 +536,52 @@ Licence note: BigDigits 1.0's own notice asks that the attribution text in
 `bigdigitsCopyright.txt` stay in distributed executables. `xeBuild.exe`
 doesn't contain it, so builds distributed after bug fixes should add it.
 
+## Compiler tricks by component
+
+Every application file now matches as ordinary C, built with the same `-O3`
+as the rest and with none of the hints that steer gcc and that the original
+source almost certainly didn't contain. This section listed the files that
+still needed such hints; `mode_client` was the last, so the list is empty.
+
+**How tricks were counted:** one for each non-default gcc option in `build.sh`,
+and one for each use of a hint in the source (macro uses counted individually).
+These are the hints:
+
+- **Branch hints:** `__builtin_expect`, hot and cold labels, and calls to
+  guarded hint functions
+- **Dead code:** `__builtin_constant_p` feeds, `__builtin_unreachable`, and
+  dead tests and blocks
+- **Empty `asm`:** register pins, literal ordering, `asm goto` edges and
+  barriers
+- **Attributes:** per-function `optimize(...)`, inlining and cloning control,
+  and others
+- **Declarations:** asm-label prototypes
+
+Writing a function success-first, duplicating a block, inlining a helper by
+hand and spelling a byte swap differently are source shape, so they aren't
+counted. Neither are plain type casts, or an array longer than it needs to be,
+which gets a comment explaining it instead. `filelist_ini`'s `findKey`
+keeps one dead `key == NULL` test that also isn't counted, because the author may
+well have written a check like it; a comment on the test explains it. Likewise
+`image_read`'s `getImageSmc` keeps an `excess` added to `addr` that is always 0,
+which keeps `addr`'s conversion in the block PRE would otherwise move it out of;
+its comment explains it.
+
+`mode_client` went from 141 tricks to none. Its option loop and switch were
+first fitted to bb-reorder's heap by search, with dead `__builtin_constant_p`
+feeds and `asm goto` edges setting each cold block's key. The natural source
+differs in shape, not in detail: it makes one connection for both kinds of
+run and gives a run with only a reboot or shutdown mode 6, the switch's empty
+case, where the fitted source had a connect on each path
+(`tools/wip/dehint/notes/mode_client.md`, attempt 17). One redundant `return;`
+is left, in `clientInfo`, approved in review: gcc's early-return heuristic
+needs it, and no live form matches.
+
+`src/globals.c` was never ranked because it holds only data: plain COMMON
+definitions, laid out by ld in its symbol hash-table order. The original names
+are unknown, so the ones there were picked so that order is the original's
+address order (its head comment lists the buckets).
+
 ## Symbolization checks
 
 Two independent checks that code and data can move without breaking pointers:

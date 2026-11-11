@@ -320,7 +320,7 @@ uint32_t loadManifest(const char *dir, uint32_t ver)
    bbro the original's block order where sendAvatarData inlines this. No
    spelling without a flag gets there: a createSysexDirs call guarded by the
    mount test gets the call heuristic too and cancels the mount failure's.
-   Borderline, for review (approved): r is redundant as a flag (the mount arm
+   r is redundant as a flag (the mount arm
    could return createSysexDirs() itself), the form of myatou32's `hex`. */
 int prepSysex(void)
 {
@@ -347,7 +347,7 @@ int prepSysex(void)
    A failed send ends the loop with i = manifest.count, not break: with break
    i is a plain IV and ivopts replaces the imul with a pointer.
 
-   Borderline, for review (approved): both are live and ordinary: the long
+   Both are live and ordinary: the long
    result next to netSendFile's int, as in sendCompatData, and the loop ended
    by its counter where a break would do. */
 long sendAvatarData(const char *dir, uint32_t ver)

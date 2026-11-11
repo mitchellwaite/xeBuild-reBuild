@@ -123,7 +123,7 @@ void clientInfo(const char *dir)
 		   No live form matches: `if (!out) return;` before the dump (4
 		   lines) shields the no-dump path instead, and failed first swaps
 		   the two strings in .rdata.
-		   Borderline, for review (approved): redundant return (end of the
+		   Redundant return (end of the
 		   function), where clientWriteBlocks and clientBinPatch end their
 		   success blocks with one too. */
 		return;

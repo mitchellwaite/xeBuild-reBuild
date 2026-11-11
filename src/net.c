@@ -138,7 +138,7 @@ int netSendStr(const char *s)
    opcode prediction: it keeps the clone's store block under its alignment
    threshold (`!status`, `== 0` or `< 1` there, or size cleared on both arms
    and no status, each give it a .p2align).
-   Borderline, for review (approved): each failure arm sets a value that the
+   Each failure arm sets a value that the
    next statement tests, the form of myatou32's `hex`.  0 is the function's
    own empty-reply size and status is 1 for OK; the loop's `status != 1`
    reads like the one after it (`!status` there is the same bytes). */
@@ -533,7 +533,7 @@ uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 /* rlen's scope ends before the tail, so its clobber keeps the two `mov eax,1`
    from being head-merged. `<= 0` takes the opcode predictor (`!` takes none),
    which lifts the free block over bbro's copy threshold for the epilogue.
-   Borderline, for review (approved): `<= 0` on netSendStr's 0 or 1, where
+   `<= 0` on netSendStr's 0 or 1, where
    `!` says the same.  No other test or netSendStr body gives the prediction.
    The uploads here, in netSendFile and in netWritePatches need it,
    netSendFlash's matches either way, and the command-only senders
@@ -602,7 +602,7 @@ uint8_t *netGetBadBlocks(int *len)
    the opcode predictor (`!` takes none), which lifts netSendData's block far
    enough for the return-0 block to be aligned. rlen's scope ends before the
    tail, so its clobber keeps the two `mov eax,1` from being head-merged.
-   Borderline, for review (approved): the `ok` flag is redundant (`if (name
+   The `ok` flag is redundant (`if (name
    && buf) {` is the same logic), the form of myatou32's `hex`: the test
    must guard no call (`&&` and `ok = name && buf;` are 19 lines, nested
    ifs 21-23); and `<= 0` on netSendStr's 0 or 1, as in netWriteBlocks. */
@@ -732,7 +732,7 @@ int netReboot(int how)
    profile_estimate (`!` takes none) and folds away once it's inlined. That lifts
    the free block above 10% of the entry, so bbro copies the epilogue after it
    instead of a jmp, as in netWriteBlocks.
-   Borderline, for review (approved): `<= 0` on netSendStr's 0 or 1, as in
+   `<= 0` on netSendStr's 0 or 1, as in
    netWriteBlocks. */
 int netWritePatches(const uint8_t *buf, uint32_t len)
 {
