@@ -373,10 +373,11 @@ struct fan {
 };
 
 /* round up to the 16 bytes bootloaders are padded to.
-   Borderline, for review: a natural helper, but it steers gcc.  Being a call until the
-   early inliner matters to patchBlsBlmod: inlining it too changes which findFile
-   copy reuses freed low SSA names, so pt's partition sorts after cd's, and that
-   orders two spill stores (it replaces no-early-inlining there). */
+   Borderline, for review (approved): a natural helper, but it steers gcc.  Being a call
+   until the early inliner matters to patchBlsBlmod: inlining it too changes which findFile
+   copy reuses freed low SSA names, so pt's partition sorts after cd's, and that orders two
+   spill stores (it replaces no-early-inlining there).  As a macro at every site it is
+   those 2 lines. */
 static uint32_t align16(uint32_t v)
 {
 	return (v + 15) & ~15;
@@ -395,13 +396,14 @@ static int loadBaseFile(const char *name, struct fileent *e)
 	return -1;
 }
 
-/* Borderline, for review: findFileOffset and findFileSize return int, like
-   findFile (the type is chosen for the match; the values are offsets and
-   sizes, and image_write casts findFileOffset's back to uint32_t): in
-   calcBlAreaSize their inlined results are then converted to the uint32_t
-   sums, and those conversions give the kit sum's PRE temporary a later SSA
-   name than the sum, so IRA keeps the sum in ebx as the original does (it
-   replaces a register pin) */
+/* Borderline, for review (approved): findFileOffset and findFileSize return
+   int, like findFile, the same loop over the same table (the values are
+   offsets and sizes, and image_write casts findFileOffset's back to
+   uint32_t): in calcBlAreaSize their inlined results are then converted to
+   the uint32_t sums, and those conversions give the kit sum's PRE temporary
+   a later SSA name than the sum, so IRA keeps the sum in ebx as the original
+   does (it replaces a register pin).  uint32_t for either or both is 82
+   lines in calcBlAreaSize. */
 int findFileOffset(int type)
 {
 	int i;
@@ -452,12 +454,17 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 	e->size = size;
 	if (pad && (size & 15))
 		e->size = align16(size);
-	/* Borderline, for review: the pad test is repeated to pick the log, and
-	   `size != e->size` can't be false once it holds.  Live and natural, but
-	   redundant; it's what lets the non-pad path reach the "bytes" log before
-	   branch prediction, which replaces an expect on verbose and a pin on e */
+	/* Borderline, for review (approved): `pad` is tested again before
+	   `size != e->size`, though only padding changes the size.  The compare
+	   is the original's (the Linux build keeps it on the pad path, as the
+	   reference does); the pad test is what lets the non-pad path reach the
+	   "bytes" log before branch prediction, which replaces an expect on
+	   verbose and a pin on e.  The compare alone makes ipa-cp clone
+	   loadFileCrc (and so does `(size & 15) &&` in place of `pad &&`);
+	   repeating the whole pad test, as the source did before, gives the
+	   same bytes. */
 	if (verbose) {
-		if (pad && (size & 15) && size != e->size)
+		if (pad && size != e->size)
 			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, align16(size));
 		else
 			log_printf(1, "reading %s (0x%x bytes)", name, size);
@@ -558,9 +565,10 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	return r;
 }
 
-/* Borderline, for review: crc is an int on purpose (it is compared as unsigned
-   through the usual conversions): with a uint32_t, ipa-cp clones this for crc == 0 and
-   that needed a noclone attribute */
+/* Borderline, for review (approved): crc is an int on purpose (it is compared as
+   unsigned through the usual conversions; int is the author's usual parameter type,
+   as for the sizes and lengths of patchBlsBlmod, patchFreeboot and readFileInTo): with a
+   uint32_t, ipa-cp clones this for crc == 0 and that needed a noclone attribute */
 int loadInputFile(const char *name, struct fileent *e, int pad, int crc, uint8_t *meta,
 		  int su, int fs, int common)
 {
@@ -821,10 +829,13 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 }
 
 /* the cpu fan setting; returns 1 if it changed the config.
-   Borderline, for review: the caller tests xb.cpuFan != 0xffffffff too.  This
-   test is folded once this is inlined, and the blocks behind it keep the lower
+   Borderline, for review (approved): the caller tests xb.cpuFan != 0xffffffff too.
+   This test is folded once this is inlined, and the blocks behind it keep the lower
    frequency, which puts the section's blocks where the original has them (it
-   replaces no-early-inlining on patchSmcConfig and 4 hint calls). */
+   replaces no-early-inlining on patchSmcConfig and 4 hint calls).  Without this
+   test, or with the section written in place like the gpu fan's, the cpu and gpu
+   warning blocks swap (52 lines); without the caller's test 171; with the gpu
+   section's `goto` to a warning at the end, the literals move (518). */
 static int patchCpuFan(uint8_t *smc)
 {
 	if (xb.cpuFan != 0xffffffff) {
@@ -925,19 +936,16 @@ gpuwarn:
 	goto gpudone;
 }
 
-/* a whole smc config */
-struct smcConfigData {
-	uint8_t b[0x400];
-};
-
 int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 {
 	uint32_t i, j;
 	int found;
 
-	/* Borderline, for review: size is an int on purpose: its conversion in the scan loops'
-	   bound tests gives next <= size in both loops.  The struct copy matters too: memcpy
-	   there allocates the copy's registers differently (18 lines). */
+	/* Borderline, for review (approved): size is an int on purpose: its conversion in
+	   the scan loops' bound tests gives next <= size in both loops (uint32_t swaps both
+	   compares' operands, 8 lines).  int is the author's usual type for a size or a length
+	   (patchBlsBlmod, patchFreeboot, patchPayloadSize, findInst, readFileInTo,
+	   detectController). */
 	if (e->data)
 		free(e->data);
 	e->size = 0x400;
@@ -969,7 +977,7 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	if (checkZeros(buf + i + 0x20c, 4)) {
 		log_printf(1, "extracting config\n");
 		if (size - i >= 0x400)
-			*(struct smcConfigData *)e->data = *(const struct smcConfigData *)(buf + i);
+			memcpy(e->data, buf + i, 0x400);
 	} else if (size - i >= 0x4200) {
 		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)
@@ -1209,12 +1217,14 @@ int verifyBlSigs(void)
 }
 
 /* a built-in copy in place of a file that couldn't be read (loadBlFiles'
-   payload and core).  Borderline, for review: sharing the two copies is
-   natural, but the helper was chosen for the match: early-inlined into
-   loadBlFiles, it changes IPA's later inline order and the layout, so the
-   NULL tests' r = 1 block comes before the suGetCF block, as the original
-   has it, and the SMC failure's fail: block survives (it replaces a hot
-   label in case 24's devkit arm and an empty asm barrier on fail:) */
+   payload and core).  Borderline, for review (approved): sharing the two
+   copies is natural (setFileData above is the same helper with calloc), but
+   the helper was chosen for the match: early-inlined into loadBlFiles, it
+   changes IPA's later inline order and the layout, so the NULL tests' r = 1
+   block comes before the suGetCF block, as the original has it, and the SMC
+   failure's fail: block survives (it replaces a hot label in case 24's
+   devkit arm and an empty asm barrier on fail:).  Written out in both cases
+   it is 47 lines. */
 static int useBuiltIn(struct fileent *e, const uint8_t *data, uint32_t size)
 {
 	e->data = malloc(size);
@@ -1225,14 +1235,16 @@ static int useBuiltIn(struct fileent *e, const uint8_t *data, uint32_t size)
 	return 0;
 }
 
-/* the default 0x60-byte bootloader (type 24).  Borderline, for review: the
-   copy uses memmove where memcpy would do (gcc turns it back into memcpy
-   once alias analysis has run), and it doesn't go through useBuiltIn (which
-   costs case 24's layout in both loaders).  Until then memmove is a plain
-   call to the inliner, which sizes defaultBl60 at 14 instead of 18, so IPA
-   inlines loadBl24 into loadConsoleBlFiles before loadXell and console's
-   blocks come out in the original's order (it replaces a cold label and an
-   nFiles <= 1 precheck there) */
+/* the default 0x60-byte bootloader (type 24).
+   Borderline, for review (approved): the copy uses memmove where memcpy would
+   do (gcc turns it back into memcpy once alias analysis has run), and it
+   doesn't go through useBuiltIn (which costs case 24's layout in both
+   loaders).  Until then memmove is a plain call to the inliner, which sizes
+   defaultBl60 at 14 instead of 18, so IPA inlines loadBl24 into
+   loadConsoleBlFiles before loadXell and console's blocks come out in the
+   original's order (it replaces a cold label and an nFiles <= 1 precheck
+   there).  memcpy here is 42 lines, so is useBuiltIn with memcpy; useBuiltIn
+   with memmove 90 (with or without this copy in it), setFileData 234. */
 static int defaultBl60(struct fileent *e)
 {
 	e->data = malloc(0x60);
@@ -1258,10 +1270,11 @@ static int loadXell(struct fileent *e)
 }
 
 /* case 24's file, or the default 0x60 bytes in its place.
-   Borderline, for review: two calls where `||` would do.  Crossjump merges the two inlined
-   copies, which drops the copy's memory attributes, so sched2 keeps the size
-   store before the copy (it replaces a pin and an assume_aligned).  Both
-   loaders' case 24 call this; with it and loadXell shared, loadBlFiles'
+   Borderline, for review (approved): two calls where `||` would do.  Crossjump merges the
+   two inlined copies, which drops the copy's memory attributes, so sched2 keeps the size
+   store before the copy (it replaces a pin and an assume_aligned).  Every one-call form
+   (`||`, nested ifs, the good case first, an r local) is 139 lines.  Both loaders'
+   case 24 call this (loadBlFiles' twice); with it and loadXell shared, loadBlFiles'
    CF/CG fallback needs no __builtin_expect on its type == 10 test */
 static int loadBl24(struct fileent *e)
 {
@@ -1273,15 +1286,16 @@ static int loadBl24(struct fileent *e)
 }
 
 /* a kit build: an SE sets the flash build number (nonzero if it did).
-   Borderline, for review: the status return is ignored at the only call
-   site (ordinary C, but chosen for the match); it is there because the inlined
-   return block then holds a statement until DCE (after vrp1), which keeps
-   the type test's false edge from being the last edge of the switch
+   Borderline, for review (approved): the status return is ignored at the
+   only call site (ordinary C, but chosen for the match; build.c ignores
+   setPatchSlot's, imgAdd's and suLoadDir's too); it is there because the
+   inlined return block then holds a statement until DCE (after vrp1), which
+   keeps the type test's false edge from being the last edge of the switch
    join when vrp1 threads its first edge (the none skip) away, so dom2
    threads the signature-failed path through the setFlashBuild block as
-   the original has it.  The helper itself (IPA-inlined, not einlined)
-   gives the tail test the call heuristic, which replaces the expect and
-   the --param; (int)r < 0 is the only -1 failure code */
+   the original has it.  void is 61 lines.  The helper itself (IPA-inlined,
+   not einlined) gives the tail test the call heuristic, which replaces the
+   expect and the --param */
 static int setKitBuild(uint32_t i, int type)
 {
 	if (type == 14)
@@ -1337,15 +1351,14 @@ int loadBlFiles(void)
 					} else
 						log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
 				}
-				if (xb.type <= BUILD_DEVGL16) {
-					/* Borderline, for review: r is 0 or a negative failure
-					   code here; the signed test (not r != 0) is chosen for
-					   the match */
-					if ((int)r < 0)
-						goto fail;
-					break;
-				}
-				setKitBuild(i, type);
+				/* Borderline, for review (approved): r is 0 or the
+				   signature check's -1 here, so `r == -1` says what `r`
+				   would (`if (r)` is 11 lines: its block order; the
+				   tested -1 gets the opcode prediction) */
+				if (xb.type > BUILD_DEVGL16)
+					setKitBuild(i, type);
+				else if (r == -1)
+					goto fail;
 				break;
 			case 6:
 				if (!xb.cbb)
@@ -1357,17 +1370,8 @@ int loadBlFiles(void)
 			case 24:
 				if (xb.type == BUILD_JTAG || xb.glitch2mfg)
 					r = loadBl24(e);
-				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
-					/* Borderline, for review: loadBl24's body written out here
-					   rather than called (calling it is 25 loose lines); the
-					   leading r = 0 stands for its success return.  Live, and the
-					   shape is chosen for the match */
-					r = 0;
-					if (loadBaseFile(e->name, e))
-						r = defaultBl60(e);
-					else if (e->size != 0x60)
-						r = defaultBl60(e);
-				}
+				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+					r = loadBl24(e);
 				break;
 			case 1:
 				if (!loadBinFile(e))
@@ -1439,14 +1443,15 @@ int loadBlFiles(void)
 				appendAddonPatches(e);
 				break;
 			case 27:
-				/* Borderline, for review: the fallbacks as a sequence of r
-				   tests (the && chain of three loads is the same behaviour).
-				   The re-tested r sends about half of the first failure's
-				   flow past the smcConfig test at profile_estimate (vrp1
-				   threads it away later), which gives the reloaded
-				   nFlashFiles more weight than the slot address at the join,
-				   so IRA colours n first and the address follows it into edx
-				   (it replaces a register pin on d) */
+				/* Borderline, for review (approved): the fallbacks as a
+				   sequence of r tests (the && chain of three loads is the
+				   same behaviour).  The re-tested r sends about half of the
+				   first failure's flow past the smcConfig test at
+				   profile_estimate (vrp1 threads it away later), which gives
+				   the reloaded nFlashFiles more weight than the slot address
+				   at the join, so IRA colours n first and the address
+				   follows it into edx (it replaces a register pin on d).
+				   The && chain and nested ifs are 23 lines */
 				if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles])) {
 					r = loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]);
 					if (r)
@@ -1929,11 +1934,12 @@ void addBlsToImage(void)
 			else
 				off += 0x10;
 		}
-		/* Borderline, for review: xell (25) is tested before the patches (23) in
-		   both skip tests.  Live and not redundant, but the order is chosen for
-		   what gcc does with it: vrp1 can only thread the kit path's other types
-		   past the `type == 25` warning test below when its first assert on the
-		   kit test's false edge is `type != 25` (23 first costs 63 lines) */
+		/* Borderline, for review (approved): xell (25) is tested before the
+		   patches (23) in both skip tests.  Live and not redundant, and neither
+		   order is the plainer one, but this one is chosen for what gcc does
+		   with it: vrp1 can only thread the kit path's other types past the
+		   `type == 25` warning test below when its first assert on the kit
+		   test's false edge is `type != 25` (23 first is 175 lines, .rdata too) */
 		if (xb.type == BUILD_RETAIL && (type == 25 || type == 23)) {
 			log_printf(1, "retail image, skipping %s\n", e->name);
 			continue;
@@ -1979,14 +1985,15 @@ void addBlsToImage(void)
 }
 
 /* the bootloader types an update (xeBuild's -u) replaces.
-   Borderline, for review: the patches (23) and devkit CF (15) tests are ifs of their own
-   rather than the head of the `||` chain.  Live and not redundant, but chosen for what gcc
-   does with it: a lone `type == 23` gets the opcode-nonequal guess at profile_estimate
-   (19.9% where the `(23|15)` pair the front end folds from `||` gets 39%, and addUpdateBls'
-   loop needs 28% or less), and ifcombine pairs the two lone tests after inlining into the
-   same `(23|15)` OR, whose `type == 23` addUpdateBls' body reuses (which keeps 23 out of the
-   loop's bit test).  Splitting more tests out, or putting 9 next to 10 in the chain, doesn't
-   match. */
+   Borderline, for review (approved): the patches (23) and devkit CF (15) tests are ifs of
+   their own rather than the head of the `||` chain.  Live and not redundant, but chosen for
+   what gcc does with it: a lone `type == 23` gets the opcode-nonequal guess at
+   profile_estimate (19.9% where the `(23|15)` pair the front end folds from `||` gets 39%,
+   and addUpdateBls' loop needs 28% or less), and ifcombine pairs the two lone tests after
+   inlining into the same `(23|15)` OR, whose `type == 23` addUpdateBls' body reuses (which
+   keeps 23 out of the loop's bit test).  One `||` chain is 18 lines in addUpdateBls, and
+   splitting more tests out, or putting 9 next to 10 in the chain, doesn't match either; the
+   Linux build's ranges fit either form. */
 int isUpdateBl(int type)
 {
 	if (type == 23)
@@ -2488,7 +2495,7 @@ uint32_t calcBlAreaSize(void)
 	return size;
 }
 
-/* Borderline, for review: the salt clear and the virtual-fuse decision as a
+/* Borderline, for review (approved): the salt clear and the virtual-fuse decision as a
    helper, which an author could write ("set up the flash build and say whether
    it uses virtual fuses"), but which is chosen for what gcc does with it.  It
    keeps the memset, so only IPA inlines it, and buildFlash then gets the
@@ -2501,7 +2508,10 @@ uint32_t calcBlAreaSize(void)
    build has it when ch2 copies the findFile loops' headers (with `!= 0` the
    findFile(24) loop in buildFlash's `if (fuse)` compares the other way
    round).  `fuse > 1 ? 1 : fuse`, `fuse < 0 ? 0 : fuse` and `fuse % 2` do
-   the same. */
+   the same; `!!fuse` and `fuse ? 1 : 0` are `!= 0` (2 lines), `return fuse;`
+   285, a _Bool, uint8_t, char or uint32_t fuse or return type 41-44, the
+   decision written in buildFlash 43, and early returns for JTAG and devgl
+   with `return xb.glitch2mfg != 0;` 360. */
 static int initFlash(uint8_t *salt)
 {
 	int fuse = 1;

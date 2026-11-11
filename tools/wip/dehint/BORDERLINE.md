@@ -5,8 +5,8 @@ left are **borderline shapes**: ordinary C that an author could have written, bu
 the source because of what gcc does with it. They aren't counted as tricks. Each one is for
 the user to review: keep it as the author's likely shape, or try for a plainer one.
 
-State: commit `4c1e221d` (2026-11-10; mode_client's, net's, image_write's and options' lines are of their
-reviews the same day).
+State: commit `4c1e221d` (2026-11-10; mode_client's, net's, image_write's, options' and build's lines are
+of their reviews the same day).
 Line numbers are that commit's and will drift; the tags don't:
 
 ```
@@ -15,8 +15,9 @@ grep -n "Borderline, for review" src/*.c
 
 There are two kinds of item here:
 
-1. **Tagged shapes** (38, 21 of them approved): each has a `Borderline, for review:` comment
-   in the source saying what it does and what it replaced.
+1. **Tagged shapes** (37, 36 of them approved; the other is image_read's `excess`, kept by
+   the user's call): each has a `Borderline, for review:` comment in the source saying what it
+   does and what it replaced.
 2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
    section says what went and what is left (two prototypes that are needed).
 
@@ -24,26 +25,34 @@ When an item is settled, delete its tag (or mark it `(approved)`) and update thi
 
 ## 1. Tagged in the source
 
-### build (16) — `src/build.c`, notes in `notes/build.md`
+### build (15, all approved 2026-11-10) — `src/build.c`, notes in `notes/build.md` ("Review")
 
-| Line | Where | Shape | It replaced |
+Each shape was first made plain on its own, then all on the plainer base, then in pairs
+(`tools/wip/dehint/bdrv.py` with `bdrv_a.py` .. `bdrv_c.py`). Four came out plainer with the
+same bytes: extractSmcConfig's struct copy is `memcpy` again (the struct is gone); case 24's
+devkit arm calls `loadBl24(e)` (its written-out body and its tag are gone); loadFileCrc's log
+test is `pad && size != e->size` (was `pad && (size & 15) && size != e->size`); the tail is
+`if (xb.type > BUILD_DEVGL16) setKitBuild(i, type); else if (r == -1) goto fail;` (was
+`(int)r < 0`). No pair of the remaining plain spellings matches. Line counts are the
+functions named, plus call offsets where other functions move.
+
+| Line | Where | Shape | Why it stays |
 |---|---|---|---|
-| 379 | `align16` | a natural helper, kept so it stays a call until the early inliner | no-early-inlining on `patchBlsBlmod` |
-| 401 | `findFileOffset`, `findFileSize` | return `int` like `findFile`, though the values are offsets and sizes | a register pin |
-| 458 | `loadFileCrc` | the pad test repeated to pick the log; `size != e->size` can't be false there | an expect and a pin |
-| 564 | `loadInputFile` | `crc` is an `int` parameter on purpose (`uint32_t` makes ipa-cp clone it) | a noclone attribute |
-| 827 | `patchCpuFan` | repeats the caller's `xb.cpuFan != 0xffffffff` test | no-early-inlining and 4 hint calls |
-| 941 | `extractSmcConfig` | `size` is an `int` on purpose; a struct copy where `memcpy` would do | (18 lines off otherwise) |
-| 1215 | `useBuiltIn` | helper that shares two copies, chosen for IPA's inline order | a hot label and an asm barrier |
-| 1231 | `defaultBl60` | `memmove` where `memcpy` would do, and not through `useBuiltIn` | a cold label and a precheck |
-| 1264 | `loadBl24` | two calls where `\|\|` would do | a pin and an assume_aligned |
-| 1279 | `setKitBuild` | its status return is ignored at the only call site | an expect and the `--param` |
-| 1344 | `loadBlFiles` | `(int)r < 0` where `r != 0` says the same | |
-| 1364 | `loadBlFiles` | `loadBl24`'s body written out, not called, with a leading `r = 0` | (25 lines off when called) |
-| 1445 | `loadBlFiles` | the fallbacks as a sequence of `r` tests, where an `&&` chain is the same | a register pin |
-| 1935 | `addBlsToImage` | xell (25) tested before the patches (23) in both skip tests | (63 lines off the other way) |
-| 1985 | `isUpdateBl` | the 23 and 15 tests as ifs of their own, not in the `\|\|` chain | |
-| 2494 | `initFlash` | helper for the salt clear and the virtual-fuse decision; its final `fuse & 1` is redundant | an expect |
+| 376 | `align16` | a natural helper, kept so it stays a call until the early inliner | A macro at every site is 2 (two spill stores in patchBlsBlmod swap: einline order and SSA names) |
+| 399 | `findFileOffset`, `findFileSize` | return `int` like `findFile`, though the values are offsets and sizes | `uint32_t` for either or both is 82 (calcBlAreaSize's sum leaves ebx). findFile, the same loop over the same table, returns `int`. image_write's `(uint32_t)` cast stays a `TODO(prototype cast)` |
+| 457 | `loadFileCrc` | `pad && size != e->size`: `pad` is redundant (only padding changes the size) | The compare is the original's (the Linux build keeps it on the pad path, as the reference does). The compare alone, or `(size & 15) &&` in place of `pad &&`, makes ipa-cp clone loadFileCrc (whole object) |
+| 567 | `loadInputFile` | `crc` is an `int` parameter on purpose | `uint32_t` makes ipa-cp clone it (whole object). `int` is the author's usual parameter type |
+| 831 | `patchCpuFan` | repeats the caller's `xb.cpuFan != 0xffffffff` test | Without this test, or written in place like the gpu section, the two warning blocks swap (52); without the caller's test 171; the gpu section's `goto` to a warning at the end 518 (literals move). A test folded after profile_estimate doesn't give its frequency back |
+| 943 | `extractSmcConfig` | `size` is an `int` on purpose | `uint32_t` swaps both scan loops' bound compares (8). `int size` / `int len` parameters are the author's habit (patchBlsBlmod, patchFreeboot, patchPayloadSize, findInst, readFileInTo, detectController) |
+| 1219 | `useBuiltIn` | helper that shares two copies, chosen for IPA's inline order | Written out 47. setFileData, above it in the file, is the same helper with calloc |
+| 1238 | `defaultBl60` | `memmove` where `memcpy` would do, and not through `useBuiltIn` | memcpy 42, through useBuiltIn 42, useBuiltIn with memmove 90 (with defaultBl60 through it too), setFileData 234: memmove is a call to the inliner's size estimate |
+| 1272 | `loadBl24` | two calls where `\|\|` would do | Every one-call form (`\|\|`, nested ifs, the good case first, an `r` local) is 139: crossjump needs the two copies |
+| 1288 | `setKitBuild` | its status return is ignored at the only call site | void 61 (the return block must hold a statement until DCE). build.c ignores setPatchSlot's, imgAdd's and suLoadDir's returns too |
+| 1353 | `loadBlFiles` | `r == -1` where `if (r)` says the same (r is 0 or the signature check's -1) | `if (r)` is 11 (block order), with the kit test first or in the old nested form; `int r` 324-478 |
+| 1445 | `loadBlFiles` | the fallbacks as a sequence of `r` tests, where an `&&` chain is the same | The `&&` chain and nested ifs are 23 (IRA colours the slot address first) |
+| 1936 | `addBlsToImage` | xell (25) tested before the patches (23) in both skip tests | 23 first is 175 (.rdata too); neither order is the plainer one |
+| 1987 | `isUpdateBl` | the 23 and 15 tests as ifs of their own, not in the `\|\|` chain | One `\|\|` chain is 18 in addUpdateBls; the Linux build's ranges fit either form |
+| 2497 | `initFlash` | helper for the salt clear and the virtual-fuse decision; its final `fuse & 1` is redundant | `!= 0`, `!!fuse`, `fuse ? 1 : 0` 2 (a findFile loop's compare order: SSA names); `return fuse;` 285; `_Bool`, `uint8_t`, `char`, `uint32_t` locals or return types 41-44; written in buildFlash 43; early returns 360 |
 
 ### options (5, all approved 2026-11-10) — `src/options.c`, notes in `notes/options.md` ("Review")
 

@@ -3925,3 +3925,69 @@ Goal: attempt 69's r-class near miss (`fuse = initFlash(salt);`, `return fuse !=
 ### Costs now
 
 None: 0 tricks.
+
+## Review (2026-11-10): all borderline shapes settled, four respelled
+
+The user asked for build's sixteen borderline shapes (BORDERLINE.md) to be reviewed and
+resolved. Each was first made plain on its own, then all of them again on the base the
+matches left, then every pair of the remaining plain spellings (133 pairs). Four plainer
+spellings give the same bytes and are in src; the other twelve stay, with `(approved)` on
+their tags and this review's numbers in their comments. Full build SHA256
+10dac648...1971c.
+
+Tools (tools/wip/dehint/): `bdrv.py <variants.py> [label ..] [-b base.c] [-v label [fn]]
+[-o label out]` scores variants of src/build.c against build/bd/reference.o with bdlib at
+plain -O3; a label may join variants with `+`, and an edit given as `(header, old, new)`
+goes to a copy of src/<header> searched first. `bdrv_a.py` (each shape plain alone),
+`bdrv_b.py` (more spellings), `bdrv_c.py` (the tail test, one-call loadBl24). They were
+written against 46fb4f14's build.c (`git show 46fb4f14:src/build.c > build/bd/rv/a0.c`);
+the later rounds ran on a0 plus the matches so far. Counts are differing disassembly lines
+in the functions named; loadConsoleBlFiles 18 / blmodMissing 2 / buildFlash 20 in a
+loadBlFiles variant are call offsets.
+
+### Same bytes, now in src
+
+- **extractSmcConfig's struct copy:** `memcpy(e->data, buf + i, 0x400)` matches again.
+  Attempt 5 put the struct copy in place of memcpy with an expect and a pin; what made it
+  needed is gone since. `struct smcConfigData` is gone with it.
+- **case 24's devkit arm:** `r = loadBl24(e);` matches (25 loose when attempt 49 tried it).
+  The written-out body, its leading `r = 0`, and the tag are gone. The else form of the
+  written-out body is the same bytes too; with `||` it is 34, written out in both arms 341.
+- **loadFileCrc's log test:** `pad && size != e->size`. Attempt 13 found the size compare
+  in the Linux build too, so it's the original's. The compare alone (or `e->size != size`),
+  or `(size & 15) &&` in place of `pad &&`, makes ipa-cp clone loadFileCrc
+  (`.constprop`, whole object); `pad && (size & 15)` alone 136. Still tagged (approved):
+  `pad &&` is redundant.
+- **The tail:** `if (xb.type > BUILD_DEVGL16) setKitBuild(i, type); else if (r == -1) goto
+  fail;`. r is 0 or the signature check's -1 there. `r == -1` gets the opcode prediction
+  `(int)r < 0` got; `if (r)` is 11 in every arrangement (kit test first, else-if, nested);
+  `int r` with `r < 0` 478, with `if (r)` 324; one `&&` test with the kit test after 66.
+  The kit-first and old nested forms with `r == -1` are the same bytes as well. Still
+  tagged (approved): `r == -1` says what `r` would.
+
+### Why the rest stay
+
+| Shape | Plain spellings tried | Reason |
+|---|---|---|
+| align16 | macro at every site 2 | patchBlsBlmod's two spill stores (attempt 7's reading); a helper is ordinary C |
+| findFileOffset / findFileSize `int` | `uint32_t` either or both 82 | calcBlAreaSize's sum register (attempt 58); findFile returns int |
+| loadInputFile's `int crc` | `uint32_t` (ipa-cp clone, whole object) | int is the author's usual parameter type |
+| patchCpuFan's own test | none 52, in place 52, caller's test gone 171, the gpu section's `goto` 518 | the warning blocks swap (the cpu one ends up before the gpu one) |
+| extractSmcConfig's `int size` | `uint32_t` 8 (bound compares' operands swap) | the author writes `int size` / `int len` parameters throughout |
+| useBuiltIn | written out 47 | setFileData is the same helper with calloc |
+| defaultBl60's memmove | memcpy 42, through useBuiltIn 42, useBuiltIn with memmove 90, setFileData 234 | inline size estimate (attempt 59) |
+| loadBl24's two calls | `\|\|`, nested ifs, good case first, an r local: all 139 | crossjump needs two copies (attempt 49) |
+| setKitBuild's ignored return | void 61 | attempt 68's return-block statement; build.c ignores setPatchSlot's, imgAdd's and suLoadDir's returns |
+| case 27's r sequence | `&&` chain 23, nested ifs 23 | IRA allocno order (attempt 34) |
+| addBlsToImage's 25 before 23 | 23 first 175 (.rdata) | vrp1's assert order (attempt 24); neither order is plainer |
+| isUpdateBl's lone ifs | one `\|\|` chain 18 | attempt 23; the Linux ranges fit either |
+| initFlash's `& 1` | `!= 0`, `!!`, `? 1 : 0` 2; `return fuse` 285; `_Bool`/`uint8_t`/`char`/`uint32_t` local or return 41-44; in buildFlash 43; early returns 360 | attempt 70's SSA tie |
+
+The best pairs are additive (al_macro + if_ne 4, al_macro + sc_u32 10, sc_u32 + if_ne 10,
+al_macro + r_ne 13): no two shapes interact.
+
+### Don't retry (review)
+
+- Each plain spelling in the table, and their pairs.
+- `goto cpuwarn` for patchCpuFan in the gpu section's style (518: the cpu literal moves).
+- The memmove / useBuiltIn / setFileData combinations for defaultBl60.
