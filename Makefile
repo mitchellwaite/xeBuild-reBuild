@@ -1,7 +1,7 @@
 # Compile every object in OBJECTS (src/<obj>.c with gcc), link them with the
 # toolchain's runtime into build/xeBuild.exe and check it against the
 # reference.  GNU make; on Windows run it from the repo root in Git Bash after
-# tools/fetch_toolchain.sh (build.sh runs `make check`).
+# tools/fetch_toolchain.sh.
 #
 #   make            build build/xeBuild.exe
 #   make check      build, compare with xeBuild.exe and check the SHA256

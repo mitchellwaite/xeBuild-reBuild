@@ -101,7 +101,7 @@ SD/SE in types 7/8.
 
 As in plans/cb-ldv-1888.md and plans/header-fixes.md: everything below sits
 behind `#ifdef XEBUILD_EXT`, the default build's preprocessed source must
-not change, and `sh build.sh` must still end with
+not change, and `make check` must still end with
 `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
 `parseIni`, `encodeBls`, `calcBlAreaSize` and `verifyBlSigs` are matched
 with code-free hints, so add separate `#ifdef` blocks and `static` helpers
@@ -291,9 +291,9 @@ SB data". Under `XEBUILD_EXT`, use `findFile(6)` when `blSc` so the SC is
 checked (and resigned with `xb.prvKey`) against the SB's key as in devkit
 builds.
 
-### 8. Build the variant (build.sh)
+### 8. Build the variant (Makefile)
 
-Same `sh build.sh ext` switch as plans/header-fixes.md step 2. If that plan
+Same `make ext` target as plans/header-fixes.md step 2. If that plan
 lands first, nothing to add here; otherwise do that step as part of this
 one.
 
@@ -307,7 +307,7 @@ one.
 
 ## Verification
 
-1. `sh build.sh` (no switch) still ends with the reference SHA256.
+1. `make check` (without the variant) still ends with the reference SHA256.
 2. Ext build, controls that must match the reference `xeBuild.exe` byte for
    byte (same inputs, `-norandom`):
    - the 6-line g2m ini (CB_A, SB, SD, SE, none, none);

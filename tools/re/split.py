@@ -491,7 +491,7 @@ IAT_NAMES.update({n: '__imp__%s@%d' % (n, a) for n, a in (
     ('recvfrom', 24), ('select', 20), ('send', 16), ('setsockopt', 20), ('socket', 12))})
 # Functions already in C inside objects that are otherwise still assembly
 # (mixed objects).  Their range in the .s becomes a `#@C <name>` marker that
-# build.sh fills from `gcc -S` of src/<obj>.c (tools/wip/splice.py, now in the wip-archive-2026-11 tag); data, the
+# The build once filled from `gcc -S` of src/<obj>.c (tools/wip/splice.py, now in the wip-archive-2026-11 tag); data, the
 # ident and .eh_frame stay in the .s.  Names come from SYMBOLS.
 C_FUNCS = set()
 CHKSTK = (0x447c00,'runtime/libgcc/_chkstk_ms', 'byte match; assembly, no unwind info')

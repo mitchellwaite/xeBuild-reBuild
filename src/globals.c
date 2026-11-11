@@ -10,7 +10,7 @@
    these are picked so their buckets ascend in the original's address order
    (xb 2672, fsFileEnts 2710, fsChain 2883, flashHdr 2960,
    imgUsed 3065, netTimeStart 3139, spareBuf 3286, consoleManifest 3312), so a
-   rename has to keep that order.  build.sh links this object before
+   rename has to keep that order.  The Makefile links this object before
    XeCrypt's.  Its `GCC:` ident stands for a data-only program object of the
    original.  The types come from xebuild.h. */
 #include <time.h>

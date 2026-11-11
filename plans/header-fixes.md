@@ -54,7 +54,7 @@ changing them changes only those 8 bytes and page 0's ECC.
 
 ## Matching
 
-`sh build.sh` must keep producing the reference SHA256, so this follows
+`make check` must keep producing the reference SHA256, so this follows
 plans/xenon64.md: every change sits behind `#ifdef XEBUILD_EXT`, the
 default build doesn't define it, and the preprocessor drops the new code.
 Use the same switch name, so all behaviour changes build as one variant.
@@ -86,11 +86,11 @@ Why here rather than rewriting the finished image the way JRunner does:
 one place, no un-ECC/re-ECC, and the log and every later step already see
 the corrected header.
 
-### 2. Build the variant (build.sh)
+### 2. Build the variant (Makefile)
 
-Add a switch, e.g. `sh build.sh ext`, that:
+Add a target, e.g. `make ext`, that:
 
-- adds `-DXEBUILD_EXT` to every object's `cflags`,
+- adds `-DXEBUILD_EXT` to every object's flags,
 - writes to its own directory (`build/ext/`, exe `build/ext/xeBuild.exe`)
   so the matching objects in `build/obj/` aren't touched,
 - skips `execmp.py`/SHA256 and prints the exe's path instead.
@@ -106,7 +106,7 @@ byte matching depends on the profiles.
 
 ## Verification
 
-1. `sh build.sh` (no switch) still ends with
+1. `make check` (without the variant) still ends with
    `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
 2. Differential test against JRunner, per console/build pair in the bold
    rows (at least falcon glitch2, jaspersb glitch2, xenon glitch2,

@@ -2,7 +2,7 @@
 
 python tools/re/progress.py [NOTES.md]
 
-Run after `sh build.sh` (it reads build/obj/*.o and build/xeBuild.map for the
+Run after `make check` (it reads build/obj/*.o and build/xeBuild.map for the
 function names).  Functions come from the reference exe's .eh_frame (one FDE
 each, units.py); an object is C if src/<obj>.c exists (fully C only with no .s and no
 top-level asm in the .c left), and in a mixed object
@@ -22,7 +22,7 @@ from split import NAMES, C_FUNCS, SYMBOLS
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OBJDUMP = os.path.join(ROOT, 'tools', 'toolchain-4745', 'mingw32', 'bin', 'objdump.exe')
 BEGIN, END = '<!-- progress:begin -->', '<!-- progress:end -->'
-# gcc flags for tools/re/fncmp.py on a wip draft (as build.sh would use); default -O3
+# gcc flags for tools/re/fncmp.py on a wip draft (as the Makefile would use); default -O3
 WIP_FLAGS = {'image_write': ['-O3', '--param', 'builtin-expect-probability=50'],
              'net': ['-O3', '--param', 'builtin-expect-probability=65'],
              'build': ['-O3', '--param', 'builtin-expect-probability=98']}

@@ -7,11 +7,11 @@ NOTES.md has the findings, layout and the pipeline.
 
 - `xeBuild.exe` in the repo root is the reference. Never modify it; analyse copies
   (IDA writes `.i64` next to its input, so point IDA at a copy under `build/`).
-- Success is measured by bytes: `sh build.sh` must end with SHA256
+- Success is measured by bytes: `make check` must end with SHA256
   `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c` (it also
   runs `tools/re/execmp.py`, which names any differing header field or byte).
-- `build.sh` runs `make check` (the `Makefile`, GNU make). Every object is C;
-  the Makefile compiles only `.c` files, in the link order of its `OBJECTS`
+- The build is the `Makefile` (GNU make; `make check -j8`). Every object is C;
+  it compiles only `.c` files, in the link order of its `OBJECTS`
   list (the original's; `tools/re/split.py`'s `NAMES` has the
   evidence). `tools/re/split.py` still writes a `.s` from `build/xeBuild.lines.json`
   (`tools/re/ddfix.py`) for any object without a `.c`, but nothing builds it.
@@ -29,7 +29,7 @@ NOTES.md has the findings, layout and the pipeline.
   asm-label declaration (`T fnU32(...) __asm__("_fn")`) marked
   `TODO(xebuild.h cast)` / `TODO(prototype cast)`.
 - Keep NOTES.md's Progress section current: after converting an object or
-  function (or parking one in `tools/wip/`), run `sh build.sh` then
+  function (or parking one in `tools/wip/`), run `make check` then
   `python tools/re/progress.py`, and commit NOTES.md with the change. Functions
   defined in `tools/wip/<obj>.c` that `tools/re/fncmp.py` matches count as C (put a
   draft's non-default gcc flags in the script's `WIP_FLAGS`). The section
@@ -48,7 +48,7 @@ NOTES.md has the findings, layout and the pipeline.
   section piece (gas pads sections to 4).
 - Commit without asking whenever a milestone is verified: a coherent step
   (for example a component moved to C, or a pipeline change) is finished and
-  `sh build.sh` reproduces the SHA256. Don't commit a build that doesn't match.
+  `make check` reproduces the SHA256. Don't commit a build that doesn't match.
   Push to `origin` after each commit.
 - Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
   pushed history. If a push is rejected, something went wrong: stop and ask.
@@ -85,6 +85,7 @@ NOTES.md has the findings, layout and the pipeline.
 - IDA 9.4 idalib: `python script.py` with the pip-installed `idapro` wheel; don't
   use `python -I` (hides the user site-packages where it lives).
 - GNU make is ezwinports' native build (`winget install ezwinports.make`, on the
-  user PATH; a shell started before the install needs `MAKE=<path to make.exe>`
-  for build.sh). It runs recipes with Git's `sh`, but hands them a `C:/...`
+  user PATH; a shell started before the install needs the full path,
+  `$LOCALAPPDATA/Microsoft/WinGet/Packages/ezwinports.make_*/bin/make.exe`).
+  It runs recipes with Git's `sh`, but hands them a `C:/...`
   `$PWD`: use `$(pwd -P)` in recipes that build a PATH entry.

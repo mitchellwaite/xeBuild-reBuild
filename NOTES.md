@@ -35,7 +35,6 @@ xeBuild.exe              reference binary (do not modify)
 Makefile                 compile src/ + link + stamp (+ verify: make check)
                          -> build/xeBuild.exe (OBJECTS: the program's objects
                          in link order)
-build.sh                 runs make check
 src/*.c, src/*.h         the application (25 files) and its headers: xebuild.h
                          (shared types, struct xebuild), <obj>.h (each object's
                          functions and data that others use)
@@ -89,11 +88,12 @@ wsl -d Ubuntu -- bash tools/ddisasm/install.sh
 ## Building
 
 ```bash
-sh build.sh
+make check
 ```
 
-Runs `make check` (GNU make; arguments such as `-j8` go to make, and only
-changed objects are rebuilt: `-MMD` tracks headers). Compiles every object in
+GNU make; `-j8` builds in parallel, and only changed objects are rebuilt
+(`-MMD` tracks headers). Plain `make` stops after the link and stamp; `check`
+also runs `execmp.py` and fails unless the SHA256 matches. Compiles every object in
 the `Makefile`'s `OBJECTS` (the original's link order, which decides where ld
 puts each object's code and data, `globals` included): `src/<obj>.c` with
 gcc 6.2.0 (flags and original `__FILE__` path per directory in its two
@@ -112,7 +112,7 @@ take a fixed timestamp), then compares against `xeBuild.exe` and prints the SHA2
 wsl -d Ubuntu -- bash tools/ddisasm/disasm.sh xeBuild.exe build
 python tools/re/ddfix.py xeBuild.exe build/xeBuild.dbg.s build/xeBuild.s
 python tools/re/split.py xeBuild.exe build/xeBuild.lines.json src
-sh build.sh
+make check
 ```
 
 Hand-written sources began with XeCrypt's C files (October 2026). `split.py`
@@ -187,7 +187,7 @@ does nothing.
 `python tools/re/fncmp.py src/<obj>.c <name> [gcc flags]` diffs one function's
 gcc output against the original instructions (`build/xeBuild.lines.json`),
 with ddisasm's and gcc's spellings normalised. It ignores padding and
-encodings, so `sh build.sh` has the last word. It reports MATCH for every
+encodings, so `make check` has the last word. It reports MATCH for every
 function already in C. Its default flags are `-O3`; give fileutil's
 `--param` or crypto's `-Isrc/crypto` explicitly.
 

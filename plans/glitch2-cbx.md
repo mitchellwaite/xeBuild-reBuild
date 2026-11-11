@@ -174,7 +174,7 @@ the CB_B slot)".
 ## Matching
 
 As in the other plans: everything sits behind `#ifdef XEBUILD_EXT`, the
-default build's preprocessed source must not change, and `sh build.sh` must
+default build's preprocessed source must not change, and `make check` must
 still end with
 `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
 `encodeBls`, `calcBlAreaSize`, `addBlsToImage`, `buildFlash` and
@@ -391,9 +391,9 @@ plaintext; only its encryption differs.
   `patchBlsBlmod` has grown the CB_B/SB. The built-in 0x400 bytes won't
   trigger it on any stock layout; a large custom CB_X could.
 
-### 5. Build the variant (build.sh)
+### 5. Build the variant (Makefile)
 
-Same `sh build.sh ext` switch as plans/header-fixes.md step 2. If that plan
+Same `make ext` target as plans/header-fixes.md step 2. If that plan
 lands first, nothing to add here; otherwise do that step as part of this
 one.
 
@@ -429,7 +429,7 @@ re-ECC), for verification step 3.
 
 ## Verification
 
-1. `sh build.sh` (no switch) still ends with the reference SHA256.
+1. `make check` (without the variant) still ends with the reference SHA256.
 2. Ext build without `-cbx`: retail, glitch2, glitch2m and a single-CB
    glitch build match the reference `xeBuild.exe` byte for byte (same
    inputs, `-norandom`).

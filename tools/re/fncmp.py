@@ -7,7 +7,7 @@ given) to Intel-syntax assembly and diffs `name` (as in split.py's SYMBOLS,
 without the underscore) against the original instructions from
 build/xeBuild.lines.json.  Labels are compared only as labels; named symbols
 (SYMBOLS) must agree.  Prints MATCH or a unified diff.  It ignores alignment
-padding and doesn't check the bytes; `sh build.sh` has the last word.
+padding and doesn't check the bytes; `make check` has the last word.
 FNCMP_GCCSYM=_f.constprop.0 compares that gcc function (a clone) instead.
 """
 import difflib, json, os, re, subprocess, sys

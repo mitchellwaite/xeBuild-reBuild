@@ -5,6 +5,9 @@ this folder keeps only the write-ups: this file, `dehint/` (the de-hinting
 notes and `BORDERLINE.md`), `aio/`, `mu/` and `mc/NOTES.md` (the mode_client
 attempts s1 to s150, one section each).
 
+These notes predate the Makefile: where they say `sh build.sh`, read
+`make check` (and its flags are in the Makefile's pattern rules).
+
 The scripts, drafts, sweep variants and logs these notes mention are in the
 `wip-archive-2026-11` tag. To get them back:
 

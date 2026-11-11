@@ -72,7 +72,7 @@ so the plan tracks where the value came from instead of testing for 0.
 
 ## Matching
 
-`sh build.sh` must keep producing the reference SHA256. As in
+`make check` must keep producing the reference SHA256. As in
 plans/xenon64.md and plans/header-fixes.md, every change sits behind
 `#ifdef XEBUILD_EXT`, and the default build doesn't define it. `encodeBls`,
 `getImageLdv`, `buildImage` and the option parsers are matched through
@@ -182,9 +182,9 @@ Notes:
 - Optional: show it in `main.c`'s summary next to `CF LDV`, under the same
   `#ifdef`.
 
-### 5. Build the variant (build.sh)
+### 5. Build the variant (Makefile)
 
-Same switch as plans/header-fixes.md step 2 (`sh build.sh ext`, adds
+Same target as plans/header-fixes.md step 2 (`make ext`, adds
 `-DXEBUILD_EXT`, writes to `build/ext/`, skips the SHA256 check). If that
 plan lands first, nothing to add here; otherwise do that step as part of
 this one.
@@ -198,7 +198,7 @@ this one.
 
 ## Verification
 
-1. `sh build.sh` (no switch) still ends with
+1. `make check` (without the variant) still ends with
    `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.
 2. Ext build, retail filelist with a CE 1888 and CF/CG set to `none`, CPU
    key, `cfldv=N`:

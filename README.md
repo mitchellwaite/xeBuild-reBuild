@@ -51,7 +51,6 @@ tricks some functions needed to match (and how they were removed, under
 | `src/crypto/` | XeCrypt (AES, RC4, SHA-1, MD5, DES, RSA/BigDigits) |
 | `src/globals.c` | the program's uninitialized globals |
 | `Makefile` | builds everything (GNU make); `make check` also checks the result |
-| `build.sh` | runs `make check` |
 | `tools/re/` | reverse-engineering and verification scripts |
 | `tools/` | the toolchain's packages and setup, and ddisasm setup |
 | `tools/wip/` | notes from the matching work (the experiments themselves are in the `wip-archive-2026-11` tag) |
@@ -71,16 +70,17 @@ sh tools/fetch_toolchain.sh
 Then build:
 
 ```bash
-sh build.sh
+make check
 ```
 
 This writes `build/xeBuild.exe`, compares it with the reference and prints
 its SHA256, which should match the one above (it fails if it doesn't).
-Arguments go to make, e.g. `sh build.sh -j8`; a second run rebuilds only
-what changed. Other hosts can set `CC`, `CFLAGS`, `LDFLAGS`, `PYTHON`,
-`SHA256SUM` and `TC_BIN` on the make command line or in an untracked
-`config.mk`; only the pinned toolchain on Windows reproduces the reference. Re-disassembling the binary
-also needs ddisasm under WSL; NOTES.md covers that.
+`make check -j8` builds in parallel, and a second run rebuilds only what
+changed; plain `make` builds without checking. Other hosts can set `CC`,
+`CFLAGS`, `LDFLAGS`, `PYTHON`, `SHA256SUM` and `TC_BIN` on the make command
+line or in an untracked `config.mk`; only the pinned toolchain on Windows
+reproduces the reference. Re-disassembling the binary also needs ddisasm
+under WSL; NOTES.md covers that.
 
 ## Credits and licences
 
