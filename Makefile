@@ -31,6 +31,7 @@
 # objects in build/obj/ aren't touched.  CC, CFLAGS, LDFLAGS, LDLIBS, PYTHON
 # and SHA256SUM can be overridden as usual; CFLAGS and LDFLAGS are added after
 # the platform's own flags (empty for win32, which must stay as it is).
+# macOS needs no _FILE_OFFSET_BITS: its off_t is always 64-bit.
 
 -include config.mk
 
@@ -66,6 +67,7 @@ LDLIBS    ?=
 #   TC_BIN         toolchain bin/ to put first on PATH (empty: CC is on PATH)
 #   CC             compiler (unless given)
 #   OBJ, EXE       object directory and executable
+#   PLAT_CFLAGS    compile flags (before CFLAGS; empty unless set)
 #   PLAT_LDFLAGS   link flags (before the objects)
 #   PLAT_LIBS      libraries (after the objects)
 #   MAP_FLAGS      linker map to build/<...>.map
@@ -115,6 +117,9 @@ OBJ := build/linux/obj
 EXE := build/linux/xeBuild
 PLAT_LDFLAGS := -s
 PLAT_LIBS :=
+# 64-bit off_t for fseeko/ftello on 32-bit Linux too (xebuild.h maps the
+# code's fseeko64/ftello64 to them)
+PLAT_CFLAGS := -D_FILE_OFFSET_BITS=64
 MAP_FLAGS := -Wl,-Map,build/linux/xeBuild.map
 
 # --- macos: the installed clang --------------------------------------------
@@ -188,7 +193,7 @@ all: $(EXE)
 define compile
 	@mkdir -p $(@D)
 	{ printf '#line 1 "%s"\n' '$(1)'; cat $<; } | \
-	  $(TC_ENV) $(CC) -c $(2) $(CFLAGS) -I$(<D) \
+	  $(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) -I$(<D) \
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ -x c - -o $@
 endef
 

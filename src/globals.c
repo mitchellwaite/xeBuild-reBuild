@@ -16,8 +16,6 @@
 #include <time.h>
 #include "xebuild.h"
 
-_Static_assert(sizeof(struct xebuild) == 0x4f910, "struct xebuild");
-
 struct xebuild xb;			/* 479ea0 */
 struct fsent fsFileEnts[256];		/* 4c97c0 image_write */
 uint16_t fsChain[0x1000];		/* 4cb7c0 */

@@ -15,6 +15,24 @@
 
 #include "crypto/xecrypt.h"
 
+/* ---- Windows CRT names on other platforms ----
+
+   The code calls the Windows (msvcrt/mingw) names; elsewhere they map to
+   POSIX.  The system headers come first, so the macros can't rename their
+   prototypes.  Large files: fseeko/ftello take a 64-bit off_t on 32-bit
+   Linux only with _FILE_OFFSET_BITS=64, which the Makefile sets. */
+#ifndef _WIN32
+#include <stdio.h>
+#include <strings.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#define stricmp strcasecmp
+#define strnicmp strncasecmp
+#define mkdir(path) mkdir((path), 0777)
+#define fseeko64 fseeko
+#define ftello64 ftello
+#endif
+
 /* The app's code spells many 32-bit values int and unsigned int (and some
    short): renaming them int32_t etc. changes gcc 6's code for the matching
    build even where the typedef is the same type, so they stay as spelled.

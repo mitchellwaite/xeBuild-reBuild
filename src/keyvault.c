@@ -8,6 +8,16 @@
 #include "log.h"
 #include "xboxrom.h"
 
+/* the serial: 11 decimal digits of a uint64_t, then the check digit.  msvcrt
+   spells the 64-bit conversion I64u (the original's string); elsewhere
+   <inttypes.h> has the C99 spelling. */
+#ifdef _WIN32
+#define KV_SERIAL_FORMAT "%011I64u%X"
+#else
+#include <inttypes.h>
+#define KV_SERIAL_FORMAT "%011" PRIu64 "%X"
+#endif
+
 static uint8_t kvBuf[0x4000];
 static uint8_t dvdKey[16];
 static uint8_t *kv;
@@ -148,7 +158,7 @@ int kvGetSerial(char *out)
 		digit = p[-1] & 0xf;
 		if (digit <= 9)
 		{
-			sprintf(out, "%011I64u%X", v >> 4, digit);
+			sprintf(out, KV_SERIAL_FORMAT, v >> 4, digit);
 			ret = 1;
 		}
 	}
