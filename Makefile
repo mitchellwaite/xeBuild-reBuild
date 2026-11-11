@@ -9,6 +9,9 @@
 #                   `make PLATFORM=win32latest`
 #   make clean      remove the platform's objects and executable
 #   make V=1        print each full command, not just the file it works on
+#   make QUIET_WARNINGS=1   (or QUIET_WARNINGS=1 in the environment) turn off
+#                   the unused-result, format-security, stringop-overflow
+#                   and format-overflow warnings
 #
 # PLATFORM is detected, or set it on the command line or in an untracked
 # config.mk:
@@ -143,6 +146,18 @@ else
 $(error unknown PLATFORM '$(PLATFORM)': use win32, win32latest, linux or macos)
 endif
 
+# QUIET_WARNINGS=1: warnings the code was never written against (glibc's
+# warn_unused_result, newer gcc's overflow checks).  gcc ignores a -Wno-
+# option it doesn't know (gcc 6 has neither overflow warning); clang needs
+# -Wno-unknown-warning-option for that.  They don't change the code.
+ifeq ($(QUIET_WARNINGS),1)
+WARN_FLAGS := -Wno-unused-result -Wno-format-security -Wno-stringop-overflow \
+	-Wno-format-overflow
+ifeq ($(PLATFORM),macos)
+WARN_FLAGS += -Wno-unknown-warning-option
+endif
+endif
+
 # gcc finds cc1/as and their DLLs through PATH, so recipes that run it put
 # TC_BIN first (pwd -P: a native Windows make hands sh a C:/ style $PWD, whose
 # colon would split the PATH entry)
@@ -211,14 +226,14 @@ define compile
 	@mkdir -p $(@D)
 	$(SAY) $<
 	$(Q){ printf '#line 1 "%s"\n' '$(1)'; cat $<; } | \
-	  $(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) -I$(<D) \
+	  $(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(WARN_FLAGS) $(CFLAGS) -I$(<D) \
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ -x c - -o $@
 endef
 else
 define compile
 	@mkdir -p $(@D)
 	$(SAY) $<
-	$(Q)$(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) \
+	$(Q)$(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(WARN_FLAGS) $(CFLAGS) \
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ $< -o $@
 endef
 endif
