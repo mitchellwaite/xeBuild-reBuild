@@ -128,12 +128,6 @@ struct flashhdr {
 	uint32_t smcBootAddr;
 };
 
-/* an RSA public key as the console keeps it */
-struct rsapub {
-	XECRYPT_RSA rsa;		/* XeCrypt's header: cqw, exponent */
-	uint8_t mod[256];
-};
-
 /* what xeBuild's client (the console side) reports */
 struct consoleinfo {
 	uint32_t version;		/* updsvr version; low byte: hv patches */
@@ -149,9 +143,9 @@ struct consoleinfo {
 	uint8_t fuses[96];
 	uint8_t vfuses[96];
 	uint8_t key1bl[16];
-	struct rsapub pub1bl;
-	struct rsapub pubPirs;
-	struct rsapub pubMaster;
+	XECRYPT_RSAPUB_2048 pub1bl;
+	XECRYPT_RSAPUB_2048 pubPirs;
+	XECRYPT_RSAPUB_2048 pubMaster;
 	uint8_t keys[6][16];
 };
 
@@ -252,7 +246,7 @@ struct xebuild {
 	uint8_t key1bl[16];
 	uint8_t cpuKey[16];
 	uint8_t xexKey[16];		/* calcXexKey's (CRL/DAE key) */
-	void *pub1bl;			/* struct rsapub, loaded or the console's */
+	void *pub1bl;			/* XECRYPT_RSAPUB_2048, loaded or the console's */
 	void *masterPub;
 	void *pubPirs;
 	void *prvKey;			/* the ini's 2BL private key (SB) */

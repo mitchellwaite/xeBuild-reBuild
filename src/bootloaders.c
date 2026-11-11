@@ -265,13 +265,13 @@ int verifyDae(uint8_t *buf, uint32_t size)
 int fcrtVerifySig(uint8_t *fcrt)
 {
 	uint8_t hash[20];
-	struct rsapub *pub;
+	XECRYPT_RSAPUB_2048 *pub;
 	int ok;
 
 	pub = (getBeU32(fcrt + 272) & 0x80000000) ? xb.pubPirs : xb.masterPub;
 	if (pub) {
 		XeCryptHmacSha(xb.cpuKey, 16, fcrt + 256, 64, 0, 0, 0, 0, hash, 20);
-		ok = XeKeysPkcs1Verify(hash, fcrt, &pub->rsa);
+		ok = XeKeysPkcs1Verify(hash, fcrt, &pub->Rsa);
 		if (ok)
 			log_printf(1, "sig good! ");
 		else

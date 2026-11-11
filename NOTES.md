@@ -485,7 +485,7 @@ value and the return have the same type, which is how `FileExistsU32`,
 `stfs`, `mode_ini` and `console_hdd`). `consoleinfo`'s `log_printfInt` needed
 only the alias and its `__builtin_unreachable` removed together, so try removals
 in combination. The last ones went by typing the data as it's used:
-`struct rsapub` starts with XeCrypt's `XECRYPT_RSA` header; `xb`'s key
+the console's RSA keys are XeCrypt's `XECRYPT_RSAPUB_2048`; `xb`'s key
 pointers are `void *` buffers (`loadPubKey` fills a `void **`; returning the
 buffer instead changes its code); the signing helpers' keys and `rotSumSha`'s
 inputs aren't `const`; `romSalts` and mode_ini's `keys` are bytes;

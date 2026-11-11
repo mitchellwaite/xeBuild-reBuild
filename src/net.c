@@ -285,7 +285,7 @@ int netReadInfo(void)
 		info = (struct consoleinfo *)netRecv((int *)&len);
 	}
 	if (info && len >= sizeof *info) {
-		info->pub1bl.rsa.qwReserved = 0;
+		info->pub1bl.Rsa.qwReserved = 0;
 		netInfo = info;
 		info->version = SWAP32(info->version);
 		info->kernel = SWAP32(info->kernel);
