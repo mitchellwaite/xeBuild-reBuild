@@ -15,7 +15,7 @@
 #   win32        Windows (detected): the pinned toolchain in
 #                tools/toolchain-4745 (run tools/fetch_toolchain.sh first,
 #                from Git Bash); the only build that reproduces the reference
-#                bytes.  Outputs build/obj/, build/xeBuild.exe.
+#                bytes.
 #   win32latest  Windows with the latest MSYS2 gcc on PATH.  The gcc driver
 #                picks its own default target and libraries: a MINGW32 shell
 #                builds a 32-bit exe like the original, a MINGW64 or UCRT64
@@ -27,8 +27,10 @@
 # no -m32/-m64 or target and build for the compiler's default, 32- or
 # 64-bit; pass e.g. CFLAGS=-m32 LDFLAGS=-m32 for a different one.
 #
-# The platforms other than win32 write to build/<platform>/ so the matching
-# objects in build/obj/ aren't touched.  CC, CFLAGS, LDFLAGS, LDLIBS, PYTHON
+# Every platform writes its objects to build/obj/ and the executable to
+# build/ (xeBuild.exe on Windows, xeBuild elsewhere), with the linker map
+# beside it.  build/obj/platform names the platform the objects were built
+# for; when it changes, everything recompiles.  CC, CFLAGS, LDFLAGS, LDLIBS, PYTHON
 # and SHA256SUM can be overridden as usual; CFLAGS and LDFLAGS are added after
 # the platform's own flags (empty for win32, which must stay as it is).
 # macOS needs no _FILE_OFFSET_BITS: its off_t is always 64-bit.
@@ -63,14 +65,17 @@ CFLAGS    ?=
 LDFLAGS   ?=
 LDLIBS    ?=
 
+OBJ := build/obj
+MAP := build/xeBuild.map
+
 # Each section sets:
 #   TC_BIN         toolchain bin/ to put first on PATH (empty: CC is on PATH)
 #   CC             compiler (unless given)
-#   OBJ, EXE       object directory and executable
+#   EXE            executable
 #   PLAT_CFLAGS    compile flags (before CFLAGS; empty unless set)
 #   PLAT_LDFLAGS   link flags (before the objects)
 #   PLAT_LIBS      libraries (after the objects)
-#   MAP_FLAGS      linker map to build/<...>.map
+#   MAP_FLAGS      linker map to $(MAP)
 #   STAMP          1 to stamp the reference link time into the exe
 #   CHECK          1 when `make check` can reproduce the reference
 
@@ -80,7 +85,6 @@ TC_BIN ?= tools/toolchain-4745/mingw32/bin
 ifdef CC_UNSET
 CC := $(TC_BIN)/gcc.exe
 endif
-OBJ := build/obj
 EXE := build/xeBuild.exe
 # Link as gcc 6.2.0 does: crt2.o and crtbegin.o, the program, the libraries
 # (ws2_32, then gcc's defaults, spelled out as that driver passes them), the
@@ -91,7 +95,7 @@ EXE := build/xeBuild.exe
 PLAT_LDFLAGS := -s
 PLAT_LIBS := -lws2_32 -lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt \
 	-lpthread -ladvapi32 -lshell32 -luser32 -lkernel32
-MAP_FLAGS := -Wl,--no-insert-timestamp,-Map,build/xeBuild.map
+MAP_FLAGS := -Wl,--no-insert-timestamp,-Map,$(MAP)
 STAMP := 1
 CHECK := 1
 
@@ -101,11 +105,10 @@ TC_BIN ?=
 ifdef CC_UNSET
 CC := gcc
 endif
-OBJ := build/win32latest/obj
-EXE := build/win32latest/xeBuild.exe
+EXE := build/xeBuild.exe
 PLAT_LDFLAGS := -s
 PLAT_LIBS := -lws2_32
-MAP_FLAGS := -Wl,-Map,build/win32latest/xeBuild.map
+MAP_FLAGS := -Wl,-Map,$(MAP)
 
 # --- linux: the installed gcc ----------------------------------------------
 else ifeq ($(PLATFORM),linux)
@@ -113,14 +116,13 @@ TC_BIN ?=
 ifdef CC_UNSET
 CC := gcc
 endif
-OBJ := build/linux/obj
-EXE := build/linux/xeBuild
+EXE := build/xeBuild
 PLAT_LDFLAGS := -s
 PLAT_LIBS :=
 # 64-bit off_t for fseeko/ftello on 32-bit Linux too (xebuild.h maps the
 # code's fseeko64/ftello64 to them)
 PLAT_CFLAGS := -D_FILE_OFFSET_BITS=64
-MAP_FLAGS := -Wl,-Map,build/linux/xeBuild.map
+MAP_FLAGS := -Wl,-Map,$(MAP)
 
 # --- macos: the installed clang --------------------------------------------
 else ifeq ($(PLATFORM),macos)
@@ -128,12 +130,11 @@ TC_BIN ?=
 ifdef CC_UNSET
 CC := clang
 endif
-OBJ := build/macos/obj
-EXE := build/macos/xeBuild
+EXE := build/xeBuild
 # ld64 strips with -Wl,-x (-s is obsolete there) and spells the map -map
 PLAT_LDFLAGS := -Wl,-x
 PLAT_LIBS :=
-MAP_FLAGS := -Wl,-map,build/macos/xeBuild.map
+MAP_FLAGS := -Wl,-map,$(MAP)
 
 else
 $(error unknown PLATFORM '$(PLATFORM)': use win32, win32latest, linux or macos)
@@ -197,12 +198,21 @@ define compile
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ -x c - -o $@
 endef
 
+# The platform the objects in $(OBJ) were built for.  It's rewritten only
+# when PLATFORM changes, so then every object is out of date and another
+# platform's objects are never linked.
+PLATFORM_FILE := $(OBJ)/platform
+.PHONY: FORCE
+$(PLATFORM_FILE): FORCE
+	@mkdir -p $(@D)
+	@[ "$$(cat $@ 2>/dev/null)" = "$(PLATFORM)" ] || echo "$(PLATFORM)" > $@
+
 # src/crypto is XeCrypt's tree (headers include "bign/bigdigits.h" etc.)
-$(OBJ)/crypto/%.o: src/crypto/%.c $(MAKEFILE_LIST)
+$(OBJ)/crypto/%.o: src/crypto/%.c $(MAKEFILE_LIST) $(PLATFORM_FILE)
 	$(call compile,H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/$*.c,-O3 -Isrc/crypto)
 
 # the rest of the app: original path unknown (no assert in the app)
-$(OBJ)/%.o: src/%.c $(MAKEFILE_LIST)
+$(OBJ)/%.o: src/%.c $(MAKEFILE_LIST) $(PLATFORM_FILE)
 	$(call compile,$*.c,-O3)
 
 # The stamp is part of the link so an unstamped exe is never up to date.
@@ -229,6 +239,6 @@ win32latest:
 	$(MAKE) PLATFORM=win32latest
 
 clean:
-	rm -f $(OBJS) $(OBJS:.o=.d) $(EXE) $(basename $(EXE)).map
+	rm -f $(OBJS) $(OBJS:.o=.d) $(PLATFORM_FILE) $(EXE) $(MAP)
 
 -include $(OBJS:.o=.d)

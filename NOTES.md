@@ -96,8 +96,9 @@ GNU make; `-j8` builds in parallel, and only changed objects are rebuilt
 and fails unless the SHA256 matches; on Windows it is the default goal. The
 Makefile's `PLATFORM` (detected: `win32`, `linux`, `macos`; or
 `win32latest`, a current MSYS2 gcc on PATH) picks the compiler and link;
-only `win32` is the reference build, and the others write to
-`build/<platform>/`. Compiles every object in
+only `win32` is the reference build. All of them write `build/obj/` and
+`build/xeBuild[.exe]`, and `build/obj/platform` makes a platform change
+recompile everything. Compiles every object in
 the `Makefile`'s `OBJECTS` (the original's link order, which decides where ld
 puts each object's code and data, `globals` included): `src/<obj>.c` with
 gcc 6.2.0 (flags and original `__FILE__` path per directory in its two
