@@ -455,13 +455,13 @@ void clientWriteBlocks(const char *file, const char *sstart)
 {
 	uint32_t start = myatoh32(sstart, -1);
 	uint32_t n;
-	int len;
+	size_t len;
 	uint8_t *buf;
 
 	if (start != -1)
 	{
-		buf = FileToBuffer(file, (size_t *)&len);
-		if (buf && len > 0)
+		buf = FileToBuffer(file, &len);
+		if (buf && (int)len > 0)
 		{
 			n = len / cinfo->blockSize;
 			if (!(len % cinfo->blockSize))
@@ -471,7 +471,7 @@ void clientWriteBlocks(const char *file, const char *sstart)
 					log_printf(0, "Writing 0x%x (%d) blocks to console starting at block 0x%x (%d)...\n", n, n, start, start);
 					if (netWriteBlocks(buf, len, start, n))
 					{
-						log_printf(0, "Done! Wrote 0x%x (%d) bytes to console flash!\n", len, len);
+						log_printf(0, "Done! Wrote 0x%x (%d) bytes to console flash!\n", (int)len, (int)len);
 					}
 					else
 					{
@@ -485,7 +485,7 @@ void clientWriteBlocks(const char *file, const char *sstart)
 			}
 			else
 			{
-				log_printf(0, "\n\n***** ERROR: File %s size (0x%x) is not a multiple of console block size (0x%x)!\n", file, len, cinfo->blockSize);
+				log_printf(0, "\n\n***** ERROR: File %s size (0x%x) is not a multiple of console block size (0x%x)!\n", file, (int)len, cinfo->blockSize);
 			}
 			free(buf);
 			return;

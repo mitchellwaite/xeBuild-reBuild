@@ -15,6 +15,17 @@
 
 #include "crypto/xecrypt.h"
 
+/* The app's code spells many 32-bit values int and unsigned int (and some
+   short): renaming them int32_t etc. changes gcc 6's code for the matching
+   build even where the typedef is the same type, so they stay as spelled.
+   Every supported target (win32, and the 64-bit LLP64 and LP64 ones) has a
+   32-bit int and a 16-bit short; fail the build on one that doesn't.  long
+   is 64-bit on LP64 (linux, macos); the code uses it only for status
+   returns, ftell sizes and date arithmetic, where the wider type is
+   harmless. */
+_Static_assert(sizeof(int) == 4, "xeBuild needs a 32-bit int");
+_Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
+
 /* ---- Shared macros ----
 
    Used by more than one object.  A macro's spelling can change the code
