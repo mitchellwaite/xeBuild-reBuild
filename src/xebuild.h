@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "crypto/xecrypt.h"
+
 /* ---- Shared macros ----
 
    Used by more than one object.  A macro's spelling can change the code
@@ -128,9 +130,7 @@ struct flashhdr {
 
 /* an RSA public key as the console keeps it */
 struct rsapub {
-	uint32_t cqw;
-	uint32_t exp;
-	uint64_t reserved;
+	XECRYPT_RSA rsa;		/* XeCrypt's header: cqw, exponent */
 	uint8_t mod[256];
 };
 
@@ -247,9 +247,9 @@ struct xebuild {
 	uint8_t key1bl[16];
 	uint8_t cpuKey[16];
 	uint8_t xexKey[16];		/* calcXexKey's (CRL/DAE key) */
-	struct rsapub *pub1bl;
-	struct rsapub *masterPub;
-	struct rsapub *pubPirs;
+	void *pub1bl;			/* struct rsapub, loaded or the console's */
+	void *masterPub;
+	void *pubPirs;
 	void *prvKey;			/* the ini's 2BL private key (SB) */
 	char suffix[0x400];		/* -i */
 	char binDir[0x400];

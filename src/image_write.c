@@ -128,8 +128,6 @@ int buildImage(void)
 	   the Jasper case's ebx */
 	if (xb.type != BUILD_JTAG) {
 		flashHdr.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
-		/* TODO(prototype cast): findFileOffset returns int; the swap's
-		   shifts are unsigned */
 		cf = SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(9));
 		flashHdr.sysUpdateCount = 0x0200;
 		flashHdr.kvVersion = 0x1207;

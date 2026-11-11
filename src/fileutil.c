@@ -36,8 +36,10 @@ unsigned short getBeU16(const unsigned char *p)
 
 unsigned int getBeU32(const uint8_t *p)
 {
-	/* TODO(prototype cast): its callers pass bytes; the original read a uint32_t */
-	return __builtin_bswap32(*(const uint32_t *)p);
+	uint32_t v;
+
+	memcpy(&v, p, 4);
+	return __builtin_bswap32(v);
 }
 
 unsigned long long getBeU64(const unsigned long long *p)
@@ -47,8 +49,10 @@ unsigned long long getBeU64(const unsigned long long *p)
 
 unsigned int getLeU32(const uint8_t *p)
 {
-	/* TODO(prototype cast): as getBeU32 */
-	return *(const uint32_t *)p;
+	uint32_t v;
+
+	memcpy(&v, p, 4);
+	return v;
 }
 
 unsigned char *setBeU16(unsigned short v, unsigned char *p)

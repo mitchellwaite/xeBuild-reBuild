@@ -1593,7 +1593,7 @@ int blmodMissing(struct fileent *e)
 }
 
 /* XeCryptRotSumSha, showing the sums */
-void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen, uint8_t *out, uint32_t outlen)
+void rotSumSha(uint8_t *a, uint32_t alen, uint8_t *b, uint32_t blen, uint8_t *out, uint32_t outlen)
 {
 	uint8_t sum[32];
 	XECRYPT_SHA_STATE sha;
@@ -1601,18 +1601,17 @@ void rotSumSha(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen,
 
 	for (i = 0; i < 32; i++)
 		sum[i] = 0;
-	/* TODO(prototype cast): xecrypt.h's inputs aren't const */
-	XeCryptRotSum(sum, (uint8_t *)a, alen >> 3);
+	XeCryptRotSum(sum, a, alen >> 3);
 	log_printf(1, "sum1:");
 	display_buffer_hex(sum, 32, 1);
-	XeCryptRotSum(sum, (uint8_t *)b, blen >> 3);
+	XeCryptRotSum(sum, b, blen >> 3);
 	log_printf(1, "sum2:");
 	display_buffer_hex(sum, 32, 1);
 	XeCryptShaInit(&sha);
 	XeCryptShaUpdate(&sha, sum, 32);
 	XeCryptShaUpdate(&sha, sum, 32);
-	XeCryptShaUpdate(&sha, (uint8_t *)a, alen);
-	XeCryptShaUpdate(&sha, (uint8_t *)b, blen);
+	XeCryptShaUpdate(&sha, a, alen);
+	XeCryptShaUpdate(&sha, b, blen);
 	for (i = 0; i < 32; i++)
 		sum[i] = ~sum[i];
 	log_printf(1, "sum3:");
