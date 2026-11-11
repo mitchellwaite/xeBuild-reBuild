@@ -462,29 +462,29 @@ void showCurrentInfo(int level, int *hdd)
 void setInfoKeys(void)
 {
 	xb.randomKeys = 0;
-	if (!checkZeros(info->keys[0], 16))
+	if (!checkZeros(info->cbaNonce, 16))
 	{
-		setInfoKey0(info->keys[0]);
+		setInfoKey0(info->cbaNonce);
 	}
-	if (!checkZeros(info->keys[1], 16))
+	if (!checkZeros(info->cbbNonce, 16))
 	{
-		setInfoKey1(info->keys[1]);
+		setInfoKey1(info->cbbNonce);
 	}
-	if (!checkZeros(info->keys[2], 16))
+	if (!checkZeros(info->cdNonce, 16))
 	{
-		setInfoKey2(info->keys[2]);
+		setInfoKey2(info->cdNonce);
 	}
-	if (!checkZeros(info->keys[3], 16))
+	if (!checkZeros(info->ceNonce, 16))
 	{
-		setInfoKey3(info->keys[3]);
+		setInfoKey3(info->ceNonce);
 	}
-	if (!checkZeros(info->keys[4], 16))
+	if (!checkZeros(info->cfNonce, 16))
 	{
-		setInfoKey4(info->keys[4]);
+		setInfoKey4(info->cfNonce);
 	}
-	if (!checkZeros(info->keys[5], 16))
+	if (!checkZeros(info->cgNonce, 16))
 	{
-		setInfoKey5(info->keys[5]);
+		setInfoKey5(info->cgNonce);
 	}
 }
 

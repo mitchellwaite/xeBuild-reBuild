@@ -155,7 +155,12 @@ struct consoleinfo
 	XECRYPT_RSAPUB_2048 pub1bl;
 	XECRYPT_RSAPUB_2048 pubPirs;
 	XECRYPT_RSAPUB_2048 pubMaster;
-	uint8_t keys[6][0x10];
+	uint8_t cbaNonce[0x10];		/* the bootloaders' nonces */
+	uint8_t cbbNonce[0x10];
+	uint8_t cdNonce[0x10];
+	uint8_t ceNonce[0x10];
+	uint8_t cfNonce[0x10];
+	uint8_t cgNonce[0x10];
 };
 
 /* smc_config overrides from the ini */
