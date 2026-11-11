@@ -292,7 +292,8 @@ int checkPatches(uint8_t *buf, size_t *len, uint32_t type)
 
 void updatePatches(const char *file, uint32_t type)
 {
-	size_t len, cur;
+	size_t len;
+	int cur;
 	uint8_t *buf, *patches;
 	int same;
 
@@ -301,7 +302,7 @@ void updatePatches(const char *file, uint32_t type)
 	{
 		if (len)
 		{
-			log_printf(0, "loaded %s size 0x%x (%d) bytes\n", file, len, len);
+			log_printf(0, "loaded %s size 0x%x (%d) bytes\n", file, (int)len, (int)len);
 			if (checkPatches(buf, &len, type))
 			{
 				log_printf(0, "retrieving patches from console...");

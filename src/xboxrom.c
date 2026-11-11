@@ -49,7 +49,7 @@ uint32_t blSign(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, cons
 	{
 		return 0;
 	}
-	if (!XeCryptBnQwNeRsaPrvCrypt((uint64_t *)s.sig, (uint64_t *)s.sig, &prvKey->Rsa))
+	if (!XeCryptBnQwNeRsaPrvCrypt((u64 *)s.sig, (u64 *)s.sig, &prvKey->Rsa))
 	{
 		return 0;
 	}
