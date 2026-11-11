@@ -346,10 +346,10 @@ void showConsoleInfo(void)
 	}
 	else if (xb.type == BUILD_JTAG)
 	{
-		if (!(xb.bootFlags & 4))
+		if (!(xb.optFlags & OPT_XELL_BUTTON))
 		{
 			log_printf(0, "Xell      : starts if tray is ");
-			if (!(xb.bootFlags & 2))
+			if (!(xb.optFlags & OPT_NODVD))
 			{
 				log_printf(0, "fully out at boot time\n");
 			}
@@ -374,7 +374,7 @@ void showConsoleInfo(void)
 			logButton(0, xb.dualButton);
 		}
 	}
-	if ((xb.type == BUILD_JTAG || xb.type == BUILD_GLITCH) && (xb.bootFlags & 9))
+	if ((xb.type == BUILD_JTAG || xb.type == BUILD_GLITCH) && (xb.optFlags & OPT_UART_SLOW))
 	{
 		log_printf(0, "UART      : cygnos/demon speed set\n");
 	}
@@ -416,7 +416,7 @@ void showConsoleInfo(void)
 		{
 			log_printf(0, "%02X", p[i]);
 		}
-		if (xb.bootFlags & 0x2000000)
+		if (xb.optFlags & OPT_DVDKEY)
 		{
 			if (xb.type == BUILD_RETAIL)
 			{
@@ -458,7 +458,7 @@ void showConsoleInfo(void)
 void initGlobals(void)
 {
 	memset(&xb, 0, sizeof(xb));
-	xb.bootFlags = 4;
+	xb.optFlags = OPT_XELL_BUTTON;
 	strcpy(xb.baseDir, "./");
 	strcpy(xb.binDir, "./bin/");
 	strcpy(xb.dataDir, "./data/");

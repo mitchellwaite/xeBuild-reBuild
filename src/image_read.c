@@ -1040,7 +1040,7 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 					log_printf(0, "  nanddump.bin has NAND memory unit data, make\n");
 					log_printf(0, "  sure you back up any important data off the\n");
 					log_printf(0, "  internal MU before flashing a new image!\n");
-					if (xb.bootFlags & 0x10000000)
+					if (xb.optFlags & OPT_NANDMU)
 					{
 						log_printf(0, "\n  xeBuild will attempt to keep this data, but\n");
 						log_printf(0, "  many things could cause it to be invalid/corrupt.\n");
@@ -1105,7 +1105,7 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 	}
 	if (lba != -1)
 	{
-		if (!(xb.bootFlags & 0x80000000) && !blockEccOk(b, xb.dumpBigBlock))
+		if (!(xb.optFlags & OPT_NOECDREMAP) && !blockEccOk(b, xb.dumpBigBlock))
 		{
 			lba = -4;
 		}
@@ -1348,7 +1348,7 @@ next:
 	}
 	log_printf(1, "done!\n");
 	/* (int): with the same type as i, uncprop reuses this test's zero for i = 0 */
-	if ((int)xb.bootFlags & 0x40000000)
+	if ((int)xb.optFlags & OPT_NOREMAP)
 	{
 		if (xb.numBad)
 		{
@@ -1808,12 +1808,12 @@ uint32_t loadDump(const char *path)
 			getImageLdv();
 			if (findFsRoot())
 			{
-				if (!(xb.bootFlags & 0x20000000))
+				if (!(xb.optFlags & OPT_NOMOBILE))
 				{
 					getNetKd();
 					getImageMobiles();
 				}
-				if (!(xb.bootFlags & 0x4000000))
+				if (!(xb.optFlags & OPT_NOSECURITY))
 				{
 					imgGetSecurityFiles();
 				}

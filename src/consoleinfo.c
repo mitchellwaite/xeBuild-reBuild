@@ -231,13 +231,13 @@ int getFreebootOpts(int level, const char *dir)
 
 		if (findInst(xb.files[i].data, xb.files[i].size, (uint8_t *)sig, 27))
 		{
-			flags = xb.bootFlags;
+			flags = xb.optFlags;
 			log_printf(level, "parsing freeboot 0.08 core for opts\n");
 			p = xb.files[i].data + 2464;
 			xb.xellButton = p[7];
 			xb.dualButton = p[11];
 			xb.xellAltButton = p[15];
-			flags = (flags & ~0xf) | (getBeU32(p) & 0xf);
+			flags = (flags & ~OPT_FREEBOOT_MASK) | (getBeU32(p) & OPT_FREEBOOT_MASK);
 			log_printf(level, "Xell Reason     : ");
 			logButton(level, xb.xellButton);
 			optButton("xellbutton", xb.xellButton);
@@ -247,7 +247,7 @@ int getFreebootOpts(int level, const char *dir)
 				logButton(level, xb.xellAltButton);
 				optButton("xellbutton2", xb.xellAltButton);
 			}
-			if (flags & 9)
+			if (flags & OPT_UART_SLOW)
 			{
 				log_printf(level, "UART speed      : cygnos/demon speed set\n");
 				optWrite("cygnos", "true");
@@ -288,7 +288,7 @@ int getFlashHdrOpts(int level, const char *dir)
 		return 0;
 	}
 	flags = hdr[77];
-	xb.bootFlags |= flags & 7;
+	xb.optFlags |= flags & OPT_HDR_MASK;
 	if (xb.type == BUILD_JTAG)
 	{
 		if (hdr[75] != 1)
@@ -310,12 +310,12 @@ int getFlashHdrOpts(int level, const char *dir)
 		logButton(level, xb.xellAltButton);
 		optButton("xellbutton2", xb.xellAltButton);
 	}
-	if (flags & 1)
+	if (flags & OPT_CYGNOS)
 	{
 		log_printf(level, "UART speed      : cygnos/demon speed set\n");
 		optWrite("cygnos", "true");
 	}
-	if (flags & 2)
+	if (flags & OPT_NODVD)
 	{
 		optWrite("nodvd", "true");
 	}

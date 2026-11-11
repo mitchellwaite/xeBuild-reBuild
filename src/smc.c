@@ -82,7 +82,7 @@ void smcPatch(uint8_t *smc, int len, uint32_t flags)
 	uint8_t *data = smc + 4;
 	int dataLen = len - 4;
 
-	if (flags & 0x8000000)
+	if (flags & OPT_PATCHSMC)
 	{
 		int off = smcFindResetLimit(smc, len);
 		if (off)
@@ -97,7 +97,7 @@ void smcPatch(uint8_t *smc, int len, uint32_t flags)
 			log_printf(0, "\n******* WARNING: could not patch SMC reset limit!\n\n");
 		}
 	}
-	if (flags & 0x400000)
+	if (flags & OPT_SMCNOEJECT)
 	{
 		uint32_t inst = 0x22b390a2, repl = 0x22c3;
 		if (replaceInst(data, dataLen, &inst, 4, &repl, 4))
@@ -109,7 +109,7 @@ void smcPatch(uint8_t *smc, int len, uint32_t flags)
 			log_printf(0, "\n******* WARNING: could not patch SMC to disable EJECT button.\n\n");
 		}
 	}
-	if (flags & 0x800000)
+	if (flags & OPT_SMCNOBLINK)
 	{
 		uint32_t inst[2] = { 0x92cfa2e4, 0x22cea2e0 }, repl[2] = { 0x22d3e4, 0 };
 		if (replaceInst(data, dataLen, inst, 8, repl, 8))

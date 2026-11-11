@@ -2010,17 +2010,17 @@ void patchHeaderOpts(void)
 	uint8_t opts = 0;
 
 	xb.hdr[0x4b] = 1;
-	if (xb.bootFlags & 9)
+	if (xb.optFlags & OPT_UART_SLOW)
 	{
 		log_printf(1, "\tPatching header for slower demon/cygnos UART speed\n");
-		opts = 1;
+		opts = OPT_CYGNOS;
 	}
 	if (xb.type == BUILD_JTAG)
 	{
-		opts |= xb.bootFlags & 7;
-		if (xb.bootFlags & 8)
+		opts |= xb.optFlags & OPT_HDR_MASK;
+		if (xb.optFlags & OPT_DEMON)
 		{
-			opts |= 1;
+			opts |= OPT_CYGNOS;
 		}
 		if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton)
 		{
@@ -2646,7 +2646,7 @@ int logPowerButton(int reason, const char *use)
 /* freeboot.bin: the kernel version string, boot options and buttons */
 void patchFreeboot(uint8_t *buf, int len)
 {
-	uint32_t opts = xb.bootFlags & 0xf;
+	uint32_t opts = xb.optFlags & OPT_FREEBOOT_MASK;
 	char pat[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 	uint32_t hold[4];	/* the hold address instructions; [2..3]: 9199's */
 	uint32_t *q;
@@ -2656,14 +2656,14 @@ void patchFreeboot(uint8_t *buf, int len)
 	hold[1] = 0x78300001;
 	log_printf(1, "patching freeboot.bin with with kernel version string '%s'\n", xb.kernelStr);
 	log_printf(1, "Boot options set:\n");
-	if (opts & 9)
+	if (opts & OPT_UART_SLOW)
 	{
 		log_printf(1, "    - Set debug UART speed to cygnos/demon compatible\n");
-		opts = (opts & 6) | 1;
+		opts = (opts & (OPT_NODVD | OPT_XELL_BUTTON)) | OPT_CYGNOS;
 	}
-	if (!(opts & 4))
+	if (!(opts & OPT_XELL_BUTTON))
 	{
-		if (opts & 2)
+		if (opts & OPT_NODVD)
 		{
 			log_printf(1, "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n");
 		}
@@ -2827,7 +2827,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				{
 					patchFreeboot(e->data, e->size);
 				}
-				else if (xb.bootFlags)
+				else if (xb.optFlags)
 				{
 					log_printf(0, "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n");
 				}
@@ -3420,7 +3420,7 @@ int buildFlash(void)
 		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (uint8_t *)&ts))
 		{
 			found = 0;
-			if (!(xb.bootFlags & 0x1000000))
+			if (!(xb.optFlags & OPT_NOSUSECURITY))
 			{
 				if (xb.files[xb.nFlashFiles].data)
 				{

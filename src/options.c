@@ -299,7 +299,7 @@ _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 	char *bad;
 	_Bool on;
 
-	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
+	if ((xb.optFlags & set) || (xb.optFlagsOff & set))
 	{
 		on = 0;
 	}
@@ -327,8 +327,8 @@ _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 	}
 	if (on)
 	{
-		xb.bootFlags &= ~clear;
-		xb.bootFlags |= set;
+		xb.optFlags &= ~clear;
+		xb.optFlags |= set;
 	}
 	return on;
 }
@@ -425,7 +425,7 @@ int parseButton(const char *s)
 	return b;
 }
 
-#define OPT(name, set, clear) if (!(xb.bootFlags & (set))) optIniBool(name, set, clear, 0)
+#define OPT(name, set, clear) if (!(xb.optFlags & (set))) optIniBool(name, set, clear, 0)
 
 void stripColons(char *s)
 {
@@ -475,12 +475,12 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 2;
+			xb.optFlagsOff |= OPT_NODVD;
 		}
 		else
 		{
-			xb.bootFlags &= ~4;
-			xb.bootFlags |= 2;
+			xb.optFlags &= ~OPT_XELL_BUTTON;
+			xb.optFlags |= OPT_NODVD;
 			log_printf(1, "Using NODVD (tray status fully open check) option");
 		}
 		return 1;
@@ -489,11 +489,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 6;
+			xb.optFlagsOff |= (OPT_NODVD | OPT_XELL_BUTTON);
 		}
 		else
 		{
-			xb.bootFlags &= ~4;
+			xb.optFlags &= ~OPT_XELL_BUTTON;
 			log_printf(1, "Using OLDDVD (tray status not closed check) option");
 		}
 		return 1;
@@ -502,11 +502,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 1;
+			xb.optFlagsOff |= OPT_CYGNOS;
 		}
 		else
 		{
-			xb.bootFlags |= 1;
+			xb.optFlags |= OPT_CYGNOS;
 			log_printf(1, "Using CYGNOS option");
 		}
 		return 1;
@@ -515,11 +515,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 8;
+			xb.optFlagsOff |= OPT_DEMON;
 		}
 		else
 		{
-			xb.bootFlags |= 8;
+			xb.optFlags |= OPT_DEMON;
 			log_printf(1, "Using DEMON option");
 		}
 		return 1;
@@ -528,11 +528,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x20000000;
+			xb.optFlagsOff |= OPT_NOMOBILE;
 		}
 		else
 		{
-			xb.bootFlags |= 0x20000000;
+			xb.optFlags |= OPT_NOMOBILE;
 			log_printf(1, "Using NOMOBILE option");
 		}
 		return 1;
@@ -541,11 +541,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x200000;
+			xb.optFlagsOff |= OPT_SMCNOCHECK;
 		}
 		else
 		{
-			xb.bootFlags |= 0x200000;
+			xb.optFlags |= OPT_SMCNOCHECK;
 			log_printf(1, "Using SMCNOCHECK option");
 		}
 		return 1;
@@ -554,11 +554,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x40000000;
+			xb.optFlagsOff |= OPT_NOREMAP;
 		}
 		else
 		{
-			xb.bootFlags |= 0x40000000;
+			xb.optFlags |= OPT_NOREMAP;
 			log_printf(1, "Using NOREMAP option");
 		}
 		return 1;
@@ -567,11 +567,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x80000000;
+			xb.optFlagsOff |= OPT_NOECDREMAP;
 		}
 		else
 		{
-			xb.bootFlags |= 0x80000000;
+			xb.optFlags |= OPT_NOECDREMAP;
 			log_printf(1, "Using NOECDREMAP option");
 		}
 		return 1;
@@ -580,11 +580,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x10000000;
+			xb.optFlagsOff |= OPT_NANDMU;
 		}
 		else
 		{
-			xb.bootFlags |= 0x10000000;
+			xb.optFlags |= OPT_NANDMU;
 			log_printf(1, "Using NANDMU option");
 		}
 		return 1;
@@ -593,11 +593,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x4000000;
+			xb.optFlagsOff |= OPT_NOSECURITY;
 		}
 		else
 		{
-			xb.bootFlags |= 0x4000000;
+			xb.optFlags |= OPT_NOSECURITY;
 			log_printf(1, "Using NOSECURITY option");
 		}
 		return 1;
@@ -606,11 +606,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x1000000;
+			xb.optFlagsOff |= OPT_NOSUSECURITY;
 		}
 		else
 		{
-			xb.bootFlags |= 0x1000000;
+			xb.optFlags |= OPT_NOSUSECURITY;
 			log_printf(1, "Using NOSECURITY option");
 		}
 		return 1;
@@ -619,11 +619,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x8000000;
+			xb.optFlagsOff |= OPT_PATCHSMC;
 		}
 		else
 		{
-			xb.bootFlags |= 0x8000000;
+			xb.optFlags |= OPT_PATCHSMC;
 			log_printf(1, "Using PATCHSMC option");
 		}
 		return 1;
@@ -632,11 +632,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x400000;
+			xb.optFlagsOff |= OPT_SMCNOEJECT;
 		}
 		else
 		{
-			xb.bootFlags |= 0x400000;
+			xb.optFlags |= OPT_SMCNOEJECT;
 			log_printf(1, "Using SMCNOEJECT option");
 		}
 		return 1;
@@ -645,11 +645,11 @@ int setBoolOption(const char *name, const char *val)
 	{
 		if (off)
 		{
-			xb.bootFlagsOff |= 0x800000;
+			xb.optFlagsOff |= OPT_SMCNOBLINK;
 		}
 		else
 		{
-			xb.bootFlags |= 0x800000;
+			xb.optFlags |= OPT_SMCNOBLINK;
 			log_printf(1, "Using SMCNOBLINK option");
 		}
 		return 1;
@@ -905,7 +905,7 @@ uint32_t parseOption(char *opt)
 			{
 				goto bad;
 			}
-			xb.bootFlags |= 0x2000000;
+			xb.optFlags |= OPT_DVDKEY;
 			return 1;
 		}
 	}
@@ -962,13 +962,13 @@ void applyIniOptions(void)
 	char *s;
 	int i;
 
-	OPT("nomobile", 0x20000000, 0);
-	OPT("noremap", 0x40000000, 0);
-	OPT("noecdremap", 0x80000000, 0);
-	OPT("nandmu", 0x10000000, 0);
-	OPT("nosecurity", 0x4000000, 0);
-	OPT("nosusecurity", 0x1000000, 0);
-	OPT("smcnocheck", 0x200000, 0);
+	OPT("nomobile", OPT_NOMOBILE, 0);
+	OPT("noremap", OPT_NOREMAP, 0);
+	OPT("noecdremap", OPT_NOECDREMAP, 0);
+	OPT("nandmu", OPT_NANDMU, 0);
+	OPT("nosecurity", OPT_NOSECURITY, 0);
+	OPT("nosusecurity", OPT_NOSUSECURITY, 0);
+	OPT("smcnocheck", OPT_SMCNOCHECK, 0);
 	if (!xb.cfLdv)
 	{
 		xb.cfLdv = optIniInt("cfldv", 0);
@@ -1055,10 +1055,10 @@ void applyIniOptions(void)
 	}
 	if (xb.type - BUILD_JTAG <= 3)
 	{
-		OPT("cygnos", 1, 0);
-		OPT("demon", 8, 0);
-		OPT("patchsmc", 0x8000000, 0);
-		if (!xb.xellButton && (xb.bootFlags & 4))
+		OPT("cygnos", OPT_CYGNOS, 0);
+		OPT("demon", OPT_DEMON, 0);
+		OPT("patchsmc", OPT_PATCHSMC, 0);
+		if (!xb.xellButton && (xb.optFlags & OPT_XELL_BUTTON))
 		{
 			xb.xellButton = parseButton(getIniValue("xellbutton"));
 			if (!xb.xellButton)
@@ -1067,7 +1067,7 @@ void applyIniOptions(void)
 				xb.xellButton = 0x12;
 			}
 		}
-		if (!xb.xellAltButton && (xb.bootFlags & 4))
+		if (!xb.xellAltButton && (xb.optFlags & OPT_XELL_BUTTON))
 		{
 			xb.xellAltButton = parseButton(getIniValue("xellbutton2"));
 			if (!xb.xellButton)
@@ -1075,16 +1075,16 @@ void applyIniOptions(void)
 				log_printf(1, "alternate xell button is disabled\n");
 			}
 		}
-		OPT("smcnoeject", 0x400000, 0);
-		OPT("smcnoblink", 0x800000, 0);
+		OPT("smcnoeject", OPT_SMCNOEJECT, 0);
+		OPT("smcnoblink", OPT_SMCNOBLINK, 0);
 	}
 	/* outside the block above: VRP threads its range test past this one
 	   (a switch it can't), and smcnoblink's paths reload the type */
 	if (xb.type == BUILD_JTAG)
 	{
-		OPT("nodvd", 2, 4);
-		/* no bit of its own: it clears nodvd's 4 */
-		optIniBool("olddvd", 0, 4, 0);
+		OPT("nodvd", OPT_NODVD, OPT_XELL_BUTTON);
+		/* no bit of its own: it clears OPT_XELL_BUTTON */
+		optIniBool("olddvd", 0, OPT_XELL_BUTTON, 0);
 		if (!xb.dualButton)
 		{
 			xb.dualButton = parseButton(getIniValue("dualboot"));
@@ -1095,12 +1095,12 @@ void applyIniOptions(void)
 			}
 		}
 	}
-	if (!(xb.bootFlags & 0x2000000))
+	if (!(xb.optFlags & OPT_DVDKEY))
 	{
 		s = getIniValue("dvdkey");
 		if (s && kvSetDvdKey(s))
 		{
-			xb.bootFlags |= 0x2000000;
+			xb.optFlags |= OPT_DVDKEY;
 		}
 	}
 	if (!xb.blSuffix[0])

@@ -82,6 +82,38 @@
 /* a slim console (xb.flags' console type) */
 #define IS_SLIM ((xb.flags & CONSOLE_MASK) > CONSOLE_JASPER)
 
+/* ---- xb.optFlags and xb.optFlagsOff ----
+
+   xb.optFlags: the build options turned on (-o, perbox files, options.ini);
+   xb.optFlagsOff: the ones the command line turned off (name=false).
+   optIniBool skips an ini or perbox option whose bit is set in either.
+   The low nibble is freeboot's boot options word (patchFreeboot) and its
+   low 3 bits the flash header's byte 0x4d (patchHeaderOpts,
+   getFlashHdrOpts), which stores demon as cygnos.  Bits 1-2 are the tray
+   mode xell starts on: OPT_XELL_BUTTON (the default), OPT_NODVD (tray
+   fully open) or neither (olddvd: tray not closed). */
+#define OPT_CYGNOS 0x00000001		/* cygnos: slow (cygnos/demon) debug UART speed */
+#define OPT_NODVD 0x00000002		/* nodvd: xell starts if the tray is fully open */
+#define OPT_XELL_BUTTON 0x00000004	/* default: xell starts on a power-on button
+					   (xellbutton=); nodvd and olddvd clear it */
+#define OPT_DEMON 0x00000008		/* demon: slow UART speed */
+#define OPT_SMCNOCHECK 0x00200000	/* smcnocheck: carry on after SMC check errors */
+#define OPT_SMCNOEJECT 0x00400000	/* smcnoeject: patch out the SMC's eject button */
+#define OPT_SMCNOBLINK 0x00800000	/* smcnoblink: patch out the ROL centre blink */
+#define OPT_NOSUSECURITY 0x01000000	/* nosusecurity: no flash files from the system update */
+#define OPT_DVDKEY 0x02000000		/* not an option: a dvdkey= was set in the KV */
+#define OPT_NOSECURITY 0x04000000	/* nosecurity: don't read the image's security files */
+#define OPT_PATCHSMC 0x08000000		/* patchsmc: patch the SMC reset limit (glitch) */
+#define OPT_NANDMU 0x10000000		/* nandmu: keep the NAND memory unit data from the dump */
+#define OPT_NOMOBILE 0x20000000		/* nomobile: don't read the dump's Mobile* files or the KD */
+#define OPT_NOREMAP 0x40000000		/* noremap: discard the dump's bad block remap data */
+#define OPT_NOECDREMAP 0x80000000	/* noecdremap: don't remap blocks that fail the ECC check */
+
+#define OPT_UART_SLOW (OPT_CYGNOS | OPT_DEMON)
+#define OPT_HDR_MASK (OPT_CYGNOS | OPT_NODVD | OPT_XELL_BUTTON)
+#define OPT_FREEBOOT_MASK (OPT_HDR_MASK | OPT_DEMON)
+#define OPT_SMC_PATCHES (OPT_PATCHSMC | OPT_SMCNOEJECT | OPT_SMCNOBLINK)
+
 /* ---- Types ---- */
 
 /* a file and its size (netGetFile's, a dump's) */
@@ -229,8 +261,8 @@ struct xebuild
 	int bbController;		/* big block controller, small block NAND */
 	uint32_t fsEnd;			/* FS area, in 16K blocks */
 	uint32_t fsStart;
-	uint32_t bootFlags;		/* options turned on */
-	uint32_t bootFlagsOff;		/* options turned off */
+	uint32_t optFlags;		/* options turned on (OPT_x) */
+	uint32_t optFlagsOff;		/* options turned off */
 	int xellButton;
 	/* uint32_t (unlike xellButton): options.c's applyIniOptions' tests of them
 	   don't get reused for parseButton's 0 */

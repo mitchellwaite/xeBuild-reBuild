@@ -452,7 +452,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 		{
 			log_printf(1, "failed!");
 			log_printf(0, "\n******* ERROR: please make sure your provided a valid/decryptable SMC binary!\n\n");
-			if (!(xb.bootFlags & 0x200000))
+			if (!(xb.optFlags & OPT_SMCNOCHECK))
 			{
 				return 1;
 			}
@@ -467,7 +467,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 			if (bad)
 			{
 				log_printf(0, "\n******* ERROR: hacked or unknown SMC binary found? you should use a clean SMC binary for a retail image!\n\n");
-				if (!(xb.bootFlags & 0x200000))
+				if (!(xb.optFlags & OPT_SMCNOCHECK))
 				{
 					return 1;
 				}
@@ -476,7 +476,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 			{
 				log_printf(1, "known/clean SMC binary found! type 0x%x\n", 1);
 			}
-			xb.bootFlags &= 0xf73fffff;
+			xb.optFlags &= ~OPT_SMC_PATCHES;
 		}
 		else if (xb.type > BUILD_DEVGL16)
 		{
@@ -488,14 +488,14 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 			{
 				log_printf(1, "known/clean SMC binary found!\n");
 			}
-			xb.bootFlags &= 0xf73fffff;
+			xb.optFlags &= ~OPT_SMC_PATCHES;
 		}
 		else if (bad)
 		{
 			if (xb.type == BUILD_GLITCH)
 			{
 				log_printf(1, "glitch hack found in SMC binary!\n");
-				xb.bootFlags &= ~0x8000000;
+				xb.optFlags &= ~OPT_PATCHSMC;
 			}
 			else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 			{
@@ -510,7 +510,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 		{
 			if (xb.type == BUILD_GLITCH)
 			{
-				if (!(xb.bootFlags & 0x8000000))
+				if (!(xb.optFlags & OPT_PATCHSMC))
 				{
 					log_printf(0, "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for glitch images.\n\n");
 				}
@@ -522,13 +522,13 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 			else
 			{
 				log_printf(0, "\n******* ERROR: clean SMC binary found? you should use a hacked SMC binary for JTAG images.\n\n");
-				if (!(xb.bootFlags & 0x200000))
+				if (!(xb.optFlags & OPT_SMCNOCHECK))
 				{
 					return 1;
 				}
 			}
 		}
-		patch = xb.bootFlags & 0x8c00000;
+		patch = xb.optFlags & OPT_SMC_PATCHES;
 		if (patch)
 		{
 			smcPatch(smc, size, patch);

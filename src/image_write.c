@@ -1138,7 +1138,7 @@ int writeImage(char *name)
 			XeCryptShaInit(&sha);
 			XeCryptShaUpdate(&sha, xb.raw, xb.blocks * 0x4200);
 		}
-		if (xb.nandMu && (xb.bootFlags & 0x10000000))
+		if (xb.nandMu && (xb.optFlags & OPT_NANDMU))
 		{
 			if (xb.sha1Write)
 			{
@@ -1260,7 +1260,7 @@ int finalizeImage(void)
 		}
 	}
 	log_printf(1, "done!\n");
-	if (xb.nandMu && (xb.bootFlags & 0x10000000))
+	if (xb.nandMu && (xb.optFlags & OPT_NANDMU))
 	{
 		log_printf(1, "attempting to restore NAND MU data to big block unit from dump...");
 		raw = xb.raw + xb.spare7 * 0x21000;
