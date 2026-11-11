@@ -16,11 +16,16 @@
 #                tools/toolchain-4745 (run tools/fetch_toolchain.sh first,
 #                from Git Bash); the only build that reproduces the reference
 #                bytes.  Outputs build/obj/, build/xeBuild.exe.
-#   win32latest  Windows with the latest MSYS2 gcc on PATH (run from an MSYS2
-#                MINGW32 shell for a 32-bit exe like the original).  The gcc
-#                driver picks its own default libraries.  Never matches.
+#   win32latest  Windows with the latest MSYS2 gcc on PATH.  The gcc driver
+#                picks its own default target and libraries: a MINGW32 shell
+#                builds a 32-bit exe like the original, a MINGW64 or UCRT64
+#                one a 64-bit exe.  Never matches.
 #   linux        Linux (detected): the installed gcc.
 #   macos        macOS (detected): the installed clang.
+#
+# Only win32 fixes the bitness (its toolchain is i686-only).  The others set
+# no -m32/-m64 or target and build for the compiler's default, 32- or
+# 64-bit; pass e.g. CFLAGS=-m32 LDFLAGS=-m32 for a different one.
 #
 # The platforms other than win32 write to build/<platform>/ so the matching
 # objects in build/obj/ aren't touched.  CC, CFLAGS, LDFLAGS, LDLIBS, PYTHON
