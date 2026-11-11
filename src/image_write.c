@@ -146,9 +146,16 @@ int buildImage(void)
 	flashHdr.magic = 0x4fff;
 	flashHdr.build = 0x6007;
 	memset(xb.mmcAnchor, 0, sizeof(xb.mmcAnchor));
-	/* JTAG last: peephole2 walks the blocks backwards, and its rotating
-	   scratch register for `cmp mem,0` gives JTAG's bigBlock test edx and
-	   the Jasper case's ebx */
+
+	// Stock XeBuild doesn't set the patch slot size for
+	// a bunch of image types, which results in issues
+	// especially for glitch2m and DevGL. J-Runner sets
+	// it to 0x10000 if it's unset in the header as a
+	// workaround, so we're setting this as the default
+	#ifdef XEBUILD_FIXES
+		flashHdr.patchSlotSize = 0x100;
+	#endif
+
 	if (xb.type != BUILD_JTAG)
 	{
 		flashHdr.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
@@ -167,7 +174,16 @@ int buildImage(void)
 		case CONSOLE_XENON:
 		case CONSOLE_ZEPHYR:
 			copyright[10] = '5';
-			flashHdr.kvSize = 0;
+
+			// Stock XeBuild resets the KV size to 0 which causes
+			// issues with XeLL and other apps. Don't know why it
+			// does this other than that retail images might have
+			// it unset from the factory. For the fixed build,
+			// don't do this reset.
+			#ifndef XEBUILD_FIXES
+				flashHdr.kvSize = 0;
+			#endif
+
 			break;
 		case CONSOLE_FALCON:
 			copyright[10] = '7';
@@ -230,7 +246,15 @@ int buildImage(void)
 			   (xb.flags & CONSOLE_MASK) == CONSOLE_ZEPHYR)
 		{
 			copyright[10] = '5';
-			flashHdr.kvSize = 0;
+
+			// Stock XeBuild resets the KV size to 0 which causes
+			// issues with XeLL and other apps. Don't know why it
+			// does this other than that retail images might have
+			// it unset from the factory. For the fixed build,
+			// don't do this reset.
+			#ifndef XEBUILD_FIXES
+				flashHdr.kvSize = 0;
+			#endif
 		}
 		else
 		{
