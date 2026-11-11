@@ -47,7 +47,6 @@ void build_usage(void)
 	log_printf(0, "[mode]      : build, extract, client, update, ini - defaults to build if not present\n");
 	log_printf(0, "<type>      = retail, jtag, glitch, glitch2, glitch2m, devgl, devgl16,\n");
 	log_printf(0, "              devkit, devkit16, testkit, testkit16\n");
-	log_printf(0, "              (devkit, testkit: 64MiB NAND; devkit16, testkit16: 16MiB)\n");
 	log_printf(0, "<con>       = xenon, zephyr, falcon, jasper, jasperbc, jaspersb, jasper256,\n");
 	log_printf(0, "              jasper512, jasperbb, jasperbigffs, trinity, trinitybb, trinitybigffs,\n");
 	log_printf(0, "              corona, coronabb, coronabigffs, corona4g, winchester, winchesterbb,\n");
