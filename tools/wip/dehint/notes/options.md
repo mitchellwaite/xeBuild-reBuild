@@ -3302,3 +3302,95 @@ macid memset's one and its asm goto, dualboot's asm goto, the rev feeds' four
 `__builtin_constant_p` and dead sprintf, and both `__builtin_unreachable` dummies are gone,
 replaced by nothing: optIniInt returns early on the good path, and the code around them is
 plain.
+
+## Review (2026-11-10): all five borderline shapes approved, no source change
+
+The user asked for options' five borderline items (parseOption's four, parseCmdOptions'
+`uint32_t`) to be reviewed and settled. BORDERLINE.md asked for one attempt from the natural
+parseOption first (attempt 30's lead: the shapes were fitted one at a time, attempts 9, 19
+and 22, each on the state the previous ones left). That attempt doesn't match, every
+mechanism is known, so all five stay, with `(approved)` on their tags and the review's
+numbers in the comments. Only comments changed; full build SHA256 10dac648...1971c.
+
+Tools (tools/wip/dehint/): `oprv.py <variants.py> [label ..] [-v label [fn]] [-o label out]`
+scores variants of src/options.c (98a0eba6's) against build/op/reference.o with optlib at
+plain -O3; a label may join variants with `+`. `oprv_a.py` (each shape made plain alone),
+`oprv_b.py` (the product of plain spellings of all four slots: 144 sources), `oprv_c.py`
+(structural respellings), `oprv_d.py` (macid loops with run-time bounds). Line counts below
+are parseOption's alone; the `applyIniOptions`/`parseCmdOptions` lines some variants add are
+call offsets after parseOption's size changes.
+
+### What only parseOption sees
+
+`setBoolOption`, `parseButton` and `stripColons` stay calls in the reference, so their
+bodies don't reach parseOption's profile; macidRest is the only inlined helper. Attempt
+30's lever (vary an inlined helper's return shape) has nothing else to act on here.
+
+### The product of plain spellings (oprv_b.py)
+
+Slots: cputemp/gpufan flag or plain; the bool arm as today, `return 1` in the arm with `==
+1`, or with a plain test; `val && vlen`, `vlen`, `vlen > 0`; macidRest, a loop to 6, or a
+loop bounded by `vlen` / `len` (`vlen / 2`, `i += 2` to vlen). Only today's source matches.
+Best others: `vlen` alone 62, `vlen > 0` 79, the plain bool test with `vlen > 0` 156, plain
+bool test 217, plain cputemp/gpufan 231 (the same with every other slot), macid loops
+237-308, `return 1` in the arm 310 and up; the all-plain source 850.
+
+### cputemp's and gpufan's `ok` flags
+
+Plain arms: 231 lines in every combination. Mechanism unchanged from attempt 9: with the
+arm's log block going straight to the return, the early-return heuristic puts bad at 59.8%
+and cputemp's test falls into bad; the reference has edramtemp's. The Linux build (v1.16,
+gcc 4.9) has the same arms with no extra code, but gcc 4.9 threads such a flag away too, so
+it says nothing either way. The flag is the idiom approved in net's netSendFile, console_hdd's
+prepSysex and fileutil's myatou32.
+
+### The bool arm's `ok` join
+
+`return 1` in the arm: 310 (`== 1`), 217 (plain test, 20.7%), 787 with the with-value
+message moved into the value block. Attempt 22's bound is robust: the "\n" block's count is
+at most 450 x P(setBool) and its epilogue copy needs 57, so P >= 12.7%; the arm returning
+adds the early-return prediction (9.2%), and every way to remove it found so far is a join a
+later test decides. `ok = setBoolOption(..) == 1` as the flag (attempt 22's c2) is 15.
+
+### macidRest
+
+The loop written out in parseOption: to 6 (306), `i + 1` indexing (237), `val + i * 2` from
+1 (308), one loop with `if (i)` (273, .rdata), and bounded by a length the profile can't see:
+`vlen / 2` or `len / 2` with the length tested `== 12` (308), `i += 2` to it (246), a fresh
+`int n` or `size_t n` (246-308). The `vlen / 2` loop's diff starts at the prologue (one
+callee-saved register fewer), not at the exit edge: the inliner's late copy of the helper's
+loop brings its own IV and register choices, so the unknown trip count isn't the helper's
+only job.
+
+### `val && vlen`
+
+- `if (vlen)` alone is 62 lines, all of them the incomplete message's missing epilogue copy.
+  Dumps (`oprvdump.sh` of today's source and of `vlen`, then `oprvfreq.py` on the
+  rtl_dce dump's parseOption): with `val && vlen` VRP1 threads the val-NULL edge to the incomplete block,
+  which has 117 at bb-reorder (threshold 57). With `vlen` alone the val-NULL edge still
+  reaches the vlen test at the end of GIMPLE (the optimized dump: its PHI has 0 on that
+  edge; the vlen = 0 copies come from DOM2/DOM3/VRP2 threads, and nothing threads the test
+  after them); RTL redirects it without updating the block, which keeps its old 55.
+- `vlen > 0` 79; `if (vlen) .. else ..` with one return 62.
+- `if (vlen)` at the end of the value block (inside `else if (val)`, no redundant test,
+  `d4`): the .text is the reference's except two literal offsets. The incomplete block then
+  has one predecessor, the `if (ok)` join; the join's thread copy for ok = 0 is appended to
+  the chain and merged with it, so its literal is expanded after the bad message's (0xb08
+  and 0xb48 for 0xb58 and 0xb08). `vlen > 0` there 6; with c2's flag 4 again.
+- `vlen && val`, and nested `if (val) { if (vlen) .. }` (the author's habit): same bytes.
+- Against it: the Linux build's val-NULL path tests vlen and prints the with-value message
+  with a NULL value (`xor ecx,ecx` at 40d506), so v1.16 had `vlen` alone. For it: as a guard
+  on a `%s` argument the val test is ordinary C, and v1.21 may have added it.
+
+### parseCmdOptions' `uint32_t`
+
+`int` (prototype in options.h too): 30 lines; `int` for parseOption as well: 201. The author
+returns 0/1 status as `uint32_t` throughout (parseIni, FileExists, validateString,
+kvSetDvdKey, checkKeys, netConnect, netMount, suLoad, getBootloaders: each returns only 0
+and 1), so this one isn't really borderline.
+
+### Don't retry (review)
+
+- The 144 plain combinations above, the macid loops in place, the `return 1` bool arm.
+- `if (vlen)` inside the value block unless something gives the incomplete block a second
+  predecessor that isn't a duplicate message (`d4` is exact apart from that).

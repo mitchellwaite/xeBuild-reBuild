@@ -5,8 +5,8 @@ left are **borderline shapes**: ordinary C that an author could have written, bu
 the source because of what gcc does with it. They aren't counted as tricks. Each one is for
 the user to review: keep it as the author's likely shape, or try for a plainer one.
 
-State: commit `4c1e221d` (2026-11-10; mode_client's, net's and image_write's lines are of their reviews the
-same day).
+State: commit `4c1e221d` (2026-11-10; mode_client's, net's, image_write's and options' lines are of their
+reviews the same day).
 Line numbers are that commit's and will drift; the tags don't:
 
 ```
@@ -15,7 +15,7 @@ grep -n "Borderline, for review" src/*.c
 
 There are two kinds of item here:
 
-1. **Tagged shapes** (38, 16 of them approved): each has a `Borderline, for review:` comment
+1. **Tagged shapes** (38, 21 of them approved): each has a `Borderline, for review:` comment
    in the source saying what it does and what it replaced.
 2. **Redundant file-local definitions**: all removed (2026-11-10), same bytes. The second
    section says what went and what is left (two prototypes that are needed).
@@ -45,18 +45,21 @@ When an item is settled, delete its tag (or mark it `(approved)`) and update thi
 | 1985 | `isUpdateBl` | the 23 and 15 tests as ifs of their own, not in the `\|\|` chain | |
 | 2494 | `initFlash` | helper for the salt clear and the virtual-fuse decision; its final `fuse & 1` is redundant | an expect |
 
-### options (5) — `src/options.c`, notes in `notes/options.md`
+### options (5, all approved 2026-11-10) — `src/options.c`, notes in `notes/options.md` ("Review")
 
-| Line | Where | Shape |
-|---|---|---|
-| 503 | `parseOption` | cputemp and gpufan set an `ok` flag in the log's `if` and leave on it after, where the other value arms `goto bad` first |
-| 511 | `parseOption` | a bool option sets `ok` and `if (ok) return 1;` comes after the value options, where a `return 1` in the arm would do |
-| 521 | `parseOption` | macid's last five bytes go through a helper called once with the count 5 (`macidRest`) |
-| 526 | `parseOption` | the unknown-with-value message tests `val && vlen`, where `vlen` alone decides |
-| 717 | `parseCmdOptions` | returns `uint32_t` like `parseOption`, so its `return 0` reuses the call's 0 |
+The attempt from the natural `parseOption` (attempt 30's lead) was made first: the 144
+combinations of plain spellings of the four slots (`tools/wip/dehint/oprv_b.py`) match only
+as today's source, and the structural respellings and in-place macid loops don't either.
+Only `macidRest` is inlined into `parseOption` (`setBoolOption`, `parseButton` and
+`stripColons` stay calls), so attempt 30's lever has nothing else to vary.
 
-Attempt 30's lead applies here: these came from fitting to counts that may not be the
-original's. Worth one attempt from the natural `parseOption` before accepting them.
+| Line | Where | Shape | Why it stays |
+|---|---|---|---|
+| 504 | `parseOption` | cputemp and gpufan set an `ok` flag in the log's `if` and leave on it after, where the other value arms `goto bad` first | The log block must not go straight to the return (early return puts bad at 59.8%, cputemp then falls into bad, not edramtemp): plain arms 231 in every combination. The flag idiom of the approved netSendFile, prepSysex and myatou32 |
+| 513 | `parseOption` | a bool option sets `ok` and `if (ok) return 1;` comes after the value options, where a `return 1` in the arm would do | The `"\n"` block's epilogue copy needs P(setBool) >= 12.7%; the arm returning gets the early-return prediction (9.2%): 310, 217 with a plain test |
+| 524 | `parseOption` | macid's last five bytes go through a helper called once with the count 5 (`macidRest`) | Loops in place, bounded by 5 or by a length only VRP knows: 237-308 (the late-inlined copy also sets IVs and registers) |
+| 532 | `parseOption` | the unknown-with-value message tests `val && vlen`, where `vlen` alone decides | `vlen` alone 62: the val-NULL path is threaded only at RTL, so the incomplete block keeps 55 (57 needed). `if (vlen)` inside the value block is the same .text, but swaps the incomplete and bad literals. Reads as a `%s` guard; the older Linux build has `vlen` alone |
+| 727 | `parseCmdOptions` | returns `uint32_t` like `parseOption`, so its `return 0` reuses the call's 0 | `int` 30. The author's 0/1 status type (parseIni, FileExists, validateString, kvSetDvdKey, checkKeys, netConnect, netMount, suLoad, getBootloaders) |
 
 ### image_write (4, all approved 2026-11-10) — `src/image_write.c`, notes in `notes/image_write.md` ("Review")
 
