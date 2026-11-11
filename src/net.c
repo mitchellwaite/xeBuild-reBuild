@@ -1,6 +1,15 @@
 /* net: talking to the console's updsvr over winsock (TCP port 49 after a
    UDP beacon on port 48): commands, data transfers, console info */
+#ifdef _WIN32
 #include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +19,53 @@
 #include "fileutil.h"
 #include "log.h"
 #include "net.h"
+
+/* ---- Winsock on other platforms ----
+
+   On Windows these are winsock's own, and the code is the original's.
+   Elsewhere they map to BSD sockets.  select differs in two ways: its first
+   argument must be the highest descriptor + 1 (winsock ignores it, so the
+   original passes 0), and Linux counts the timeout down where winsock
+   leaves it alone (netRecv waits on the same tv more than once), so
+   netSelect passes s + 1 and a copy of the timeout. */
+#ifdef _WIN32
+#define netSelect(s, fds, tv) select(0, (fds), NULL, NULL, (tv))
+#define NET_ADDR_BYTE(sa, n) ((sa).sin_addr.S_un.S_un_b.s_b##n)
+#else
+typedef int SOCKET;
+typedef int WSADATA;
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR (-1)
+#define closesocket close
+#define WSAGetLastError() errno
+#define MAKEWORD(lo, hi) 0
+#define WSAStartup(version, data) ((void)(data), 0)
+#define NET_ADDR_BYTE(sa, n) (((uint8_t *)&(sa).sin_addr)[(n) - 1])
+
+static int netSelect(SOCKET s, fd_set *fds, const struct timeval *tv)
+{
+	struct timeval t = *tv;
+
+	return select(s + 1, fds, NULL, NULL, &t);
+}
+
+/* only the dotted IPv4 form netConnect passes; returns 0 on success */
+static int WSAStringToAddressA(char *str, int family, void *proto, struct sockaddr *addr, int *len)
+{
+	struct sockaddr_in *sa = (struct sockaddr_in *)addr;
+
+	(void)proto;
+	(void)len;
+	memset(sa, 0, sizeof *sa);
+	sa->sin_family = family;
+	if (inet_pton(family, str, &sa->sin_addr) != 1)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	return 0;
+}
+#endif
 
 
 #define BEACON_MAGIC	0x4e537672	/* "NSvr" */
@@ -74,7 +130,7 @@ uint32_t netFindBeacon(void)
 		FD_SET(s, &fds);
 		tv.tv_sec = 30;
 		tv.tv_usec = 0;
-		r = select(0, &fds, NULL, NULL, &tv);
+		r = netSelect(s, &fds, &tv);
 		if (r == SOCKET_ERROR)
 		{
 			log_printf(0, "Socket error! %d\n", WSAGetLastError());
@@ -152,7 +208,7 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	FD_ZERO(&fds);
 	FD_SET(netSock, &fds);
 	*len = 0;
-	r = select(0, &fds, NULL, NULL, &tv);
+	r = netSelect(netSock, &fds, &tv);
 	if (r == SOCKET_ERROR || r == 0)
 	{
 		log_printf(0, "timeout waiting for data, %d\n", WSAGetLastError());
@@ -179,7 +235,7 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 		got = 0;
 		while (got < size)
 		{
-			r = select(0, &fds, NULL, NULL, &tv);
+			r = netSelect(netSock, &fds, &tv);
 			if (r == SOCKET_ERROR || r == 0)
 			{
 				log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
@@ -440,8 +496,8 @@ uint32_t netConnect(const char *ip)
 			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0)
 			{
 				log_printf(0, "attempting forced connection to %u.%u.%u.%u...",
-					   sa.sin_addr.S_un.S_un_b.s_b1, sa.sin_addr.S_un.S_un_b.s_b2,
-					   sa.sin_addr.S_un.S_un_b.s_b3, sa.sin_addr.S_un.S_un_b.s_b4);
+					   NET_ADDR_BYTE(sa, 1), NET_ADDR_BYTE(sa, 2),
+					   NET_ADDR_BYTE(sa, 3), NET_ADDR_BYTE(sa, 4));
 				addr = sa.sin_addr.s_addr;
 				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 				if (netSock != INVALID_SOCKET)
