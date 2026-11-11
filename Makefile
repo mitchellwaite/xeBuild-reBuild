@@ -10,8 +10,9 @@
 #   make clean      remove the platform's objects and executable
 #   make V=1        print each full command, not just the file it works on
 #   make QUIET_WARNINGS=1   (or QUIET_WARNINGS=1 in the environment) turn off
-#                   the unused-result, format-security, stringop-overflow
-#                   and format-overflow warnings
+#                   the unused-result, format-security, stringop-overflow,
+#                   format-overflow, discarded-qualifiers and
+#                   pointer-to-int-cast warnings
 #
 # PLATFORM is detected, or set it on the command line or in an untracked
 # config.mk:
@@ -152,9 +153,11 @@ endif
 # -Wno-unknown-warning-option for that.  They don't change the code.
 ifeq ($(QUIET_WARNINGS),1)
 WARN_FLAGS := -Wno-unused-result -Wno-format-security -Wno-stringop-overflow \
-	-Wno-format-overflow
+	-Wno-format-overflow -Wno-discarded-qualifiers -Wno-pointer-to-int-cast
 ifeq ($(PLATFORM),macos)
-WARN_FLAGS += -Wno-unknown-warning-option
+# clang's name for discarded-qualifiers
+WARN_FLAGS += -Wno-unknown-warning-option \
+	-Wno-incompatible-pointer-types-discards-qualifiers
 endif
 endif
 
