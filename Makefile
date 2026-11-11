@@ -173,10 +173,6 @@ else
 $(error unknown PLATFORM '$(PLATFORM)': use win32, win32fixes, win32latest, linux or macos)
 endif
 
-ifeq ($(FIXES),1)
-PLAT_CFLAGS += -DXEBUILD_FIXES
-endif
-
 # QUIET_WARNINGS=1: warnings the code was never written against (glibc's
 # warn_unused_result, newer gcc's overflow checks).  gcc ignores a -Wno-
 # option it doesn't know (gcc 6 has neither overflow warning); clang needs
@@ -196,6 +192,18 @@ endif
 # colon would split the PATH entry)
 ifneq ($(strip $(TC_BIN)),)
 TC_ENV = PATH="$$(pwd -P)/$(TC_BIN):$$PATH"
+endif
+
+# The fixes build names its target in the version banner: the compiler's
+# -dumpmachine triple (e.g. i686-w64-mingw32, x86_64-linux-gnu), when it
+# prints one that looks like a triple; otherwise main.c says "unknown".
+ifeq ($(FIXES),1)
+PLAT_CFLAGS += -DXEBUILD_FIXES
+TARGET_TRIPLE := $(shell $(TC_ENV) $(CC) -dumpmachine 2>/dev/null | \
+	grep -E '^[A-Za-z0-9_.]+(-[A-Za-z0-9_.]+)+$$')
+ifneq ($(TARGET_TRIPLE),)
+PLAT_CFLAGS += -DXEBUILD_TARGET='"$(TARGET_TRIPLE)"'
+endif
 endif
 
 REF := xeBuild.exe

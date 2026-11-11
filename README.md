@@ -90,8 +90,9 @@ The Makefile detects the platform (or set `PLATFORM=`):
 
 Only `win32` reproduces the reference, so it builds the original's
 behaviour. Every other platform compiles with `-DXEBUILD_FIXES`, which turns
-on new behaviour and bug fixes (so far: the banner names the build, e.g.
-`xeBuild reBuild (linux-amd64)`). Every platform puts its objects in
+on new behaviour and bug fixes (so far: the version banner names the build
+and the compiler's target triple, e.g.
+`xeBuild reBuild (x86_64-linux-gnu)`). Every platform puts its objects in
 `build/obj/`; switching platforms recompiles them all. `CC`, `CFLAGS`, `LDFLAGS` and
 `LDLIBS` can be overridden on the command line or in an untracked
 `config.mk`. Re-disassembling the binary also needs ddisasm under WSL;

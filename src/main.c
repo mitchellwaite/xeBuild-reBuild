@@ -22,31 +22,12 @@
 
 #define XEBUILD_NAME "xeBuild"
 #ifdef XEBUILD_FIXES
-/* the version banner names the build and its target, <os>-<arch> as in a
-   release file name */
-#if defined(_WIN32)
-#define XEBUILD_OS "windows"
-#elif defined(__APPLE__)
-#define XEBUILD_OS "macos"
-#elif defined(__linux__)
-#define XEBUILD_OS "linux"
-#elif defined(__FreeBSD__)
-#define XEBUILD_OS "freebsd"
-#else
-#define XEBUILD_OS "unknown"
+/* the version banner names the build and its target: the compiler's target
+   triple, which the Makefile passes */
+#ifndef XEBUILD_TARGET
+#define XEBUILD_TARGET "unknown"
 #endif
-#if defined(__x86_64__) || defined(_M_X64)
-#define XEBUILD_ARCH "amd64"
-#elif defined(__i386__) || defined(_M_IX86)
-#define XEBUILD_ARCH "x86"
-#elif defined(__aarch64__) || defined(_M_ARM64)
-#define XEBUILD_ARCH "arm64"
-#elif defined(__arm__) || defined(_M_ARM)
-#define XEBUILD_ARCH "arm"
-#else
-#define XEBUILD_ARCH "unknown"
-#endif
-#define XEBUILD_TITLE "xeBuild reBuild (" XEBUILD_OS "-" XEBUILD_ARCH ")"
+#define XEBUILD_TITLE "xeBuild reBuild (" XEBUILD_TARGET ")"
 #else
 #define XEBUILD_TITLE XEBUILD_NAME
 #endif
