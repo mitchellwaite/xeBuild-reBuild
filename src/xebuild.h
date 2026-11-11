@@ -23,7 +23,11 @@
    (SWAP32_KEYS); either of an object's two swap spellings alone still
    changes its code. */
 
-/* byte swaps for the console's big-endian data (gcc's bswap pass folds them) */
+/* byte swaps for the console's big-endian data.  Spelled with +, they stay
+   open-coded shifts and masks as in the original (gcc's bswap pass doesn't
+   fold them); __builtin_bswap16/32 in place of any of these changes its
+   objects' code (a bswap or rol instruction, and the code around it
+   shifts), so they stay macros. */
 #define SWAP16(x) ((((x) << 8) & 0xff00) + ((x) >> 8))
 #define SWAP32(x) (((x) << 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00) + ((x) >> 24))
 #define SWAP32_BUILD(x) (((x) << 24) + ((x) >> 24) + (((x) << 8) & 0xff0000) + (((x) >> 8) & 0xff00))

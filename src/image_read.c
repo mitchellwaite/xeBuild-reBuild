@@ -14,9 +14,6 @@
 #include "main.h"
 #include "smc.h"
 
-
-#define ROT16(x) ((uint16_t)(((x) << 8) | ((x) >> 8)))
-
 struct fsroot
 {
 	uint16_t map[0x1000];
@@ -1624,7 +1621,7 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4342)
+	if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4342)
 	{
 		log_printf(1, "**** Warning: error getting CB/CBA Nonce, aborting!\n");
 		return;
@@ -1639,7 +1636,7 @@ void getNonces(void)
 			return;
 		}
 		p = xb.dump + off;
-		if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4342)
+		if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4342)
 		{
 			log_printf(1, "**** Warning: error getting CBB Nonce, offset 0x%x aborting!\n", off);
 			return;
@@ -1653,7 +1650,7 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4344)
+	if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4344)
 	{
 		log_printf(1, "**** Warning: error getting CD Nonce, offset 0x%x aborting!\n", off);
 		return;
@@ -1665,7 +1662,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CE Nonce offset, aborting!\n");
 		return;
 	}
-	if ((ROT16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4345)
+	if ((__builtin_bswap16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4345)
 	{
 		log_printf(1, "**** Warning: error getting CE Nonce, offset 0x%x aborting!\n", off);
 		return;
@@ -1678,7 +1675,7 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((ROT16(*(uint16_t *)p) & 0x43ff) != 0x4346)
+	if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4346)
 	{
 		log_printf(1, "**** Warning: error getting CF Nonce, offset 0x%x aborting!\n", off);
 		return;
@@ -1690,7 +1687,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CG Nonce offset, aborting!\n");
 		return;
 	}
-	if ((ROT16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4347)
+	if ((__builtin_bswap16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4347)
 	{
 		log_printf(1, "**** Warning: error getting CG Nonce, offset 0x%x aborting!\n", off);
 		return;
