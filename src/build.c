@@ -805,13 +805,13 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 /* the cpu fan setting; returns 1 if it changed the config. */
 static int patchCpuFan(uint8_t *smc)
 {
-	if (xb.cpuFan != 0xffffffff) {
-		if (iniRangeOk("cpufan", xb.cpuFan, 40, 100)) {
-			smc[0x11] = xb.cpuFan | 0x80;
+	if (xb.smcOpts.cpuFan != 0xffffffff) {
+		if (iniRangeOk("cpufan", xb.smcOpts.cpuFan, 40, 100)) {
+			smc[0x11] = xb.smcOpts.cpuFan | 0x80;
 			return 1;
 		}
-		if (xb.cpuFan)
-			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.cpuFan);
+		if (xb.smcOpts.cpuFan)
+			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.smcOpts.cpuFan);
 		else if (smc[0x11] != 0x7f) {
 			smc[0x11] = 0x7f;
 			return 1;
@@ -826,55 +826,55 @@ uint32_t patchSmcConfig(uint8_t *smc)
 	int i;
 
 	log_printf(1, "Checking for smc config data patches\n");
-	if (iniRangeOk("cputemp", xb.cpuTemp, 40, 120)) {
-		smc[0x29] = xb.cpuTemp;
+	if (iniRangeOk("cputemp", xb.smcOpts.cpuTemp, 40, 120)) {
+		smc[0x29] = xb.smcOpts.cpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("gputemp", xb.gpuTemp, 40, 120)) {
-		smc[0x2a] = xb.gpuTemp;
+	if (iniRangeOk("gputemp", xb.smcOpts.gpuTemp, 40, 120)) {
+		smc[0x2a] = xb.smcOpts.gpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("edramtemp", xb.edramTemp, 40, 120)) {
-		smc[0x2b] = xb.edramTemp;
+	if (iniRangeOk("edramtemp", xb.smcOpts.edramTemp, 40, 120)) {
+		smc[0x2b] = xb.smcOpts.edramTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overcputemp", xb.overCpuTemp, 40, 120)) {
-		smc[0x2c] = xb.overCpuTemp;
+	if (iniRangeOk("overcputemp", xb.smcOpts.overCpuTemp, 40, 120)) {
+		smc[0x2c] = xb.smcOpts.overCpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overgputemp", xb.overGpuTemp, 40, 120)) {
-		smc[0x2d] = xb.overGpuTemp;
+	if (iniRangeOk("overgputemp", xb.smcOpts.overGpuTemp, 40, 120)) {
+		smc[0x2d] = xb.smcOpts.overGpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overedramtemp", xb.overEdramTemp, 40, 120)) {
-		smc[0x2e] = xb.overEdramTemp;
+	if (iniRangeOk("overedramtemp", xb.smcOpts.overEdramTemp, 40, 120)) {
+		smc[0x2e] = xb.smcOpts.overEdramTemp;
 		patched = 1;
 	}
-	if (xb.cpuFan != 0xffffffff) {
+	if (xb.smcOpts.cpuFan != 0xffffffff) {
 		if (patchCpuFan(smc))
 			patched = 1;
 	}
-	if (xb.gpuFan != 0xffffffff) {
-		if (iniRangeOk("gpufan", xb.gpuFan, 40, 100)) {
-			smc[0x12] = xb.gpuFan | 0x80;
+	if (xb.smcOpts.gpuFan != 0xffffffff) {
+		if (iniRangeOk("gpufan", xb.smcOpts.gpuFan, 40, 100)) {
+			smc[0x12] = xb.smcOpts.gpuFan | 0x80;
 			patched = 1;
-		} else if (xb.gpuFan)
+		} else if (xb.smcOpts.gpuFan)
 			goto gpuwarn;
 		else {
 			smc[0x12] = 0x7f;
 		}
 	}
 gpudone:
-	if (xb.avRegion != 0xffffffff) {
-		*(uint32_t *)(smc + 0x228) = SWAP32_BUILD(xb.avRegion);
+	if (xb.smcOpts.avRegion != 0xffffffff) {
+		*(uint32_t *)(smc + 0x228) = SWAP32_BUILD(xb.smcOpts.avRegion);
 		patched = 1;
 	}
-	if (xb.gameRegion != 0xffffffff && (uint16_t)xb.gameRegion) {
-		*(uint16_t *)(smc + 0x22c) = __builtin_bswap16(xb.gameRegion);
+	if (xb.smcOpts.gameRegion != 0xffffffff && (uint16_t)xb.smcOpts.gameRegion) {
+		*(uint16_t *)(smc + 0x22c) = __builtin_bswap16(xb.smcOpts.gameRegion);
 		patched = 1;
 	}
-	if (xb.dvdRegion != 0xffffffff) {
-		*(uint32_t *)(smc + 0x234) = SWAP32_BUILD(xb.dvdRegion);
+	if (xb.smcOpts.dvdRegion != 0xffffffff) {
+		*(uint32_t *)(smc + 0x234) = SWAP32_BUILD(xb.smcOpts.dvdRegion);
 		patched = 1;
 	}
 	if (!*(uint32_t *)(smc + 0x234)) {
@@ -885,9 +885,9 @@ gpudone:
 	}
 	if (macidSet())
 		for (i = 0; i < 6; i++) {
-			if (smc[0x220 + i] != xb.macid[i])
+			if (smc[0x220 + i] != xb.smcOpts.macid[i])
 				patched = 1;
-			smc[0x220 + i] = xb.macid[i];
+			smc[0x220 + i] = xb.smcOpts.macid[i];
 		}
 	if (patched) {
 		uint32_t sum = calcConfigSum(smc);

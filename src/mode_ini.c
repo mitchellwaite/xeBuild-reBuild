@@ -136,12 +136,11 @@ int iniWriteBl(void)
 
 uint32_t mode_ini(int argc, char **argv)
 {
-	int keys[10];
+	char keys[40];
 
 	log_set_verbose(1);
 	memset(keys, 0, sizeof(keys));
-	/* TODO(prototype cast): keys is an int array used as the key string */
-	if (loadKeyFile((char *)keys, 0, "1blkey.txt") && !checkKeys((char *)keys)) {
+	if (loadKeyFile(keys, 0, "1blkey.txt") && !checkKeys(keys)) {
 		log_printf(0, "\n***** WARNING: 1blkey.txt not found or invalid, cannot proceed.\n\n");
 		return 4;
 	}

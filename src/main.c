@@ -354,8 +354,6 @@ void showConsoleInfo(void)
 
 void initGlobals(void)
 {
-	int i;
-
 	memset(&xb, 0, sizeof(xb));
 	xb.bootFlags = 4;
 	strcpy(xb.baseDir, "./");
@@ -364,10 +362,7 @@ void initGlobals(void)
 	strcpy(xb.commonDir, "./common/");
 	xb.randomKeys = 1;
 	xb.sysTime = 1;
-	/* TODO(xebuild.h cast): the 13 ints from cpuTemp to macid's padding,
-	   set as one array; xb has named fields there now */
-	for (i = 0; i < 13; i++)
-		((int *)&xb.cpuTemp)[i] = -1;
+	memset(&xb.smcOpts, -1, sizeof(xb.smcOpts));
 }
 
 void setBasePath(const char *argv0)

@@ -9,10 +9,6 @@
 #include "stfs.h"
 #include "sysupdate.h"
 
-/* TODO(prototype cast): FileExists read as uint32_t, not int: with an int, gcc
-   returns FileExists' 0 instead of a fresh xor in suLoad/suLoadDir's failure
-   paths (stfs.c's stfsLoad needs the int) */
-
 static char suPath[1024];
 static char suDir[1024];
 static stfs_t su;

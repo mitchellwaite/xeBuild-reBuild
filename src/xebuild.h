@@ -155,6 +155,22 @@ struct consoleinfo {
 	uint8_t keys[6][16];
 };
 
+/* smc_config overrides from the ini */
+struct smcopts {
+	uint32_t cpuTemp;
+	uint32_t gpuTemp;
+	uint32_t edramTemp;
+	uint32_t overCpuTemp;
+	uint32_t overGpuTemp;
+	uint32_t overEdramTemp;
+	uint32_t cpuFan;
+	uint32_t gpuFan;
+	uint32_t avRegion;
+	uint32_t gameRegion;
+	uint32_t dvdRegion;
+	uint8_t macid[6];
+};
+
 /* console_hdd's file manifest */
 struct mfFile;
 struct manifest {
@@ -210,18 +226,7 @@ struct xebuild {
 	uint32_t dualButton;
 	uint8_t cbLdv;
 	uint8_t cfLdv;
-	uint32_t cpuTemp;		/* smc_config overrides from the ini */
-	uint32_t gpuTemp;
-	uint32_t edramTemp;
-	uint32_t overCpuTemp;
-	uint32_t overGpuTemp;
-	uint32_t overEdramTemp;
-	uint32_t cpuFan;
-	uint32_t gpuFan;
-	uint32_t avRegion;
-	uint32_t gameRegion;
-	uint32_t dvdRegion;
-	uint8_t macid[6];
+	struct smcopts smcOpts;		/* all -1 (unset) until the ini sets them */
 	uint8_t *dump;			/* the nand dump's user data, ECC stripped */
 	uint8_t *dumpSpare;		/* its spare data, 16 bytes a page */
 	uint32_t dumpSize;

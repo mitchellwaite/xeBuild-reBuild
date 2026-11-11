@@ -477,13 +477,24 @@ header's to compile to the original's code, it says so in a comment marked
 (a function's argument or return type: a cast, or a declaration under another
 name bound to the same symbol with an asm label, e.g. `uint32_t
 shaSelfCheckU32(uint8_t *) __asm__("_shaSelfCheck")`), so a later pass can settle
-the types. `grep -n 'TODO(' src/*.c` lists them. Settling them means choosing
+the types. `grep -n 'TODO(' src/*.c` lists them; none are left (2026-11-10).
+Settling them means choosing
 return types across files: uncprop reuses a compared 0 only when the compared
 value and the return have the same type, which is how `FileExistsU32`,
 `suFirstFileU32` and `netMountInt` went away (the return types in `sysupdate`,
 `stfs`, `mode_ini` and `console_hdd`). `consoleinfo`'s `log_printfInt` needed
 only the alias and its `__builtin_unreachable` removed together, so try removals
-in combination.
+in combination. The last ones went by typing the data as it's used:
+`struct rsapub` starts with XeCrypt's `XECRYPT_RSA` header; `xb`'s key
+pointers are `void *` buffers (`loadPubKey` fills a `void **`; returning the
+buffer instead changes its code); the signing helpers' keys and `rotSumSha`'s
+inputs aren't `const`; `romSalts` and mode_ini's `keys` are bytes;
+`getBeU32`/`getLeU32` load through `memcpy`; the 13 words set to -1 are
+`struct smcopts` (`xb.smcOpts`, one `memset`); options' signed test of
+`nRawPatches` goes through its `int n` (an `int` field changes filelist_ini and
+build). `findFileOffset` stays `int`, since `calcBlAreaSize`'s inlined copy
+needs it, and image_write's swap converts it to `uint32_t`: the swap macro
+calls it four times with unsigned shifts, so the original converted it too.
 
 ### XeCrypt in C
 

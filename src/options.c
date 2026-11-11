@@ -338,7 +338,7 @@ int macidSet(void)
 	int i;
 
 	for (i = 0; i < 6; i++)
-		if (xb.macid[i] != 0xff)
+		if (xb.smcOpts.macid[i] != 0xff)
 			return 1;
 	return 0;
 }
@@ -530,10 +530,10 @@ uint32_t parseOption(char *opt)
 		ok = 1;
 	} else if (val) {
 		if (!stricmp(opt, "cputemp")) {
-			xb.cpuTemp = myatou32(val, -1);
+			xb.smcOpts.cpuTemp = myatou32(val, -1);
 			ok = 0;
-			if (xb.cpuTemp != -1) {
-				log_printf(1, "Using CPUTEMP option, value %d\n", xb.cpuTemp);
+			if (xb.smcOpts.cpuTemp != -1) {
+				log_printf(1, "Using CPUTEMP option, value %d\n", xb.smcOpts.cpuTemp);
 				ok = 1;
 			}
 			if (!ok)
@@ -541,52 +541,52 @@ uint32_t parseOption(char *opt)
 			return 1;
 		}
 		if (!stricmp(opt, "gputemp")) {
-			xb.gpuTemp = myatou32(val, -1);
-			if (xb.gpuTemp == -1)
+			xb.smcOpts.gpuTemp = myatou32(val, -1);
+			if (xb.smcOpts.gpuTemp == -1)
 				goto bad;
-			log_printf(1, "Using GPUTEMP option, value %d\n", xb.gpuTemp);
+			log_printf(1, "Using GPUTEMP option, value %d\n", xb.smcOpts.gpuTemp);
 			return 1;
 		}
 		if (!stricmp(opt, "edramtemp")) {
-			xb.edramTemp = myatou32(val, -1);
-			if (xb.edramTemp == -1)
+			xb.smcOpts.edramTemp = myatou32(val, -1);
+			if (xb.smcOpts.edramTemp == -1)
 				goto bad;
-			log_printf(1, "Using EDRAMTEMP option, value %d\n", xb.edramTemp);
+			log_printf(1, "Using EDRAMTEMP option, value %d\n", xb.smcOpts.edramTemp);
 			return 1;
 		}
 		if (!stricmp(opt, "overcputemp")) {
-			xb.overCpuTemp = myatou32(val, -1);
-			if (xb.overCpuTemp == -1)
+			xb.smcOpts.overCpuTemp = myatou32(val, -1);
+			if (xb.smcOpts.overCpuTemp == -1)
 				goto bad;
-			log_printf(1, "Using OVERCPUTEMP option, value %d\n", xb.overCpuTemp);
+			log_printf(1, "Using OVERCPUTEMP option, value %d\n", xb.smcOpts.overCpuTemp);
 			return 1;
 		}
 		if (!stricmp(opt, "overgputemp")) {
-			xb.overGpuTemp = myatou32(val, -1);
-			if (xb.overGpuTemp == -1)
+			xb.smcOpts.overGpuTemp = myatou32(val, -1);
+			if (xb.smcOpts.overGpuTemp == -1)
 				goto bad;
-			log_printf(1, "Using OVERGPUTEMP option, value %d\n", xb.overGpuTemp);
+			log_printf(1, "Using OVERGPUTEMP option, value %d\n", xb.smcOpts.overGpuTemp);
 			return 1;
 		}
 		if (!stricmp(opt, "overedramtemp")) {
-			xb.overEdramTemp = myatou32(val, -1);
-			if (xb.overEdramTemp == -1)
+			xb.smcOpts.overEdramTemp = myatou32(val, -1);
+			if (xb.smcOpts.overEdramTemp == -1)
 				goto bad;
-			log_printf(1, "Using OVEREDRAMTEMP option, value %d\n", xb.overEdramTemp);
+			log_printf(1, "Using OVEREDRAMTEMP option, value %d\n", xb.smcOpts.overEdramTemp);
 			return 1;
 		}
 		if (!stricmp(opt, "cpufan")) {
-			xb.cpuFan = myatou32(val, -1);
-			if (xb.cpuFan == -1)
+			xb.smcOpts.cpuFan = myatou32(val, -1);
+			if (xb.smcOpts.cpuFan == -1)
 				goto bad;
-			log_printf(1, "Using CPUFAN option, value %d\n", xb.cpuFan);
+			log_printf(1, "Using CPUFAN option, value %d\n", xb.smcOpts.cpuFan);
 			return 1;
 		}
 		if (!stricmp(opt, "gpufan")) {
-			xb.gpuFan = myatou32(val, -1);
+			xb.smcOpts.gpuFan = myatou32(val, -1);
 			ok = 0;
-			if (xb.gpuFan != -1) {
-				log_printf(1, "Using GPUFAN option, value %d\n", xb.gpuFan);
+			if (xb.smcOpts.gpuFan != -1) {
+				log_printf(1, "Using GPUFAN option, value %d\n", xb.smcOpts.gpuFan);
 				ok = 1;
 			}
 			if (!ok)
@@ -594,24 +594,24 @@ uint32_t parseOption(char *opt)
 			return 1;
 		}
 		if (!stricmp(opt, "avregion")) {
-			xb.avRegion = myatou32(val, -1);
-			if (xb.avRegion == -1)
+			xb.smcOpts.avRegion = myatou32(val, -1);
+			if (xb.smcOpts.avRegion == -1)
 				goto bad;
-			log_printf(1, "Using AVREGION option, value 0x%x\n", xb.avRegion);
+			log_printf(1, "Using AVREGION option, value 0x%x\n", xb.smcOpts.avRegion);
 			return 1;
 		}
 		if (!stricmp(opt, "gameregion")) {
-			xb.gameRegion = myatou32(val, -1);
-			if (xb.gameRegion == -1)
+			xb.smcOpts.gameRegion = myatou32(val, -1);
+			if (xb.smcOpts.gameRegion == -1)
 				goto bad;
-			log_printf(1, "Using GAMEREGION option, value 0x%x\n", xb.gameRegion);
+			log_printf(1, "Using GAMEREGION option, value 0x%x\n", xb.smcOpts.gameRegion);
 			return 1;
 		}
 		if (!stricmp(opt, "dvdregion")) {
-			xb.dvdRegion = myatou32(val, -1);
-			if (xb.dvdRegion == -1)
+			xb.smcOpts.dvdRegion = myatou32(val, -1);
+			if (xb.smcOpts.dvdRegion == -1)
 				goto bad;
-			log_printf(1, "Using DVDREGION option, value 0x%x\n", xb.dvdRegion);
+			log_printf(1, "Using DVDREGION option, value 0x%x\n", xb.smcOpts.dvdRegion);
 			return 1;
 		}
 		if (!stricmp(opt, "xellbutton")) {
@@ -650,10 +650,10 @@ uint32_t parseOption(char *opt)
 			if (strlen(val) == 12) {
 				if (validateString(val)) {
 					log_printf(1, "Using MACID option address: ");
-					xb.macid[0] = myatox8(val);
+					xb.smcOpts.macid[0] = myatox8(val);
 					val += 2;
-					log_printf(1, "%02x", xb.macid[0]);
-					macidRest(&xb.macid[1], val, 5);
+					log_printf(1, "%02x", xb.smcOpts.macid[0]);
+					macidRest(&xb.smcOpts.macid[1], val, 5);
 					log_printf(1, "\n");
 					return 1;
 				}
@@ -726,28 +726,28 @@ void applyIniOptions(void)
 			xb.cfLdv = 32;
 		}
 	}
-	if (xb.cpuFan == -1)
-		xb.cpuFan = optIniInt("cpufan", -1);
-	if (xb.gpuFan == -1)
-		xb.gpuFan = optIniInt("gpufan", -1);
-	if (xb.cpuTemp == -1)
-		xb.cpuTemp = optIniInt("cputemp", -1);
-	if (xb.gpuTemp == -1)
-		xb.gpuTemp = optIniInt("gputemp", -1);
-	if (xb.edramTemp == -1)
-		xb.edramTemp = optIniInt("edramtemp", -1);
-	if (xb.overCpuTemp == -1)
-		xb.overCpuTemp = optIniInt("overcputemp", -1);
-	if (xb.overGpuTemp == -1)
-		xb.overGpuTemp = optIniInt("overgputemp", -1);
-	if (xb.overEdramTemp == -1)
-		xb.overEdramTemp = optIniInt("overedramtemp", -1);
-	if (xb.avRegion == -1)
-		xb.avRegion = optIniInt("avregion", -1);
-	if (xb.gameRegion == -1)
-		xb.gameRegion = optIniInt("gameregion", -1);
-	if (xb.dvdRegion == -1)
-		xb.dvdRegion = optIniInt("dvdregion", -1);
+	if (xb.smcOpts.cpuFan == -1)
+		xb.smcOpts.cpuFan = optIniInt("cpufan", -1);
+	if (xb.smcOpts.gpuFan == -1)
+		xb.smcOpts.gpuFan = optIniInt("gpufan", -1);
+	if (xb.smcOpts.cpuTemp == -1)
+		xb.smcOpts.cpuTemp = optIniInt("cputemp", -1);
+	if (xb.smcOpts.gpuTemp == -1)
+		xb.smcOpts.gpuTemp = optIniInt("gputemp", -1);
+	if (xb.smcOpts.edramTemp == -1)
+		xb.smcOpts.edramTemp = optIniInt("edramtemp", -1);
+	if (xb.smcOpts.overCpuTemp == -1)
+		xb.smcOpts.overCpuTemp = optIniInt("overcputemp", -1);
+	if (xb.smcOpts.overGpuTemp == -1)
+		xb.smcOpts.overGpuTemp = optIniInt("overgputemp", -1);
+	if (xb.smcOpts.overEdramTemp == -1)
+		xb.smcOpts.overEdramTemp = optIniInt("overedramtemp", -1);
+	if (xb.smcOpts.avRegion == -1)
+		xb.smcOpts.avRegion = optIniInt("avregion", -1);
+	if (xb.smcOpts.gameRegion == -1)
+		xb.smcOpts.gameRegion = optIniInt("gameregion", -1);
+	if (xb.smcOpts.dvdRegion == -1)
+		xb.smcOpts.dvdRegion = optIniInt("dvdregion", -1);
 	if (!macidSet()) {
 		s = getIniValue("macid");
 		if (s) {
@@ -755,7 +755,7 @@ void applyIniOptions(void)
 			if (strlen(s) == 12) {
 				if (validateString(s)) {
 					for (i = 0; i < 6; i++) {
-						xb.macid[i] = myatox8(s);
+						xb.smcOpts.macid[i] = myatox8(s);
 						s += 2;
 					}
 				} else {
@@ -833,8 +833,8 @@ int parseRawPatch(char *pat)
 		}
 	}
 	if (len != strlen(pat)) {
-		/* TODO(xebuild.h cast): a signed test here, uint32_t in filelist_ini */
-		if ((int)xb.nRawPatches <= 15) {
+		n = xb.nRawPatches;
+		if (n <= 15) {
 			strcpy(xb.rawPatch[xb.nRawPatches].name, pat);
 			n = xb.nRawPatches;
 			xb.rawPatch[n].offset = myatou32(val, -1);
