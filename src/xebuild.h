@@ -100,7 +100,7 @@ struct fileent
 	uint32_t offset;
 	uint8_t *data;
 	uint32_t size;
-	uint8_t key[16];		/* its RC4 key once encoded */
+	uint8_t key[0x10];		/* its RC4 key once encoded */
 	uint32_t fsSize;		/* the part that goes in the filesystem */
 	uint32_t fsOffset;		/* where that part starts */
 };
@@ -108,7 +108,7 @@ struct fileent
 /* an entry of the flash filesystem's file table */
 struct fsent
 {
-	char name[22];
+	char name[0x16];
 	uint16_t block;
 	uint32_t size;
 	uint32_t time;
@@ -147,15 +147,15 @@ struct consoleinfo
 	uint32_t nandSize;		/* system area */
 	uint32_t blockSize;
 	uint32_t pairing;		/* ldv in the low byte */
-	uint8_t cpuKey[16];
-	uint8_t dvdKey[16];
-	uint8_t fuses[96];
-	uint8_t vfuses[96];
-	uint8_t key1bl[16];
+	uint8_t cpuKey[0x10];
+	uint8_t dvdKey[0x10];
+	uint8_t fuses[0x60];
+	uint8_t vfuses[0x60];
+	uint8_t key1bl[0x10];
 	XECRYPT_RSAPUB_2048 pub1bl;
 	XECRYPT_RSAPUB_2048 pubPirs;
 	XECRYPT_RSAPUB_2048 pubMaster;
-	uint8_t keys[6][16];
+	uint8_t keys[6][0x10];
 };
 
 /* smc_config overrides from the ini */
@@ -172,7 +172,7 @@ struct smcopts
 	uint32_t avRegion;
 	uint32_t gameRegion;
 	uint32_t dvdRegion;
-	uint8_t macid[6];
+	uint8_t macid[0x6];
 };
 
 /* console_hdd's file manifest */
@@ -180,15 +180,15 @@ struct mfFile;
 struct manifest
 {
 	struct mfFile *data;
-	char path[1024];
+	char path[0x400];
 	size_t size;
 	int count;
 	struct
 	{
 		void *data;
 		uint32_t len;
-		char path[1024];
-	} e[256];
+		char path[0x400];
+	} e[0x100];
 };
 
 /* xb.files has 19 entries; the 16 addon patches (-a) follow it in xb.addons.
@@ -245,8 +245,8 @@ struct xebuild
 	int nandMu;
 	int muChecked;
 	uint32_t numBad;		/* bad blocks of the dump */
-	uint32_t badBlocks[32];
-	uint32_t badRemap[32];
+	uint32_t badBlocks[0x20];
+	uint32_t badRemap[0x20];
 	struct netfile consoleBlmod;	/* blmod.bin from the console */
 	struct netfile bl;		/* the bootloaders (raw, glitch) */
 	int fromConsole;		/* bootloaders read from the console */
@@ -256,9 +256,9 @@ struct xebuild
 	struct netfile kvAlt;
 	struct netfile smcConfig;
 	struct netfile netKd;
-	uint8_t key1bl[16];
-	uint8_t cpuKey[16];
-	uint8_t xexKey[16];		/* calcXexKey's (CRL/DAE key) */
+	uint8_t key1bl[0x10];
+	uint8_t cpuKey[0x10];
+	uint8_t xexKey[0x10];		/* calcXexKey's (CRL/DAE key) */
 	XECRYPT_RSAPUB_2048 *pub1bl;	/* loaded, or the console's */
 	XECRYPT_RSAPUB_2048 *masterPub;
 	XECRYPT_RSAPUB_2048 *pubPirs;
@@ -269,11 +269,11 @@ struct xebuild
 	char baseDir[0x400];		/* -d */
 	char dataDir[0x400];		/* -f */
 	char commonDir[0x400];
-	char firmware[256][0x400];	/* the ini's firmware files */
-	uint32_t firmwareCrc[256];
+	char firmware[0x100][0x400];	/* the ini's firmware files */
+	uint32_t firmwareCrc[0x100];
 	uint32_t nFirmware;
 	struct fileent files[XB_ADDONS];
-	struct fileent addons[16];
+	struct fileent addons[0x10];
 	char blSuffix[0x40];		/* -r */
 	int numPatches;			/* entries used in addons */
 	int nFiles;
@@ -282,9 +282,9 @@ struct xebuild
 	{
 		char name[0x400];
 		uint32_t offset;
-	} rawPatch[16];
+	} rawPatch[0x10];
 	uint32_t nRawPatches;
-	char flashFiles[10][22];	/* security files */
+	char flashFiles[10][0x16];	/* security files */
 	uint8_t *flashBuf[10];		/* their data from a dump */
 	uint32_t flashSize[10];
 	uint32_t flashTime[10];
@@ -315,7 +315,7 @@ struct xebuild
 /* ---- Globals (src/globals.c) ---- */
 extern int *blOrder;			/* filelist_ini: one of the bl* tables */
 extern struct xebuild xb;
-extern struct fsent fsFileEnts[256];	/* image_write */
+extern struct fsent fsFileEnts[0x100];	/* image_write */
 extern uint16_t fsChain[0x1000];
 extern struct flashhdr flashHdr;
 extern uint32_t imgUsed;
