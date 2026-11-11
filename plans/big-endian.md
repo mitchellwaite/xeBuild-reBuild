@@ -209,8 +209,20 @@ Step 2).
   `blSign` (xboxrom.c:42) passes `s.sig`, at offset 36, to XeCrypt as `u64 *`
   and `XECRYPT_SIG *`. PowerPC Linux and Mac OS X fix these up in hardware
   or the kernel's alignment handler, slowly. They're also undefined
-  behaviour that an AltiVec-vectorizing `-O3` may exploit. Replace them with
-  `getBeU32`/`memcpy`, and align `sig`.
+  behaviour that `-O3` may exploit. Replace them with `getBeU32`/`memcpy`,
+  and align `sig`.
+- AltiVec: the Xbox 360's VMX128 is missing some standard AltiVec
+  instructions, so xeBuild must contain no vector code on any PowerPC
+  build. A binary built on a G4 under ArchPOWER's 32-bit userland may be run
+  on a 360, so this applies to every PowerPC build, not just ones made on a
+  360. The source has none of its own (no `altivec.h`, `vector` types or
+  `vec_*` calls). But gcc generates it whenever the target CPU has AltiVec,
+  through `-O3`'s auto-vectorizer and its inline block copies and clears.
+  That happens with `-mcpu=7400`/`7450` (G4), `970` (G5, a common ppc64
+  default) or POWER7 and later (VSX, which includes AltiVec). Step 6 turns
+  it off. libc's own routines (memcpy and the like) pick their
+  implementation at run time from the CPU the kernel reports, which is the
+  distribution's business.
 - Old compilers. `cc` on PowerPC Mac OS X is Apple's gcc 4.0.1 (Tiger) or
   4.0/4.2 (Leopard), and the code doesn't build with it:
   - `_Static_assert` (xebuild.h:44) needs gcc 4.6;
@@ -575,6 +587,32 @@ MAP_FLAGS := -Wl,-map,$(MAP)
 endif
 ```
 
+- No AltiVec or VSX on PowerPC, in the fixes block beside `TARGET_TRIPLE`
+  (so win32, the reference build, never runs it). The test asks the
+  compiler what it targets: gcc and clang define `__powerpc__` on Linux,
+  Apple's gcc `__ppc__` and `__POWERPC__`.
+
+  ```make
+  # PowerPC: no AltiVec/VMX or VSX code.  The Xbox 360's VMX128 lacks some
+  # AltiVec instructions, and gcc's -O3 vectorizer uses them whenever the
+  # target CPU has AltiVec (G4, G5/970, POWER7+).  The source has no vector
+  # code of its own; CFLAGS=-maltivec puts it back (CFLAGS come last).
+  ifneq ($(shell $(TC_ENV) $(CC) -dM -E -x c /dev/null 2>/dev/null | \
+  	grep -E '__(powerpc|ppc|POWERPC)__'),)
+  PLAT_CFLAGS += -mno-altivec
+  # VSX includes AltiVec; gcc before 4.5 (Apple's 4.0/4.2) has no -mno-vsx
+  ifeq ($(shell $(TC_ENV) $(CC) -mno-vsx -E -x c /dev/null >/dev/null 2>&1 \
+  	&& echo ok),ok)
+  PLAT_CFLAGS += -mno-vsx
+  endif
+  endif
+  ```
+
+  The flags only stop gcc from using vector registers. They don't touch the
+  ABI: without vector types in the code there's nothing for
+  `-mabi=no-altivec` to change. The rest of the instruction set follows the
+  compiler's default `-mcpu`, which a distribution that runs on the 360
+  already sets to something the Xenon runs.
 - `QUIET_WARNINGS` adds its clang-only flags when `$(CC)` is clang
   (`$(CC) -dM -E -x c /dev/null | grep __clang__`), not when the platform
   is `macos`. Its gcc list needs gcc 4.4 or later (older gcc rejects
@@ -609,14 +647,29 @@ Docs:
   them straight.
 - Optional: a compile-only CI job with Ubuntu's PowerPC cross compilers
   (`gcc-powerpc-linux-gnu`, `gcc-powerpc64-linux-gnu`) catches big-endian
-  build breaks before there's hardware or a test run.
+  build breaks before there's hardware or a test run. It can also check
+  for vector code (Verification 2), and with `CFLAGS=-mcpu=970` too, to show
+  the flags win over a CPU that has AltiVec.
 
 ## Verification
 
 1. `make check` after every step. Steps 1, 3, 4 and 6 must not change the
    reference build; step 5 is under `XEBUILD_FIXES`, so it can't, but run
    it anyway; step 2's identity is already shown above (rerun after the sync).
-2. Images: the test-file suite, in a later session. For runs to compare
+2. No vector code: every PowerPC build's disassembly must have no AltiVec
+   or VSX instruction. That means no `v*` mnemonic, no `lv*`/`stv*` vector
+   loads and stores, no `mtvscr`/`mfvscr`, `dst*`/`dss*`, `mtvrsave`, and
+   no VSX `lxv*`/`stxv*`/`lxs*`/`stxs*`/`xs*`/`xv*`/`xx*`. No scalar
+   PowerPC mnemonic starts with those prefixes, so on Linux this is a
+   one-liner that must print nothing:
+
+   ```bash
+   objdump -d build/xeBuild | awk -F'\t' '{print $3}' | grep -E '^(v[a-z]|lv|stv|lxv|stxv|lxs|stxs|xs|xv|xx|mtvscr|mfvscr|dst|dss|m[tf]vrsave)'
+   ```
+
+   (With a cross toolchain, `powerpc-linux-gnu-objdump`; on Mac OS X,
+   `otool -tV`, whose columns differ.)
+3. Images: the test-file suite, in a later session. For runs to compare
    byte for byte, the build provides `-norandom` (exists), `SOURCE_DATE_EPOCH`
    (step 5), and `TZ=UTC` (`DosDateTimeToFileTime` uses `mktime`). A
    32-bit and a 64-bit big-endian build must each match the x86-64 fixes
@@ -636,8 +689,9 @@ Docs:
      `bigffs` detection).
    Run the matrix on x86-64 Linux first: anything it finds there is an LP64
    bug, which 64-bit PowerPC shares.
-3. Hardware: flash one image built on a PowerPC host to a real console. That's
-   the final proof that ECC, LBAs and signatures are right.
+4. Hardware: flash one image built on a PowerPC host to a real console. That's
+   the final proof that ECC, LBAs and signatures are right. Run xeBuild
+   itself on the 360 too, with a build made on a G4 or G5 if there is one.
 
 ## Order of work
 
@@ -648,7 +702,8 @@ Each app step ends with `make check` and a commit:
 3. Constants: header, DVD region, patterns.
 4. EDC and bit-fields.
 5. `XEBUILD_FIXES` rewrites, layout asserts, `SOURCE_DATE_EPOCH`.
-6. Makefile (`cc`), old-compiler shims, README, NOTES.md.
+6. Makefile (`cc`, no AltiVec/VSX on PowerPC), old-compiler shims, README,
+   NOTES.md.
 7. The test-file suite (later session), then hardware.
 
 Steps 1 and 3-6 don't depend on step 2. A big-endian build is right only
@@ -676,4 +731,7 @@ once all of 1-6 are in.
 - macOS: the system `cc`, whatever it is; old Apple gcc gets shims, not a
   required newer compiler.
 - The 360: both ArchPOWER's 32-bit userland and fully 64-bit distributions.
+- PowerPC builds have no AltiVec or VSX code (`-mno-altivec`, and
+  `-mno-vsx` where the compiler knows it): the 360's VMX128 lacks some
+  AltiVec instructions, and one build may run on both a Mac and a 360.
 - Testing: the image suite comes in a later session; no qemu runs here.
