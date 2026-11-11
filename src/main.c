@@ -20,8 +20,10 @@
 #include "mode_update.h"
 #include "sysupdate.h"
 
+#define XEBUILD_NAME "xeBuild"
 #ifdef XEBUILD_FIXES
-/* the target as <os>-<arch>, as in a release file name */
+/* the version banner names the build and its target, <os>-<arch> as in a
+   release file name */
 #if defined(_WIN32)
 #define XEBUILD_OS "windows"
 #elif defined(__APPLE__)
@@ -44,9 +46,9 @@
 #else
 #define XEBUILD_ARCH "unknown"
 #endif
-#define XEBUILD_NAME "xeBuild reBuild (" XEBUILD_OS "-" XEBUILD_ARCH ")"
+#define XEBUILD_TITLE "xeBuild reBuild (" XEBUILD_OS "-" XEBUILD_ARCH ")"
 #else
-#define XEBUILD_NAME "xeBuild"
+#define XEBUILD_TITLE XEBUILD_NAME
 #endif
 #define XEBUILD_MAJOR 1
 #define XEBUILD_MINOR 21
@@ -530,7 +532,7 @@ int main(int argc, char **argv)
 	installSignals();
 	log_init();
 	log_printf(0, separator);
-	log_printf(0, "     %s v%d.%02d.%s\n", XEBUILD_NAME, XEBUILD_MAJOR,
+	log_printf(0, "     %s v%d.%02d.%s\n", XEBUILD_TITLE, XEBUILD_MAJOR,
 		   XEBUILD_MINOR, XEBUILD_BUILD);
 	log_printf(0, separator);
 	if (argc > 1)
