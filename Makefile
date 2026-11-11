@@ -78,6 +78,7 @@ MAP := build/xeBuild.map
 #   MAP_FLAGS      linker map to $(MAP)
 #   STAMP          1 to stamp the reference link time into the exe
 #   CHECK          1 when `make check` can reproduce the reference
+#   ORIG_PATHS     1 to compile with the original source paths (__FILE__)
 
 # --- win32: the pinned toolchain (reference build) -------------------------
 ifeq ($(PLATFORM),win32)
@@ -98,6 +99,7 @@ PLAT_LIBS := -lws2_32 -lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt \
 MAP_FLAGS := -Wl,--no-insert-timestamp,-Map,$(MAP)
 STAMP := 1
 CHECK := 1
+ORIG_PATHS := 1
 
 # --- win32latest: the latest MSYS2 gcc on PATH -----------------------------
 else ifeq ($(PLATFORM),win32latest)
@@ -188,15 +190,25 @@ endif
 
 all: $(EXE)
 
-# $(call compile,original path,flags): compile $< to $@.  The source goes
-# through stdin so the #line can name the original build path, for __FILE__
-# in assert() (gcc 6 has no -ffile-prefix-map).  -MMD records the headers.
+# $(call compile,original path,flags): compile $< to $@.  -MMD records the
+# headers.  For the reference build (ORIG_PATHS) the source goes through stdin
+# so the #line can name the original build path, for __FILE__ in assert()
+# (gcc 6 has no -ffile-prefix-map); stdin has no directory, hence -I$(<D).
+# Other platforms compile the file as it is, so their diagnostics name it.
+ifeq ($(ORIG_PATHS),1)
 define compile
 	@mkdir -p $(@D)
 	{ printf '#line 1 "%s"\n' '$(1)'; cat $<; } | \
 	  $(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) -I$(<D) \
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ -x c - -o $@
 endef
+else
+define compile
+	@mkdir -p $(@D)
+	$(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) \
+	  -MMD -MP -MF $(@:.o=.d) -MT $@ $< -o $@
+endef
+endif
 
 # The platform the objects in $(OBJ) were built for.  It's rewritten only
 # when PLATFORM changes, so then every object is out of date and another
