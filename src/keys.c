@@ -15,27 +15,27 @@
 
 uint8_t pairing[3] = { 0 };
 uint8_t zeroKey[16] = { 0 };
-uint8_t infoKey0[16] = {
+uint8_t cbaNonce[16] = {
 	0x37, 0x10, 0xa2, 0xf2, 0x2e, 0xd5, 0xf0, 0xa8,
 	0xe4, 0x9c, 0xb4, 0xc7, 0xa1, 0x39, 0x5d, 0xaa
 };
-uint8_t infoKey1[16] = {
+uint8_t cbbNonce[16] = {
 	0xfb, 0xe2, 0x70, 0x9a, 0xe7, 0xa1, 0x3f, 0x42,
 	0xcf, 0xec, 0x45, 0x92, 0x8e, 0x3f, 0x0e, 0x37
 };
-uint8_t infoKey2[16] = {
+uint8_t cdNonce[16] = {
 	0xb3, 0x38, 0x64, 0x1c, 0xeb, 0xd0, 0x1e, 0x10,
 	0x2c, 0xdd, 0xe0, 0xf3, 0x19, 0xa1, 0x9f, 0x84
 };
-uint8_t infoKey3[16] = {
+uint8_t ceNonce[16] = {
 	0x56, 0xa9, 0x81, 0xcd, 0x8c, 0xbc, 0x07, 0x29,
 	0xdd, 0x0b, 0x7b, 0xbc, 0x76, 0xe5, 0x79, 0x98
 };
-uint8_t infoKey4[16] = {
+uint8_t cfNonce[16] = {
 	0xce, 0xe5, 0x04, 0xee, 0x9f, 0x61, 0x2b, 0x9b,
 	0xa5, 0x20, 0xf8, 0xeb, 0x0b, 0x64, 0x68, 0x2a
 };
-uint8_t infoKey5[16] = {
+uint8_t cgNonce[16] = {
 	0xb9, 0xa2, 0x1e, 0x3b, 0xfc, 0x2e, 0xab, 0xb4,
 	0x19, 0x81, 0x2d, 0x8a, 0x85, 0xaa, 0xa8, 0xce
 };
@@ -58,12 +58,12 @@ void keysInit(int random)
 	if (random)
 	{
 		log_printf(1, "initializing random nonces\n");
-		XeCryptRandom(infoKey0, 16);
-		XeCryptRandom(infoKey1, 16);
-		XeCryptRandom(infoKey2, 16);
-		XeCryptRandom(infoKey3, 16);
-		XeCryptRandom(infoKey4, 16);
-		XeCryptRandom(infoKey5, 16);
+		XeCryptRandom(cbaNonce, 16);
+		XeCryptRandom(cbbNonce, 16);
+		XeCryptRandom(cdNonce, 16);
+		XeCryptRandom(ceNonce, 16);
+		XeCryptRandom(cfNonce, 16);
+		XeCryptRandom(cgNonce, 16);
 		XeCryptRandom(kvSalt, 8);
 		XeCryptRandom(kvAltSalt, 8);
 		XeCryptRandom(smcKey, 4);
@@ -116,34 +116,34 @@ void setSecdataKey(uint8_t *key)
 	memcpy(secdataKey, key, 8);
 }
 
-void setInfoKey0(uint8_t *key)
+void setCbaNonce(uint8_t *nonce)
 {
-	memcpy(infoKey0, key, 16);
+	memcpy(cbaNonce, nonce, 16);
 }
 
-void setInfoKey1(uint8_t *key)
+void setCbbNonce(uint8_t *nonce)
 {
-	memcpy(infoKey1, key, 16);
+	memcpy(cbbNonce, nonce, 16);
 }
 
-void setInfoKey2(uint8_t *key)
+void setCdNonce(uint8_t *nonce)
 {
-	memcpy(infoKey2, key, 16);
+	memcpy(cdNonce, nonce, 16);
 }
 
-void setInfoKey3(uint8_t *key)
+void setCeNonce(uint8_t *nonce)
 {
-	memcpy(infoKey3, key, 16);
+	memcpy(ceNonce, nonce, 16);
 }
 
-void setInfoKey4(uint8_t *key)
+void setCfNonce(uint8_t *nonce)
 {
-	memcpy(infoKey4, key, 16);
+	memcpy(cfNonce, nonce, 16);
 }
 
-void setInfoKey5(uint8_t *key)
+void setCgNonce(uint8_t *nonce)
 {
-	memcpy(infoKey5, key, 16);
+	memcpy(cgNonce, nonce, 16);
 }
 
 void setKvSalt(uint8_t *key)
@@ -544,7 +544,7 @@ int smcPrepare(uint8_t *smc, uint8_t *hash, uint32_t size)
 
 void cbaEncrypt(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zero)
 {
-	memcpy(cb + 16, infoKey0, 16);
+	memcpy(cb + 16, cbaNonce, 16);
 	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
 	if (!zero)
 	{
@@ -559,7 +559,7 @@ void cbaEncrypt(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zer
 void cbaEncryptZero(uint8_t *cb, uint8_t *key, uint32_t size)
 {
 	memset(pairing, 0, 3);
-	memcpy(cb + 16, infoKey0, 16);
+	memcpy(cb + 16, cbaNonce, 16);
 	memset(cb + 32, 0, 32);
 	XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cb + 32, size - 32);
@@ -567,7 +567,7 @@ void cbaEncryptZero(uint8_t *cb, uint8_t *key, uint32_t size)
 
 void cbaEncrypt2(uint8_t *salt, uint8_t *cb, uint8_t *key, uint32_t size, int zero)
 {
-	memcpy(cb + 16, infoKey0, 16);
+	memcpy(cb + 16, cbaNonce, 16);
 	if (zero)
 	{
 		memset(cb + 32, 0, 32);
@@ -588,7 +588,7 @@ void cbbEncrypt(uint8_t *salt, uint8_t *cbb, uint8_t *cbaKey, uint8_t *cba, uint
 	uint8_t *ck;
 	uint8_t hdr[16];
 
-	memcpy(cbb + 16, infoKey1, 16);
+	memcpy(cbb + 16, cbbNonce, 16);
 	ck = !(flags & 1) ? xb.cpuKey : zeroKey;
 	if (flags & 0x800)
 	{
@@ -632,21 +632,21 @@ void cdEncryptZero(uint8_t *cd, uint8_t *key, uint32_t size)
 	uint8_t zero[16];
 
 	memset(zero, 0, 16);
-	memcpy(cd + 16, infoKey1, 16);
+	memcpy(cd + 16, cbbNonce, 16);
 	XeCryptHmacSha(zero, 16, cd + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cd + 32, size - 32);
 }
 
 void cdEncrypt(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
-	memcpy(cd + 16, infoKey2, 16);
+	memcpy(cd + 16, cdNonce, 16);
 	XeCryptHmacSha(prevKey, 16, cd + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cd + 32, size - 32);
 }
 
 void cdEncryptCpu(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
-	memcpy(cd + 16, infoKey2, 16);
+	memcpy(cd + 16, cdNonce, 16);
 	XeCryptHmacSha(prevKey, 16, cd + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptHmacSha(xb.cpuKey, 16, key, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cd + 32, size - 32);
@@ -654,7 +654,7 @@ void cdEncryptCpu(uint8_t *cd, uint8_t *prevKey, uint8_t *key, uint32_t size)
 
 void ceEncrypt(uint8_t *ce, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
-	memcpy(ce + 16, infoKey3, 16);
+	memcpy(ce + 16, ceNonce, 16);
 	XeCryptHmacSha(prevKey, 16, ce + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, ce + 32, size - 32);
 }
@@ -698,7 +698,7 @@ uint16_t cfEncrypt(struct fileent *cf, uint32_t extra, uint16_t block, int keep,
 	short n;
 	uint8_t *buf;
 
-	memcpy(salt, infoKey4, 16);
+	memcpy(salt, cfNonce, 16);
 	if (!keep)
 	{
 		buf = cf->data;
@@ -730,7 +730,7 @@ uint16_t cfEncrypt(struct fileent *cf, uint32_t extra, uint16_t block, int keep,
 
 void cgEncrypt(uint8_t *cg, uint8_t *prevKey, uint8_t *key, uint32_t size)
 {
-	memcpy(cg + 16, infoKey5, 16);
+	memcpy(cg + 16, cgNonce, 16);
 	XeCryptHmacSha(prevKey, 16, cg + 16, 16, NULL, 0, NULL, 0, key, 16);
 	XeCryptRc4(key, 16, cg + 32, size - 32);
 }

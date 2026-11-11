@@ -215,7 +215,7 @@ helper). The slot order needed `key[0] == buf[i]`, the reverse of
 And `keys` (whole object in C, data included; key buffers are defined in reverse
 of their address order, as gcc emits data last to first; its strings are plain
 literals).
-The names (`keysInit`, `cbaEncrypt`, `kvPrepare`, the `infoKey0..5` HMAC
+The names (`keysInit`, `cbaEncrypt`, `kvPrepare`, the `cbaNonce..cgNonce` HMAC
 salts, ...) are ours.
 
 - `daeEncrypt` tests `!n` before each log, so gcc threads one decrypt
@@ -985,12 +985,12 @@ Objects built entirely from C, in link order.
 - ✅ `setCrlKey` (0x41abb0)
 - ✅ `setDaeKey` (0x41ac00)
 - ✅ `setSecdataKey` (0x41ac50)
-- ✅ `setInfoKey0` (0x41ac70)
-- ✅ `setInfoKey1` (0x41aca0)
-- ✅ `setInfoKey2` (0x41acd0)
-- ✅ `setInfoKey3` (0x41ad00)
-- ✅ `setInfoKey4` (0x41ad30)
-- ✅ `setInfoKey5` (0x41ad60)
+- ✅ `setCbaNonce` (0x41ac70)
+- ✅ `setCbbNonce` (0x41aca0)
+- ✅ `setCdNonce` (0x41acd0)
+- ✅ `setCeNonce` (0x41ad00)
+- ✅ `setCfNonce` (0x41ad30)
+- ✅ `setCgNonce` (0x41ad60)
 - ✅ `setKvSalt` (0x41ad90)
 - ✅ `setKvAltSalt` (0x41adb0)
 - ✅ `setSmcKey` (0x41add0)

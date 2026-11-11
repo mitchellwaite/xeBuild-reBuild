@@ -1626,7 +1626,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CB/CBA Nonce, aborting!\n");
 		return;
 	}
-	setInfoKey0(xb.dump + off + 16);
+	setCbaNonce(xb.dump + off + 16);
 	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	if (p[6] & 8)
 	{
@@ -1641,7 +1641,7 @@ void getNonces(void)
 			log_printf(1, "**** Warning: error getting CBB Nonce, offset 0x%x aborting!\n", off);
 			return;
 		}
-		setInfoKey1(xb.dump + off + 16);
+		setCbbNonce(xb.dump + off + 16);
 		off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	}
 	if (off >= xb.dumpSize)
@@ -1655,7 +1655,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CD Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setInfoKey2(xb.dump + off + 16);
+	setCdNonce(xb.dump + off + 16);
 	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	if (off >= xb.dumpSize)
 	{
@@ -1667,7 +1667,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CE Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setInfoKey3(xb.dump + off + 16);
+	setCeNonce(xb.dump + off + 16);
 	off = SWAP32(h->sysUpdateAddr);
 	if (off >= xb.dumpSize)
 	{
@@ -1680,7 +1680,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CF Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setInfoKey4(xb.dump + off + 32);
+	setCfNonce(xb.dump + off + 32);
 	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
 	if (off >= xb.dumpSize)
 	{
@@ -1692,7 +1692,7 @@ void getNonces(void)
 		log_printf(1, "**** Warning: error getting CG Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setInfoKey5(xb.dump + off + 16);
+	setCgNonce(xb.dump + off + 16);
 	xb.randomKeys = 0;
 }
 

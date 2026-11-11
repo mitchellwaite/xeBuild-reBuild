@@ -297,9 +297,9 @@ SYMBOLS = {
     0x41fd60: '_netGetFile', 0x41fe10: '_netGetInfo', 0x41ea70: '_netFree',
     0x424170: '_setConsoleType', 0x4276f0: '_findFile',
     0x41ae40: '_checkCpuKey', 0x41b120: '_setCpuKey', 0x41b600: '_set1blKey',
-    0x41ade0: '_setPairing', 0x41ac70: '_setInfoKey0', 0x41aca0: '_setInfoKey1',
-    0x41acd0: '_setInfoKey2', 0x41ad00: '_setInfoKey3', 0x41ad30: '_setInfoKey4',
-    0x41ad60: '_setInfoKey5', 0x449180: '_fflush',
+    0x41ade0: '_setPairing', 0x41ac70: '_setCbaNonce', 0x41aca0: '_setCbbNonce',
+    0x41acd0: '_setCdNonce', 0x41ad00: '_setCeNonce', 0x41ad30: '_setCfNonce',
+    0x41ad60: '_setCgNonce', 0x449180: '_fflush',
     # mode_build (src/mode_build.c) and what it calls; names are ours
     0x418fd0: '_loadPubKey', 0x419150: '_loadPubKeys',
     0x40aef0: '_loadUserIni', 0x409430: '_parseIni', 0x4259a0: '_applyIniOptions',
@@ -354,8 +354,8 @@ SYMBOLS = {
     0x41dc30: '_crlEncrypt', 0x41dfa0: '_daeEncryptOne', 0x41e180: '_daeEncrypt',
     0x41e620: '_fcrtEncrypt', 0x41e7b0: '_shaHeader',
     0x44a5e0: '_secdataKey', 0x44a600: '_daeKey', 0x44a620: '_crlKey', 0x44a640: '_smcKey',
-    0x44a644: '_kvAltSalt', 0x44a64c: '_kvSalt', 0x44a654: '_infoKey5', 0x44a664: '_infoKey4',
-    0x44a674: '_infoKey3', 0x44a684: '_infoKey2', 0x44a694: '_infoKey1', 0x44a6a4: '_infoKey0',
+    0x44a644: '_kvAltSalt', 0x44a64c: '_kvSalt', 0x44a654: '_cgNonce', 0x44a664: '_cfNonce',
+    0x44a674: '_ceNonce', 0x44a684: '_cdNonce', 0x44a694: '_cbbNonce', 0x44a6a4: '_cbaNonce',
     0x479560: '_zeroKey', 0x479570: '_pairing',
     0x47a10c: '_key1bl', 0x47a12c: '_xexKey', 0x47a13c: '_pub1bl', 0x47a144: '_pub2a4',
     # mode_update (src/mode_update.c) and what it calls; names are ours

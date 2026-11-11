@@ -464,27 +464,27 @@ void setInfoKeys(void)
 	xb.randomKeys = 0;
 	if (!checkZeros(info->cbaNonce, 16))
 	{
-		setInfoKey0(info->cbaNonce);
+		setCbaNonce(info->cbaNonce);
 	}
 	if (!checkZeros(info->cbbNonce, 16))
 	{
-		setInfoKey1(info->cbbNonce);
+		setCbbNonce(info->cbbNonce);
 	}
 	if (!checkZeros(info->cdNonce, 16))
 	{
-		setInfoKey2(info->cdNonce);
+		setCdNonce(info->cdNonce);
 	}
 	if (!checkZeros(info->ceNonce, 16))
 	{
-		setInfoKey3(info->ceNonce);
+		setCeNonce(info->ceNonce);
 	}
 	if (!checkZeros(info->cfNonce, 16))
 	{
-		setInfoKey4(info->cfNonce);
+		setCfNonce(info->cfNonce);
 	}
 	if (!checkZeros(info->cgNonce, 16))
 	{
-		setInfoKey5(info->cgNonce);
+		setCgNonce(info->cgNonce);
 	}
 }
 
