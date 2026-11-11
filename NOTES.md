@@ -559,13 +559,13 @@ These are the hints:
 
 Writing a function success-first, duplicating a block, inlining a helper by
 hand and spelling a byte swap differently are source shape, so they aren't
-counted. Neither are plain type casts, or an array longer than it needs to be,
-which gets a comment explaining it instead. `filelist_ini`'s `findKey`
-keeps one dead `key == NULL` test that also isn't counted, because the author may
-well have written a check like it; a comment on the test explains it. Likewise
+counted. Neither are plain type casts, or an array longer than it needs to be.
+`filelist_ini`'s `findKey` keeps one dead `key == NULL` test that also isn't
+counted, because the author may well have written a check like it. Likewise
 `image_read`'s `getImageSmc` keeps an `excess` added to `addr` that is always 0,
-which keeps `addr`'s conversion in the block PRE would otherwise move it out of;
-its comment explains it.
+which keeps `addr`'s conversion in the block PRE would otherwise move it out of.
+The reasons for these and the other shapes approved in review are in
+`tools/wip/dehint/BORDERLINE.md` and the notes beside it, not in `src/`.
 
 `mode_client` went from 141 tricks to none. Its option loop and switch were
 first fitted to bb-reorder's heap by search, with dead `__builtin_constant_p`

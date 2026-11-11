@@ -315,13 +315,6 @@ uint32_t loadManifest(const char *dir, uint32_t ver)
 	return ret;
 }
 
-/* r stays a flag with a second test: createSysexDirs isn't guarded on the mount
-   success edge, so the mount failure's probability (call + early return) gives
-   bbro the original's block order where sendAvatarData inlines this. No
-   spelling without a flag gets there: a createSysexDirs call guarded by the
-   mount test gets the call heuristic too and cancels the mount failure's.
-   r is redundant as a flag (the mount arm
-   could return createSysexDirs() itself), the form of myatou32's `hex`. */
 int prepSysex(void)
 {
 	int r = netFormatSysex();
@@ -339,17 +332,6 @@ int prepSysex(void)
 	return 0;
 }
 
-/* long ret, not int: uncprop then can't reuse the int netSendFile result for
-   the manifest failure's 0 (it does for the loop failure, which assigns ret).
-   Only ret's type counts here (an int return with a long ret is the same
-   bytes); long for both is sendCompatData's form, which needs both.
-
-   A failed send ends the loop with i = manifest.count, not break: with break
-   i is a plain IV and ivopts replaces the imul with a pointer.
-
-   Both are live and ordinary: the long
-   result next to netSendFile's int, as in sendCompatData, and the loop ended
-   by its counter where a break would do. */
 long sendAvatarData(const char *dir, uint32_t ver)
 {
 	int i;

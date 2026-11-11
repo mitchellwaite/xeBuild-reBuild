@@ -499,51 +499,10 @@ static void macidRest(uint8_t *mac, const char *val, int n)
 
 /* one name[=value] from the command line option string.  The `if (val)`
    around the value options is in the Linux build (gcc 4.9 keeps the test);
-   gcc 6 threads it away.  No combination of the plain spellings of the
-   four shapes below matches (tools/wip/dehint/oprv_*.py).
-   cputemp and gpufan set an `ok` flag
-   in the log's if and leave on it after, where the other value arms `goto
-   bad` first.  The log block then doesn't go straight to the return, so
-   their success edge gets no early-return prediction (bad 48.8% instead of
-   59.8%); the flag's join is threaded away after profile_estimate.
-   cputemp's success then owns an epilogue copy and only edramtemp's -1
-   test falls into bad; gpufan's moves the jump alignment from avregion's
-   test to gameregion's.  (Every myatou32 arm but edramtemp in this form
-   also matches.)  Plain arms are 231 lines.
-   A bool option sets `ok` after its
-   "\n" (the value options are its else) and `if (ok) return 1;` comes
-   after them, where a `return 1` in the arm would do.  The "\n" block then
-   goes to that join, not straight to the return, so the setBoolOption edge
-   gets no early-return prediction: 13.7% (call, `== 1`) instead of 9.2%.
-   The "\n" block reaches the epilogue-copy threshold (62, 10% of the entry
-   is 57), cputemp's head stays out of bb-reorder's first trace (271 under
-   285), and, with the join after the value options, they get the whole
-   false share; VRP1 threads the join away.  The "\n" block must stay ahead
-   of cputemp (its literal comes before "cputemp" in .rdata).  `return 1`
-   in the arm is 310 lines.
-   macid's last five bytes are a helper
-   with the count as an argument (macidRest, called once, with 5).  Its
-   loop's trip count isn't known at profile_estimate, so its exit is 9%
-   (loop exit), not 1/6 (5 iterations); the len <= 0 setBoolOption copy's
-   "\n" edge (13.7%) beats it when bb-reorder connects the "\n" trace.  The
-   loop written out here is 237-308 lines, whether bounded by 5 or by a
-   length that only VRP knows is 12: the inliner's late copy also gives the
-   IVs and registers.
-   The unknown-with-value message tests
-   `val && vlen`, where vlen alone decides (vlen is 0 whenever val is NULL);
-   it reads as the usual guard on a %s argument.  It lets VRP1 thread the
-   val-null path straight to the incomplete message, so after PRE's tail
-   merge that block has the whole path's frequency and reaches the
-   epilogue-copy threshold.  With `vlen` alone no GIMPLE threader resolves
-   the vlen test on the val-null path, RTL redirects it, and the block
-   keeps its old 55 (62 lines).  `if (vlen)` at the end of the value block
-   is the same .text, but the incomplete block becomes a merged thread copy
-   at the end, so its literal follows the bad message's.  `vlen && val` and
-   nested ifs are the same bytes.
-   The return is uint32_t, as is parseCmdOptions': with int, uncprop
-   returns stricmp's "macid" result for macid's 0s (kept in esi), and
-   parseCmdOptions' `return 0` reuses the call's 0 only when the types
-   agree. */
+   gcc 6 threads it away.  The return is uint32_t, as is parseCmdOptions':
+   with int, uncprop returns stricmp's "macid" result for macid's 0s (kept
+   in esi), and parseCmdOptions' `return 0` reuses the call's 0 only when
+   the types agree. */
 uint32_t parseOption(char *opt)
 {
 	char *val = NULL;
@@ -724,11 +683,7 @@ bad:
 	return 0;
 }
 
-/* the ;-separated command line options.
-   uint32_t like parseOption's, which lets its `return 0` reuse
-   the call's 0 (int is 30 lines; parseOption's comment).  uint32_t is the
-   author's type for 0/1 status returns: parseIni, FileExists,
-   validateString, kvSetDvdKey, checkKeys, netConnect, suLoad .. */
+/* the ;-separated command line options. */
 uint32_t parseCmdOptions(const char *opts)
 {
 	char opt[512];

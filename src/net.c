@@ -126,22 +126,7 @@ int netSendStr(const char *s)
    int, uncprop reuses it for got's 0 and keeps it in a register.  The
    if (size) nesting swaps the early-return prediction for the call
    heuristic, which raises the entry frequency and so bbro's round
-   thresholds.  The loop's failure arms set a value and rejoin, and a test after
-   each one leaves the loop.  Those tests thread away after profile_estimate,
-   so the arms keep their own frequencies (R above J and the log), and the
-   break reaches the post-loop test, whose stale share puts got over IRA's
-   caller-save threshold in the clone: size/buf/got go to ebx/esi/edi.  The
-   select arm clears size rather than setting status: status on both arms
-   swaps the operands of the verbose loop's latch compare (SSA names, see
-   tools/wip/dehint/notes/net_netRecvVerbose.md, "Review").  The
-   test after the loop compares status with 1, not 0, since only that gets an
-   opcode prediction: it keeps the clone's store block under its alignment
-   threshold (`!status`, `== 0` or `< 1` there, or size cleared on both arms
-   and no status, each give it a .p2align).
-   Each failure arm sets a value that the
-   next statement tests, the form of myatou32's `hex`.  0 is the function's
-   own empty-reply size and status is 1 for OK; the loop's `status != 1`
-   reads like the one after it (`!status` there is the same bytes). */
+   thresholds. */
 uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 {
 	fd_set fds;
@@ -531,14 +516,7 @@ uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 }
 
 /* rlen's scope ends before the tail, so its clobber keeps the two `mov eax,1`
-   from being head-merged. `<= 0` takes the opcode predictor (`!` takes none),
-   which lifts the free block over bbro's copy threshold for the epilogue.
-   `<= 0` on netSendStr's 0 or 1, where
-   `!` says the same.  No other test or netSendStr body gives the prediction.
-   The uploads here, in netSendFile and in netWritePatches need it,
-   netSendFlash's matches either way, and the command-only senders
-   (netEraseBlock, netFormatSysex, netFormatCompat, netReboot) need `!`, so
-   the two spellings split by the kind of function. */
+   from being head-merged. */
 int netWriteBlocks(const uint8_t *buf, uint32_t len, uint32_t start, uint32_t count)
 {
 	int ret;
@@ -596,16 +574,8 @@ uint8_t *netGetBadBlocks(int *len)
 	return 0;
 }
 
-/* The `ok` flag is threaded away, but the test that sets it guards no call, so
-   it stays 50/50: frequent enough for bbro to place the return-0 block after
-   the send, and few enough uses of buf to leave it on the stack. `<= 0` takes
-   the opcode predictor (`!` takes none), which lifts netSendData's block far
-   enough for the return-0 block to be aligned. rlen's scope ends before the
-   tail, so its clobber keeps the two `mov eax,1` from being head-merged.
-   The `ok` flag is redundant (`if (name
-   && buf) {` is the same logic), the form of myatou32's `hex`: the test
-   must guard no call (`&&` and `ok = name && buf;` are 19 lines, nested
-   ifs 21-23); and `<= 0` on netSendStr's 0 or 1, as in netWriteBlocks. */
+/* rlen's scope ends before the tail, so its clobber keeps the two `mov eax,1`
+   from being head-merged. */
 int netSendFile(const char *name, const void *buf, uint32_t len)
 {
 	int ret, ok = 0;
@@ -728,12 +698,6 @@ int netReboot(int how)
 	return 1;
 }
 
-/* `<= 0` takes the opcode predictor while netSendStr is still a call at
-   profile_estimate (`!` takes none) and folds away once it's inlined. That lifts
-   the free block above 10% of the entry, so bbro copies the epilogue after it
-   instead of a jmp, as in netWriteBlocks.
-   `<= 0` on netSendStr's 0 or 1, as in
-   netWriteBlocks. */
 int netWritePatches(const uint8_t *buf, uint32_t len)
 {
 	int ret;

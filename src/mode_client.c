@@ -116,16 +116,6 @@ void clientInfo(const char *dir)
 			log_printf(0, "success!\n");
 		else
 			log_printf(0, "failed!\n");
-		/* Without this return the failed arm sits just before the return
-		   block, so the early-return heuristic cools only success (39%)
-		   and bb-reorder moves it out of line.  The return leaves a block
-		   between both arms and the return block, which keeps them at 50%.
-		   No live form matches: `if (!out) return;` before the dump (4
-		   lines) shields the no-dump path instead, and failed first swaps
-		   the two strings in .rdata.
-		   Redundant return (end of the
-		   function), where clientWriteBlocks and clientBinPatch end their
-		   success blocks with one too. */
 		return;
 	}
 }

@@ -212,13 +212,6 @@ check:
 	log_printf(1, "SMC at 0x%x of size 0x%x is not sane, skipping smc.bin in NAND image\n", addr, size);
 	return;
 sizeOk:
-	/* NOTE: dead, kept and not counted as a trick.
-	   excess is always 0, size being 0x3000 or 0x3800 here, and the reference has
-	   no code for it.  It is there for PRE: its second operand has no value on
-	   either incoming edge, so the sum stays in this block with addr's PHI, and
-	   the conversion of addr for the bound check stays here too; dom3 then folds
-	   the mask to its test's constant.  Attempts 20 and 21 found no live spelling
-	   (tools/wip/dehint/notes/image_read.md). */
 	{
 		int excess = (size & ~0x800u) - 0x3000;
 

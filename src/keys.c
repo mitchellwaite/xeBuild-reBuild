@@ -638,15 +638,6 @@ static int kvHashOk(uint8_t *kv, uint32_t size)
 	return memcmp(kv, hash, 16) == 0;
 }
 
-/* The size check comes after the 0x3ff0 fix-up (profile estimated before
-   jump threading: a colder main path makes alt a caller-saved ecx).  The
-   two alt tests at the end do the same for the encrypt arms: threaded into
-   one branch, they leave bb-reorder the original's trace order and LRA its
-   spill-slot order (tools/wip/dehint/notes/keys.md).  Only `if (!alt)
-   kvSet` has a call on one arm and not the other, so the call heuristic
-   gives alt 71%; a single if/else has calls on both arms and gets 50%.
-   The two alt tests are live but
-   redundant (one if/else would hold kvSet and both encrypt calls). */
 void kvPrepare(struct fileent *kv, int alt)
 {
 	const char *file = "kv.bin", *name = "kv";
@@ -827,19 +818,6 @@ void daeEncryptOne(uint8_t *dae, uint32_t size, uint8_t *date)
 	free(buf);
 }
 
-/* The `!n` tests are threaded apart into one decrypt sequence per n, which
-   leaves the first-key success shared by both; its own encrypt copy keeps
-   it in one LRA EBB (no reload of off before the encrypt), and crossjumping
-   then merges that copy into the main one.  A bad header ends the loop
-   through its test (off = size), not a break.  The warning sits in the
-   loop's exit arm: there the early-return predictor counts against both of
-   the n != 2 edges, since neither the warning nor the test falls into the
-   free block, so the branch stays at 51% and the warning lands out of line.
-   The failed decrypt's `off = size + 1` is in the binary (size + 1 + len at
-   the latch), so ending this loop through off is the author's idiom.
-   Both shapes are unusual but live and
-   not redundant; with the warning after the loop, a break would do what
-   `off = size; len = 0;` does. */
 void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 {
 	uint8_t *orig = malloc(size);
@@ -895,13 +873,6 @@ void daeEncrypt(uint8_t *buf, uint32_t size, uint8_t *date)
 	free(orig);
 }
 
-/* Each exit needs its own epilogue copy, so each exit edge must be at least
-   10% of entry.  The call heuristic counts against an arm only when the
-   test dominates it: with one shared encrypt block the verifyFcrt test's
-   success arm loses it, and the warning drops to 8.75%.
-   The encrypt calls are written out in
-   both arms, where `memcmp(..) == 0 || verifyFcrt(..) == 1` would need one
-   copy; no shape with one copy matched (tools/wip/dehint/notes/keys.md). */
 void fcrtEncrypt(uint8_t *fcrt, uint32_t size)
 {
 	uint8_t iv[16];
