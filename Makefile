@@ -8,6 +8,7 @@
 #   make win32latest   build with the gcc on PATH (a current MSYS2), same as
 #                   `make PLATFORM=win32latest`
 #   make clean      remove the platform's objects and executable
+#   make V=1        print each full command, not just the file it works on
 #
 # PLATFORM is detected, or set it on the command line or in an untracked
 # config.mk:
@@ -190,6 +191,16 @@ endif
 
 all: $(EXE)
 
+# Recipes print only the file each step makes or compiles; V=1 prints the
+# full commands instead.
+ifeq ($(V),1)
+Q :=
+SAY := @:
+else
+Q := @
+SAY := @echo
+endif
+
 # $(call compile,original path,flags): compile $< to $@.  -MMD records the
 # headers.  For the reference build (ORIG_PATHS) the source goes through stdin
 # so the #line can name the original build path, for __FILE__ in assert()
@@ -198,14 +209,16 @@ all: $(EXE)
 ifeq ($(ORIG_PATHS),1)
 define compile
 	@mkdir -p $(@D)
-	{ printf '#line 1 "%s"\n' '$(1)'; cat $<; } | \
+	$(SAY) $<
+	$(Q){ printf '#line 1 "%s"\n' '$(1)'; cat $<; } | \
 	  $(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) -I$(<D) \
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ -x c - -o $@
 endef
 else
 define compile
 	@mkdir -p $(@D)
-	$(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) \
+	$(SAY) $<
+	$(Q)$(TC_ENV) $(CC) -c $(2) $(PLAT_CFLAGS) $(CFLAGS) \
 	  -MMD -MP -MF $(@:.o=.d) -MT $@ $< -o $@
 endef
 endif
@@ -229,15 +242,16 @@ $(OBJ)/%.o: src/%.c $(MAKEFILE_LIST) $(PLATFORM_FILE)
 
 # The stamp is part of the link so an unstamped exe is never up to date.
 $(EXE): $(OBJS)
-	$(TC_ENV) $(CC) $(PLAT_LDFLAGS) -o $@ $(OBJS) $(PLAT_LIBS) $(LDLIBS) \
+	$(SAY) $@
+	$(Q)$(TC_ENV) $(CC) $(PLAT_LDFLAGS) -o $@ $(OBJS) $(PLAT_LIBS) $(LDLIBS) \
 	  $(LDFLAGS) $(MAP_FLAGS)
 ifeq ($(STAMP),1)
-	$(PYTHON) tools/re/stamp.py $@ $(LINK_TIME)
+	$(Q)$(PYTHON) tools/re/stamp.py $@ $(LINK_TIME)
 endif
 
 ifeq ($(CHECK),1)
 check: $(EXE)
-	$(PYTHON) tools/re/execmp.py $(REF) $(EXE)
+	$(Q)$(PYTHON) tools/re/execmp.py $(REF) $(EXE)
 	@$(SHA256SUM) $(EXE)
 	@[ "$$($(SHA256SUM) $(EXE) | cut -d' ' -f1)" = $(REF_SHA256) ] || \
 	  { echo "SHA256 differs from $(REF_SHA256)" >&2; exit 1; }
