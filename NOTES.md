@@ -32,8 +32,10 @@ holds. README.md has the overview.
 
 ```
 xeBuild.exe              reference binary (do not modify)
-build.sh                 compile src/ + link + stamp + verify -> build/xeBuild.exe
-                         ($objects: the program's objects in link order)
+Makefile                 compile src/ + link + stamp (+ verify: make check)
+                         -> build/xeBuild.exe (OBJECTS: the program's objects
+                         in link order)
+build.sh                 runs make check
 src/*.c, src/*.h         the application (25 files) and its headers: xebuild.h
                          (shared types, struct xebuild), <obj>.h (each object's
                          functions and data that others use)
@@ -90,10 +92,12 @@ wsl -d Ubuntu -- bash tools/ddisasm/install.sh
 sh build.sh
 ```
 
-Compiles every object in `build.sh`'s `$objects` (the original's link order,
-which decides where ld puts each object's code and data) and `src/globals.c`:
-`src/<obj>.c` with gcc 6.2.0 (flags and original `__FILE__` path per directory
-in `build.sh`). Every object is C now; the `.s` and mixed-object build paths
+Runs `make check` (GNU make; arguments such as `-j8` go to make, and only
+changed objects are rebuilt: `-MMD` tracks headers). Compiles every object in
+the `Makefile`'s `OBJECTS` (the original's link order, which decides where ld
+puts each object's code and data, `globals` included): `src/<obj>.c` with
+gcc 6.2.0 (flags and original `__FILE__` path per directory in its two
+pattern rules). Every object is C now; the `.s` and mixed-object build paths
 (below) are gone. Links them
 with the gcc driver, as the original was: its crt2.o/crtbegin.o/crtend.o,
 default libraries (plus `-lws2_32`) and default manifest, ld's default link
@@ -420,7 +424,7 @@ every runtime byte, given three things:
   the program's block, then atonexit's `__onexitend`/`__onexitbegin`,
   natstart's `__native_startup_lock`/`_state` and libgcc `_ctors.o`'s
   `__CTOR_LIST__`/`__DTOR_LIST__`. `globals.c` defines the program's block
-  and the three crt words before it (`-fno-common`), and build.sh links it
+  and the three crt words before it (`-fno-common`), and the Makefile links it
   after the libraries so it follows their `.bss`; the libraries' COMMON
   symbols then follow it. It no longer defines natstart's two words, so the
   link pulls natstart.o in like the original (its two `-1` words in
@@ -537,7 +541,7 @@ division only; bign/pkcs1-rsa calls it) and `mpIsPrimeRabin`. The 15-byte gap
 before `mpIsPrimeRabin` is gas alignment padding: a short `jmp` over nops,
 which the disassembly showed as a call.
 
-`build.sh` feeds each file through stdin behind
+The Makefile feeds each file through stdin behind
 `#line 1 "H:/x360sdk/__NAND/nandbuild_trin/XeCrypt/<path>.c"` so that `__FILE__`
 matches (only bign's `assert`s use it).
 
@@ -556,7 +560,7 @@ as the rest and with none of the hints that steer gcc and that the original
 source almost certainly didn't contain. This section listed the files that
 still needed such hints; `mode_client` was the last, so the list is empty.
 
-**How tricks were counted:** one for each non-default gcc option in `build.sh`,
+**How tricks were counted:** one for each non-default gcc option in the build (now the `Makefile`),
 and one for each use of a hint in the source (macro uses counted individually).
 These are the hints:
 

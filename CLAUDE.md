@@ -10,12 +10,13 @@ NOTES.md has the findings, layout and the pipeline.
 - Success is measured by bytes: `sh build.sh` must end with SHA256
   `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c` (it also
   runs `tools/re/execmp.py`, which names any differing header field or byte).
-- Every object is C; `build.sh` compiles only `.c` files, in the link order
-  of its `$objects` list (the original's; `tools/re/split.py`'s `NAMES` has the
+- `build.sh` runs `make check` (the `Makefile`, GNU make). Every object is C;
+  the Makefile compiles only `.c` files, in the link order of its `OBJECTS`
+  list (the original's; `tools/re/split.py`'s `NAMES` has the
   evidence). `tools/re/split.py` still writes a `.s` from `build/xeBuild.lines.json`
   (`tools/re/ddfix.py`) for any object without a `.c`, but nothing builds it.
 - `src/**/*.c` are hand-maintained: XeCrypt's sources under `src/crypto` (see
-  NOTES.md) and the app's reconstructed C directly in `src/`. `build.sh`
+  NOTES.md) and the app's reconstructed C directly in `src/`. The Makefile
   compiles each with the per-object flags and original `__FILE__` path set
   there. Keep third-party licence notices intact.
 - App C style (`src/*.c`, `src/*.h`; not the third-party `src/crypto`): one tab
@@ -52,7 +53,7 @@ NOTES.md has the findings, layout and the pipeline.
 - Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
   pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `tools/re/stamp.py` (timestamp + checksum);
-  every other difference must be fixed in the source or build.sh (the link uses
+  every other difference must be fixed in the source or the Makefile (the link uses
   the gcc driver with the toolchain's own runtime and ld's default script).
 - Only use the pinned toolchain in `tools/toolchain-4745/` (gcc 6.2.0, binutils
   2.27, crt 4745 with kernel32/msvcrt import libraries rebuilt from mingw-w64
@@ -83,3 +84,7 @@ NOTES.md has the findings, layout and the pipeline.
   heredocs; use the Edit tool for code changes.
 - IDA 9.4 idalib: `python script.py` with the pip-installed `idapro` wheel; don't
   use `python -I` (hides the user site-packages where it lives).
+- GNU make is ezwinports' native build (`winget install ezwinports.make`, on the
+  user PATH; a shell started before the install needs `MAKE=<path to make.exe>`
+  for build.sh). It runs recipes with Git's `sh`, but hands them a `C:/...`
+  `$PWD`: use `$(pwd -P)` in recipes that build a PATH entry.

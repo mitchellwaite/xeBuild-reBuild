@@ -3,8 +3,8 @@
 python tools/re/split.py <xeBuild.exe> <build/xeBuild.lines.json> <src_dir>
 
 Writes <src_dir>/<group>/<name>.s for every program object and prints the
-data-assignment summary; the link order (NAMES' order) is build.sh's
-$objects list, and the runtime objects come from the toolchain (TOOLCHAIN).  Objects that have a C source
+data-assignment summary; the link order (NAMES' order) is the Makefile's
+OBJECTS list, and the runtime objects come from the toolchain (TOOLCHAIN).  Objects that have a C source
 (<src_dir>/<group>/<name>.c) get no .s; functions they share with the .s files
 are named by SYMBOLS.  Mixed objects, with some functions in C (C_FUNCS), get
 both: the .s keeps everything else and marks where each C function goes.  How
@@ -542,10 +542,10 @@ NOT_POINTERS = {
     0x4634f8: 0x50000a, 0x463528: 0x4c0020,
 }
 COMMON = (0x479e84,'globals', 'COMMON globals, laid out by ld in hash order')
-# The runtime objects come from the toolchain itself: build.sh links crt2.o,
+# The runtime objects come from the toolchain itself: the Makefile links crt2.o,
 # crtbegin.o, the libraries and crtend.o around the program as gcc does, and
 # globals.c (COMMON) after the libraries.  Their pieces are still found, but
-# split writes no .s for them (nor for globals) and build.sh's $objects
+# split writes no .s for them (nor for globals) and the Makefile's OBJECTS
 # leaves them out.
 TOOLCHAIN = 'runtime/'
 WHOLE = {'.idata': ('runtime/idata', 'import tables (ld builds these from import libraries)'),
