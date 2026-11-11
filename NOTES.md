@@ -485,9 +485,10 @@ value and the return have the same type, which is how `FileExistsU32`,
 `stfs`, `mode_ini` and `console_hdd`). `consoleinfo`'s `log_printfInt` needed
 only the alias and its `__builtin_unreachable` removed together, so try removals
 in combination. The last ones went by typing the data as it's used:
-the console's RSA keys are XeCrypt's `XECRYPT_RSAPUB_2048`; `xb`'s key
-pointers are `void *` buffers (`loadPubKey` fills a `void **`; returning the
-buffer instead changes its code); the signing helpers' keys and `rotSumSha`'s
+the RSA keys are XeCrypt's `XECRYPT_RSAPUB_2048` and `XECRYPT_RSAPRV_2048`,
+in `xb` and in the verify and sign helpers' parameters (the generic
+`loadPubKey` fills them through a `void **`; returning the buffer instead
+changes its code); the signing helpers' keys and `rotSumSha`'s
 inputs aren't `const`; `romSalts` and mode_ini's `keys` are bytes;
 `getBeU32`/`getLeU32` load through `memcpy`; the 13 words set to -1 are
 `struct smcopts` (`xb.smcOpts`, one `memset`); options' signed test of

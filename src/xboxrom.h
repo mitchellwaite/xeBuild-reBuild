@@ -6,11 +6,11 @@
 
 int kvVerifySig(uint8_t *kv, const XECRYPT_RSAPUB_2048 *pubKey, const uint8_t *hmacKey);
 int cbVerifySig(uint8_t *bl, XECRYPT_RSAPUB_2048 *pubKey);
-int blVerifySig(uint8_t *bl, unsigned int len, void *pubKey, const uint8_t *salt);
-uint32_t blSign(uint8_t *bl, unsigned int len, void *pubKey, const void *prvKey,
+int blVerifySig(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, const uint8_t *salt);
+uint32_t blSign(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, const XECRYPT_RSAPRV_2048 *prvKey,
 	const uint8_t *salt);
 uint32_t blCheckHash(uint8_t *bl, unsigned int len, const uint8_t *expect);
 int blHashAndSign(uint8_t *bl, unsigned int len, uint8_t *prev, unsigned int prevLen,
-	uint8_t *hashOut, void *pubKey, const void *prvKey);
+	uint8_t *hashOut, XECRYPT_RSAPUB_2048 *pubKey, const XECRYPT_RSAPRV_2048 *prvKey);
 
 #endif

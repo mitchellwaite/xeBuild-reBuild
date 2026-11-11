@@ -162,7 +162,7 @@ int crlVerifySig(uint8_t *crl, uint8_t *hash)
 		return 1;
 	if (getBeU32(crl) != 0x43524c50)	/* "CRLP" */
 		return 1;
-	ok = XeKeysPkcs1Verify(hash, crl + 32, xb.pubPirs);
+	ok = XeKeysPkcs1Verify(hash, crl + 32, &xb.pubPirs->Rsa);
 	if (ok)
 		log_printf(1, "sig good! ");
 	else
@@ -224,7 +224,7 @@ int daeVerifySig(uint8_t *seg, uint32_t size, int n)
 
 		memset(key, 0, 16);
 		XeCryptHmacSha(key, 16, seg, 32, 0, 0, 0, 0, hash, 20);
-		ok = XeKeysPkcs1Verify(hash, seg + 32, xb.pubPirs);
+		ok = XeKeysPkcs1Verify(hash, seg + 32, &xb.pubPirs->Rsa);
 		if (ok)
 			log_printf(1, "sig %d good! ", n);
 		else
@@ -366,9 +366,9 @@ uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 }
 
 /* decrypted copy of an SC/SD/CD with hmacKey, signature checked if pubKey and salt */
-uint8_t *cdDecrypt(uint8_t *bl, void *pubKey, const uint8_t *salt, const uint8_t *hmacKey,
+uint8_t *cdDecrypt(uint8_t *bl, XECRYPT_RSAPUB_2048 *pubKey, const uint8_t *salt, const uint8_t *hmacKey,
 	uint32_t *outLen, uint8_t *outKey);
-uint8_t *cdDecrypt(uint8_t *bl, void *pubKey, const uint8_t *salt, const uint8_t *hmacKey, uint32_t *outLen, uint8_t *outKey)
+uint8_t *cdDecrypt(uint8_t *bl, XECRYPT_RSAPUB_2048 *pubKey, const uint8_t *salt, const uint8_t *hmacKey, uint32_t *outLen, uint8_t *outKey)
 {
 	if (bl && hmacKey) {
 		if ((bl[0] & 0x43) == 0x43 && (bl[1] == 'C' || bl[1] == 'D')) {

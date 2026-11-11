@@ -1134,12 +1134,12 @@ int verifyBlSigs(void)
 			sb = findFile(11);
 			if (sb) {
 				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
-				if (blVerifySig(e->data, e->size, xb.files[sb].data + 616, salt))
+				if (blVerifySig(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), salt))
 					log_printf(1, "%s signature is good\n", e->name);
 				else if (xb.prvKey) {
 					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 						log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
-						if (!blSign(e->data, e->size, xb.files[sb].data + 616, xb.prvKey, salt)) {
+						if (!blSign(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, salt)) {
 							log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
 							ok = 0;
 						} else
@@ -1160,7 +1160,8 @@ int verifyBlSigs(void)
 						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 							log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
 							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
-									   xb.files[sd].data + 588, xb.files[sb].data + 616, xb.prvKey))
+									   xb.files[sd].data + 588,
+									   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey))
 								log_printf(0, "\n***** ERROR: failed to resign SE to correct %s hash!\n", e->name);
 							else
 								log_printf(1, "SE resigned successfully to correct %s hash!\n", e->name);
@@ -1675,11 +1676,13 @@ int patchBlsResign(void)
 	log_printf(1, "Done!\n");
 	if (sb) {
 		log_printf(1, "Checking patched CD signature...");
-		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.files[sb].data + 914)) {
+		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616),
+				 xb.files[sb].data + 914)) {
 			if (xb.prvKey) {
 				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
 					log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
-					if (!blSign(xb.files[cd].data, xb.files[cd].size, xb.files[sb].data + 616, xb.prvKey, xb.files[sb].data + 914))
+					if (!blSign(xb.files[cd].data, xb.files[cd].size,
+						   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, xb.files[sb].data + 914))
 						log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
 					else {
 						log_printf(1, "%s resigned successfully!\n", xb.files[cd].name);

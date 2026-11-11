@@ -246,10 +246,10 @@ struct xebuild {
 	uint8_t key1bl[16];
 	uint8_t cpuKey[16];
 	uint8_t xexKey[16];		/* calcXexKey's (CRL/DAE key) */
-	void *pub1bl;			/* XECRYPT_RSAPUB_2048, loaded or the console's */
-	void *masterPub;
-	void *pubPirs;
-	void *prvKey;			/* the ini's 2BL private key (SB) */
+	XECRYPT_RSAPUB_2048 *pub1bl;	/* loaded, or the console's */
+	XECRYPT_RSAPUB_2048 *masterPub;
+	XECRYPT_RSAPUB_2048 *pubPirs;
+	XECRYPT_RSAPRV_2048 *prvKey;	/* the ini's 2BL private key (SB) */
 	char suffix[0x400];		/* -i */
 	char binDir[0x400];
 	char outName[0x400];

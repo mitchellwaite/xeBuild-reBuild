@@ -25,15 +25,15 @@ int cbVerifySig(uint8_t *bl, XECRYPT_RSAPUB_2048 *pubKey)
 	return XeCryptBnQwBeSigVerify((XECRYPT_SIG *)(bl + 0x40), hash, romSalts[2], &pubKey->Rsa);
 }
 
-int blVerifySig(uint8_t *bl, unsigned int len, void *pubKey, const uint8_t *salt)
+int blVerifySig(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, const uint8_t *salt)
 {
 	uint8_t hash[20];
 
 	XeCryptRotSumSha(bl, 16, bl + 0x120, len - 0x120, hash, 20);
-	return XeCryptBnQwBeSigVerify((XECRYPT_SIG *)(bl + 0x20), hash, salt, pubKey);
+	return XeCryptBnQwBeSigVerify((XECRYPT_SIG *)(bl + 0x20), hash, salt, &pubKey->Rsa);
 }
 
-uint32_t blSign(uint8_t *bl, unsigned int len, void *pubKey, const void *prvKey, const uint8_t *salt)
+uint32_t blSign(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, const XECRYPT_RSAPRV_2048 *prvKey, const uint8_t *salt)
 {
 	struct {
 		char salt[16];
@@ -44,11 +44,11 @@ uint32_t blSign(uint8_t *bl, unsigned int len, void *pubKey, const void *prvKey,
 	memset(s.salt, 0, sizeof(s.salt));
 	memcpy(s.salt, salt, 10);
 	XeCryptRotSumSha(bl, 16, bl + 0x120, len - 0x120, s.hash, 20);
-	if (!XeCryptBnQwBeSigCreate((XECRYPT_SIG *)s.sig, s.hash, salt, prvKey))
+	if (!XeCryptBnQwBeSigCreate((XECRYPT_SIG *)s.sig, s.hash, salt, &prvKey->Rsa))
 		return 0;
-	if (!XeCryptBnQwNeRsaPrvCrypt((uint64_t *)s.sig, (uint64_t *)s.sig, prvKey))
+	if (!XeCryptBnQwNeRsaPrvCrypt((uint64_t *)s.sig, (uint64_t *)s.sig, &prvKey->Rsa))
 		return 0;
-	if (!XeCryptBnQwBeSigVerify((XECRYPT_SIG *)s.sig, s.hash, salt, pubKey))
+	if (!XeCryptBnQwBeSigVerify((XECRYPT_SIG *)s.sig, s.hash, salt, &pubKey->Rsa))
 		return 0;
 	memcpy(bl + 0x20, s.sig, 256);
 	return 1;
@@ -74,7 +74,7 @@ int blUpdateHash(uint8_t *bl, unsigned int len, uint8_t *stored)
 }
 
 int blHashAndSign(uint8_t *bl, unsigned int len, uint8_t *prev, unsigned int prevLen, uint8_t *hashOut,
-	void *pubKey, const void *prvKey)
+	XECRYPT_RSAPUB_2048 *pubKey, const XECRYPT_RSAPRV_2048 *prvKey)
 {
 	uint8_t hash[20];
 
