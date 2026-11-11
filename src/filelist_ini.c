@@ -25,7 +25,8 @@ char fnSmc[32] = "smc.bin";
 char fnNone[32] = "none";
 
 /* {offset, type} of each file for each build type */
-struct fileloc { uint32_t offset; int type; };
+struct fileloc
+{ uint32_t offset; int type; };
 struct fileloc locRetail[14] = {
 	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 5}, {-1, 6}, {-1, 7}, {-1, 8},
 	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
@@ -69,21 +70,32 @@ void fixFileCase(void)
 	strcpy(dir, xb.baseDir);
 	d = opendir(dir);
 	if (d == NULL)
+	{
 		return;
-	while ((de = readdir(d)) != NULL) {
+	}
+	while ((de = readdir(d)) != NULL)
+	{
 		char path[1024];
 		struct stat st;
 
 		strcpy(path, dir);
 		strcat(path, de->d_name);
 		if (stat(path, &st) < 0)
+		{
 			continue;
+		}
 		if (stricmp(de->d_name, fnSmc) == 0)
+		{
 			strcpy(fnSmc, de->d_name);
+		}
 		else if (stricmp(de->d_name, fnKv) == 0)
+		{
 			strcpy(fnKv, de->d_name);
+		}
 		else if (stricmp(de->d_name, fnPatches) == 0)
+		{
 			strcpy(fnPatches, de->d_name);
+		}
 	}
 	closedir(d);
 }
@@ -97,12 +109,17 @@ int iniPreParse(unsigned char *buf, int size)
 	tmp = malloc(size + 1);
 	memcpy(tmp, buf, size + 1);
 	/* remove comments */
-	for (i = 0; i < n; i++) {
-		if (buf[i] == ';') {
+	for (i = 0; i < n; i++)
+	{
+		if (buf[i] == ';')
+		{
 			i++;
 			for (j = 0; buf[i + j] != '\n' && buf[i + j] != 0xff && i + j < n; j++)
+			{
 				;
-			if (n - i - j > 0) {
+			}
+			if (n - i - j > 0)
+			{
 				memcpy(&buf[i], &tmp[i + j], n - i - j);
 				n -= j;
 				memcpy(tmp, buf, size + 1);
@@ -111,25 +128,41 @@ int iniPreParse(unsigned char *buf, int size)
 		}
 	}
 	/* invalid characters to spaces */
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++)
+	{
 		for (j = 0; j < (int)sizeof(validChars); j++)
+		{
 			if ((char)buf[i] == (char)validChars[j])
+			{
 				j = sizeof(validChars) + 1;
+			}
+		}
 		if (j == sizeof(validChars))
+		{
 			buf[i] = ' ';
+		}
 	}
 	/* a ';' at the start or end of a line */
 	for (i = 0; i < n; i++)
-		if (buf[i] == ';') {
+	{
+		if (buf[i] == ';')
+		{
 			if (i == 0)
+			{
 				buf[i] = ' ';
+			}
 			else if (buf[i - 1] == '\n' || buf[i + 1] == '\n')
+			{
 				buf[i] = ' ';
+			}
 		}
+	}
 	memcpy(tmp, buf, size + 1);
 	/* remove spaces */
-	for (i = 0; i < n; i++) {
-		if (buf[i] == ' ') {
+	for (i = 0; i < n; i++)
+	{
+		if (buf[i] == ' ')
+		{
 			memcpy(&buf[i], &tmp[i + 1], n - i - 1);
 			n--;
 			memcpy(tmp, buf, size + 1);
@@ -138,19 +171,26 @@ int iniPreParse(unsigned char *buf, int size)
 	}
 	/* lines to strings */
 	for (i = 0; i < n; i++)
+	{
 		if (buf[i] == '\n' || buf[i] == ';')
+		{
 			buf[i] = 0;
+		}
+	}
 	memcpy(tmp, buf, size + 1);
 	/* remove empty lines */
-	for (i = 0; i < n; i++) {
-		if (buf[i] == 0 && buf[i + 1] == 0) {
+	for (i = 0; i < n; i++)
+	{
+		if (buf[i] == 0 && buf[i + 1] == 0)
+		{
 			memcpy(&buf[i], &tmp[i + 1], n - i - 1);
 			n--;
 			memcpy(tmp, buf, size + 1);
 			i--;
 		}
 	}
-	if (n <= size) {
+	if (n <= size)
+	{
 		buf[n] = 0;
 		n++;
 	}
@@ -163,19 +203,31 @@ int memFindStr(unsigned char *buf, int size, const char *str, int skipNul)
 	int i, j, len;
 
 	len = strlen(str);
-	for (i = 0; i < size - len; i++) {
-		if (str[0] == buf[i]) {
+	for (i = 0; i < size - len; i++)
+	{
+		if (str[0] == buf[i])
+		{
 			for (j = 0; j < len; j++)
+			{
 				if (buf[i + j] != str[j])
+				{
 					j = len + 1;
-			if (j == len) {
-				if (skipNul) {
+				}
+			}
+			if (j == len)
+			{
+				if (skipNul)
+				{
 					if (buf[i + len] == 0)
+					{
 						return i + len + 1;
+					}
 					return i + len;
 				}
 				if (buf[i + len] != 0)
+				{
 					return i + len;
+				}
 			}
 		}
 	}
@@ -187,15 +239,21 @@ int memFindChar(unsigned char *buf, char c, int size)
 	int i;
 
 	for (i = 0; i < size; i++)
+	{
 		if (buf[i] == c)
+		{
 			return i;
+		}
+	}
 	return -1;
 }
 
 void checkFileCase(void)
 {
 	if (xb.baseDir[0])
+	{
 		fixFileCase();
+	}
 }
 
 /* the files this build type uses.  Called once, so inlined after parseIni's own names are
@@ -207,27 +265,40 @@ static void setupFiles(void)
 	int i;
 	struct fileent *e;
 
-	for (i = 0; ; i++) {
+	for (i = 0; ; i++)
+	{
 		if (i >= xb.nFiles)
+		{
 			break;
+		}
 		e = &xb.files[i];
-		if (xb.type == BUILD_JTAG) {
+		if (xb.type == BUILD_JTAG)
+		{
 			e->type = locJtag[i].type;
 			e->offset = locJtag[i].offset;
-		} else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
+		}
+		else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16)
+		{
 			e->type = locDevk[i].type;
 			e->offset = locDevk[i].offset;
-		} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+		}
+		else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+		{
 			e->type = locDevgl[i].type;
 			e->offset = locDevgl[i].offset;
-		} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
+		}
+		else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16)
+		{
 			e->type = locTestk[i].type;
 			e->offset = locTestk[i].offset;
-		} else {
+		}
+		else
+		{
 			e->type = locRetail[i].type;
 			e->offset = locRetail[i].offset;
 		}
-		switch (e->type) {
+		switch (e->type)
+		{
 		case 0:
 		case 26:
 			strcpy(e->name, fnNone);
@@ -250,29 +321,50 @@ static void setupFiles(void)
 		case 23:
 			strcpy(e->name, fnPatches);
 			if (xb.type == BUILD_JTAG)
+			{
 				strcat(e->name, consoleNames[xb.flags & CONSOLE_MASK]);
-			else if (xb.glitch2) {
+			}
+			else if (xb.glitch2)
+			{
 				if (xb.glitch2mfg)
+				{
 					strcat(e->name, "g2m");
+				}
 				else
+				{
 					strcat(e->name, "g2");
+				}
 				strcat(e->name, consoleNames[xb.flags & CONSOLE_MASK]);
-			} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+			}
+			else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+			{
 				strcat(e->name, "g2m");
 				strcat(e->name, consoleNames[xb.flags & CONSOLE_MASK]);
-			} else {
+			}
+			else
+			{
 				if ((xb.flags & CONSOLE_MASK) == CONSOLE_TRINITY)
+				{
 					strcat(e->name, "trinity");
+				}
 				else if ((xb.flags & CONSOLE_MASK) == CONSOLE_CORONA)
+				{
 					strcat(e->name, "corona");
+				}
 				else if ((xb.flags & CONSOLE_MASK) == CONSOLE_WINCHESTER)
+				{
 					strcat(e->name, "winchester");
+				}
 				else
+				{
 					strcat(e->name, "fat");
+				}
 			}
 			strcat(e->name, xb.suffix);
 			if (xb.blSuffix[0])
+			{
 				strcat(e->name, xb.blSuffix);
+			}
 			strcat(e->name, ".bin");
 			break;
 		case 24:
@@ -280,9 +372,13 @@ static void setupFiles(void)
 			break;
 		case 25:
 			if (xb.type == BUILD_JTAG)
+			{
 				strcpy(e->name, fnXell2f);
+			}
 			else
+			{
 				strcpy(e->name, fnXellGg);
+			}
 			break;
 		case 27:
 			strcpy(e->name, fnSmcConfig);
@@ -319,19 +415,22 @@ uint32_t parseIni(char *path)
 
 	log_printf(1, "\n------ parsing ini at '%s' ------\n", path);
 	f = fopen(path, "rb");
-	if (f == NULL) {
+	if (f == NULL)
+	{
 		log_printf(0, "\n******* ERROR: could not open '%s'\n", path);
 		return 0;
 	}
 	size = getFileSize(f);
 	buf = malloc(size + 1);
-	if (buf == NULL) {
+	if (buf == NULL)
+	{
 		log_printf(0, "******* ERROR loading %s, unable to allocate memory\n", path);
 		return 0;
 	}
 	fread(buf, size, 1, f);
 	fclose(f);
-	if (buf[0] == 0xff || buf[1] == 0xff) {
+	if (buf[0] == 0xff || buf[1] == 0xff)
+	{
 		log_printf(0, "\n\n***** ERROR: File descriptor ini %s\nappears to be a multi byte file, not an ascii only file!\n", path);
 		free(buf);
 		return 0;
@@ -342,47 +441,71 @@ uint32_t parseIni(char *path)
 
 	/* [version] */
 	off = memFindStr(buf, size, "[version]", 1);
-	if (off != -1) {
+	if (off != -1)
+	{
 		memset(xb.kernelStr, 0, sizeof(xb.kernelStr));
 		len = memFindChar(&buf[off], 0, sizeof(xb.kernelStr));
 		if (len == -1)
+		{
 			len = sizeof(xb.kernelStr) - 1;
+		}
 		strncpy(xb.kernelStr, (char *)&buf[off], len);
 		log_printf(1, "ini version %s\n", xb.kernelStr);
-		if (xb.type == BUILD_JTAG) {
+		if (xb.type == BUILD_JTAG)
+		{
 			xb.nFiles = 19;
 			blOrder = blJtag;
 			nbl = 9;
 			sprintf(tmp, "%s_jtag_%s.bin", xb.kernelStr, xb.outName);
-		} else {
-			if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16) {
+		}
+		else
+		{
+			if (xb.type == BUILD_DEVKIT || xb.type == BUILD_DEVKIT16)
+			{
 				xb.nFiles = 11;
 				blOrder = blDevk;
 				sprintf(tmp, "%s_devk_%s.bin", xb.kernelStr, xb.outName);
-			} else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16) {
+			}
+			else if (xb.type == BUILD_TESTKIT || xb.type == BUILD_TESTKIT16)
+			{
 				xb.nFiles = 12;
 				blOrder = blTestk;
 				sprintf(tmp, "%s_testk_%s.bin", xb.kernelStr, xb.outName);
-			} else {
+			}
+			else
+			{
 				xb.nFiles = 14;
-				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+				{
 					blOrder = blDevgl;
 					sprintf(tmp, "%s_devgl_%s.bin", xb.kernelStr, xb.outName);
-				} else {
+				}
+				else
+				{
 					blOrder = blRetail;
 					if (xb.type == BUILD_RETAIL)
+					{
 						sprintf(tmp, "%s_retail_%s.bin", xb.kernelStr, xb.outName);
+					}
 					else if (xb.glitch2mfg)
+					{
 						sprintf(tmp, "%s_g2m_%s.bin", xb.kernelStr, xb.outName);
+					}
 					else if (xb.glitch2)
+					{
 						sprintf(tmp, "%s_g2_%s.bin", xb.kernelStr, xb.outName);
+					}
 					else
+					{
 						sprintf(tmp, "%s_gg_%s.bin", xb.kernelStr, xb.outName);
+					}
 				}
 			}
 			nbl = 6;
 		}
-	} else {
+	}
+	else
+	{
 		log_printf(0, "\n******* ERROR: could not find label [version] in file list ini\n");
 		free(buf);
 		return 0;
@@ -394,15 +517,21 @@ uint32_t parseIni(char *path)
 	setupFiles();
 	/* [<console>bl<blSuffix>]: the bootloaders' names and crcs */
 	if (xb.blSuffix[0])
+	{
 		sprintf(label, "[%sbl%s]", consoleNames[xb.flags & CONSOLE_MASK], xb.blSuffix);
+	}
 	else
+	{
 		sprintf(label, "[%sbl]", consoleNames[xb.flags & CONSOLE_MASK]);
+	}
 	off = memFindStr(buf, size, label, 1);
-	if (off >= 0) {
+	if (off >= 0)
+	{
 		log_printf(1, "\nini: label %s found\n", label);
 		end = off + memFindChar(&buf[off], '[', size - off);
 		pos = off;
-		for (i = 0; i < nbl; ) {
+		for (i = 0; i < nbl; )
+		{
 			/* unsigned on purpose: no (sizetype) statement at laddress, and that one name fewer sets the
 			   numbers of [rawpatch]'s and [flashfs]'s compares and copies (notes/filelist_ini.md, attempt 9) */
 			uint32_t file;
@@ -412,11 +541,13 @@ uint32_t parseIni(char *path)
 			nul = memFindChar(p, 0, size - pos);
 			len = comma;
 			noCrc = 0;
-			if (comma > nul) {
+			if (comma > nul)
+			{
 				len = nul;
 				noCrc = 1;
 			}
-			if (len < 0) {
+			if (len < 0)
+			{
 				log_printf(0, "\n******* ERROR: ini problem, error in %s section!\n", label);
 				free(buf);
 				return 0;
@@ -424,40 +555,56 @@ uint32_t parseIni(char *path)
 			strncpy(xb.files[blOrder[i]].name, (char *)p, len);
 			xb.files[blOrder[i]].name[len] = 0;
 			pos = pos + len + 1;
-			if (!noCrc) {
+			if (!noCrc)
+			{
 				n = memFindChar(&buf[pos], 0, size - pos);
 				if (n == 0)
+				{
 					xb.files[blOrder[i]].crc = 0;
-				else if (n != 8) {
+				}
+				else if (n != 8)
+				{
 					log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.files[blOrder[i]].name);
 					free(buf);
 					return 0;
-				} else {
+				}
+				else
+				{
 					strncpy(tmp, (char *)&buf[pos], 8);
 					tmp[8] = 0;
 					xb.files[blOrder[i]].crc = myatox32(tmp, 0);
 				}
 				pos = pos + n + 1;
-			} else
+			}
+			else
+			{
 				xb.files[blOrder[i]].crc = 0;
+			}
 			file = blOrder[i];
 			log_printf(1, "found (%d) '%s' crc: 0x%08x\n", i + 1, xb.files[file].name, xb.files[file].crc);
 			i++;
-			if (pos > end) {
+			if (pos > end)
+			{
 				log_printf(0, "\n******* ERROR: ini problem, can't find enough data for %s section!\n", label);
 				free(buf);
 				return 0;
 			}
 		}
-	} else {
+	}
+	else
+	{
 		log_printf(0, "\n******* ERROR: could not find label %s in file list ini\n", label);
 		free(buf);
 		return 0;
 	}
-	if (xb.type != BUILD_JTAG && xb.type <= BUILD_DEVGL16) {
+	if (xb.type != BUILD_JTAG && xb.type <= BUILD_DEVGL16)
+	{
 		if (strnicmp(xb.files[4].name, "none", 4) == 0)
+		{
 			xb.cbb = 0;
-		else {
+		}
+		else
+		{
 			log_printf(1, "ini dictates dual CB for this model\n");
 			xb.cbb = 1;
 		}
@@ -465,25 +612,30 @@ uint32_t parseIni(char *path)
 
 	/* [rawpatch]: name,offset */
 	off = memFindStr(buf, size, "[rawpatch]", 1);
-	if (off != -1) {
+	if (off != -1)
+	{
 		end = off + memFindChar(&buf[off], '[', size - off);
 		log_printf(1, "\nini: label [rawpatch] found\n");
 		pos = off;
-		for (i = xb.nRawPatches; i < 16; i++) {
+		for (i = xb.nRawPatches; i < 16; i++)
+		{
 			p = &buf[pos];
 			nul = memFindChar(p, 0, size - pos);
 			comma = memFindChar(p, ',', size - pos);
-			if (comma == -1 || comma >= nul) {
+			if (comma == -1 || comma >= nul)
+			{
 				log_printf(0, "\n******* ERROR: an entry in [rawpatch] is missing offset info!\n");
 				free(buf);
 				return 0;
 			}
-			if (comma <= 1023) {
+			if (comma <= 1023)
+			{
 				strncpy(xb.rawPatch[i].name, (char *)p, comma);
 				xb.rawPatch[i].name[comma] = 0;
 				pos = pos + comma + 1;
 				n = memFindChar(&buf[pos], 0, size - pos);
-				if (n == 0 || n > 10) {
+				if (n == 0 || n > 10)
+				{
 					log_printf(0, "\n******* ERROR: offset data for file '%s' is either too large or too small!\n", xb.rawPatch[i].name);
 					free(buf);
 					return 0;
@@ -493,53 +645,72 @@ uint32_t parseIni(char *path)
 				pos = pos + n + 1;
 				xb.rawPatch[i].offset = myatou32(tmp, -1);
 				if (xb.rawPatch[i].offset != (uint32_t)-1)
+				{
 					log_printf(1, "found (%d) '%s' offset: 0x%08x\n", ++xb.nRawPatches, xb.rawPatch[i].name, xb.rawPatch[i].offset);
-				else {
+				}
+				else
+				{
 					log_printf(1, "***** ERROR: [rawpatch] '%s' length is unintelligible!\n", xb.rawPatch[i].name);
 					free(buf);
 					return 0;
 				}
-			} else {
+			}
+			else
+			{
 				log_printf(0, "\n******* ERROR: file name in [rawpatch] is too long!\n");
 				free(buf);
 				return 0;
 			}
 			if (pos >= end)
+			{
 				i = 16;
+			}
 		}
-		if (pos < end) {
+		if (pos < end)
+		{
 			log_printf(0, "\n******* ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, 16);
 			free(buf);
 			return 0;
 		}
-	} else
+	}
+	else
+	{
 		log_printf(1, "\n[rawpatch] label not found in ini\n");
+	}
 
 	/* [flashfs]: name[,crc]; a trailing 1 or 2 on the name is dropped */
 	off = memFindStr(buf, size, "[flashfs]", 1);
-	if (off != -1) {
+	if (off != -1)
+	{
 		xb.nFirmware = 0;
 		log_printf(1, "\nini: label [flashfs] found\n");
 		pos = off;
-		for (i = 0; i < 256; i++) {
+		for (i = 0; i < 256; i++)
+		{
 			p = &buf[pos];
 			nul = memFindChar(p, 0, size - pos);
 			comma = memFindChar(p, ',', size - pos);
 			noCrc = 1;
 			len = nul;
-			if (comma >= 0 && comma < nul) {
+			if (comma >= 0 && comma < nul)
+			{
 				len = comma;
 				noCrc = 0;
 			}
-			if (len <= 1023) {
+			if (len <= 1023)
+			{
 				strncpy(xb.firmware[i], (char *)p, len);
 				xb.firmware[i][len] = 0;
-				if (len > 21) {
+				if (len > 21)
+				{
 					s = strrchr(xb.firmware[i], '/');
 					if (s == NULL)
+					{
 						s = strrchr(xb.firmware[i], '\\');
+					}
 					s = s ? s + 1 : xb.firmware[i];
-					if (strlen(s) > 21) {
+					if (strlen(s) > 21)
+					{
 						log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
 						log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
 						free(buf);
@@ -548,33 +719,50 @@ uint32_t parseIni(char *path)
 				}
 				pos = pos + len + 1;
 				if (xb.firmware[i][len - 1] == '1' || xb.firmware[i][len - 1] == '2')
+				{
 					xb.firmware[i][len - 1] = 0;
-				if (!noCrc) {
+				}
+				if (!noCrc)
+				{
 					n = memFindChar(&buf[pos], 0, size - pos);
 					if (n == 0)
+					{
 						crc = xb.firmwareCrc[i] = 0;
-					else if (n != 8) {
+					}
+					else if (n != 8)
+					{
 						log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
 						free(buf);
 						return 0;
-					} else {
+					}
+					else
+					{
 						strncpy(tmp, (char *)&buf[pos], 8);
 						tmp[8] = 0;
 						crc = xb.firmwareCrc[i] = myatox32(tmp, 0);
 					}
 					pos = pos + n + 1;
-				} else
+				}
+				else
+				{
 					crc = xb.firmwareCrc[i] = 0;
+				}
 				log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFirmware, xb.firmware[i], crc);
-			} else {
+			}
+			else
+			{
 				log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's path!\n", 1023);
 				free(buf);
 				return 0;
 			}
 			if (pos >= size)
+			{
 				i = 256;
+			}
 		}
-	} else {
+	}
+	else
+	{
 		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
 		free(buf);
 		return 0;
@@ -582,54 +770,75 @@ uint32_t parseIni(char *path)
 
 	/* [security]: name[,crc] */
 	off = memFindStr(buf, size, "[security]", 1);
-	if (off != -1) {
+	if (off != -1)
+	{
 		xb.nFlashFiles2 = 0;
 		log_printf(1, "\nini: label [security] found\n");
 		end = off + memFindChar(&buf[off], '[', size - off);
 		pos = off;
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < 10; i++)
+		{
 			p = &buf[pos];
 			findField(p, size - pos, &comma, &nul);
-			if (comma > nul) {
+			if (comma > nul)
+			{
 				noCrc = 1;
 				len = nul;
-			} else {
+			}
+			else
+			{
 				noCrc = 0;
 				len = comma;
 			}
-			if (len <= 21) {
+			if (len <= 21)
+			{
 				strncpy(xb.flashFiles[i], (char *)p, len);
 				xb.flashFiles[i][len] = 0;
 				pos = pos + len + 1;
-				if (!noCrc) {
+				if (!noCrc)
+				{
 					n = memFindChar(&buf[pos], 0, size - pos);
 					if (n == 0)
+					{
 						xb.flashCrc[i] = 0;
-					else if (n != 8) {
+					}
+					else if (n != 8)
+					{
 						/* sic: names the [flashfs] file */
 						log_printf(0, "\n******* ERROR: crc data for file '%s' in ini is incorrect size!\n", xb.firmware[i]);
 						free(buf);
 						return 0;
-					} else {
+					}
+					else
+					{
 						strncpy(tmp, (char *)&buf[pos], 8);
 						tmp[8] = 0;
 						xb.flashCrc[i] = myatox32(tmp, 0);
 					}
 					pos = pos + n + 1;
-				} else
+				}
+				else
+				{
 					xb.flashCrc[i] = 0;
+				}
 				/* re-read, not a crc variable: FRE's later PHI orders the n == 0
 				   path's copies crc first */
 				log_printf(1, "found (%d) '%s' crc: 0x%08x\n", ++xb.nFlashFiles2, xb.flashFiles[i], xb.flashCrc[i]);
-			} else {
+			}
+			else
+			{
 				log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
 				free(buf);
 				return 0;
 			}
 			if (pos >= end)
+			{
 				i = 10;
+			}
 		}
-	} else {
+	}
+	else
+	{
 		/* sic: names [flashfs] */
 		log_printf(0, "\n******* ERROR: could not find label [flashfs] in file list ini\n");
 		free(buf);
@@ -646,13 +855,21 @@ static int findIniKey(unsigned char *buf, int size, const char *key)
 	int i, j, len;
 
 	len = strlen(key);
-	for (i = 0; i < size - len; i++) {
-		if (key[0] == buf[i]) {
+	for (i = 0; i < size - len; i++)
+	{
+		if (key[0] == buf[i])
+		{
 			for (j = 0; j < len; j++)
+			{
 				if (buf[i + j] != key[j])
+				{
 					j = len + 1;
+				}
+			}
 			if (j == len && buf[i + len] != 0)
+			{
 				return i + len;
+			}
 		}
 	}
 	return -1;
@@ -664,10 +881,14 @@ char *getIniValue(const char *key)
 	int off;
 
 	if (xb.iniSize == 0)
+	{
 		return NULL;
+	}
 	off = findIniKey(xb.iniBuf, xb.iniSize, key);
 	if (off == -1)
+	{
 		return NULL;
+	}
 	return (char *)&xb.iniBuf[off];
 }
 
@@ -677,19 +898,30 @@ static int findKey(unsigned char *buf, const char *key)
 	int i, j, len;
 	unsigned char *p;
 	len = strlen(key);
-	for (i = 0; i < xb.iniSize - len; i++) {
-		if (buf[i] == key[0]) {
+	for (i = 0; i < xb.iniSize - len; i++)
+	{
+		if (buf[i] == key[0])
+		{
 			p = &buf[i];
 			for (j = 0; j < len; j++)
+			{
 				if (p[j] != key[j])
+				{
 					j = len + 1;
-			if (j == len) {
+				}
+			}
+			if (j == len)
+			{
 				unsigned char *q = &buf[i + len];
 
 				if (key == NULL)
+				{
 					return -1;
+				}
 				if (*q != 0)
+				{
 					return i + len;
+				}
 			}
 		}
 	}
@@ -701,15 +933,23 @@ long getIniBool(const char *key, int def)
 	int off;
 	char *val;
 	if (xb.iniSize == 0)
+	{
 		return def;
+	}
 	off = FIND;
 	if (off == -1)
+	{
 		return def;
+	}
 	val = (char *)&xb.iniBuf[off];
 	if (strnicmp(val, "true", 4) == 0)
+	{
 		return 1;
+	}
 	if (strnicmp(val, "false", 5) == 0)
+	{
 		return 0;
+	}
 	return def;
 }
 
@@ -718,25 +958,37 @@ char *iniBoolInvalid(const char *key)
 	int off;
 	char *val;
 	if (xb.iniSize == 0)
+	{
 		return NULL;
+	}
 	off = FIND;
 	if (off == -1)
+	{
 		return NULL;
+	}
 	val = (char *)&xb.iniBuf[off];
 	if (strnicmp(val, "true", 4) == 0)
+	{
 		return NULL;
+	}
 	if (strnicmp(val, "false", 5) != 0)
+	{
 		return val;
+	}
 	return NULL;
 }
 unsigned int getIniU32(const char *key, unsigned int def)
 {
 	int off;
 	if (xb.iniSize == 0)
+	{
 		return def;
+	}
 	off = FIND;
 	if (off == -1)
+	{
 		return def;
+	}
 	return myatou32((char *)&xb.iniBuf[off], def);
 }
 char *iniU32Invalid(const char *key)
@@ -744,18 +996,27 @@ char *iniU32Invalid(const char *key)
 	int off;
 	char *val;
 	if (xb.iniSize == 0)
+	{
 		return NULL;
+	}
 	off = FIND;
 	if (off == -1)
+	{
 		return NULL;
+	}
 	val = (char *)&xb.iniBuf[off];
-	if (val[0] == '0' && myatol(val[1]) == 'x') {
+	if (val[0] == '0' && myatol(val[1]) == 'x')
+	{
 		if (validateString(val + 2) == 0)
+		{
 			return val;
+		}
 		return NULL;
 	}
 	if (validateString(val) != 0)
+	{
 		return NULL;
+	}
 	return val;
 }
 
@@ -770,14 +1031,16 @@ int loadUserIni(void)
 	strcat(path, "options.ini");
 	log_printf(1, "\n------ parsing user ini at '%s' ------\n", path);
 	f = fopen(path, "rb");
-	if (f == NULL) {
+	if (f == NULL)
+	{
 		log_printf(1, "\n******* WARNING: could not open user ini at '%s', skipping\n", path);
 		return 0;
 	}
 	xb.iniSize = getFileSize(f);
 	len = xb.iniSize + 1;
 	xb.iniBuf = malloc(len);
-	if (xb.iniBuf == NULL) {
+	if (xb.iniBuf == NULL)
+	{
 		log_printf(0, "******* ERROR loading %s, unable to allocate memory\n", path);
 		fclose(f);
 		return 0;
@@ -787,7 +1050,8 @@ int loadUserIni(void)
 	fread(xb.iniBuf, xb.iniSize, 1, f);
 	fclose(f);
 	log_printf(1, "done!\n", path);
-	if (xb.iniBuf[0] == 0xff || xb.iniBuf[1] == 0xff) {
+	if (xb.iniBuf[0] == 0xff || xb.iniBuf[1] == 0xff)
+	{
 		log_printf(0, "***** WARNING: User ini %s\nappears to be a multi byte file, not an ascii only file - ignoring it!\n", path);
 		free(xb.iniBuf);
 		xb.iniBuf = NULL;

@@ -111,6 +111,8 @@ unsigned int crc32(const unsigned char *buf, unsigned int len)
 {
 	unsigned int crc = 0xFFFFFFFF;
 	for (; len; --len, ++buf)
+	{
 		crc = UPDC32(*buf, crc);
+	}
 	return ~crc;
 }

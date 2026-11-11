@@ -21,7 +21,9 @@ int baseFileExists(const char *name)
 	char path[1024];
 
 	if (!xb.baseDir[0])
+	{
 		return 0;
+	}
 	strcpy(path, xb.baseDir);
 	strcat(path, name);
 	return FileExists(path);
@@ -39,79 +41,116 @@ int perboxExists(const char *name)
 
 int iniConsoleType(void)
 {
-	if (perboxExists("xenon")) {
+	if (perboxExists("xenon"))
+	{
 		log_printf(1, "Using xenon ctype (perbox file)\n");
 		xb.flags |= CONSOLE_XENON;
 		strcat(xb.outName, "xenon");
-	} else if (perboxExists("zephyr")) {
+	}
+	else if (perboxExists("zephyr"))
+	{
 		log_printf(1, "Using zephyr ctype (perbox file)\n");
 		xb.flags |= CONSOLE_ZEPHYR;
 		strcat(xb.outName, "zephyr");
-	} else if (perboxExists("falcon")) {
+	}
+	else if (perboxExists("falcon"))
+	{
 		log_printf(1, "Using falcon ctype (perbox file)\n");
 		xb.flags |= CONSOLE_FALCON;
 		strcat(xb.outName, "falcon");
-	} else if (perboxExists("jasper") | perboxExists("jasperbc")) {
+	}
+	else if (perboxExists("jasper") | perboxExists("jasperbc"))
+	{
 		log_printf(1, "Using jasper ctype (perbox file)\n");
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
-	} else if (perboxExists("jaspersb")) {
+	}
+	else if (perboxExists("jaspersb"))
+	{
 		log_printf(1, "Using jasper smallblock ctype (perbox file)\n");
 		xb.flags |= CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
-	} else if (perboxExists("jasperbb")) {
+	}
+	else if (perboxExists("jasperbb"))
+	{
 		log_printf(1, "Using jasper big block ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasperbb");
-	} else if (perboxExists("jasper256")) {
+	}
+	else if (perboxExists("jasper256"))
+	{
 		log_printf(1, "Using jasper big block ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper256");
-	} else if (perboxExists("jasper512")) {
+	}
+	else if (perboxExists("jasper512"))
+	{
 		log_printf(1, "Using jasper big block ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper512");
-	} else if (perboxExists("trinity")) {
+	}
+	else if (perboxExists("trinity"))
+	{
 		log_printf(1, "Using trinity ctype (perbox file)\n");
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinity");
-	} else if (perboxExists("trinitybb")) {
+	}
+	else if (perboxExists("trinitybb"))
+	{
 		log_printf(1, "Using trinity big block ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybb");
-	} else if (perboxExists("trinitybigffs")) {
+	}
+	else if (perboxExists("trinitybigffs"))
+	{
 		log_printf(1, "Using trinity big block big file system ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybigffs");
-	} else if (perboxExists("corona")) {
+	}
+	else if (perboxExists("corona"))
+	{
 		log_printf(1, "Using corona ctype (perbox file)\n");
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_CORONA;
 		strcat(xb.outName, "corona");
-	} else if (perboxExists("coronabb")) {
+	}
+	else if (perboxExists("coronabb"))
+	{
 		log_printf(1, "Using corona big block ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabb");
-	} else if (perboxExists("coronabigffs")) {
+	}
+	else if (perboxExists("coronabigffs"))
+	{
 		log_printf(1, "Using corona big block big file system ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabigffs");
-	} else if (perboxExists("corona4g")) {
+	}
+	else if (perboxExists("corona4g"))
+	{
 		log_printf(1, "Using corona MMC ctype (perbox file)\n");
 		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_CORONA;
 		strcat(xb.outName, "corona4g");
-	} else if (perboxExists("winchester")) {
+	}
+	else if (perboxExists("winchester"))
+	{
 		log_printf(1, "Using winchester ctype (perbox file)\n");
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester");
-	} else if (perboxExists("winchester4g")) {
+	}
+	else if (perboxExists("winchester4g"))
+	{
 		log_printf(1, "Using winchester MMC ctype (perbox file)\n");
 		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester4g");
-	} else if (perboxExists("winchesterbb")) {
+	}
+	else if (perboxExists("winchesterbb"))
+	{
 		log_printf(1, "Using winchester big block ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbb");
-	} else if (perboxExists("winchesterbigffs")) {
+	}
+	else if (perboxExists("winchesterbigffs"))
+	{
 		log_printf(1, "Using winchester big block big file system ctype (perbox file)\n");
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbigffs");
@@ -122,103 +161,125 @@ int iniConsoleType(void)
 int setConsoleType(const char *name)
 {
 	if (!name || !*name)
+	{
 		return 0;
-	if (!stricmp(name, "xenon")) {
+	}
+	if (!stricmp(name, "xenon"))
+	{
 		xb.flags |= CONSOLE_XENON;
 		strcat(xb.outName, "xenon");
 		return 1;
 	}
-	if (!stricmp(name, "zephyr")) {
+	if (!stricmp(name, "zephyr"))
+	{
 		xb.flags |= CONSOLE_ZEPHYR;
 		strcat(xb.outName, "zephyr");
 		return 1;
 	}
-	if (!stricmp(name, "falcon")) {
+	if (!stricmp(name, "falcon"))
+	{
 		xb.flags |= CONSOLE_FALCON;
 		strcat(xb.outName, "falcon");
 		return 1;
 	}
-	if (!stricmp(name, "jasper") || !stricmp(name, "jasperbc")) {
+	if (!stricmp(name, "jasper") || !stricmp(name, "jasperbc"))
+	{
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
 		return 1;
 	}
-	if (!stricmp(name, "jaspersb")) {
+	if (!stricmp(name, "jaspersb"))
+	{
 		xb.flags |= CONSOLE_JASPER;
 		strcat(xb.outName, "jasper");
 		return 1;
 	}
-	if (!stricmp(name, "jasperbb")) {
+	if (!stricmp(name, "jasperbb"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasperbb");
 		return 1;
 	}
-	if (!stricmp(name, "jasper256")) {
+	if (!stricmp(name, "jasper256"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper256");
 		return 1;
 	}
-	if (!stricmp(name, "jasper512")) {
+	if (!stricmp(name, "jasper512"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_JASPER;
 		strcat(xb.outName, "jasper512");
 		return 1;
 	}
-	if (!stricmp(name, "jasperbigffs")) {
+	if (!stricmp(name, "jasperbigffs"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_JASPER;
 		strcat(xb.outName, "jasperbigffs");
 		return 1;
 	}
-	if (!stricmp(name, "trinity")) {
+	if (!stricmp(name, "trinity"))
+	{
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinity");
 		return 1;
 	}
-	if (!stricmp(name, "trinitybb")) {
+	if (!stricmp(name, "trinitybb"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybb");
 		return 1;
 	}
-	if (!stricmp(name, "trinitybigffs")) {
+	if (!stricmp(name, "trinitybigffs"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_TRINITY;
 		strcat(xb.outName, "trinitybigffs");
 		return 1;
 	}
-	if (!stricmp(name, "corona")) {
+	if (!stricmp(name, "corona"))
+	{
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_CORONA;
 		strcat(xb.outName, "corona");
 		return 1;
 	}
-	if (!stricmp(name, "coronabb")) {
+	if (!stricmp(name, "coronabb"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabb");
 		return 1;
 	}
-	if (!stricmp(name, "coronabigffs")) {
+	if (!stricmp(name, "coronabigffs"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_CORONA;
 		strcat(xb.outName, "coronabigffs");
 		return 1;
 	}
-	if (!stricmp(name, "corona4g")) {
+	if (!stricmp(name, "corona4g"))
+	{
 		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_CORONA;
 		strcat(xb.outName, "corona4g");
 		return 1;
 	}
-	if (!stricmp(name, "winchester")) {
+	if (!stricmp(name, "winchester"))
+	{
 		xb.flags |= NAND_BB_CONTROLLER | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester");
 		return 1;
 	}
-	if (!stricmp(name, "winchester4g")) {
+	if (!stricmp(name, "winchester4g"))
+	{
 		xb.flags |= NAND_BB_CONTROLLER | NAND_MMC | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchester4g");
 		return 1;
 	}
-	if (!stricmp(name, "winchesterbb")) {
+	if (!stricmp(name, "winchesterbb"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbb");
 		return 1;
 	}
-	if (!stricmp(name, "winchesterbigffs")) {
+	if (!stricmp(name, "winchesterbigffs"))
+	{
 		xb.flags |= NAND_BIG_BLOCK | NAND_BIG_FFS | CONSOLE_WINCHESTER;
 		strcat(xb.outName, "winchesterbigffs");
 		return 1;
@@ -239,22 +300,33 @@ _Bool optIniBool(const char *name, uint32_t set, uint32_t clear, int def)
 	_Bool on;
 
 	if ((xb.bootFlags & set) || (xb.bootFlagsOff & set))
+	{
 		on = 0;
-	else if (perboxExists(name)) {
+	}
+	else if (perboxExists(name))
+	{
 		log_printf(1, "Using %s option (perbox file)\n", name);
 		on = 1;
-	} else {
+	}
+	else
+	{
 		bad = iniBoolInvalid(name);
-		if (!bad) {
+		if (!bad)
+		{
 			on = getIniBool(name, def);
 			if (on)
+			{
 				log_printf(1, "Using %s option (ini file)\n", name);
-		} else {
+			}
+		}
+		else
+		{
 			log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
 			on = 0;
 		}
 	}
-	if (on) {
+	if (on)
+	{
 		xb.bootFlags &= ~clear;
 		xb.bootFlags |= set;
 	}
@@ -276,7 +348,9 @@ int optIniInt(const char *name, int def)
 
 	bad = iniU32Invalid(name);
 	if (!bad)
+	{
 		return getIniU32(name, def);
+	}
 	log_printf(0, "***** WARNING: options.ini setting '%s' invalid value '%s', discarding!\n", name, bad);
 	return def;
 }
@@ -290,34 +364,64 @@ int parseButton(const char *s)
 	int b = 0;
 
 	if (!s)
+	{
 		return 0;
+	}
 	if (!strnicmp(s, "power", 5))
+	{
 		b = 0x11;
+	}
 	else if (!strnicmp(s, "remopower", 9))
+	{
 		b = 0x20;
+	}
 	else if (!strnicmp(s, "remox", 5))
+	{
 		b = 0x22;
+	}
 	else if (!strnicmp(s, "winbutton", 9))
+	{
 		b = 0x24;
+	}
 	else if (!strnicmp(s, "wirelessx", 9))
+	{
 		b = 0x55;
-	else if (!strnicmp(s, "wiredx", 6)) {
+	}
+	else if (!strnicmp(s, "wiredx", 6))
+	{
 		if (!strnicmp(s, "wiredxb1", 8))
+		{
 			b = 0x59;
+		}
 		else if (!strnicmp(s, "wiredxb2", 8))
+		{
 			b = 0x58;
+		}
 		else if (!strnicmp(s, "wiredxb3", 8))
+		{
 			b = 0x5a;
+		}
 		else if (!strnicmp(s, "wiredxf1", 8))
+		{
 			b = 0x56;
+		}
 		else if (!strnicmp(s, "wiredxf2", 8))
+		{
 			b = 0x57;
+		}
 		else
+		{
 			b = 0x5a;
-	} else if (!strnicmp(s, "eject", 5))
+		}
+	}
+	else if (!strnicmp(s, "eject", 5))
+	{
 		b = 0x12;
+	}
 	else if (!strnicmp(s, "kiosk", 5))
+	{
 		b = 0x41;
+	}
 	return b;
 }
 
@@ -329,8 +433,12 @@ void stripColons(char *s)
 
 	len = strlen(s) + 1;
 	for (i = 0, j = 0; i < len; i++)
+	{
 		if (s[i] != ':')
+		{
 			s[j++] = s[i];
+		}
+	}
 }
 
 int macidSet(void)
@@ -338,8 +446,12 @@ int macidSet(void)
 	int i;
 
 	for (i = 0; i < 6; i++)
+	{
 		if (xb.smcOpts.macid[i] != 0xff)
+		{
 			return 1;
+		}
+	}
 	return 0;
 }
 
@@ -348,134 +460,195 @@ int setBoolOption(const char *name, const char *val)
 {
 	uint32_t off = 0;
 
-	if (val) {
+	if (val)
+	{
 		if (!stricmp(val, "false"))
+		{
 			off = 1;
+		}
 		else if (stricmp(val, "true"))
+		{
 			return 0;
+		}
 	}
-	if (!stricmp(name, "nodvd")) {
+	if (!stricmp(name, "nodvd"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 2;
-		else {
+		}
+		else
+		{
 			xb.bootFlags &= ~4;
 			xb.bootFlags |= 2;
 			log_printf(1, "Using NODVD (tray status fully open check) option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "olddvd")) {
+	if (!stricmp(name, "olddvd"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 6;
-		else {
+		}
+		else
+		{
 			xb.bootFlags &= ~4;
 			log_printf(1, "Using OLDDVD (tray status not closed check) option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "cygnos")) {
+	if (!stricmp(name, "cygnos"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 1;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 1;
 			log_printf(1, "Using CYGNOS option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "demon")) {
+	if (!stricmp(name, "demon"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 8;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 8;
 			log_printf(1, "Using DEMON option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "nomobile")) {
+	if (!stricmp(name, "nomobile"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x20000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x20000000;
 			log_printf(1, "Using NOMOBILE option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "smcnocheck")) {
+	if (!stricmp(name, "smcnocheck"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x200000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x200000;
 			log_printf(1, "Using SMCNOCHECK option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "noremap")) {
+	if (!stricmp(name, "noremap"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x40000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x40000000;
 			log_printf(1, "Using NOREMAP option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "noecdremap")) {
+	if (!stricmp(name, "noecdremap"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x80000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x80000000;
 			log_printf(1, "Using NOECDREMAP option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "nandmu")) {
+	if (!stricmp(name, "nandmu"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x10000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x10000000;
 			log_printf(1, "Using NANDMU option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "nosecurity")) {
+	if (!stricmp(name, "nosecurity"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x4000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x4000000;
 			log_printf(1, "Using NOSECURITY option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "nosusecurity")) {
+	if (!stricmp(name, "nosusecurity"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x1000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x1000000;
 			log_printf(1, "Using NOSECURITY option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "patchsmc")) {
+	if (!stricmp(name, "patchsmc"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x8000000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x8000000;
 			log_printf(1, "Using PATCHSMC option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "smcnoeject")) {
+	if (!stricmp(name, "smcnoeject"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x400000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x400000;
 			log_printf(1, "Using SMCNOEJECT option");
 		}
 		return 1;
 	}
-	if (!stricmp(name, "smcnoblink")) {
+	if (!stricmp(name, "smcnoblink"))
+	{
 		if (off)
+		{
 			xb.bootFlagsOff |= 0x800000;
-		else {
+		}
+		else
+		{
 			xb.bootFlags |= 0x800000;
 			log_printf(1, "Using SMCNOBLINK option");
 		}
@@ -490,7 +663,8 @@ static void macidRest(uint8_t *mac, const char *val, int n)
 {
 	int i;
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++)
+	{
 		log_printf(1, ":");
 		mac[i] = myatox8(val + i * 2);
 		log_printf(1, "%02x", mac[i]);
@@ -509,11 +683,14 @@ uint32_t parseOption(char *opt)
 	int i, len, vlen, ok;
 
 	len = strlen(opt);
-	for (i = 0; i < len; i++) {
-		if (opt[i] == '=') {
+	for (i = 0; i < len; i++)
+	{
+		if (opt[i] == '=')
+		{
 			val = &opt[i + 1];
 			opt[i] = 0;
-			if (!*val) {
+			if (!*val)
+			{
 				log_printf(1, "\n\n***** ERROR: option '%s' provided on command line with = but no value!\n", opt);
 				return 0;
 			}
@@ -521,134 +698,193 @@ uint32_t parseOption(char *opt)
 		}
 	}
 	if (len == strlen(opt))
+	{
 		vlen = 0;
+	}
 	else
+	{
 		vlen = strlen(val);
+	}
 	ok = 0;
-	if (setBoolOption(opt, val) == 1) {
+	if (setBoolOption(opt, val) == 1)
+	{
 		log_printf(1, "\n");
 		ok = 1;
-	} else if (val) {
-		if (!stricmp(opt, "cputemp")) {
+	}
+	else if (val)
+	{
+		if (!stricmp(opt, "cputemp"))
+		{
 			xb.smcOpts.cpuTemp = myatou32(val, -1);
 			ok = 0;
-			if (xb.smcOpts.cpuTemp != -1) {
+			if (xb.smcOpts.cpuTemp != -1)
+			{
 				log_printf(1, "Using CPUTEMP option, value %d\n", xb.smcOpts.cpuTemp);
 				ok = 1;
 			}
 			if (!ok)
+			{
 				goto bad;
+			}
 			return 1;
 		}
-		if (!stricmp(opt, "gputemp")) {
+		if (!stricmp(opt, "gputemp"))
+		{
 			xb.smcOpts.gpuTemp = myatou32(val, -1);
 			if (xb.smcOpts.gpuTemp == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using GPUTEMP option, value %d\n", xb.smcOpts.gpuTemp);
 			return 1;
 		}
-		if (!stricmp(opt, "edramtemp")) {
+		if (!stricmp(opt, "edramtemp"))
+		{
 			xb.smcOpts.edramTemp = myatou32(val, -1);
 			if (xb.smcOpts.edramTemp == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using EDRAMTEMP option, value %d\n", xb.smcOpts.edramTemp);
 			return 1;
 		}
-		if (!stricmp(opt, "overcputemp")) {
+		if (!stricmp(opt, "overcputemp"))
+		{
 			xb.smcOpts.overCpuTemp = myatou32(val, -1);
 			if (xb.smcOpts.overCpuTemp == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using OVERCPUTEMP option, value %d\n", xb.smcOpts.overCpuTemp);
 			return 1;
 		}
-		if (!stricmp(opt, "overgputemp")) {
+		if (!stricmp(opt, "overgputemp"))
+		{
 			xb.smcOpts.overGpuTemp = myatou32(val, -1);
 			if (xb.smcOpts.overGpuTemp == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using OVERGPUTEMP option, value %d\n", xb.smcOpts.overGpuTemp);
 			return 1;
 		}
-		if (!stricmp(opt, "overedramtemp")) {
+		if (!stricmp(opt, "overedramtemp"))
+		{
 			xb.smcOpts.overEdramTemp = myatou32(val, -1);
 			if (xb.smcOpts.overEdramTemp == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using OVEREDRAMTEMP option, value %d\n", xb.smcOpts.overEdramTemp);
 			return 1;
 		}
-		if (!stricmp(opt, "cpufan")) {
+		if (!stricmp(opt, "cpufan"))
+		{
 			xb.smcOpts.cpuFan = myatou32(val, -1);
 			if (xb.smcOpts.cpuFan == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using CPUFAN option, value %d\n", xb.smcOpts.cpuFan);
 			return 1;
 		}
-		if (!stricmp(opt, "gpufan")) {
+		if (!stricmp(opt, "gpufan"))
+		{
 			xb.smcOpts.gpuFan = myatou32(val, -1);
 			ok = 0;
-			if (xb.smcOpts.gpuFan != -1) {
+			if (xb.smcOpts.gpuFan != -1)
+			{
 				log_printf(1, "Using GPUFAN option, value %d\n", xb.smcOpts.gpuFan);
 				ok = 1;
 			}
 			if (!ok)
+			{
 				goto bad;
+			}
 			return 1;
 		}
-		if (!stricmp(opt, "avregion")) {
+		if (!stricmp(opt, "avregion"))
+		{
 			xb.smcOpts.avRegion = myatou32(val, -1);
 			if (xb.smcOpts.avRegion == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using AVREGION option, value 0x%x\n", xb.smcOpts.avRegion);
 			return 1;
 		}
-		if (!stricmp(opt, "gameregion")) {
+		if (!stricmp(opt, "gameregion"))
+		{
 			xb.smcOpts.gameRegion = myatou32(val, -1);
 			if (xb.smcOpts.gameRegion == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using GAMEREGION option, value 0x%x\n", xb.smcOpts.gameRegion);
 			return 1;
 		}
-		if (!stricmp(opt, "dvdregion")) {
+		if (!stricmp(opt, "dvdregion"))
+		{
 			xb.smcOpts.dvdRegion = myatou32(val, -1);
 			if (xb.smcOpts.dvdRegion == -1)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using DVDREGION option, value 0x%x\n", xb.smcOpts.dvdRegion);
 			return 1;
 		}
-		if (!stricmp(opt, "xellbutton")) {
+		if (!stricmp(opt, "xellbutton"))
+		{
 			xb.xellButton = parseButton(val);
 			if (!xb.xellButton)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using XELLBUTTON option, value %s\n", val);
 			return 1;
 		}
-		if (!stricmp(opt, "xellbutton2")) {
+		if (!stricmp(opt, "xellbutton2"))
+		{
 			xb.xellAltButton = parseButton(val);
 			if (!xb.xellAltButton)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using XELLBUTTON2 option, value %s\n", val);
 			return 1;
 		}
-		if (!stricmp(opt, "dualboot")) {
+		if (!stricmp(opt, "dualboot"))
+		{
 			xb.dualButton = parseButton(val);
 			if (!xb.dualButton)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using DUALBOOT option, value %s\n", val);
 			return 1;
 		}
-		if (!stricmp(opt, "cfldv")) {
+		if (!stricmp(opt, "cfldv"))
+		{
 			xb.cfLdv = myatou32(val, 0);
-			if (xb.cfLdv > 32) {
+			if (xb.cfLdv > 32)
+			{
 				log_printf(0, "***** WARNING: cfldv value %d on command line is too large, setting to max value of 32\n", xb.cfLdv);
 				xb.cfLdv = 32;
-			} else if (!xb.cfLdv)
+			}
+			else if (!xb.cfLdv)
+			{
 				goto bad;
+			}
 			log_printf(1, "Using CFLDV option, value %d\n", xb.cfLdv);
 			return 1;
 		}
-		if (!stricmp(opt, "macid")) {
+		if (!stricmp(opt, "macid"))
+		{
 			stripColons(val);
-			if (strlen(val) == 12) {
-				if (validateString(val)) {
+			if (strlen(val) == 12)
+			{
+				if (validateString(val))
+				{
 					log_printf(1, "Using MACID option address: ");
 					xb.smcOpts.macid[0] = myatox8(val);
 					val += 2;
@@ -663,16 +899,22 @@ uint32_t parseOption(char *opt)
 			log_printf(1, "\n\n***** ERROR: invalid length macid %s provided on the command line!\n", opt);
 			return 0;
 		}
-		if (!stricmp(opt, "dvdkey")) {
+		if (!stricmp(opt, "dvdkey"))
+		{
 			if (!kvSetDvdKey(val))
+			{
 				goto bad;
+			}
 			xb.bootFlags |= 0x2000000;
 			return 1;
 		}
 	}
 	if (ok)
+	{
 		return 1;
-	if (val && vlen) {
+	}
+	if (val && vlen)
+	{
 		log_printf(1, "\n\n***** ERROR: unknown option '%s' with value '%s' provided on the command line!\n", opt, val);
 		return 0;
 	}
@@ -690,16 +932,24 @@ uint32_t parseCmdOptions(const char *opts)
 	int i, j, len;
 
 	len = strlen(opts);
-	for (i = 0, j = 0; i <= len; i++) {
-		if (opts[i] == ';' || opts[i] == 0) {
+	for (i = 0, j = 0; i <= len; i++)
+	{
+		if (opts[i] == ';' || opts[i] == 0)
+		{
 			opt[j] = 0;
-			if (strlen(opt) > 4) {
+			if (strlen(opt) > 4)
+			{
 				if (!parseOption(opt))
+				{
 					return 0;
+				}
 			}
 			j = 0;
-		} else
+		}
+		else
+		{
 			opt[j++] = opts[i];
+		}
 	}
 	return 1;
 }
@@ -719,99 +969,147 @@ void applyIniOptions(void)
 	OPT("nosecurity", 0x4000000, 0);
 	OPT("nosusecurity", 0x1000000, 0);
 	OPT("smcnocheck", 0x200000, 0);
-	if (!xb.cfLdv) {
+	if (!xb.cfLdv)
+	{
 		xb.cfLdv = optIniInt("cfldv", 0);
-		if (xb.cfLdv > 32) {
+		if (xb.cfLdv > 32)
+		{
 			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of 32\n", xb.cfLdv);
 			xb.cfLdv = 32;
 		}
 	}
 	if (xb.smcOpts.cpuFan == -1)
+	{
 		xb.smcOpts.cpuFan = optIniInt("cpufan", -1);
+	}
 	if (xb.smcOpts.gpuFan == -1)
+	{
 		xb.smcOpts.gpuFan = optIniInt("gpufan", -1);
+	}
 	if (xb.smcOpts.cpuTemp == -1)
+	{
 		xb.smcOpts.cpuTemp = optIniInt("cputemp", -1);
+	}
 	if (xb.smcOpts.gpuTemp == -1)
+	{
 		xb.smcOpts.gpuTemp = optIniInt("gputemp", -1);
+	}
 	if (xb.smcOpts.edramTemp == -1)
+	{
 		xb.smcOpts.edramTemp = optIniInt("edramtemp", -1);
+	}
 	if (xb.smcOpts.overCpuTemp == -1)
+	{
 		xb.smcOpts.overCpuTemp = optIniInt("overcputemp", -1);
+	}
 	if (xb.smcOpts.overGpuTemp == -1)
+	{
 		xb.smcOpts.overGpuTemp = optIniInt("overgputemp", -1);
+	}
 	if (xb.smcOpts.overEdramTemp == -1)
+	{
 		xb.smcOpts.overEdramTemp = optIniInt("overedramtemp", -1);
+	}
 	if (xb.smcOpts.avRegion == -1)
+	{
 		xb.smcOpts.avRegion = optIniInt("avregion", -1);
+	}
 	if (xb.smcOpts.gameRegion == -1)
+	{
 		xb.smcOpts.gameRegion = optIniInt("gameregion", -1);
+	}
 	if (xb.smcOpts.dvdRegion == -1)
+	{
 		xb.smcOpts.dvdRegion = optIniInt("dvdregion", -1);
-	if (!macidSet()) {
+	}
+	if (!macidSet())
+	{
 		s = getIniValue("macid");
-		if (s) {
+		if (s)
+		{
 			stripColons(s);
-			if (strlen(s) == 12) {
-				if (validateString(s)) {
-					for (i = 0; i < 6; i++) {
+			if (strlen(s) == 12)
+			{
+				if (validateString(s))
+				{
+					for (i = 0; i < 6; i++)
+					{
 						xb.smcOpts.macid[i] = myatox8(s);
 						s += 2;
 					}
-				} else {
+				}
+				else
+				{
 					log_printf(0, "***** WARNING: invalid characters in macid '");
 					showHexPairs(0, s);
 					log_printf(0, "' provided in ini file! Discarding!\n", s);
 				}
-			} else {
+			}
+			else
+			{
 				log_printf(0, "***** WARNING: invalid length macid '");
 				showHexPairs(0, s);
 				log_printf(0, "' provided in ini file! Discarding!\n", s);
 			}
 		}
 	}
-	if (xb.type - BUILD_JTAG <= 3) {
+	if (xb.type - BUILD_JTAG <= 3)
+	{
 		OPT("cygnos", 1, 0);
 		OPT("demon", 8, 0);
 		OPT("patchsmc", 0x8000000, 0);
-		if (!xb.xellButton && (xb.bootFlags & 4)) {
+		if (!xb.xellButton && (xb.bootFlags & 4))
+		{
 			xb.xellButton = parseButton(getIniValue("xellbutton"));
-			if (!xb.xellButton) {
+			if (!xb.xellButton)
+			{
 				log_printf(1, "default console DVD eject button is being used to start xell\n");
 				xb.xellButton = 0x12;
 			}
 		}
-		if (!xb.xellAltButton && (xb.bootFlags & 4)) {
+		if (!xb.xellAltButton && (xb.bootFlags & 4))
+		{
 			xb.xellAltButton = parseButton(getIniValue("xellbutton2"));
 			if (!xb.xellButton)
+			{
 				log_printf(1, "alternate xell button is disabled\n");
+			}
 		}
 		OPT("smcnoeject", 0x400000, 0);
 		OPT("smcnoblink", 0x800000, 0);
 	}
 	/* outside the block above: VRP threads its range test past this one
 	   (a switch it can't), and smcnoblink's paths reload the type */
-	if (xb.type == BUILD_JTAG) {
+	if (xb.type == BUILD_JTAG)
+	{
 		OPT("nodvd", 2, 4);
 		/* no bit of its own: it clears nodvd's 4 */
 		optIniBool("olddvd", 0, 4, 0);
-		if (!xb.dualButton) {
+		if (!xb.dualButton)
+		{
 			xb.dualButton = parseButton(getIniValue("dualboot"));
-			if (xb.xellButton == xb.dualButton) {
+			if (xb.xellButton == xb.dualButton)
+			{
 				log_printf(1, "dualboot setting ignored!\n");
 				xb.dualButton = 0;
 			}
 		}
 	}
-	if (!(xb.bootFlags & 0x2000000)) {
+	if (!(xb.bootFlags & 0x2000000))
+	{
 		s = getIniValue("dvdkey");
 		if (s && kvSetDvdKey(s))
+		{
 			xb.bootFlags |= 0x2000000;
+		}
 	}
-	if (!xb.blSuffix[0]) {
+	if (!xb.blSuffix[0])
+	{
 		s = getIniValue("rev");
 		if (s)
+		{
 			sprintf(xb.blSuffix, "_%s", s);
+		}
 	}
 }
 
@@ -821,24 +1119,30 @@ int parseRawPatch(char *pat)
 	int i, len, n;
 
 	len = strlen(pat);
-	for (i = 0; i < len; i++) {
-		if (pat[i] == ',') {
+	for (i = 0; i < len; i++)
+	{
+		if (pat[i] == ',')
+		{
 			val = &pat[i + 1];
 			pat[i] = 0;
-			if (!*val) {
+			if (!*val)
+			{
 				log_printf(1, "\n\n***** ERROR: option '%s' provided on command line with = but no value!\n", pat);
 				return 0;
 			}
 			i = len + 1;
 		}
 	}
-	if (len != strlen(pat)) {
+	if (len != strlen(pat))
+	{
 		n = xb.nRawPatches;
-		if (n <= 15) {
+		if (n <= 15)
+		{
 			strcpy(xb.rawPatch[xb.nRawPatches].name, pat);
 			n = xb.nRawPatches;
 			xb.rawPatch[n].offset = myatou32(val, -1);
-			if (xb.rawPatch[xb.nRawPatches].offset != -1) {
+			if (xb.rawPatch[xb.nRawPatches].offset != -1)
+			{
 				log_printf(1, "parsed [rawpatch] (%d) from command line file '%s' offset 0x%x\n", xb.nRawPatches + 1,
 					   xb.rawPatch[xb.nRawPatches].name, xb.rawPatch[xb.nRawPatches].offset);
 				xb.nRawPatches++;
@@ -861,16 +1165,24 @@ int parseRawPatches(const char *pats)
 	int i, j, len;
 
 	len = strlen(pats);
-	for (i = 0, j = 0; i <= len; i++) {
-		if (pats[i] == ';' || pats[i] == 0) {
+	for (i = 0, j = 0; i <= len; i++)
+	{
+		if (pats[i] == ';' || pats[i] == 0)
+		{
 			pat[j] = 0;
-			if (strlen(pat) > 4) {
+			if (strlen(pat) > 4)
+			{
 				if (!parseRawPatch(pat))
+				{
 					return 0;
+				}
 			}
 			j = 0;
-		} else
+		}
+		else
+		{
 			pat[j++] = pats[i];
+		}
 	}
 	return 1;
 }
@@ -880,20 +1192,26 @@ void addPatch(const char *name)
 {
 	int i;
 
-	if (xb.numPatches <= 15) {
+	if (xb.numPatches <= 15)
+	{
 		char path[1024];
 
 		sprintf(path, "%s.bin", name);
-		for (i = 0; i < xb.numPatches; i++) {
-			if (!stricmp(path, xb.addons[i].name)) {
+		for (i = 0; i < xb.numPatches; i++)
+		{
+			if (!stricmp(path, xb.addons[i].name))
+			{
 				log_printf(1, "***** WARNING: %s was provided both on command line and in ini, filtered duplicate!\n", name);
 				return;
 			}
 		}
 		strcpy(xb.addons[xb.numPatches].name, path);
 		xb.numPatches++;
-	} else
+	}
+	else
+	{
 		log_printf(0, "***** WARNING: exceeded total number of optional patches with ini  %s!\n", name);
+	}
 }
 
 /* the :-separated addon list from the ini */
@@ -904,16 +1222,24 @@ int loadAddons(void)
 	int i, j, len;
 
 	s = getIniValue("addon");
-	if (s) {
+	if (s)
+	{
 		len = strlen(s);
-		for (i = 0, j = 0; i <= len; i++) {
-			if (s[i] == ':' || s[i] == 0) {
+		for (i = 0, j = 0; i <= len; i++)
+		{
+			if (s[i] == ':' || s[i] == 0)
+			{
 				name[j] = 0;
 				if (strlen(name) > 4)
+				{
 					addPatch(name);
+				}
 				j = 0;
-			} else
+			}
+			else
+			{
 				name[j++] = s[i];
+			}
 		}
 	}
 	return 1;

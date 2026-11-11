@@ -12,7 +12,8 @@
 
 void extract_usage(int err, const char *opt)
 {
-	switch (err) {
+	switch (err)
+	{
 	case 3:
 		log_printf(0, "\n\n***** ERROR: option flag %s on command line but no argument provided!\n", opt);
 		break;
@@ -41,7 +42,8 @@ void extract_usage(int err, const char *opt)
 	log_printf(0, "<dir>       = path, absolute or relative, to a directory - do not terminate with /\n");
 	log_printf(0, separator);
 	log_finish();
-	if (promptEnter) {
+	if (promptEnter)
+	{
 		log_printf(0, "\npress <enter> to quit...\n");
 		fgetc(stdin);
 	}
@@ -55,32 +57,50 @@ int mode_extract(int argc, char **argv)
 
 	log_set_name("extract");
 	log_printf(0, "***** NOTE: Most errors/warnings will be due to the fact extract mode does not process 1BL and CPU keys! *****\n\n");
-	for (i = 0; i < argc; i++) {
+	for (i = 0; i < argc; i++)
+	{
 		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) ||
 		    !strnicmp(argv[i], "/?", 2))
+		{
 			extract_usage(0, NULL);
-		if (argv[i][0] == '-') {
-			if (!strnicmp(argv[i], "-noenter", 8)) {
+		}
+		if (argv[i][0] == '-')
+		{
+			if (!strnicmp(argv[i], "-noenter", 8))
+			{
 				log_printf(0, "<enter> key on completion suppressed\n");
 				promptEnter = 0;
-			} else if (!strnicmp(argv[i], "-v", 2))
+			}
+			else if (!strnicmp(argv[i], "-v", 2))
+			{
 				log_verbose_flag(argv[i][2]);
-		} else if (argv[i][0] == '\0')
+			}
+		}
+		else if (argv[i][0] == '\0')
+		{
 			extract_usage(1, argv[i]);
+		}
 		else if (dump != NULL)
+		{
 			extract_usage(5, argv[i]);
+		}
 		else
+		{
 			dump = argv[i];
+		}
 	}
 	if (dump == NULL)
+	{
 		extract_usage(2, NULL);
+	}
 	strcpy(xb.flashFiles[0], "crl.bin");
 	strcpy(xb.flashFiles[1], "dae.bin");
 	strcpy(xb.flashFiles[2], "extended.bin");
 	strcpy(xb.flashFiles[3], "fcrt.bin");
 	strcpy(xb.flashFiles[4], "secdata.bin");
 	xb.nFlashFiles2 = 5;
-	if (!loadDump(dump)) {
+	if (!loadDump(dump))
+	{
 		log_printf(0, "Loading dump failed!\n");
 		return -1;
 	}

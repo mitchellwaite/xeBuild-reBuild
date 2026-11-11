@@ -30,7 +30,8 @@ void ini_usage(void)
 	log_printf(0, "      or a folder with flash update named 'su20076000_00000000' in it.\n");
 	log_printf(0, "      Hash data will be output to the folder with the SU in it named _SU.ini\n");
 	log_printf(0, separator);
-	if (promptEnter) {
+	if (promptEnter)
+	{
 		log_printf(0, "\npress <enter> to quit...\n");
 		fgetc(stdin);
 	}
@@ -39,7 +40,8 @@ void ini_usage(void)
 
 void iniSetFile(const char *path)
 {
-	if (path) {
+	if (path)
+	{
 		strcpy(iniFile, path);
 		remove(iniFile);
 		log_printf(0, "output set to file '%s'\n", iniFile);
@@ -56,7 +58,8 @@ void iniPrintf(const char *fmt, ...)
 	vsnprintf(buf, 512, fmt, ap);
 	printf(buf);
 	f = fopen(iniFile, "a");
-	if (f) {
+	if (f)
+	{
 		fprintf(f, buf);
 		fclose(f);
 	}
@@ -69,31 +72,52 @@ int iniWriteFlashfs(void)
 
 	iniPrintf("[flashfs]\n");
 	if (!suFirstFile(name, &idx))
+	{
 		goto unparsed;
+	}
 	idx = 0;
-	while (suNextFile(name, &idx)) {
+	while (suNextFile(name, &idx))
+	{
 		uint8_t *data;
 		uint32_t len;
 		uint32_t crc;
 
 		if (!suGetFile(name, &data, &len))
+		{
 			continue;
-		if (!strnicmp(name, "$flash_", 7)) {
+		}
+		if (!strnicmp(name, "$flash_", 7))
+		{
 			crc = crc32(data, len);
 			if (!strnicmp(name + 7, "xenonclatin.xttp", 16))
+			{
 				iniPrintf("xenonclatin.xtt,d5d17ff5; added by xebuild\n");
+			}
 			else if (!strnicmp(name + 7, "xenonjklatin.xttp", 17))
+			{
 				iniPrintf("xenonjklatin.xtt,dde4a14c; added by xebuild\n");
+			}
 			else if (!strnicmp(name + 7, "ximedic.xexp", 16))
+			{
 				iniPrintf("ximedic.xex,1d992bfb; added by xebuild\n");
+			}
 			if (!strnicmp(name + 7, "systemupdate", 12))
+			{
 				iniPrintf(";%s,%08x; commented by xebuild\n", name + 7, crc);
+			}
 			else if (!strnicmp(name + 7, "oddupd", 6))
+			{
 				iniPrintf(";%s,%08x; commented by xebuild\n", name + 7, crc);
+			}
 			else
+			{
 				iniPrintf("%s,%08x\n", name + 7, crc);
-		} else
+			}
+		}
+		else
+		{
 			iniPrintf(";%s,%08x; commented by xebuild\n", name, crc32(data, len));
+		}
 	}
 	return 1;
 unparsed:
@@ -107,8 +131,10 @@ int iniWriteBl(void)
 	uint32_t cfLen, cgLen;
 	int ver, ret;
 
-	if (suGetCF(&cf, &cfLen)) {
-		if (suGetCG(&cg, &cgLen)) {
+	if (suGetCF(&cf, &cfLen))
+	{
+		if (suGetCG(&cg, &cgLen))
+		{
 			ver = getBeU16(cf + 20);
 			cfLen = getBeU32(cf + 12);
 			cgLen = getBeU32(cg + 12);
@@ -119,18 +145,26 @@ int iniWriteBl(void)
 			iniPrintf("cf_%d.bin,%08x\n", ver, crc32(cf, cfLen));
 			iniPrintf("cg_%d.bin,%08x\n\n", ver, crc32(cg, cgLen));
 			ret = 1;
-		} else {
+		}
+		else
+		{
 			log_printf(0, "***** ERROR: could not get CG data from SU!\n");
 			ret = 0;
 		}
-	} else {
+	}
+	else
+	{
 		log_printf(0, "***** ERROR: could not get CF data from SU!\n");
 		ret = 0;
 	}
 	if (cf)
+	{
 		free(cf);
+	}
 	if (cg)
+	{
 		free(cg);
+	}
 	return ret;
 }
 
@@ -140,22 +174,32 @@ uint32_t mode_ini(int argc, char **argv)
 
 	log_set_verbose(1);
 	memset(keys, 0, sizeof(keys));
-	if (loadKeyFile(keys, 0, "1blkey.txt") && !checkKeys(keys)) {
+	if (loadKeyFile(keys, 0, "1blkey.txt") && !checkKeys(keys))
+	{
 		log_printf(0, "\n***** WARNING: 1blkey.txt not found or invalid, cannot proceed.\n\n");
 		return 4;
 	}
 	if (argc != 1)
+	{
 		ini_usage();
-	if (suLoad(argv[0])) {
+	}
+	if (suLoad(argv[0]))
+	{
 		log_printf(0, "SU loaded successfully!\n");
 		strcpy(iniDir, suGetDir());
 		strcat(iniDir, "_SU.ini");
 		iniSetFile(iniDir);
-		if (iniWriteBl()) {
+		if (iniWriteBl())
+		{
 			if (iniWriteFlashfs())
+			{
 				log_printf(0, "\nCompleted output to %s\n", iniFile);
-		} else
+			}
+		}
+		else
+		{
 			log_printf(0, "***** ERROR unable to get CF/CG data from SU!\n");
+		}
 		return 0;
 	}
 	log_printf(0, "Error loading SU!\n");

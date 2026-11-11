@@ -5,7 +5,8 @@
 #include "xebuild.h"
 
 /* an STFS package being read */
-typedef struct {
+typedef struct
+{
 	uint8_t *data;
 	uint32_t *blocks;
 	size_t size;

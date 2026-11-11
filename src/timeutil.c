@@ -32,15 +32,18 @@ typedef short CSHORT;
 typedef long long LONGLONG;
 typedef unsigned long long ULONGLONG;
 
-typedef union {
-	struct {
+typedef union
+{
+	struct
+	{
 		DWORD LowPart;
 		DWORD HighPart;
 	} u;
 	LONGLONG QuadPart;
 } LARGE_INTEGER;
 
-typedef struct {
+typedef struct
+{
 	WORD Year;
 	WORD Month;
 	WORD Day;
@@ -94,7 +97,9 @@ int RtlTimeFieldsToTime(TIME_FIELDS *tfTimeFields, LARGE_INTEGER *Time)
 		[tfTimeFields->Month == 2 || IsLeapYear(tfTimeFields->Year)]
 		[tfTimeFields->Month - 1] ||
 	    tfTimeFields->Year < 1601)
+	{
 		return 0;
+	}
 
 	/* now calculate a day count from the date
 	 * First start counting years from March. This way the leap days
@@ -102,10 +107,13 @@ int RtlTimeFieldsToTime(TIME_FIELDS *tfTimeFields, LARGE_INTEGER *Time)
 	 * Formula's become so much less complicate that way.
 	 * To convert: add 12 to the month numbers of Jan and Feb, and
 	 * take 1 from the year */
-	if (tfTimeFields->Month < 3) {
+	if (tfTimeFields->Month < 3)
+	{
 		month = tfTimeFields->Month + 13;
 		year = tfTimeFields->Year - 1;
-	} else {
+	}
+	else
+	{
 		month = tfTimeFields->Month + 1;
 		year = tfTimeFields->Year;
 	}
@@ -162,10 +170,13 @@ void RtlTimeToTimeFields(const LARGE_INTEGER *liTime, TIME_FIELDS *TimeFields)
 	/* the result is based on a year starting on March.
 	 * To convert take 12 from Januari and Februari and
 	 * increase the year by one. */
-	if (months < 14) {
+	if (months < 14)
+	{
 		TimeFields->Month = months - 1;
 		TimeFields->Year = years + 1524;
-	} else {
+	}
+	else
+	{
 		TimeFields->Month = months - 13;
 		TimeFields->Year = years + 1525;
 	}
@@ -208,7 +219,8 @@ int SystemTimeToFileTime(const SYSTEMTIME *syst, FILETIME *ft)
 	tf.Second = syst->wSecond;
 	tf.Milliseconds = syst->wMilliseconds;
 
-	if (!RtlTimeFieldsToTime(&tf, &t)) {
+	if (!RtlTimeFieldsToTime(&tf, &t))
+	{
 		errno = EINVAL;
 		return 0;
 	}
@@ -224,7 +236,8 @@ int FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime)
 	time_t unixtime;
 	struct tm *tm;
 
-	if (!fatdate || !fattime) {
+	if (!fatdate || !fattime)
+	{
 		errno = EINVAL;
 		return 0;
 	}
@@ -232,20 +245,29 @@ int FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime)
 	li.u.HighPart = ft->dwHighDateTime;
 	t = li.QuadPart / TICKSPERSEC - SECS_1601_TO_1970;
 	if (li.QuadPart % TICKSPERSEC)
+	{
 		t++;
+	}
 	if (t & 1)
+	{
 		t++;
-	if (t > 0xffffffff) {
+	}
+	if (t > 0xffffffff)
+	{
 		errno = EINVAL;
 		return 0;
 	}
 	unixtime = t;
 	tm = gmtime(&unixtime);
 	if (fattime)
+	{
 		*fattime = (tm->tm_hour << 11) + (tm->tm_min << 5) + (tm->tm_sec / 2);
+	}
 	if (fatdate)
+	{
 		*fatdate = ((tm->tm_year - 80) << 9) + ((tm->tm_mon + 1) << 5)
 			   + tm->tm_mday;
+	}
 	return 1;
 }
 

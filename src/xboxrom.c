@@ -35,7 +35,8 @@ int blVerifySig(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, cons
 
 uint32_t blSign(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, const XECRYPT_RSAPRV_2048 *prvKey, const uint8_t *salt)
 {
-	struct {
+	struct
+	{
 		char salt[16];
 		uint8_t hash[20];
 		uint8_t sig[256];
@@ -45,11 +46,17 @@ uint32_t blSign(uint8_t *bl, unsigned int len, XECRYPT_RSAPUB_2048 *pubKey, cons
 	memcpy(s.salt, salt, 10);
 	XeCryptRotSumSha(bl, 16, bl + 0x120, len - 0x120, s.hash, 20);
 	if (!XeCryptBnQwBeSigCreate((XECRYPT_SIG *)s.sig, s.hash, salt, &prvKey->Rsa))
+	{
 		return 0;
+	}
 	if (!XeCryptBnQwNeRsaPrvCrypt((uint64_t *)s.sig, (uint64_t *)s.sig, &prvKey->Rsa))
+	{
 		return 0;
+	}
 	if (!XeCryptBnQwBeSigVerify((XECRYPT_SIG *)s.sig, s.hash, salt, &pubKey->Rsa))
+	{
 		return 0;
+	}
 	memcpy(bl + 0x20, s.sig, 256);
 	return 1;
 }
@@ -68,7 +75,9 @@ int blUpdateHash(uint8_t *bl, unsigned int len, uint8_t *stored)
 
 	XeCryptRotSumSha(bl, 16, bl + 0x20, len - 0x20, hash, 20);
 	if (memcmp(stored, hash, 20) == 0)
+	{
 		return 0;
+	}
 	memcpy(stored, hash, 20);
 	return 1;
 }

@@ -18,6 +18,10 @@ NOTES.md has the findings, layout and the pipeline.
   NOTES.md) and the app's reconstructed C directly in `src/`. `build.sh`
   compiles each with the per-object flags and original `__FILE__` path set
   there. Keep third-party licence notices intact.
+- App C style (`src/*.c`, `src/*.h`; not the third-party `src/crypto`): one tab
+  per indent level, Allman braces (every `{` on its own line, `else` on its
+  own line), and every `if`/`else`/`for`/`while` body braced, even a single
+  statement.
 - Shared app types live in `src/xebuild.h` and each object's exported
   prototypes in `src/<obj>.h` (NOTES.md, App headers); don't redeclare them
   in a .c. If a file's code needs another typing to match, use a cast or an

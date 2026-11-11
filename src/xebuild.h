@@ -81,13 +81,15 @@
 /* ---- Types ---- */
 
 /* a file and its size (netGetFile's, a dump's) */
-struct netfile {
+struct netfile
+{
 	uint8_t *data;
 	int size;
 };
 
 /* an input file of the image: xb.files */
-struct fileent {
+struct fileent
+{
 	char name[0x400];
 	uint32_t crc;
 	int type;
@@ -100,7 +102,8 @@ struct fileent {
 };
 
 /* an entry of the flash filesystem's file table */
-struct fsent {
+struct fsent
+{
 	char name[22];
 	uint16_t block;
 	uint32_t size;
@@ -108,7 +111,8 @@ struct fsent {
 };
 
 /* the flash image's header (big endian) */
-struct flashhdr {
+struct flashhdr
+{
 	uint16_t magic;
 	uint16_t build;
 	uint16_t qfe;
@@ -129,7 +133,8 @@ struct flashhdr {
 };
 
 /* what xeBuild's client (the console side) reports */
-struct consoleinfo {
+struct consoleinfo
+{
 	uint32_t version;		/* updsvr version; low byte: hv patches */
 	uint32_t kernel;
 	uint32_t usvrFlags;		/* files USVR offers: 2 blmod, 4 addons */
@@ -150,7 +155,8 @@ struct consoleinfo {
 };
 
 /* smc_config overrides from the ini */
-struct smcopts {
+struct smcopts
+{
 	uint32_t cpuTemp;
 	uint32_t gpuTemp;
 	uint32_t edramTemp;
@@ -167,12 +173,14 @@ struct smcopts {
 
 /* console_hdd's file manifest */
 struct mfFile;
-struct manifest {
+struct manifest
+{
 	struct mfFile *data;
 	char path[1024];
 	size_t size;
 	int count;
-	struct {
+	struct
+	{
 		void *data;
 		uint32_t len;
 		char path[1024];
@@ -184,7 +192,8 @@ struct manifest {
    only match with 19 to 21). */
 #define XB_ADDONS 19
 
-struct xebuild {
+struct xebuild
+{
 	int mode;
 	uint32_t flags;			/* console type (& 7), NAND flags */
 	uint32_t type;			/* build type */
@@ -265,7 +274,8 @@ struct xebuild {
 	int numPatches;			/* entries used in addons */
 	int nFiles;
 	int nFlashFiles;
-	struct {
+	struct
+	{
 		char name[0x400];
 		uint32_t offset;
 	} rawPatch[16];
@@ -276,14 +286,17 @@ struct xebuild {
 	uint32_t flashTime[10];
 	uint32_t flashCrc[10];
 	uint32_t nFlashFiles2;		/* the security file count */
-	union {
+	union
+	{
 		uint32_t mmcAnchor[0x80];	/* MMC anchor block */
-		struct {
+		struct
+		{
 			uint8_t anchor[0x1b];
 			uint8_t anchorNum;
 			uint16_t fsBlock;	/* writeFsTable's block (big endian) */
 			uint16_t fsReserved;	/* written as 0 */
-			struct {
+			struct
+			{
 				uint16_t type, size;
 			} mobileTab[9];
 		};

@@ -6,7 +6,8 @@
 #include "log.h"
 #include "smc.h"
 
-struct knownSmc {
+struct knownSmc
+{
 	uint32_t crc;
 	uint32_t size;
 };
@@ -23,8 +24,12 @@ int smcFindResetLimit(const uint8_t *smc, int len)
 	int i;
 
 	for (i = 4; i < len - 6; i++)
+	{
 		if (smc[i] == 0x05 && smc[i + 2] == 0xe5 && smc[i + 4] == 0xb4 && smc[i + 5] == 0x05)
+		{
 			return i;
+		}
+	}
 	return 0;
 }
 
@@ -37,8 +42,10 @@ int smcCheck(uint8_t *smc, int len, int type)
 	unsigned int i;
 
 	log_printf(1, "SMC checksum: %08x\n", crc);
-	for (i = 0; i < sizeof(knownSmcs) / sizeof(knownSmcs[0]); i++) {
-		if (crc == knownSmcs[i].crc) {
+	for (i = 0; i < sizeof(knownSmcs) / sizeof(knownSmcs[0]); i++)
+	{
+		if (crc == knownSmcs[i].crc)
+		{
 			log_printf(1, "known clean SMC found, type: %s v%d.%d(%d.%02d)\n", getConsoleTypeStr(ver),
 				smc[0x100] >> 4, smc[0x100] & 15, smc[0x101], smc[0x102]);
 			return 0;
@@ -47,15 +54,24 @@ int smcCheck(uint8_t *smc, int len, int type)
 	log_printf(1, "unknown SMC found, type: %s v%d.%d(%d.%02d)\n", getConsoleTypeStr(ver),
 		smc[0x100] >> 4, smc[0x100] & 15, smc[0x101], smc[0x102]);
 	if (type == BUILD_GLITCH)
+	{
 		return smcFindResetLimit(smc, len) == 0;
+	}
 	if (type == BUILD_JTAG)
+	{
 		goto patches;
-	if (type == BUILD_RETAIL || type > BUILD_DEVGL16) {
+	}
+	if (type == BUILD_RETAIL || type > BUILD_DEVGL16)
+	{
 		if (!smcFindResetLimit(smc, len))
+		{
 			return 1;
+		}
 patches:
 		if (findInstExists(smc, len, pat1, 3))
+		{
 			return 1;
+		}
 		return findInstExists(smc, len, &pat2, 4) != 0;
 	}
 	return 1;
@@ -66,29 +82,44 @@ void smcPatch(uint8_t *smc, int len, uint32_t flags)
 	uint8_t *data = smc + 4;
 	int dataLen = len - 4;
 
-	if (flags & 0x8000000) {
+	if (flags & 0x8000000)
+	{
 		int off = smcFindResetLimit(smc, len);
-		if (off) {
+		if (off)
+		{
 			log_printf(1, "patching SMC reset limit at offset: 0x%x\n", off);
 			smc[off] = 0;
 			smc[off + 1] = 0;
 			log_printf(1, "SMC reset limit patched successfully!\n");
-		} else
+		}
+		else
+		{
 			log_printf(0, "\n******* WARNING: could not patch SMC reset limit!\n\n");
+		}
 	}
-	if (flags & 0x400000) {
+	if (flags & 0x400000)
+	{
 		uint32_t inst = 0x22b390a2, repl = 0x22c3;
 		if (replaceInst(data, dataLen, &inst, 4, &repl, 4))
+		{
 			log_printf(1, "SMC EJECT button disabled successfully!\n");
+		}
 		else
+		{
 			log_printf(0, "\n******* WARNING: could not patch SMC to disable EJECT button.\n\n");
+		}
 	}
-	if (flags & 0x800000) {
+	if (flags & 0x800000)
+	{
 		uint32_t inst[2] = { 0x92cfa2e4, 0x22cea2e0 }, repl[2] = { 0x22d3e4, 0 };
 		if (replaceInst(data, dataLen, inst, 8, repl, 8))
+		{
 			log_printf(1, "SMC ROL center blink disabled successfully!\n");
+		}
 		else
+		{
 			log_printf(0, "\n******* WARNING: could not patch SMC to disable ROL center blinking\n\n");
+		}
 	}
 }
 

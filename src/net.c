@@ -25,7 +25,9 @@ static struct consoleinfo *netInfo;
 void netFree(void *p)
 {
 	if (p && p != &netEmpty)
+	{
 		free(p);
+	}
 }
 
 /* wait for the console's UDP beacon; its address, or 0 */
@@ -43,11 +45,13 @@ uint32_t netFindBeacon(void)
 
 	s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	addr = 0;
-	if (s == INVALID_SOCKET) {
+	if (s == INVALID_SOCKET)
+	{
 		log_printf(0, "unable to open socket, error %d\n", WSAGetLastError());
 		return addr;
 	}
-	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof one) == SOCKET_ERROR) {
+	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof one) == SOCKET_ERROR)
+	{
 		log_printf(0, "unable to set bcast socket option, error %d\n", WSAGetLastError());
 		closesocket(s);
 		return addr;
@@ -56,12 +60,14 @@ uint32_t netFindBeacon(void)
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(48);
 	sa.sin_addr.s_addr = INADDR_ANY;
-	if (bind(s, (struct sockaddr *)&sa, sizeof sa) == SOCKET_ERROR) {
+	if (bind(s, (struct sockaddr *)&sa, sizeof sa) == SOCKET_ERROR)
+	{
 		log_printf(0, "unable to set bind socket, error %d\n", WSAGetLastError());
 		closesocket(s);
 		return addr;
 	}
-	for (;;) {
+	for (;;)
+	{
 		memset(pkt, 0, sizeof pkt);
 		fromLen = sizeof from;
 		FD_ZERO(&fds);
@@ -69,18 +75,21 @@ uint32_t netFindBeacon(void)
 		tv.tv_sec = 30;
 		tv.tv_usec = 0;
 		r = select(0, &fds, NULL, NULL, &tv);
-		if (r == SOCKET_ERROR) {
+		if (r == SOCKET_ERROR)
+		{
 			log_printf(0, "Socket error! %d\n", WSAGetLastError());
 			closesocket(s);
 			return addr;
 		}
-		if (r == 0) {
+		if (r == 0)
+		{
 			log_printf(0, "UDP wait timeout!\n");
 			closesocket(s);
 			return addr;
 		}
 		recvfrom(s, (char *)pkt, sizeof pkt, 0, (struct sockaddr *)&from, &fromLen);
-		if (getBeU32(pkt) == BEACON_MAGIC) {
+		if (getBeU32(pkt) == BEACON_MAGIC)
+		{
 			addr = getLeU32(pkt + 4);
 			break;
 		}
@@ -117,7 +126,9 @@ int netSendStr(const char *s)
 	int len = strlen(s);
 
 	if (send(netSock, s, len, 0) != len)
+	{
 		return 0;
+	}
 	return 1;
 }
 
@@ -142,62 +153,93 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	FD_SET(netSock, &fds);
 	*len = 0;
 	r = select(0, &fds, NULL, NULL, &tv);
-	if (r == SOCKET_ERROR || r == 0) {
+	if (r == SOCKET_ERROR || r == 0)
+	{
 		log_printf(0, "timeout waiting for data, %d\n", WSAGetLastError());
 		return NULL;
 	}
 	r = recv(netSock, (char *)hdr, 4, 0);
-	if (r == SOCKET_ERROR || r == 0) {
+	if (r == SOCKET_ERROR || r == 0)
+	{
 		log_printf(0, "unable to fetch first 4 bytes, %d\n", WSAGetLastError());
 		return NULL;
 	}
 	size = getBeU32(hdr);
 	if (size == -1)
+	{
 		return NULL;
-	if (size) {
+	}
+	if (size)
+	{
 		buf = calloc(size, 1);
 		if (verbose)
+		{
 			printf("waiting for 0x%x bytes\n", size);
+		}
 		got = 0;
-		while (got < size) {
+		while (got < size)
+		{
 			r = select(0, &fds, NULL, NULL, &tv);
-			if (r == SOCKET_ERROR || r == 0) {
+			if (r == SOCKET_ERROR || r == 0)
+			{
 				log_printf(0, "timeout waiting for data, error %d\n", WSAGetLastError());
 				if (buf != (uint8_t *)&netEmpty)
+				{
 					free(buf);
+				}
 				size = 0;
 			}
 			if (!size)
+			{
 				return NULL;
+			}
 			r = recv(netSock, (char *)buf + got, size - got, 0);
-			if (r == SOCKET_ERROR) {
+			if (r == SOCKET_ERROR)
+			{
 				if (verbose)
+				{
 					putchar('\n');
+				}
 				log_printf(0, "could not receive data on socket, error %d\n",
 					   WSAGetLastError());
 				if (buf != (uint8_t *)&netEmpty)
+				{
 					free(buf);
+				}
 				status = 0;
 			}
 			if (status != 1)
+			{
 				break;
+			}
 			got += r;
 			if (verbose)
+			{
 				printf("received 0x%08x of 0x%08x\r", got, size);
+			}
 		}
 		if (status != 1)
+		{
 			return NULL;
+		}
 		if (verbose)
+		{
 			putchar('\n');
-		if (got == size) {
+		}
+		if (got == size)
+		{
 			*len = size;
 			return buf;
 		}
 		if (verbose)
+		{
 			putchar('\n');
+		}
 		log_printf(0, "received only %x of %x bytes! fail\n", got, size);
 		if (buf != (uint8_t *)&netEmpty)
+		{
 			free(buf);
+		}
 		return NULL;
 	}
 	*len = 0;
@@ -214,28 +256,39 @@ int netSendData(const uint8_t *buf, uint32_t len, int verbose)
 	int r;
 
 	setBeU32(len, hdr);
-	if (send(netSock, (char *)hdr, 4, 0) == SOCKET_ERROR) {
+	if (send(netSock, (char *)hdr, 4, 0) == SOCKET_ERROR)
+	{
 		log_printf(0, "socket error sending data size, %d\n", WSAGetLastError());
 		return 0;
 	}
 	sent = 0;
 	chunk = 1452;
-	while (sent < len) {
+	while (sent < len)
+	{
 		if (len - sent < 1452)
+		{
 			chunk = len - sent;
+		}
 		r = send(netSock, (char *)buf + sent, chunk, 0);
-		if (r == SOCKET_ERROR) {
+		if (r == SOCKET_ERROR)
+		{
 			if (verbose)
+			{
 				putchar('\n');
+			}
 			log_printf(0, "socket error sending data (1), %d\n", WSAGetLastError());
 			return 0;
 		}
 		sent += r;
 		if (verbose)
+		{
 			printf("sent 0x%08x of 0x%08x\r", sent, len);
+		}
 	}
 	if (verbose)
+	{
 		putchar('\n');
+	}
 	return 1;
 }
 
@@ -246,10 +299,14 @@ int netCheckOk(void)
 	uint8_t *r = netRecv(&len);
 
 	if (!r)
+	{
 		return 0;
+	}
 	ok = 0;
 	if (len == 2)
+	{
 		ok = getBeU16(r) == OK_REPLY;
+	}
 	netFree(r);
 	return ok;
 }
@@ -259,14 +316,16 @@ int netOpenSocket(uint32_t addr)
 	struct sockaddr_in sa;
 
 	netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (netSock == INVALID_SOCKET) {
+	if (netSock == INVALID_SOCKET)
+	{
 		log_printf(0, "could not create client socket, error %d\n", WSAGetLastError());
 		return 0;
 	}
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(49);
 	sa.sin_addr.s_addr = addr;
-	if (connect(netSock, (struct sockaddr *)&sa, sizeof sa) < 0) {
+	if (connect(netSock, (struct sockaddr *)&sa, sizeof sa) < 0)
+	{
 		log_printf(0, "could not connect, error %d\n", WSAGetLastError());
 		return 0;
 	}
@@ -280,11 +339,13 @@ int netReadInfo(void)
 	uint32_t len;
 	struct consoleinfo *info = NULL;
 
-	if (send(netSock, "GTIN\n", 5, 0) == 5) {
+	if (send(netSock, "GTIN\n", 5, 0) == 5)
+	{
 		len = 0;
 		info = (struct consoleinfo *)netRecv((int *)&len);
 	}
-	if (info && len >= sizeof *info) {
+	if (info && len >= sizeof *info)
+	{
 		info->pub1bl.Rsa.qwReserved = 0;
 		netInfo = info;
 		info->version = SWAP32(info->version);
@@ -320,69 +381,105 @@ uint32_t netConnect(const char *ip)
 {
 	WSADATA wsa;
 
-	if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
-		if (ip == NULL) {
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0)
+	{
+		if (ip == NULL)
+		{
 			struct sockaddr_in server;
 			uint32_t addr;
 			int connected = 0;
 
 			log_printf(0, "started, watching network for xbox...");
 			addr = netFindBeacon();
-			if (addr != 0) {
+			if (addr != 0)
+			{
 				log_printf(0, "success, found xbox beacon at %u.%u.%u.%u\n",
 					   addr & 0xff, (addr >> 8) & 0xff, (addr >> 16) & 0xff, addr >> 24);
 				log_printf(1, "attempting to connect...");
 				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-				if (netSock != INVALID_SOCKET) {
+				if (netSock != INVALID_SOCKET)
+				{
 					server.sin_family = AF_INET;
 					server.sin_port = htons(49);
 					server.sin_addr.s_addr = addr;
 					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0)
+					{
 						connected = 1;
+					}
 					else
+					{
 						log_printf(0, "could not connect, error %d\n",
 							   WSAGetLastError());
-				} else
+					}
+				}
+				else
+				{
 					log_printf(0, "could not create client socket, error %d\n",
 						   WSAGetLastError());
-				if (connected) {
+				}
+				if (connected)
+				{
 					log_printf(1, "success!\nGetting console info...");
 					if (netReadInfo())
+					{
 						goto ok;
+					}
 				}
-			} else
+			}
+			else
+			{
 				log_printf(0, "failed to find xbox beacon\n");
-		} else {
+			}
+		}
+		else
+		{
 			struct sockaddr_in sa, server;
 			int saLen = sizeof sa;
 			uint32_t addr;
 
-			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0) {
+			if (WSAStringToAddressA((char *)ip, AF_INET, NULL, (struct sockaddr *)&sa, &saLen) == 0)
+			{
 				log_printf(0, "attempting forced connection to %u.%u.%u.%u...",
 					   sa.sin_addr.S_un.S_un_b.s_b1, sa.sin_addr.S_un.S_un_b.s_b2,
 					   sa.sin_addr.S_un.S_un_b.s_b3, sa.sin_addr.S_un.S_un_b.s_b4);
 				addr = sa.sin_addr.s_addr;
 				netSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-				if (netSock != INVALID_SOCKET) {
+				if (netSock != INVALID_SOCKET)
+				{
 					server.sin_family = AF_INET;
 					server.sin_port = htons(49);
 					server.sin_addr.s_addr = addr;
-					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0) {
+					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0)
+					{
 						log_printf(0, "success!\n");
 						if (netReadInfo())
+						{
 							goto ok;
-					} else
+						}
+					}
+					else
+					{
 						log_printf(0, "could not connect, error %d\n",
 							   WSAGetLastError());
-				} else
+					}
+				}
+				else
+				{
 					log_printf(0, "could not create client socket, error %d\n",
 						   WSAGetLastError());
-			} else
+				}
+			}
+			else
+			{
 				log_printf(0, "attempting to convert %s to an address failed, error %d\n",
 					   ip, WSAGetLastError());
+			}
 		}
-	} else
+	}
+	else
+	{
 		log_printf(0, "WSAStartup failed, error %d\n", WSAGetLastError());
+	}
 	return 0;
 ok:
 	return 1;
@@ -392,16 +489,22 @@ void netClose(void)
 {
 	netFree(netInfo);
 	if (netSock != INVALID_SOCKET)
+	{
 		closesocket(netSock);
+	}
 }
 
 void netDisconnect(void)
 {
 	log_printf(0, "\ndisconnecting from server...");
 	if (netSendStr("QUIT\n"))
+	{
 		log_printf(0, "OK\n");
+	}
 	else
+	{
 		log_printf(0, "failed\n");
+	}
 	netClose();
 }
 
@@ -411,7 +514,8 @@ uint32_t netMount(const char *drive, const char *device)
 
 	sprintf(cmd, "MTPT%s: %s\n", drive, device);
 	log_printf(1, "mounting %s to %s:...", device, drive);
-	if (netSendStr(cmd) && netCheckOk()) {
+	if (netSendStr(cmd) && netCheckOk())
+	{
 		log_printf(1, "success!\n");
 		return 1;
 	}
@@ -425,7 +529,8 @@ uint32_t netUnmount(const char *drive)
 
 	sprintf(cmd, "UMPT%s:\n", drive);
 	log_printf(1, "unmounting %s:...", drive);
-	if (netSendStr(cmd) && netCheckOk()) {
+	if (netSendStr(cmd) && netCheckOk())
+	{
 		log_printf(1, "success!\n");
 		return 1;
 	}
@@ -439,7 +544,9 @@ uint8_t *netGetFile(const char *name, int *len)
 
 	sprintf(cmd, "GETF%s\n", name);
 	if (netSendStr(cmd))
+	{
 		return netRecv(len);
+	}
 	return 0;
 }
 
@@ -455,15 +562,21 @@ int netDumpNand(const char *path)
 
 	netTimerStart();
 	log_printf(0, "reading flash image from console...");
-	if (send(netSock, "GTFL\n", 5, 0) == 5) {
+	if (send(netSock, "GTFL\n", 5, 0) == 5)
+	{
 		buf = netRecvVerbose(&len, log_get_verbose() != 0);
-		if (buf) {
+		if (buf)
+		{
 			log_printf(1, "received 0x%x bytes data OK, writing to file %s...",
 				   len, path);
 			if (writeFile(path, buf, len))
+			{
 				log_printf(0, "success!\n");
+			}
 			else
+			{
 				log_printf(0, "failed!\n");
+			}
 			netTimerEnd();
 			netFree(buf);
 			return 1;
@@ -476,15 +589,20 @@ int netDumpNand(const char *path)
 uint8_t *netGetBldrs(int *len)
 {
 	if (netSendStr("GTBL\n"))
+	{
 		return netRecv(len);
+	}
 	return 0;
 }
 
 uint32_t netSendFlash(const uint8_t *buf, uint32_t len)
 {
 	if (!buf || !netSendStr("WRFL\n"))
+	{
 		return 0;
-	if (!netSendData(buf, len, log_get_verbose() != 0)) {
+	}
+	if (!netSendData(buf, len, log_get_verbose() != 0))
+	{
 		log_printf(0, "failed!\n");
 		return 0;
 	}
@@ -493,10 +611,13 @@ uint32_t netSendFlash(const uint8_t *buf, uint32_t len)
 		int rlen;
 		uint8_t *r = netRecv(&rlen);
 
-		if (r && rlen == 2 && getBeU16(r) == OK_REPLY) {
+		if (r && rlen == 2 && getBeU16(r) == OK_REPLY)
+		{
 			netFree(r);
 			log_printf(0, "success!\n");
-		} else {
+		}
+		else
+		{
 			netFree(r);
 			log_printf(0, "failed!\n");
 		}
@@ -511,7 +632,9 @@ uint8_t *netReadBlocks(int *len, uint32_t start, uint32_t count)
 
 	sprintf(cmd, "RBLK%04x%04x\n", (uint16_t)start, (uint16_t)count);
 	if (netSendStr(cmd))
+	{
 		return netRecvVerbose(len, log_get_verbose() != 0);
+	}
 	return 0;
 }
 
@@ -525,22 +648,32 @@ int netWriteBlocks(const uint8_t *buf, uint32_t len, uint32_t start, uint32_t co
 
 	sprintf(cmd, "WBLK%04x%04x\n", (uint16_t)start, (uint16_t)count);
 	if (netSendStr(cmd) <= 0)
+	{
 		return 0;
+	}
 	if (!netSendData(buf, len, log_get_verbose() != 0))
+	{
 		return 0;
+	}
 	{
 		int rlen;
 
 		r = netRecv(&rlen);
 		if (!r)
+		{
 			return 0;
+		}
 		ret = 0;
 		if (rlen == 2 && getBeU16(r) == OK_REPLY)
+		{
 			ret = 1;
+		}
 		netFree(r);
 	}
 	if (ret)
+	{
 		return 1;
+	}
 	return 0;
 }
 
@@ -555,22 +688,30 @@ int netEraseBlock(uint32_t block, uint32_t count)
 		int rlen;
 
 		if (!netSendStr(cmd))
+		{
 			return 0;
+		}
 		r = netRecv(&rlen);
 		if (!r)
+		{
 			return 0;
+		}
 		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);
 	}
 	if (ret)
+	{
 		return 1;
+	}
 	return 0;
 }
 
 uint8_t *netGetBadBlocks(int *len)
 {
 	if (netSendStr("GTBB\n"))
+	{
 		return netRecv(len);
+	}
 	return 0;
 }
 
@@ -582,27 +723,38 @@ int netSendFile(const char *name, const void *buf, uint32_t len)
 	uint8_t *r;
 
 	if (name && buf)
+	{
 		ok = 1;
-	if (ok) {
+	}
+	if (ok)
+	{
 		char cmd[264] = "SNDF";
 
 		strcpy(cmd + 4, name);
 		strcat(cmd, "\n");
 		if (netSendStr(cmd) <= 0)
+		{
 			return 0;
+		}
 		if (!netSendData(buf, len, log_get_verbose() != 0))
+		{
 			return 0;
+		}
 		{
 			int rlen;
 
 			r = netRecv(&rlen);
 			if (!r)
+			{
 				return 0;
+			}
 			ret = rlen == 2 && getBeU16(r) == OK_REPLY;
 			netFree(r);
 		}
 		if (ret)
+		{
 			return 1;
+		}
 		return 0;
 	}
 	return 0;
@@ -617,15 +769,21 @@ int netFormatSysex(void)
 		int len;
 
 		if (!netSendStr("FMEX\n"))
+		{
 			return 0;
+		}
 		r = netRecv(&len);
 		if (!r)
+		{
 			return 0;
+		}
 		ret = len == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);
 	}
 	if (ret)
+	{
 		return 1;
+	}
 	return 0;
 }
 
@@ -638,15 +796,21 @@ int netFormatCompat(void)
 		int len;
 
 		if (!netSendStr("FMCM\n"))
+		{
 			return 0;
+		}
 		r = netRecv(&len);
 		if (!r)
+		{
 			return 0;
+		}
 		ret = len == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);
 	}
 	if (ret)
+	{
 		return 1;
+	}
 	return 0;
 }
 
@@ -655,7 +819,8 @@ int netMkdir(const char *name)
 	int ret;
 	uint8_t *r;
 
-	if (name) {
+	if (name)
+	{
 		char cmd[264] = "MKDR";
 
 		strcpy(cmd + 4, name);
@@ -664,17 +829,25 @@ int netMkdir(const char *name)
 			int rlen;
 
 			if (!netSendStr(cmd))
+			{
 				return 0;
+			}
 			r = netRecv(&rlen);
 			if (!r)
+			{
 				return 0;
+			}
 			ret = 0;
 			if (rlen == 2 && getBeU16(r) == OK_REPLY)
+			{
 				ret = 1;
+			}
 			netFree(r);
 		}
 		if (ret)
+		{
 			return 1;
+		}
 		return 0;
 	}
 	return 0;
@@ -682,18 +855,29 @@ int netMkdir(const char *name)
 
 int netReboot(int how)
 {
-	if (how == 1) {
+	if (how == 1)
+	{
 		log_printf(0, "sending shutdown command...");
 		if (netSendStr("SHDN\n"))
+		{
 			log_printf(0, "OK\n");
+		}
 		else
+		{
 			log_printf(0, "failed\n");
-	} else if (how == 2) {
+		}
+	}
+	else if (how == 2)
+	{
 		log_printf(0, "sending reboot command...");
 		if (netSendStr("REEB\n"))
+		{
 			log_printf(0, "OK\n");
+		}
 		else
+		{
 			log_printf(0, "failed\n");
+		}
 	}
 	return 1;
 }
@@ -707,11 +891,15 @@ int netWritePatches(const uint8_t *buf, uint32_t len)
 		int rlen;
 
 		if (netSendStr("WBPT\n") <= 0 || !netSendData(buf, len, 0) || !(r = netRecv(&rlen)))
+		{
 			return 0;
+		}
 		ret = rlen == 2 && getBeU16(r) == OK_REPLY;
 		netFree(r);
 	}
 	if (ret)
+	{
 		return 1;
+	}
 	return 0;
 }

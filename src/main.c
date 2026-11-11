@@ -32,7 +32,8 @@ char separator[] ="-------------------------------------------------------------
 static void sigHandler(int sig)
 {
 	printf("\n\nAn unhandled exception has occurred:\n\t");
-	switch (sig) {
+	switch (sig)
+	{
 	case SIGABRT:
 		puts("SIGABRT: abnormal termination triggered by abort call");
 		break;
@@ -72,41 +73,64 @@ int verifyFlashFile(int i)
 	char *name;
 	int ok = 0;
 
-	if (xb.flashBuf[i]) {
-		if (xb.flashSize[i]) {
+	if (xb.flashBuf[i])
+	{
+		if (xb.flashSize[i])
+		{
 			name = xb.flashFiles[i];
-			if (!strnicmp(name, "fcrt.bin", 8)) {
+			if (!strnicmp(name, "fcrt.bin", 8))
+			{
 				if (verifyFcrt(xb.flashBuf[i], xb.flashSize[i]))
+				{
 					ok = 1;
-			} else if (!strnicmp(name, "extended.bin", 12)) {
+				}
+			}
+			else if (!strnicmp(name, "extended.bin", 12))
+			{
 				if (verifyExtended(xb.flashBuf[i], xb.flashSize[i]))
+				{
 					ok = 1;
-			} else if (!strnicmp(name, "crl.bin", 7)) {
-				if (verifyCrl(xb.flashBuf[i], xb.flashSize[i], 1)) {
+				}
+			}
+			else if (!strnicmp(name, "crl.bin", 7))
+			{
+				if (verifyCrl(xb.flashBuf[i], xb.flashSize[i], 1))
+				{
 					setCrlKey((uint8_t *)xb.flashBuf[i] + 288);
 					ok = 1;
 				}
-			} else if (!strnicmp(name, "dae.bin", 7)) {
-				if (verifyDae(xb.flashBuf[i], xb.flashSize[i])) {
+			}
+			else if (!strnicmp(name, "dae.bin", 7))
+			{
+				if (verifyDae(xb.flashBuf[i], xb.flashSize[i]))
+				{
 					setDaeKey((uint8_t *)xb.flashBuf[i] + 288);
 					ok = 1;
 				}
-			} else if (!strnicmp(name, "secdata.bin", 11)) {
-				if (verifySecdata(xb.flashBuf[i], xb.flashSize[i])) {
+			}
+			else if (!strnicmp(name, "secdata.bin", 11))
+			{
+				if (verifySecdata(xb.flashBuf[i], xb.flashSize[i]))
+				{
 					setSecdataKey((uint8_t *)xb.flashBuf[i] + 16);
 					ok = 1;
 				}
-			} else if (!strnicmp(name, "odd.bin", 7)) {
+			}
+			else if (!strnicmp(name, "odd.bin", 7))
+			{
 				ok = 1;
 			}
-			if (ok) {
+			if (ok)
+			{
 				log_printf(1, "verified! Will use if external file not found.\n");
 				return 1;
 			}
 			log_printf(1, "verify failed! Discarding data.\n");
 		}
 		if (xb.flashBuf[i])
+		{
 			free(xb.flashBuf[i]);
+		}
 	}
 	xb.flashBuf[i] = 0;
 	xb.flashSize[i] = 0;
@@ -115,7 +139,8 @@ int verifyFlashFile(int i)
 
 void logButton(int level, int code)
 {
-	switch (code) {
+	switch (code)
+	{
 	case 0x11:
 		log_printf(level, "power button\n");
 		break;
@@ -136,33 +161,53 @@ void logButton(int level, int code)
 		break;
 	case 0x59:
 		if (IS_SLIM)
+		{
 			log_printf(level, "wired controller (rear top usb port)\n");
+		}
 		else
+		{
 			log_printf(level, "wired controller (INVALID FOR FATS!!)\n");
+		}
 		break;
 	case 0x58:
 		if (IS_SLIM)
+		{
 			log_printf(level, "wired controller (rear middle usb port)\n");
+		}
 		else
+		{
 			log_printf(level, "wired controller (INVALID FOR FATS!!)\n");
+		}
 		break;
 	case 0x5a:
 		if (IS_SLIM)
+		{
 			log_printf(level, "wired controller (rear bottom usb port)\n");
+		}
 		else
+		{
 			log_printf(level, "wired controller (rear usb port)\n");
+		}
 		break;
 	case 0x56:
 		if (IS_SLIM)
+		{
 			log_printf(level, "wired controller (front left usb port)\n");
+		}
 		else
+		{
 			log_printf(level, "wired controller (front top usb port)\n");
+		}
 		break;
 	case 0x57:
 		if (IS_SLIM)
+		{
 			log_printf(level, "wired controller (front right usb port)\n");
+		}
 		else
+		{
 			log_printf(level, "wired controller (front bottom usb port)\n");
+		}
 		break;
 	default:
 		log_printf(level, "console eject button\n");
@@ -180,10 +225,13 @@ void showConsoleInfo(void)
 	log_printf(0, separator);
 	k = xb.kernel;
 	if (k)
+	{
 		log_printf(0, "Kernel    : %d.%d.%d.%d\n", k >> 28, (k >> 24) & 0xf,
 			   (uint16_t)(k >> 8), k & 0xf);
+	}
 	log_printf(0, "Console   : ");
-	switch (xb.flags & (NAND_BIG_BLOCK | CONSOLE_MASK)) {
+	switch (xb.flags & (NAND_BIG_BLOCK | CONSOLE_MASK))
+	{
 	case CONSOLE_XENON:
 		log_printf(0, "Xenon\n");
 		break;
@@ -216,33 +264,53 @@ void showConsoleInfo(void)
 		break;
 	}
 	log_printf(0, "NAND size : ");
-	if (xb.flags & NAND_MMC) {
+	if (xb.flags & NAND_MMC)
+	{
 		log_printf(0, "48MiB MMC (system only)");
-	} else if (xb.flags & NAND_BIG_BLOCK) {
+	}
+	else if (xb.flags & NAND_BIG_BLOCK)
+	{
 		if (xb.nandMu)
+		{
 			log_printf(0, "64MiB + NAND MU area");
+		}
 		else
+		{
 			log_printf(0, "64MiB (system only)");
+		}
 		if (xb.flags & NAND_BIG_FFS)
+		{
 			log_printf(0, " (extended size FFS)");
-	} else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT) {
+		}
+	}
+	else if (xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT)
+	{
 		log_printf(0, "64MiB (small block)");
-	} else {
+	}
+	else
+	{
 		log_printf(0, "16MiB");
 	}
 	log_printf(0, "\n");
 	log_printf(0, "Build     : ");
-	switch (xb.type) {
+	switch (xb.type)
+	{
 	case BUILD_JTAG:
 		log_printf(0, "JTAG\n");
 		break;
 	case BUILD_GLITCH:
 		if (xb.glitch2mfg)
+		{
 			log_printf(0, "Glitch (v2 mfg)\n");
+		}
 		else if (xb.glitch2)
+		{
 			log_printf(0, "Glitch (v2)\n");
+		}
 		else
+		{
 			log_printf(0, "Glitch\n");
+		}
 		break;
 	case BUILD_RETAIL:
 		log_printf(0, "Retail\n");
@@ -266,74 +334,107 @@ void showConsoleInfo(void)
 		log_printf(0, "Testkit16\n");
 		break;
 	}
-	if (xb.type >= BUILD_GLITCH && xb.type <= BUILD_DEVGL16) {
+	if (xb.type >= BUILD_GLITCH && xb.type <= BUILD_DEVGL16)
+	{
 		log_printf(0, "Xell      : power on console with ");
 		logButton(0, xb.xellButton);
-		if (xb.xellAltButton) {
+		if (xb.xellAltButton)
+		{
 			log_printf(0, "XellAlt   : power on console with ");
 			logButton(0, xb.xellAltButton);
 		}
-	} else if (xb.type == BUILD_JTAG) {
-		if (!(xb.bootFlags & 4)) {
+	}
+	else if (xb.type == BUILD_JTAG)
+	{
+		if (!(xb.bootFlags & 4))
+		{
 			log_printf(0, "Xell      : starts if tray is ");
 			if (!(xb.bootFlags & 2))
+			{
 				log_printf(0, "fully out at boot time\n");
+			}
 			else
+			{
 				log_printf(0, "not closed at boot time\n");
-		} else {
+			}
+		}
+		else
+		{
 			log_printf(0, "Xell      : power on console with ");
 			logButton(0, xb.xellButton);
-			if (xb.xellAltButton) {
+			if (xb.xellAltButton)
+			{
 				log_printf(0, "XellAlt   : power on console with ");
 				logButton(0, xb.xellAltButton);
 			}
 		}
-		if (xb.dualButton) {
+		if (xb.dualButton)
+		{
 			log_printf(0, "Dualboot  : power on console with ");
 			logButton(0, xb.dualButton);
 		}
 	}
 	if ((xb.type == BUILD_JTAG || xb.type == BUILD_GLITCH) && (xb.bootFlags & 9))
+	{
 		log_printf(0, "UART      : cygnos/demon speed set\n");
+	}
 	p = kvGetConsoleId();
-	if (p) {
+	if (p)
+	{
 		memcpy(buf, p, 12);
 		buf[12] = 0;
 		log_printf(0, "Serial    : %s\n", buf);
 	}
 	if (kvGetSerial(buf))
+	{
 		log_printf(0, "ConsoleId : %s\n", buf);
+	}
 	p = kvGetConsoleCert();
-	if (p) {
+	if (p)
+	{
 		log_printf(0, "MoboSerial: ");
 		for (i = 0; i < 8; i++)
+		{
 			log_printf(0, "%02X", p[i]);
+		}
 		log_printf(0, "\n");
 	}
 	if (kvGetMfgDate(buf))
+	{
 		log_printf(0, "Mfg Date  : %s\n", buf);
+	}
 	log_printf(0, "CPU Key   : ");
 	showKey(0, xb.cpuKey);
 	log_printf(0, "\n1BL Key   : ");
 	showKey(0, xb.key1bl);
 	log_printf(0, "\n");
 	p = kvGetDvdKey();
-	if (p) {
+	if (p)
+	{
 		log_printf(0, "DVD Key   : ");
 		for (i = 0; i < 16; i++)
+		{
 			log_printf(0, "%02X", p[i]);
-		if (xb.bootFlags & 0x2000000) {
+		}
+		if (xb.bootFlags & 0x2000000)
+		{
 			if (xb.type == BUILD_RETAIL)
+			{
 				log_printf(0, " (retail - not patched!)");
+			}
 			else
+			{
 				log_printf(0, " (patched)");
+			}
 		}
 		log_printf(0, "\n");
 	}
 	log_printf(0, "CF LDV    : %d\n", xb.cfLdv);
-	if (kvIsLoaded()) {
+	if (kvIsLoaded())
+	{
 		log_printf(0, "KV type   : ");
-		switch (kvGetType()) {
+		switch (kvGetType())
+		{
 		case 1:
 			log_printf(0, "type2 (hashed - unchecked, master key not available)\n");
 			break;
@@ -349,7 +450,9 @@ void showConsoleInfo(void)
 		}
 	}
 	if (xb.sha1Write && xb.sha1File[0])
+	{
 		log_printf(0, "SHA-1 file: %s\n", xb.sha1File);
+	}
 }
 
 void initGlobals(void)
@@ -371,16 +474,24 @@ void setBasePath(const char *argv0)
 	char *p;
 
 	if (!argv0)
+	{
 		return;
+	}
 	strcpy(path, argv0);
 	p = strrchr(path, '/');
 	if (!p)
+	{
 		p = strrchr(path, '\\');
+	}
 	if (!p)
+	{
 		return;
+	}
 	*p = 0;
 	if (!chdir(path))
+	{
 		log_printf(0, "base path changed to %s\n", path);
+	}
 }
 
 int main(int argc, char **argv)
@@ -395,59 +506,88 @@ int main(int argc, char **argv)
 	log_printf(0, "     %s v%d.%02d.%s\n", XEBUILD_NAME, XEBUILD_MAJOR,
 		   XEBUILD_MINOR, XEBUILD_BUILD);
 	log_printf(0, separator);
-	if (argc > 1) {
+	if (argc > 1)
+	{
 		setBasePath(argv[0]);
-		if (!strnicmp(argv[1], "ini", 3)) {
+		if (!strnicmp(argv[1], "ini", 3))
+		{
 			xb.mode = 4;
 			log_printf(0, "---- { Ini Mode } ----\n");
 			ret = mode_ini(argc - 2, argv + 2);
 			goto done;
-		} else if (!strnicmp(argv[1], "client", 6)) {
+		}
+		else if (!strnicmp(argv[1], "client", 6))
+		{
 			log_printf(0, "---- { Client Mode } ----\n");
 			xb.mode = 3;
 			ret = mode_client(argc - 2, argv + 2);
 			goto done;
-		} else if (!strnicmp(argv[1], "update", 6)) {
+		}
+		else if (!strnicmp(argv[1], "update", 6))
+		{
 			xb.mode = 2;
 			log_printf(0, "---- { Update Mode } ----\n");
 			ret = mode_update(argc - 2, argv + 2);
-		} else if (!strnicmp(argv[1], "extract", 7)) {
+		}
+		else if (!strnicmp(argv[1], "extract", 7))
+		{
 			xb.mode = 5;
 			log_printf(0, "---- { Extract Mode } ----\n");
 			ret = mode_extract(argc - 2, argv + 2);
 			goto done;
-		} else {
+		}
+		else
+		{
 			xb.mode = 1;
 			log_printf(0, "---- { Image Build Mode } ----\n");
 			if (!strnicmp(argv[1], "build", 5))
+			{
 				ret = mode_build(argc - 2, argv + 2);
+			}
 			else
+			{
 				ret = mode_build(argc - 1, argv + 1);
+			}
 		}
-	} else {
+	}
+	else
+	{
 		log_printf(0, "ERROR: invalid command line, you need to specify parameters!\n");
 		build_usage();
 	}
 	if (!ret)
+	{
 		showConsoleInfo();
+	}
 done:
 	suFree();
 	imageFree();
 	if (xb.iniBuf)
+	{
 		free(xb.iniBuf);
+	}
 	if (xb.pub1bl)
+	{
 		free(xb.pub1bl);
+	}
 	if (xb.pubPirs)
+	{
 		free(xb.pubPirs);
+	}
 	if (xb.masterPub)
+	{
 		free(xb.masterPub);
+	}
 	if (xb.prvKey)
+	{
 		free(xb.prvKey);
+	}
 	log_printf(0, separator);
 	log_printf(0, "    %s Finished. Have a nice day.\n", XEBUILD_NAME);
 	log_printf(0, separator);
 	log_finish();
-	if (promptEnter) {
+	if (promptEnter)
+	{
 		log_printf(0, "\npress <enter> to quit...\n");
 		fgetc(stdin);
 	}

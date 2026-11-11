@@ -19,7 +19,9 @@ static int kvType;
 int kvGetType(void)
 {
 	if (kvHashOk)
+	{
 		return kvType;
+	}
 	return 0;
 }
 
@@ -34,17 +36,26 @@ int kvCheckHash(void)
 	uint32_t v;
 
 	if (!kvLoaded)
+	{
 		return 0;
-	for (i = 0; i < 16; i++) {
+	}
+	for (i = 0; i < 16; i++)
+	{
 		v = getBeU32(kv + 0x1df8 + i * 4);
-		if (v != 0 && v != 0xffffffff) {
-			if (!xb.masterPub) {
+		if (v != 0 && v != 0xffffffff)
+		{
+			if (!xb.masterPub)
+			{
 				log_printf(1, "Master RSA pub not available, not checking hash\n");
 				kvType = 1;
-			} else if (kvVerifySig(kvBuf, xb.masterPub, xb.cpuKey)) {
+			}
+			else if (kvVerifySig(kvBuf, xb.masterPub, xb.cpuKey))
+			{
 				kvType = 3;
 				log_printf(1, "Keyvault hash is good!\n");
-			} else {
+			}
+			else
+			{
 				kvType = 2;
 				log_printf(0, "***** WARNING: Keyvault hash is not good! Keyvault may be corrupt or does not belong to this CPU key!\n");
 			}
@@ -60,13 +71,18 @@ void kvSet(uint8_t *buf)
 	kvLoaded = 1;
 	kv = kvBuf;
 	log_printf(1, "decrypted keyvault has been set for reference\n");
-	if (dvdKeySet) {
-		if (xb.type != BUILD_RETAIL) {
+	if (dvdKeySet)
+	{
+		if (xb.type != BUILD_RETAIL)
+		{
 			memcpy(buf + 0x100, dvdKey, 16);
 			memcpy(kv + 0x100, dvdKey, 16);
 			log_printf(1, "dvd key patched into keyvault\n");
-		} else
+		}
+		else
+		{
 			log_printf(1, "retail image, skipping patching dvd key\n");
+		}
 	}
 	kvHashOk = kvCheckHash();
 }
@@ -77,14 +93,21 @@ int kvGetGameRegion(void)
 	uint16_t f;
 
 	if (!kvLoaded)
+	{
 		return 0;
+	}
 	x = *(uint16_t *)(kv + 0x1c);
 	f = ((x & 0xff) << 8) + (x >> 8);
-	if (f) {
+	if (f)
+	{
 		if (f & 0x300)
+		{
 			return 2;
+		}
 		if (f & 0x20)
+		{
 			return 1;
+		}
 	}
 	return ((((x & 0xff) << 8) + (x >> 8)) & 0x120) != 0;
 }
@@ -92,14 +115,18 @@ int kvGetGameRegion(void)
 uint8_t *kvGetDvdKey(void)
 {
 	if (!kvLoaded)
+	{
 		return 0;
+	}
 	return kv + 0x100;
 }
 
 uint8_t *kvGetConsoleId(void)
 {
 	if (!kvLoaded)
+	{
 		return 0;
+	}
 	return kv + 0xb0;
 }
 
@@ -110,13 +137,17 @@ int kvGetSerial(char *out)
 	int ret = 0;
 	uint8_t digit, *p;
 
-	if (kvLoaded && out) {
+	if (kvLoaded && out)
+	{
 		p = kv + 0x9ca;
 		v = *p++;
 		for (i = 1; i < 5; i++)
+		{
 			v = (v << 8) + *p++;
+		}
 		digit = p[-1] & 0xf;
-		if (digit <= 9) {
+		if (digit <= 9)
+		{
 			sprintf(out, "%011I64u%X", v >> 4, digit);
 			ret = 1;
 		}
@@ -127,14 +158,18 @@ int kvGetSerial(char *out)
 uint8_t *kvGetConsoleCert(void)
 {
 	if (!kvLoaded)
+	{
 		return 0;
+	}
 	return kv + 0xc0;
 }
 
 int kvGetMfgDate(char *out)
 {
 	if (!kvLoaded || !out)
+	{
 		return 0;
+	}
 	sprintf(out, "%c%c/%c%c/20%c%c", kv[0x9e4], kv[0x9e5], kv[0x9e7], kv[0x9e8], kv[0x9ea], kv[0x9eb]);
 	return 1;
 }
@@ -150,14 +185,20 @@ uint32_t kvSetDvdKey(char *key)
 	int i;
 	uint32_t r;
 
-	if (len == 32) {
+	if (len == 32)
+	{
 		r = validateString(key);
-		if (r) {
+		if (r)
+		{
 			for (i = 0; i < 16; i++, key += 2)
+			{
 				dvdKey[i] = myatox8(key);
+			}
 			log_printf(1, "DVD Key set to: 0x");
 			for (i = 0; i < 16; i++)
+			{
 				log_printf(1, "%02X", dvdKey[i]);
+			}
 			log_printf(1, "\n");
 			dvdKeySet = 1;
 			return 1;

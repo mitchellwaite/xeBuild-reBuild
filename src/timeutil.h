@@ -7,11 +7,13 @@
 /* cdecl ports of the Win32 time functions, with their types */
 typedef unsigned short WORD;
 typedef unsigned int DWORD;
-typedef struct {
+typedef struct
+{
 	DWORD dwLowDateTime;
 	DWORD dwHighDateTime;
 } FILETIME;
-typedef struct {
+typedef struct
+{
 	WORD wYear;
 	WORD wMonth;
 	WORD wDayOfWeek;

@@ -73,7 +73,8 @@ void build_usage(void)
 	log_printf(0, "      example: -8 myfile.bin,0x12345\n");
 	log_printf(0, "      example: -8 myfile.bin,0x12345;myotherfile.bin,0x54321\n");
 	log_printf(0, separator);
-	if (promptEnter) {
+	if (promptEnter)
+	{
 		log_printf(0, "\npress <enter> to quit...\n");
 		fgetc(stdin);
 	}
@@ -87,14 +88,18 @@ int loadKeyFile(char *key, const char *dir, const char *name)
 	size_t n;
 
 	if (dir)
+	{
 		strcpy(path, dir);
+	}
 	strcat(path, name);
 	f = fopen(path, "rb");
-	if (f) {
+	if (f)
+	{
 		log_printf(1, "loading %s from %s\n", name, path);
 		n = fread(key, 32, 1, f);
 		fclose(f);
-		if (n == 1) {
+		if (n == 1)
+		{
 			key[32] = 0;
 			return 1;
 		}
@@ -109,15 +114,19 @@ void loadKey(const char *desc, const char *file, void **out, uint32_t size, uint
 	uint32_t s;
 
 	strcat(path, file);
-	if (!FileExists(path)) {
+	if (!FileExists(path))
+	{
 		strcpy(path, "./common/");
 		strcat(path, file);
 	}
 	*out = FileToBuffer(path, &len);
-	if (*out) {
-		if (len == size) {
+	if (*out)
+	{
+		if (len == size)
+		{
 			s = sumBytes(*out, size);
-			if (s == sum) {
+			if (s == sum)
+			{
 				log_printf(1, "loaded %s from file %s\n", desc, path);
 				return;
 			}
@@ -125,8 +134,11 @@ void loadKey(const char *desc, const char *file, void **out, uint32_t size, uint
 		}
 		free(*out);
 		*out = 0;
-	} else if (!quiet)
+	}
+	else if (!quiet)
+	{
 		log_printf(1, "%s (%s) not available, signature checks will not be performed\n", desc, file);
+	}
 }
 
 void loadKeys(void)
@@ -149,145 +161,224 @@ int mode_build(int argc, char **argv)
 	int ret;
 
 	xb.nRawPatches = 0;
-	for (i = 0; i < argc; i++) {
-		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2)) {
+	for (i = 0; i < argc; i++)
+	{
+		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2))
+		{
 			build_usage();
-		} else if (!strnicmp(argv[i], "-noenter", 8)) {
+		}
+		else if (!strnicmp(argv[i], "-noenter", 8))
+		{
 			log_printf(1, "<enter> key on completion suppressed\n");
 			promptEnter = 0;
-		} else if (!strnicmp(argv[i], "-norandom", 9)) {
+		}
+		else if (!strnicmp(argv[i], "-norandom", 9))
+		{
 			log_printf(1, "disabling random nonces\n");
 			xb.randomKeys = 0;
-		} else if (!strnicmp(argv[i], "-t", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-t", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -t on command line but no argument provided!\n");
 				build_usage();
 			}
-			if (!strnicmp(argv[i], "retail", 6)) {
+			if (!strnicmp(argv[i], "retail", 6))
+			{
 				log_printf(0, "building retail image\n");
 				xb.type = BUILD_RETAIL;
-			} else if (!strnicmp(argv[i], "jtag", 4)) {
+			}
+			else if (!strnicmp(argv[i], "jtag", 4))
+			{
 				log_printf(0, "building jtag image\n");
 				xb.type = BUILD_JTAG;
-			} else if (!strnicmp(argv[i], "glitch2m", 8)) {
+			}
+			else if (!strnicmp(argv[i], "glitch2m", 8))
+			{
 				log_printf(0, "building glitch2 mfg image\n");
 				xb.glitch2mfg = 1;
 				xb.glitch2 = 1;
 				xb.type = BUILD_GLITCH;
-			} else if (!strnicmp(argv[i], "glitch2", 7)) {
+			}
+			else if (!strnicmp(argv[i], "glitch2", 7))
+			{
 				log_printf(0, "building glitch2 image\n");
 				xb.glitch2 = 1;
 				xb.type = BUILD_GLITCH;
-			} else if (!strnicmp(argv[i], "glitch", 6)) {
+			}
+			else if (!strnicmp(argv[i], "glitch", 6))
+			{
 				log_printf(0, "building glitch image\n");
 				xb.type = BUILD_GLITCH;
-			} else if (!strnicmp(argv[i], "devkit16", 8)) {
+			}
+			else if (!strnicmp(argv[i], "devkit16", 8))
+			{
 				log_printf(0, "building devkit16 image\n");
 				xb.type = BUILD_DEVKIT16;
-			} else if (!strnicmp(argv[i], "devkit", 6)) {
+			}
+			else if (!strnicmp(argv[i], "devkit", 6))
+			{
 				log_printf(0, "building devkit image\n");
 				xb.type = BUILD_DEVKIT;
-			} else if (!strnicmp(argv[i], "testkit16", 9)) {
+			}
+			else if (!strnicmp(argv[i], "testkit16", 9))
+			{
 				log_printf(0, "building testkit16 image\n");
 				xb.type = BUILD_TESTKIT16;
-			} else if (!strnicmp(argv[i], "testkit", 7)) {
+			}
+			else if (!strnicmp(argv[i], "testkit", 7))
+			{
 				log_printf(0, "building testkit image\n");
 				xb.type = BUILD_TESTKIT;
-			} else if (!strnicmp(argv[i], "devgl16", 7)) {
+			}
+			else if (!strnicmp(argv[i], "devgl16", 7))
+			{
 				log_printf(0, "building devgl16 image\n");
 				xb.type = BUILD_DEVGL16;
-			} else if (!strnicmp(argv[i], "devgl", 5)) {
+			}
+			else if (!strnicmp(argv[i], "devgl", 5))
+			{
 				log_printf(0, "building devgl image\n");
 				xb.type = BUILD_DEVGL;
-			} else {
+			}
+			else
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -t on command line followed by unknown argument '%s'!\n", argv[i]);
 				build_usage();
 			}
-		} else if (!strnicmp(argv[i], "-c", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-c", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: console type flag -c on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
-			if (!setConsoleType(argv[i])) {
+			if (!setConsoleType(argv[i]))
+			{
 				log_printf(0, "ERROR: invalid command line, console type %s unknown!\n", argv[i]);
 				build_usage();
 			}
-		} else if (!strnicmp(argv[i], "-o", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-o", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -o on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
-			if (!parseCmdOptions(argv[i])) {
+			if (!parseCmdOptions(argv[i]))
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -o on command line with invalid arguments!\n", argv[i]);
 				build_usage();
 			}
-		} else if (!strnicmp(argv[i], "-8", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-8", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -8 on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
-			if (!parseRawPatches(argv[i])) {
+			if (!parseRawPatches(argv[i]))
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -8 on command line with invalid arguments!\n", argv[i]);
 				build_usage();
 			}
-		} else if (!strnicmp(argv[i], "-s", 2)) {
+		}
+		else if (!strnicmp(argv[i], "-s", 2))
+		{
 			xb.sha1Write = 1;
-			if (argv[++i] && i != argc && argv[i][0] != '-') {
+			if (argv[++i] && i != argc && argv[i][0] != '-')
+			{
 				strcpy(xb.sha1File, argv[i]);
 				log_printf(1, "outputting SHA-1 hash of final image to custom file %s\n", argv[i]);
-			} else
+			}
+			else
+			{
 				log_printf(1, "outputting SHA-1 hash of final image to auto file\n");
-		} else if (!strnicmp(argv[i], "-a", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+			}
+		}
+		else if (!strnicmp(argv[i], "-a", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -a on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
-			if (xb.numPatches < 16) {
+			if (xb.numPatches < 16)
+			{
 				strcpy(xb.addons[xb.numPatches].name, argv[i]);
 				strcat(xb.addons[xb.numPatches].name, ".bin");
 				xb.numPatches++;
-			} else
+			}
+			else
+			{
 				log_printf(0, "***** WARNING: exceeded total number of optional patches with -a %s!\n", argv[i]);
-		} else if (!strnicmp(argv[i], "-r", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+			}
+		}
+		else if (!strnicmp(argv[i], "-r", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: option flag -r on command line but no argument provided!\n");
 				build_usage();
 			}
 			if (xb.blSuffix[0])
+			{
 				log_printf(0, "***** WARNING: option flag -r %s on command line replacing previous setting of -r %s!\n", argv[i], xb.blSuffix + 1);
+			}
 			sprintf(xb.blSuffix, "_%s", argv[i]);
-		} else if (!strnicmp(argv[i], "-p", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-p", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: CPU key flag -p on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
 			log_printf(1, "CPU key overridden from command line, not looking for cpukey.txt\n");
-			if (strlen(argv[i]) != 32) {
+			if (strlen(argv[i]) != 32)
+			{
 				log_printf(0, "ERROR: invalid command line, CPU key incorrect size!\n");
 				build_usage();
 			}
 			if (!setCpuKeyStr(argv[i]))
+			{
 				build_usage();
+			}
 			have |= 1;
 			strcpy(cpuKey, argv[i]);
-		} else if (!strnicmp(argv[i], "-b", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-b", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: 1BL key flag -b on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
 			log_printf(1, "1BL key overridden from command line, not looking for 1blkey.txt\n");
-			if (strlen(argv[i]) != 32) {
+			if (strlen(argv[i]) != 32)
+			{
 				log_printf(0, "ERROR: invalid command line, 1BL key incorrect size!\n");
 				build_usage();
 			}
 			if (!checkKeys(argv[i]))
+			{
 				build_usage();
+			}
 			have |= 2;
 			strcpy(key1bl, argv[i]);
-		} else if (!strnicmp(argv[i], "-v", 2)) {
+		}
+		else if (!strnicmp(argv[i], "-v", 2))
+		{
 			log_verbose_flag(argv[i][2]);
-		} else if (!strnicmp(argv[i], "-d", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-d", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: per build directory flag -d on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
@@ -295,8 +386,11 @@ int mode_build(int argc, char **argv)
 			strcat(xb.baseDir, "/");
 			log_printf(1, "per build directory overridden from command line to '%s'\n", xb.baseDir);
 			have |= 4;
-		} else if (!strnicmp(argv[i], "-f", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-f", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: data directory flag -f on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
@@ -305,43 +399,61 @@ int mode_build(int argc, char **argv)
 			sprintf(xb.dataDir, "%s/", argv[i]);
 			sprintf(xb.binDir, "%s/bin/", argv[i]);
 			have |= 8;
-		} else if (!strnicmp(argv[i], "-i", 2)) {
-			if (!argv[++i] || i == argc || argv[i][0] == '-') {
+		}
+		else if (!strnicmp(argv[i], "-i", 2))
+		{
+			if (!argv[++i] || i == argc || argv[i][0] == '-')
+			{
 				log_printf(0, "\n\n***** ERROR: data directory flag -i on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
 			strcpy(xb.suffix, "_");
 			strcat(xb.suffix, argv[i]);
 			log_printf(1, "suffix '%s' added from command line to ini and patches filenames\n", xb.suffix);
-		} else if (!name[0]) {
+		}
+		else if (!name[0])
+		{
 			log_printf(1, "file name overridden from command line to '%s'\n", argv[i]);
 			strcpy(name, argv[i]);
-		} else
+		}
+		else
+		{
 			log_printf(0, "WARNING: command line has excess parameters without switches!\n");
+		}
 	}
 
-	if (!xb.type) {
+	if (!xb.type)
+	{
 		log_printf(0, "*****WARNING: image type not provided, defaulting to build a retail image\n");
 		xb.type = BUILD_RETAIL;
 	}
-	if (!(have & 4)) {
+	if (!(have & 4))
+	{
 		have |= 4;
 		log_printf(0, "*****WARNING: you did not specify per build directory! Using %s\n", xb.dataDir);
 		strcpy(xb.baseDir, xb.dataDir);
 	}
 	loadUserIni();
 	if (xb.iniSize)
+	{
 		log_printf(1, "User options.ini loaded, 0x%x bytes in memory\n", xb.iniSize);
-	if (!(xb.flags & CONSOLE_MASK) && !iniConsoleType() && !setConsoleType(getIniValue("type"))) {
+	}
+	if (!(xb.flags & CONSOLE_MASK) && !iniConsoleType() && !setConsoleType(getIniValue("type")))
+	{
 		log_printf(0, "ERROR: you need to specify console type!\n");
 		build_usage();
 	}
-	if (!(have & 1)) {
+	if (!(have & 1))
+	{
 		if (loadKeyFile(cpuKey, xb.baseDir, "cpukey.txt") && setCpuKeyStr(cpuKey))
+		{
 			have |= 1;
-		if (!(have & 1) && (v = getIniValue("cpukey")) != 0) {
+		}
+		if (!(have & 1) && (v = getIniValue("cpukey")) != 0)
+		{
 			log_printf(1, "setting cpukey from ini: 0x%s\n", v);
-			if (!setCpuKeyStr(v)) {
+			if (!setCpuKeyStr(v))
+			{
 				log_printf(0, "ERROR: you need to specify CPU key!\n");
 				build_usage();
 			}
@@ -349,12 +461,17 @@ int mode_build(int argc, char **argv)
 			have |= 1;
 		}
 	}
-	if (!(have & 2)) {
+	if (!(have & 2))
+	{
 		if (loadKeyFile(key1bl, 0, "1blkey.txt") && checkKeys(key1bl))
+		{
 			have |= 2;
-		if (!(have & 2) && (v = getIniValue("1blkey")) != 0) {
+		}
+		if (!(have & 2) && (v = getIniValue("1blkey")) != 0)
+		{
 			log_printf(1, "setting 1blkey from ini: 0x%s\n", v);
-			if (!checkKeys(v)) {
+			if (!checkKeys(v))
+			{
 				log_printf(0, "ERROR: you need to specify 1BL key!\n");
 				build_usage();
 			}
@@ -364,43 +481,72 @@ int mode_build(int argc, char **argv)
 	}
 
 	if (xb.type == BUILD_RETAIL)
+	{
 		strcat(ini, "_retail");
+	}
 	else if (xb.type == BUILD_JTAG)
+	{
 		strcat(ini, "_jtag");
-	else if (xb.type == BUILD_GLITCH) {
+	}
+	else if (xb.type == BUILD_GLITCH)
+	{
 		if (xb.glitch2mfg)
+		{
 			strcat(ini, "_glitch2m");
+		}
 		else if (xb.glitch2)
+		{
 			strcat(ini, "_glitch2");
+		}
 		else
+		{
 			strcat(ini, "_glitch");
-	} else if (xb.type == BUILD_DEVKIT)
+		}
+	}
+	else if (xb.type == BUILD_DEVKIT)
+	{
 		strcat(ini, "_devkit");
+	}
 	else if (xb.type == BUILD_DEVKIT16)
+	{
 		strcat(ini, "_devkit16");
+	}
 	else if (xb.type == BUILD_TESTKIT)
+	{
 		strcat(ini, "_testkit");
+	}
 	else if (xb.type == BUILD_TESTKIT16)
+	{
 		strcat(ini, "_testkit16");
+	}
 	else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+	{
 		strcat(ini, "_devgl");
+	}
 	strcat(ini, xb.suffix);
 	strcat(ini, ".ini");
 	applyIniOptions();
 	loadAddons();
-	if (!parseIni(ini)) {
+	if (!parseIni(ini))
+	{
 		ret = 3;
 		goto out;
 	}
 
-	if (name[0]) {
+	if (name[0])
+	{
 		strcpy(xb.outName, name);
 		log_printf(1, "output name overridden to: %s\n\n", xb.outName);
-	} else
+	}
+	else
+	{
 		log_printf(1, "auto image name used: %s\n\n", xb.outName);
+	}
 	log_set_name(xb.outName);
-	if ((xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT) && (xb.flags & NAND_BIG_BLOCK)) {
-		if (!(xb.flags & NAND_BIG_FFS)) {
+	if ((xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT) && (xb.flags & NAND_BIG_BLOCK))
+	{
+		if (!(xb.flags & NAND_BIG_FFS))
+		{
 			log_printf(1, "building jasper devkit/testkit image requires bigffs, forcing option enable\n");
 			xb.flags |= NAND_BIG_FFS;
 		}
@@ -408,16 +554,22 @@ int mode_build(int argc, char **argv)
 	loadKeys();
 	loadDump(0);
 	ret = buildImage();
-	if (!ret) {
+	if (!ret)
+	{
 		ret = writeImage(xb.outName);
-		if (!ret) {
+		if (!ret)
+		{
 			log_printf(0, separator);
 			log_printf(0, "%s image built, info:\n", xb.outName);
-		} else {
+		}
+		else
+		{
 			log_printf(0, "\n\n***** ERROR: %i writing to file %s\n\n", ret, xb.outName);
 			ret = 2;
 		}
-	} else {
+	}
+	else
+	{
 		log_printf(0, "\n\n***** FATAL BUILD ERROR: %i unable to complete NAND image\n\n", ret);
 		ret = 3;
 	}

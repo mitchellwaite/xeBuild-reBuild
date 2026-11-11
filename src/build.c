@@ -368,7 +368,8 @@ uint8_t defBl60[0x60] = {
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc);
 
 /* an SMC config fan byte */
-struct fan {
+struct fan
+{
 	uint8_t speed:7, override:1;
 };
 
@@ -381,7 +382,8 @@ static uint32_t align16(uint32_t v)
 /* read baseDir/name into e */
 static int loadBaseFile(const char *name, struct fileent *e)
 {
-	if (xb.baseDir[0]) {
+	if (xb.baseDir[0])
+	{
 		char path[0x400];
 
 		strcpy(path, xb.baseDir);
@@ -396,8 +398,12 @@ int findFileOffset(int type)
 	int i;
 
 	for (i = 0; i < xb.nFlashFiles; i++)
+	{
 		if (xb.files[i].type == type)
+		{
 			return xb.files[i].offset;
+		}
+	}
 	return 0;
 }
 
@@ -406,8 +412,12 @@ int findFileSize(int type)
 	int i;
 
 	for (i = 0; i < xb.nFlashFiles; i++)
+	{
 		if (xb.files[i].type == type)
+		{
 			return xb.files[i].size;
+		}
+	}
 	return 0;
 }
 
@@ -416,8 +426,12 @@ int findFile(int type)
 	int i;
 
 	for (i = 0; i < xb.nFiles; i++)
+	{
 		if (xb.files[i].type == type)
+		{
 			return i;
+		}
+	}
 	return 0;
 }
 
@@ -429,38 +443,57 @@ int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint3
 
 	f = fopen(name, "rb");
 	if (!f)
+	{
 		return -1;
+	}
 	if (e->data)
+	{
 		free(e->data);
+	}
 	size = getFileSize(f);
-	if (!size) {
+	if (!size)
+	{
 		fclose(f);
 		log_printf(0, "\n******WARNING: '%s' is a 0 byte file, loading skipped!\n", name);
 		return 1;
 	}
 	e->size = size;
 	if (pad && (size & 15))
+	{
 		e->size = align16(size);
-	if (verbose) {
+	}
+	if (verbose)
+	{
 		if (pad && size != e->size)
+		{
 			log_printf(1, "reading %s (0x%x b pad 0x%x b)", name, size, align16(size));
+		}
 		else
+		{
 			log_printf(1, "reading %s (0x%x bytes)", name, size);
+		}
 	}
 	e->data = calloc(e->size + 0x10000, 1);
 	if (!e->data)
+	{
 		return -2;
+	}
 	fread(e->data, size, 1, f);
 	fclose(f);
-	if (crc) {
+	if (crc)
+	{
 		c = crc32(e->data, size);
 		log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
-		if (crc != c) {
+		if (crc != c)
+		{
 			log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", name, c, crc);
 			return 1;
 		}
-	} else
+	}
+	else
+	{
 		log_printf(1, "\n");
+	}
 	return 0;
 }
 
@@ -470,7 +503,9 @@ int readMetaFile(const char *name, uint8_t *meta)
 
 	f = fopen(name, "rb");
 	if (!f)
+	{
 		return -1;
+	}
 	fread(meta, 4, 1, f);
 	fclose(f);
 	return 0;
@@ -483,17 +518,22 @@ void makeTimestamp(uint8_t *out, FILETIME *ft)
 	FILETIME now;
 	WORD date, time;
 
-	if (xb.sysTime) {
+	if (xb.sysTime)
+	{
 		GetSystemTime(&st);
 		SystemTimeToFileTime(&st, &now);
-	} else {
+	}
+	else
+	{
 		log_printf(2, "**** using default time!!! ****\n");
 		now.dwHighDateTime = 30268127;
 		now.dwLowDateTime = 1903825408;
 	}
 	FileTimeToDosDateTime(&now, &date, &time);
 	if (ft)
+	{
 		DosDateTimeToFileTime(date, time, ft);
+	}
 	out[0] = date >> 8;
 	out[1] = date;
 	out[2] = time >> 8;
@@ -508,17 +548,21 @@ int timestampToFileTime(const uint16_t *ts, FILETIME *ft)
 /* the same with its timestamp from name.meta if there is one */
 int loadBaseFileMeta(const char *name, struct fileent *e, uint8_t *meta)
 {
-	if (xb.baseDir[0]) {
+	if (xb.baseDir[0])
+	{
 		char path[0x400];
 		int r;
 
 		strcpy(path, xb.baseDir);
 		strcat(path, name);
 		r = loadFileCrc(path, e, 1, 0, 0);
-		if (!r && meta) {
+		if (!r && meta)
+		{
 			strcat(path, ".meta");
 			if (!readMetaFile(path, meta))
+			{
 				log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
+			}
 		}
 		return r;
 	}
@@ -533,12 +577,17 @@ int loadCommonFile(const char *name, struct fileent *e, int pad, uint32_t crc, u
 	strcpy(path, xb.commonDir);
 	strcat(path, name);
 	r = loadFileCrc(path, e, 1, pad, crc);
-	if (!r && meta) {
+	if (!r && meta)
+	{
 		strcat(path, ".meta");
 		if (!readMetaFile(path, meta))
+		{
 			log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
+		}
 		else
+		{
 			makeTimestamp(meta, NULL);
+		}
 	}
 	return r;
 }
@@ -553,87 +602,135 @@ int loadInputFile(const char *name, struct fileent *e, int pad, int crc, uint8_t
 
 	base = strrchr(name, '/');
 	if (!base)
+	{
 		base = strrchr(name, '\\');
+	}
 	if (base)
+	{
 		base++;
+	}
 	else
+	{
 		base = name;
+	}
 	if (strrchr(name, ':'))
+	{
 		strcpy(path, name);
-	else {
+	}
+	else
+	{
 		strcpy(path, xb.dataDir);
 		strcat(path, name);
 	}
 	r = loadFileCrc(path, e, 1, pad, crc);
-	if (meta && !r) {
+	if (meta && !r)
+	{
 		strcat(path, ".meta");
 		if (!readMetaFile(path, meta))
+		{
 			log_printf(1, "**** %s metadata found, not using system time *****\n\n", path);
+		}
 		else
+		{
 			makeTimestamp(meta, NULL);
+		}
 	}
-	if (su && r) {
-		if (suGetFile(base, &e->data, &e->size)) {
+	if (su && r)
+	{
+		if (suGetFile(base, &e->data, &e->size))
+		{
 			log_printf(1, "extracted SUPD/%s (0x%x bytes)", base, e->size);
-			if (crc) {
+			if (crc)
+			{
 				c = crc32(e->data, e->size);
 				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
 				if (crc != c)
+				{
 					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
-				else {
+				}
+				else
+				{
 					if (meta)
+					{
 						makeTimestamp(meta, NULL);
+					}
 					r = 0;
 				}
-			} else
+			}
+			else
+			{
 				log_printf(1, "\n");
+			}
 		}
 	}
-	if (fs && r) {
+	if (fs && r)
+	{
 		/* scoped: its clobber keeps the fs-path join a real block, so the r = 0
 		   paths reach the common test at PRE (threaded late, not by vrp1/dom2) */
 		uint32_t ts;
 
-		if (fsGetFile(base, &e->data, &e->size, &ts)) {
+		if (fsGetFile(base, &e->data, &e->size, &ts))
+		{
 			log_printf(1, "extracted nanddump/%s (0x%x bytes)", base, e->size);
-			if (crc) {
+			if (crc)
+			{
 				c = crc32(e->data, e->size);
 				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
-				if (crc == c) {
+				if (crc == c)
+				{
 					if (meta)
+					{
 						makeTimestamp(meta, NULL);
+					}
 					r = 0;
-				} else {
+				}
+				else
+				{
 					free(e->data);
 					e->data = NULL;
 					e->size = 0;
 					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
 				}
-			} else
+			}
+			else
+			{
 				log_printf(1, "\n");
-		} else if (xb.mode == 2 && updateGetFile(base, &e->data, &e->size)) {
+			}
+		}
+		else if (xb.mode == 2 && updateGetFile(base, &e->data, &e->size))
+		{
 			log_printf(1, "extracted USVR/%s (0x%x bytes)", base, e->size);
-			if (crc) {
+			if (crc)
+			{
 				c = crc32(e->data, e->size);
 				log_printf(1, " (crc32: 0x%08x ini: 0x%08x)\n", c, crc);
-				if (crc != c) {
+				if (crc != c)
+				{
 					free(e->data);
 					e->data = NULL;
 					e->size = 0;
 					log_printf(0, "\n******WARNING: '%s' crc32: 0x%08x expected: 0x%08x\n", base, c, crc);
-				} else {
+				}
+				else
+				{
 					if (meta)
+					{
 						makeTimestamp(meta, NULL);
+					}
 					r = 0;
 				}
-			} else {
+			}
+			else
+			{
 				log_printf(1, "\n");
 				r = 0;
 			}
 		}
 	}
 	if (common && r)
+	{
 		r = loadCommonFile(base, e, pad, crc, meta);
+	}
 	return r;
 }
 
@@ -654,7 +751,9 @@ int loadLocalFile(struct fileent *e)
 
 	strcpy(path, e->name);
 	if (!loadFileCrc(path, e, 1, 0, 0))
+	{
 		return 0;
+	}
 	strcpy(path, "./");
 	strcat(path, e->name);
 	return loadFileCrc(path, e, 1, 0, 0);
@@ -664,7 +763,9 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 {
 	e->data = calloc(size, 1);
 	if (!e->data)
+	{
 		return 1;
+	}
 	e->size = size;
 	memcpy(e->data, data, size);
 	return 0;
@@ -681,35 +782,56 @@ void appendAddonPatches(struct fileent *e)
 	memset(buf, 0xff, 0x4000);
 	memcpy(buf, e->data, size);
 	if (xb.numPatches)
-	for (i = 0; i < xb.numPatches; i++) {
-		a = &xb.addons[i];
-		if (!loadBinFile(a)) {
-			if (!(a->size & 3)) {
-				if (getBeU32(a->data + a->size - 4) == 0xffffffff)
-					a->size -= 4;
-				if (size + a->size <= 0x4000) {
-					memcpy(buf + size, a->data, a->size);
-					added += a->size;
-					size += a->size;
-				} else
-					log_printf(0, "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n",
-						   xb.binDir, a->name);
-			} else
-				log_printf(0, "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n",
-					   xb.binDir, a->name, a->size);
-		} else
-			log_printf(0, "\n***** WARNING: could not load addon patch %s%s!\n\n", xb.binDir, a->name);
+	{
+		for (i = 0; i < xb.numPatches; i++)
+		{
+			a = &xb.addons[i];
+			if (!loadBinFile(a))
+			{
+				if (!(a->size & 3))
+				{
+					if (getBeU32(a->data + a->size - 4) == 0xffffffff)
+					{
+						a->size -= 4;
+					}
+					if (size + a->size <= 0x4000)
+					{
+						memcpy(buf + size, a->data, a->size);
+						added += a->size;
+						size += a->size;
+					}
+					else
+					{
+						log_printf(0, "\n***** ERROR: could not append %s%s into patches, not enough room!\n\n",
+							   xb.binDir, a->name);
+					}
+				}
+				else
+				{
+					log_printf(0, "\n***** ERROR: could %s%s size 0x%x is not a multiple of 4, discarding patch data!\n\n",
+						   xb.binDir, a->name, a->size);
+				}
+			}
+			else
+			{
+				log_printf(0, "\n***** WARNING: could not load addon patch %s%s!\n\n", xb.binDir, a->name);
+			}
+		}
 	}
 	*(uint32_t *)(buf + size) = 0xffffffff;
 	setBeU32(added, buf + size + 4);
 	size += 8;
 	if (e->data)
+	{
 		free(e->data);
+	}
 	e->data = buf;
 	e->size = size;
 	if (xb.numPatches)
+	{
 		log_printf(1, "added 0x%x bytes to patches via %d external patch files\n    patches now 0x%x bytes total with addon byte count appended\n",
 			   added, xb.numPatches, size);
+	}
 }
 
 void showSmcConfig(const uint8_t *smc)
@@ -722,19 +844,28 @@ void showSmcConfig(const uint8_t *smc)
 	log_printf(1, "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[0x2c], smc[0x2d], smc[0x2e]);
 	log_printf(1, "Cpu Fan     : ");
 	if (((struct fan *)(smc + 0x11))->override)
+	{
 		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x11))->speed);
+	}
 	else
+	{
 		log_printf(1, "(auto)\n");
+	}
 	log_printf(1, "Gpu Fan     : ", smc[0x12] & 0x7f);
 	if (((struct fan *)(smc + 0x12))->override)
+	{
 		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x12))->speed);
+	}
 	else
+	{
 		log_printf(1, "(auto)\n");
+	}
 	log_printf(1, "MAC Address : ");
 	showMac(1, smc + 0x220);
 	av = *(uint32_t *)(smc + 0x228);
 	av = SWAP32_BUILD(av);
-	switch (av) {
+	switch (av)
+	{
 	case 0x100:
 		log_printf(1, "\nAVRegion    : 0x%08x (NTSC-M)\n", av);
 		break;
@@ -753,7 +884,8 @@ void showSmcConfig(const uint8_t *smc)
 	}
 	game = __builtin_bswap16(*(uint16_t *)(smc + 0x22c));
 	log_printf(1, "GameRegion  : 0x%04x ", game);
-	switch (game) {
+	switch (game)
+	{
 	case 0xff:
 		log_printf(1, "(NTSC/US)\n");
 		break;
@@ -785,7 +917,9 @@ void showSmcConfig(const uint8_t *smc)
 	log_printf(1, "DVDRegion   : %d\n", SWAP32_BUILD(*(uint32_t *)(smc + 0x234)));
 	log_printf(1, "resetKey    : ");
 	for (i = 0; i < 4; i++)
+	{
 		log_printf(1, "%c", smc[0x238 + i]);
+	}
 	log_printf(1, "\n");
 }
 
@@ -794,10 +928,13 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 {
 	int ok = 1;
 
-	if (v < lo || v > hi) {
+	if (v < lo || v > hi)
+	{
 		ok = 0;
 		if (v != 0 && v != 0xffffffff)
+		{
 			log_printf(0, "Ini value %d for %s is out of range (%d-%d), not using\n", v, name, lo, hi);
+		}
 	}
 	return ok;
 }
@@ -805,14 +942,19 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 /* the cpu fan setting; returns 1 if it changed the config. */
 static int patchCpuFan(uint8_t *smc)
 {
-	if (xb.smcOpts.cpuFan != 0xffffffff) {
-		if (iniRangeOk("cpufan", xb.smcOpts.cpuFan, 40, 100)) {
+	if (xb.smcOpts.cpuFan != 0xffffffff)
+	{
+		if (iniRangeOk("cpufan", xb.smcOpts.cpuFan, 40, 100))
+		{
 			smc[0x11] = xb.smcOpts.cpuFan | 0x80;
 			return 1;
 		}
 		if (xb.smcOpts.cpuFan)
+		{
 			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.smcOpts.cpuFan);
-		else if (smc[0x11] != 0x7f) {
+		}
+		else if (smc[0x11] != 0x7f)
+		{
 			smc[0x11] = 0x7f;
 			return 1;
 		}
@@ -826,76 +968,104 @@ uint32_t patchSmcConfig(uint8_t *smc)
 	int i;
 
 	log_printf(1, "Checking for smc config data patches\n");
-	if (iniRangeOk("cputemp", xb.smcOpts.cpuTemp, 40, 120)) {
+	if (iniRangeOk("cputemp", xb.smcOpts.cpuTemp, 40, 120))
+	{
 		smc[0x29] = xb.smcOpts.cpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("gputemp", xb.smcOpts.gpuTemp, 40, 120)) {
+	if (iniRangeOk("gputemp", xb.smcOpts.gpuTemp, 40, 120))
+	{
 		smc[0x2a] = xb.smcOpts.gpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("edramtemp", xb.smcOpts.edramTemp, 40, 120)) {
+	if (iniRangeOk("edramtemp", xb.smcOpts.edramTemp, 40, 120))
+	{
 		smc[0x2b] = xb.smcOpts.edramTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overcputemp", xb.smcOpts.overCpuTemp, 40, 120)) {
+	if (iniRangeOk("overcputemp", xb.smcOpts.overCpuTemp, 40, 120))
+	{
 		smc[0x2c] = xb.smcOpts.overCpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overgputemp", xb.smcOpts.overGpuTemp, 40, 120)) {
+	if (iniRangeOk("overgputemp", xb.smcOpts.overGpuTemp, 40, 120))
+	{
 		smc[0x2d] = xb.smcOpts.overGpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overedramtemp", xb.smcOpts.overEdramTemp, 40, 120)) {
+	if (iniRangeOk("overedramtemp", xb.smcOpts.overEdramTemp, 40, 120))
+	{
 		smc[0x2e] = xb.smcOpts.overEdramTemp;
 		patched = 1;
 	}
-	if (xb.smcOpts.cpuFan != 0xffffffff) {
+	if (xb.smcOpts.cpuFan != 0xffffffff)
+	{
 		if (patchCpuFan(smc))
+		{
 			patched = 1;
+		}
 	}
-	if (xb.smcOpts.gpuFan != 0xffffffff) {
-		if (iniRangeOk("gpufan", xb.smcOpts.gpuFan, 40, 100)) {
+	if (xb.smcOpts.gpuFan != 0xffffffff)
+	{
+		if (iniRangeOk("gpufan", xb.smcOpts.gpuFan, 40, 100))
+		{
 			smc[0x12] = xb.smcOpts.gpuFan | 0x80;
 			patched = 1;
-		} else if (xb.smcOpts.gpuFan)
+		}
+		else if (xb.smcOpts.gpuFan)
+		{
 			goto gpuwarn;
-		else {
+		}
+		else
+		{
 			smc[0x12] = 0x7f;
 		}
 	}
 gpudone:
-	if (xb.smcOpts.avRegion != 0xffffffff) {
+	if (xb.smcOpts.avRegion != 0xffffffff)
+	{
 		*(uint32_t *)(smc + 0x228) = SWAP32_BUILD(xb.smcOpts.avRegion);
 		patched = 1;
 	}
-	if (xb.smcOpts.gameRegion != 0xffffffff && (uint16_t)xb.smcOpts.gameRegion) {
+	if (xb.smcOpts.gameRegion != 0xffffffff && (uint16_t)xb.smcOpts.gameRegion)
+	{
 		*(uint16_t *)(smc + 0x22c) = __builtin_bswap16(xb.smcOpts.gameRegion);
 		patched = 1;
 	}
-	if (xb.smcOpts.dvdRegion != 0xffffffff) {
+	if (xb.smcOpts.dvdRegion != 0xffffffff)
+	{
 		*(uint32_t *)(smc + 0x234) = SWAP32_BUILD(xb.smcOpts.dvdRegion);
 		patched = 1;
 	}
-	if (!*(uint32_t *)(smc + 0x234)) {
+	if (!*(uint32_t *)(smc + 0x234))
+	{
 		log_printf(0, "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n");
 		log_printf(0, "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n");
 		*(uint32_t *)(smc + 0x234) = 0x1000000;
 		patched = 1;
 	}
 	if (macidSet())
-		for (i = 0; i < 6; i++) {
+	{
+		for (i = 0; i < 6; i++)
+		{
 			if (smc[0x220 + i] != xb.smcOpts.macid[i])
+			{
 				patched = 1;
+			}
 			smc[0x220 + i] = xb.smcOpts.macid[i];
 		}
-	if (patched) {
+	}
+	if (patched)
+	{
 		uint32_t sum = calcConfigSum(smc);
 
 		*(uint32_t *)smc = SWAP32_BUILD(sum);
 		log_printf(1, "smc config patched!\n");
-	} else
+	}
+	else
+	{
 		log_printf(1, "smc config was not patched\n");
+	}
 	log_printf(1, "---------------------\n");
 	return patched;
 gpuwarn:
@@ -909,11 +1079,15 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	int found;
 
 	if (e->data)
+	{
 		free(e->data);
+	}
 	e->size = 0x400;
 	e->data = malloc(0x400);
 	if (!e->data)
+	{
 		return -2;
+	}
 	log_printf(1, "-------------------\n");
 	log_printf(1, "checking smc_config\n");
 	log_printf(1, "-------------------\n");
@@ -921,41 +1095,62 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	   a miss (the Linux build re-tests the loop condition after a hit) */
 	i = 0;
 	found = 0;
-	while (i + 0x200 <= size && found != 1) {
+	while (i + 0x200 <= size && found != 1)
+	{
 		found = smcConfigOk(buf + i);
 		if (found != 1)
+		{
 			i += 0x200;
-	}
-	if (!found) {
-		i = 0;
-		while (i + 0x210 <= size && found != 1) {
-			found = smcConfigOk(buf + i);
-			if (found != 1)
-				i += 0x210;
 		}
 	}
 	if (!found)
+	{
+		i = 0;
+		while (i + 0x210 <= size && found != 1)
+		{
+			found = smcConfigOk(buf + i);
+			if (found != 1)
+			{
+				i += 0x210;
+			}
+		}
+	}
+	if (!found)
+	{
 		goto notfound;
-	if (checkZeros(buf + i + 0x20c, 4)) {
+	}
+	if (checkZeros(buf + i + 0x20c, 4))
+	{
 		log_printf(1, "extracting config\n");
 		if (size - i >= 0x400)
+		{
 			memcpy(e->data, buf + i, 0x400);
-	} else if (size - i >= 0x4200) {
+		}
+	}
+	else if (size - i >= 0x4200)
+	{
 		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)
+		{
 			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
-	} else {
+		}
+	}
+	else
+	{
 		log_printf(1, "******* ERROR: extracting config did not work, not enough data to copy!\n");
 		return -2;
 	}
 	if (i)
+	{
 		log_printf(1, "valid SMC config data found at offset 0x%x\n", i);
+	}
 	log_printf(1, "------------------\n");
 	log_printf(1, "SMC config info:\n");
 	log_printf(1, "------------------\n");
 	showSmcConfig(e->data);
 	log_printf(1, "---------------------\n");
-	if (patchSmcConfig(e->data)) {
+	if (patchSmcConfig(e->data))
+	{
 		log_printf(1, "SMC patched info:\n");
 		log_printf(1, "------------------\n");
 		showSmcConfig(e->data);
@@ -973,7 +1168,9 @@ void raiseKernel(uint16_t magic, uint16_t build, uint16_t qfe)
 	uint32_t k = 0x20000000 | build << 8;
 
 	if (k > xb.kernel)
+	{
 		xb.kernel = k;
+	}
 }
 
 int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
@@ -983,111 +1180,165 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 
 	blsize = getBeU32(bl + 12);
 	if (blsize > size)
+	{
 		r = -3;
-	else {
+	}
+	else
+	{
 		m = bl[0];
 		if ((m & 0x43) != 0x43)
+		{
 			r = -1;
-		else {
-			switch (type) {
+		}
+		else
+		{
+			switch (type)
+			{
 			case 5:
 			case 6:
 			case 11:
 			case 17:
 				if (bl[1] != 'B')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x30);
 					c = crc32(bl, blsize);
 					if (c != crc)
+					{
 						r = -2;
+					}
 				}
 				break;
 			case 7:
 			case 18:
 				if (bl[1] != 'D')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x10);
 					c = crc32(bl, blsize);
 					if (c != crc)
+					{
 						r = -2;
+					}
 				}
 				break;
 			case 8:
 			case 19:
 				if (bl[1] != 'E')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x10);
 					c = crc32(bl, blsize);
 					if (c != crc)
+					{
 						r = -2;
+					}
 					else
+					{
 						raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
+					}
 				}
 				break;
 			case 9:
 			case 15:
 			case 20:
 				if (bl[1] != 'F')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x20, 0, 0x210);
 					c = crc32(bl, blsize);
 					if (c != crc)
+					{
 						r = -2;
+					}
 					else
+					{
 						raiseKernel(getBeU16(bl), getBeU16(bl + 20), getBeU16(bl + 22));
+					}
 				}
 				break;
 			case 10:
 			case 16:
 			case 21:
 				if (bl[1] != 'G')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x10);
 					c = crc32(bl, blsize);
 					if (c != crc)
+					{
 						r = -2;
+					}
 				}
 				break;
 			case 12:
 				if (bl[1] != 'C')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x10);
-					if (crc != 0xffffffff) {
+					if (crc != 0xffffffff)
+					{
 						c = crc32(bl, blsize);
 						if (c != crc)
+						{
 							r = -2;
+						}
 					}
 				}
 				break;
 			case 13:
 				if (bl[1] != 'D')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x10);
-					if (crc != 0xffffffff) {
+					if (crc != 0xffffffff)
+					{
 						c = crc32(bl, blsize);
 						if (c != crc)
+						{
 							r = -2;
+						}
 					}
 				}
 				break;
 			case 14:
 				if (bl[1] != 'E')
+				{
 					r = -1;
-				else {
+				}
+				else
+				{
 					memset(bl + 0x10, 0, 0x10);
 					c = crc32(bl, blsize);
 					raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
-					if (crc != 0xffffffff) {
+					if (crc != 0xffffffff)
+					{
 						c = crc32(bl, blsize);
 						if (c != crc)
+						{
 							r = -2;
+						}
 					}
 				}
 				break;
@@ -1097,13 +1348,20 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 			}
 		}
 	}
-	if (r) {
+	if (r)
+	{
 		if (r == -2)
+		{
 			log_printf(0, "\n\n***** ERROR: BL crc check failed! calculated: %08x expected: %08x\n", c, crc);
+		}
 		else if (r == -3)
+		{
 			log_printf(0, "\n\n***** ERROR: BL size (0x%x) is bigger than the file (0x%x) read in!\n", blsize, size);
+		}
 		else
+		{
 			log_printf(0, "\n\n***** ERROR: BL magic check %c%c for type %d failed!\n", m, bl[1], type);
+		}
 	}
 	return r;
 }
@@ -1115,64 +1373,112 @@ int verifyBlSigs(void)
 	uint32_t i;
 	const uint8_t *salt;
 
-	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFiles; i++)
+	{
 		e = &xb.files[i];
-		switch (e->type) {
+		switch (e->type)
+		{
 		case 5:
 		case 11:
 		case 17:
-			if (xb.pub1bl) {
+			if (xb.pub1bl)
+			{
 				if (!cbVerifySig(e->data, xb.pub1bl))
+				{
 					log_printf(0, "\n***** ERROR: %s failed signature check!\n", e->name);
+				}
 				else
+				{
 					log_printf(1, "%s signature is good\n", e->name);
-			} else
+				}
+			}
+			else
+			{
 				log_printf(1, "could not check signature of %s, 1BL RSA key not present!\n", e->name);
+			}
 			break;
 		case 12:
 		case 13:
 			sb = findFile(11);
-			if (sb) {
+			if (sb)
+			{
 				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
 				if (blVerifySig(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), salt))
+				{
 					log_printf(1, "%s signature is good\n", e->name);
-				else if (xb.prvKey) {
-					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+				}
+				else if (xb.prvKey)
+				{
+					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
+					{
 						log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
-						if (!blSign(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, salt)) {
+						if (!blSign(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, salt))
+						{
 							log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
 							ok = 0;
-						} else
+						}
+						else
+						{
 							log_printf(1, "%s resigned successfully!\n", e->name);
-					} else
+						}
+					}
+					else
+					{
 						log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", e->name);
-				} else
+					}
+				}
+				else
+				{
 					log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", e->name);
-			} else
+				}
+			}
+			else
+			{
 				log_printf(1, "could not locate SB data to check %s!\n", e->name);
+			}
 			break;
 		case 14:
 			sd = findFile(13);
-			if (sd) {
-				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588)) {
-					if (xb.prvKey) {
+			if (sd)
+			{
+				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588))
+				{
+					if (xb.prvKey)
+					{
 						sb = findFile(11);
-						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
+						{
 							log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
 							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
 									   xb.files[sd].data + 588,
 									   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey))
+							{
 								log_printf(0, "\n***** ERROR: failed to resign SE to correct %s hash!\n", e->name);
+							}
 							else
+							{
 								log_printf(1, "SE resigned successfully to correct %s hash!\n", e->name);
-						} else
+							}
+						}
+						else
+						{
 							log_printf(0, "\n***** ERROR: %s failed hash check, RSA key provided does not match the pub key in SD!\n", e->name);
-					} else
+						}
+					}
+					else
+					{
 						log_printf(0, "\n***** ERROR: %s failed hash check!\n", e->name);
-				} else
+					}
+				}
+				else
+				{
 					log_printf(1, "%s hash from SE is good\n", e->name);
-			} else
+				}
+			}
+			else
+			{
 				log_printf(1, "\n***** ERROR: could not locate SD data to check %s!\n", e->name);
+			}
 			break;
 		}
 	}
@@ -1185,7 +1491,9 @@ static int useBuiltIn(struct fileent *e, const uint8_t *data, uint32_t size)
 {
 	e->data = malloc(size);
 	if (!e->data)
+	{
 		return 1;
+	}
 	e->size = size;
 	memcpy(e->data, data, size);
 	return 0;
@@ -1196,7 +1504,9 @@ static int defaultBl60(struct fileent *e)
 {
 	e->data = malloc(0x60);
 	if (!e->data)
+	{
 		return 1;
+	}
 	e->size = 0x60;
 	memmove(e->data, defBl60, 0x60);
 	return 0;
@@ -1206,12 +1516,18 @@ static int defaultBl60(struct fileent *e)
 static int loadXell(struct fileent *e)
 {
 	if (xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)
+	{
 		return 0;
+	}
 	if (!loadBaseFile(e->name, e))
+	{
 		return 0;
+	}
 	log_printf(1, "xell not found in perbuild directory, checking firmware /bin folder\n");
 	if (!loadBinFile(e))
+	{
 		return 0;
+	}
 	log_printf(1, "xell not found in firmware /bin folder, checking base path\n");
 	return loadLocalFile(e);
 }
@@ -1220,9 +1536,13 @@ static int loadXell(struct fileent *e)
 static int loadBl24(struct fileent *e)
 {
 	if (loadBaseFile(e->name, e))
+	{
 		return defaultBl60(e);
+	}
 	if (e->size != 0x60)
+	{
 		return defaultBl60(e);
+	}
 	return 0;
 }
 
@@ -1230,7 +1550,9 @@ static int loadBl24(struct fileent *e)
 static int setKitBuild(uint32_t i, int type)
 {
 	if (type == 14)
+	{
 		setFlashBuild(getBeU16(xb.files[i].data + 2));
+	}
 	return type == 14;
 }
 
@@ -1241,29 +1563,43 @@ int loadBlFiles(void)
 	struct fileent *e;
 	uint32_t i;
 
-	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFiles; i++)
+	{
 		uint32_t r = 0;
 
 		e = &xb.files[i];
-		if (strnicmp(e->name, "none", 4) || e->crc) {
+		if (strnicmp(e->name, "none", 4) || e->crc)
+		{
 			int type = e->type;
 
-			switch (type) {
+			switch (type)
+			{
 			case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
 			case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-				if (r) {
-					if (type == 9) {
+				if (r)
+				{
+					if (type == 9)
+					{
 						if (suGetCF(&e->data, &e->size))
+						{
 							r = 0;
-					} else if (type == 10) {
+						}
+					}
+					else if (type == 10)
+					{
 						if (suGetCG(&e->data, &e->size))
+						{
 							r = 0;
+						}
 					}
 				}
 				if (r)
+				{
 					break;
-				if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E') {
+				}
+				if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E')
+				{
 					/* an SE where the CF goes */
 					e->type = type = 14;
 					xb.cfLdv = 0;
@@ -1271,44 +1607,71 @@ int loadBlFiles(void)
 				}
 				r = checkBl(e->data, e->size, type, e->crc);
 				if (r)
+				{
 					break;
-				if (type == 5 || type == 17 || type == 11) {
-					if (xb.pub1bl) {
-						if (!cbVerifySig(e->data, xb.pub1bl)) {
+				}
+				if (type == 5 || type == 17 || type == 11)
+				{
+					if (xb.pub1bl)
+					{
+						if (!cbVerifySig(e->data, xb.pub1bl))
+						{
 							log_printf(0, "\n***** ERROR: loaded %s, but signature check failed!\n", e->name);
 							r = -1;
-						} else
+						}
+						else
+						{
 							log_printf(1, "loaded %s, signature check passed!\n", e->name);
-					} else
+						}
+					}
+					else
+					{
 						log_printf(1, "loaded %s, could not check signature rsa key not present!\n", e->name);
+					}
 				}
 				if (xb.type > BUILD_DEVGL16)
+				{
 					setKitBuild(i, type);
+				}
 				else if (r == -1)
+				{
 					goto fail;
+				}
 				break;
 			case 6:
 				if (!xb.cbb)
+				{
 					break;
+				}
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
 				if (!r)
+				{
 					r = checkBl(e->data, e->size, 6, e->crc);
+				}
 				break;
 			case 24:
 				if (xb.type == BUILD_JTAG || xb.glitch2mfg)
+				{
 					r = loadBl24(e);
+				}
 				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+				{
 					r = loadBl24(e);
+				}
 				break;
 			case 1:
 				if (!loadBinFile(e))
+				{
 					break;
+				}
 				log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
 				r = useBuiltIn(e, defPayload, 0x200);
 				break;
 			case 22:
 				if (!loadBinFile(e))
+				{
 					break;
+				}
 				log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
 				r = useBuiltIn(e, defCore, 0xd40);
 				break;
@@ -1318,17 +1681,24 @@ int loadBlFiles(void)
 			case 3:
 				if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
 				    !loadBaseFile("keyvault.bin", &xb.files[xb.nFlashFiles]) ||
-				    !(r = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles]))) {
+				    !(r = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles])))
+				{
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.files[xb.nFlashFiles].data;
 					e->size = xb.files[xb.nFlashFiles].size;
 					xb.files[xb.nFlashFiles].data = NULL;
 					xb.files[xb.nFlashFiles].size = 0;
-				} else if (xb.kv.data) {
+				}
+				else if (xb.kv.data)
+				{
 					log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.kv.data;
 					e->size = xb.kv.size;
 					xb.kv.data = NULL;
@@ -1339,17 +1709,24 @@ int loadBlFiles(void)
 			case 4:
 				if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
 				    !loadBaseFile("keyvault_alt.bin", &xb.files[xb.nFlashFiles]) ||
-				    !(r = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles]))) {
+				    !(r = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles])))
+				{
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.files[xb.nFlashFiles].data;
 					e->size = xb.files[xb.nFlashFiles].size;
 					xb.files[xb.nFlashFiles].data = NULL;
 					xb.files[xb.nFlashFiles].size = 0;
-				} else if (xb.kvAlt.data) {
+				}
+				else if (xb.kvAlt.data)
+				{
 					log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.kvAlt.data;
 					e->size = xb.kvAlt.size;
 					xb.kvAlt.data = NULL;
@@ -1359,27 +1736,40 @@ int loadBlFiles(void)
 				break;
 			case 23:
 				if (xb.type == BUILD_RETAIL)
+				{
 					break;
+				}
 				r = loadBinFile(e);
 				if (r)
+				{
 					break;
-				if (e->size & 3) {
+				}
+				if (e->size & 3)
+				{
 					log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
 					goto fail;
 				}
 				appendAddonPatches(e);
 				break;
 			case 27:
-				if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles])) {
+				if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles]))
+				{
 					r = loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]);
 					if (r)
+					{
 						r = loadBaseFile("config_raw.bin", &xb.files[xb.nFlashFiles]);
-					if (r) {
+					}
+					if (r)
+					{
 						if (!xb.smcConfig.data)
+						{
 							break;
+						}
 						log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 						if (xb.files[xb.nFlashFiles].data)
+						{
 							free(xb.files[xb.nFlashFiles].data);
+						}
 						xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
 						xb.smcConfig.data = NULL;
 						xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
@@ -1391,24 +1781,35 @@ int loadBlFiles(void)
 					uint8_t *d = xb.files[xb.nFlashFiles].data;
 
 					if (d)
+					{
 						r = extractSmcConfig(e, d, xb.files[xb.nFlashFiles].size);
+					}
 				}
 				break;
 			case 2:
 				r = loadBaseFile(e->name, &xb.files[xb.nFlashFiles]);
-				if (!r) {
+				if (!r)
+				{
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.files[xb.nFlashFiles].data;
 					e->size = xb.files[xb.nFlashFiles].size;
 					xb.files[xb.nFlashFiles].data = NULL;
 					xb.files[xb.nFlashFiles].size = 0;
-				} else {
+				}
+				else
+				{
 					if (!xb.smc.data)
+					{
 						break;
+					}
 					log_printf(1, "reading %s%s failed, using %s from nand dump\n", xb.baseDir, e->name, e->name);
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.smc.data;
 					e->size = xb.smc.size;
 					xb.smc.data = NULL;
@@ -1417,7 +1818,9 @@ int loadBlFiles(void)
 				}
 				e->offset = smcSetLoad(e->size);
 				if (!e->offset)
+				{
 					goto fail;
+				}
 				break;
 			default:
 				log_printf(1, "####### unhandled bl load %d %s\n", type, e->name);
@@ -1429,7 +1832,8 @@ int loadBlFiles(void)
 				break;
 			}
 		}
-		if (r) {
+		if (r)
+		{
 			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
 			return -1;
 		}
@@ -1443,62 +1847,87 @@ int loadConsoleBlFiles(void)
 	uint32_t i;
 	uint32_t r;
 
-	for (i = 1; i < (uint32_t)xb.nFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFiles; i++)
+	{
 		e = &xb.files[i];
 		r = 0;
-		if (strnicmp(e->name, "none", 4) || e->crc) {
+		if (strnicmp(e->name, "none", 4) || e->crc)
+		{
 			int type = e->type;
 
-			switch (type) {
+			switch (type)
+			{
 			case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
 			case 17: case 18: case 19:
 				log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
 				break;
 			case 9: case 10: case 15: case 16: case 20: case 21:
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
-				if (r) {
-					if (type == 9) {
+				if (r)
+				{
+					if (type == 9)
+					{
 						if (suGetCF(&e->data, &e->size))
+						{
 							r = 0;
-					} else if (type == 10) {
+						}
+					}
+					else if (type == 10)
+					{
 						if (suGetCG(&e->data, &e->size))
+						{
 							r = 0;
+						}
 					}
 				}
 				if (!r)
+				{
 					r = checkBl(e->data, e->size, type, e->crc);
+				}
 				break;
 			case 24:
 				if (xb.glitch2mfg)
+				{
 					r = loadBl24(e);
+				}
 				break;
 			case 25:
 				r = loadXell(e);
 				break;
 			case 3:
-				if (xb.kv.data) {
+				if (xb.kv.data)
+				{
 					log_printf(1, "using keyvault data from console\n");
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.kv.data;
 					e->size = xb.kv.size;
 					xb.kv.data = NULL;
 					xb.kv.size = 0;
-				} else {
+				}
+				else
+				{
 					log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
 					r = -1;
 				}
 				break;
 			case 4:
-				if (xb.kvAlt.data) {
+				if (xb.kvAlt.data)
+				{
 					log_printf(1, "using keyvault alt data from console\n");
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.kvAlt.data;
 					e->size = xb.kvAlt.size;
 					xb.kvAlt.data = NULL;
 					xb.kvAlt.size = 0;
-				} else {
+				}
+				else
+				{
 					log_printf(0, "\n***** ERROR!: acquiring keyvault data failed!\n");
 					r = -1;
 				}
@@ -1506,8 +1935,11 @@ int loadConsoleBlFiles(void)
 			case 23:
 				r = loadBinFile(e);
 				if (r)
+				{
 					break;
-				if (e->size & 3) {
+				}
+				if (e->size & 3)
+				{
 					log_printf(1, "\n\n***** ERROR: patch size 0x%x is not a multiple of 4!\n", e->size);
 					r = -1;
 					break;
@@ -1515,33 +1947,45 @@ int loadConsoleBlFiles(void)
 				appendAddonPatches(e);
 				break;
 			case 27:
-				if (xb.smcConfig.data) {
+				if (xb.smcConfig.data)
+				{
 					log_printf(1, "using smc configuration from console\n");
 					if (xb.files[xb.nFlashFiles].data)
+					{
 						free(xb.files[xb.nFlashFiles].data);
+					}
 					xb.files[xb.nFlashFiles].data = xb.smcConfig.data;
 					xb.files[xb.nFlashFiles].size = xb.smcConfig.size;
 					xb.smcConfig.data = NULL;
 					xb.smcConfig.size = 0;
 					r = extractSmcConfig(e, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
-				} else {
+				}
+				else
+				{
 					log_printf(0, "\n***** ERROR!: acquiring smc configuration data failed!\n");
 					r = -1;
 				}
 				break;
 			case 2:
-				if (xb.smc.data) {
+				if (xb.smc.data)
+				{
 					log_printf(1, "using smc binary from console\n");
 					if (e->data)
+					{
 						free(e->data);
+					}
 					e->data = xb.smc.data;
 					e->size = xb.smc.size;
 					xb.smc.data = NULL;
 					xb.smc.size = 0;
 					e->offset = smcSetLoad(e->size);
 					if (!e->offset)
+					{
 						r = -1;
-				} else {
+					}
+				}
+				else
+				{
 					log_printf(0, "\n***** ERROR!: acquiring smc binary data failed!\n");
 					r = -1;
 				}
@@ -1551,7 +1995,8 @@ int loadConsoleBlFiles(void)
 				break;
 			}
 		}
-		if (r) {
+		if (r)
+		{
 			log_printf(0, "\n\n**** could not read %s (%i) ****\n\n", e->name, r);
 			return -1;
 		}
@@ -1565,26 +2010,39 @@ void patchHeaderOpts(void)
 	uint8_t opts = 0;
 
 	xb.hdr[0x4b] = 1;
-	if (xb.bootFlags & 9) {
+	if (xb.bootFlags & 9)
+	{
 		log_printf(1, "\tPatching header for slower demon/cygnos UART speed\n");
 		opts = 1;
 	}
-	if (xb.type == BUILD_JTAG) {
+	if (xb.type == BUILD_JTAG)
+	{
 		opts |= xb.bootFlags & 7;
 		if (xb.bootFlags & 8)
+		{
 			opts |= 1;
+		}
 		if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton)
+		{
 			xb.dualButton = 0;
-	} else
+		}
+	}
+	else
+	{
 		xb.dualButton = 0;
+	}
 	xb.hdr[0x4c] = xb.dualButton;
 	xb.hdr[0x4d] = opts;
 	log_printf(1, "\tPatching header for xell power reason\n");
 	if (xb.xellButton == xb.xellAltButton)
+	{
 		xb.xellAltButton = 0;
+	}
 	xb.hdr[0x4f] = xb.xellButton;
 	if (xb.xellAltButton)
+	{
 		log_printf(1, "\tPatching header for xell alt power reason\n");
+	}
 	xb.hdr[0x4e] = xb.xellAltButton;
 }
 
@@ -1601,7 +2059,9 @@ void rotSumSha(uint8_t *a, uint32_t alen, uint8_t *b, uint32_t blen, uint8_t *ou
 	uint32_t i;
 
 	for (i = 0; i < 32; i++)
+	{
 		sum[i] = 0;
+	}
 	XeCryptRotSum(sum, a, alen >> 3);
 	log_printf(1, "sum1:");
 	display_buffer_hex(sum, 32, 1);
@@ -1614,7 +2074,9 @@ void rotSumSha(uint8_t *a, uint32_t alen, uint8_t *b, uint32_t blen, uint8_t *ou
 	XeCryptShaUpdate(&sha, a, alen);
 	XeCryptShaUpdate(&sha, b, blen);
 	for (i = 0; i < 32; i++)
+	{
 		sum[i] = ~sum[i];
+	}
 	log_printf(1, "sum3:");
 	display_buffer_hex(sum, 32, 1);
 	XeCryptShaUpdate(&sha, sum, 32);
@@ -1628,9 +2090,12 @@ int countBits(uint8_t v)
 {
 	int i, n = 0;
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < 8; i++)
+	{
 		if (v & 1)
+		{
 			n++;
+		}
 		v >>= 1;
 	}
 	return n;
@@ -1646,60 +2111,93 @@ int patchBlsResign(void)
 
 	log_printf(1, "Patching BLs...");
 	off = 0;
-	while (off < p->size) {
-		if (n != 2) {
+	while (off < p->size)
+	{
+		if (n != 2)
+		{
 			addr = getBeU32(d + off);
 			t = off + 4;
-			if (addr != 0xffffffff) {
+			if (addr != 0xffffffff)
+			{
 				len = getBeU32(d + t) * 4;
 				off += 8;
-				if (n) {
-					if (addr + len > xb.files[cd].size) {
+				if (n)
+				{
+					if (addr + len > xb.files[cd].size)
+					{
 						xb.files[cd].size = align16(addr + len);
 						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
 					}
 					for (i = 0; i < len; i++)
+					{
 						xb.files[cd].data[addr + i] = d[off + i];
+					}
 				}
 				off += len;
-			} else {
+			}
+			else
+			{
 				n++;
 				off = t;
 			}
-		} else {
+		}
+		else
+		{
 			for (i = 0; i < p->size - off; i++)
+			{
 				p->data[i] = p->data[off + i];
+			}
 			p->size -= off;
 			off = p->size;
 		}
 	}
 	log_printf(1, "Done!\n");
-	if (sb) {
+	if (sb)
+	{
 		log_printf(1, "Checking patched CD signature...");
 		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616),
-				 xb.files[sb].data + 914)) {
-			if (xb.prvKey) {
-				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110)) {
+				 xb.files[sb].data + 914))
+		{
+			if (xb.prvKey)
+			{
+				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
+				{
 					log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
 					if (!blSign(xb.files[cd].data, xb.files[cd].size,
 						   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, xb.files[sb].data + 914))
+					{
 						log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
-					else {
+					}
+					else
+					{
 						log_printf(1, "%s resigned successfully!\n", xb.files[cd].name);
 						ok = 1;
 					}
-				} else
+				}
+				else
+				{
 					log_printf(0, "\n***** ERROR: %s failed signature check, RSA key provided does not match the pub key in SB!\n", xb.files[cd].name);
-			} else
+				}
+			}
+			else
+			{
 				log_printf(0, "\n***** ERROR: %s failed signature check, RSA key not available for resigning!\n", xb.files[cd].name);
-		} else {
+			}
+		}
+		else
+		{
 			log_printf(1, "%s signature is good\n", xb.files[cd].name);
 			ok = 1;
 		}
 		if (ok)
+		{
 			log_printf(1, "Done!\n");
-	} else
+		}
+	}
+	else
+	{
 		log_printf(1, "could not locate SB data to check %s!\n", xb.files[cd].name);
+	}
 	return ok;
 }
 
@@ -1713,48 +2211,70 @@ void patchBlsBlmod(const void *blmod, int size)
 
 	log_printf(1, "Patching BLs...");
 	off = 0;
-	while (off < p->size) {
-		if (n != 2) {
+	while (off < p->size)
+	{
+		if (n != 2)
+		{
 			addr = getBeU32(d + off);
 			t = off + 4;
-			if (addr != 0xffffffff) {
+			if (addr != 0xffffffff)
+			{
 				len = getBeU32(d + t) * 4;
 				off += 8;
-				if (!n) {
-					if (addr + len > xb.files[cbb].size) {
+				if (!n)
+				{
+					if (addr + len > xb.files[cbb].size)
+					{
 						xb.files[cbb].size = align16(addr + len);
 						setBeU32(xb.files[cbb].size, xb.files[cbb].data + 12);
 					}
 					for (i = 0; i < len; i++)
+					{
 						xb.files[cbb].data[addr + i] = d[off + i];
-				} else {
-					if (addr + len > xb.files[cd].size) {
+					}
+				}
+				else
+				{
+					if (addr + len > xb.files[cd].size)
+					{
 						xb.files[cd].size = align16(addr + len);
 						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
 					}
 					for (i = 0; i < len; i++)
+					{
 						xb.files[cd].data[addr + i] = d[off + i];
+					}
 				}
 				off += len;
-			} else {
+			}
+			else
+			{
 				n++;
 				off = t;
 			}
-		} else {
+		}
+		else
+		{
 			for (i = 0; i < p->size - off; i++)
+			{
 				p->data[i] = p->data[off + i];
+			}
 			p->size -= off;
 			off = p->size;
 		}
 	}
-	if (blmod && size) {
+	if (blmod && size)
+	{
 		log_printf(1, "Done!\n");
 		if (!xb.cbb)
+		{
 			cbb = cd;
+		}
 		max = xb.cbb ? 0xc000 : 0x10000;
 		off = getBeU32(xb.files[cbb].data + 12);
 		end = align16(off + size);
-		if (end > max) {
+		if (end > max)
+		{
 			size -= end - max;
 			log_printf(0, "***** WARNING: blmod.bin is 0x%x bytes too large, truncating to 0x%x bytes!\n", end - max, max - off);
 		}
@@ -1779,18 +2299,27 @@ void fixupPatchSet(void)
 
 	log_printf(1, "Fixing up patch set...");
 	off = 0;
-	while (off < e->size) {
-		if (n == 2) {
+	while (off < e->size)
+	{
+		if (n == 2)
+		{
 			for (i = 0; i < e->size - off; i++)
+			{
 				e->data[i] = e->data[off + i];
+			}
 			e->size -= off;
 			off = e->size;
-		} else {
+		}
+		else
+		{
 			v = getBeU32(p + off);
 			t = off + 4;
 			if (v != 0xffffffff)
+			{
 				off += getBeU32(p + t) * 4 + 8;
-			else {
+			}
+			else
+			{
 				n++;
 				off = t;
 			}
@@ -1812,29 +2341,41 @@ void addBlsToImage(void)
 	uint32_t i;
 	int type, j, off = 0;
 
-	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++)
+	{
 		e = &xb.files[i];
 		type = e->type;
 		if (e->offset != 0xffffffff)
+		{
 			off = e->offset;
+		}
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
+		{
 			continue;
-		if (xb.type == BUILD_JTAG) {
-			if (type == 14) {
+		}
+		if (xb.type == BUILD_JTAG)
+		{
+			if (type == 14)
+			{
 				off += e->size;
 				continue;
 			}
-			if (type == 21) {
+			if (type == 21)
+			{
 				j = findFile(20);
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
-			} else if (type == 10) {
+			}
+			else if (type == 10)
+			{
 				j = findFile(9);
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
-			} else {
+			}
+			else
+			{
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAdd(off, e->data, e->size, 0, ecc, 1);
@@ -1843,53 +2384,83 @@ void addBlsToImage(void)
 			continue;
 		}
 		if (type == 9)
+		{
 			off = imgCfOffset();
-		else if (type == 23) {
+		}
+		else if (type == 23)
+		{
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
+			{
 				off += 0x60;
+			}
 			else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+			{
 				off += 0x60;
+			}
 			else
+			{
 				off += 0x10;
+			}
 		}
-		if (xb.type == BUILD_RETAIL && (type == 25 || type == 23)) {
+		if (xb.type == BUILD_RETAIL && (type == 25 || type == 23))
+		{
 			log_printf(1, "retail image, skipping %s\n", e->name);
 			continue;
-		} else if (xb.type > BUILD_DEVGL16 && (type == 25 || type == 23)) {
+		}
+		else if (xb.type > BUILD_DEVGL16 && (type == 25 || type == 23))
+		{
 			log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
 			continue;
-		} else if (type == 25 && e->offset < imgSize()) {
+		}
+		else if (type == 25 && e->offset < imgSize())
+		{
 			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
 		if (type != 10 && type != 16 && type != 24)
+		{
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
-		if (type == 10) {
+		}
+		if (type == 10)
+		{
 			j = findFile(9);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
-		} else if (type == 16) {
+		}
+		else if (type == 16)
+		{
 			j = findFile(15);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
-		} else if (type == 6) {
+		}
+		else if (type == 6)
+		{
 			if (xb.cbb)
+			{
 				imgAdd(off, e->data, e->size, 0, ecc, 1);
-		} else if (type == 24) {
-			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+			}
+		}
+		else if (type == 24)
+		{
+			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+			{
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAdd(off, e->data, e->size, 0, ecc, 1);
 			}
-		} else
+		}
+		else
+		{
 			imgAdd(off, e->data, e->size, 0, ecc, 1);
+		}
 		off += e->size;
 	}
-	if (xb.seReplacesCf) {
+	if (xb.seReplacesCf)
+	{
 		j = findFile(14);
 		log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
@@ -1901,9 +2472,13 @@ void addBlsToImage(void)
 int isUpdateBl(int type)
 {
 	if (type == 23)
+	{
 		return 1;
+	}
 	if (type == 15)
+	{
 		return 1;
+	}
 	return type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
 }
 
@@ -1914,56 +2489,83 @@ void addUpdateBls(void)
 	uint32_t i;
 	int type, j, off = 0;
 
-	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++)
+	{
 		e = &xb.files[i];
 		type = e->type;
 		if (!isUpdateBl(type))
+		{
 			continue;
+		}
 		if (e->offset != 0xffffffff)
+		{
 			off = e->offset;
+		}
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
+		{
 			continue;
+		}
 		if (type == 9)
+		{
 			off = imgCfOffset();
-		else if (type == 23) {
+		}
+		else if (type == 23)
+		{
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
+			{
 				off += 0x60;
+			}
 			else
+			{
 				off += 0x10;
+			}
 		}
-		if (type == 25 && e->offset < imgSize()) {
+		if (type == 25 && e->offset < imgSize())
+		{
 			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
 		if (type != 10 && type != 16 && type != 24)
+		{
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
-		if (type == 10) {
+		}
+		if (type == 10)
+		{
 			j = findFile(9);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
-		} else if (type == 16) {
+		}
+		else if (type == 16)
+		{
 			j = findFile(15);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
-		} else if (type == 24) {
-			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+		}
+		else if (type == 24)
+		{
+			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+			{
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 					   e->name, off, e->size, off + e->size);
 				imgAdd(off, e->data, e->size, 0, ecc, 1);
 			}
-		} else
+		}
+		else
+		{
 			imgAdd(off, e->data, e->size, 0, ecc, 1);
+		}
 		off += e->size;
 	}
 }
 
 int logPowerButton(int reason, const char *use)
 {
-	switch (reason) {
+	switch (reason)
+	{
 	case 0x11:
 		log_printf(1, "    - console power button is being used to %s \n", use);
 		break;
@@ -1987,33 +2589,53 @@ int logPowerButton(int reason, const char *use)
 		break;
 	case 0x59:
 		if IS_SLIM
+		{
 			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
+		}
 		else
+		{
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
+		}
 		break;
 	case 0x58:
 		if IS_SLIM
+		{
 			log_printf(1, "wired controller (rear middle usb port) is being used to %s \n", use);
+		}
 		else
+		{
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
+		}
 		break;
 	case 0x5a:
 		if IS_SLIM
+		{
 			log_printf(1, "wired controller (rear bottom usb port) is being used to %s \n", use);
+		}
 		else
+		{
 			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
+		}
 		break;
 	case 0x56:
 		if IS_SLIM
+		{
 			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
+		}
 		else
+		{
 			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
+		}
 		break;
 	case 0x57:
 		if IS_SLIM
+		{
 			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
+		}
 		else
+		{
 			log_printf(1, "wired controller (front bottom usb port) is being used to %s \n", use);
+		}
 		break;
 	default:
 		return 1;
@@ -2034,44 +2656,65 @@ void patchFreeboot(uint8_t *buf, int len)
 	hold[1] = 0x78300001;
 	log_printf(1, "patching freeboot.bin with with kernel version string '%s'\n", xb.kernelStr);
 	log_printf(1, "Boot options set:\n");
-	if (opts & 9) {
+	if (opts & 9)
+	{
 		log_printf(1, "    - Set debug UART speed to cygnos/demon compatible\n");
 		opts = (opts & 6) | 1;
 	}
-	if (!(opts & 4)) {
+	if (!(opts & 4))
+	{
 		if (opts & 2)
+		{
 			log_printf(1, "    - Tray has to be fully ejected for Xell to start (old nodvd method)\n");
+		}
 		else
+		{
 			log_printf(1, "    - When powered on, if tray is not fully closed Xell starts\n");
-	} else {
-		if (logPowerButton(xb.xellButton, "start xell")) {
+		}
+	}
+	else
+	{
+		if (logPowerButton(xb.xellButton, "start xell"))
+		{
 			log_printf(1, "    - UKNOWN POWER REASON, using eject button\n");
 			xb.xellButton = 0x12;
 		}
 		if (xb.xellAltButton == xb.xellButton)
+		{
 			xb.xellAltButton = 0;
-		if (logPowerButton(xb.xellAltButton, "alternately start xell")) {
+		}
+		if (logPowerButton(xb.xellAltButton, "alternately start xell"))
+		{
 			log_printf(1, "    - alternate xell button disabled\n");
 			xb.xellAltButton = 0;
 		}
 	}
 	if (xb.dualButton == xb.xellButton || xb.dualButton == xb.xellAltButton ||
 	    logPowerButton(xb.dualButton, "dual boot"))
+	{
 		xb.dualButton = 0;
+	}
 	p = (char *)findInst(buf, len, (uint8_t *)pat, 32);
-	if (p) {
+	if (p)
+	{
 		log_printf(2, "org version %s\n", p);
 		strncpy(p, xb.kernelStr, 32);
 		log_printf(2, "fin version %s\n", p);
-	} else
+	}
+	else
+	{
 		log_printf(0, "**** ERROR PATCHING FREEBOOT.BIN for kernel version string!\n");
-	if (!strncmp(xb.kernelStr, "9199", 4)) {
+	}
+	if (!strncmp(xb.kernelStr, "9199", 4))
+	{
 		hold[2] = 0x80;
 		hold[3] = 0xf8ff1f00;
 		log_printf(1, "9199 ini string detected, patching to old hold address\n");
 		q = (uint32_t *)findInst(buf, len, (uint8_t *)hold, 8);
 		if (q)
+		{
 			memcpy(q, hold + 2, 8);
+		}
 	}
 }
 
@@ -2085,7 +2728,9 @@ void patchPayloadSize(uint8_t *buf, int len, int size)
 	log_printf(1, "patching payload.bin to load size 0x%x (0x%x reps)\n", size, reps);
 	p = findInst(buf, len, (uint8_t *)&pat, 4);
 	if (!p)
+	{
 		return;
+	}
 	log_printf(2, "org li %r4, %02x%02x\n", p[2], p[3]);
 	p[3] = reps;
 	p[2] = reps >> 8;
@@ -2097,8 +2742,12 @@ static int findFileN(int type)
 	int i, n = xb.nFiles;
 
 	for (i = 0; i < n; i++)
+	{
 		if (xb.files[i].type == type)
+		{
 			return i;
+		}
+	}
 	return 0;
 }
 
@@ -2108,21 +2757,30 @@ int encodeBls(uint8_t *salt, int ldv)
 	uint32_t i;
 	int type, zero, j;
 
-	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++)
+	{
 		e = &xb.files[i];
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
+		{
 			continue;
+		}
 		type = e->type;
-		if (xb.type == BUILD_JTAG) {
+		if (xb.type == BUILD_JTAG)
+		{
 			log_printf(1, "encoding %s size 0x%x (JTAG)\n", e->name, e->size);
-			switch (type) {
+			switch (type)
+			{
 			case 1:
 				if (!memcmp(e->data, defPayload, 0x200))
+				{
 					patchPayloadSize(e->data, e->size, xb.files[findFile(22)].size);
+				}
 				break;
 			case 2:
 				if (smcPrepare(e->data, salt, e->size))
+				{
 					return 1;
+				}
 				break;
 			case 3:
 				kvPrepare(e, 0);
@@ -2166,18 +2824,29 @@ int encodeBls(uint8_t *salt, int ldv)
 				break;
 			case 22:
 				if (!memcmp(e->data, defCore, 0xd40))
+				{
 					patchFreeboot(e->data, e->size);
+				}
 				else if (xb.bootFlags)
+				{
 					log_printf(0, "\n******* WARNING: CYGNOS, DEMON and NODVD command line options are ignored due to external freeboot.bin!\n\n");
+				}
 				break;
 			}
-		} else if (xb.type > BUILD_GLITCH) {
+		}
+		else if (xb.type > BUILD_GLITCH)
+		{
 			if (type != 24)
+			{
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
-			switch (type) {
+			}
+			switch (type)
+			{
 			case 2:
 				if (smcPrepare(e->data, salt, e->size))
+				{
 					return 1;
+				}
 				break;
 			case 3:
 				kvPrepare(e, 0);
@@ -2202,24 +2871,33 @@ int encodeBls(uint8_t *salt, int ldv)
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case 11:
-				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+				{
 					j = findFile(24);
 					if IS_SLIM
+					{
 						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+					}
 					else
+					{
 						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+					}
 					log_printf(1, "zeropairing SB\n");
 					setFuseCpuKey(xb.files[j].data);
 					cbaEncryptZero(e->data, e->key, e->size);
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
-				if (checkZeros(xb.cpuKey, 16)) {
+				if (checkZeros(xb.cpuKey, 16))
+				{
 					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
 					xb.cfLdv = 0;
 					cbaEncryptZero(e->data, e->key, e->size);
-				} else
+				}
+				else
+				{
 					cbaEncrypt(salt, e->data, e->key, e->size, 0);
+				}
 				break;
 			case 12:
 				cdEncryptZero(e->data, e->key, e->size);
@@ -2248,38 +2926,57 @@ int encodeBls(uint8_t *salt, int ldv)
 				log_printf(1, "****** Unhandled BL typ %d ******\n", type);
 				break;
 			}
-		} else {
+		}
+		else
+		{
 			if (type != 24 || xb.glitch2mfg)
+			{
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
-			switch (type) {
+			}
+			switch (type)
+			{
 			case 2:
 				if (smcPrepare(e->data, salt, e->size))
+				{
 					return 1;
+				}
 				break;
 			case 3:
 				kvPrepare(e, 0);
 				break;
 			case 5:
-				if (xb.cbb) {
+				if (xb.cbb)
+				{
 					cbaEncrypt(salt, e->data, e->key, e->size, 1);
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (xb.type != BUILD_RETAIL)
+				{
 					cbaEncryptZero(e->data, e->key, e->size);
+				}
 				else
+				{
 					cbaEncrypt(salt, e->data, e->key, e->size, 0);
+				}
 				break;
 			case 6:
 				if (!xb.cbb)
+				{
 					break;
+				}
 				zero = checkZeros(xb.cpuKey, 16);
 				j = findFile(24);
 				if (xb.glitch2mfg)
+				{
 					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
+				}
 				else
+				{
 					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
-				if (zero) {
+				}
+				if (zero)
+				{
 					log_printf(1, "CPU key is all zeros, zeropairing CB_B\n");
 					xb.cfLdv = 0;
 				}
@@ -2287,15 +2984,22 @@ int encodeBls(uint8_t *salt, int ldv)
 				cbbEncrypt(salt, e->data, xb.files[j].key, xb.files[j].data, e->key, e->size, zero);
 				break;
 			case 7:
-				if (xb.cbb) {
+				if (xb.cbb)
+				{
 					j = findFile(6);
 					cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
-				} else {
+				}
+				else
+				{
 					j = findFile(5);
 					if (xb.type != BUILD_RETAIL)
+					{
 						cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
+					}
 					else
+					{
 						cdEncryptCpu(e->data, xb.files[j].key, e->key, e->size);
+					}
 				}
 				break;
 			case 8:
@@ -2313,7 +3017,8 @@ int encodeBls(uint8_t *salt, int ldv)
 			}
 		}
 	}
-	if (xb.seReplacesCf) {
+	if (xb.seReplacesCf)
+	{
 		/* the SE that replaced the CF follows the CD */
 		e = &xb.files[findFile(14)];
 		j = findFile(7);
@@ -2330,11 +3035,15 @@ int encodeUpdateBls(int unused, int ldv)
 	uint32_t i;
 	int j;
 
-	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++) {
+	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++)
+	{
 		e = &xb.files[i];
 		if (!strnicmp(e->name, "none", 4) && !e->crc)
+		{
 			continue;
-		switch (e->type) {
+		}
+		switch (e->type)
+		{
 		case 9:
 			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			j = findFile(10);
@@ -2354,16 +3063,20 @@ uint32_t calcBlAreaSize(void)
 {
 	uint32_t size, xs, x;
 
-	if (xb.type == BUILD_JTAG) {
+	if (xb.type == BUILD_JTAG)
+	{
 		x = findFile(5);
 		size = findFileOffset(5) + xb.files[x].size;
 		x = findFile(7);
 		size += xb.files[x].size;
-		if (xb.seReplacesCf) {
+		if (xb.seReplacesCf)
+		{
 			x = findFile(14);
 			size += xb.files[x].size;
 		}
-	} else if (xb.type > BUILD_DEVGL16) {
+	}
+	else if (xb.type > BUILD_DEVGL16)
+	{
 		x = findFile(11);
 		size = findFileOffset(11) + xb.files[x].size;
 		x = findFile(12);
@@ -2374,19 +3087,27 @@ uint32_t calcBlAreaSize(void)
 		size += xb.files[x].size;
 		setPatchSlot(size);
 		size += 2 * imgCfSize();
-	} else {
+	}
+	else
+	{
 		size = findFileOffset(5) + findFileSize(5);
 		size += findFileSize(6);
 		size += findFileSize(7);
 		size += findFileSize(8);
-		if (xb.type != BUILD_RETAIL) {
+		if (xb.type != BUILD_RETAIL)
+		{
 			x = findFile(25);
-			if (xb.files[x].offset > size) {
+			if (xb.files[x].offset > size)
+			{
 				xs = xb.files[x].size;
 				if (xs > 0x40000)
+				{
 					log_printf(0, "***** WARNING: xell is unexpectedly larger than 256KiB!!\n");
+				}
 				else
+				{
 					xs = 0x40000;
+				}
 				size = xb.files[x].offset + xs;
 			}
 		}
@@ -2395,7 +3116,9 @@ uint32_t calcBlAreaSize(void)
 		size += 2 * imgCfSize();
 	}
 	if (size & 0x3fff)
+	{
 		size = (size + 0x3fff) & ~0x3fff;
+	}
 	return size;
 }
 
@@ -2404,10 +3127,13 @@ static int initFlash(uint8_t *salt)
 	int fuse = 1;
 
 	memset(salt, 0, 16);
-	if (xb.type != BUILD_JTAG) {
+	if (xb.type != BUILD_JTAG)
+	{
 		fuse = xb.glitch2mfg != 0;
 		if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+		{
 			return 1;
+		}
 	}
 	return fuse & 1;
 }
@@ -2415,7 +3141,8 @@ static int initFlash(uint8_t *salt)
 /* no blmod.bin: the console's, if any */
 static void patchConsoleBlmod(void)
 {
-	if (!xb.consoleBlmod.data || !xb.consoleBlmod.size) {
+	if (!xb.consoleBlmod.data || !xb.consoleBlmod.size)
+	{
 		patchBlsBlmod(NULL, 0);
 		return;
 	}
@@ -2435,13 +3162,17 @@ int buildFlash(void)
 	char last;
 
 	fuse = initFlash(salt);
-	if (!xb.fromConsole) {
+	if (!xb.fromConsole)
+	{
 		log_printf(1, "Writing initial header to flash image\n");
 		writeInitialHeader();
-	} else {
+	}
+	else
+	{
 		log_printf(1, "\n------ Copying bootloader image to flash image ------ \n");
 		r = checkBootImage(1);
-		if (r) {
+		if (r)
+		{
 			log_printf(0, "******* ERROR: bootloaders retrieved from console are inconsistent, cannot proceed!\n\n");
 			return r;
 		}
@@ -2449,77 +3180,121 @@ int buildFlash(void)
 	suLoadDir(xb.dataDir);
 	log_printf(1, "\n------ Loading bootloaders and required security files ------\n");
 	if (xb.fromConsole)
+	{
 		r = loadConsoleBlFiles();
+	}
 	else
+	{
 		r = loadBlFiles();
-	if (r) {
+	}
+	if (r)
+	{
 		log_printf(0, "******* ERROR: critical bootloader files are missing, cannot proceed!\n\n");
 		return r;
 	}
 	if (!xb.fromConsole && !verifyBlSigs())
+	{
 		return 1;
+	}
 	log_printf(1, "done!\n");
 	blocks = fsStartBlock();
 	area = calcBlAreaSize();
 	if (!blocks)
+	{
 		blocks = area >> 14;
+	}
 	else
+	{
 		area = blocks << 14;
-	if (xb.type == BUILD_GLITCH) {
+	}
+	if (xb.type == BUILD_GLITCH)
+	{
 		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (xb.fromConsole)
+		{
 			fixupPatchSet();
-		else {
+		}
+		else
+		{
 			struct fileent f;
 
 			memset(&f, 0, sizeof(f));
-			if (!loadBaseFile("blmod.bin", &f)) {
+			if (!loadBaseFile("blmod.bin", &f))
+			{
 				patchBlsBlmod(f.data, f.size);
 				free(f.data);
-			} else
+			}
+			else
+			{
 				patchConsoleBlmod();
+			}
 		}
-	} else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16) {
+	}
+	else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
+	{
 		log_printf(1, "\n------ Patching BLs and modifying patches ------\n");
 		if (!patchBlsResign())
+		{
 			return 1;
+		}
 	}
-	if (!xb.fromConsole && !(xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16)) {
+	if (!xb.fromConsole && !(xb.type == BUILD_RETAIL || xb.type > BUILD_DEVGL16))
+	{
 		log_printf(1, "\n------ Patching boot reasons and options into flash header ------\n");
 		patchHeaderOpts();
 	}
 	log_printf(1, "\n------ Encrypting and finalizing bootloaders ------\n");
 	keysInit(xb.randomKeys);
-	if (fuse) {
+	if (fuse)
+	{
 		struct fileent *e = &xb.files[findFile(24)];
 		setFuseCpuKey(e->data);
 		if (xb.type != BUILD_JTAG)
+		{
 			e->offset = imgCfOffset() + imgCfSize();
+		}
 	}
-	if (!xb.fromConsole) {
+	if (!xb.fromConsole)
+	{
 		if (encodeBls(salt, blocks))
+		{
 			return -4;
-	} else if (encodeUpdateBls((int)salt, blocks))
+		}
+	}
+	else if (encodeUpdateBls((int)salt, blocks))
+	{
 		return -4;
+	}
 	if (fuse)
+	{
 		showFuses(1, "\nVirtual Fuses set to:", xb.files[findFile(24)].data);
+	}
 	log_printf(1, "done!\n\n------ Adding bootloaders to flash image ------\n");
 	if (!xb.fromConsole)
+	{
 		addBlsToImage();
+	}
 	else
+	{
 		addUpdateBls();
-	if (!fsStartBlock()) {
+	}
+	if (!fsStartBlock())
+	{
 		log_printf(1, "Fixing up FS table...");
 		fixupFsTable(area);
 		imgSetSize(area);
 		log_printf(1, "done!\n");
 	}
 	if (fsStartBlock())
+	{
 		imgSetSize(fsStartBlock() << 14);
+	}
 
 	/* the CG's patch slot overflow goes in the filesystem */
-	if (xb.type != BUILD_JTAG) {
-		if (xb.files[findFile(9)].fsSize) {
+	if (xb.type != BUILD_JTAG)
+	{
+		if (xb.files[findFile(9)].fsSize)
+		{
 			off = imgSize();
 			cf = findFile(9);
 			cg = findFile(10);
@@ -2529,9 +3304,12 @@ int buildFlash(void)
 			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, "done!\n");
 		}
-	} else {
+	}
+	else
+	{
 		off = imgSize();
-		if (xb.files[findFile(20)].fsSize) {
+		if (xb.files[findFile(20)].fsSize)
+		{
 			cf = findFile(20);
 			cg = findFile(21);
 			log_printf(1, "Writing CG patch slot overflow data to sysupdate.xexp1\n");
@@ -2540,7 +3318,8 @@ int buildFlash(void)
 			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, "done!\n");
 		}
-		if (xb.files[findFile(9)].fsSize) {
+		if (xb.files[findFile(9)].fsSize)
+		{
 			cf = findFile(9);
 			cg = findFile(10);
 			log_printf(1, "Writing target CG patch slot overflow data to sysupdate.xexp2\n");
@@ -2552,50 +3331,73 @@ int buildFlash(void)
 	}
 
 	log_printf(1, "\n------ adding %d firmware files ------\n", xb.nFirmware);
-	for (i = 0; i < xb.nFirmware; i++) {
+	for (i = 0; i < xb.nFirmware; i++)
+	{
 		struct fileent f;
 
 		strcpy(f.name, xb.firmware[i]);
 		last = f.name[strlen(f.name) - 1];
-		if (!strnicmp("sysupdate.xexp", f.name, 14)) {
+		if (!strnicmp("sysupdate.xexp", f.name, 14))
+		{
 			log_printf(1, "\n******* WARNING: firmware file %s ignored, 'sysupdate.xexp' is a reserved name!\n\n", f.name);
 			continue;
 		}
 		if (!xb.firmwareCrc[i])
+		{
 			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, 0, (uint8_t *)&ts, 0, 1, 0);
-		else {
+		}
+		else
+		{
 			/* a patch (.xexp): the target's comes as .xexp1, a JTAG's as .xexp2 */
-			if (last == 'p') {
+			if (last == 'p')
+			{
 				if (xb.type == BUILD_JTAG)
+				{
 					strcat(xb.firmware[i], "2");
+				}
 				else
+				{
 					strcat(xb.firmware[i], "1");
+				}
 			}
 			r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (uint8_t *)&ts, 1, 1, 1);
-			if (r && last == 'p') {
+			if (r && last == 'p')
+			{
 				strcat(f.name, "1");
 				r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (uint8_t *)&ts, 0, 1, 1);
-				if (r) {
+				if (r)
+				{
 					f.name[strlen(f.name) - 1] = '2';
 					r = loadInputFile(f.name, &xb.files[xb.nFlashFiles], 0, xb.firmwareCrc[i], (uint8_t *)&ts, 0, 1, 1);
 				}
 			}
 		}
-		if (!r) {
+		if (!r)
+		{
 			base = strrchr(xb.firmware[i], '/');
 			if (!base)
+			{
 				base = strrchr(xb.firmware[i], '\\');
+			}
 			if (base)
+			{
 				base++;
+			}
 			else
+			{
 				base = xb.firmware[i];
+			}
 			off = imgSize();
 			len = xb.files[xb.nFlashFiles].size;
 			log_printf(1, "\tadding as %s at raw offset 0x%x len 0x%08x (end 0x%08x)\n", base, off, len, off + len);
 			imgAddFile(base, xb.files[xb.nFlashFiles].data, &ts, len);
-		} else if (!xb.firmwareCrc[i])
+		}
+		else if (!xb.firmwareCrc[i])
+		{
 			log_printf(1, "***** could not read file '%s', skipping *****\n", xb.firmware[i]);
-		else {
+		}
+		else
+		{
 			log_printf(0, "***** could not read file '%s' *****\n", xb.firmware[i]);
 			log_printf(0, "\n******* ERROR: critical firmware file missing, cannot proceed!\n\n");
 			return r;
@@ -2603,87 +3405,138 @@ int buildFlash(void)
 	}
 
 	log_printf(1, "\n------ adding %d security files ------\n", xb.nFlashFiles2);
-	for (k = 0; k < xb.nFlashFiles2; k++) {
+	for (k = 0; k < xb.nFlashFiles2; k++)
+	{
 		int found = 1;
 
 		memset(&xb.files[xb.nFlashFiles], 0, sizeof(struct fileent));
 		setBeU32(0, (uint8_t *)&ts);
 		if (k)
+		{
 			log_printf(1, "\n");
+		}
 		name = xb.flashFiles[k];
 		log_printf(1, "<- Processing %s ->\n", name);
-		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (uint8_t *)&ts)) {
+		if (loadBaseFileMeta(name, &xb.files[xb.nFlashFiles], (uint8_t *)&ts))
+		{
 			found = 0;
-			if (!(xb.bootFlags & 0x1000000)) {
+			if (!(xb.bootFlags & 0x1000000))
+			{
 				if (xb.files[xb.nFlashFiles].data)
+				{
 					free(xb.files[xb.nFlashFiles].data);
-				if (suGetFile(name, &xb.files[xb.nFlashFiles].data, &xb.files[xb.nFlashFiles].size)) {
+				}
+				if (suGetFile(name, &xb.files[xb.nFlashFiles].data, &xb.files[xb.nFlashFiles].size))
+				{
 					log_printf(1, "\tcould not read %s, using data from SUPD...\n", name);
 					found = 1;
 				}
 			}
-			if (!found) {
-				if (xb.flashBuf[k]) {
+			if (!found)
+			{
+				if (xb.flashBuf[k])
+				{
 					if (xb.files[xb.nFlashFiles].data)
+					{
 						free(xb.files[xb.nFlashFiles].data);
+					}
 					xb.files[xb.nFlashFiles].data = xb.flashBuf[k];
 					xb.files[xb.nFlashFiles].size = xb.flashSize[k];
 					log_printf(1, "\tcould not read %s, using data from previous parse...\n", name);
 					found = 1;
-				} else if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin")) {
+				}
+				else if (!strcmp(name, "secdata.bin") || !strcmp(name, "extended.bin"))
+				{
 					xb.files[xb.nFlashFiles].size = 0;
 					found = 1;
 				}
 			}
 		}
-		if (found) {
+		if (found)
+		{
 			if (!getBeU32((uint8_t *)&ts))
+			{
 				makeTimestamp((uint8_t *)&ts, &ft);
+			}
 			else
+			{
 				timestampToFileTime((uint16_t *)&ts, &ft);
+			}
 			if (!strcmp(name, "secdata.bin"))
+			{
 				secdataPrepare(&xb.files[xb.nFlashFiles], (uint8_t *)&ft);
+			}
 			else if (!strcmp(name, "extended.bin"))
+			{
 				extendedPrepare(&xb.files[xb.nFlashFiles]);
+			}
 			else if (!strcmp(name, "dae.bin"))
+			{
 				daeEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (uint8_t *)&ft);
+			}
 			else if (!strcmp(name, "crl.bin"))
+			{
 				crlEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, (uint8_t *)&ft);
+			}
 			else if (!strcmp(name, "fcrt.bin"))
+			{
 				fcrtEncrypt(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size);
-			else if (!strcmp(name, "odd.bin")) {
+			}
+			else if (!strcmp(name, "odd.bin"))
+			{
 				if (xb.flashTime[k])
+				{
 					setBeU32(xb.flashTime[k], (uint8_t *)&ts);
-			} else
+				}
+			}
+			else
+			{
 				log_printf(0, "******* WARNING: writing %s%s as-is to NAND, if .meta was not included it may be invalid!\n", xb.baseDir, name);
+			}
 			imgAddFileAs(name, xb.files[xb.nFlashFiles].data, &ts, xb.files[xb.nFlashFiles].size);
-		} else if (!strcmp(name, "fcrt.bin")) {
+		}
+		else if (!strcmp(name, "fcrt.bin"))
+		{
 			region = kvGetGameRegion();
-			if (region) {
+			if (region)
+			{
 				log_printf(0, "\n\n***** ERROR: %s not found, keyvault has this file flagged as required but it's being skipped *****\n", name);
-				if (xb.type != BUILD_RETAIL && xb.type <= BUILD_DEVGL16) {
+				if (xb.type != BUILD_RETAIL && xb.type <= BUILD_DEVGL16)
+				{
 					if (region == 1)
+					{
 						log_printf(0, "             note - on hacked images a nofcrt patch should allow the drive and machine to function\n");
-					else {
+					}
+					else
+					{
 						log_printf(0, "             note - on hacked images a nofcrt patch WILL NOT allow the drive to function\n");
 						log_printf(0, "             but should allow the machine to boot normally\n");
 					}
 				}
-			} else
+			}
+			else
+			{
 				log_printf(1, "\t%s not found and not required by keyvault, skipped\n", name);
-		} else
+			}
+		}
+		else
+		{
 			log_printf(0, "***** WARNING: %s not found, skipping *****\n", name);
-		if (xb.files[xb.nFlashFiles].data) {
+		}
+		if (xb.files[xb.nFlashFiles].data)
+		{
 			free(xb.files[xb.nFlashFiles].data);
 			xb.files[xb.nFlashFiles].data = NULL;
 		}
 	}
 
 	log_printf(1, "\n------ checking for Mobile*.dat ------\n");
-	for (k = 0; k < 11; k++) {
+	for (k = 0; k < 11; k++)
+	{
 		struct fileent f;
 
-		switch (k) {
+		switch (k)
+		{
 		case 9:
 			strcpy(f.name, "Statistics.settings");
 			raw = statisticsOffset(xb.bigBlock, xb.type > BUILD_DEVGL16, (xb.flags & NAND_MMC) != 0, NULL, NULL);
@@ -2697,28 +3550,39 @@ int buildFlash(void)
 			f.name[6] = 'B' + k;
 			raw = 0;
 		}
-		if (!loadBaseFile(f.name, &xb.files[xb.nFlashFiles])) {
+		if (!loadBaseFile(f.name, &xb.files[xb.nFlashFiles]))
+		{
 			log_printf(1, "%s found, adding from file\n", f.name, xb.files[xb.nFlashFiles].size, '1' + k);
-			if (raw) {
+			if (raw)
+			{
 				save = imgSize();
 				imgAddRaw(f.name, xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, raw);
 				imgSetSize(save);
-			} else {
+			}
+			else
+			{
 				t = imgAddMobile(xb.files[xb.nFlashFiles].data, xb.files[xb.nFlashFiles].size, '1' + k);
-				if (t && k <= 8) {
+				if (t && k <= 8)
+				{
 					setBeU16(t, (uint8_t *)&xb.mobileTab[k].type);
 					setBeU16(xb.files[xb.nFlashFiles].size >= 0x4000 ? 0 : xb.files[xb.nFlashFiles].size, (uint8_t *)&xb.mobileTab[k].size);
 				}
 			}
-		} else if (xb.mobile[k].data && xb.mobile[k].size) {
+		}
+		else if (xb.mobile[k].data && xb.mobile[k].size)
+		{
 			log_printf(1, "%s found, adding from previous parse\n", f.name);
-			if (raw) {
+			if (raw)
+			{
 				save = imgSize();
 				imgAddRaw(f.name, xb.mobile[k].data, xb.mobile[k].size, raw);
 				imgSetSize(save);
-			} else {
+			}
+			else
+			{
 				t = imgAddMobile(xb.mobile[k].data, xb.mobile[k].size, '1' + k);
-				if (t && k <= 8) {
+				if (t && k <= 8)
+				{
 					setBeU16(t, (uint8_t *)&xb.mobileTab[k].type);
 					setBeU16(xb.mobile[k].size > 0x3fff ? 0 : xb.mobile[k].size, (uint8_t *)&xb.mobileTab[k].size);
 				}
@@ -2738,7 +3602,8 @@ int buildFlash(void)
 	log_printf(1, "done!\nWriting FS table to image ");
 	writeFsTable(b);
 	log_printf(1, "done!\n");
-	if (xb.flags & NAND_MMC) {
+	if (xb.flags & NAND_MMC)
+	{
 		/* MMC: two anchor blocks */
 		xb.anchorNum = 1;
 		shaHeader(xb.anchor);
@@ -2747,34 +3612,45 @@ int buildFlash(void)
 		shaHeader(xb.anchor);
 		copyAnchorBlock(2);
 	}
-	for (k = 0; k < 19; k++) {
+	for (k = 0; k < 19; k++)
+	{
 		if (xb.files[k].data && xb.files[k].size)
+		{
 			free(xb.files[k].data);
+		}
 		xb.files[k].size = 0;
 	}
-	if (xb.nRawPatches) {
+	if (xb.nRawPatches)
+	{
 		struct fileent f;
 
 		log_printf(1, "\n------ adding [rawpatch] data ------\n");
 		f.data = NULL;
-		for (k = 0; k < xb.nRawPatches; k++) {
+		for (k = 0; k < xb.nRawPatches; k++)
+		{
 			r = loadInputFile(xb.rawPatch[k].name, &f, 0, 0, (uint8_t *)&ts, 0, 0, 0);
-			if (!r) {
+			if (!r)
+			{
 				off = xb.rawPatch[k].offset;
 				end = off + f.size;
-				if (end <= xb.userSize) {
+				if (end <= xb.userSize)
+				{
 					memcpy(xb.hdr + off, f.data, f.size);
 					log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x len: 0x%x (end: 0x%x) successfully!\n\n",
 						   k + 1, xb.rawPatch[k].name, off, f.size, end);
 					free(f.data);
 					f.data = NULL;
-				} else {
+				}
+				else
+				{
 					log_printf(1, "[rawpatch] (%d): '%s' copied to offset 0x%x (len: 0x%x) would exceed user size 0x%x!\n\n",
 						   k + 1, xb.rawPatch[k].name, off, f.size, xb.userSize);
 					free(f.data);
 					return -1;
 				}
-			} else {
+			}
+			else
+			{
 				log_printf(0, "***** ERROR: could not load [rawpatch] file '%s'!!\n", xb.rawPatch[k].name);
 				return r;
 			}

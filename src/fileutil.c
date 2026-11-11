@@ -25,7 +25,9 @@ const char *consoleTypeStr[] = {
 const char *getConsoleTypeStr(int type)
 {
 	if (type <= 6)
+	{
 		return consoleTypeStr[type];
+	}
 	return consoleTypeStr[0];
 }
 
@@ -86,9 +88,12 @@ void display_buffer_hex(const unsigned char *buf, unsigned int len, unsigned int
 {
 	int i;
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len; i++)
+	{
 		if (i % 16 == 0)
+		{
 			log_printf(level, "\n  ");
+		}
 		log_printf(level, " %02X", buf[i]);
 	}
 	log_printf(level, "\n");
@@ -99,15 +104,23 @@ void dump_buffer_hex(const char *name, const void *buf, size_t size)
 	FILE *f;
 
 	log_printf(1, "dump buffer: n:'%s' b:0x%x s:0x%x\n", name, buf, size);
-	if (name && buf && size) {
+	if (name && buf && size)
+	{
 		f = fopen(name, "wb");
-		if (f) {
+		if (f)
+		{
 			fwrite(buf, size, 1, f);
 			fclose(f);
-		} else
+		}
+		else
+		{
 			log_printf(1, "fopen ERROR\n");
-	} else
+		}
+	}
+	else
+	{
 		log_printf(1, "dump buffer arg error\n");
+	}
 	log_printf(1, "dump OK\n");
 }
 
@@ -116,9 +129,11 @@ int writeFile(const char *name, const void *buf, size_t size)
 	FILE *f;
 	int ret = 0;
 
-	if (buf && name && size) {
+	if (buf && name && size)
+	{
 		f = fopen(name, "wb");
-		if (f) {
+		if (f)
+		{
 			ret = fwrite(buf, size, 1, f) == 1;
 			fclose(f);
 		}
@@ -130,7 +145,8 @@ int writeFileIn(const char *dir, const char *name, const void *buf, size_t size)
 {
 	char path[1024];
 
-	if (dir && name && buf) {
+	if (dir && name && buf)
+	{
 		strcpy(path, dir);
 		strcat(path, name);
 		return writeFile(path, buf, size);
@@ -144,13 +160,17 @@ int writeKeyFile(const char *dir, const char *name, const unsigned char *key)
 	FILE *f;
 	int i;
 
-	if (dir && name && key) {
+	if (dir && name && key)
+	{
 		strcpy(path, dir);
 		strcat(path, name);
 		f = fopen(path, "wb");
-		if (f) {
+		if (f)
+		{
 			for (i = 0; i < 16; i++)
+			{
 				fprintf(f, "%02X", key[i]);
+			}
 			fprintf(f, "\n");
 			fclose(f);
 			return 1;
@@ -165,13 +185,17 @@ int writeFuseFile(const char *dir, const char *name, const unsigned char *fuses)
 	FILE *f;
 	int i, n = 0;
 
-	if (dir && name && fuses) {
+	if (dir && name && fuses)
+	{
 		strcpy(path, dir);
 		strcat(path, name);
 		f = fopen(path, "wb");
-		if (f) {
-			for (i = 0; i < 96; i++) {
-				if (i % 8 == 0) {
+		if (f)
+		{
+			for (i = 0; i < 96; i++)
+			{
+				if (i % 8 == 0)
+				{
 					fprintf(f, "\nfuseset %02d: ", n);
 					n++;
 				}
@@ -190,13 +214,21 @@ unsigned char *findInst(unsigned char *buf, int len, const void *patv, int patle
 	const unsigned char *pat = patv;
 	int i, j;
 
-	for (i = 0; i <= len - patlen; i++) {
-		if (buf[i] == pat[0]) {
+	for (i = 0; i <= len - patlen; i++)
+	{
+		if (buf[i] == pat[0])
+		{
 			for (j = 0; j < patlen; j++)
+			{
 				if (buf[i + j] != pat[j])
+				{
 					j = patlen + 1;
+				}
+			}
 			if (j == patlen)
+			{
 				return &buf[i];
+			}
 		}
 	}
 	return NULL;
@@ -210,7 +242,9 @@ int countInst(unsigned char *buf, int len, const void *pat, int patlen)
 	{
 		ptr = findInst(&buf[off], len-off, pat, patlen);
 		if(ptr == NULL)
+		{
 			off = len;
+		}
 		else
 		{
 			count++;
@@ -225,13 +259,21 @@ int findInstExists(const unsigned char *buf, int len, const void *patv, int patl
 	const unsigned char *pat = patv;
 	int i, j;
 
-	for (i = 0; i <= len - patlen; i++) {
-		if (buf[i] == pat[0]) {
+	for (i = 0; i <= len - patlen; i++)
+	{
+		if (buf[i] == pat[0])
+		{
 			for (j = 0; j < patlen; j++)
+			{
 				if (buf[i + j] != pat[j])
+				{
 					j = patlen + 1;
+				}
+			}
 			if (j == patlen)
+			{
 				return 1;
+			}
 		}
 	}
 	return 0;
@@ -243,7 +285,9 @@ int replaceInst(unsigned char *buf, int len, const void *pat, int patlen,
 	unsigned char *p = findInst(buf, len, pat, patlen);
 
 	if (!p)
+	{
 		return 0;
+	}
 	memcpy(p, rep, replen);
 	return 1;
 }
@@ -252,11 +296,17 @@ int replaceInst(unsigned char *buf, int len, const void *pat, int patlen,
 unsigned char myatox(char c)
 {
 	if((c >= 0x61) && (c <= 0x66)) // a thru f
+	{
 		return (unsigned char)(c-0x57);
+	}
 	else if((c >= 0x30) && (c <= 0x39)) // 0 thru 9
+	{
 		return (unsigned char)(c-0x30);
+	}
 	else if((c >= 0x41) && (c <= 0x46)) // A thru F
+	{
 		return (unsigned char)(c-0x37);
+	}
 	return 0xFF;
 }
 
@@ -277,7 +327,9 @@ uint32_t myatox32(const char* dat, uint32_t defValue)
 	for(i = 0; i < 16; i++)
 	{
 		if((dat[i]&0xFF) == 0x0)
+		{
 			i = 16;
+		}
 		else
 		{
 			res = (myatox(dat[i]&0xFF));
@@ -287,7 +339,9 @@ uint32_t myatox32(const char* dat, uint32_t defValue)
 				retval = defValue;
 			}
 			else
+			{
 				retval = (retval<<4)+(res&0xF);
+			}
 		}
 	}
 	return retval;
@@ -298,7 +352,9 @@ char myatol(char c)
 {
 	char ret = c;
 	if((c>0x40)&&(c<0x5A)) // A thru Z
+	{
 		ret = c+0x20;
+	}
 	return ret;
 }
 
@@ -309,25 +365,35 @@ uint32_t myatou32(const char* dat, uint32_t defValue)
 	{
 		bool hex = false;
 		if(myatol(dat[1]&0xFF) == 'x')
+		{
 			hex = true;
+		}
 		if(hex)
 		{
 			if(validateString(&dat[2]))
+			{
 				return myatox32(&dat[2], defValue);
+			}
 			return defValue;
 		}
 	}
 	if(validateString(dat))
+	{
 		return atoi((const char*)dat);
+	}
 	return defValue;
 }
 
 uint32_t myatoh32(const char* dat, uint32_t defValue)
 {
 	if((strlen(dat) > 2)&&((dat[0]&0xFF) == '0')&&(myatol(dat[1]&0xFF) == 'x'))
+	{
 		dat = &dat[2];
+	}
 	if(validateString(dat))
+	{
 		return myatox32(dat, defValue);
+	}
 	return defValue;
 }
 
@@ -336,14 +402,18 @@ uint32_t validateString(const char* nString)
 {
 	int i, len;
 	if(nString == NULL)
+	{
 		return false;
+	}
 	len = strlen(nString);
 	if((nString[0] != 0x0) && (len != 0))
 	{
 		for(i = 0; i < len; i++)
 		{
 			if(myatox(nString[i]) == 0xFF)
+			{
 				return false;
+			}
 		}
 		return true;
 	}
@@ -355,8 +425,12 @@ int checkZeros(const unsigned char *p, unsigned int len)
 	unsigned int i;
 
 	for (i = 0; i < len; i++)
+	{
 		if (p[i])
+		{
 			return 0;
+		}
+	}
 	return 1;
 }
 
@@ -365,14 +439,17 @@ void memcpyrev(unsigned char *dst, const unsigned char *src, int len)
 	int i, j;
 
 	for (i = 0, j = len - 1; i < len; i++, j--)
+	{
 		dst[i] = src[j];
+	}
 }
 
 long getFileSize(FILE *f)
 {
 	long size = 0;
 
-	if (f) {
+	if (f)
+	{
 		fseek(f, 0, SEEK_END);
 		size = ftell(f);
 		rewind(f);
@@ -385,7 +462,8 @@ long getFileSizeName(const char *name)
 	long size = 0;
 	FILE *f = fopen(name, "rb");
 
-	if (f) {
+	if (f)
+	{
 		fseek(f, 0, SEEK_END);
 		size = ftell(f);
 		fclose(f);
@@ -397,7 +475,8 @@ long long getFileSize64(FILE *f)
 {
 	long long size = 0;
 
-	if (f) {
+	if (f)
+	{
 		fseeko64(f, 0, SEEK_END);
 		size = ftello64(f);
 		rewind(f);
@@ -410,7 +489,8 @@ long long getFileSize64Name(const char *name)
 	long long size = 0;
 	FILE *f = fopen(name, "rb");
 
-	if (f) {
+	if (f)
+	{
 		fseeko64(f, 0, SEEK_END);
 		size = ftello64(f);
 		fclose(f);
@@ -422,7 +502,8 @@ uint32_t FileExists(const char *name)
 {
 	FILE *f = fopen(name, "rb");
 
-	if (f) {
+	if (f)
+	{
 		fclose(f);
 		return 1;
 	}
@@ -446,21 +527,29 @@ void *FileToBuffer(const char *name, size_t *psize)
 	size_t size = 0;
 
 	if (name == NULL)
+	{
 		return NULL;
+	}
 	f = fopen(name, "rb");
-	if (f) {
+	if (f)
+	{
 		size = getFileSize(f);
 		buf = malloc(size);
 		if (buf)
+		{
 			fread(buf, size, 1, f);
-		else {
+		}
+		else
+		{
 			log_printf(1, "unable to allocate file buffer of 0x%x size!\n", size);
 			size = 0;
 		}
 		fclose(f);
 	}
 	if (psize)
+	{
 		*psize = size;
+	}
 	return buf;
 }
 
@@ -469,10 +558,13 @@ int readFileTo(const char *name, void *buf, size_t size)
 	FILE *f;
 	size_t ret = 0;
 
-	if (name && buf && size) {
+	if (name && buf && size)
+	{
 		f = fopen(name, "rb");
-		if (f) {
-			if (size <= (size_t)getFileSize(f)) {
+		if (f)
+		{
+			if (size <= (size_t)getFileSize(f))
+			{
 				fread(buf, size, 1, f);
 				fclose(f);
 				ret = size;
@@ -486,7 +578,8 @@ uint32_t readFileInTo(const char *dir, const char *name, void *buf, int size)
 {
 	char path[1024];
 
-	if (dir && name && buf) {
+	if (dir && name && buf)
+	{
 		sprintf(path, "%s%s", dir, name);
 		return readFileTo(path, buf, size);
 	}
@@ -508,31 +601,45 @@ void *readFileIn(const char *dir, const char *name, size_t *psize, size_t align)
 	void *buf = NULL;
 	size_t size, alloc;
 
-	if (dir && name) {
+	if (dir && name)
+	{
 		char path[1024];
 
 		sprintf(path, "%s%s", dir, name);
 		size = getFileSizeName(path);
 		alloc = size;
-		if (align) {
+		if (align)
+		{
 			alloc = size + align - 1;
 			alloc &= -align;
 		}
 		buf = calloc(alloc, 1);
-		if (buf) {
-			if (readFileTo(path, buf, size) == size) {
+		if (buf)
+		{
+			if (readFileTo(path, buf, size) == size)
+			{
 				if (psize)
+				{
 					*psize = alloc;
-			} else {
+				}
+			}
+			else
+			{
 				if (psize)
+				{
 					*psize = 0;
+				}
 				free(buf);
 				buf = NULL;
 			}
-		} else {
+		}
+		else
+		{
 			log_printf(1, "unable to allocate file buffer of 0x%x size!\n", alloc);
 			if (psize)
+			{
 				*psize = 0;
+			}
 		}
 	}
 	return buf;
@@ -544,7 +651,9 @@ unsigned int calcConfigSum(const unsigned char *p)
 	int i;
 
 	for (i = 16; i < 268; i++)
+	{
 		sum += p[i];
+	}
 	sum = ~sum;
 	return ((unsigned int)sum << 24) + (((unsigned int)sum << 8) & 0xff0000);
 }
@@ -554,7 +663,9 @@ unsigned int sumBytes(const unsigned char *p, unsigned int len)
 	unsigned int i, sum = 0;
 
 	for (i = 0; i < len; i++)
+	{
 		sum += p[i];
+	}
 	return sum;
 }
 
@@ -571,48 +682,67 @@ void showExpectedFuses(unsigned int flags, unsigned short cb, unsigned char *fus
 	log_printf(1, "\texpected fuses:\n");
 	log_printf(1, "\tfuseset 00: C0FFFFFFFFFFFFFF\n");
 	if (fuses)
+	{
 		setBeU64(0xC0FFFFFFFFFFFFFFULL, fuses);
-	switch (type) {
+	}
+	switch (type)
+	{
 	case 0:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0F0F0F (devkit)\n");
 		if (fuses)
+		{
 			setBeU64(0x0F0F0F0F0F0F0F0FULL, fuses + 8);
+		}
 		break;
 	case 1:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0F0FF0 (retail)\n");
 		if (fuses)
+		{
 			setBeU64(0x0F0F0F0F0F0F0FF0ULL, fuses + 8);
+		}
 		break;
 	case 2:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0FF00F (testkit)\n");
 		if (fuses)
+		{
 			setBeU64(0x0F0F0F0F0F0FF00FULL, fuses + 8);
+		}
 		break;
 	case 3:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0FF0F0 (retail slim)\n");
 		if (fuses)
+		{
 			setBeU64(0x0F0F0F0F0F0FF0F0ULL, fuses + 8);
+		}
 		break;
 	default:
 		log_printf(1, "\tfuseset 01: ???????????????? never seen console type 0x%02x\n", type);
 		break;
 	}
 	if (cseq == 0 && allow == 0)
+	{
 		log_printf(1, "\tfuseset 02: 0000000000000000\n");
-	else {
+	}
+	else
+	{
 		mask = 0;
 		log_printf(1, "\tfuseset 02: %016llX (sequence)\n", 0xFULL << ((16 - cseq) * 4));
-		for (i = 0; i < 16; i++) {
-			if (allow & (uint16_t)(1 << i)) {
+		for (i = 0; i < 16; i++)
+		{
+			if (allow & (uint16_t)(1 << i))
+			{
 				bit = 0xF000000000000000ULL >> (i * 4);
 				log_printf(1, "\tfuseset 02: %016llX (allow cseq %d)\n", bit, i + 1);
 				mask |= bit;
 			}
 		}
 		if (fuses)
+		{
 			setBeU64(mask, fuses + 16);
+		}
 	}
-	if (fuses && clear) {
+	if (fuses && clear)
+	{
 		setBeU64(0x0F0F0F0F0F0F0F0FULL, fuses + 8);
 		setBeU64(0, fuses + 16);
 	}
@@ -623,9 +753,13 @@ void showFuses(int level, const char *title, const unsigned char *fuses)
 	int i, n = 0;
 
 	if (title)
+	{
 		log_printf(level, title);
-	for (i = 0; i < 96; i++) {
-		if (i % 8 == 0) {
+	}
+	for (i = 0; i < 96; i++)
+	{
+		if (i % 8 == 0)
+		{
 			log_printf(level, "\n\tfuseset %02d: ", n);
 			n++;
 		}
@@ -639,18 +773,25 @@ void showKey(int level, const unsigned char *key)
 	int i;
 
 	if (key)
+	{
 		for (i = 0; i < 16; i++)
+		{
 			log_printf(level, "%02X", key[i]);
+		}
+	}
 }
 
 void showMac(unsigned int level, const unsigned char *mac)
 {
 	int i;
 
-	for (i = 0; i < 6; i++) {
+	for (i = 0; i < 6; i++)
+	{
 		log_printf(level, "%02x", mac[i]);
 		if (i != 5)
+		{
 			log_printf(level, ":");
+		}
 	}
 }
 
@@ -658,12 +799,17 @@ void showHexPairs(unsigned int level, const char *s)
 {
 	int i, len = strlen(s);
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len; i++)
+	{
 		log_printf(level, "%c", s[i]);
 		if (i + 1 == len)
+		{
 			break;
+		}
 		if ((i + 1) % 2 == 0)
+		{
 			log_printf(level, ":");
+		}
 	}
 }
 
@@ -674,14 +820,17 @@ void writeSha1File(char *out, const char *src, const unsigned char *sha)
 	FILE *f;
 	int i;
 
-	if (!out[0]) {
+	if (!out[0])
+	{
 		strcpy(out, src);
 		strcat(out, ".sha1");
 	}
 	f = fopen(out, "wb");
-	if (f) {
+	if (f)
+	{
 		line[0] = 0;
-		for (i = 0; i < 20; i += 5) {
+		for (i = 0; i < 20; i += 5)
+		{
 			sprintf(hex, "%02x%02x%02x%02x%02x", sha[i], sha[i + 1], sha[i + 2],
 				sha[i + 3], sha[i + 4]);
 			strcat(line, hex);
@@ -690,8 +839,11 @@ void writeSha1File(char *out, const char *src, const unsigned char *sha)
 		sprintf(line, " *%s\n", src);
 		fwrite(line, strlen(line), 1, f);
 		fclose(f);
-	} else
+	}
+	else
+	{
 		log_printf(0, "\n\n***** ERROR: could not open %s to write SHA-1! Skipping!", out);
+	}
 }
 
 int createDir(const char *path)
@@ -699,9 +851,12 @@ int createDir(const char *path)
 	int err;
 
 	if (path == NULL || mkdir(path) == 0)
+	{
 		return 1;
+	}
 	err = errno;
-	if (err == EEXIST) {
+	if (err == EEXIST)
+	{
 		log_printf(0, "***** WARNING: reusing folder %s!\n", path);
 		return 1;
 	}
@@ -714,6 +869,8 @@ unsigned int makeBranch(unsigned int from, unsigned int to, int link)
 	unsigned int insn = 0x48000000 | ((to - from) & 0x03FFFFFC);
 
 	if (link)
+	{
 		insn |= 1;
+	}
 	return insn;
 }
