@@ -129,7 +129,7 @@ void loadKey(const char *desc, const char *file, void **out, uint32_t size, uint
 		log_printf(1, "%s (%s) not available, signature checks will not be performed\n", desc, file);
 }
 
-void loadPubKeys(void)
+void loadKeys(void)
 {
 	loadKey("1BL RSA pub key", "1BL_pub.bin", (void **)&xb.pub1bl, 272, 0x79c7, 0);
 	loadKey("PIRS RSA pub key", "PIRS_pub.bin", (void **)&xb.pubPirs, 272, 0x80d0, 0);
@@ -405,7 +405,7 @@ int mode_build(int argc, char **argv)
 			xb.flags |= NAND_BIG_FFS;
 		}
 	}
-	loadPubKeys();
+	loadKeys();
 	loadDump(0);
 	ret = buildImage();
 	if (!ret) {

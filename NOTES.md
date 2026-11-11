@@ -974,7 +974,7 @@ Objects built entirely from C, in link order.
 - ✅ `build_usage` (0x418a10)
 - ✅ `loadKeyFile` (0x418ee0)
 - ✅ `loadKey` (0x418fd0)
-- ✅ `loadPubKeys` (0x419150)
+- ✅ `loadKeys` (0x419150)
 - ✅ `mode_build` (0x419230)
 
 </details>
