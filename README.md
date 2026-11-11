@@ -76,11 +76,21 @@ make check
 This writes `build/xeBuild.exe`, compares it with the reference and prints
 its SHA256, which should match the one above (it fails if it doesn't).
 `make check -j8` builds in parallel, and a second run rebuilds only what
-changed; plain `make` builds without checking. Other hosts can set `CC`,
-`CFLAGS`, `LDFLAGS`, `PYTHON`, `SHA256SUM` and `TC_BIN` on the make command
-line or in an untracked `config.mk`; only the pinned toolchain on Windows
-reproduces the reference. Re-disassembling the binary also needs ddisasm
-under WSL; NOTES.md covers that.
+changed. On Windows plain `make` does the same as `make check`.
+
+The Makefile detects the platform (or set `PLATFORM=`):
+
+| Platform | Compiler | Output | Checked |
+|---|---|---|---|
+| `win32` (Windows) | the pinned toolchain | `build/xeBuild.exe` | yes, by default |
+| `win32latest` (`make win32latest`) | the MSYS2 `gcc` on PATH | `build/win32latest/xeBuild.exe` | no |
+| `linux` | the installed `gcc` | `build/linux/xeBuild` | no |
+| `macos` | the installed `clang` | `build/macos/xeBuild` | no |
+
+Only `win32` reproduces the reference. `CC`, `CFLAGS`, `LDFLAGS` and
+`LDLIBS` can be overridden on the command line or in an untracked
+`config.mk`. Re-disassembling the binary also needs ddisasm under WSL;
+NOTES.md covers that.
 
 ## Credits and licences
 

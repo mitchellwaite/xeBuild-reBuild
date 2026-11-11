@@ -1,42 +1,141 @@
-# Compile every object in OBJECTS (src/<obj>.c with gcc), link them with the
-# toolchain's runtime into build/xeBuild.exe and check it against the
-# reference.  GNU make; on Windows run it from the repo root in Git Bash after
-# tools/fetch_toolchain.sh.
+# Compile every object in OBJECTS (src/<obj>.c), link them into an
+# executable and, for the reference platform, check it against xeBuild.exe.
+# GNU make (gmake on BSD).
 #
-#   make            build build/xeBuild.exe
-#   make check      build, compare with xeBuild.exe and check the SHA256
-#   make clean      remove build/obj and the linked exe
+#   make            build for the detected platform (on Windows: build and
+#                   check, as `make check`)
+#   make check      win32 only: build, compare with xeBuild.exe, check SHA256
+#   make win32latest   build with the gcc on PATH (a current MSYS2), same as
+#                   `make PLATFORM=win32latest`
+#   make clean      remove the platform's objects and executable
 #
-# Only the pinned toolchain on Windows reproduces the reference bytes.  Other
-# hosts can override CC, CFLAGS, LDFLAGS, PYTHON and SHA256SUM (on the command
-# line or in an untracked config.mk) and set TC_BIN empty when CC is already
-# on PATH; their build won't match.
+# PLATFORM is detected, or set it on the command line or in an untracked
+# config.mk:
+#
+#   win32        Windows (detected): the pinned toolchain in
+#                tools/toolchain-4745 (run tools/fetch_toolchain.sh first,
+#                from Git Bash); the only build that reproduces the reference
+#                bytes.  Outputs build/obj/, build/xeBuild.exe.
+#   win32latest  Windows with the latest MSYS2 gcc on PATH (run from an MSYS2
+#                MINGW32 shell for a 32-bit exe like the original).  The gcc
+#                driver picks its own default libraries.  Never matches.
+#   linux        Linux (detected): the installed gcc.
+#   macos        macOS (detected): the installed clang.
+#
+# The platforms other than win32 write to build/<platform>/ so the matching
+# objects in build/obj/ aren't touched.  CC, CFLAGS, LDFLAGS, LDLIBS, PYTHON
+# and SHA256SUM can be overridden as usual; CFLAGS and LDFLAGS are added after
+# the platform's own flags (empty for win32, which must stay as it is).
 
 -include config.mk
 
-# The pinned toolchain (CLAUDE.md).  gcc finds cc1/as and their DLLs through
-# PATH, so recipes that run it put TC_BIN first.
-TC_BIN    ?= tools/toolchain-4745/mingw32/bin
-CC        ?= $(TC_BIN)/gcc.exe
+# --- platform detection ---------------------------------------------------
+
+ifeq ($(OS),Windows_NT)
+DETECTED_PLATFORM := win32
+else
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+DETECTED_PLATFORM := macos
+else ifeq ($(UNAME_S),Linux)
+DETECTED_PLATFORM := linux
+else
+DETECTED_PLATFORM := unknown
+endif
+endif
+PLATFORM ?= $(DETECTED_PLATFORM)
+
+# make's built-in CC default is `cc`: treat it as unset, so each platform
+# section can pick its compiler while CC=... on the command line still wins
+ifeq ($(origin CC),default)
+CC_UNSET := 1
+endif
+
 PYTHON    ?= python
 SHA256SUM ?= sha256sum
-# extra flags after each object's own (empty for the matching build)
 CFLAGS    ?=
 LDFLAGS   ?=
+LDLIBS    ?=
 
-# (pwd -P: a native Windows make hands sh a C:/ style $PWD, whose colon
-# would split the PATH entry)
+# Each section sets:
+#   TC_BIN         toolchain bin/ to put first on PATH (empty: CC is on PATH)
+#   CC             compiler (unless given)
+#   OBJ, EXE       object directory and executable
+#   PLAT_LDFLAGS   link flags (before the objects)
+#   PLAT_LIBS      libraries (after the objects)
+#   MAP_FLAGS      linker map to build/<...>.map
+#   STAMP          1 to stamp the reference link time into the exe
+#   CHECK          1 when `make check` can reproduce the reference
+
+# --- win32: the pinned toolchain (reference build) -------------------------
+ifeq ($(PLATFORM),win32)
+TC_BIN ?= tools/toolchain-4745/mingw32/bin
+ifdef CC_UNSET
+CC := $(TC_BIN)/gcc.exe
+endif
+OBJ := build/obj
+EXE := build/xeBuild.exe
+# Link as gcc 6.2.0 does: crt2.o and crtbegin.o, the program, the libraries
+# (ws2_32, then gcc's defaults, spelled out as that driver passes them), the
+# default manifest and crtend.o, with ld's default script
+# (tools/fetch_toolchain.sh rebuilds the kernel32 and msvcrt import libraries
+# as the original had them).  globals.o goes after the libraries, so its .bss
+# follows theirs like the original's COMMON block (src/globals.c).
+PLAT_LDFLAGS := -s
+PLAT_LIBS := -lws2_32 -lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt \
+	-lpthread -ladvapi32 -lshell32 -luser32 -lkernel32
+MAP_FLAGS := -Wl,--no-insert-timestamp,-Map,build/xeBuild.map
+STAMP := 1
+CHECK := 1
+
+# --- win32latest: the latest MSYS2 gcc on PATH -----------------------------
+else ifeq ($(PLATFORM),win32latest)
+TC_BIN ?=
+ifdef CC_UNSET
+CC := gcc
+endif
+OBJ := build/win32latest/obj
+EXE := build/win32latest/xeBuild.exe
+PLAT_LDFLAGS := -s
+PLAT_LIBS := -lws2_32
+MAP_FLAGS := -Wl,-Map,build/win32latest/xeBuild.map
+
+# --- linux: the installed gcc ----------------------------------------------
+else ifeq ($(PLATFORM),linux)
+TC_BIN ?=
+ifdef CC_UNSET
+CC := gcc
+endif
+OBJ := build/linux/obj
+EXE := build/linux/xeBuild
+PLAT_LDFLAGS := -s
+PLAT_LIBS :=
+MAP_FLAGS := -Wl,-Map,build/linux/xeBuild.map
+
+# --- macos: the installed clang --------------------------------------------
+else ifeq ($(PLATFORM),macos)
+TC_BIN ?=
+ifdef CC_UNSET
+CC := clang
+endif
+OBJ := build/macos/obj
+EXE := build/macos/xeBuild
+# ld64 strips with -Wl,-x (-s is obsolete there) and spells the map -map
+PLAT_LDFLAGS := -Wl,-x
+PLAT_LIBS :=
+MAP_FLAGS := -Wl,-map,build/macos/xeBuild.map
+
+else
+$(error unknown PLATFORM '$(PLATFORM)': use win32, win32latest, linux or macos)
+endif
+
+# gcc finds cc1/as and their DLLs through PATH, so recipes that run it put
+# TC_BIN first (pwd -P: a native Windows make hands sh a C:/ style $PWD, whose
+# colon would split the PATH entry)
 ifneq ($(strip $(TC_BIN)),)
 TC_ENV = PATH="$$(pwd -P)/$(TC_BIN):$$PATH"
 endif
 
-# make's built-in CC default is `cc`: treat it as unset
-ifeq ($(origin CC),default)
-CC = $(TC_BIN)/gcc.exe
-endif
-
-OBJ := build/obj
-EXE := build/xeBuild.exe
 REF := xeBuild.exe
 REF_SHA256 := 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c
 # original link time; ld 2.27 can't take a fixed timestamp itself
@@ -67,12 +166,14 @@ OBJECTS := \
 	crypto/bign/spDivide crypto/bign/mpShortCmp crypto/bign/spPseudoRand
 OBJS := $(OBJECTS:%=$(OBJ)/%.o)
 
-# gcc's default libraries, as the gcc driver passes them
-LIBS := -lmingw32 -lgcc -lgcc_eh -lmoldname -lmingwex -lmsvcrt -lpthread \
-	-ladvapi32 -lshell32 -luser32 -lkernel32
-
-.PHONY: all check clean
+.PHONY: all check clean win32latest
 .DELETE_ON_ERROR:
+
+ifeq ($(CHECK),1)
+.DEFAULT_GOAL := check
+else
+.DEFAULT_GOAL := all
+endif
 
 all: $(EXE)
 
@@ -94,25 +195,30 @@ $(OBJ)/crypto/%.o: src/crypto/%.c $(MAKEFILE_LIST)
 $(OBJ)/%.o: src/%.c $(MAKEFILE_LIST)
 	$(call compile,$*.c,-O3)
 
-# Link as gcc does: crt2.o and crtbegin.o, the program, the libraries (gcc's
-# defaults, ws2_32), the default manifest and crtend.o, with ld's default
-# script (tools/fetch_toolchain.sh rebuilds the kernel32 and msvcrt import
-# libraries as the original had them).  globals.o goes after the libraries,
-# so its .bss follows theirs like the original's COMMON block
-# (src/globals.c).  The stamp is part of the link so an unstamped exe is
-# never up to date.
+# The stamp is part of the link so an unstamped exe is never up to date.
 $(EXE): $(OBJS)
-	$(TC_ENV) $(CC) -s -o $@ $(OBJS) -lws2_32 $(LIBS) $(LDFLAGS) \
-	  -Wl,--no-insert-timestamp,-Map,build/xeBuild.map
+	$(TC_ENV) $(CC) $(PLAT_LDFLAGS) -o $@ $(OBJS) $(PLAT_LIBS) $(LDLIBS) \
+	  $(LDFLAGS) $(MAP_FLAGS)
+ifeq ($(STAMP),1)
 	$(PYTHON) tools/re/stamp.py $@ $(LINK_TIME)
+endif
 
+ifeq ($(CHECK),1)
 check: $(EXE)
 	$(PYTHON) tools/re/execmp.py $(REF) $(EXE)
 	@$(SHA256SUM) $(EXE)
 	@[ "$$($(SHA256SUM) $(EXE) | cut -d' ' -f1)" = $(REF_SHA256) ] || \
 	  { echo "SHA256 differs from $(REF_SHA256)" >&2; exit 1; }
+else
+check:
+	@echo "make check: only PLATFORM=win32 (the pinned toolchain) reproduces" \
+	  "the reference; this is $(PLATFORM)" >&2; exit 1
+endif
+
+win32latest:
+	$(MAKE) PLATFORM=win32latest
 
 clean:
-	rm -f $(OBJS) $(OBJS:.o=.d) $(EXE) build/xeBuild.map
+	rm -f $(OBJS) $(OBJS:.o=.d) $(EXE) $(basename $(EXE)).map
 
 -include $(OBJS:.o=.d)
