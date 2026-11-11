@@ -2,3 +2,4 @@
 *.exe binary
 *.o binary
 *.pkg.tar.xz binary
+tools/ref/xeBuild64 binary
