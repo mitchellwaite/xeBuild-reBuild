@@ -269,6 +269,14 @@ void showConsoleInfo(void)
 	case NAND_BIG_BLOCK | CONSOLE_JASPER:
 		log_printf(0, "Jasper (big block)\n");
 		break;
+#ifdef XEBUILD_FIXES
+	case NAND_BIG_BLOCK | CONSOLE_CORONA:
+		log_printf(0, "Corona (big block)\n");
+		break;
+	case NAND_BIG_BLOCK | CONSOLE_WINCHESTER:
+		log_printf(0, "Winchester (big block)\n");
+		break;
+#endif
 	default:
 		log_printf(0, "whoops, console type was not caught!\n");
 		break;

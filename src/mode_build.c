@@ -20,7 +20,11 @@ void build_usage(void)
 	log_printf(0, "Usage    :\n   %s [mode] -t <type> [<switch> [<switch>...]] <out.bin>\n\n", "xeBuild");
 	log_printf(0, "Example  :\n   %s -t retail -c trinity -d files -b 0102...0f -p 0102...0f out.bin\n", "xeBuild");
 	log_printf(0, "\nSwitches:\n");
+#ifdef XEBUILD_FIXES
+	log_printf(0, "   -t <type>: image type (defaults to retail)\n");
+#else
 	log_printf(0, "   -t <type>: retail, jtag, glitch, glitch2, glitch2m, devkit (defaults to retail)\n");
+#endif
 	log_printf(0, "   -p <key> : 32 character CPU hex key (override, can be elsewhere)\n");
 	log_printf(0, "   -b <key> : 32 character 1BL hex key (override, can be elsewhere)\n");
 	log_printf(0, "   -c <con> : console type\n");
@@ -34,14 +38,28 @@ void build_usage(void)
 	log_printf(0, "   -8 <pat> : adds raw patch to NAND just before finalizing\n");
 	log_printf(0, "   -v       : shows more info during build process\n");
 	log_printf(0, "   -noenter : suppresses prompt for enter key when finished\n");
+#ifdef XEBUILD_FIXES
+	log_printf(0, "   -norandom: disables random nonces\n");
+#endif
 	log_printf(0, "   -?       : shows this info\n\n");
 	log_printf(0, "legend:\n");
+#ifdef XEBUILD_FIXES
+	log_printf(0, "[mode]      : build, extract, client, update, ini - defaults to build if not present\n");
+	log_printf(0, "<type>      = retail, jtag, glitch, glitch2, glitch2m, devgl, devgl16,\n");
+	log_printf(0, "              devkit, devkit16, testkit, testkit16\n");
+	log_printf(0, "              (devkit, testkit: 64MiB NAND; devkit16, testkit16: 16MiB)\n");
+	log_printf(0, "<con>       = xenon, zephyr, falcon, jasper, jasperbc, jaspersb, jasper256,\n");
+	log_printf(0, "              jasper512, jasperbb, jasperbigffs, trinity, trinitybb, trinitybigffs,\n");
+	log_printf(0, "              corona, coronabb, coronabigffs, corona4g, winchester, winchesterbb,\n");
+	log_printf(0, "              winchesterbigffs, winchester4g\n");
+#else
 	log_printf(0, "[mode]      : build, extract");
 	log_printf(0, ", client, update");
 	log_printf(0, " - defaults to build if not present\n");
 	log_printf(0, "<con>       = xenon, zephyr, falcon, jasper, jaspersb, jasper256,\n");
 	log_printf(0, "              jasper512, jasperbb, jasperbigffs, trinity, trinitybb, trinitybigffs\n");
 	log_printf(0, "              corona, corona4g, winchester, winchester4g\n");
+#endif
 	log_printf(0, "<dir>       = path, absolute or relative, to a directory - do not terminate with /\n");
 	log_printf(0, "<key>       = 128 bit key in hexadecimal representation\n");
 	log_printf(0, "<name>      = name.bin contents will be appended to hv/kernel patches\n\n");
