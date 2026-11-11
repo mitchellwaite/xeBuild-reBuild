@@ -9,7 +9,8 @@
 #                   `make PLATFORM=win32latest`
 #   make win32fixes    build with the pinned toolchain and the fixes, same as
 #                   `make PLATFORM=win32fixes`
-#   make clean      remove the platform's objects and executable
+#   make clean      remove build/ and everything in it (objects, executable,
+#                   map and any analysis output left there)
 #   make V=1        print each full command, not just the file it works on
 #   make QUIET_WARNINGS=1   (or QUIET_WARNINGS=1 in the environment) turn off
 #                   the unused-result, format-security, stringop-overflow,
@@ -324,6 +325,6 @@ win32latest:
 	$(MAKE) PLATFORM=win32latest
 
 clean:
-	rm -f $(OBJS) $(OBJS:.o=.d) $(PLATFORM_FILE) $(EXE) $(MAP)
+	rm -rf build
 
 -include $(OBJS:.o=.d)

@@ -250,7 +250,7 @@ No match, nothing landed, 21 tricks stands.  Mechanisms worth keeping:
 4. parseDump's dead test: exit forms can't move entry, except `continue` after -1's addRemap (136).  irfqp: `if (rr)` 62% gives entry 59 (natural 61), but expect itself costs 107 there.
 
 Don't retry: gen_ir83-85's spellings (entry 60/5 for all); reading the header field again for the tests (gen_ir87); `a`/`addr` nested forms without a way past PRED_CALL (gen_ir88, 89); hint placement without the attribute (gen_ir86, stays 6 at best).
-What to try first next: (1) point 3's split for copyMmcImage, cheap.  (2) point 2: what stops PRED_CALL on the bad arm.  Attempt 5 left unread: tmp/xeBuild64's getImageSmc (gcc 4.9, structure only; the brief said to leave tmp/ alone) would show whether the author's tests or helpers differ, e.g. a helper for the size fix.  (3) a static helper for the size arm (`size = fixSmcSize(addr)`): a call in the first block at profile time if it isn't early-inlined; untried.
+What to try first next: (1) point 3's split for copyMmcImage, cheap.  (2) point 2: what stops PRED_CALL on the bad arm.  Attempt 5 left unread: tools/ref/xeBuild64's getImageSmc (gcc 4.9, structure only; the brief said to leave tmp/ alone; tmp/ is gone since 2026-11-11) would show whether the author's tests or helpers differ, e.g. a helper for the size fix.  (3) a static helper for the size arm (`size = fixSmcSize(addr)`): a call in the first block at profile time if it isn't early-inlined; untried.
 
 Late additions:
 - gen_ir91: the size arm as a static helper called in the arm (shot and unr_smc gone, attribute, pin_addr and exp_smc kept): 29 loose lines, only the arm's placement and one lea.  The call makes P(size bad) go down (<50%), the wrong way for layout, though it shows those two hints do nothing but that placement.
@@ -258,7 +258,7 @@ Late additions:
 
 ## Attempt 6
 
-tools/wip/dehint/ir64.py <addr> <size> prints a function of tmp/xeBuild64 (older Linux build) with strings; addresses in tmp/strs/match.txt (L 417960 findAnchor, L 416c10 getImageSmc).
+tools/wip/dehint/ir64.py <addr> <size> prints a function of tools/ref/xeBuild64 (older Linux build) with strings; addresses were in tmp/strs/match.txt (deleted 2026-11-11) (L 417960 findAnchor, L 416c10 getImageSmc).
 
 **findAnchor: 3 expects + barrier gone, IDENTICAL (gen_ir97).** Whole-function sweep with no hints (gen_ir93): both valid, clear the older block's flag: `if (ok0 && ok1) { if (v0 < v1) ok0 = 0; else ok1 = 0; } if (ok0) S0; if (ok1) S1; return 0;` compiles to the reference's code exactly, the only difference being .rdata order (lit_anchor kept for now).  21 -> 17 tricks.
 Why it works: `_ok0 & _ok1`'s false edge gives VRP and dom2 nothing, so the join after I1 stays a real join with a PHI until dom3, and the I1 block has no ok0 test to thread when J's threads are chosen.

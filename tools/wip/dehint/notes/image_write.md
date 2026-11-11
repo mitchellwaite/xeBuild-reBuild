@@ -636,11 +636,11 @@ Lesson: **grid the probe across every branch on the path, then do the arithmetic
 
 ## Attempt 13
 
-Written as I go. New tools: `tools/wip/dehint/iw13x64.py [addr]` (image_write's functions in tmp/xeBuild64: extents from .eh_frame, strings, callees; with an address, one function's disassembly). build/iw/a13/nohdr.py in.c out.c drops imgWriteHdr from any draft.
+Written as I go. New tools: `tools/wip/dehint/iw13x64.py [addr]` (image_write's functions in tools/ref/xeBuild64: extents from .eh_frame, strings, callees; with an address, one function's disassembly). build/iw/a13/nohdr.py in.c out.c drops imgWriteHdr from any draft.
 
 ### What the Linux build shows
 
-Function order and set in tmp/xeBuild64 match src exactly: 41b810 buildImage, 41c360 pageErased, 41c1b0 blockEccOk, 41c6c0 imgSizeAligned, 41c960 imgAdd (generic, 1180 bytes), 41ce00 imgFits (25 bytes, a real function), 41ce20 imgAddFile, 41d210 imgAddFileAs, 41d280 imgAddMobile, 41d580 addSmcConfig, 41d610 writeInitialHeader, 41d7e0 checkBootImage, 41dbc0 writeFsTable, 41e4e0 finalizeImage, 41eef0 imgAddRaw. Clones in front of buildImage: 41b1b0 (off 0, type 0, pad 1), 41b3b0, 41b5c0 (type 0, pad 1).
+Function order and set in tools/ref/xeBuild64 match src exactly: 41b810 buildImage, 41c360 pageErased, 41c1b0 blockEccOk, 41c6c0 imgSizeAligned, 41c960 imgAdd (generic, 1180 bytes), 41ce00 imgFits (25 bytes, a real function), 41ce20 imgAddFile, 41d210 imgAddFileAs, 41d280 imgAddMobile, 41d580 addSmcConfig, 41d610 writeInitialHeader, 41d7e0 checkBootImage, 41dbc0 writeFsTable, 41e4e0 finalizeImage, 41eef0 imgAddRaw. Clones in front of buildImage: 41b1b0 (off 0, type 0, pad 1), 41b3b0, 41b5c0 (type 0, pad 1).
 
 - **There's no static helper that src lacks**, and no block or page arithmetic helper. imgAdd is one body with the same statements as src: rawSize tests, x/first/rem/tail/blocks, the two spellings `(len + 512) / 512` and `len / 512 + 1`, the `left` formula, the arms' order.
 - **imgWriteHdr isn't real.** Linux's writeInitialHeader has no helper: `if (xb.bigBlock) imgAdd(0, &hdr, 0x80, 0, 0xf1f1, 1); else imgAdd(0, &hdr, 0x80, 0, 0x1ffb, 1);`, and gcc inlines one of the two.

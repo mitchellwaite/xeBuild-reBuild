@@ -104,7 +104,7 @@ Attempt 54 landed nothing; src/build.c and build.sh are unchanged, so the count 
 
 ## State after attempt 53
 
-Attempt 53 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It looked for a natural way to keep attempt 52's fuse helper out of early inlining (so IPA scales its early-return profile into buildFlash) and found none: gcc 6's einline refuses a callee only for growth > 14, growth x (calls + 1) > 14, a cold edge (callee cold/hot attributes, noreturn or main: nothing else sets a node's frequency without a profile), a callee not yet in SSA (a call-graph cycle), or uninlinable bodies (va_start, setjmp, alloca, nonlocal labels); the fuse decision is a 6-insn leaf and the only call that runs before it in the reference is the salt memset.  The memset helper is also out on its own terms: with the JTAG test inside and *no* early return on it (`dret2`), the JTAG edge still goes straight to the helper's return block, so it gets early return 61% (80.1% instead of 72%) and the `fuse = 1` block moves out of line (3/285, as `dret`).  In that IPA-inlined form the 5 loop-compare differences of the -fno-early-inlining diagnostic are gone (only the JTAG block differs), so the residue was the diagnostic's.  The Linux v1.16 build (tmp/xeBuild64, gcc 4.9.2) has the same inline `setne; sub 4; cmp 1; mov 1; cmovbe` at buildFlash's start and no fuse helper, and the reference has no fuse/devgl string near buildFlash other than "Virtual Fuses set to:", so nothing suggests the original had a helper there.  See "## Attempt 53".
+Attempt 53 landed nothing; src/build.c and build.sh are unchanged, so the count (7) and attempt 49's review table stand.  It looked for a natural way to keep attempt 52's fuse helper out of early inlining (so IPA scales its early-return profile into buildFlash) and found none: gcc 6's einline refuses a callee only for growth > 14, growth x (calls + 1) > 14, a cold edge (callee cold/hot attributes, noreturn or main: nothing else sets a node's frequency without a profile), a callee not yet in SSA (a call-graph cycle), or uninlinable bodies (va_start, setjmp, alloca, nonlocal labels); the fuse decision is a 6-insn leaf and the only call that runs before it in the reference is the salt memset.  The memset helper is also out on its own terms: with the JTAG test inside and *no* early return on it (`dret2`), the JTAG edge still goes straight to the helper's return block, so it gets early return 61% (80.1% instead of 72%) and the `fuse = 1` block moves out of line (3/285, as `dret`).  In that IPA-inlined form the 5 loop-compare differences of the -fno-early-inlining diagnostic are gone (only the JTAG block differs), so the residue was the diagnostic's.  The Linux v1.16 build (tools/ref/xeBuild64, gcc 4.9.2) has the same inline `setne; sub 4; cmp 1; mov 1; cmovbe` at buildFlash's start and no fuse helper, and the reference has no fuse/devgl string near buildFlash other than "Virtual Fuses set to:", so nothing suggests the original had a helper there.  See "## Attempt 53".
 
 ## State after attempt 52
 
@@ -775,14 +775,14 @@ Attempt 5's note blamed block frequency. That was wrong for the copy itself: thr
 
 - gen_bd160, gen_bd161: signature forms x tails x hints. The `dead` form is well ahead of everything else. `dead failx t1 bad0 cp1` (only the t5le label off) is 0 loose, 7 strict: padding before the no-key log. `dead fail t1 bad0 cp1` (t5le and the `*pr` expect off) is 2 loose, 13 strict: `ja` for `jbe` on the SE copy. `dead src t1 bad1 cp1` (badsize off) is 6 loose.
 - gen_bd163: orders of the 5, 17, 11 test. The Linux build tests 17, 5, 11, but here 5, 17, 11 is best (26 against 28 and 30 loose, others costing more).
-- gen_bd164: loadBlFiles written like loadConsoleBlFiles, switch in the loop and r a local. 164 loose at best, mostly layout; registers and code line up. This is still the shape I'd bet the author wrote, since the console function matches that way and tmp/xeBuild64 (v1.16) keeps r in a register tested after the switch.
+- gen_bd164: loadBlFiles written like loadConsoleBlFiles, switch in the loop and r a local. 164 loose at best, mostly layout; registers and code line up. This is still the shape I'd bet the author wrote, since the console function matches that way and tools/ref/xeBuild64 (v1.16) keeps r in a register tested after the switch.
 - gen_bd165: console's fallback (`if (suGetCF(..)) *pr = 0;`, then `if (!*pr)`) with *pr: 115 loose at best, about the same with `seq`, `and` and `nest2`.
 - gen_bd166: more fallbacks. c7 and c9 (no `goto chk`) are 33 loose, 192 strict, without constant_p. It's the most natural form short of the loop, and worth one more look.
 - gen_bd167: 12 tail forms x `*pr` expect or not x hints: nothing beats the source's own tail; 0 loose, 7 strict at best, as above.
 - gen_bd168: case 23 nesting, order and `% 4` (lab_badsize): 6 loose whatever the form, with and without the outer nest.
 - t0 (no expect on type 10): adds `test edi,edi; je` after the CF and CG checkBl (4 loose), and block 24 goes to the end (key 0).
 
-### Evidence from the Linux build (tmp/xeBuild64, older version, gcc 4.9)
+### Evidence from the Linux build (tools/ref/xeBuild64, older version, gcc 4.9)
 
 Structure only: `r` in ecx with `test ecx,ecx` after the switch; the signature test order is 17, 5, 11; after setFlashBuild it reloads r and tests it; CF sets r13d to 9 before the SE test; CG goes to its own checkBl and on to the next iteration. Its strings run failed, passed, no-key, the order of `if (xb.pub1bl) { if (!v) failed else passed } else nokey`, which supports that form over the near miss's `if (!xb.pub1bl)`. The strings also appear once for the signature logs, so the code really is in one place.
 
@@ -901,7 +901,7 @@ No match; src is unchanged. Goal was loadBl from a fresh question about structur
 
 ### What the reference and the Linux build say about the structure
 
-Read from the reference's loadBlFiles (objdump, IDA's build/decomp_22.txt) and tmp/xeBuild64's (build/x64.dis, the function at 405280; strings found by address):
+Read from the reference's loadBlFiles (objdump, IDA's build/decomp_22.txt) and tools/ref/xeBuild64's (build/x64.dis, the function at 405280; strings found by address):
 - **The arms only set r, and r is tested once after the switch.** Both builds keep r in one register (edi, ecx), every load result goes through it, and every failure reaches one `could not read` log. In Linux the test is literally after the switch (405355 `test ecx,ecx`), as loadConsoleBlFiles has it.
 - **One shared `r = -1` site for the SMC, patch-size and signature failures**, in both builds: Windows 33d4 (`mov edi,-1` falling into the log), Linux 4059e2. loadConsoleBlFiles, written with plain `r = -1;` per arm and matching, has a separate `mov edx,-1; jmp` after each failure in the reference. So the original loadBl really had one -1 site (src's `goto fail`), not `r = -1` per arm; the asm barrier's job (keeping that block) is real, only its means is a hint.
 - **After a signature failure the code still reaches the tail:** `xb.type <= 5` goes to the shared -1, otherwise `type == 14` is tested and setFlashBuild can run (with `xb.files[i].data`, frequency 0) before the log. In Linux both outcomes do the same, so the tail isn't guarded by r. That matches `if (xb.type > BUILD_DEVGL16 && type == 14)` or src's tail; nothing tells them apart.
@@ -1025,7 +1025,7 @@ Goal: leave loadBl alone and reconstruct the author's structure for the other fu
 
 ### extractSmcConfig: the Linux build's scan loops (landed, IDENTICAL, full build SHA256 matches)
 
-Reading: tmp/xeBuild64's scan (404839..4048a2, build/x64.dis) tests the bound, then `found != 1`, calls smcConfigOk, and on a hit (`cmp eax,1; je`) jumps back to the bound test **without advancing i**; on a miss it advances i and loops.  That is a loop whose condition holds both tests and whose body only moves i on a miss, i.e.
+Reading: tools/ref/xeBuild64's scan (404839..4048a2, build/x64.dis) tests the bound, then `found != 1`, calls smcConfigOk, and on a hit (`cmp eax,1; je`) jumps back to the bound test **without advancing i**; on a miss it advances i and loops.  That is a loop whose condition holds both tests and whose body only moves i on a miss, i.e.
 
 ```
 i = 0;
@@ -1075,7 +1075,7 @@ lab_t5le 7/0, exp_pr 18/2, exp_upd 18/12, pin_d 23/14, pin_e 26/26, lab_badsize 
 
 ## Attempt 13
 
-No match; src is unchanged.  Goal: attempt 12's lever (loop structure read off tmp/xeBuild64, build/x64.dis) on every function that still has a hint.  Generators gen_bd240 (isUpdateBl forms) and gen_bd241 (loadFileCrc with a padded-size local) run on src/build.c as of f735084.  Linux strings were found by file offset + 0x400000 (static ELF) and grepped as `mov esi,0x...` in x64.dis.
+No match; src is unchanged.  Goal: attempt 12's lever (loop structure read off tools/ref/xeBuild64, build/x64.dis) on every function that still has a hint.  Generators gen_bd240 (isUpdateBl forms) and gen_bd241 (loadFileCrc with a padded-size local) run on src/build.c as of f735084.  Linux strings were found by file offset + 0x400000 (static ELF) and grepped as `mov esi,0x...` in x64.dis.
 
 ### Structure readings (Linux, gcc 4.9)
 
@@ -3042,7 +3042,7 @@ Goal: attempt 52's exp_devgl lead: a *natural* fuse helper that stays out of ear
 
 ### Evidence about the original
 
-- tmp/xeBuild64 (v1.16, gcc 4.9.2): buildFlash (0x409a70) starts `mov ebp,1; ...; cmp eax,2; je; mov r8d,[glitch2mfg]; xor ebp,ebp; test; setne bpl; sub eax,4; cmp eax,1; mov eax,1; cmovbe ebp,eax`, the same shape, inline; gcc 4.9 kept some helpers gcc 6 inlined, but there is no fuse helper here.
+- tools/ref/xeBuild64 (v1.16, gcc 4.9.2): buildFlash (0x409a70) starts `mov ebp,1; ...; cmp eax,2; je; mov r8d,[glitch2mfg]; xor ebp,ebp; test; setne bpl; sub eax,4; cmp eax,1; mov eax,1; cmovbe ebp,eax`, the same shape, inline; gcc 4.9 kept some helpers gcc 6 inlined, but there is no fuse helper here.
 - build.o's strings with fuse / glitch / devgl / virtual: only "
 Virtual Fuses set to:" (showFuses' title) and the type-24 messages; no log a fuse helper could print.
 
@@ -3633,7 +3633,7 @@ Goal: the brief's whole-function lever on buildFlash (restructuring into / out o
 
 ### buildFlash's structure against the reference and the Linux build
 
-- The reference (and tmp/xeBuild64's buildFlash at 0x409a70, gcc 4.9.2) start with the fuse decision inline (`setne; sub 4; cmp 1; mov 1; cmovbe`), then the fromConsole header / checkBootImage branch, suLoadDir, the loaders, verifyBlSigs, fsStartBlock / calcBlAreaSize, the glitch / devgl patch step, patchHeaderOpts, keysInit, the fuse setup (findFile(24), setFuseCpuKey, the offset), the encoders, showFuses, the add step, the FS fixup, the three slot-overflow writers, then the firmware and security-file loops.  Natural sub-steps: header, loads, glitch blmod, fuse setup, encode, overflow writers (three near-identical blocks).  In the reverse direction only patchConsoleBlmod is a static helper (attempt 60: written out 66, reversed test 28).
+- The reference (and tools/ref/xeBuild64's buildFlash at 0x409a70, gcc 4.9.2) start with the fuse decision inline (`setne; sub 4; cmp 1; mov 1; cmovbe`), then the fromConsole header / checkBootImage branch, suLoadDir, the loaders, verifyBlSigs, fsStartBlock / calcBlAreaSize, the glitch / devgl patch step, patchHeaderOpts, keysInit, the fuse setup (findFile(24), setFuseCpuKey, the offset), the encoders, showFuses, the add step, the FS fixup, the three slot-overflow writers, then the firmware and security-file loops.  Natural sub-steps: header, loads, glitch blmod, fuse setup, encode, overflow writers (three near-identical blocks).  In the reverse direction only patchConsoleBlmod is a static helper (attempt 60: written out 66, reversed test 28).
 - What decides exp_devgl (re-read on src minus the expect, sink dump): bb 2 (entry, freq 1148) tests JTAG (72%), bb 3 (826) holds the glitch2mfg load and the dev test `(unsigned)(type - 4) <= 1` (opcode positive, 27%), the split non-dev edge block bb 4 is 603.  gcc 6's select_best_block sinks a non-memory statement when best->frequency < early->frequency x 75 / 100 at the same loop depth: 603 < 619.5, so `_64 = _63 != 0` and the int conversion go to bb 4 (`Sinking .. from bb 3 to bb 4`).  The only inputs are that ratio (the dev test's probability) and the loop depths; integer rounding could only help if buildFlash's entry frequency were around 10 (inlined loops nested three deep), which no restructure gives and which would move every alignment.
 - IPA inlining doesn't change the ratio: the inline transform asks for TODO_rebuild_frequencies and estimate_bb_frequencies recomputes from the same edge probabilities, so a helper elsewhere in buildFlash can scale the entry frequency but not bb 4 / bb 3.
 

@@ -53,6 +53,7 @@ tricks some functions needed to match (and how they were removed, under
 | `Makefile` | builds everything (GNU make); `make check` also checks the result |
 | `tools/re/` | reverse-engineering and verification scripts |
 | `tools/` | the toolchain's packages and setup, and ddisasm setup |
+| `tools/ref/` | `xeBuild64`, an older (v1.16) stripped Linux x86-64 build, gcc 4.9.2: a structural cross-check only |
 | `tools/wip/` | notes from the matching work (the experiments themselves are in the `wip-archive-2026-11` tag) |
 
 ## Building

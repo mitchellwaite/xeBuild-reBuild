@@ -435,7 +435,7 @@ strings are `_fi_<addr>`), fixFileCase (`optimize("ira-region=one")`: regional I
   and luid put the `lea edx,[eax+esi]` before the reload of q); the unreachable keeps DCE
   from deleting it. The getters keep their `"b"(val)` pins. Worth trying wherever an
   input-only pin fixes RA but leaves a scheduling tie.
-- DashLaunch (tmp/dashlaunch/iniparse.c, same as GitHub main) doesn't carry over:
+- DashLaunch (dll/iniparse.c in cOzInABox/dashLaunch on GitHub) doesn't carry over:
   iniFindLabelOffset is case-insensitive (myatol + _strnicmp) and skips spaces/'=', the
   original search does neither. iniGetBool/iniGetDword-shaped getters (`if (found) {...}`,
   `&iniData[off]` per use, the out-param helper) give 25-78 lines (iniBuf reloaded after
@@ -1078,10 +1078,10 @@ to run in parallel):
 
 The last two, matched 2026-10-27 by a third round of agents after two
 earlier rounds (their variants, notes and tools are in
-`tmp/image_read_agents/`, untracked, without the compiler dumps):
+`tmp/image_read_agents/`, untracked scratch, deleted 2026-11-11):
 
 - `getImageSmc` built (2026-10-27, third round; agent notes and tools in
-  `tmp/image_read_agents/getImageSmc3/`). Sequential tests reached by
+  `tmp/image_read_agents/getImageSmc3/`, deleted). Sequential tests reached by
   gotos: `if (!addr) goto zero; else { vhot: hot; } zback: if (addr !=
   0x800 && addr != 0x1000) goto bad; bback: <size test>`, with both log
   arms (`zero:` and `bad:`, the latter with a hot label) at the end of the
@@ -1106,7 +1106,7 @@ earlier rounds (their variants, notes and tools are in
   `unscramble() != (h == 0)` hint are gone. Each hint is needed (2-81
   lines without one).
 - `parseDump` built (2026-10-27, third round; notes and tools in
-  `tmp/image_read_agents/parseDump3/`). `parseDump` and `spareLbaOk`
+  `tmp/image_read_agents/parseDump3/`, deleted). `parseDump` and `spareLbaOk`
   return `unsigned long`: uncprop reuses a zero for the ZEROPAIR `return
   0` only if its type is compatible with the return type, so neither the
   u32 counter's zero nor memcmp's int zero is taken, but spareLbaOk's
@@ -1779,7 +1779,7 @@ only shows in `sh build.sh`.
   0x5a, 0x56, 0x57 after 0x55, each `if ((xb.flags & 7) > 4)` first. The
   case order sets the bb-reorder ties of the three outlined arms.
 - fixupPatchSet (built from C, 2026-10-23): the Linux v1.16 build
-  (tmp/xeBuild64, found by its "Fixing up patch set" reference) shows the
+  (tools/ref/xeBuild64, found by its "Fixing up patch set" reference) shows the
   loop: after the shift it sets `off = e->size` and goes back to the test,
   no `break`; gcc 6 threads that edge to the exit, so it looks like a break
   here. With that latch (no hot label, no `continue`) the profile gives the
@@ -2422,7 +2422,7 @@ order. What the last step needed (README has the summary):
 - New clone names: imgWriteStart `.constprop.1`, imgWritePage `.2`,
   imgWriteAt `.4` (type 42's clone, inlined into imgAddFile, is `.3`).
 - imgAdd's dead pins were re-laid out by a randomized search
-  (tmp/image_write_agents/fin4: `score.py` = one compile + fncmp of all
+  (tmp/image_write_agents/fin4, deleted 2026-11-11: `score.py` = one compile + fncmp of all
   46 + opcmp + ipa-cp evaluations; `anneal.py`/`fcd.py` over `<<<a@@b>>>`
   templates made by `mk3.py`). The winning set: `x > first + 0x4000`
   `blocks += 2` before the memcpy, three in the block loop (`__asm__("")`
@@ -2485,7 +2485,7 @@ Findings:
   LBA high nibble, bad-block byte, LBA low byte.
 - imgWriteStart (regparm src, len, next) is imgAdd's ipa-cp clone for off
   0, type 0, pad 1 (built 2026-10-27; agent log and tools in
-  `tmp/image_write_agents/imgWriteStart/`). Its three callers
+  `tmp/image_write_agents/imgWriteStart/`, deleted 2026-11-11). Its three callers
   (writeInitialHeader's 0x1ffb call, checkBootImage's two) call
   `imgAdd(0, ..., 0, next, 1)`; writeInitialHeader's big-block call
   stays imgWriteHdr (the original inlines that one). ipa-cp clones the
@@ -2501,7 +2501,7 @@ Findings:
   imgWriteAt became `.constprop.3`. A route with `--param
   ipa-cp-eval-threshold=300` (155..365) also works, not used.
 - Draft base after that (2026-10-27, one agent for both imgAdd and
-  imgAddFile; log and tools in `tmp/image_write_agents/addpair/`):
+  imgAddFile; log and tools in `tmp/image_write_agents/addpair/`, deleted 2026-11-11):
   standalone imgAdd 93 -> 12 lines, imgAddFile 256 -> 45, everything
   built still matching (off 0 / off 128 evaluations 563 / 237). What
   changed:
@@ -2538,7 +2538,7 @@ Findings:
   original edx), the range test order, the npages/pages cmov form
   (`lea edx,[edi+512]; cmovne`), the end marker's register and the ERR
   block before the small-block call.
-- imgAdd builds from C (2026-10-27, `tmp/image_write_agents/addpair2/`).
+- imgAdd builds from C (2026-10-27, `tmp/image_write_agents/addpair2/`, deleted 2026-11-11).
   lim2 walks a loop's blocks in inverted postorder with siblings sorted
   so that a then-block whose only successor is the join comes first, so
   the `left` diamond's then-block was hoisted before every inner-loop
@@ -2609,7 +2609,7 @@ Still off:
   unswitches: that is what puts `SWAP16(next)` (rol) and `start - fsStart`
   before the chain test. SWAP16 is `(((x) << 8) & 0xff00) + (((x) >> 8) &
   0xff)`: the chain values' `>> 8` is then done in 16 bits (`shr bx,8`).
-  The tmp/xeBuild64 (gcc 4.9) copies of imgWriteStart/imgWriteAt/
+  The tools/ref/xeBuild64 (gcc 4.9) copies of imgWriteStart/imgWriteAt/
   imgWritePage have the original's layout too (chain loop falls through,
   the tail memcpy+memset block last), and compute the tail with `cmovb`
   (`rem < 0x4000 ? rem : rem & 0x3fff`), `blocks = rem >> 14`
@@ -2669,7 +2669,7 @@ Still off:
   before the loop, 11 lines (fixes (1)'s ebp, tail becomes lea).
 - finalizeImage built (2026-10-27; agent notes and offs.py, an
   instruction-offset check against the original, in
-  `tmp/image_write_agents/finalizeImage/`). The ECD loop names `xb.hdr +
+  `tmp/image_write_agents/finalizeImage/`, deleted 2026-11-11). The ECD loop names `xb.hdr +
   ...` / `xb.spare + ...` at each use; the big-block LBA loop is `spare =
   xb.spare; s = spare + b * 0x1000 + p * 16` (end-pointer outer IV). The
   ECD memcpy's unknown-alignment prologue: malloc goes through `void
@@ -2689,7 +2689,7 @@ Still off:
   :: "a"(xb.hdr));` before the memcpys, settles the ECD loop's register
   ties.
 - writeFsTable built (2026-10-27; notes and a jump-target comparer in
-  `tmp/image_write_agents/writeFsTable/`). `setBeU16(blk, ...)` with blk
+  `tmp/image_write_agents/writeFsTable/`, deleted 2026-11-11). `setBeU16(blk, ...)` with blk
   from the realign (PRE would merge imgAdd's `start` into a shared `off >>
   14`, the original recomputes it); the call's len is `i * 0x400` after
   the 16-iteration copy loop, known only at VRP1 (a constant len lets FRE3
@@ -2706,7 +2706,7 @@ Still off:
   `if (x > 0x3fff) start++;` right after `first = ...` in imgAdd (x is
   `off & 0x3fff`), which shift the free SSA list so the clone's chain-loop
   bound is `ivtmp + blocks` (`lea ebx,[eax+esi]`; fncmp doesn't see that
-  operand order, `tmp/image_write_agents/opcmp.py` and the build do; two
+  operand order, tmp/image_write_agents/opcmp.py (deleted 2026-11-11) and the build do; two
   imgAdd pins with four writeFsTable pins also work). Shared imgAdd body
   changes that came with it (the clone still matches): `start = (off - x) >> 14`
   (x gets a second use: combine keeps `and eax,16383; test`), the tail as
@@ -2850,7 +2850,7 @@ Still off:
   tail cold) but the range check's `cmp [raw],len` operand order needs
   imgWriteStart's own SSA numbering (raw loaded before len's default
   def is created), so the draft keeps its own body.
-- tmp/xeBuild64 decompiles with IDA (idapro on a copy of the ELF):
+- tools/ref/xeBuild64 decompiles with IDA (idapro on a copy of the ELF):
   imgWriteStart 41b1b0, imgWritePage 41b3b0, imgWriteAt 41b5c0,
   buildImage 41b810, imgAdd 41c960, imgAddFile 41ce20. Older source;
   structure only.

@@ -63,7 +63,8 @@ tools/fetch_toolchain.sh verify + unpack the 2016 MSYS2 toolchain, rebuild 2 imp
 tools/packages/          those MSYS2 packages (.pkg.tar.xz) and their SHA256SUMS
 tools/mingw-w64/         mingw-w64's kernel32/msvcrt .def files at e05f3e8 (+ COPYING)
 tools/ddisasm/           user-local ddisasm install for WSL, and the disassembly step
-build/                   generated, ignored
+tools/ref/xeBuild64      older Linux build (v1.16, stripped, gcc 4.9.2), structural cross-check
+build/                   generated, ignored; `make clean` removes all of it
 ```
 
 ## Setup

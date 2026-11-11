@@ -355,7 +355,7 @@ power, parseButton's winbutton, parseOption's two, the rev feeds' three); the de
 ## State after attempt 6
 
 **34 tricks, unchanged** (no match; src/ untouched).  Structural attempt: read the Linux
-v1.16 build (tmp/xeBuild64) for optIniBool, parseButton, parseOption and applyIniOptions;
+v1.16 build (tools/ref/xeBuild64) for optIniBool, parseButton, parseOption and applyIniOptions;
 tried whole-body shapes of the helpers, live "already on" arms, and the G/N sites written out
 in applyIniOptions.  Nothing came near (best 81 lines, everything else 400+).  The Linux build
 has the same structure as src, so it gives no new shape to try.  See "## Attempt 6".
@@ -938,8 +938,8 @@ Full build with the z feed change: SHA256 10dac648...1971c; progress 617/617.
 ## Attempt 6
 
 Structural, not spelling.  New tools (tools/wip/dehint/): `op6x64.py` (iw13x64.py with options'
-strings: function extents in tmp/xeBuild64), `op6dis.py ADDR` (one Linux function with string
-immediates and guessed callee names resolved; outputs kept in tmp/strs/aio64.txt and po64.txt),
+strings: function extents in tools/ref/xeBuild64), `op6dis.py ADDR` (one Linux function with string
+immediates and guessed callee names resolved; outputs were tmp/strs/aio64.txt and po64.txt, deleted 2026-11-11),
 `op6pe.py file.c [pattern]` (applyIniOptions' profile_estimate blocks around a pattern),
 `op6ib.py ib|G|N|all` (whole-body helper shapes), `op6on.py [-fn ib,G,N]` (live on/off arm
 forms x expect x optN entry), `op6w.py` (G/N sites written out in applyIniOptions).

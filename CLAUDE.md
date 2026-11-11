@@ -64,7 +64,7 @@ NOTES.md has the findings, layout and the pipeline.
   2.27, crt 4745 with kernel32/msvcrt import libraries rebuilt from mingw-w64
   e05f3e8 by `tools/fetch_toolchain.sh`). Newer binutils encode differently. gcc needs its `bin/` on
   PATH (cc1 and as load DLLs from there); otherwise it fails silently.
-- Don't search the machine for GCC sources or use copies left under `tmp/`.
+- Don't search the machine for GCC sources or use stray local copies.
   Try gcc's dumps (`-fdump-rtl-*`, `-fdump-tree-*`) and the notes first; only
   if a question really needs the source, read that one file from the official
   GCC repository at tag `releases/gcc-6.2.0`, e.g.
