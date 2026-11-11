@@ -1,0 +1,258 @@
+--- a/xecryptTypes.h
++++ b/xecryptTypes.h
+@@ -37,6 +37,29 @@
+ 
+ #endif // _MSC_VER
+ 
++// host byte order: XECRYPT_BIG_ENDIAN is 1 on a big-endian host (PowerPC).
++// gcc 4.6+ and clang predefine __BYTE_ORDER__; older gcc on PowerPC and
++// Apple's gcc define __BIG_ENDIAN__. Define it before this header to override.
++#ifndef XECRYPT_BIG_ENDIAN
++	#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
++		#define XECRYPT_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
++	#elif defined(__BIG_ENDIAN__)
++		#define XECRYPT_BIG_ENDIAN 1
++	#else
++		#define XECRYPT_BIG_ENDIAN 0
++	#endif
++#endif
++
++// the 360's big-endian values (key fields, bignum digits) to and from host
++// order; bswap16/32/64 above always swap
++#if XECRYPT_BIG_ENDIAN
++	#define XeBe32(x) (x)
++	#define XeBe64(x) (x)
++#else
++	#define XeBe32(x) bswap32(x)
++	#define XeBe64(x) bswap64(x)
++#endif
++
+ typedef unsigned char		u8, BYTE, *PBYTE;
+ typedef unsigned short		u16, WORD, *PWORD;
+ typedef unsigned int		u32;
+--- a/xecrypt.c
++++ b/xecrypt.c
+@@ -336,10 +336,10 @@
+ 
+ void XeCryptBnQwBeSigCompute(PXECRYPT_SIG pSig, const u8* pbHash, const u8* pbSalt, const PXECRYPT_RSA pRsa, u8* pbDecSig, u8* pbComSig)
+ {
+-	u32 exp = bswap32(pRsa->dwPubExp);
+-	u32 cnt = bswap32(pRsa->cqw);
++	u32 exp = XeBe32(pRsa->dwPubExp);
++	u32 cnt = XeBe32(pRsa->cqw);
+ 	PXECRYPT_RSAPUB_4096 keyp = (PXECRYPT_RSAPUB_4096)pRsa;
+-	u64 mod_inv = XeCryptBnQwNeModInv(bswap64(keyp->aqwM[0]));
++	u64 mod_inv = XeCryptBnQwNeModInv(XeBe64(keyp->aqwM[0]));
+ 
+ 	XeCryptBnQw_Copy((u64*)pSig, (u64*)pbDecSig, cnt);
+ 	XeCryptBnQw_Copy((u64*)pbDecSig, (u64*)pbComSig, cnt);
+@@ -352,9 +352,9 @@
+ 
+ BOOL XeCryptBnQwBeSigVerify(PXECRYPT_SIG pSig, const u8* pbHash, const u8* pbSalt, const PXECRYPT_RSA pRsa)
+ {
+-	if(bswap32(pRsa->cqw) == 0x20)
++	if(XeBe32(pRsa->cqw) == 0x20)
+ 	{
+-		u32 exp = bswap32(pRsa->dwPubExp);
++		u32 exp = XeBe32(pRsa->dwPubExp);
+ 		if((exp == 0x00000003) || (exp == 0x00010001))
+ 		{
+ 			BYTE pbDecSig[0x100];
+@@ -370,10 +370,10 @@
+ BOOL XeCryptBnQwBeSigCreate(PXECRYPT_SIG pSig, const u8* pbHash, const u8* pbSalt, const XECRYPT_RSA *pRsa)
+ {
+ 	BOOL ret = FALSE;
+-	u32 cnt = bswap32(pRsa->cqw);
++	u32 cnt = XeBe32(pRsa->cqw);
+ 	if(cnt == 0x20)
+ 	{
+-		u32 exp = bswap32(pRsa->dwPubExp);
++		u32 exp = XeBe32(pRsa->dwPubExp);
+ 		if((exp == 0x00000003) || (exp == 0x00010001))
+ 		{
+ 			PXECRYPT_RSAPRV_4096 keyp = (PXECRYPT_RSAPRV_4096)pRsa;
+@@ -385,8 +385,8 @@
+ 				u64 exp64 = (exp&0xFFFFFFFF);
+ 				XeCryptBnQw_Zero(buf1, 0x40);
+ 				XeCryptBnQw_Zero(buf2, 0x20);
+-				buf1[0] = bswap64(2ULL);
+-				buf2[0] = bswap64(((exp64-1) << 11));
++				buf1[0] = XeBe64(2ULL);
++				buf2[0] = XeBe64(((exp64-1) << 11));
+ 				if(XeCryptBnQwNeModExp(buf2, buf1, buf2, keyp->aqwM, cnt))
+ 				{
+ 					XeCryptBnQwNeMul(buf1, buf2, (u64*)pSig, cnt);
+@@ -441,7 +441,7 @@
+ BOOL XeCryptBnQwNeRsaPrvCrypt(const u64 *pqwIn, u64 *pqwOut, const XECRYPT_RSA *pRsa)
+ {
+ 	u64 *pP, *pQ, *pDP, *pDQ, *pCR;
+-	u32 cnt = bswap32(pRsa->cqw);
++	u32 cnt = XeBe32(pRsa->cqw);
+ 	if(cnt == 0x40) // 4096 bit
+ 	{
+ 		PXECRYPT_RSAPRV_4096 keyp = (PXECRYPT_RSAPRV_4096)pRsa;
+@@ -471,14 +471,14 @@
+ BOOL XeCryptBnQwNeRsaPubCrypt(const u64 *pqwIn, u64 *pqwOut, const XECRYPT_RSA *pRsa)
+ {
+ 	BOOL ret = FALSE;
+-	u32 cnt = bswap32(pRsa->cqw);
++	u32 cnt = XeBe32(pRsa->cqw);
+ 	if((cnt != 0) && (cnt <= 0x40))
+ 	{
+ 		PXECRYPT_RSAPRV_4096 keyp = (PXECRYPT_RSAPRV_4096)pRsa;
+ 		u64 buf[0x40];
+-		u64 exp = (bswap32(pRsa->dwPubExp)&0xFFFFFFFF);
++		u64 exp = (XeBe32(pRsa->dwPubExp)&0xFFFFFFFF);
+ 		XeCryptBnQw_Zero(buf, cnt);
+-		buf[0] = bswap64(exp);
++		buf[0] = XeBe64(exp);
+ 		return XeCryptBnQwNeModExp(pqwOut, pqwIn, buf, keyp->aqwM, cnt);
+ 	}
+ 	return ret;
+@@ -518,7 +518,7 @@
+ BOOL XeKeysPkcs1Verify(const unsigned char* pbHash, const unsigned char* pbSig, const XECRYPT_RSA *pRsaPub)
+ {
+ 	BOOL ret = FALSE;
+-	DWORD cnt = bswap32(pRsaPub->cqw);
++	DWORD cnt = XeBe32(pRsaPub->cqw);
+ 	if((cnt != 0) && (cnt <= 0x40))
+ 	{
+ 		u8 buf[0x200];
+@@ -535,7 +535,7 @@
+ BOOL XeKeysPkcs1Create(const unsigned char* pbHash, unsigned char* pbSig, const XECRYPT_RSA* pRsaPrv)
+ {
+ 	BOOL ret = FALSE;
+-	DWORD cnt = bswap32(pRsaPrv->cqw);
++	DWORD cnt = XeBe32(pRsaPrv->cqw);
+ 	if ((cnt != 0) && (cnt <= 0x40))
+ 	{
+ 		u8 buf[0x200];
+@@ -587,7 +587,7 @@
+ 		PXECRYPT_RSAPUB_4096 pub = (PXECRYPT_RSAPUB_4096)pRsaPub;
+ 		memset(priv, 0, sizeof(XECRYPT_RSAPRV_4096));
+ 		memset(pub, 0, sizeof(XECRYPT_RSAPUB_4096));
+-		priv->Rsa.cqw = bswap32(0x40);
++		priv->Rsa.cqw = XeBe32(0x40);
+ 		mpGetBeQwBigNum(0x40, (u8*)priv->aqwM, pkpriv.modulus);
+ 		mpGetBeQwBigNum(0x20, (u8*)priv->aqwP, pkpriv.p);
+ 		mpGetBeQwBigNum(0x20, (u8*)priv->aqwQ, pkpriv.q);
+@@ -602,7 +602,7 @@
+ 		PXECRYPT_RSAPUB_2048 pub = (PXECRYPT_RSAPUB_2048)pRsaPub;
+ 		memset(priv, 0, sizeof(XECRYPT_RSAPRV_2048));
+ 		memset(pub, 0, sizeof(XECRYPT_RSAPUB_2048));
+-		priv->Rsa.cqw = bswap32(0x20);
++		priv->Rsa.cqw = XeBe32(0x20);
+ 		mpGetBeQwBigNum(0x20, (u8*)priv->aqwM, pkpriv.modulus);
+ 		mpGetBeQwBigNum(0x10, (u8*)priv->aqwP, pkpriv.p);
+ 		mpGetBeQwBigNum(0x10, (u8*)priv->aqwQ, pkpriv.q);
+@@ -617,7 +617,7 @@
+ 		PXECRYPT_RSAPUB_1536 pub = (PXECRYPT_RSAPUB_1536)pRsaPub;
+ 		memset(priv, 0, sizeof(XECRYPT_RSAPRV_1536));
+ 		memset(pub, 0, sizeof(XECRYPT_RSAPUB_1536));
+-		priv->Rsa.cqw = bswap32(0x18);
++		priv->Rsa.cqw = XeBe32(0x18);
+ 		mpGetBeQwBigNum(0x18, (u8*)priv->aqwM, pkpriv.modulus);
+ 		mpGetBeQwBigNum(0xC, (u8*)priv->aqwP, pkpriv.p);
+ 		mpGetBeQwBigNum(0xC, (u8*)priv->aqwQ, pkpriv.q);
+@@ -632,7 +632,7 @@
+ 		PXECRYPT_RSAPUB_1024 pub = (PXECRYPT_RSAPUB_1024)pRsaPub;
+ 		memset(priv, 0, sizeof(XECRYPT_RSAPRV_1024));
+ 		memset(pub, 0, sizeof(XECRYPT_RSAPUB_1024));
+-		priv->Rsa.cqw = bswap32(0x10);
++		priv->Rsa.cqw = XeBe32(0x10);
+ 		mpGetBeQwBigNum(0x10, (u8*)priv->aqwM, pkpriv.modulus);
+ 		mpGetBeQwBigNum(0x8, (u8*)priv->aqwP, pkpriv.p);
+ 		mpGetBeQwBigNum(0x8, (u8*)priv->aqwQ, pkpriv.q);
+@@ -641,7 +641,7 @@
+ 		mpGetBeQwBigNum(0x8, (u8*)priv->aqwCR, pkpriv.qInv);
+ 		mpGetBeQwBigNum(0x10, (u8*)pub->aqwM, pkpriv.modulus);
+ 	}
+-	pRsaPrv->dwPubExp = bswap32(dwPubExp);
++	pRsaPrv->dwPubExp = XeBe32(dwPubExp);
+ 	pRsaPub->cqw = pRsaPrv->cqw;
+ 	pRsaPub->dwPubExp = pRsaPrv->dwPubExp;
+ 	PKCS1_RSA_FreeKey(&pkpriv);
+--- a/xecryptBn.c
++++ b/xecryptBn.c
+@@ -49,7 +49,7 @@
+ 	if(((uintptr_t)data&7)==0) // check alignment
+ 	{
+ 		u64* pQaud = (u64*)data;
+-		return bswap64(pQaud[0]); // thanks Ced!
++		return XeBe64(pQaud[0]); // thanks Ced!
+ 	}
+ 	for(i=0; i<8; i++)
+ 	{
+@@ -64,7 +64,7 @@
+ 	if(((uintptr_t)data&7)==0) // check alignment
+ 	{
+ 		u64* pQaud = (u64*)data;
+-		pQaud[0] = bswap64(qwin);  // thanks Ced!
++		pQaud[0] = XeBe64(qwin);  // thanks Ced!
+ 		return;
+ 	}
+ 	for(i=8; i>0; i--)
+@@ -244,18 +244,18 @@
+ 	XeCryptBnQw_Zero(buf1, 0x21);
+ 	XeCryptBnQw_Zero(buf2, 0x21);
+ 
+-	mmiStat = qwMI*bswap64(pqwA[0]);
++	mmiStat = qwMI*XeBe64(pqwA[0]);
+ 	for(i = 0; i < cqw; i++)
+ 	{
+ 		// outer_first:
+-		u64 mmi = (mmiStat*bswap64(pqwB[i]))+(qwMI*(buf1[1] - buf2[1]));
++		u64 mmi = (mmiStat*XeBe64(pqwB[i]))+(qwMI*(buf1[1] - buf2[1]));
+ 		u64 acc1 = 0;
+ 		u64 acc2 = 0;
+ 
+ 		for(j = 0; j < cqw; j++)
+ 		{
+ 			u64 hiVal, loVal;
+-			XeCryptMulHdu(bswap64(pqwB[i]), bswap64(pqwA[j]), &hiVal, &loVal);
++			XeCryptMulHdu(XeBe64(pqwB[i]), XeBe64(pqwA[j]), &hiVal, &loVal);
+ 			loVal = loVal+buf1[j+1];
+ 			if(loVal < buf1[j+1])
+ 				hiVal++;
+@@ -265,7 +265,7 @@
+ 			acc1 = hiVal;
+ 			buf1[j] = loVal;
+ 
+-			XeCryptMulHdu(mmi, bswap64(pqwM[j]), &hiVal, &loVal);
++			XeCryptMulHdu(mmi, XeBe64(pqwM[j]), &hiVal, &loVal);
+ 			loVal = loVal+buf2[j+1];
+ 			if(loVal < buf2[j+1])
+ 				hiVal++;
+@@ -286,7 +286,7 @@
+ 			for(j = 0; j < cqw; j++)
+ 			{
+ 				u64 val = (buf1[j+1] - buf2[j+1]) - car;
+-				pqwC[j] = bswap64(val);
++				pqwC[j] = XeBe64(val);
+ 				val = (val ^ buf1[j+1]) | (buf2[j+1] ^ buf1[j+1]);
+ 				car = (buf1[j+1] ^ val) >> 63;
+ 			}
+@@ -297,10 +297,10 @@
+ 			u64 car1 = 0, car2 = 0;
+ 			for(j = 0; j < cqw; j++)
+ 			{
+-				u64 val1 = bswap64(pqwM[j]);
++				u64 val1 = XeBe64(pqwM[j]);
+ 				u64 val2 = (buf1[j+1] + val1) + car1;
+ 				u64 val3 = (val2 - buf2[j+1]) - car2;
+-				pqwC[j] = bswap64(val3);
++				pqwC[j] = XeBe64(val3);
+ 				val1 = val1 ^ val2;
+ 				val3 = val3 ^ val2;
+ 				car1 = (((buf1[j+1] ^ val2) | val1) ^ val2) >> 63;
+@@ -382,8 +382,8 @@
+ 	u32 i;
+ 	for(i = cqw-1; i >= 0; i--)
+ 	{
+-		u64 valA = bswap64(pqwA[i]);
+-		u64 valB = bswap64(pqwB[i]);
++		u64 valA = XeBe64(pqwA[i]);
++		u64 valB = XeBe64(pqwB[i]);
+ 		if(valA != valB)
+ 		{
+ 			if(valA > valB)

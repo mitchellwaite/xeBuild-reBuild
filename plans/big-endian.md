@@ -1,11 +1,13 @@
 # Big-endian (PowerPC) builds
 
-Status: plan only, nothing implemented.
+Status: plan only. The XeCrypt part is a ready patch for upstream
+(plans/xecrypt-big-endian.patch); nothing in src/ has changed.
 
 Goal: xeBuild builds and runs on big-endian PowerPC and writes the same
-files as the x86 builds: 32-bit G3/G4 Macs (Mac OS X 10.4/10.5 or Linux),
-64-bit G5s, and the Xbox 360 itself under ArchPOWER. `make check` keeps the
-reference SHA256 throughout.
+files as the x86 builds. Targets: 32-bit G3/G4 Macs (Mac OS X 10.4/10.5 or
+Linux), 64-bit G5s, and the Xbox 360 itself: ArchPOWER (32-bit userland on a
+64-bit kernel) and the fully 64-bit 360 distributions. So both ILP32 and
+LP64 big-endian matter. `make check` keeps the reference SHA256 throughout.
 
 ## Summary
 
@@ -21,8 +23,8 @@ reads) are already portable; everything below is not.
 | 4 | EDC (page ECC) computed over native 32-bit words | image_write.c:286, 322 | 2 loops |
 | 5 | Bit-fields laid over on-disk bytes | image_write.c, image_read.c, build.c, stfs.c | 8 structs |
 | 6 | Host-order values viewed as bytes, raw copies | keyvault.c, consoleinfo.c, net.c, keys.c, timeutil.c | 7 places |
-| 7 | XeCrypt's Xbox-format bignums and key fields | crypto/xecrypt.c, crypto/xecryptBn.c | 32 swaps (2 in a load/store fast path) |
-| 8 | Not byte order: alignment, compiler, Makefile | stfs.c, xboxrom.c, mode_*.c, Makefile | see below |
+| 7 | XeCrypt's Xbox-format bignums and key fields | crypto/xecrypt.c, crypto/xecryptBn.c | 32 swaps: upstream patch |
+| 8 | Not byte order: alignment, old compilers, Makefile | stfs.c, xboxrom.c, mode_*.c, Makefile | see below |
 
 What a big-endian build does today: dumps fail `checkHeader`'s magic test,
 every bootloader fails `checkBl`'s size check ("BL size is bigger than the
@@ -35,8 +37,9 @@ The fix keeps the reference build's preprocessed source unchanged: byte
 order is one compile-time switch, the conversions become endian-aware macros
 whose little-endian expansion is the current text, and the few logic
 rewrites go under `XEBUILD_FIXES` (as CLAUDE.md asks), where the x86-64 Linux
-and macOS builds run them too. About 100 edited sites plus the macro
-definitions; the 133 swap-macro uses and the ~60 helper callers need no edit.
+and macOS builds run them too. In the app that's about 70 edited sites
+plus the macro definitions; the 133 swap-macro uses and the ~60 helper
+callers need no edit. XeCrypt's 32 sites go upstream first.
 
 ## Findings
 
@@ -195,10 +198,9 @@ PowerPC on Linux and Darwin; `SAFE_IO` byte-wise I/O; `FIXED_TABLES` are
 built for the byte order), SHA-1 (neither `L_ENDIAN` nor `B_ENDIAN` is
 defined, so it takes the byte-wise path), MD5 (word loads only on
 x86/vax), DES (byte-wise `LOAD32H`), RC4, BigDigits (32-bit `DIGIT_T`
-arithmetic; xecryptBn's conversions to it are byte-wise) and crc32.c.
-bign/pkcs1-rsa.c casts byte strings to `DIGIT_T *` in its
-encrypt/decrypt/sign functions, which is little-endian only, but xeBuild
-never calls them.
+arithmetic; xecryptBn's conversions to it are byte-wise) and crc32.c. Two
+places in BigDigits are little-endian only but xeBuild never calls them (see
+Step 2).
 
 ### 8. Not byte order
 
@@ -209,23 +211,31 @@ never calls them.
   or the kernel's alignment handler, slowly. They're also undefined
   behaviour that an AltiVec-vectorizing `-O3` may exploit. Replace them with
   `getBeU32`/`memcpy`, and align `sig`.
-- Compiler: the code needs `_Static_assert` (xebuild.h:44), C99 `extern
-  inline` (image_read.c:915, keys.c:665) and `__builtin_bswap16`, so gcc 4.8
-  or later (with `-std=gnu99` before gcc 5, whose gnu89 default makes `extern
-  inline` emit no body, a link error), or clang. Xcode's gcc 4.0/4.2 on
-  Tiger/Leopard is too old; use a newer gcc from MacPorts or Tigerbrew. Debian
-  ports and ArchPOWER ship current gcc.
-- Makefile: `macos` defaults to clang, which doesn't target PowerPC on
-  10.4/10.5, and `-Wl,-map` may not exist in their linkers (Tiger links
-  32-bit PowerPC with cctools ld). `linux` works as is, natively or with
-  `CC=powerpc-linux-gnu-gcc`; the banner gets the triple from `-dumpmachine`.
+- Old compilers. `cc` on PowerPC Mac OS X is Apple's gcc 4.0.1 (Tiger) or
+  4.0/4.2 (Leopard), and the code doesn't build with it:
+  - `_Static_assert` (xebuild.h:44) needs gcc 4.6;
+  - `extern inline` (image_read.c:915, keys.c:665) means "no out-of-line body"
+    under the gnu89 inline rules that gcc before 4.3 always uses (and gcc 4.3-4.9
+    by default), so a call that isn't inlined fails to link;
+  - `__builtin_bswap32/64` need gcc 4.3, `__builtin_bswap16` gcc 4.8.
+
+  Step 6 handles all three without touching the reference build. Nothing
+  else needs C99 mode or a newer libc: there are no `for (int ...)`
+  declarations, no compound literals, and no libc calls Tiger lacks
+  (`inet_pton` and `vsnprintf` are there).
+- Makefile: `macos` sets `CC := clang`, which doesn't exist on PowerPC Mac OS
+  X; `-Wl,-map` may not be supported by the linkers there (cctools ld on
+  Tiger, an early ld64 on Leopard). Tiger ships GNU make 3.80, and the
+  Makefile's `else ifeq` needs 3.81 (Leopard has 3.81). `linux` works as
+  is, natively or with `CC=powerpc-linux-gnu-gcc`; the banner gets the
+  triple from `-dumpmachine`.
 - `char` is unsigned on PowerPC Linux (signed on Mac OS X). The scan found
   nothing that depends on it: the ini reader uses `unsigned char`, and the hex
-  parsers mask with `& 0xFF`. A `-funsigned-char` x86 build confirms it
-  (Tests below).
-- 32/64-bit: G3/G4 userlands are ILP32; G5 and the 360 may run 64-bit (LP64)
-  ones. LP64 already builds (x86-64 Linux/macOS) but has never been checked
-  against the reference's output, so ppc64 would inherit any LP64 bug.
+  parsers mask with `& 0xFF`.
+- 32/64-bit: G3/G4 and ArchPOWER on the 360 are ILP32; G5 and the 64-bit 360
+  distributions LP64. LP64 already builds (x86-64 Linux/macOS) but has never
+  been checked against the reference's output, so 64-bit PowerPC would
+  inherit any LP64 bug.
 - Struct layout: the on-disk structs are naturally aligned, so their
   offsets are the same under PowerPC SysV and Darwin's "power" alignment.
   Nothing asserts it yet.
@@ -247,48 +257,39 @@ Rules:
    platform but win32 already defines it, and win32 is x86 only.
 4. Logic rewrites that are better everywhere go under `XEBUILD_FIXES`, with
    the original in the `#else`, so the x86 fixes builds exercise them too.
-5. XeCrypt edits stay minimal and marked, and are offered upstream
-   (cOzInABox/XeCrypt). README's "used as published" for the crypto changes
-   to say so.
+5. The big-endian code paths use only shift-based swaps, never the
+   `__builtin_bswap*` functions, so any gcc or clang compiles them.
+6. XeCrypt changes go upstream (cOzInABox/XeCrypt) first; src/crypto then
+   syncs to the merged upstream (converted to LF, as now).
 
 ### Step 1: the switch, the macros and the helpers
 
-In src/crypto/xecryptTypes.h, which every crypto file and xebuild.h (through
-crypto/xecrypt.h) already include:
+In xebuild.h, after the includes. It mirrors XeCrypt's test from Step 2,
+so the app doesn't wait for that PR:
 
 ```c
 /* 1 on a big-endian host (PowerPC).  gcc 4.6+ and clang predefine
    __BYTE_ORDER__; older gcc on PowerPC and Apple's gcc define __BIG_ENDIAN__.
-   No headers: _BIG_ENDIAN and friends are defined on every host by some libcs. */
+   The same test as XeCrypt's XECRYPT_BIG_ENDIAN (crypto/xecryptTypes.h). */
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
-#define XECRYPT_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#define XB_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #elif defined(__BIG_ENDIAN__)
-#define XECRYPT_BIG_ENDIAN 1
+#define XB_BIG_ENDIAN 1
 #else
-#define XECRYPT_BIG_ENDIAN 0
+#define XB_BIG_ENDIAN 0
 #endif
-
-/* the Xbox's big-endian key fields and bignum digits to and from host order;
-   bswap16/32/64 stay the unconditional swaps */
-#if XECRYPT_BIG_ENDIAN
-#define XeBe32(x) (x)
-#define XeBe64(x) (x)
-#else
-#define XeBe32(x) bswap32(x)
-#define XeBe64(x) bswap64(x)
-#endif
-```
-
-In xebuild.h, after the includes:
-
-```c
-#define XB_BIG_ENDIAN XECRYPT_BIG_ENDIAN
 #if XB_BIG_ENDIAN && !defined(XEBUILD_FIXES)
 #error "a big-endian build needs XEBUILD_FIXES (the Makefile sets it on every platform but win32)"
 #endif
+
+/* swaps with shifts: any compiler, folded for constants (x is used more
+   than once) */
+#define BSWAP16(x) ((uint16_t)((((x) & 0xffu) << 8) | (((x) >> 8) & 0xffu)))
+#define BSWAP32(x) ((uint32_t)((((x) & 0xffu) << 24) | (((x) & 0xff00u) << 8) | \
+			(((x) >> 8) & 0xff00u) | (((x) >> 24) & 0xffu)))
 ```
 
-and the swap macros become:
+The swap macros become:
 
 ```c
 #if XB_BIG_ENDIAN
@@ -330,29 +331,114 @@ unsigned int getBeU32(const uint8_t *p)
 	return __builtin_bswap32(v);
 #endif
 }
+
+unsigned int getLeU32(const uint8_t *p)
+{
+	uint32_t v;
+
+	memcpy(&v, p, 4);
+#if XB_BIG_ENDIAN
+	return BSWAP32(v);
+#else
+	return v;
+#endif
+}
 ```
 
-XeCrypt: every `bswap32`/`bswap64` in xecrypt.c and xecryptBn.c except
-xecrypt.c:25 becomes `XeBe32`/`XeBe64`, including the fast paths in
-`XeCryptLoadQuad`/`XeCryptStoreQuad`. On little-endian the expansion is
-unchanged. xecrypt.c and xecryptBn.c have no `assert`, so the edits don't
-move any `__LINE__` into .rdata.
+### Step 2: XeCrypt (upstream PR)
 
-### Step 2: constants
+The patch is plans/xecrypt-big-endian.patch (3 files, +54 -31). It applies
+with `git apply` to upstream's `main`, which is still 7d619af, the commit
+src/crypto was copied from. Upstream stores LF; a Windows checkout's
+CRLF comes from `core.autocrlf`.
 
-Two constant macros in xebuild.h. Both fold at compile time:
+xecryptTypes.h, after the `bswap` block:
 
 ```c
-#define BSWAP16C(x) ((uint16_t)((((x) & 0xffu) << 8) | (((x) >> 8) & 0xffu)))
-#define BSWAP32C(x) ((uint32_t)((((x) & 0xffu) << 24) | (((x) & 0xff00u) << 8) | \
-			(((x) >> 8) & 0xff00u) | (((x) >> 24) & 0xffu)))
+// host byte order: XECRYPT_BIG_ENDIAN is 1 on a big-endian host (PowerPC).
+// gcc 4.6+ and clang predefine __BYTE_ORDER__; older gcc on PowerPC and
+// Apple's gcc define __BIG_ENDIAN__. Define it before this header to override.
+#ifndef XECRYPT_BIG_ENDIAN
+	#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+		#define XECRYPT_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+	#elif defined(__BIG_ENDIAN__)
+		#define XECRYPT_BIG_ENDIAN 1
+	#else
+		#define XECRYPT_BIG_ENDIAN 0
+	#endif
+#endif
+
+// the 360's big-endian values (key fields, bignum digits) to and from host
+// order; bswap16/32/64 above always swap
+#if XECRYPT_BIG_ENDIAN
+	#define XeBe32(x) (x)
+	#define XeBe64(x) (x)
+#else
+	#define XeBe32(x) bswap32(x)
+	#define XeBe64(x) bswap64(x)
+#endif
+```
+
+It doesn't test `_BIG_ENDIAN` or `BIG_ENDIAN`: some libcs define those on
+every host. MSVC defines no `__BYTE_ORDER__`, so it gets 0, which is right
+for every Windows target.
+
+Then every `bswap32(` and `bswap64(` in xecrypt.c and xecryptBn.c becomes
+`XeBe32(`/`XeBe64(`, except xecrypt.c:25:
+
+| File | Function | Sites |
+|---|---|---|
+| xecrypt.c | `XeCryptBnQwBeSigCompute` | 339, 340, 342 |
+| | `XeCryptBnQwBeSigVerify` | 355, 357 |
+| | `XeCryptBnQwBeSigCreate` | 373, 376, 388, 389 |
+| | `XeCryptBnQwNeRsaPrvCrypt` | 444 |
+| | `XeCryptBnQwNeRsaPubCrypt` | 474, 479, 481 |
+| | `XeKeysPkcs1Verify`, `XeKeysPkcs1Create` | 521, 538 |
+| | `XeCryptBnQwNeRsaKeyGen` | 590, 605, 620, 635, 644 |
+| xecryptBn.c | `XeCryptLoadQuad`, `XeCryptStoreQuad` (fast paths) | 52, 67 |
+| | `XeCryptBnQwNeModMul` | 247, 251, 258 (2), 268, 289, 300, 303 |
+| | `XeCryptBnQwNeCompare` | 385, 386 |
+| kept | `XeCryptBnQw_SwapDwQwLeBe` (always reverses each qword) | xecrypt.c:25 |
+
+Checked:
+
+- With the pinned gcc 6.2.0, `gcc -E` before and after gives identical output
+  for xecrypt.c, xecryptBn.c, des/des.c (the other file that includes
+  xecryptTypes.h) and app files that reach it through xebuild.h (build.c,
+  image_write.c, keys.c, xboxrom.c). So the local copy, synced to it, still
+  passes `make check`.
+- Forced on (`-DXECRYPT_BIG_ENDIAN=1`), both files compile cleanly, and
+  only the `SwapDwQwLeBe` swap remains in the preprocessed xecrypt.c.
+- Upstream's whole tree (its 60 bign files, `xecryptHmacSha.c`, which xeBuild
+  doesn't link) has no other `bswap` or `XeCryptLoadQuad` use.
+
+Also worth raising in the PR, but not needed by xeBuild (it never calls
+them). Adding them locally would change the reference build:
+
+- bign/pkcs1-rsa.c:454, 602, 630, 649 (OAEP encrypt/decrypt, PSS sign/verify)
+  and bign/base64.c:130 cast byte strings to `DIGIT_T *`. That reads the
+  bytes as host-order 32-bit digits, so a BE host gets different results
+  from an LE one. Converting each 32-bit word from little-endian bytes
+  around the RSA primitive would give BE the LE results.
+- `XeCryptBnQwNeCompare` (xecryptBn.c:383) loops `for (i = cqw - 1; i >= 0;
+  i--)` on an unsigned `i`: for two equal numbers it runs past index 0 and
+  reads out of bounds. It needs its own commit: the fix changes the
+  reference build's code, so src/crypto shouldn't sync past it (or only
+  under `XEBUILD_FIXES`).
+
+### Step 3: constants
+
+Two constant macros in xebuild.h, built on Step 1's shift swaps. Both fold
+at compile time:
+
+```c
 #if XB_BIG_ENDIAN
 #define BE16C(x) ((uint16_t)(x))	/* a big-endian field's value */
 #define BE32C(x) ((uint32_t)(x))
-#define BYTES32(x) BSWAP32C(x)		/* the word whose bytes in memory are x's on x86 */
+#define BYTES32(x) BSWAP32(x)		/* the word whose bytes in memory are x's on x86 */
 #else
-#define BE16C(x) BSWAP16C(x)
-#define BE32C(x) BSWAP32C(x)
+#define BE16C(x) BSWAP16(x)
+#define BE32C(x) BSWAP32(x)
 #define BYTES32(x) (x)
 #endif
 ```
@@ -371,15 +457,19 @@ Two constant macros in xebuild.h. Both fold at compile time:
   change the reference build's code, so they'd have to sit under
   `XEBUILD_FIXES` beside the originals. Leave that to de-slopification.
 
-### Step 3: EDC and bit-fields
+### Step 4: EDC and bit-fields
 
 EDC: one macro for "a little-endian word in host order"; the two loops read
 `v = ~LE32_WORD(*data++);` (the same expression as `~*data++` on
-little-endian):
+little-endian). On BE it's a function, so `*data++` is evaluated once:
 
 ```c
 #if XB_BIG_ENDIAN
-#define LE32_WORD(x) __builtin_bswap32(x)
+static inline uint32_t xbSwap32(uint32_t v)
+{
+	return BSWAP32(v);
+}
+#define LE32_WORD(x) xbSwap32(x)
 #else
 #define LE32_WORD(x) (x)
 #endif
@@ -408,10 +498,11 @@ struct sp
 
 The same for `spb`, `sps`, `spt` (`ecc3:2, type:6`), `bigSpare`,
 `smallSpare`, `fan` (`override:1, speed:7`) and `stfsEnt` (`dir:1,
-contig:1, namelen:6`). Bit-field order is implementation-defined, so a
-known-answer test checks the resulting bytes (Tests).
+contig:1, namelen:6`). Bit-field order is implementation-defined, so the
+spare bytes are among the first things to check on a big-endian build
+(Verification).
 
-### Step 4: rewrites under XEBUILD_FIXES
+### Step 5: rewrites under XEBUILD_FIXES
 
 Each with the original in the `#else`:
 
@@ -448,91 +539,120 @@ Each with the original in the `#else`:
   0x110, `XECRYPT_SIG` 0x100, `stfsEnt` 64, `offsetof(struct mfFile, hdr) ==
   0x138`, `struct blhdr` 16. They're compile-time only, but that's no reason
   to put them outside `XEBUILD_FIXES`.
-- Reproducible output for the tests: `GetSystemTime` (timeutil.c:304) uses
-  `$SOURCE_DATE_EPOCH` in place of `time(NULL)` when it's set, the
-  reproducible-builds convention. Today `xb.sysTime` is always 1, so the
-  built-in default time in `makeTimestamp` is unreachable; with
+- Reproducible output, for comparing runs: `GetSystemTime`
+  (timeutil.c:304) uses `$SOURCE_DATE_EPOCH` in place of `time(NULL)` when
+  it's set, the reproducible-builds convention. Today `xb.sysTime` is always
+  1, so the built-in default time in `makeTimestamp` is unreachable; with
   `-norandom`, this is the last source of variation.
 
-### Step 5: build system and docs
+### Step 6: the system cc on Mac OS X, old compilers, docs
 
-- Makefile: on Darwin with `uname -p` = powerpc, default `CC` to `gcc`, and
-  let `MAP_FLAGS` be overridden (or `MAP=0`) for old linkers. Document
-  `CFLAGS=-std=gnu99` for gcc 4.8/4.9. Add `make test`, with `RUN=` for
-  a cross build, e.g. `make test RUN="qemu-ppc -L /usr/powerpc-linux-gnu"`.
-- CI (.github/workflows/build.yml): a `linux-ppc` job on ubuntu-latest, one
-  entry for `powerpc-linux-gnu` and one for `powerpc64-linux-gnu`. It installs
-  the `gcc-<triple>` cross compiler and `qemu-user` (check the package names
-  on the runner image), runs `make PLATFORM=linux CC=<triple>-gcc`, then `make
-  test` under qemu. A `-funsigned-char` x86 job would add nothing: the ppc
-  jobs already have unsigned `char`.
-- README: PowerPC rows in the platform table, the compiler requirement, and
-  the XeCrypt patch. NOTES.md: a short "Byte order" section (what `SWAP*`,
-  `BE16C`, `BYTES32` and `LE32_WORD` mean, and the bit-field rule), so
-  de-slopification keeps them straight.
+Yes, there's an alias: `cc`. On every Mac OS X it's the system compiler:
+Apple's gcc on PowerPC 10.4/10.5 (4.0.1 on Tiger, 4.0 or 4.2 on Leopard),
+and Apple clang on current Intel and Apple-silicon macOS
+(`/usr/bin/cc` runs clang through `xcrun`). It's also GNU make's default
+`CC`, which the Makefile already detects as "not given". So `macos` drops
+its `CC := clang` and takes make's `cc`. On current macOS that's the same
+Apple clang as now. On PowerPC it's Apple's gcc, which the shims below make
+work. A newer gcc (MacPorts, Tigerbrew) still works with `make CC=...`.
 
-## Tests
+Makefile:
 
-1. `make check` after every step. Steps 1-3 must not change the reference
-   build; step 4 is under `XEBUILD_FIXES`, so it can't, but run it anyway.
-2. Known-answer tests (`make test`): synthetic data only, so they run in CI.
-   A small driver linked with the app objects (main.c compiled a second time
-   with `-Dmain=xebuildMain` for it):
-   - helpers and macros: `getBe*`, `getLeU32`, `SWAP*`, `BE16C`, `BE32C`,
-     `BYTES32` against expected bytes;
-   - spare bytes from `setBlockSpare` and `imgAdd` for small block, big
-     block controller and big block, sample LBAs and block types; the
-     bit-field structs read back;
-   - EDC: `calcEcd`/`pageEccOk` on fixed synthetic pages;
-   - XeCrypt: standard SHA-1, HMAC-SHA1, RC4 and AES vectors; a `RotSumSha`
-     vector; with a test 2048-bit key stored in Xbox format,
-     `XeCryptBnQwBeSigCreate` + `XeCryptBnQwNeRsaPrvCrypt` +
-     `XeCryptBnQwBeSigVerify` and `XeKeysPkcs1Verify` on stored signatures;
-   - SMC: `smcChecksum`, `smcEncrypt`/`unscramble`, `calcConfigSum`/
-     `smcConfigOk`, `smcPatch` on a buffer holding the three patterns;
-   - dates: the 8 bytes `putFileTime` writes for a fixed DOS date (TZ=UTC);
-   - an STFS entry's flags and name length.
+```make
+# --- macos: the system compiler (cc: Apple clang today, Apple gcc on
+# PowerPC Mac OS X 10.4/10.5); make's default CC is already cc
+else ifeq ($(PLATFORM),macos)
+TC_BIN ?=
+EXE := build/xeBuild
+PLAT_LDFLAGS := -Wl,-x
+PLAT_LIBS :=
+ifeq ($(shell uname -p),powerpc)
+# cctools ld (Tiger) and early ld64 (Leopard) may lack -map;
+# make MAP_FLAGS=... puts it back
+MAP_FLAGS :=
+else
+MAP_FLAGS := -Wl,-map,$(MAP)
+endif
+```
 
-   The expected values come from the x86 build, which matches the
-   reference, generated once and committed.
-3. Image comparison, local (real dumps, keys and firmware can't go in the
-   repo or CI): a script runs a matrix of console types (xenon, falcon,
-   jasper, jasperbb, jasperbigffs, trinity, corona, corona4g), build types
-   (retail, jtag, glitch, glitch2, glitch2m, devgl), with and without a
-   nanddump.bin, plus the update, extract and ini modes. Each run uses
-   `-norandom`, `SOURCE_DATE_EPOCH` and `TZ=UTC`. The image, extracted files,
-   ini and log (but for the banner) from ppc32 and ppc64, under qemu or on
-   hardware, must match the x86-64 fixes build byte for byte. Run the matrix
-   on x86-64 Linux first. Anything it finds there is an LP64 bug, which
-   ppc64 shares, so fix it before the big-endian work.
-4. x86 fixes build against the reference: the step 4 rewrites are small and
-   covered by the known-answer tests. For more, run xeBuild.exe under
-   Wine with libfaketime at the same fixed time and compare.
-5. Hardware: build natively on a G4 (ppc32) and on a G5 or the 360 under
-   ArchPOWER (ppc64), run a subset of the matrix, and flash one built image
-   to a real console. That's the final proof that ECC, LBAs and signatures
-   are right.
-6. Client mode needs a console running xeBuild's dashboard-side client, so
-   run it from a PowerPC host against a real console, or against a small
-   Python stub that sends the "NSvr" beacon and replies to GTIN, GETF and
-   so on.
+- `QUIET_WARNINGS` adds its clang-only flags when `$(CC)` is clang
+  (`$(CC) -dM -E -x c /dev/null | grep __clang__`), not when the platform
+  is `macos`. Its gcc list needs gcc 4.4 or later (older gcc rejects
+  unknown `-Wno-` options), so leave `QUIET_WARNINGS` off with Apple's gcc.
+- Tiger: GNU make 3.81 or later from Tigerbrew or MacPorts, or built from
+  source (Tiger ships 3.80).
+- The CI macOS job's "Compiler" step runs `cc --version` instead of
+  `clang --version`.
+
+Code shims, all expanding to the current tokens with gcc 6.2:
+
+- xebuild.h, before the asserts: for gcc before 4.6 (not clang), define
+  `_Static_assert(e, msg)` as a negative-size array typedef
+  (`typedef char XB_CAT(xbAssert, __LINE__)[(e) ? 1 : -1]`, with the usual
+  two-level `##` paste macro for `XB_CAT`).
+- xebuild.h: `XB_EXTERN_INLINE` is `extern inline` where
+  `__GNUC_STDC_INLINE__` is defined (C99 inline rules, as gcc 6.2 uses), and
+  plain `inline` otherwise. Under the gnu89 rules plain `inline` is what C99
+  calls `extern inline`: inlinable, and the external definition. The two
+  `extern inline` functions (image_read.c:915, keys.c:665) use it.
+- The big-endian paths need no builtins (rule 5). Intel Macs on 10.4-10.6
+  also have gcc as `cc`, and their x86 path calls `__builtin_bswap*`, which
+  Apple's gcc 4.0 lacks. That would need a version-tested fallback there.
+  Not part of this plan.
+
+Docs:
+
+- README: the `macos` row says "the system `cc`"; PowerPC Linux and Mac OS X
+  rows; note that crypto/ is XeCrypt with the upstream big-endian change.
+- NOTES.md: a short "Byte order" section (what `SWAP*`, `BE16C`, `BYTES32`
+  and `LE32_WORD` mean, and the bit-field rule), so de-slopification keeps
+  them straight.
+- Optional: a compile-only CI job with Ubuntu's PowerPC cross compilers
+  (`gcc-powerpc-linux-gnu`, `gcc-powerpc64-linux-gnu`) catches big-endian
+  build breaks before there's hardware or a test run.
+
+## Verification
+
+1. `make check` after every step. Steps 1, 3, 4 and 6 must not change the
+   reference build; step 5 is under `XEBUILD_FIXES`, so it can't, but run
+   it anyway; step 2's identity is already shown above (rerun after the sync).
+2. Images: the test-file suite, in a later session. For runs to compare
+   byte for byte, the build provides `-norandom` (exists), `SOURCE_DATE_EPOCH`
+   (step 5), and `TZ=UTC` (`DosDateTimeToFileTime` uses `mktime`). A
+   32-bit and a 64-bit big-endian build must each match the x86-64 fixes
+   build. The findings say where to aim it:
+   - built images for each NAND layout: small block, big block controller,
+     big block, bigffs, MMC (ECC, LBAs, spare bytes, header values);
+   - dumps read back, including ones with bad blocks and remaps, and the
+     noremap/noecdremap options;
+   - SMC: each patch option (patchsmc, smcnoeject, smcnoblink) and
+     smc_config overrides (fans, game and DVD region, MAC);
+   - freeboot with the 9199 kernel string, payload size patching;
+   - signatures: SB-signed chains with SB_priv.bin (resigning), KV, CRL,
+     FCRT checks;
+   - secdata, CRL, DAE dates (with and without `.meta` files);
+   - system update extraction (STFS), the ini and extract modes;
+   - client mode against a console (beacon address, console info, `bb`/
+     `bigffs` detection).
+   Run the matrix on x86-64 Linux first: anything it finds there is an LP64
+   bug, which 64-bit PowerPC shares.
+3. Hardware: flash one image built on a PowerPC host to a real console. That's
+   the final proof that ECC, LBAs and signatures are right.
 
 ## Order of work
 
-Each step ends with `make check` and a commit:
+Each app step ends with `make check` and a commit:
 
-0. Test harness: known-answer driver, `SOURCE_DATE_EPOCH`, comparison
-   script. Run it on x86-64 Linux and fix what it finds.
 1. Switch, swap macros, helpers, `SWAP16_BUILTIN`.
-2. XeCrypt.
+2. XeCrypt: your upstream PR; then sync src/crypto (LF) and `make check`.
 3. Constants: header, DVD region, patterns.
 4. EDC and bit-fields.
-5. `XEBUILD_FIXES` rewrites, layout asserts.
-6. Makefile, CI, README, NOTES.md.
-7. qemu ppc32/ppc64 comparison, then hardware.
+5. `XEBUILD_FIXES` rewrites, layout asserts, `SOURCE_DATE_EPOCH`.
+6. Makefile (`cc`), old-compiler shims, README, NOTES.md.
+7. The test-file suite (later session), then hardware.
 
-A big-endian build is right only after step 5; steps 1-4 can't be checked
-on their own beyond `make check` and the known-answer tests.
+Steps 1 and 3-6 don't depend on step 2. A big-endian build is right only
+once all of 1-6 are in.
 
 ## Found on the way (not byte order)
 
@@ -545,17 +665,15 @@ on their own beyond `make check` and the known-answer tests.
 - Corona/Winchester's `smcBootAddr = 0x800`, `smcBootSize = 0x3800` in
   `buildImage` are 0x80000 and 0x380000 on disk. They're harmless:
   `smcSetLoad` rewrites both from the SMC's size (during `loadBlFiles`, after
-  `writeInitialHeader`) and a build without an SMC fails. Step 2 keeps the
+  `writeInitialHeader`) and a build without an SMC fails. Step 3 keeps the
   bytes; fix them separately if wanted.
-- `XeCryptBnQwNeCompare` (xecryptBn.c:383) counts `u32 i` down with `i >=
-  0`, so for two equal numbers it runs past index 0 and reads out of
-  bounds. Only `XeCryptBnQwBeSigCreate` calls it.
+- `XeCryptBnQwNeCompare`'s unsigned loop (Step 2).
 
-## Open questions
+## Decisions
 
-- XeCrypt: patch the copy here (marked) and offer the changes upstream, or
-  upstream first?
-- Mac OS X: 10.4 or 10.5? That decides the toolchain (Tigerbrew or
-  MacPorts) and whether the Makefile changes in step 5 are enough.
-- The 360 under ArchPOWER: 64-bit or 32-bit userland? Both are covered,
-  but it decides which qemu target matters most.
+- XeCrypt: changes go upstream via your PR (the patch here); src/crypto
+  syncs afterwards.
+- macOS: the system `cc`, whatever it is; old Apple gcc gets shims, not a
+  required newer compiler.
+- The 360: both ArchPOWER's 32-bit userland and fully 64-bit distributions.
+- Testing: the image suite comes in a later session; no qemu runs here.
