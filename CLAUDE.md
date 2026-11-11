@@ -53,7 +53,8 @@ NOTES.md has the findings, layout and the pipeline.
 - Commit without asking whenever a milestone is verified: a coherent step
   (for example a component moved to C, or a pipeline change) is finished and
   `make check` reproduces the SHA256. Don't commit a build that doesn't match.
-  Push to `origin` after each commit.
+  Don't push to `origin` unless asked: every push to `master` runs the
+  GitHub Actions build (`.github/workflows/build.yml`).
 - Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
   pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `tools/re/stamp.py` (timestamp + checksum);
