@@ -1,0 +1,77 @@
+# Build xeBuild with each platform's current compiler (the fixes build,
+# -DXEBUILD_FIXES).  None of these reproduce the reference bytes: only
+# PLATFORM=win32 with the pinned toolchain does (`make check`, run locally).
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: windows (${{ matrix.msystem }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 32-bit like the original
+          - msystem: MINGW32
+            env: i686
+          # 64-bit, on the legacy msvcrt runtime (runs on older Windows
+          # without the UCRT)
+          - msystem: MINGW64
+            env: x86_64
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: make mingw-w64-${{ matrix.env }}-gcc
+      - name: Compiler
+        run: gcc --version
+      - name: Build
+        run: make -j4 PLATFORM=win32latest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xeBuild-windows-${{ matrix.msystem }}
+          path: build/xeBuild.exe
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiler
+        run: gcc --version
+      - name: Build
+        run: make -j"$(nproc)" PLATFORM=linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xeBuild-linux
+          path: build/xeBuild
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiler
+        run: clang --version
+      # macOS ships GNU make 3.81; the Makefile uses `else ifeq`, which
+      # needs 3.81 or later, so the system make is enough
+      - name: Build
+        run: make -j"$(sysctl -n hw.ncpu)" PLATFORM=macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xeBuild-macos
+          path: build/xeBuild
+          if-no-files-found: error
