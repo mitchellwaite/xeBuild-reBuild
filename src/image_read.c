@@ -964,12 +964,12 @@ void findSmcConfig(void)
 		{
 			continue;
 		}
-		xb.smcConfig.data = malloc(0x400);
+		xb.smcConfig.data = malloc(SMCCFG_SIZE);
 		if (xb.smcConfig.data)
 		{
 			log_printf(1, "found at offset 0x%x! Using if no smc config is provided.\n", off);
-			memcpy(xb.smcConfig.data, xb.dump + off, 0x400);
-			xb.smcConfig.size = 0x400;
+			memcpy(xb.smcConfig.data, xb.dump + off, SMCCFG_SIZE);
+			xb.smcConfig.size = SMCCFG_SIZE;
 		}
 		else
 		{

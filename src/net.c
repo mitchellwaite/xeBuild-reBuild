@@ -413,12 +413,12 @@ int netReadInfo(void)
 		info->blockSize = SWAP32(info->blockSize);
 		info->pairing = SWAP32(info->pairing);
 		log_printf(1, "success!\n");
-		log_printf(0, "connected to %s", getConsoleTypeStr((netInfo->hwFlags >> 28) + 1));
+		log_printf(0, "connected to %s", getConsoleTypeStr((netInfo->hwFlags >> HW_CONSOLE_SHIFT) + 1));
 		log_printf(0, " with updsvr version %d (peek version %d)\n",
 			   netInfo->version >> 8, netInfo->version & 0xff);
 		log_printf(1, "NAND image size: 0x%x Block size: 0x%x Spare Data: %s\n",
 			   netInfo->nandSize, netInfo->blockSize,
-			   netInfo->nandSize == 0x3000000 ? "No" : "Yes");
+			   netInfo->nandSize == NAND_SIZE_MMC ? "No" : "Yes");
 		return 1;
 	}
 	log_printf(0, "failed!\n");
@@ -911,7 +911,7 @@ int netMkdir(const char *name)
 
 int netReboot(int how)
 {
-	if (how == 1)
+	if (how == NET_SHUTDOWN)
 	{
 		log_printf(0, "sending shutdown command...");
 		if (netSendStr("SHDN\n"))
@@ -923,7 +923,7 @@ int netReboot(int how)
 			log_printf(0, "failed\n");
 		}
 	}
-	else if (how == 2)
+	else if (how == NET_REBOOT)
 	{
 		log_printf(0, "sending reboot command...");
 		if (netSendStr("REEB\n"))

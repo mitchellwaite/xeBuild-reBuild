@@ -13,6 +13,32 @@
 #include "mode_client.h"
 #include "net.h"
 
+/* client_usage's errors (ERR_NONE: -? asked for the usage) */
+#define ERR_NONE 0
+#define ERR_UNKNOWN 1			/* an unknown option */
+#define ERR_NO_COMMAND 2
+#define ERR_NO_ARG 3
+#define ERR_ARGS 4			/* too few arguments */
+#define ERR_TWICE 5			/* a second command */
+
+/* the console's hack type, for -p's patches */
+#define PATCHES_JTAG 1
+#define PATCHES_GLITCH 2		/* glitch and glitch2 */
+#define PATCHES_GLITCH2M 3
+
+/* mode_client's commands */
+#define CMD_READ 1			/* -r */
+#define CMD_WRITE 2			/* -w */
+#define CMD_KEYS 3			/* -keys */
+#define CMD_AVATAR 4			/* -e */
+#define CMD_COMPAT 5			/* -c */
+#define CMD_NONE 6			/* -s or -reboot alone */
+#define CMD_PATCHES 7			/* -p */
+#define CMD_READ_BLOCKS 8		/* -rb */
+#define CMD_WRITE_BLOCKS 9		/* -wb */
+#define CMD_ERASE_BLOCK 10		/* -eb */
+#define CMD_BIN_PATCH 11		/* -bp */
+#define CMD_INFO 12			/* -i */
 
 static struct consoleinfo *cinfo;
 
@@ -20,19 +46,19 @@ void client_usage(int err, const char *arg)
 {
 	switch (err)
 	{
-	case 3:
+	case ERR_NO_ARG:
 		log_printf(0, "\n\n***** ERROR: option flag %s on command line but no argument provided!\n", arg);
 		break;
-	case 4:
+	case ERR_ARGS:
 		log_printf(0, "\n\n***** ERROR: option flag %s on command line not enough arguments provided!\n", arg);
 		break;
-	case 5:
+	case ERR_TWICE:
 		log_printf(0, "\n\n***** ERROR: option flag %s on command line but option was already set!\n", arg);
 		break;
-	case 1:
+	case ERR_UNKNOWN:
 		log_printf(0, "\n\n***** ERROR: unknown option '%s' provided on command line!\n", arg);
 		break;
-	case 2:
+	case ERR_NO_COMMAND:
 		log_printf(0, "\n\n***** ERROR: not enough info provided to carry out command!\n");
 		break;
 	}
@@ -149,7 +175,7 @@ int clientWrite(const char *file)
 	if (buf)
 	{
 		log_printf(0, "success, read 0x%x bytes\n", len);
-		if (getBeU16(buf) == 0xff4f)
+		if (getBeU16(buf) == FLASH_MAGIC)
 		{
 			if (cinfo->nandSize == len)
 			{
@@ -224,10 +250,10 @@ void clientKeys(void)
 {
 	if ((uint8_t)cinfo->version > 1)
 	{
-		dumpKey("1BL key", "1blkey.txt", cinfo->key1bl, 16, 2435);
-		dumpKey("1BL RSA pub key", "1BL_pub.bin", (const uint8_t *)&cinfo->pub1bl, 272, 31175);
-		dumpKey("PIRS RSA pub key", "PIRS_pub.bin", (const uint8_t *)&cinfo->pubPirs, 272, 32976);
-		dumpKey("MASTER RSA pub key", "MAST_pub.bin", (const uint8_t *)&cinfo->pubMaster, 272, 33852);
+		dumpKey("1BL key", "1blkey.txt", cinfo->key1bl, sizeof cinfo->key1bl, KEY1BL_SUM);
+		dumpKey("1BL RSA pub key", "1BL_pub.bin", (const uint8_t *)&cinfo->pub1bl, sizeof cinfo->pub1bl, PUB1BL_SUM);
+		dumpKey("PIRS RSA pub key", "PIRS_pub.bin", (const uint8_t *)&cinfo->pubPirs, sizeof cinfo->pubPirs, PUBPIRS_SUM);
+		dumpKey("MASTER RSA pub key", "MAST_pub.bin", (const uint8_t *)&cinfo->pubMaster, sizeof cinfo->pubMaster, PUBMASTER_SUM);
 	}
 	else
 	{
@@ -243,7 +269,7 @@ int checkPatches(uint8_t *buf, size_t *len, uint32_t type)
 	uint8_t *p;
 	size_t n, i, off;
 
-	if (type > 1)
+	if (type > PATCHES_JTAG)
 	{
 		log_printf(0, "checking patch sections for glitch console\n");
 		if (countInst(buf, *len, &marker, 4) == 3)
@@ -257,7 +283,7 @@ int checkPatches(uint8_t *buf, size_t *len, uint32_t type)
 					p += 4;
 					n = *len - (p - buf);
 					off = 0;
-					if (type == 2)
+					if (type == PATCHES_GLITCH)
 					{
 						off = 16;
 					}
@@ -357,21 +383,21 @@ void clientPatches(const char *file)
 	uint32_t type = 0;
 	uint32_t bs = cinfo->bootstrap;
 
-	if (bs & 0x80000000)
+	if (bs & BOOTSTRAP_JTAG)
 	{
-		type = 1;
+		type = PATCHES_JTAG;
 	}
-	else if (bs & 0x20000000)
+	else if (bs & BOOTSTRAP_GLITCH2)
 	{
-		type = 2;
+		type = PATCHES_GLITCH;
 	}
-	else if (bs & 0x10000000)
+	else if (bs & BOOTSTRAP_GLITCH2M)
 	{
-		type = 3;
+		type = PATCHES_GLITCH2M;
 	}
-	else if (bs & 0x40000000)
+	else if (bs & BOOTSTRAP_GLITCH)
 	{
-		type = 2;
+		type = PATCHES_GLITCH;
 	}
 	if (type)
 	{
@@ -382,19 +408,19 @@ void clientPatches(const char *file)
 		}
 		else
 		{
-			if (bs & 0x80000000)
+			if (bs & BOOTSTRAP_JTAG)
 			{
-				sprintf(path, "%d/bin/patches_%s.bin", *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
+				sprintf(path, "%d/bin/patches_%s.bin", *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & BOOTSTRAP_CONSOLE_MASK) + 1));
 			}
-			else if (bs & 0x20000000)
+			else if (bs & BOOTSTRAP_GLITCH2)
 			{
-				sprintf(path, "%d/bin/patches_g2%s.bin", *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
+				sprintf(path, "%d/bin/patches_g2%s.bin", *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & BOOTSTRAP_CONSOLE_MASK) + 1));
 			}
-			else if (bs & 0x10000000)
+			else if (bs & BOOTSTRAP_GLITCH2M)
 			{
-				sprintf(path, "%d/bin/patches_g2m%s.bin", *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & 0xf) + 1));
+				sprintf(path, "%d/bin/patches_g2m%s.bin", *(uint16_t *)((uint8_t *)cinfo + 5), getConsoleTypeStr((bs & BOOTSTRAP_CONSOLE_MASK) + 1));
 			}
-			else if (bs & 0x40000000)
+			else if (bs & BOOTSTRAP_GLITCH)
 			{
 				sprintf(path, "%d/bin/patches_fat.bin", *(uint16_t *)((uint8_t *)cinfo + 5));
 			}
@@ -547,7 +573,7 @@ void clientBinPatch(const char *file, const char *soff)
 	uint8_t *nand;
 
 	off = myatoh32(soff, -1);
-	if (cinfo->nandSize != 0x3000000)
+	if (cinfo->nandSize != NAND_SIZE_MMC)
 	{
 		size = cinfo->nandSize / 0x4200 * 0x4000;
 		bs = cinfo->blockSize / 0x4200 * 0x4000;
@@ -572,7 +598,7 @@ void clientBinPatch(const char *file, const char *soff)
 				if (nand && rlen)
 				{
 					log_printf(0, "Success!\nPatching in binary data...");
-					if (cinfo->nandSize == 0x3000000)
+					if (cinfo->nandSize == NAND_SIZE_MMC)
 					{
 						memcpy(nand + rem, data, len);
 					}
@@ -657,14 +683,14 @@ char *getArgs(int argc, char **argv, int *pi, int mode, int check, char **arg2, 
 
 	if (!argv[i] || i == argc || *argv[i] == '-')
 	{
-		client_usage(3, argv[first]);
+		client_usage(ERR_NO_ARG, argv[first]);
 	}
 	if (arg2)
 	{
 		i++;
 		if (!argv[i] || i == argc || *argv[i] == '-')
 		{
-			client_usage(4, argv[first]);
+			client_usage(ERR_ARGS, argv[first]);
 		}
 		*arg2 = argv[i];
 	}
@@ -673,13 +699,13 @@ char *getArgs(int argc, char **argv, int *pi, int mode, int check, char **arg2, 
 		i++;
 		if (!argv[i] || i == argc || *argv[i] == '-')
 		{
-			client_usage(4, argv[first]);
+			client_usage(ERR_ARGS, argv[first]);
 		}
 		*arg3 = argv[i];
 	}
 	if (mode && check)
 	{
-		client_usage(5, argv[first]);
+		client_usage(ERR_TWICE, argv[first]);
 	}
 	*pi = i;
 	return argv[first + 1];
@@ -705,18 +731,18 @@ static char *bpArgs(int argc, char **argv, int *pi, int mode, char **arg2)
 
 	if (!a || j == argc || *a == '-')
 	{
-		client_usage(3, argv[i]);
+		client_usage(ERR_NO_ARG, argv[i]);
 	}
 	j++;
 	b = argv[j];
 	if (j == argc || !b || *b == '-')
 	{
-		client_usage(4, argv[i]);
+		client_usage(ERR_ARGS, argv[i]);
 	}
 	*arg2 = b;
 	if (mode)
 	{
-		client_usage(5, argv[i]);
+		client_usage(ERR_TWICE, argv[i]);
 	}
 	*pi = j;
 	return argv[i + 1];
@@ -731,18 +757,18 @@ static char *wbArgs(int argc, char **argv, int *pi, int mode, char **arg2)
 
 	if (j == argc || !a || *a == '-')
 	{
-		client_usage(3, argv[i]);
+		client_usage(ERR_NO_ARG, argv[i]);
 	}
 	j++;
 	b = argv[j];
 	if (!b || j == argc || *b == '-')
 	{
-		client_usage(4, argv[i]);
+		client_usage(ERR_ARGS, argv[i]);
 	}
 	*arg2 = b;
 	if (mode)
 	{
-		client_usage(5, argv[i]);
+		client_usage(ERR_TWICE, argv[i]);
 	}
 	*pi = j;
 	return argv[i + 1];
@@ -756,11 +782,11 @@ static char *oneArg(int argc, char **argv, int *pi, int mode)
 
 	if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 	{
-		client_usage(3, argv[i]);
+		client_usage(ERR_NO_ARG, argv[i]);
 	}
 	if (mode)
 	{
-		client_usage(5, argv[i]);
+		client_usage(ERR_TWICE, argv[i]);
 	}
 	*pi = i + 1;
 	return argv[i + 1];
@@ -775,11 +801,11 @@ static char *fileArg(int argc, char **argv, int *pi, int mode)
 
 	if (j == argc || !a || *a == '-')
 	{
-		client_usage(3, argv[i]);
+		client_usage(ERR_NO_ARG, argv[i]);
 	}
 	if (mode)
 	{
-		client_usage(5, argv[i]);
+		client_usage(ERR_TWICE, argv[i]);
 	}
 	*pi = j;
 	return argv[i + 1];
@@ -804,7 +830,7 @@ int mode_client(int argc, char **argv)
 	{
 		if (!strnicmp(argv[i], "help", 2) || !strnicmp(argv[i], "-?", 2) || !strnicmp(argv[i], "/?", 2))
 		{
-			client_usage(0, NULL);
+			client_usage(ERR_NONE, NULL);
 		}
 		if (!strnicmp(argv[i], "-noenter", 8))
 		{
@@ -813,52 +839,52 @@ int mode_client(int argc, char **argv)
 		}
 		else if (!strnicmp(argv[i], "-reboot", 7))
 		{
-			if (reboot == 1)
+			if (reboot == NET_SHUTDOWN)
 			{
 				log_printf(0, "shutdown superseded by reboot, ignoring -s in favor of -reboot\n");
 			}
 			log_printf(0, "setting reboot on completion\n");
-			reboot = 2;
+			reboot = NET_REBOOT;
 		}
 		else if (!strnicmp(argv[i], "-bp", 3))
 		{
 			arg = bpArgs(argc, argv, &i, mode, &start);
 			log_printf(0, "setting binary patch file to %s, offset %s\n", arg, start);
-			mode = 11;
+			mode = CMD_BIN_PATCH;
 		}
 		else if (!strnicmp(argv[i], "-rb", 3))
 		{
 			arg = getArgs(argc, argv, &i, mode, 1, &start, &count);
 			log_printf(0, "reading %s blocks to %s, starting block %s\n", count, arg, start);
-			mode = 8;
+			mode = CMD_READ_BLOCKS;
 		}
 		else if (!strnicmp(argv[i], "-wb", 3))
 		{
 			arg = wbArgs(argc, argv, &i, mode, &start);
 			log_printf(0, "writing blocks from %s, starting at block %s\n", arg, start);
-			mode = 9;
+			mode = CMD_WRITE_BLOCKS;
 		}
 		else if (!strnicmp(argv[i], "-eb", 3))
 		{
 			arg = oneArg(argc, argv, &i, mode);
 			log_printf(0, "erase block set to %s\n", arg);
-			mode = 10;
+			mode = CMD_ERASE_BLOCK;
 		}
 		else if (!strnicmp(argv[i], "-s", 2))
 		{
-			if (reboot == 2)
+			if (reboot == NET_REBOOT)
 			{
 				log_printf(0, "reboot has already been set on command line, ignoring -s\n");
 			}
 			else
 			{
 				log_printf(0, "setting shutdown on completion\n");
-				reboot = 1;
+				reboot = NET_SHUTDOWN;
 			}
 		}
 		else if (!strnicmp(argv[i], "-keys", 5))
 		{
-			mode = 3;
+			mode = CMD_KEYS;
 			arg = dummy;
 		}
 		else if (!strnicmp(argv[i], "-ip", 3))
@@ -870,13 +896,13 @@ int mode_client(int argc, char **argv)
 		{
 			arg = fileArg(argc, argv, &i, mode);
 			log_printf(0, "setting read filename to %s\n", arg);
-			mode = 1;
+			mode = CMD_READ;
 		}
 		else if (!strnicmp(argv[i], "-w", 2))
 		{
 			arg = fileArg(argc, argv, &i, mode);
 			log_printf(0, "setting write filename to %s\n", arg);
-			mode = 2;
+			mode = CMD_WRITE;
 		}
 		else if (!strnicmp(argv[i], "-e", 2))
 		{
@@ -884,31 +910,31 @@ int mode_client(int argc, char **argv)
 			   stays out of line */
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 			{
-				client_usage(3, argv[i]);
+				client_usage(ERR_NO_ARG, argv[i]);
 			}
 			if (mode)
 			{
-				client_usage(5, argv[i]);
+				client_usage(ERR_TWICE, argv[i]);
 			}
 			arg = argv[i + 1];
 			i++;
 			log_printf(0, "setting avatar/kinect files base path to %s\n", arg);
-			mode = 4;
+			mode = CMD_AVATAR;
 		}
 		else if (!strnicmp(argv[i], "-c", 2))
 		{
 			if (!argv[i + 1] || i + 1 == argc || *argv[i + 1] == '-')
 			{
-				client_usage(3, argv[i]);
+				client_usage(ERR_NO_ARG, argv[i]);
 			}
 			if (mode)
 			{
-				client_usage(5, argv[i]);
+				client_usage(ERR_TWICE, argv[i]);
 			}
 			arg = argv[i + 1];
 			i++;
 			log_printf(0, "setting xbox compatibility files base path to %s\n", arg);
-			mode = 5;
+			mode = CMD_COMPAT;
 		}
 		else if (!strnicmp(argv[i], "-i", 2))
 		{
@@ -922,7 +948,7 @@ int mode_client(int argc, char **argv)
 				i++;
 				log_printf(0, "info dump path set to %s\n", arg);
 			}
-			mode = 12;
+			mode = CMD_INFO;
 		}
 		else if (!strnicmp(argv[i], "-p", 2))
 		{
@@ -936,7 +962,7 @@ int mode_client(int argc, char **argv)
 				i++;
 				log_printf(0, "patch file set to %s\n", arg);
 			}
-			mode = 7;
+			mode = CMD_PATCHES;
 		}
 		else if (!strnicmp(argv[i], "-v", 2))
 		{
@@ -944,33 +970,33 @@ int mode_client(int argc, char **argv)
 		}
 		else
 		{
-			client_usage(1, argv[i]);
+			client_usage(ERR_UNKNOWN, argv[i]);
 		}
 	}
 	if (!mode || !arg)
 	{
 		if (!reboot)
 		{
-			client_usage(2, NULL);
+			client_usage(ERR_NO_COMMAND, NULL);
 		}
-		mode = 6;
+		mode = CMD_NONE;
 	}
 	if (netConnect(ip))
 	{
 		cinfo = netGetInfo();
 		switch (mode)
 		{
-		case 1:
+		case CMD_READ:
 			netDumpNand(arg);
 			break;
-		case 2:
+		case CMD_WRITE:
 			clientWrite(arg);
 			break;
-		case 3:
+		case CMD_KEYS:
 			clientKeys();
 			break;
-		case 4:
-			if (cinfo->hwFlags & 0x20)
+		case CMD_AVATAR:
+			if (cinfo->hwFlags & HW_HDD)
 			{
 				sendAvatarData(arg, cinfo->kernel);
 			}
@@ -979,8 +1005,8 @@ int mode_client(int argc, char **argv)
 				log_printf(0, "\n\n***** ERROR: cannot send avatar data when a HDD does not exist!\n");
 			}
 			break;
-		case 5:
-			if (cinfo->hwFlags & 0x20)
+		case CMD_COMPAT:
+			if (cinfo->hwFlags & HW_HDD)
 			{
 				sendCompatData(arg);
 			}
@@ -989,9 +1015,9 @@ int mode_client(int argc, char **argv)
 				log_printf(0, "\n\n***** ERROR: cannot send xbox compatibility data when a HDD does not exist!\n");
 			}
 			break;
-		case 6:
+		case CMD_NONE:
 			break;
-		case 7:
+		case CMD_PATCHES:
 			if (arg == dummy)
 			{
 				clientPatches(NULL);
@@ -1001,19 +1027,19 @@ int mode_client(int argc, char **argv)
 				clientPatches(arg);
 			}
 			break;
-		case 8:
+		case CMD_READ_BLOCKS:
 			clientReadBlocks(arg, start, count);
 			break;
-		case 9:
+		case CMD_WRITE_BLOCKS:
 			clientWriteBlocks(arg, start);
 			break;
-		case 10:
+		case CMD_ERASE_BLOCK:
 			clientEraseBlock(arg);
 			break;
-		case 11:
+		case CMD_BIN_PATCH:
 			clientBinPatch(arg, start);
 			break;
-		case 12:
+		case CMD_INFO:
 			if (arg == dummy)
 			{
 				clientInfo(NULL);

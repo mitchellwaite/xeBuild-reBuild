@@ -24,6 +24,9 @@ int netSendFile(const char *name, const void *buf, uint32_t len);
 int netFormatSysex(void);
 int netFormatCompat(void);
 int netMkdir(const char *name);
+/* netReboot's how */
+#define NET_SHUTDOWN 1
+#define NET_REBOOT 2
 int netReboot(int how);
 int netWritePatches(const uint8_t *buf, uint32_t len);
 

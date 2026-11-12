@@ -650,7 +650,7 @@ unsigned int calcConfigSum(const unsigned char *p)
 	unsigned short sum = 0;
 	int i;
 
-	for (i = 16; i < 268; i++)
+	for (i = SMCCFG_SUM_START; i < SMCCFG_SUM_END; i++)
 	{
 		sum += p[i];
 	}

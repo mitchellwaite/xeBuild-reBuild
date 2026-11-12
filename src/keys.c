@@ -345,7 +345,7 @@ int check1blKey(void)
 	uint32_t sum1 = sumBytes(xb.key1bl, 16);
 	uint32_t sum2 = calcXexKey();
 
-	if (sum1 == 0x983 && sum2 == 0x800)
+	if (sum1 == KEY1BL_SUM && sum2 == XEXKEY_SUM)
 	{
 		log_printf(1, "1BL Key set to  : 0x");
 		showKey(1, xb.key1bl);

@@ -185,9 +185,37 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
    sumBytes of a good key: what xeBuild checks keys from the console or
    files against. */
 #define KEY1BL_SUM 0x983
+#define XEXKEY_SUM 0x800		/* keys.c's calcXexKey, from the 1BL key */
 #define PUB1BL_SUM 0x79c7
 #define PUBPIRS_SUM 0x80d0
 #define PUBMASTER_SUM 0x843c
+#define PRVKEY_SUM 0x1ca16		/* SB_priv.bin, the SC/SD private key */
+
+/* ---- SMC config ----
+
+   The SMC's config block (smc_config.bin; build.c's showSmcConfig and
+   patchSmcConfig).  Its first two bytes are a big endian checksum of the
+   bytes from SMCCFG_SUM_START to SMCCFG_SUM_END (fileutil.c's
+   calcConfigSum).  A fan byte is its speed in percent, with FAN_OVERRIDE
+   set (build.c's struct fan); FAN_AUTO leaves it to the SMC. */
+#define SMCCFG_SIZE 0x400
+#define SMCCFG_SUM_START 0x10
+#define SMCCFG_SUM_END 0x10c
+#define SMCCFG_CPU_FAN 0x11
+#define SMCCFG_GPU_FAN 0x12
+#define SMCCFG_CPU_TEMP 0x29		/* target temperatures, degrees C */
+#define SMCCFG_GPU_TEMP 0x2a
+#define SMCCFG_EDRAM_TEMP 0x2b
+#define SMCCFG_OVER_CPU_TEMP 0x2c	/* maximum temperatures */
+#define SMCCFG_OVER_GPU_TEMP 0x2d
+#define SMCCFG_OVER_EDRAM_TEMP 0x2e
+#define SMCCFG_MAC 0x220		/* 6 bytes */
+#define SMCCFG_AV_REGION 0x228		/* big endian 32 bits */
+#define SMCCFG_GAME_REGION 0x22c	/* big endian 16 bits */
+#define SMCCFG_DVD_REGION 0x234		/* big endian 32 bits */
+#define SMCCFG_RESET_KEY 0x238		/* 4 characters */
+#define FAN_OVERRIDE 0x80
+#define FAN_AUTO 0x7f
 
 /* ---- File ids ----
 
@@ -268,6 +296,7 @@ struct fsent
 };
 
 /* the flash image's header (big endian) */
+#define FLASH_MAGIC 0xff4f
 struct flashhdr
 {
 	uint16_t magic;
@@ -333,7 +362,9 @@ struct consoleinfo
 	uint8_t cgNonce[0x10];
 };
 
-/* smc_config overrides from the ini */
+/* smc_config overrides from the ini; a field the ini didn't set is
+   SMC_OPT_UNSET (macid's bytes 0xff) */
+#define SMC_OPT_UNSET 0xffffffff
 struct smcopts
 {
 	uint32_t cpuTemp;

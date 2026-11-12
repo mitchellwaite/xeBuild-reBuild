@@ -635,7 +635,7 @@ static void flashConsole(char *dumpDir, int *pret)
 	{
 		if (!ret)
 		{
-			netReboot(2);
+			netReboot(NET_REBOOT);
 		}
 		else
 		{

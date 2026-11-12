@@ -367,11 +367,17 @@ uint8_t defBl60[0x60] = {
 };
 int loadFileCrc(const char *name, struct fileent *e, int verbose, int pad, uint32_t crc);
 
-/* an SMC config fan byte */
+/* an SMC config fan byte (FAN_OVERRIDE is override) */
 struct fan
 {
 	uint8_t speed:7, override:1;
 };
+
+/* the ini's ranges for the SMC config's temperatures and fan speeds */
+#define SMC_TEMP_MIN 40
+#define SMC_TEMP_MAX 120
+#define SMC_FAN_MIN 40
+#define SMC_FAN_MAX 100
 
 /* round up to the 16 bytes bootloaders are padded to. */
 static uint32_t align16(uint32_t v)
@@ -840,21 +846,21 @@ void showSmcConfig(const uint8_t *smc)
 	uint16_t game;
 	int i;
 
-	log_printf(1, "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[0x29], smc[0x2a], smc[0x2b]);
-	log_printf(1, "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[0x2c], smc[0x2d], smc[0x2e]);
+	log_printf(1, "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[SMCCFG_CPU_TEMP], smc[SMCCFG_GPU_TEMP], smc[SMCCFG_EDRAM_TEMP]);
+	log_printf(1, "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[SMCCFG_OVER_CPU_TEMP], smc[SMCCFG_OVER_GPU_TEMP], smc[SMCCFG_OVER_EDRAM_TEMP]);
 	log_printf(1, "Cpu Fan     : ");
-	if (((struct fan *)(smc + 0x11))->override)
+	if (((struct fan *)(smc + SMCCFG_CPU_FAN))->override)
 	{
-		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x11))->speed);
+		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + SMCCFG_CPU_FAN))->speed);
 	}
 	else
 	{
 		log_printf(1, "(auto)\n");
 	}
-	log_printf(1, "Gpu Fan     : ", smc[0x12] & 0x7f);
-	if (((struct fan *)(smc + 0x12))->override)
+	log_printf(1, "Gpu Fan     : ", smc[SMCCFG_GPU_FAN] & 0x7f);
+	if (((struct fan *)(smc + SMCCFG_GPU_FAN))->override)
 	{
-		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + 0x12))->speed);
+		log_printf(1, "%d%%%% (overridden)\n", ((struct fan *)(smc + SMCCFG_GPU_FAN))->speed);
 	}
 	else
 	{
@@ -862,7 +868,7 @@ void showSmcConfig(const uint8_t *smc)
 	}
 	log_printf(1, "MAC Address : ");
 	showMac(1, smc + 0x220);
-	av = *(uint32_t *)(smc + 0x228);
+	av = *(uint32_t *)(smc + SMCCFG_AV_REGION);
 	av = SWAP32_BUILD(av);
 	switch (av)
 	{
@@ -882,7 +888,7 @@ void showSmcConfig(const uint8_t *smc)
 		log_printf(1, "\nAVRegion    : 0x%08x (Unknown)\n", av);
 		break;
 	}
-	game = __builtin_bswap16(*(uint16_t *)(smc + 0x22c));
+	game = __builtin_bswap16(*(uint16_t *)(smc + SMCCFG_GAME_REGION));
 	log_printf(1, "GameRegion  : 0x%04x ", game);
 	switch (game)
 	{
@@ -914,11 +920,11 @@ void showSmcConfig(const uint8_t *smc)
 		log_printf(1, "(Unknown)\n");
 		break;
 	}
-	log_printf(1, "DVDRegion   : %d\n", SWAP32_BUILD(*(uint32_t *)(smc + 0x234)));
+	log_printf(1, "DVDRegion   : %d\n", SWAP32_BUILD(*(uint32_t *)(smc + SMCCFG_DVD_REGION)));
 	log_printf(1, "resetKey    : ");
 	for (i = 0; i < 4; i++)
 	{
-		log_printf(1, "%c", smc[0x238 + i]);
+		log_printf(1, "%c", smc[SMCCFG_RESET_KEY + i]);
 	}
 	log_printf(1, "\n");
 }
@@ -931,7 +937,7 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 	if (v < lo || v > hi)
 	{
 		ok = 0;
-		if (v != 0 && v != 0xffffffff)
+		if (v != 0 && v != SMC_OPT_UNSET)
 		{
 			log_printf(0, "Ini value %d for %s is out of range (%d-%d), not using\n", v, name, lo, hi);
 		}
@@ -942,20 +948,20 @@ int iniRangeOk(const char *name, uint32_t v, uint32_t lo, uint32_t hi)
 /* the cpu fan setting; returns 1 if it changed the config. */
 static int patchCpuFan(uint8_t *smc)
 {
-	if (xb.smcOpts.cpuFan != 0xffffffff)
+	if (xb.smcOpts.cpuFan != SMC_OPT_UNSET)
 	{
-		if (iniRangeOk("cpufan", xb.smcOpts.cpuFan, 40, 100))
+		if (iniRangeOk("cpufan", xb.smcOpts.cpuFan, SMC_FAN_MIN, SMC_FAN_MAX))
 		{
-			smc[0x11] = xb.smcOpts.cpuFan | 0x80;
+			smc[SMCCFG_CPU_FAN] = xb.smcOpts.cpuFan | FAN_OVERRIDE;
 			return 1;
 		}
 		if (xb.smcOpts.cpuFan)
 		{
 			log_printf(0, "***** WARNING: cpu fan speed %d override ignored, not between 40 and 100\n", xb.smcOpts.cpuFan);
 		}
-		else if (smc[0x11] != 0x7f)
+		else if (smc[SMCCFG_CPU_FAN] != FAN_AUTO)
 		{
-			smc[0x11] = 0x7f;
+			smc[SMCCFG_CPU_FAN] = FAN_AUTO;
 			return 1;
 		}
 	}
@@ -968,48 +974,48 @@ uint32_t patchSmcConfig(uint8_t *smc)
 	int i;
 
 	log_printf(1, "Checking for smc config data patches\n");
-	if (iniRangeOk("cputemp", xb.smcOpts.cpuTemp, 40, 120))
+	if (iniRangeOk("cputemp", xb.smcOpts.cpuTemp, SMC_TEMP_MIN, SMC_TEMP_MAX))
 	{
-		smc[0x29] = xb.smcOpts.cpuTemp;
+		smc[SMCCFG_CPU_TEMP] = xb.smcOpts.cpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("gputemp", xb.smcOpts.gpuTemp, 40, 120))
+	if (iniRangeOk("gputemp", xb.smcOpts.gpuTemp, SMC_TEMP_MIN, SMC_TEMP_MAX))
 	{
-		smc[0x2a] = xb.smcOpts.gpuTemp;
+		smc[SMCCFG_GPU_TEMP] = xb.smcOpts.gpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("edramtemp", xb.smcOpts.edramTemp, 40, 120))
+	if (iniRangeOk("edramtemp", xb.smcOpts.edramTemp, SMC_TEMP_MIN, SMC_TEMP_MAX))
 	{
-		smc[0x2b] = xb.smcOpts.edramTemp;
+		smc[SMCCFG_EDRAM_TEMP] = xb.smcOpts.edramTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overcputemp", xb.smcOpts.overCpuTemp, 40, 120))
+	if (iniRangeOk("overcputemp", xb.smcOpts.overCpuTemp, SMC_TEMP_MIN, SMC_TEMP_MAX))
 	{
-		smc[0x2c] = xb.smcOpts.overCpuTemp;
+		smc[SMCCFG_OVER_CPU_TEMP] = xb.smcOpts.overCpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overgputemp", xb.smcOpts.overGpuTemp, 40, 120))
+	if (iniRangeOk("overgputemp", xb.smcOpts.overGpuTemp, SMC_TEMP_MIN, SMC_TEMP_MAX))
 	{
-		smc[0x2d] = xb.smcOpts.overGpuTemp;
+		smc[SMCCFG_OVER_GPU_TEMP] = xb.smcOpts.overGpuTemp;
 		patched = 1;
 	}
-	if (iniRangeOk("overedramtemp", xb.smcOpts.overEdramTemp, 40, 120))
+	if (iniRangeOk("overedramtemp", xb.smcOpts.overEdramTemp, SMC_TEMP_MIN, SMC_TEMP_MAX))
 	{
-		smc[0x2e] = xb.smcOpts.overEdramTemp;
+		smc[SMCCFG_OVER_EDRAM_TEMP] = xb.smcOpts.overEdramTemp;
 		patched = 1;
 	}
-	if (xb.smcOpts.cpuFan != 0xffffffff)
+	if (xb.smcOpts.cpuFan != SMC_OPT_UNSET)
 	{
 		if (patchCpuFan(smc))
 		{
 			patched = 1;
 		}
 	}
-	if (xb.smcOpts.gpuFan != 0xffffffff)
+	if (xb.smcOpts.gpuFan != SMC_OPT_UNSET)
 	{
-		if (iniRangeOk("gpufan", xb.smcOpts.gpuFan, 40, 100))
+		if (iniRangeOk("gpufan", xb.smcOpts.gpuFan, SMC_FAN_MIN, SMC_FAN_MAX))
 		{
-			smc[0x12] = xb.smcOpts.gpuFan | 0x80;
+			smc[SMCCFG_GPU_FAN] = xb.smcOpts.gpuFan | FAN_OVERRIDE;
 			patched = 1;
 		}
 		else if (xb.smcOpts.gpuFan)
@@ -1018,41 +1024,41 @@ uint32_t patchSmcConfig(uint8_t *smc)
 		}
 		else
 		{
-			smc[0x12] = 0x7f;
+			smc[SMCCFG_GPU_FAN] = FAN_AUTO;
 		}
 	}
 gpudone:
-	if (xb.smcOpts.avRegion != 0xffffffff)
+	if (xb.smcOpts.avRegion != SMC_OPT_UNSET)
 	{
-		*(uint32_t *)(smc + 0x228) = SWAP32_BUILD(xb.smcOpts.avRegion);
+		*(uint32_t *)(smc + SMCCFG_AV_REGION) = SWAP32_BUILD(xb.smcOpts.avRegion);
 		patched = 1;
 	}
-	if (xb.smcOpts.gameRegion != 0xffffffff && (uint16_t)xb.smcOpts.gameRegion)
+	if (xb.smcOpts.gameRegion != SMC_OPT_UNSET && (uint16_t)xb.smcOpts.gameRegion)
 	{
-		*(uint16_t *)(smc + 0x22c) = __builtin_bswap16(xb.smcOpts.gameRegion);
+		*(uint16_t *)(smc + SMCCFG_GAME_REGION) = __builtin_bswap16(xb.smcOpts.gameRegion);
 		patched = 1;
 	}
-	if (xb.smcOpts.dvdRegion != 0xffffffff)
+	if (xb.smcOpts.dvdRegion != SMC_OPT_UNSET)
 	{
-		*(uint32_t *)(smc + 0x234) = SWAP32_BUILD(xb.smcOpts.dvdRegion);
+		*(uint32_t *)(smc + SMCCFG_DVD_REGION) = SWAP32_BUILD(xb.smcOpts.dvdRegion);
 		patched = 1;
 	}
-	if (!*(uint32_t *)(smc + 0x234))
+	if (!*(uint32_t *)(smc + SMCCFG_DVD_REGION))
 	{
 		log_printf(0, "****** Warning! SMC config has dvd region as 0, xbox will not play DVD videos like this... forcing it to 1 (NTSC/USA)\n");
 		log_printf(0, "       Please set it in boxdata ini file if you require a different region, and run the builder again\n\n");
-		*(uint32_t *)(smc + 0x234) = 0x1000000;
+		*(uint32_t *)(smc + SMCCFG_DVD_REGION) = 0x1000000;	/* 1 (NTSC/USA), big endian */
 		patched = 1;
 	}
 	if (macidSet())
 	{
 		for (i = 0; i < 6; i++)
 		{
-			if (smc[0x220 + i] != xb.smcOpts.macid[i])
+			if (smc[SMCCFG_MAC + i] != xb.smcOpts.macid[i])
 			{
 				patched = 1;
 			}
-			smc[0x220 + i] = xb.smcOpts.macid[i];
+			smc[SMCCFG_MAC + i] = xb.smcOpts.macid[i];
 		}
 	}
 	if (patched)
@@ -1082,8 +1088,8 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	{
 		free(e->data);
 	}
-	e->size = 0x400;
-	e->data = malloc(0x400);
+	e->size = SMCCFG_SIZE;
+	e->data = malloc(SMCCFG_SIZE);
 	if (!e->data)
 	{
 		return -2;
@@ -1122,9 +1128,9 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	if (checkZeros(buf + i + 0x20c, 4))
 	{
 		log_printf(1, "extracting config\n");
-		if (size - i >= 0x400)
+		if (size - i >= SMCCFG_SIZE)
 		{
-			memcpy(e->data, buf + i, 0x400);
+			memcpy(e->data, buf + i, SMCCFG_SIZE);
 		}
 	}
 	else if (size - i >= 0x4200)
