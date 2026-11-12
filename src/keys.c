@@ -278,40 +278,40 @@ void setFuseLdv(uint8_t *fuse, uint8_t ldv)
 	log_printf(1, "\n");
 #else
 	uint32_t i;
-	uint64_t cb, cf;
+	uint64_t line7, line8;
 
 	if (ldv > 16)
 	{
 		if (ldv > 31)
 		{
-			cf = ~0ULL;
+			line8 = ~0ULL;
 		}
 		else
 		{
-			for (cf = 0, i = 0; i < ldv - 16; i++)
+			for (line8 = 0, i = 0; i < ldv - 16; i++)
 			{
-				cf = (cf >> 4) | 0xf000000000000000ULL;
+				line8 = (line8 >> 4) | 0xf000000000000000ULL;
 			}
 		}
-		cb = ~0ULL;
+		line7 = ~0ULL;
 	}
 	else
 	{
-		cf = 0;
+		line8 = 0;
 		if (ldv == 16)
 		{
-			cb = ~0ULL;
+			line7 = ~0ULL;
 		}
 		else
 		{
-			for (cb = 0, i = 0; i < ldv; i++)
+			for (line7 = 0, i = 0; i < ldv; i++)
 			{
-				cb = (cb >> 4) | 0xf000000000000000ULL;
+				line7 = (line7 >> 4) | 0xf000000000000000ULL;
 			}
 		}
 	}
-	setBeU64(cb, fuse + 56);
-	setBeU64(cf, fuse + 64);
+	setBeU64(line7, fuse + 56);
+	setBeU64(line8, fuse + 64);
 	log_printf(1, "Fuse CF LDV set to : 0x");
 	for (i = 0; i < 16; i++)
 	{

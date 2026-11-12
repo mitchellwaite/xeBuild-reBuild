@@ -674,7 +674,7 @@ plain literals: setFuseCpuKey, daeEncrypt and fcrtEncrypt are reshaped
 build's generator) is gone; the notes below are the matching history.  Line counts
 below are `FNCMP_LITERALS=1 python tools/re/fncmp.py tools/wip/keys.c <name>` (the
 variable makes the draft's literals compare equal to the `.s`'s named
-strings). setFuseLdv matched by declaring `u32 i;` before `u64 cb, cf;`
+strings). setFuseLdv matched by declaring `u32 i;` before `u64 line7, line8;` (then `cb, cf`)
 (that stops the `xor edi,edi` for `i = 0` moving above `test al,al`); its
 print loop is `for (i = 0; i < 16; i++) ... fuse[56 + i]`, which compiles
 the same but costs more in the inliner (now over max-inline-insns-auto),
