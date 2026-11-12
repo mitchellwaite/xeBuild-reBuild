@@ -121,8 +121,10 @@ dump's.
   (fixed up later, below), the Mobile/anchor files' pages-left count
   (`left = NAND_BB_PAGES`), and `p = off & NAND_BB_MASK`. The
   `(int)pages & 3` rounding (2KB) and `s[9] = (left - pages) >> 2` stay
-  as they are: the working image's Mobiles are 2KB apart, and its byte 9
-  counts down from 0x7f, which is `(0x200 - 4) >> 2` (Findings).
+  as they are for now: the working image's Mobiles are 2KB apart, and its
+  byte 9 counts down from 0x7f, which is `(0x200 - 4) >> 2` (Findings).
+  Whether that is right on a 1GB console is an open question (Open
+  questions).
 - The "fixing up big block LBA numbers in spare" pass in `buildRaw`
   (image_write.c, `n = xb.blocks / (NAND_BB_BLOCK / NAND_BLOCK)`): follows
   from the runtime geometry.
@@ -231,9 +233,10 @@ not what a 1GB console's kernel writes itself.
 - **Mobiles** (in block 0x2d, 0xb40000): every entry starts 4 pages (2KB)
   after the previous; one-page entries leave 3 pages unused. Byte 9 goes
   0x7f, 0x7e, ... down by one per entry: `(0x200 - used - pages) >> 2` with
-  pages rounded up to 4. So padding is **2KB** (`& 3`, `>> 2`), with
-  `NAND_BB_PAGES` = 0x200. Bytes 7-8 are the length (0x800 for a full
-  entry), as today.
+  pages rounded up to 4. So in this image, padding is **2KB** (`& 3`,
+  `>> 2`), with `NAND_BB_PAGES` = 0x200. Bytes 7-8 are the length (0x800
+  for a full entry), as today. Whether a 1GB console does the same is in
+  Open questions.
 - **Layout**: FS table at 0xb00000, Mobiles at 0xb40000, files from
   0xb80000. Config window: statistics at 0x3b80000, SMC config at
   0x3bc0000, each in the first 128KB of its 256KB block with the second
@@ -257,3 +260,38 @@ not what a 1GB console's kernel writes itself.
 
 The eMMC source image has no spare data, so it says nothing more about
 these questions.
+
+## How xeBuild lays out Mobiles today
+
+`imgAddMobile` (image_write.c) and `imgAdd`'s spare bytes. Neither pads
+the data: `imgAdd` is called with `pad` 0, so it writes the spare of
+`ceil(len / 0x200)` pages and leaves the rest of the space erased.
+
+- **Small block (16KB blocks):** every Mobile starts a new 16KB block
+  (`imgSizeAligned`) and is alone in it; the next thing written starts at
+  the next block. Byte 9 is the block's free pages,
+  `NAND_BLOCK_PAGES - pages` (0x20 - pages, in 512-byte pages, no
+  rounding).
+- **128KB big block:** the first Mobile starts a new 128KB block; the
+  rest are packed after it, each on a 2KB boundary (`mobileOffset`
+  rounded up with `0x7ff`). A Mobile that would run past the end of the
+  block moves to the start of the next one. Byte 9 is the space left in
+  the 128KB block after the entry, in 2KB units:
+  `(0x100 - pages before it - pages rounded up to 4) >> 2`, 0x3f at most.
+
+For 1g the same code with `NAND_BB_*` at 256KB packs the Mobiles into a
+256KB block with byte 9 counting 2KB units of it (0x7f at most).
+
+## Open questions
+
+- **Mobile padding in a 256KB block.** Should a 1GB image pack Mobiles at
+  2KB steps through the whole 256KB block, with byte 9 counting what is
+  left of the 256KB block? Or should it treat a Mobile as filling (padded
+  to) the rest of a smaller unit, such as a 128KB half or the 4KB
+  physical page? The working image can't settle it. Its byte 9 values
+  (from 0x7f) assume the whole 256KB block, but J-Runner's converter
+  computed them, not a 1GB console. All of its 55 entries fit in the
+  first 0xdc pages (110KB) of block 0x2d, so nothing shows what happens at
+  128KB. To settle it we need a dump from a 1GB console whose kernel has
+  rewritten its Mobiles, or a Mobile set larger than 128KB written by
+  one.
