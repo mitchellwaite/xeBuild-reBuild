@@ -59,7 +59,7 @@ int buildImage(void)
 
 	if (xb.type == BUILD_RETAIL)
 	{
-		xb.files[findFile(9)].offset = xb.files[findFile(25)].offset;
+		xb.files[findFile(FILE_CF)].offset = xb.files[findFile(FILE_XELL)].offset;
 	}
 	if (xb.flags & NAND_BIG_BLOCK)
 	{
@@ -159,7 +159,7 @@ int buildImage(void)
 	if (xb.type != BUILD_JTAG)
 	{
 		flashHdr.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
-		cf = SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(9));
+		cf = SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(FILE_CF));
 		flashHdr.sysUpdateCount = 0x0200;
 		flashHdr.kvVersion = 0x1207;
 		flashHdr.kvAddr = 0x400000;
@@ -280,8 +280,8 @@ int buildImage(void)
 	memcpy(flashHdr.copyright, copyright, sizeof(copyright));
 	if (xb.type != BUILD_RETAIL)
 	{
-		xb.hdr[0x49] = 0;
-		xb.hdr[0x4a] = 0;
+		xb.hdr[HDR_BLMOD_SIZE] = 0;
+		xb.hdr[HDR_BLMOD_SIZE + 1] = 0;
 	}
 	return buildFlash();
 }
@@ -1304,7 +1304,7 @@ int finalizeImage(void)
 		/* the arms in this order (and the error last below): gcc emits the
 		   string literals in statement order, which is the image's .rdata
 		   order; the code is the same either way */
-		if (xb.bigBlock == xb.dumpBigBlock || xb.mode == 2)
+		if (xb.bigBlock == xb.dumpBigBlock || xb.mode == MODE_UPDATE)
 		{
 			log_printf(1, "remapping %d blocks\n", xb.numBad);
 			if (xb.bigBlock)

@@ -24,31 +24,43 @@ char fnKv[32] = "kv.bin";
 char fnSmc[32] = "smc.bin";
 char fnNone[32] = "none";
 
-/* {offset, type} of each file for each build type */
+/* {offset, type} of each file for each build type; an offset of -1 follows
+   the file before it */
 struct fileloc
 { uint32_t offset; int type; };
 struct fileloc locRetail[14] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 5}, {-1, 6}, {-1, 7}, {-1, 8},
-	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
-	{0x3febe00, 27}
+	{0, FILE_NONE}, {0x1000, FILE_SMC}, {0x4000, FILE_KV},
+	{0x8000, FILE_CB}, {-1, FILE_CB_B}, {-1, FILE_CD}, {-1, FILE_CE},
+	{0x70000, FILE_XELL}, {0xb0000, FILE_CF}, {-1, FILE_CG},
+	{0xc0000, FILE_FUSES}, {0xc0060, FILE_PATCHES}, {-1, FILE_SCRATCH},
+	{0x3febe00, FILE_SMC_CONFIG}
 };
 struct fileloc locJtag[19] = {
-	{0, 0}, {0x200, 1}, {0x1000, 2}, {0x4000, 3}, {0x8000, 17}, {-1, 18}, {-1, 19},
-	{0x70000, 20}, {-1, 21}, {0x80000, 9}, {-1, 10}, {0x90000, 22}, {0x91000, 23},
-	{0x95000, 24}, {0x95060, 25}, {0xd5060, 5}, {-1, 7}, {-1, 26}, {0x3febe00, 27}
+	{0, FILE_NONE}, {0x200, FILE_PAYLOAD}, {0x1000, FILE_SMC}, {0x4000, FILE_KV},
+	{0x8000, FILE_JTAG_CB}, {-1, FILE_JTAG_CD}, {-1, FILE_JTAG_CE},
+	{0x70000, FILE_JTAG_CF}, {-1, FILE_JTAG_CG}, {0x80000, FILE_CF}, {-1, FILE_CG},
+	{0x90000, FILE_FREEBOOT}, {0x91000, FILE_PATCHES}, {0x95000, FILE_FUSES},
+	{0x95060, FILE_XELL}, {0xd5060, FILE_CB}, {-1, FILE_CD}, {-1, FILE_SCRATCH},
+	{0x3febe00, FILE_SMC_CONFIG}
 };
 struct fileloc locDevk[11] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 13}, {-1, 14},
-	{0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
+	{0, FILE_NONE}, {0x1000, FILE_SMC}, {0x4000, FILE_KV},
+	{0x8000, FILE_SB}, {-1, FILE_SC}, {-1, FILE_SD}, {-1, FILE_SE},
+	{0xb0000, FILE_KIT_CF}, {-1, FILE_KIT_CG}, {-1, FILE_SCRATCH},
+	{0x3febe00, FILE_SMC_CONFIG}
 };
 struct fileloc locTestk[12] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 4}, {0xc000, 11}, {-1, 12}, {-1, 13},
-	{-1, 14}, {0xb0000, 15}, {-1, 16}, {-1, 26}, {0x3febe00, 27}
+	{0, FILE_NONE}, {0x1000, FILE_SMC}, {0x4000, FILE_KV}, {0x8000, FILE_KV_ALT},
+	{0xc000, FILE_SB}, {-1, FILE_SC}, {-1, FILE_SD}, {-1, FILE_SE},
+	{0xb0000, FILE_KIT_CF}, {-1, FILE_KIT_CG}, {-1, FILE_SCRATCH},
+	{0x3febe00, FILE_SMC_CONFIG}
 };
 struct fileloc locDevgl[14] = {
-	{0, 0}, {0x1000, 2}, {0x4000, 3}, {0x8000, 11}, {-1, 12}, {-1, 7}, {-1, 8},
-	{0x70000, 25}, {0xb0000, 9}, {-1, 10}, {0xc0000, 24}, {0xc0060, 23}, {-1, 26},
-	{0x3febe00, 27}
+	{0, FILE_NONE}, {0x1000, FILE_SMC}, {0x4000, FILE_KV},
+	{0x8000, FILE_SB}, {-1, FILE_SC}, {-1, FILE_CD}, {-1, FILE_CE},
+	{0x70000, FILE_XELL}, {0xb0000, FILE_CF}, {-1, FILE_CG},
+	{0xc0000, FILE_FUSES}, {0xc0060, FILE_PATCHES}, {-1, FILE_SCRATCH},
+	{0x3febe00, FILE_SMC_CONFIG}
 };
 
 /* the bl section's file order per build type (blOrder is one of them) */
@@ -299,26 +311,26 @@ static void setupFiles(void)
 		}
 		switch (e->type)
 		{
-		case 0:
-		case 26:
+		case FILE_NONE:
+		case FILE_SCRATCH:
 			strcpy(e->name, fnNone);
 			break;
-		case 1:
+		case FILE_PAYLOAD:
 			strcpy(e->name, fnPayload);
 			break;
-		case 2:
+		case FILE_SMC:
 			strcpy(e->name, fnSmc);
 			break;
-		case 3:
+		case FILE_KV:
 			strcpy(e->name, fnKv);
 			break;
-		case 4:
+		case FILE_KV_ALT:
 			strcpy(e->name, fnKvAlt);
 			break;
-		case 22:
+		case FILE_FREEBOOT:
 			strcpy(e->name, fnFreeboot);
 			break;
-		case 23:
+		case FILE_PATCHES:
 			strcpy(e->name, fnPatches);
 			if (xb.type == BUILD_JTAG)
 			{
@@ -367,10 +379,10 @@ static void setupFiles(void)
 			}
 			strcat(e->name, ".bin");
 			break;
-		case 24:
+		case FILE_FUSES:
 			strcpy(e->name, fnFuses);
 			break;
-		case 25:
+		case FILE_XELL:
 			if (xb.type == BUILD_JTAG)
 			{
 				strcpy(e->name, fnXell2f);
@@ -380,7 +392,7 @@ static void setupFiles(void)
 				strcpy(e->name, fnXellGg);
 			}
 			break;
-		case 27:
+		case FILE_SMC_CONFIG:
 			strcpy(e->name, fnSmcConfig);
 			break;
 		}

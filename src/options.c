@@ -369,58 +369,58 @@ int parseButton(const char *s)
 	}
 	if (!strnicmp(s, "power", 5))
 	{
-		b = 0x11;
+		b = PWR_POWER;
 	}
 	else if (!strnicmp(s, "remopower", 9))
 	{
-		b = 0x20;
+		b = PWR_IR_POWER;
 	}
 	else if (!strnicmp(s, "remox", 5))
 	{
-		b = 0x22;
+		b = PWR_IR_GUIDE;
 	}
 	else if (!strnicmp(s, "winbutton", 9))
 	{
-		b = 0x24;
+		b = PWR_IR_WINDOWS;
 	}
 	else if (!strnicmp(s, "wirelessx", 9))
 	{
-		b = 0x55;
+		b = PWR_WIRELESS;
 	}
 	else if (!strnicmp(s, "wiredx", 6))
 	{
 		if (!strnicmp(s, "wiredxb1", 8))
 		{
-			b = 0x59;
+			b = PWR_WIRED_B1;
 		}
 		else if (!strnicmp(s, "wiredxb2", 8))
 		{
-			b = 0x58;
+			b = PWR_WIRED_B2;
 		}
 		else if (!strnicmp(s, "wiredxb3", 8))
 		{
-			b = 0x5a;
+			b = PWR_WIRED_B3;
 		}
 		else if (!strnicmp(s, "wiredxf1", 8))
 		{
-			b = 0x56;
+			b = PWR_WIRED_F1;
 		}
 		else if (!strnicmp(s, "wiredxf2", 8))
 		{
-			b = 0x57;
+			b = PWR_WIRED_F2;
 		}
 		else
 		{
-			b = 0x5a;
+			b = PWR_WIRED_B3;
 		}
 	}
 	else if (!strnicmp(s, "eject", 5))
 	{
-		b = 0x12;
+		b = PWR_EJECT;
 	}
 	else if (!strnicmp(s, "kiosk", 5))
 	{
-		b = 0x41;
+		b = PWR_KIOSK;
 	}
 	return b;
 }
@@ -1053,7 +1053,7 @@ void applyIniOptions(void)
 			}
 		}
 	}
-	if (xb.type - BUILD_JTAG <= 3)
+	if (xb.type - BUILD_JTAG <= BUILD_DEVGL16 - BUILD_JTAG)
 	{
 		OPT("cygnos", OPT_CYGNOS, 0);
 		OPT("demon", OPT_DEMON, 0);
@@ -1064,7 +1064,7 @@ void applyIniOptions(void)
 			if (!xb.xellButton)
 			{
 				log_printf(1, "default console DVD eject button is being used to start xell\n");
-				xb.xellButton = 0x12;
+				xb.xellButton = PWR_EJECT;
 			}
 		}
 		if (!xb.xellAltButton && (xb.optFlags & OPT_XELL_BUTTON))

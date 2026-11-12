@@ -32,7 +32,7 @@ int kvGetType(void)
 	{
 		return kvType;
 	}
-	return 0;
+	return KV_TYPE1;
 }
 
 int kvIsLoaded(void)
@@ -57,16 +57,16 @@ int kvCheckHash(void)
 			if (!xb.masterPub)
 			{
 				log_printf(1, "Master RSA pub not available, not checking hash\n");
-				kvType = 1;
+				kvType = KV_TYPE2_UNCHECKED;
 			}
 			else if (kvVerifySig(kvBuf, xb.masterPub, xb.cpuKey))
 			{
-				kvType = 3;
+				kvType = KV_TYPE2_GOOD;
 				log_printf(1, "Keyvault hash is good!\n");
 			}
 			else
 			{
-				kvType = 2;
+				kvType = KV_TYPE2_BAD;
 				log_printf(0, "***** WARNING: Keyvault hash is not good! Keyvault may be corrupt or does not belong to this CPU key!\n");
 			}
 			return 1;

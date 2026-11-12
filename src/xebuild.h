@@ -172,6 +172,8 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
    Bytes in the tail of the flash header's copyright field that freeboot and
    xell read (build.c's patchHeaderOpts writes them, consoleinfo.c's
    getFlashHdrOpts reads them back from a console). */
+#define HDR_BLMOD_SIZE 0x49		/* big endian 16 bits: the blmod.bin bytes
+					   build.c's patchBlsBlmod added (glitch) */
 #define HDR_OPTS_VALID 0x4b		/* 1: the bytes below are set */
 #define HDR_DUAL_BUTTON 0x4c		/* dualboot power-on reason (JTAG) */
 #define HDR_OPTS 0x4d			/* OPT_HDR_MASK bits */
@@ -189,8 +191,49 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
 
 /* ---- File ids ----
 
-   findFile's ids for xb.files entries (only the ones named so far). */
-#define FILE_FREEBOOT 22		/* USVR's freeboot_bin */
+   xb.files[].type, findFile's ids: filelist_ini.c's tables give each build
+   type's files their ids and flash offsets.  The bootloaders come in four
+   sets: the retail CB-CG, the kits' SB-SE with their own CF and CG, and
+   for JTAG the exploit's own CB-CG, which boot the target's CB, CD, CF and
+   CG (the retail ids). */
+#define FILE_NONE 0			/* "none": the flash header's slot */
+#define FILE_PAYLOAD 1			/* payload.bin (JTAG) */
+#define FILE_SMC 2			/* smc.bin */
+#define FILE_KV 3			/* kv.bin */
+#define FILE_KV_ALT 4			/* kv_alt.bin (testkit) */
+#define FILE_CB 5			/* the retail bootloaders: CB (CB_A) */
+#define FILE_CB_B 6
+#define FILE_CD 7
+#define FILE_CE 8
+#define FILE_CF 9
+#define FILE_CG 10
+#define FILE_SB 11			/* the kits' bootloaders */
+#define FILE_SC 12
+#define FILE_SD 13
+#define FILE_SE 14			/* also a retail SE in place of the CF */
+#define FILE_KIT_CF 15
+#define FILE_KIT_CG 16
+#define FILE_JTAG_CB 17			/* the JTAG exploit's bootloaders */
+#define FILE_JTAG_CD 18
+#define FILE_JTAG_CE 19
+#define FILE_JTAG_CF 20
+#define FILE_JTAG_CG 21
+#define FILE_FREEBOOT 22		/* freeboot.bin (USVR's freeboot_bin) */
+#define FILE_PATCHES 23			/* patches_<type>.bin */
+#define FILE_FUSES 24			/* fuses.bin: virtual fuses */
+#define FILE_XELL 25			/* xell-2f.bin, xell-gggggg.bin */
+#define FILE_SCRATCH 26			/* "none": xb.files[xb.nFlashFiles], where
+					   files are loaded before they're moved */
+#define FILE_SMC_CONFIG 27		/* smc_config.bin */
+
+/* ---- xb.mode ----
+
+   The command line's mode (main.c). */
+#define MODE_BUILD 1
+#define MODE_UPDATE 2
+#define MODE_CLIENT 3
+#define MODE_INI 4
+#define MODE_EXTRACT 5
 
 /* ---- Types ---- */
 

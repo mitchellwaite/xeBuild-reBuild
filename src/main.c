@@ -151,25 +151,25 @@ void logButton(int level, int code)
 {
 	switch (code)
 	{
-	case 0x11:
+	case PWR_POWER:
 		log_printf(level, "power button\n");
 		break;
-	case 0x20:
+	case PWR_IR_POWER:
 		log_printf(level, "IR power button\n");
 		break;
-	case 0x22:
+	case PWR_IR_GUIDE:
 		log_printf(level, "IR guide/X button\n");
 		break;
-	case 0x24:
+	case PWR_IR_WINDOWS:
 		log_printf(level, "IR windows button\n");
 		break;
-	case 0x41:
+	case PWR_KIOSK:
 		log_printf(level, "KIOSK debug pin\n");
 		break;
-	case 0x55:
+	case PWR_WIRELESS:
 		log_printf(level, "wireless controller\n");
 		break;
-	case 0x59:
+	case PWR_WIRED_B1:
 		if (IS_SLIM)
 		{
 			log_printf(level, "wired controller (rear top usb port)\n");
@@ -179,7 +179,7 @@ void logButton(int level, int code)
 			log_printf(level, "wired controller (INVALID FOR FATS!!)\n");
 		}
 		break;
-	case 0x58:
+	case PWR_WIRED_B2:
 		if (IS_SLIM)
 		{
 			log_printf(level, "wired controller (rear middle usb port)\n");
@@ -189,7 +189,7 @@ void logButton(int level, int code)
 			log_printf(level, "wired controller (INVALID FOR FATS!!)\n");
 		}
 		break;
-	case 0x5a:
+	case PWR_WIRED_B3:
 		if (IS_SLIM)
 		{
 			log_printf(level, "wired controller (rear bottom usb port)\n");
@@ -199,7 +199,7 @@ void logButton(int level, int code)
 			log_printf(level, "wired controller (rear usb port)\n");
 		}
 		break;
-	case 0x56:
+	case PWR_WIRED_F1:
 		if (IS_SLIM)
 		{
 			log_printf(level, "wired controller (front left usb port)\n");
@@ -209,7 +209,7 @@ void logButton(int level, int code)
 			log_printf(level, "wired controller (front top usb port)\n");
 		}
 		break;
-	case 0x57:
+	case PWR_WIRED_F2:
 		if (IS_SLIM)
 		{
 			log_printf(level, "wired controller (front right usb port)\n");
@@ -453,13 +453,13 @@ void showConsoleInfo(void)
 		log_printf(0, "KV type   : ");
 		switch (kvGetType())
 		{
-		case 1:
+		case KV_TYPE2_UNCHECKED:
 			log_printf(0, "type2 (hashed - unchecked, master key not available)\n");
 			break;
-		case 2:
+		case KV_TYPE2_BAD:
 			log_printf(0, "type2 (hashed - Invalid! Keyvault is modified or from a different CPU key)\n");
 			break;
-		case 3:
+		case KV_TYPE2_GOOD:
 			log_printf(0, "type2 (hashed - Good! Signature is valid.)\n");
 			break;
 		default:
@@ -529,7 +529,7 @@ int main(int argc, char **argv)
 		setBasePath(argv[0]);
 		if (!strnicmp(argv[1], "ini", 3))
 		{
-			xb.mode = 4;
+			xb.mode = MODE_INI;
 			log_printf(0, "---- { Ini Mode } ----\n");
 			ret = mode_ini(argc - 2, argv + 2);
 			goto done;
@@ -537,26 +537,26 @@ int main(int argc, char **argv)
 		else if (!strnicmp(argv[1], "client", 6))
 		{
 			log_printf(0, "---- { Client Mode } ----\n");
-			xb.mode = 3;
+			xb.mode = MODE_CLIENT;
 			ret = mode_client(argc - 2, argv + 2);
 			goto done;
 		}
 		else if (!strnicmp(argv[1], "update", 6))
 		{
-			xb.mode = 2;
+			xb.mode = MODE_UPDATE;
 			log_printf(0, "---- { Update Mode } ----\n");
 			ret = mode_update(argc - 2, argv + 2);
 		}
 		else if (!strnicmp(argv[1], "extract", 7))
 		{
-			xb.mode = 5;
+			xb.mode = MODE_EXTRACT;
 			log_printf(0, "---- { Extract Mode } ----\n");
 			ret = mode_extract(argc - 2, argv + 2);
 			goto done;
 		}
 		else
 		{
-			xb.mode = 1;
+			xb.mode = MODE_BUILD;
 			log_printf(0, "---- { Image Build Mode } ----\n");
 			if (!strnicmp(argv[1], "build", 5))
 			{

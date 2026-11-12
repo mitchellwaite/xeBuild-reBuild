@@ -697,7 +697,7 @@ int loadInputFile(const char *name, struct fileent *e, int pad, int crc, uint8_t
 				log_printf(1, "\n");
 			}
 		}
-		else if (xb.mode == 2 && updateGetFile(base, &e->data, &e->size))
+		else if (xb.mode == MODE_UPDATE && updateGetFile(base, &e->data, &e->size))
 		{
 			log_printf(1, "extracted USVR/%s (0x%x bytes)", base, e->size);
 			if (crc)
@@ -1194,10 +1194,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 		{
 			switch (type)
 			{
-			case 5:
-			case 6:
-			case 11:
-			case 17:
+			case FILE_CB:
+			case FILE_CB_B:
+			case FILE_SB:
+			case FILE_JTAG_CB:
 				if (bl[1] != 'B')
 				{
 					r = -1;
@@ -1212,8 +1212,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 7:
-			case 18:
+			case FILE_CD:
+			case FILE_JTAG_CD:
 				if (bl[1] != 'D')
 				{
 					r = -1;
@@ -1228,8 +1228,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 8:
-			case 19:
+			case FILE_CE:
+			case FILE_JTAG_CE:
 				if (bl[1] != 'E')
 				{
 					r = -1;
@@ -1248,9 +1248,9 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 9:
-			case 15:
-			case 20:
+			case FILE_CF:
+			case FILE_KIT_CF:
+			case FILE_JTAG_CF:
 				if (bl[1] != 'F')
 				{
 					r = -1;
@@ -1269,9 +1269,9 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 10:
-			case 16:
-			case 21:
+			case FILE_CG:
+			case FILE_KIT_CG:
+			case FILE_JTAG_CG:
 				if (bl[1] != 'G')
 				{
 					r = -1;
@@ -1286,7 +1286,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 12:
+			case FILE_SC:
 				if (bl[1] != 'C')
 				{
 					r = -1;
@@ -1304,7 +1304,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 13:
+			case FILE_SD:
 				if (bl[1] != 'D')
 				{
 					r = -1;
@@ -1322,7 +1322,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 					}
 				}
 				break;
-			case 14:
+			case FILE_SE:
 				if (bl[1] != 'E')
 				{
 					r = -1;
@@ -1378,9 +1378,9 @@ int verifyBlSigs(void)
 		e = &xb.files[i];
 		switch (e->type)
 		{
-		case 5:
-		case 11:
-		case 17:
+		case FILE_CB:
+		case FILE_SB:
+		case FILE_JTAG_CB:
 			if (xb.pub1bl)
 			{
 				if (!cbVerifySig(e->data, xb.pub1bl))
@@ -1397,12 +1397,12 @@ int verifyBlSigs(void)
 				log_printf(1, "could not check signature of %s, 1BL RSA key not present!\n", e->name);
 			}
 			break;
-		case 12:
-		case 13:
-			sb = findFile(11);
+		case FILE_SC:
+		case FILE_SD:
+			sb = findFile(FILE_SB);
 			if (sb)
 			{
-				salt = e->type == 12 ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
+				salt = e->type == FILE_SC ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
 				if (blVerifySig(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), salt))
 				{
 					log_printf(1, "%s signature is good\n", e->name);
@@ -1437,15 +1437,15 @@ int verifyBlSigs(void)
 				log_printf(1, "could not locate SB data to check %s!\n", e->name);
 			}
 			break;
-		case 14:
-			sd = findFile(13);
+		case FILE_SE:
+			sd = findFile(FILE_SD);
 			if (sd)
 			{
 				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588))
 				{
 					if (xb.prvKey)
 					{
-						sb = findFile(11);
+						sb = findFile(FILE_SB);
 						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
 						{
 							log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
@@ -1549,11 +1549,11 @@ static int loadBl24(struct fileent *e)
 /* a kit build: an SE sets the flash build number (nonzero if it did). */
 static int setKitBuild(uint32_t i, int type)
 {
-	if (type == 14)
+	if (type == FILE_SE)
 	{
 		setFlashBuild(getBeU16(xb.files[i].data + 2));
 	}
-	return type == 14;
+	return type == FILE_SE;
 }
 
 /* load the input files by their type; the arms only set r, which is
@@ -1574,19 +1574,22 @@ int loadBlFiles(void)
 
 			switch (type)
 			{
-			case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
-			case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+			case FILE_CB: case FILE_CD: case FILE_CE: case FILE_CF: case FILE_CG:
+			case FILE_SB: case FILE_SC: case FILE_SD: case FILE_SE:
+			case FILE_KIT_CF: case FILE_KIT_CG:
+			case FILE_JTAG_CB: case FILE_JTAG_CD: case FILE_JTAG_CE:
+			case FILE_JTAG_CF: case FILE_JTAG_CG:
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
 				if (r)
 				{
-					if (type == 9)
+					if (type == FILE_CF)
 					{
 						if (suGetCF(&e->data, &e->size))
 						{
 							r = 0;
 						}
 					}
-					else if (type == 10)
+					else if (type == FILE_CG)
 					{
 						if (suGetCG(&e->data, &e->size))
 						{
@@ -1598,10 +1601,10 @@ int loadBlFiles(void)
 				{
 					break;
 				}
-				if (type == 9 && e->data[0] == 'S' && e->data[1] == 'E')
+				if (type == FILE_CF && e->data[0] == 'S' && e->data[1] == 'E')
 				{
 					/* an SE where the CF goes */
-					e->type = type = 14;
+					e->type = type = FILE_SE;
 					xb.cfLdv = 0;
 					xb.seReplacesCf = 1;
 				}
@@ -1610,7 +1613,7 @@ int loadBlFiles(void)
 				{
 					break;
 				}
-				if (type == 5 || type == 17 || type == 11)
+				if (type == FILE_CB || type == FILE_JTAG_CB || type == FILE_SB)
 				{
 					if (xb.pub1bl)
 					{
@@ -1638,7 +1641,7 @@ int loadBlFiles(void)
 					goto fail;
 				}
 				break;
-			case 6:
+			case FILE_CB_B:
 				if (!xb.cbb)
 				{
 					break;
@@ -1646,10 +1649,10 @@ int loadBlFiles(void)
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
 				if (!r)
 				{
-					r = checkBl(e->data, e->size, 6, e->crc);
+					r = checkBl(e->data, e->size, FILE_CB_B, e->crc);
 				}
 				break;
-			case 24:
+			case FILE_FUSES:
 				if (xb.type == BUILD_JTAG || xb.glitch2mfg)
 				{
 					r = loadBl24(e);
@@ -1659,7 +1662,7 @@ int loadBlFiles(void)
 					r = loadBl24(e);
 				}
 				break;
-			case 1:
+			case FILE_PAYLOAD:
 				if (!loadBinFile(e))
 				{
 					break;
@@ -1667,7 +1670,7 @@ int loadBlFiles(void)
 				log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
 				r = useBuiltIn(e, defPayload, 0x200);
 				break;
-			case 22:
+			case FILE_FREEBOOT:
 				if (!loadBinFile(e))
 				{
 					break;
@@ -1675,10 +1678,10 @@ int loadBlFiles(void)
 				log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
 				r = useBuiltIn(e, defCore, 0xd40);
 				break;
-			case 25:
+			case FILE_XELL:
 				r = loadXell(e);
 				break;
-			case 3:
+			case FILE_KV:
 				if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
 				    !loadBaseFile("keyvault.bin", &xb.files[xb.nFlashFiles]) ||
 				    !(r = loadBaseFile("KV_dec.bin", &xb.files[xb.nFlashFiles])))
@@ -1706,7 +1709,7 @@ int loadBlFiles(void)
 					r = 0;
 				}
 				break;
-			case 4:
+			case FILE_KV_ALT:
 				if (!loadBaseFile(e->name, &xb.files[xb.nFlashFiles]) ||
 				    !loadBaseFile("keyvault_alt.bin", &xb.files[xb.nFlashFiles]) ||
 				    !(r = loadBaseFile("KV_alt_dec.bin", &xb.files[xb.nFlashFiles])))
@@ -1734,7 +1737,7 @@ int loadBlFiles(void)
 					r = 0;
 				}
 				break;
-			case 23:
+			case FILE_PATCHES:
 				if (xb.type == BUILD_RETAIL)
 				{
 					break;
@@ -1751,7 +1754,7 @@ int loadBlFiles(void)
 				}
 				appendAddonPatches(e);
 				break;
-			case 27:
+			case FILE_SMC_CONFIG:
 				if (loadBaseFile(e->name, &xb.files[xb.nFlashFiles]))
 				{
 					r = loadBaseFile("config.bin", &xb.files[xb.nFlashFiles]);
@@ -1786,7 +1789,7 @@ int loadBlFiles(void)
 					}
 				}
 				break;
-			case 2:
+			case FILE_SMC:
 				r = loadBaseFile(e->name, &xb.files[xb.nFlashFiles]);
 				if (!r)
 				{
@@ -1857,22 +1860,24 @@ int loadConsoleBlFiles(void)
 
 			switch (type)
 			{
-			case 5: case 6: case 7: case 8: case 11: case 12: case 13: case 14:
-			case 17: case 18: case 19:
+			case FILE_CB: case FILE_CB_B: case FILE_CD: case FILE_CE:
+			case FILE_SB: case FILE_SC: case FILE_SD: case FILE_SE:
+			case FILE_JTAG_CB: case FILE_JTAG_CD: case FILE_JTAG_CE:
 				log_printf(1, "skipping %s%s as it is in glitch bootloader dump\n", xb.baseDir, e->name);
 				break;
-			case 9: case 10: case 15: case 16: case 20: case 21:
+			case FILE_CF: case FILE_CG: case FILE_KIT_CF: case FILE_KIT_CG:
+			case FILE_JTAG_CF: case FILE_JTAG_CG:
 				r = loadInputFile(e->name, e, 1, 0, NULL, 0, 0, 1);
 				if (r)
 				{
-					if (type == 9)
+					if (type == FILE_CF)
 					{
 						if (suGetCF(&e->data, &e->size))
 						{
 							r = 0;
 						}
 					}
-					else if (type == 10)
+					else if (type == FILE_CG)
 					{
 						if (suGetCG(&e->data, &e->size))
 						{
@@ -1885,16 +1890,16 @@ int loadConsoleBlFiles(void)
 					r = checkBl(e->data, e->size, type, e->crc);
 				}
 				break;
-			case 24:
+			case FILE_FUSES:
 				if (xb.glitch2mfg)
 				{
 					r = loadBl24(e);
 				}
 				break;
-			case 25:
+			case FILE_XELL:
 				r = loadXell(e);
 				break;
-			case 3:
+			case FILE_KV:
 				if (xb.kv.data)
 				{
 					log_printf(1, "using keyvault data from console\n");
@@ -1913,7 +1918,7 @@ int loadConsoleBlFiles(void)
 					r = -1;
 				}
 				break;
-			case 4:
+			case FILE_KV_ALT:
 				if (xb.kvAlt.data)
 				{
 					log_printf(1, "using keyvault alt data from console\n");
@@ -1932,7 +1937,7 @@ int loadConsoleBlFiles(void)
 					r = -1;
 				}
 				break;
-			case 23:
+			case FILE_PATCHES:
 				r = loadBinFile(e);
 				if (r)
 				{
@@ -1946,7 +1951,7 @@ int loadConsoleBlFiles(void)
 				}
 				appendAddonPatches(e);
 				break;
-			case 27:
+			case FILE_SMC_CONFIG:
 				if (xb.smcConfig.data)
 				{
 					log_printf(1, "using smc configuration from console\n");
@@ -1966,7 +1971,7 @@ int loadConsoleBlFiles(void)
 					r = -1;
 				}
 				break;
-			case 2:
+			case FILE_SMC:
 				if (xb.smc.data)
 				{
 					log_printf(1, "using smc binary from console\n");
@@ -2009,7 +2014,7 @@ void patchHeaderOpts(void)
 {
 	uint8_t opts = 0;
 
-	xb.hdr[0x4b] = 1;
+	xb.hdr[HDR_OPTS_VALID] = 1;
 	if (xb.optFlags & OPT_UART_SLOW)
 	{
 		log_printf(1, "\tPatching header for slower demon/cygnos UART speed\n");
@@ -2031,19 +2036,19 @@ void patchHeaderOpts(void)
 	{
 		xb.dualButton = 0;
 	}
-	xb.hdr[0x4c] = xb.dualButton;
-	xb.hdr[0x4d] = opts;
+	xb.hdr[HDR_DUAL_BUTTON] = xb.dualButton;
+	xb.hdr[HDR_OPTS] = opts;
 	log_printf(1, "\tPatching header for xell power reason\n");
 	if (xb.xellButton == xb.xellAltButton)
 	{
 		xb.xellAltButton = 0;
 	}
-	xb.hdr[0x4f] = xb.xellButton;
+	xb.hdr[HDR_XELL_BUTTON] = xb.xellButton;
 	if (xb.xellAltButton)
 	{
 		log_printf(1, "\tPatching header for xell alt power reason\n");
 	}
-	xb.hdr[0x4e] = xb.xellAltButton;
+	xb.hdr[HDR_XELL_ALT_BUTTON] = xb.xellAltButton;
 }
 
 int blmodMissing(struct fileent *e)
@@ -2103,7 +2108,7 @@ int countBits(uint8_t v)
 
 int patchBlsResign(void)
 {
-	int sb = findFile(11), cd = findFile(7), pt = findFile(23);
+	int sb = findFile(FILE_SB), cd = findFile(FILE_CD), pt = findFile(FILE_PATCHES);
 	struct fileent *p = &xb.files[pt];
 	uint8_t *d = p->data;
 	uint32_t off, addr, len, i, t;
@@ -2203,7 +2208,7 @@ int patchBlsResign(void)
 
 void patchBlsBlmod(const void *blmod, int size)
 {
-	int cd = findFile(7), cbb = findFile(6), pt = findFile(23);
+	int cd = findFile(FILE_CD), cbb = findFile(FILE_CB_B), pt = findFile(FILE_PATCHES);
 	struct fileent *p = &xb.files[pt];
 	uint8_t *d = p->data;
 	uint32_t off, addr, len, i, max, end, t;
@@ -2282,8 +2287,8 @@ void patchBlsBlmod(const void *blmod, int size)
 		memcpy(xb.files[cbb].data + off, blmod, size);
 		end = align16(off + size);
 		i = end - xb.files[cbb].size;
-		xb.hdr[0x49] = i >> 8;
-		xb.hdr[0x4a] = i;
+		xb.hdr[HDR_BLMOD_SIZE] = i >> 8;
+		xb.hdr[HDR_BLMOD_SIZE + 1] = i;
 		xb.files[cbb].size = end;
 		setBeU32(end, xb.files[cbb].data + 12);
 	}
@@ -2292,7 +2297,7 @@ void patchBlsBlmod(const void *blmod, int size)
 
 void fixupPatchSet(void)
 {
-	struct fileent *e = &xb.files[findFile(23)];
+	struct fileent *e = &xb.files[findFile(FILE_PATCHES)];
 	uint8_t *p = e->data;
 	uint32_t off, i, v, t;
 	int n = 0;
@@ -2355,21 +2360,21 @@ void addBlsToImage(void)
 		}
 		if (xb.type == BUILD_JTAG)
 		{
-			if (type == 14)
+			if (type == FILE_SE)
 			{
 				off += e->size;
 				continue;
 			}
-			if (type == 21)
+			if (type == FILE_JTAG_CG)
 			{
-				j = findFile(20);
+				j = findFile(FILE_JTAG_CF);
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 			}
-			else if (type == 10)
+			else if (type == FILE_CG)
 			{
-				j = findFile(9);
+				j = findFile(FILE_CF);
 				log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 					   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 				imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
@@ -2383,11 +2388,11 @@ void addBlsToImage(void)
 			off += e->size;
 			continue;
 		}
-		if (type == 9)
+		if (type == FILE_CF)
 		{
 			off = imgCfOffset();
 		}
-		else if (type == 23)
+		else if (type == FILE_PATCHES)
 		{
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
@@ -2403,48 +2408,48 @@ void addBlsToImage(void)
 				off += 0x10;
 			}
 		}
-		if (xb.type == BUILD_RETAIL && (type == 25 || type == 23))
+		if (xb.type == BUILD_RETAIL && (type == FILE_XELL || type == FILE_PATCHES))
 		{
 			log_printf(1, "retail image, skipping %s\n", e->name);
 			continue;
 		}
-		else if (xb.type > BUILD_DEVGL16 && (type == 25 || type == 23))
+		else if (xb.type > BUILD_DEVGL16 && (type == FILE_XELL || type == FILE_PATCHES))
 		{
 			log_printf(1, "devkit/testkit image, skipping %s\n", e->name);
 			continue;
 		}
-		else if (type == 25 && e->offset < imgSize())
+		else if (type == FILE_XELL && e->offset < imgSize())
 		{
 			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
-		if (type != 10 && type != 16 && type != 24)
+		if (type != FILE_CG && type != FILE_KIT_CG && type != FILE_FUSES)
 		{
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
 		}
-		if (type == 10)
+		if (type == FILE_CG)
 		{
-			j = findFile(9);
+			j = findFile(FILE_CF);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		}
-		else if (type == 16)
+		else if (type == FILE_KIT_CG)
 		{
-			j = findFile(15);
+			j = findFile(FILE_KIT_CF);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		}
-		else if (type == 6)
+		else if (type == FILE_CB_B)
 		{
 			if (xb.cbb)
 			{
 				imgAdd(off, e->data, e->size, 0, ecc, 1);
 			}
 		}
-		else if (type == 24)
+		else if (type == FILE_FUSES)
 		{
 			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 			{
@@ -2461,7 +2466,7 @@ void addBlsToImage(void)
 	}
 	if (xb.seReplacesCf)
 	{
-		j = findFile(14);
+		j = findFile(FILE_SE);
 		log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 			   xb.files[j].name, off, xb.files[j].size, off + xb.files[j].size);
 		imgAdd(off, xb.files[j].data, xb.files[j].size, 0, ecc, 1);
@@ -2471,15 +2476,15 @@ void addBlsToImage(void)
 /* the bootloader types an update (xeBuild's -u) replaces. */
 int isUpdateBl(int type)
 {
-	if (type == 23)
+	if (type == FILE_PATCHES)
 	{
 		return 1;
 	}
-	if (type == 15)
+	if (type == FILE_KIT_CF)
 	{
 		return 1;
 	}
-	return type == 16 || type == 9 || type == 10 || type == 24 || type == 25;
+	return type == FILE_KIT_CG || type == FILE_CF || type == FILE_CG || type == FILE_FUSES || type == FILE_XELL;
 }
 
 void addUpdateBls(void)
@@ -2505,11 +2510,11 @@ void addUpdateBls(void)
 		{
 			continue;
 		}
-		if (type == 9)
+		if (type == FILE_CF)
 		{
 			off = imgCfOffset();
 		}
-		else if (type == 23)
+		else if (type == FILE_PATCHES)
 		{
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
@@ -2521,31 +2526,31 @@ void addUpdateBls(void)
 				off += 0x10;
 			}
 		}
-		if (type == 25 && e->offset < imgSize())
+		if (type == FILE_XELL && e->offset < imgSize())
 		{
 			log_printf(0, "***** WARNING: skipping xell, there doesn't appear to be enough room!\n");
 			continue;
 		}
-		if (type != 10 && type != 16 && type != 24)
+		if (type != FILE_CG && type != FILE_KIT_CG && type != FILE_FUSES)
 		{
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x)\n",
 				   e->name, off, e->size, off + e->size);
 		}
-		if (type == 10)
+		if (type == FILE_CG)
 		{
-			j = findFile(9);
+			j = findFile(FILE_CF);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		}
-		else if (type == 16)
+		else if (type == FILE_KIT_CG)
 		{
-			j = findFile(15);
+			j = findFile(FILE_KIT_CF);
 			log_printf(1, "adding %s at raw offset 0x%08x len 0x%x (end 0x%x, rest in fs)\n",
 				   e->name, off, e->size, off + e->size - xb.files[j].fsSize);
 			imgAdd(off, e->data, e->size - xb.files[j].fsSize, 0, ecc, 1);
 		}
-		else if (type == 24)
+		else if (type == FILE_FUSES)
 		{
 			if (xb.glitch2mfg || xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 			{
@@ -2566,28 +2571,28 @@ int logPowerButton(int reason, const char *use)
 {
 	switch (reason)
 	{
-	case 0x11:
+	case PWR_POWER:
 		log_printf(1, "    - console power button is being used to %s \n", use);
 		break;
-	case 0x12:
+	case PWR_EJECT:
 		log_printf(1, "    - console DVD eject button is being used to %s \n", use);
 		break;
-	case 0x20:
+	case PWR_IR_POWER:
 		log_printf(1, "    - IR remote power button is being used to %s \n", use);
 		break;
-	case 0x22:
+	case PWR_IR_GUIDE:
 		log_printf(1, "    - IR remote guide/X button is being used to %s \n", use);
 		break;
-	case 0x24:
+	case PWR_IR_WINDOWS:
 		log_printf(1, "    - IR remote windows button is being used to %s \n", use);
 		break;
-	case 0x41:
+	case PWR_KIOSK:
 		log_printf(1, "    - KIOSK debug pin is being used to %s \n", use);
 		break;
-	case 0x55:
+	case PWR_WIRELESS:
 		log_printf(1, "    - wireless controller powering on console is being used to %s \n", use);
 		break;
-	case 0x59:
+	case PWR_WIRED_B1:
 		if IS_SLIM
 		{
 			log_printf(1, "wired controller (rear top usb port) is being used to %s \n", use);
@@ -2597,7 +2602,7 @@ int logPowerButton(int reason, const char *use)
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		}
 		break;
-	case 0x58:
+	case PWR_WIRED_B2:
 		if IS_SLIM
 		{
 			log_printf(1, "wired controller (rear middle usb port) is being used to %s \n", use);
@@ -2607,7 +2612,7 @@ int logPowerButton(int reason, const char *use)
 			log_printf(1, "wired controller (INVALID FOR FATS!!) is being used to %s \n", use);
 		}
 		break;
-	case 0x5a:
+	case PWR_WIRED_B3:
 		if IS_SLIM
 		{
 			log_printf(1, "wired controller (rear bottom usb port) is being used to %s \n", use);
@@ -2617,7 +2622,7 @@ int logPowerButton(int reason, const char *use)
 			log_printf(1, "wired controller (rear usb port) is being used to %s \n", use);
 		}
 		break;
-	case 0x56:
+	case PWR_WIRED_F1:
 		if IS_SLIM
 		{
 			log_printf(1, "wired controller (front left usb port) is being used to %s \n", use);
@@ -2627,7 +2632,7 @@ int logPowerButton(int reason, const char *use)
 			log_printf(1, "wired controller (front top usb port) is being used to %s \n", use);
 		}
 		break;
-	case 0x57:
+	case PWR_WIRED_F2:
 		if IS_SLIM
 		{
 			log_printf(1, "wired controller (front right usb port) is being used to %s \n", use);
@@ -2677,7 +2682,7 @@ void patchFreeboot(uint8_t *buf, int len)
 		if (logPowerButton(xb.xellButton, "start xell"))
 		{
 			log_printf(1, "    - UKNOWN POWER REASON, using eject button\n");
-			xb.xellButton = 0x12;
+			xb.xellButton = PWR_EJECT;
 		}
 		if (xb.xellAltButton == xb.xellButton)
 		{
@@ -2770,59 +2775,59 @@ int encodeBls(uint8_t *salt, int ldv)
 			log_printf(1, "encoding %s size 0x%x (JTAG)\n", e->name, e->size);
 			switch (type)
 			{
-			case 1:
+			case FILE_PAYLOAD:
 				if (!memcmp(e->data, defPayload, 0x200))
 				{
-					patchPayloadSize(e->data, e->size, xb.files[findFile(22)].size);
+					patchPayloadSize(e->data, e->size, xb.files[findFile(FILE_FREEBOOT)].size);
 				}
 				break;
-			case 2:
+			case FILE_SMC:
 				if (smcPrepare(e->data, salt, e->size))
 				{
 					return 1;
 				}
 				break;
-			case 3:
+			case FILE_KV:
 				kvPrepare(e, 0);
 				break;
-			case 5:
-				j = findFile(24);
+			case FILE_CB:
+				j = findFile(FILE_FUSES);
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
 				cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				break;
-			case 7:
-				j = findFile(5);
+			case FILE_CD:
+				j = findFile(FILE_CB);
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 9:
-				j = findFile(10);
+			case FILE_CF:
+				j = findFile(FILE_CG);
 				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
-			case 10:
-				j = findFileN(9);
+			case FILE_CG:
+				j = findFileN(FILE_CF);
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 17:
+			case FILE_JTAG_CB:
 				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				cbaEncrypt2(salt, e->data, e->key, e->size, 1);
 				break;
-			case 18:
-				j = findFile(17);
+			case FILE_JTAG_CD:
+				j = findFile(FILE_JTAG_CB);
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 19:
-				j = findFile(18);
+			case FILE_JTAG_CE:
+				j = findFile(FILE_JTAG_CD);
 				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 20:
-				j = findFile(21);
+			case FILE_JTAG_CF:
+				j = findFile(FILE_JTAG_CG);
 				ldv += cfEncrypt(e, xb.files[j].size, ldv, 1, imgCfSize());
 				break;
-			case 21:
-				j = findFile(20);
+			case FILE_JTAG_CG:
+				j = findFile(FILE_JTAG_CF);
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 22:
+			case FILE_FREEBOOT:
 				if (!memcmp(e->data, defCore, 0xd40))
 				{
 					patchFreeboot(e->data, e->size);
@@ -2836,44 +2841,44 @@ int encodeBls(uint8_t *salt, int ldv)
 		}
 		else if (xb.type > BUILD_GLITCH)
 		{
-			if (type != 24)
+			if (type != FILE_FUSES)
 			{
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			}
 			switch (type)
 			{
-			case 2:
+			case FILE_SMC:
 				if (smcPrepare(e->data, salt, e->size))
 				{
 					return 1;
 				}
 				break;
-			case 3:
+			case FILE_KV:
 				kvPrepare(e, 0);
 				break;
-			case 4:
+			case FILE_KV_ALT:
 				kvPrepare(e, 1);
 				break;
-			case 7:
-				j = findFile(12);
+			case FILE_CD:
+				j = findFile(FILE_SC);
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 8:
-				j = findFile(7);
+			case FILE_CE:
+				j = findFile(FILE_CD);
 				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 9:
-				j = findFile(10);
+			case FILE_CF:
+				j = findFile(FILE_CG);
 				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
-			case 10:
-				j = findFile(9);
+			case FILE_CG:
+				j = findFile(FILE_CF);
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 11:
+			case FILE_SB:
 				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 				{
-					j = findFile(24);
+					j = findFile(FILE_FUSES);
 					if IS_SLIM
 					{
 						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
@@ -2899,28 +2904,28 @@ int encodeBls(uint8_t *salt, int ldv)
 					cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				}
 				break;
-			case 12:
+			case FILE_SC:
 				cdEncryptZero(e->data, e->key, e->size);
 				break;
-			case 13:
-				j = findFile(12);
+			case FILE_SD:
+				j = findFile(FILE_SC);
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 14:
-				j = findFileN(13);
+			case FILE_SE:
+				j = findFileN(FILE_SD);
 				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 15:
-				j = findFileN(16);
+			case FILE_KIT_CF:
+				j = findFileN(FILE_KIT_CG);
 				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
-			case 16:
-				j = findFile(15);
+			case FILE_KIT_CG:
+				j = findFile(FILE_KIT_CF);
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 23:
-			case 24:
-			case 25:
+			case FILE_PATCHES:
+			case FILE_FUSES:
+			case FILE_XELL:
 				break;
 			default:
 				log_printf(1, "****** Unhandled BL typ %d ******\n", type);
@@ -2929,22 +2934,22 @@ int encodeBls(uint8_t *salt, int ldv)
 		}
 		else
 		{
-			if (type != 24 || xb.glitch2mfg)
+			if (type != FILE_FUSES || xb.glitch2mfg)
 			{
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
 			}
 			switch (type)
 			{
-			case 2:
+			case FILE_SMC:
 				if (smcPrepare(e->data, salt, e->size))
 				{
 					return 1;
 				}
 				break;
-			case 3:
+			case FILE_KV:
 				kvPrepare(e, 0);
 				break;
-			case 5:
+			case FILE_CB:
 				if (xb.cbb)
 				{
 					cbaEncrypt(salt, e->data, e->key, e->size, 1);
@@ -2960,13 +2965,13 @@ int encodeBls(uint8_t *salt, int ldv)
 					cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				}
 				break;
-			case 6:
+			case FILE_CB_B:
 				if (!xb.cbb)
 				{
 					break;
 				}
 				zero = checkZeros(xb.cpuKey, 16);
-				j = findFile(24);
+				j = findFile(FILE_FUSES);
 				if (xb.glitch2mfg)
 				{
 					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
@@ -2980,18 +2985,18 @@ int encodeBls(uint8_t *salt, int ldv)
 					log_printf(1, "CPU key is all zeros, zeropairing CB_B\n");
 					xb.cfLdv = 0;
 				}
-				j = findFile(5);
+				j = findFile(FILE_CB);
 				cbbEncrypt(salt, e->data, xb.files[j].key, xb.files[j].data, e->key, e->size, zero);
 				break;
-			case 7:
+			case FILE_CD:
 				if (xb.cbb)
 				{
-					j = findFile(6);
+					j = findFile(FILE_CB_B);
 					cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				}
 				else
 				{
-					j = findFile(5);
+					j = findFile(FILE_CB);
 					if (xb.type != BUILD_RETAIL)
 					{
 						cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
@@ -3002,16 +3007,16 @@ int encodeBls(uint8_t *salt, int ldv)
 					}
 				}
 				break;
-			case 8:
-				j = findFile(7);
+			case FILE_CE:
+				j = findFile(FILE_CD);
 				ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
-			case 9:
-				j = findFile(10);
+			case FILE_CF:
+				j = findFile(FILE_CG);
 				cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 				break;
-			case 10:
-				j = findFile(9);
+			case FILE_CG:
+				j = findFile(FILE_CF);
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			}
@@ -3020,8 +3025,8 @@ int encodeBls(uint8_t *salt, int ldv)
 	if (xb.seReplacesCf)
 	{
 		/* the SE that replaced the CF follows the CD */
-		e = &xb.files[findFile(14)];
-		j = findFile(7);
+		e = &xb.files[findFile(FILE_SE)];
+		j = findFile(FILE_CD);
 		log_printf(1, "re-encoding %s size 0x%x\n", e->name, e->size);
 		ceEncrypt(e->data, xb.files[j].key, e->key, e->size);
 	}
@@ -3044,14 +3049,14 @@ int encodeUpdateBls(int unused, int ldv)
 		}
 		switch (e->type)
 		{
-		case 9:
+		case FILE_CF:
 			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
-			j = findFile(10);
+			j = findFile(FILE_CG);
 			cfEncrypt(e, xb.files[j].size, ldv, 0, imgCfSize());
 			break;
-		case 10:
+		case FILE_CG:
 			log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
-			j = findFile(9);
+			j = findFile(FILE_CF);
 			cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 			break;
 		}
@@ -3065,38 +3070,38 @@ uint32_t calcBlAreaSize(void)
 
 	if (xb.type == BUILD_JTAG)
 	{
-		x = findFile(5);
-		size = findFileOffset(5) + xb.files[x].size;
-		x = findFile(7);
+		x = findFile(FILE_CB);
+		size = findFileOffset(FILE_CB) + xb.files[x].size;
+		x = findFile(FILE_CD);
 		size += xb.files[x].size;
 		if (xb.seReplacesCf)
 		{
-			x = findFile(14);
+			x = findFile(FILE_SE);
 			size += xb.files[x].size;
 		}
 	}
 	else if (xb.type > BUILD_DEVGL16)
 	{
-		x = findFile(11);
-		size = findFileOffset(11) + xb.files[x].size;
-		x = findFile(12);
+		x = findFile(FILE_SB);
+		size = findFileOffset(FILE_SB) + xb.files[x].size;
+		x = findFile(FILE_SC);
 		size += xb.files[x].size;
-		x = findFile(13);
+		x = findFile(FILE_SD);
 		size += xb.files[x].size;
-		x = findFile(14);
+		x = findFile(FILE_SE);
 		size += xb.files[x].size;
 		setPatchSlot(size);
 		size += 2 * imgCfSize();
 	}
 	else
 	{
-		size = findFileOffset(5) + findFileSize(5);
-		size += findFileSize(6);
-		size += findFileSize(7);
-		size += findFileSize(8);
+		size = findFileOffset(FILE_CB) + findFileSize(FILE_CB);
+		size += findFileSize(FILE_CB_B);
+		size += findFileSize(FILE_CD);
+		size += findFileSize(FILE_CE);
 		if (xb.type != BUILD_RETAIL)
 		{
-			x = findFile(25);
+			x = findFile(FILE_XELL);
 			if (xb.files[x].offset > size)
 			{
 				xs = xb.files[x].size;
@@ -3247,7 +3252,7 @@ int buildFlash(void)
 	keysInit(xb.randomKeys);
 	if (fuse)
 	{
-		struct fileent *e = &xb.files[findFile(24)];
+		struct fileent *e = &xb.files[findFile(FILE_FUSES)];
 		setFuseCpuKey(e->data);
 		if (xb.type != BUILD_JTAG)
 		{
@@ -3267,7 +3272,7 @@ int buildFlash(void)
 	}
 	if (fuse)
 	{
-		showFuses(1, "\nVirtual Fuses set to:", xb.files[findFile(24)].data);
+		showFuses(1, "\nVirtual Fuses set to:", xb.files[findFile(FILE_FUSES)].data);
 	}
 	log_printf(1, "done!\n\n------ Adding bootloaders to flash image ------\n");
 	if (!xb.fromConsole)
@@ -3293,11 +3298,11 @@ int buildFlash(void)
 	/* the CG's patch slot overflow goes in the filesystem */
 	if (xb.type != BUILD_JTAG)
 	{
-		if (xb.files[findFile(9)].fsSize)
+		if (xb.files[findFile(FILE_CF)].fsSize)
 		{
 			off = imgSize();
-			cf = findFile(9);
-			cg = findFile(10);
+			cf = findFile(FILE_CF);
+			cg = findFile(FILE_CG);
 			log_printf(1, "Writing zeropair CG patch slot overflow data to sysupdate.xexp1\n");
 			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
 			makeTimestamp((uint8_t *)&ts, NULL);
@@ -3308,20 +3313,20 @@ int buildFlash(void)
 	else
 	{
 		off = imgSize();
-		if (xb.files[findFile(20)].fsSize)
+		if (xb.files[findFile(FILE_JTAG_CF)].fsSize)
 		{
-			cf = findFile(20);
-			cg = findFile(21);
+			cf = findFile(FILE_JTAG_CF);
+			cg = findFile(FILE_JTAG_CG);
 			log_printf(1, "Writing CG patch slot overflow data to sysupdate.xexp1\n");
 			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
 			makeTimestamp((uint8_t *)&ts, NULL);
 			imgAddFile("sysupdate.xexp1", xb.files[cg].data + xb.files[cf].fsOffset, &ts, xb.files[cf].fsSize);
 			log_printf(1, "done!\n");
 		}
-		if (xb.files[findFile(9)].fsSize)
+		if (xb.files[findFile(FILE_CF)].fsSize)
 		{
-			cf = findFile(9);
-			cg = findFile(10);
+			cf = findFile(FILE_CF);
+			cg = findFile(FILE_CG);
 			log_printf(1, "Writing target CG patch slot overflow data to sysupdate.xexp2\n");
 			log_printf(1, "\tat raw offset 0x%x len 0x%08x (end: 0x%08x)...", off, xb.files[cf].fsSize, off + xb.files[cf].fsSize);
 			makeTimestamp((uint8_t *)&ts, NULL);
@@ -3593,7 +3598,7 @@ int buildFlash(void)
 	b = imgSizeAligned();
 	log_printf(1, "\n------ adding smc_config.bin ------\n");
 	{
-		struct fileent *e = &xb.files[findFile(27)];
+		struct fileent *e = &xb.files[findFile(FILE_SMC_CONFIG)];
 		addSmcConfig(e->data, e->size);
 	}
 	log_printf(1, "\n------ cleaning up image ------\n");
