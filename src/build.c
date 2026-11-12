@@ -863,8 +863,10 @@ void showSmcConfig(const uint8_t *smc)
 	uint16_t game;
 	int i;
 
-	log_printf(1, "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[SMCCFG_CPU_TEMP], smc[SMCCFG_GPU_TEMP], smc[SMCCFG_EDRAM_TEMP]);
-	log_printf(1, "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n", smc[SMCCFG_OVER_CPU_TEMP], smc[SMCCFG_OVER_GPU_TEMP], smc[SMCCFG_OVER_EDRAM_TEMP]);
+	log_printf(1, "Target temps: Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n",
+		   smc[SMCCFG_CPU_TEMP], smc[SMCCFG_GPU_TEMP], smc[SMCCFG_EDRAM_TEMP]);
+	log_printf(1, "Max temps   : Cpu: %3d\370C Gpu: %3d\370C Edram: %3d\370C\n",
+		   smc[SMCCFG_OVER_CPU_TEMP], smc[SMCCFG_OVER_GPU_TEMP], smc[SMCCFG_OVER_EDRAM_TEMP]);
 	log_printf(1, "Cpu Fan     : ");
 	if (((struct fan *)(smc + SMCCFG_CPU_FAN))->override)
 	{

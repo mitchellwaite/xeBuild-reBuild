@@ -485,6 +485,19 @@ build.c, image_write.c and keys.c use their own spellings, also in
 `SWAP32_IMAGE_WRITE`, `SWAP16_KEYS`, ...); each needs both of its own
 (either alone still differs).
 
+Magic numbers are named: values several objects share (file ids, modes,
+power-on reasons, NAND geometry, the flash header's, SMC config's,
+keyvault's and bootloaders' layouts, the FS chain markers, ...) in
+`xebuild.h`, an object's interface values in its `<obj>.h`, the rest at the
+top of its `.c`. A macro with the literal's value and type changes no code,
+and neither does a constant expression of them (gcc folds
+`NAND_SIZE_64M / NAND_BLOCK` and `SWAP32_IMAGE_WRITE(FLASH_KV_ADDR)` to the
+literal), as long as the operators stay (`n <= 15` becomes
+`n <= XB_RAWPATCHES - 1`, not `n < XB_RAWPATCHES`), sums of constants are
+parenthesised (`p + (A + B)`, `b * (A * B)`), and `sizeof` (a `size_t`)
+replaces a literal only where it is converted to a parameter's type, never
+in a signed comparison or a varargs call.
+
 The files' code was matched against their own declarations, which did not
 always agree with each other. Where a file still needs another typing than the
 header's to compile to the original's code, it says so in a comment marked
