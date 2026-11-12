@@ -93,6 +93,10 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
 #define NAND_BIG_BLOCK 0x40000000	/* 64MiB big block NAND */
 #define NAND_BB_CONTROLLER 0x80000000	/* 16MiB small block NAND on a big block controller */
 
+/* system area sizes the console reports (consoleinfo.nandSize) */
+#define NAND_SIZE_MMC 0x3000000		/* 48MiB eMMC, no spare data */
+#define NAND_SIZE_BIG_BLOCK 0x4200000	/* 64MiB big block NAND with its spare data */
+
 /* xb.type: the build type (-t, or from the dump's bootstrap in
    consoleinfo.c).  BUILD_GLITCH covers glitch, glitch2 and glitch2m
    (xb.glitch2, xb.glitch2mfg); devgl and devgl16 share an ini.  Above
@@ -142,6 +146,51 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
 #define OPT_HDR_MASK (OPT_CYGNOS | OPT_NODVD | OPT_XELL_BUTTON)
 #define OPT_FREEBOOT_MASK (OPT_HDR_MASK | OPT_DEMON)
 #define OPT_SMC_PATCHES (OPT_PATCHSMC | OPT_SMCNOEJECT | OPT_SMCNOBLINK)
+
+/* ---- Power-on reasons ----
+
+   The SMC's power-on reason codes: xb.xellButton, xb.xellAltButton and
+   xb.dualButton, and the xellbutton/xellbutton2/dualboot ini names
+   (options.c), shown by logButton and optButton.  The wired controller
+   ports are named for a slim; on a fat only PWR_WIRED_B3 (rear) and the
+   front two exist. */
+#define PWR_POWER 0x11			/* power: console power button */
+#define PWR_EJECT 0x12			/* eject: console DVD eject button */
+#define PWR_IR_POWER 0x20		/* remopower: IR power button */
+#define PWR_IR_GUIDE 0x22		/* remox: IR guide/X button */
+#define PWR_IR_WINDOWS 0x24		/* winbutton: IR windows button */
+#define PWR_KIOSK 0x41			/* kiosk: KIOSK debug pin */
+#define PWR_WIRELESS 0x55		/* wirelessx: wireless controller */
+#define PWR_WIRED_F1 0x56		/* wiredxf1: front left (fat: front top) */
+#define PWR_WIRED_F2 0x57		/* wiredxf2: front right (fat: front bottom) */
+#define PWR_WIRED_B2 0x58		/* wiredxb2: rear middle (slim only) */
+#define PWR_WIRED_B1 0x59		/* wiredxb1: rear top (slim only) */
+#define PWR_WIRED_B3 0x5a		/* wiredxb3: rear bottom (fat: rear) */
+
+/* ---- Flash header option bytes ----
+
+   Bytes in the tail of the flash header's copyright field that freeboot and
+   xell read (build.c's patchHeaderOpts writes them, consoleinfo.c's
+   getFlashHdrOpts reads them back from a console). */
+#define HDR_OPTS_VALID 0x4b		/* 1: the bytes below are set */
+#define HDR_DUAL_BUTTON 0x4c		/* dualboot power-on reason (JTAG) */
+#define HDR_OPTS 0x4d			/* OPT_HDR_MASK bits */
+#define HDR_XELL_ALT_BUTTON 0x4e	/* xellbutton2 power-on reason */
+#define HDR_XELL_BUTTON 0x4f		/* xellbutton power-on reason */
+
+/* ---- Key checksums ----
+
+   sumBytes of a good key: what xeBuild checks keys from the console or
+   files against. */
+#define KEY1BL_SUM 0x983
+#define PUB1BL_SUM 0x79c7
+#define PUBPIRS_SUM 0x80d0
+#define PUBMASTER_SUM 0x843c
+
+/* ---- File ids ----
+
+   findFile's ids for xb.files entries (only the ones named so far). */
+#define FILE_FREEBOOT 22		/* USVR's freeboot_bin */
 
 /* ---- Types ---- */
 
@@ -196,6 +245,23 @@ struct flashhdr
 	uint32_t smcBootSize;
 	uint32_t smcBootAddr;
 };
+
+/* consoleinfo.version: updsvr version above the low byte, the hv patches'
+   version in it */
+#define USVR_MIN_VERSION 3		/* updsvr version xeBuild needs */
+#define PATCHES_UPDATE_VERSION 2	/* hv patches version update mode needs */
+
+/* consoleinfo.bootstrap: the console type (CONSOLE_x - 1) in the low
+   nibble, the hack type in the top bits */
+#define BOOTSTRAP_CONSOLE_MASK 0xf
+#define BOOTSTRAP_JTAG 0x80000000	/* tested as bootstrap < 0 */
+#define BOOTSTRAP_GLITCH 0x40000000
+#define BOOTSTRAP_GLITCH2 0x20000000
+#define BOOTSTRAP_GLITCH2M 0x10000000
+
+/* consoleinfo.hwFlags: the console type (CONSOLE_x - 1) in the top 4 bits */
+#define HW_CONSOLE_SHIFT 28
+#define HW_HDD 0x20			/* internal HDD present */
 
 /* what xeBuild's client (the console side) reports */
 struct consoleinfo
