@@ -157,7 +157,7 @@ void parseAddonIdx(const uint8_t *addons, int len, const uint8_t *idx, size_t id
 		off += n * 8;
 		if (ok)
 		{
-			if (xb.numPatches <= 15)
+			if (xb.numPatches <= XB_ADDON_PATCHES - 1)
 			{
 				strcpy(name, (const char *)idx + off);
 				strcat(name, ".bin");
@@ -237,11 +237,11 @@ uint32_t getMobileFiles(const char *dir)
 	strcpy(path, "usv:\\MobileB.dat");
 	for (i = 0; i < 11; i++)
 	{
-		if (i == 9)
+		if (i == MOBILE_STATISTICS)
 		{
 			strcpy(name, "Statistics.settings");
 		}
-		else if (i == 10)
+		else if (i == MOBILE_MANUFACTURING)
 		{
 			strcpy(name, "Manufacturing.data");
 		}
@@ -256,11 +256,11 @@ uint32_t getMobileFiles(const char *dir)
 			xb.mobile[i].data = netGetFile(path, &xb.mobile[i].size);
 			if (xb.mobile[i].data && xb.mobile[i].size)
 			{
-				if (i == 9)
+				if (i == MOBILE_STATISTICS)
 				{
 					xb.mobile[i].size = 1024;
 				}
-				else if (i == 10)
+				else if (i == MOBILE_MANUFACTURING)
 				{
 					xb.mobile[i].size = 128;
 				}
@@ -276,7 +276,7 @@ uint32_t getMobileFiles(const char *dir)
 			}
 		}
 	}
-	if (info->usvrFlags & 2)
+	if (info->usvrFlags & USVR_BLMOD)
 	{
 		log_printf(1, "retrieving USVR\\blmod...");
 		xb.consoleBlmod.data = netGetFile("blmod", &xb.consoleBlmod.size);
@@ -296,7 +296,7 @@ uint32_t getMobileFiles(const char *dir)
 	{
 		log_printf(1, "console has no available blmod\n");
 	}
-	if (info->usvrFlags & 4)
+	if (info->usvrFlags & USVR_ADDONS)
 	{
 		if (useConsoleAddons == 1)
 		{
@@ -314,17 +314,17 @@ uint32_t getMobileFiles(const char *dir)
 	}
 	log_printf(1, "retrieving USVR\\Static.settings (smc_config.bin)...");
 	xb.smcConfig.data = netGetFile("usv:\\Static.settings", &xb.smcConfig.size);
-	if (xb.smcConfig.data && xb.smcConfig.size > 1023)
+	if (xb.smcConfig.data && xb.smcConfig.size > SMCCFG_SIZE - 1)
 	{
 		log_printf(1, "OK, received 0x%x bytes\n        verifying...", xb.smcConfig.size);
 		if (smcConfigOk(xb.smcConfig.data))
 		{
 			ret = 1;
 			log_printf(1, "smc_config is good!\n");
-			xb.smcConfig.size = 1024;
+			xb.smcConfig.size = SMCCFG_SIZE;
 			if (dir)
 			{
-				writeFileIn(dir, "smc_config.bin", xb.smcConfig.data, 1024);
+				writeFileIn(dir, "smc_config.bin", xb.smcConfig.data, SMCCFG_SIZE);
 			}
 			return ret;
 		}
@@ -336,10 +336,10 @@ uint32_t getMobileFiles(const char *dir)
 uint8_t *bldrGetKv(int *size)
 {
 	uint8_t *bl = xb.bl.data;
-	uint32_t len = SWAP32(*(uint32_t *)(bl + 96));
+	uint32_t len = SWAP32(*(uint32_t *)(bl + offsetof(struct flashhdr, kvSize)));
 	uint8_t *kv = calloc(len, 1);
 
-	memcpy(kv, bl + SWAP32(*(uint32_t *)(bl + 108)), len);
+	memcpy(kv, bl + SWAP32(*(uint32_t *)(bl + offsetof(struct flashhdr, kvAddr))), len);
 	*size = len;
 	return kv;
 }
@@ -347,10 +347,10 @@ uint8_t *bldrGetKv(int *size)
 uint8_t *bldrGetSmc(int *size)
 {
 	uint8_t *bl = xb.bl.data;
-	uint32_t len = SWAP32(*(uint32_t *)(bl + 120));
+	uint32_t len = SWAP32(*(uint32_t *)(bl + offsetof(struct flashhdr, smcBootSize)));
 	uint8_t *smc = calloc(len, 1);
 
-	memcpy(smc, bl + SWAP32(*(uint32_t *)(bl + 124)), len);
+	memcpy(smc, bl + SWAP32(*(uint32_t *)(bl + offsetof(struct flashhdr, smcBootAddr))), len);
 	*size = len;
 	return smc;
 }
@@ -367,7 +367,7 @@ static uint32_t getSmc(const char *dir)
 		log_printf(1, "extracting BLDR\\smc_enc...");
 		xb.smc.data = bldrGetSmc(&xb.smc.size);
 	}
-	if (xb.smc.data && xb.smc.size > 0x2fff)
+	if (xb.smc.data && xb.smc.size > SMC_SIZE - 1)
 	{
 		log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.smc.size);
 		if (unscramble(xb.smc.data, xb.smc.size))
@@ -401,14 +401,14 @@ static uint32_t getKv(const char *dir)
 		log_printf(1, "extracting BLDR\\kv_enc...");
 		xb.kv.data = bldrGetKv(&xb.kv.size);
 	}
-	if (xb.kv.data && xb.kv.size > 0x3fff)
+	if (xb.kv.data && xb.kv.size > KV_SIZE - 1)
 	{
 		log_printf(1, "OK, received 0x%x bytes\n        decrypt and verify...", xb.kv.size);
 		ret = verifyExtended(xb.kv.data, xb.kv.size);
 		if (ret)
 		{
 			log_printf(1, "keyvault is good!\n");
-			setKvSalt(xb.kv.data + 16);
+			setKvSalt(xb.kv.data + KV_SALT);
 			if (dir)
 			{
 				writeFileIn(dir, "kv.bin", xb.kv.data, xb.kv.size);
@@ -729,7 +729,7 @@ int mode_update(int argc, char **argv)
 				update_usage();
 			}
 			useConsoleAddons = 0;
-			if (xb.numPatches < 16)
+			if (xb.numPatches < XB_ADDON_PATCHES)
 			{
 				strcpy(xb.addons[xb.numPatches].name, argv[i]);
 				strcat(xb.addons[xb.numPatches].name, ".bin");

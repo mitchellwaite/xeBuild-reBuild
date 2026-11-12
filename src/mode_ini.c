@@ -136,10 +136,10 @@ int iniWriteBl(void)
 		if (suGetCG(&cg, &cgLen))
 		{
 			ver = getBeU16(cf + 20);
-			cfLen = getBeU32(cf + 12);
-			cgLen = getBeU32(cg + 12);
-			memset(cf + 32, 0, 528);
-			memset(cg + 16, 0, 16);
+			cfLen = getBeU32(cf + BL_SIZE_OFFSET);
+			cgLen = getBeU32(cg + BL_SIZE_OFFSET);
+			memset(cf + BL_CF_NONCE, 0, 528);
+			memset(cg + BL_NONCE, 0, 16);
 			log_printf(0, "Attempting to output info to file %s\n\n", iniFile);
 			iniPrintf("[version]\n%d\n\n[bl]\n", ver);
 			iniPrintf("cf_%d.bin,%08x\n", ver, crc32(cf, cfLen));

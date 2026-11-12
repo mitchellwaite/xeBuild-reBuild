@@ -304,7 +304,7 @@ void getImageKv(void)
 			if (ok)
 			{
 				log_printf(1, "keyvault decrypted OK, will use if no kv.bin is provided\n");
-				setKvSalt(xb.kv.data + 16);
+				setKvSalt(xb.kv.data + KV_SALT);
 			}
 			else
 			{
@@ -335,7 +335,7 @@ void getImageKv(void)
 			if (verifyExtended(xb.kvAlt.data, xb.kvAlt.size))
 			{
 				log_printf(1, "alt KeyVault decrypted OK, will use if no kv_alt.bin is provided\n");
-				setKvAltSalt(xb.kvAlt.data + 16);
+				setKvAltSalt(xb.kvAlt.data + KV_SALT);
 			}
 			else
 			{
@@ -386,11 +386,11 @@ void getImageMobiles(void)
 	if (!isErased(xb.dump + off, RAWFILE_SIZE))
 	{
 		log_printf(1, "Statistics.settings found at offset 0x%x, size %d (0x%x) bytes\n", off, RAWFILE_SIZE, RAWFILE_SIZE);
-		xb.mobile[9].data = malloc(RAWFILE_SIZE);
-		if (xb.mobile[9].data)
+		xb.mobile[MOBILE_STATISTICS].data = malloc(RAWFILE_SIZE);
+		if (xb.mobile[MOBILE_STATISTICS].data)
 		{
-			memcpy(xb.mobile[9].data, xb.dump + off, RAWFILE_SIZE);
-			xb.mobile[9].size = RAWFILE_SIZE;
+			memcpy(xb.mobile[MOBILE_STATISTICS].data, xb.dump + off, RAWFILE_SIZE);
+			xb.mobile[MOBILE_STATISTICS].size = RAWFILE_SIZE;
 		}
 		else
 		{
@@ -401,15 +401,15 @@ void getImageMobiles(void)
 	if (!isErased(xb.dump + off, RAWFILE_SIZE))
 	{
 		log_printf(1, "Manufacturing.data found at offset 0x%x, size %d (0x%x) bytes\n", off, RAWFILE_SIZE, RAWFILE_SIZE);
-		xb.mobile[10].data = malloc(RAWFILE_SIZE);
-		if (!xb.mobile[10].data)
+		xb.mobile[MOBILE_MANUFACTURING].data = malloc(RAWFILE_SIZE);
+		if (!xb.mobile[MOBILE_MANUFACTURING].data)
 		{
 			log_printf(1, "Unable to allocate memory for Manufacturing.data 0x%x bytes\n", RAWFILE_SIZE);
 		}
 		else
 		{
-			memcpy(xb.mobile[10].data, xb.dump + off, RAWFILE_SIZE);
-			xb.mobile[10].size = RAWFILE_SIZE;
+			memcpy(xb.mobile[MOBILE_MANUFACTURING].data, xb.dump + off, RAWFILE_SIZE);
+			xb.mobile[MOBILE_MANUFACTURING].size = RAWFILE_SIZE;
 		}
 	}
 }

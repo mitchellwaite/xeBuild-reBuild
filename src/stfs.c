@@ -11,9 +11,26 @@
 
 #define LE24(p) ((p)[0] + ((p)[1] << 8) + ((p)[2] << 16))
 
+/* the package header: its size (rounded up to a block), the hash of what
+   follows from STFS_CONTENT_TYPE, the content type and title id, the top
+   hash table's hash; a system update's SUPD_MAGIC and version */
+#define STFS_HDR_HASH 0x32c
+#define STFS_HDR_SIZE 0x340
+#define STFS_CONTENT_TYPE 0x344
+#define STFS_TITLE_ID 0x360
+#define STFS_TOP_HASH 0x381
+#define STFS_SUPD 0x971a
+#define STFS_SUPD_VERSION 0x9722
+
+/* data blocks, and the hash tables' entries (a SHA-1 and 4 bytes) */
+#define STFS_BLOCK 0x1000
+#define STFS_BLOCK_SHIFT 12
+#define STFS_HASH_ENTRY 24
+#define STFS_HASHES 170			/* entries in a hash table */
+
 typedef struct
 {
-	char name[40];
+	char name[STFS_NAME];
 	uint8_t namelen:6;
 	uint8_t contig:1;
 	uint8_t dir:1;
@@ -32,15 +49,15 @@ int stfsCheckHashes(stfs_t *c, uint8_t *hdr, int verbose)
 	uint8_t *ent;
 	uint32_t blk, n = 0;
 	uint8_t *l2 = 0;
-	uint32_t off = 24;
+	uint32_t off = STFS_HASH_ENTRY;
 	int i, more = 1;
 
-	XeCryptSha(c->data + 0x344, c->hdrSize - 0x344, 0, 0, 0, 0, hash, 20);
-	if (memcmp(hdr + 0x32c, hash, 20))
+	XeCryptSha(c->data + STFS_CONTENT_TYPE, c->hdrSize - STFS_CONTENT_TYPE, 0, 0, 0, 0, hash, 20);
+	if (memcmp(hdr + STFS_HDR_HASH, hash, 20))
 	{
 		return 0;
 	}
-	blk = c->hdrSize + 0x1000;
+	blk = c->hdrSize + STFS_BLOCK;
 	ent = c->data + c->hdrSize;
 	c->fileTable = c->data + blk;
 	if (verbose)
@@ -49,26 +66,26 @@ int stfsCheckHashes(stfs_t *c, uint8_t *hdr, int verbose)
 	}
 	while (more)
 	{
-		for (i = 0; i < 170 && more; i++)
+		for (i = 0; i < STFS_HASHES && more; i++)
 		{
-			if (checkZeros(ent, 24))
+			if (checkZeros(ent, STFS_HASH_ENTRY))
 			{
 				more = 0;
 			}
 			else
 			{
-				XeCryptSha(c->data + blk, 0x1000, 0, 0, 0, 0, hash, 20);
+				XeCryptSha(c->data + blk, STFS_BLOCK, 0, 0, 0, 0, hash, 20);
 				if (memcmp(hash, ent, 20))
 				{
 					return 0;
 				}
 				c->blocks[n] = blk;
 				n++;
-				blk += 0x1000;
-				ent += 24;
+				blk += STFS_BLOCK;
+				ent += STFS_HASH_ENTRY;
 			}
 		}
-		if (blk + 0x2000 >= c->size)
+		if (blk + 2 * STFS_BLOCK >= c->size)
 		{
 			more = 0;
 		}
@@ -77,30 +94,30 @@ int stfsCheckHashes(stfs_t *c, uint8_t *hdr, int verbose)
 			ent = c->data + blk;
 			if (*(uint32_t *)(ent + 20) == 0)
 			{
-				XeCryptSha(ent, 0x1000, 0, 0, 0, 0, hash, 20);
-				if (memcmp(hdr + 0x381, hash, 20))
+				XeCryptSha(ent, STFS_BLOCK, 0, 0, 0, 0, hash, 20);
+				if (memcmp(hdr + STFS_TOP_HASH, hash, 20))
 				{
 					return 0;
 				}
-				XeCryptSha(c->data + c->hdrSize, 0x1000, 0, 0, 0, 0, hash, 20);
+				XeCryptSha(c->data + c->hdrSize, STFS_BLOCK, 0, 0, 0, 0, hash, 20);
 				if (memcmp(hash, ent, 20))
 				{
 					return 0;
 				}
 				l2 = ent;
-				blk += 0x1000;
+				blk += STFS_BLOCK;
 				ent = c->data + blk;
 			}
 			if (l2)
 			{
-				XeCryptSha(ent, 0x1000, 0, 0, 0, 0, hash, 20);
+				XeCryptSha(ent, STFS_BLOCK, 0, 0, 0, 0, hash, 20);
 				if (memcmp(hash, l2 + off, 20))
 				{
 					return 0;
 				}
 			}
-			blk += 0x1000;
-			off += 24;
+			blk += STFS_BLOCK;
+			off += STFS_HASH_ENTRY;
 		}
 	}
 	if (verbose)
@@ -117,16 +134,16 @@ void stfsListFiles(stfs_t *c)
 
 	while (!done)
 	{
-		if (checkZeros(c->fileTable + i * 64, 64))
+		if (checkZeros(c->fileTable + i * STFS_ENTRY, STFS_ENTRY))
 		{
 			done = 1;
 		}
 		else
 		{
-			e = (stfsEnt *)(c->fileTable + i * 64);
+			e = (stfsEnt *)(c->fileTable + i * STFS_ENTRY);
 			log_printf(1, "name: %s vb: 0x%x ab: 0x%x fb: 0x%x (off 0x%x) size 0x%x\n",
 				e->name, LE24(e->vb), LE24(e->ab), LE24(e->fb), c->blocks[LE24(e->fb)], SWAP32(e->size));
-			e = (stfsEnt *)(c->fileTable + i * 64);
+			e = (stfsEnt *)(c->fileTable + i * STFS_ENTRY);
 			log_printf(1, "\tfnamelen: %d cont: %d dir: %d idx: 0x%x\n",
 				e->namelen, e->contig, e->dir, SWAP16(e->idx));
 			i++;
@@ -139,25 +156,25 @@ int stfsCheckHeader(stfs_t *c, uint32_t magic, uint32_t id1, uint32_t id2, uint8
 	uint8_t *hdr = c->data;
 	uint32_t ver;
 
-	c->hdrSize = (SWAP32(*(uint32_t *)(hdr + 0x340)) + 0xfff) & ~0xfff;
-	if (id1 && id1 != SWAP32(*(uint32_t *)(hdr + 0x344)))
+	c->hdrSize = (SWAP32(*(uint32_t *)(hdr + STFS_HDR_SIZE)) + (STFS_BLOCK - 1)) & ~(STFS_BLOCK - 1);
+	if (id1 && id1 != SWAP32(*(uint32_t *)(hdr + STFS_CONTENT_TYPE)))
 	{
 		return 0;
 	}
-	if (id2 && id2 != SWAP32(*(uint32_t *)(hdr + 0x360)))
+	if (id2 && id2 != SWAP32(*(uint32_t *)(hdr + STFS_TITLE_ID)))
 	{
 		return 0;
 	}
-	if (magic && magic != SWAP32(*(uint32_t *)(hdr + 0x971a)))
+	if (magic && magic != SWAP32(*(uint32_t *)(hdr + STFS_SUPD)))
 	{
 		return 0;
 	}
 	ver = 0;
-	if (SWAP32(*(uint32_t *)(hdr + 0x971a)) == 0x53555044)
+	if (SWAP32(*(uint32_t *)(hdr + STFS_SUPD)) == SUPD_MAGIC)
 	{
-		ver = SWAP32(*(uint32_t *)(hdr + 0x9722));
+		ver = SWAP32(*(uint32_t *)(hdr + STFS_SUPD_VERSION));
 	}
-	c->blocks = malloc((c->size >> 12) * 4 + 4);
+	c->blocks = malloc((c->size >> STFS_BLOCK_SHIFT) * 4 + 4);
 	if (!c->blocks)
 	{
 		return 0;
@@ -176,7 +193,7 @@ int stfsCheckHeader(stfs_t *c, uint32_t magic, uint32_t id1, uint32_t id2, uint8
 	}
 	if (manifestHash && !checkZeros(manifestHash, 20))
 	{
-		if (memcmp(hdr + 0x32c, manifestHash, 20))
+		if (memcmp(hdr + STFS_HDR_HASH, manifestHash, 20))
 		{
 			log_printf(1, "manifest hash does not match container header!\n");
 			return 0;
@@ -202,16 +219,16 @@ int stfsGetFile(stfs_t *c, const char *name, uint8_t **out, uint32_t *len)
 
 	while (!done)
 	{
-		if (checkZeros(c->fileTable + i * 64, 64))
+		if (checkZeros(c->fileTable + i * STFS_ENTRY, STFS_ENTRY))
 		{
 			done = 1;
 		}
-		else if (!stricmp(name, (char *)(c->fileTable + i * 64)))
+		else if (!stricmp(name, (char *)(c->fileTable + i * STFS_ENTRY)))
 		{
-			e = (stfsEnt *)(c->fileTable + i * 64);
+			e = (stfsEnt *)(c->fileTable + i * STFS_ENTRY);
 			if (e->contig)
 			{
-				buf = malloc((SWAP32(e->size) + 0xfff) & ~0xfff);
+				buf = malloc((SWAP32(e->size) + (STFS_BLOCK - 1)) & ~(STFS_BLOCK - 1));
 				if (buf)
 				{
 					goto found;
@@ -231,7 +248,7 @@ found:
 	for (j = 0; j < n; j++)
 	{
 		uint32_t off = c->blocks[j + fb];
-		memcpy(buf + j * 0x1000, c->data + off, 0x1000);
+		memcpy(buf + j * STFS_BLOCK, c->data + off, STFS_BLOCK);
 	}
 	*out = buf;
 	*len = SWAP32(e->size);

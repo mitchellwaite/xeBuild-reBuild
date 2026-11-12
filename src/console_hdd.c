@@ -15,6 +15,17 @@
 
 #define SYSEX "SSEP"
 
+/* system.manifest's magic, revisions and schema; its size limits; and
+   mfEntry.type */
+#define MF_MAGIC 0x584D4E50		/* "XMNP" */
+#define MF_REVISION_XSYM 0x7873796D	/* "xsym" */
+#define MF_REVISION_XONM 0x786F6E6D	/* "xonm" */
+#define MF_SCHEMA 3
+#define MF_SIZE_MIN 0x164
+#define MF_SIZE_MAX 0x10000
+#define MF_STFS 2			/* an STFS package */
+#define MF_FILE 3
+
 /* system.manifest, big endian */
 struct mfEntry
 {
@@ -23,7 +34,7 @@ struct mfEntry
 	uint32_t size;		/* 08 */
 	uint32_t idOff;		/* 0c title id */
 	uint32_t f10, f14;
-	uint32_t type;		/* 18 2: stfs package, 3: file */
+	uint32_t type;		/* 18 MF_STFS or MF_FILE */
 	uint32_t f1c;
 	uint32_t pathOff;	/* 20 file name */
 	uint8_t stfsHash[20];	/* 24 */
@@ -116,24 +127,24 @@ int checkManifestHeader(struct mfFile *m)
 	uint8_t hash[20];
 	int ret;
 
-	if (SWAP32(m->hdr.schema) != 3)
+	if (SWAP32(m->hdr.schema) != MF_SCHEMA)
 	{
 		log_printf(1, "manifest schema != 3!\n");
 		return 0;
 	}
 	v = SWAP32(m->hdr.revision);
-	if (v != 0x7873796D && v != 0x786F6E6D)
+	if (v != MF_REVISION_XSYM && v != MF_REVISION_XONM)
 	{
 		log_printf(1, "manifest revision 0x%08x != 0x786F6E6D|0x7873796D!\n", v);
 		return 0;
 	}
 	v = SWAP32(m->magic);
-	if (v != 0x584D4E50)
+	if (v != MF_MAGIC)
 	{
 		log_printf(1, "manifest magic 0x%08x != 0x584D4E50!\n", v);
 		return 0;
 	}
-	XeCryptSha((uint8_t *)m + 0x138, SWAP32(m->hdr.len), 0, 0, 0, 0, hash, 20);
+	XeCryptSha((uint8_t *)m + offsetof(struct mfFile, hdr), SWAP32(m->hdr.len), 0, 0, 0, 0, hash, 20);
 	ret = 1;
 	if (memcmp(hash, m->sha, 20))
 	{
@@ -259,7 +270,7 @@ void parseManifestEntries(const char *dir, struct mfHeader *h, uint32_t len, uin
 			readManifestString((uint8_t *)h + SWAP32(e->pathOff), name);
 			switch (SWAP32(e->type))
 			{
-			case 2:
+			case MF_STFS:
 				consoleManifest.e[consoleManifest.count].data = loadStfsChecked(path, SWAP32(e->size), e->stfsHash);
 				if (consoleManifest.e[consoleManifest.count].data)
 				{
@@ -270,7 +281,7 @@ void parseManifestEntries(const char *dir, struct mfHeader *h, uint32_t len, uin
 					consoleManifest.count++;
 				}
 				break;
-			case 3:
+			case MF_FILE:
 				consoleManifest.e[consoleManifest.count].data = loadFileChecked(path, SWAP32(e->size), e->sha);
 				if (consoleManifest.e[consoleManifest.count].data)
 				{
@@ -293,7 +304,7 @@ void parseManifestEntries(const char *dir, struct mfHeader *h, uint32_t len, uin
 
 uint32_t parseManifest(const char *dir, struct mfFile *m, uint32_t len, int ver)
 {
-	if (len < 0x164 || len > 0x10000)
+	if (len < MF_SIZE_MIN || len > MF_SIZE_MAX)
 	{
 		log_printf(1, "manifest size error! len 0x%x\n", len);
 		return 0;
@@ -308,7 +319,7 @@ uint32_t parseManifest(const char *dir, struct mfFile *m, uint32_t len, int ver)
 			log_printf(0, "\n\n***** ERROR: this system extended data is not the correct version!\n");
 			return 0;
 		}
-		parseManifestEntries(dir, &m->hdr, len - 0x138, ver);
+		parseManifestEntries(dir, &m->hdr, len - offsetof(struct mfFile, hdr), ver);
 		if (errCount)
 		{
 			log_printf(0, "\n\n***** ERROR: loading manifest content encountered problems!\n");

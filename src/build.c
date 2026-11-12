@@ -1426,17 +1426,17 @@ int verifyBlSigs(void)
 			sb = findFile(FILE_SB);
 			if (sb)
 			{
-				salt = e->type == FILE_SC ? xb.files[sb].data + 904 : xb.files[sb].data + 914;
-				if (blVerifySig(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), salt))
+				salt = e->type == FILE_SC ? xb.files[sb].data + SB_SC_SALT : xb.files[sb].data + SB_SD_SALT;
+				if (blVerifySig(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + SB_PUBKEY), salt))
 				{
 					log_printf(1, "%s signature is good\n", e->name);
 				}
 				else if (xb.prvKey)
 				{
-					if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
+					if (!memcmp(xb.prvKey, xb.files[sb].data + SB_PUBKEY, sizeof(XECRYPT_RSAPUB_2048)))
 					{
 						log_printf(0, "%s failed signature check, attempting to resign\n", e->name);
-						if (!blSign(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, salt))
+						if (!blSign(e->data, e->size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + SB_PUBKEY), xb.prvKey, salt))
 						{
 							log_printf(0, "\n***** ERROR: failed to resign %s!\n", e->name);
 							ok = 0;
@@ -1465,17 +1465,17 @@ int verifyBlSigs(void)
 			sd = findFile(FILE_SD);
 			if (sd)
 			{
-				if (!blCheckHash(e->data, e->size, xb.files[sd].data + 588))
+				if (!blCheckHash(e->data, e->size, xb.files[sd].data + SD_SE_HASH))
 				{
 					if (xb.prvKey)
 					{
 						sb = findFile(FILE_SB);
-						if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
+						if (!memcmp(xb.prvKey, xb.files[sb].data + SB_PUBKEY, sizeof(XECRYPT_RSAPUB_2048)))
 						{
 							log_printf(0, "%s failed hash check, attempting to correct SE and resign\n", e->name);
 							if (!blHashAndSign(e->data, e->size, xb.files[sd].data, xb.files[sd].size,
-									   xb.files[sd].data + 588,
-									   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey))
+									   xb.files[sd].data + SD_SE_HASH,
+									   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + SB_PUBKEY), xb.prvKey))
 							{
 								log_printf(0, "\n***** ERROR: failed to resign SE to correct %s hash!\n", e->name);
 							}
@@ -2184,16 +2184,16 @@ int patchBlsResign(void)
 	if (sb)
 	{
 		log_printf(1, "Checking patched CD signature...");
-		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616),
-				 xb.files[sb].data + 914))
+		if (!blVerifySig(xb.files[cd].data, xb.files[cd].size, (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + SB_PUBKEY),
+				 xb.files[sb].data + SB_SD_SALT))
 		{
 			if (xb.prvKey)
 			{
-				if (!memcmp(xb.prvKey, xb.files[sb].data + 616, 0x110))
+				if (!memcmp(xb.prvKey, xb.files[sb].data + SB_PUBKEY, sizeof(XECRYPT_RSAPUB_2048)))
 				{
 					log_printf(0, "%s failed signature check, attempting to resign\n", xb.files[cd].name);
 					if (!blSign(xb.files[cd].data, xb.files[cd].size,
-						   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + 616), xb.prvKey, xb.files[sb].data + 914))
+						   (XECRYPT_RSAPUB_2048 *)(xb.files[sb].data + SB_PUBKEY), xb.prvKey, xb.files[sb].data + SB_SD_SALT))
 					{
 						log_printf(0, "\n***** ERROR: failed to resign %s!\n", xb.files[cd].name);
 					}
@@ -2816,7 +2816,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				break;
 			case FILE_CB:
 				j = findFile(FILE_FUSES);
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
+				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
 				cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				break;
 			case FILE_CD:
@@ -2832,7 +2832,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case FILE_JTAG_CB:
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				cbaEncrypt2(salt, e->data, e->key, e->size, 1);
 				break;
 			case FILE_JTAG_CD:
@@ -2905,18 +2905,18 @@ int encodeBls(uint8_t *salt, int ldv)
 					j = findFile(FILE_FUSES);
 					if IS_SLIM
 					{
-						showExpectedFuses(0x3000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+						showExpectedFuses(FUSE_TYPE_SLIM << 24, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 					}
 					else
 					{
-						showExpectedFuses(0x1000000, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+						showExpectedFuses(FUSE_TYPE_RETAIL << 24, getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 					}
 					log_printf(1, "zeropairing SB\n");
 					setFuseCpuKey(xb.files[j].data);
 					cbaEncryptZero(e->data, e->key, e->size);
 					break;
 				}
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (checkZeros(xb.cpuKey, 16))
 				{
 					log_printf(1, "CPU key is all zeros, zeropairing SB\n");
@@ -2979,7 +2979,7 @@ int encodeBls(uint8_t *salt, int ldv)
 					cbaEncrypt(salt, e->data, e->key, e->size, 1);
 					break;
 				}
-				showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (xb.type != BUILD_RETAIL)
 				{
 					cbaEncryptZero(e->data, e->key, e->size);
@@ -2998,11 +2998,11 @@ int encodeBls(uint8_t *salt, int ldv)
 				j = findFile(FILE_FUSES);
 				if (xb.glitch2mfg)
 				{
-					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
+					showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
 				}
 				else
 				{
-					showExpectedFuses(getBeU32(e->data + 944), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+					showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				}
 				if (zero)
 				{

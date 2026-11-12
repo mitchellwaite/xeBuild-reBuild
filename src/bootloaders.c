@@ -14,7 +14,7 @@
 #include "xboxrom.h"
 
 #define BL_MAGIC(p, c) (((p)[0] & 0x43) == 0x43 && (p)[1] == (c))
-#define BL_SIZE(p) ((getBeU32((p) + 12) + 15) & ~15)
+#define BL_SIZE(p) ((getBeU32((p) + BL_SIZE_OFFSET) + 15) & ~15)
 
 uint32_t verifyExtended(uint8_t *buf, uint32_t size)
 {
@@ -56,11 +56,11 @@ uint32_t cbGetPairing(uint8_t *cb)
 		len = BL_SIZE(cb);
 		buf = malloc(len);
 		memcpy(buf, cb, len);
-		XeCryptHmacSha(xb.key1bl, 16, cb + 16, 16, 0, 0, 0, 0, key, 16);
-		XeCryptRc4(key, 16, buf + 32, len - 32);
+		XeCryptHmacSha(xb.key1bl, 16, cb + BL_NONCE, 16, 0, 0, 0, 0, key, 16);
+		XeCryptRc4(key, 16, buf + BL_BODY, len - BL_BODY);
 		if (checkZeros(buf + 0x270, 0x120))
 		{
-			pairing = getBeU32(buf + 32) & 0xffffff00;
+			pairing = getBeU32(buf + CB_PAIRING) & 0xffffff00;
 			log_printf(1, "CB decrypted OK, pairing bytes extracted as: 0x%08x\n", pairing);
 		}
 		else
@@ -82,11 +82,11 @@ uint32_t cfGetPairing(uint8_t *cf, uint32_t size)
 		len = BL_SIZE(cf);
 		if (size >= len)
 		{
-			XeCryptHmacSha(xb.key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
-			XeCryptRc4(key, 16, cf + 48, len - 48);
+			XeCryptHmacSha(xb.key1bl, 16, cf + BL_CF_NONCE, 16, 0, 0, 0, 0, key, 16);
+			XeCryptRc4(key, 16, cf + BL_CF_BODY, len - BL_CF_BODY);
 			if (checkZeros(cf + 496, 32))
 			{
-				return getBeU32(cf + 540);
+				return getBeU32(cf + CF_PAIRING);
 			}
 		}
 		return 0;
@@ -142,8 +142,8 @@ int cfDecrypt(uint8_t *cf, uint32_t size)
 		{
 			uint8_t key[16];
 
-			XeCryptHmacSha(xb.key1bl, 16, cf + 32, 16, 0, 0, 0, 0, key, 16);
-			XeCryptRc4(key, 16, cf + 48, len - 48);
+			XeCryptHmacSha(xb.key1bl, 16, cf + BL_CF_NONCE, 16, 0, 0, 0, 0, key, 16);
+			XeCryptRc4(key, 16, cf + BL_CF_BODY, len - BL_CF_BODY);
 			if (checkZeros(cf + 496, 32))
 			{
 				return 1;
@@ -157,8 +157,8 @@ int cgDecrypt(uint8_t *cg, uint8_t *cfKey, uint32_t size)
 {
 	uint8_t key[16];
 
-	XeCryptHmacSha(cfKey, 16, cg + 16, 16, 0, 0, 0, 0, key, 16);
-	XeCryptRc4(key, 16, cg + 32, size - 32);
+	XeCryptHmacSha(cfKey, 16, cg + BL_NONCE, 16, 0, 0, 0, 0, key, 16);
+	XeCryptRc4(key, 16, cg + BL_BODY, size - BL_BODY);
 	return getBeU32(cg + 32) == 0x120000;
 }
 
@@ -344,13 +344,13 @@ int verifyFcrt(uint8_t *fcrt, uint32_t size)
 
 	fcrtVerifySig(fcrt);
 	memcpy(iv, fcrt + 256, 16);
-	if (size != 0x4000)
+	if (size != FCRT_SIZE)
 	{
 		log_printf(1, "**** ERROR: FCRT decrypt invalid size!\n");
 		return 0;
 	}
 	off = getBeU32(fcrt + 284);
-	if (off >= 0x4000)
+	if (off >= FCRT_SIZE)
 	{
 		log_printf(1, "**** ERROR: FCRT decrypt invalid offset!\n");
 		return 0;
@@ -396,8 +396,8 @@ uint8_t *cbDecrypt(uint8_t *cb, uint32_t *outLen, uint8_t *outKey)
 			if (buf)
 			{
 				memcpy(buf, cb, len);
-				XeCryptHmacSha(xb.key1bl, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
-				XeCryptRc4(key, 16, buf + 32, len - 32);
+				XeCryptHmacSha(xb.key1bl, 16, buf + BL_NONCE, 16, 0, 0, 0, 0, key, 16);
+				XeCryptRc4(key, 16, buf + BL_BODY, len - BL_BODY);
 				if (outKey)
 				{
 					memcpy(outKey, key, 16);
@@ -461,8 +461,8 @@ uint8_t *cdDecrypt(uint8_t *bl, XECRYPT_RSAPUB_2048 *pubKey, const uint8_t *salt
 			if (buf)
 			{
 				memcpy(buf, bl, len);
-				XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
-				XeCryptRc4(key, 16, buf + 32, len - 32);
+				XeCryptHmacSha(hmacKey, 16, buf + BL_NONCE, 16, 0, 0, 0, 0, key, 16);
+				XeCryptRc4(key, 16, buf + BL_BODY, len - BL_BODY);
 				if (outKey)
 				{
 					memcpy(outKey, key, 16);
@@ -524,8 +524,8 @@ uint8_t *ceDecrypt(uint8_t *bl, uint32_t *outLen, const uint8_t *hmacKey, const 
 			if (buf)
 			{
 				memcpy(buf, bl, len);
-				XeCryptHmacSha(hmacKey, 16, buf + 16, 16, 0, 0, 0, 0, key, 16);
-				XeCryptRc4(key, 16, buf + 32, len - 32);
+				XeCryptHmacSha(hmacKey, 16, buf + BL_NONCE, 16, 0, 0, 0, 0, key, 16);
+				XeCryptRc4(key, 16, buf + BL_BODY, len - BL_BODY);
 				if (hash)
 				{
 					if (blCheckHash(buf, len, hash))

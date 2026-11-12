@@ -71,6 +71,12 @@ static int WSAStringToAddressA(char *str, int family, void *proto, struct sockad
 #define BEACON_MAGIC	0x4e537672	/* "NSvr" */
 #define OK_REPLY	0x4f4b	/* "OK" */
 
+#define BEACON_PORT 48			/* UDP: the console server's beacon */
+#define SERVER_PORT 49			/* TCP: the console server */
+#define BEACON_TIMEOUT 30		/* seconds to wait for the beacon */
+#define RECV_TIMEOUT 15			/* seconds to wait for a reply */
+#define SEND_CHUNK 1452			/* the most bytes a send() sends */
+
 /* not static: as a public variable *len may alias it, so sched2 keeps
    netRecv's `*len = 0` after the netSock load (anti-dependence) */
 SOCKET netSock = INVALID_SOCKET;
@@ -114,7 +120,7 @@ uint32_t netFindBeacon(void)
 	}
 	memset(&sa, 0, sizeof sa);
 	sa.sin_family = AF_INET;
-	sa.sin_port = htons(48);
+	sa.sin_port = htons(BEACON_PORT);
 	sa.sin_addr.s_addr = INADDR_ANY;
 	if (bind(s, (struct sockaddr *)&sa, sizeof sa) == SOCKET_ERROR)
 	{
@@ -128,7 +134,7 @@ uint32_t netFindBeacon(void)
 		fromLen = sizeof from;
 		FD_ZERO(&fds);
 		FD_SET(s, &fds);
-		tv.tv_sec = 30;
+		tv.tv_sec = BEACON_TIMEOUT;
 		tv.tv_usec = 0;
 		r = netSelect(s, &fds, &tv);
 		if (r == SOCKET_ERROR)
@@ -203,7 +209,7 @@ uint8_t *netRecvVerbose(int *len, uint32_t verbose)
 	int size, got, r;
 	int status = 1;
 
-	tv.tv_sec = 15;
+	tv.tv_sec = RECV_TIMEOUT;
 	tv.tv_usec = 0;
 	FD_ZERO(&fds);
 	FD_SET(netSock, &fds);
@@ -318,10 +324,10 @@ int netSendData(const uint8_t *buf, uint32_t len, int verbose)
 		return 0;
 	}
 	sent = 0;
-	chunk = 1452;
+	chunk = SEND_CHUNK;
 	while (sent < len)
 	{
-		if (len - sent < 1452)
+		if (len - sent < SEND_CHUNK)
 		{
 			chunk = len - sent;
 		}
@@ -378,7 +384,7 @@ int netOpenSocket(uint32_t addr)
 		return 0;
 	}
 	sa.sin_family = AF_INET;
-	sa.sin_port = htons(49);
+	sa.sin_port = htons(SERVER_PORT);
 	sa.sin_addr.s_addr = addr;
 	if (connect(netSock, (struct sockaddr *)&sa, sizeof sa) < 0)
 	{
@@ -456,7 +462,7 @@ uint32_t netConnect(const char *ip)
 				if (netSock != INVALID_SOCKET)
 				{
 					server.sin_family = AF_INET;
-					server.sin_port = htons(49);
+					server.sin_port = htons(SERVER_PORT);
 					server.sin_addr.s_addr = addr;
 					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0)
 					{
@@ -503,7 +509,7 @@ uint32_t netConnect(const char *ip)
 				if (netSock != INVALID_SOCKET)
 				{
 					server.sin_family = AF_INET;
-					server.sin_port = htons(49);
+					server.sin_port = htons(SERVER_PORT);
 					server.sin_addr.s_addr = addr;
 					if (connect(netSock, (struct sockaddr *)&server, sizeof server) >= 0)
 					{

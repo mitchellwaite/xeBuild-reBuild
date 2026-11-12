@@ -9,6 +9,11 @@
 #include "stfs.h"
 #include "sysupdate.h"
 
+/* the system update package's STFS content type (installer) and title id
+   (the dashboard's) */
+#define SU_CONTENT_TYPE 0xb0000
+#define SU_TITLE_ID 0xfffe07d1
+
 static char suPath[1024];
 static char suDir[1024];
 static stfs_t su;
@@ -56,7 +61,7 @@ void suExtractBl(void)
 		log_printf(1, "extracted SUPD/xboxupd.bin (0x%x bytes)\n", len);
 		magic = getBeU16(data);
 		ver = getBeU16(data + 2);
-		size = getBeU32(data + 12);
+		size = getBeU32(data + BL_SIZE_OFFSET);
 		cfLen = (size + 15) & ~15;
 		if (magic == BL_MAGIC_CF)
 		{
@@ -70,7 +75,7 @@ void suExtractBl(void)
 					log_printf(1, "done!\n");
 					magic = getBeU16(data + size);
 					ver = getBeU16(data + size + 2);
-					cgSize = getBeU32(data + size + 12);
+					cgSize = getBeU32(data + size + BL_SIZE_OFFSET);
 					cgLen = (cgSize + 15) & ~15;
 					if (magic == BL_MAGIC_CG)
 					{
@@ -79,7 +84,7 @@ void suExtractBl(void)
 						{
 							memcpy(cg, data + size, cgSize);
 							log_printf(1, "decrypting SUPD/xboxupd.bin/%c%c_%d.bin (0x%x bytes)...", data[size], data[size + 1], ver, cgSize);
-							if (cgDecrypt(cg, cf + 0x330, cgSize))
+							if (cgDecrypt(cg, cf + CF_CG_KEY, cgSize))
 							{
 								log_printf(1, "done!\n");
 								return;
@@ -108,7 +113,7 @@ uint32_t suGetCF(uint8_t **data, uint32_t *len)
 	{
 		return 0;
 	}
-	log_printf(1, "extracted SUPD/xboxupd.bin/%c%c_%d.bin (0x%x bytes)\n", cf[0], cf[1], getBeU16(cf + 2), getBeU32(cf + 12));
+	log_printf(1, "extracted SUPD/xboxupd.bin/%c%c_%d.bin (0x%x bytes)\n", cf[0], cf[1], getBeU16(cf + 2), getBeU32(cf + BL_SIZE_OFFSET));
 	*data = cf;
 	cf = 0;
 	*len = cfLen;
@@ -121,7 +126,7 @@ uint32_t suGetCG(uint8_t **data, uint32_t *len)
 	{
 		return 0;
 	}
-	log_printf(1, "extracted SUPD/xboxupd.bin/%c%c_%d.bin (0x%x bytes)\n", cg[0], cg[1], getBeU16(cg + 2), getBeU32(cg + 12));
+	log_printf(1, "extracted SUPD/xboxupd.bin/%c%c_%d.bin (0x%x bytes)\n", cg[0], cg[1], getBeU16(cg + 2), getBeU32(cg + BL_SIZE_OFFSET));
 	*data = cg;
 	cg = 0;
 	*len = cgLen;
@@ -150,13 +155,13 @@ int suNextFile(char *name, int *idx)
 	{
 		return 0;
 	}
-	if (checkZeros(su.fileTable + *idx * 64, 64))
+	if (checkZeros(su.fileTable + *idx * STFS_ENTRY, STFS_ENTRY))
 	{
 		*idx = -1;
 		return 0;
 	}
-	memcpy(name, su.fileTable + *idx * 64, 40);
-	*(uint32_t *)(name + 40) = SWAP32(*(uint32_t *)(su.fileTable + *idx * 64 + 52));
+	memcpy(name, su.fileTable + *idx * STFS_ENTRY, STFS_NAME);
+	*(uint32_t *)(name + STFS_NAME) = SWAP32(*(uint32_t *)(su.fileTable + *idx * STFS_ENTRY + STFS_ENTRY_SIZE_OFF));
 	(*idx)++;
 	return 1;
 }
@@ -192,7 +197,7 @@ int suLoadDir(const char *dir)
 	if (found)
 	{
 		stfsInit(&su);
-		if (stfsLoad(&su, suPath, 0x53555044, 0xb0000, 0xfffe07d1, 0, 1))
+		if (stfsLoad(&su, suPath, SUPD_MAGIC, SU_CONTENT_TYPE, SU_TITLE_ID, 0, 1))
 		{
 			suLoaded = 1;
 			suExtractBl();
@@ -251,7 +256,7 @@ uint32_t suLoad(const char *path)
 		log_printf(0, "\n------ loading system update container ------\n");
 		log_printf(0, "SU container found! Loading '%s'\n", suPath);
 		stfsInit(&su);
-		if (stfsLoad(&su, suPath, 0x53555044, 0xb0000, 0xfffe07d1, 0, 1))
+		if (stfsLoad(&su, suPath, SUPD_MAGIC, SU_CONTENT_TYPE, SU_TITLE_ID, 0, 1))
 		{
 			suLoaded = 1;
 			suExtractBl();

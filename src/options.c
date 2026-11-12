@@ -866,10 +866,10 @@ uint32_t parseOption(char *opt)
 		if (!stricmp(opt, "cfldv"))
 		{
 			xb.cfLdv = myatou32(val, 0);
-			if (xb.cfLdv > 32)
+			if (xb.cfLdv > CF_LDV_MAX)
 			{
 				log_printf(0, "***** WARNING: cfldv value %d on command line is too large, setting to max value of 32\n", xb.cfLdv);
-				xb.cfLdv = 32;
+				xb.cfLdv = CF_LDV_MAX;
 			}
 			else if (!xb.cfLdv)
 			{
@@ -972,10 +972,10 @@ void applyIniOptions(void)
 	if (!xb.cfLdv)
 	{
 		xb.cfLdv = optIniInt("cfldv", 0);
-		if (xb.cfLdv > 32)
+		if (xb.cfLdv > CF_LDV_MAX)
 		{
 			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of 32\n", xb.cfLdv);
-			xb.cfLdv = 32;
+			xb.cfLdv = CF_LDV_MAX;
 		}
 	}
 	if (xb.smcOpts.cpuFan == -1)
@@ -1136,7 +1136,7 @@ int parseRawPatch(char *pat)
 	if (len != strlen(pat))
 	{
 		n = xb.nRawPatches;
-		if (n <= 15)
+		if (n <= XB_RAWPATCHES - 1)
 		{
 			strcpy(xb.rawPatch[xb.nRawPatches].name, pat);
 			n = xb.nRawPatches;
@@ -1151,7 +1151,7 @@ int parseRawPatch(char *pat)
 			log_printf(0, "***** ERROR: [rawpatch] command option '%s' does not appear to have sane offset info!\n", pat);
 			return 0;
 		}
-		log_printf(0, "***** ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, 16, pat);
+		log_printf(0, "***** ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, XB_RAWPATCHES, pat);
 		return 0;
 	}
 	log_printf(0, "***** ERROR: parsing optional patch string '%s' failed!\n", pat);
@@ -1192,7 +1192,7 @@ void addPatch(const char *name)
 {
 	int i;
 
-	if (xb.numPatches <= 15)
+	if (xb.numPatches <= XB_ADDON_PATCHES - 1)
 	{
 		char path[1024];
 

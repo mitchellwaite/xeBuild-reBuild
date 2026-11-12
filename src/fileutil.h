@@ -42,6 +42,11 @@ int FileExistsIn(const char *dir, const char *name);
 void *FileToBuffer(const char *name, size_t *psize);
 unsigned int calcConfigSum(const unsigned char *p);
 unsigned int sumBytes(const unsigned char *p, unsigned int len);
+/* CB_FUSE_FLAGS' fuse type: fuseset 01's pattern */
+#define FUSE_TYPE_DEVKIT 0
+#define FUSE_TYPE_RETAIL 1
+#define FUSE_TYPE_TESTKIT 2
+#define FUSE_TYPE_SLIM 3		/* retail slim */
 void showExpectedFuses(unsigned int flags, unsigned short cb,
 	unsigned char *fuses, int clear);
 void showFuses(int level, const char *title, const unsigned char *fuses);

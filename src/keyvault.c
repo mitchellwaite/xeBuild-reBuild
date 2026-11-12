@@ -18,7 +18,7 @@
 #define KV_SERIAL_FORMAT "%011" PRIu64 "%X"
 #endif
 
-static uint8_t kvBuf[0x4000];
+static uint8_t kvBuf[KV_SIZE];
 static uint8_t dvdKey[16];
 static uint8_t *kv;
 static uint32_t kvLoaded;
@@ -51,7 +51,7 @@ int kvCheckHash(void)
 	}
 	for (i = 0; i < 16; i++)
 	{
-		v = getBeU32(kv + 0x1df8 + i * 4);
+		v = getBeU32(kv + KV_SIGNATURE + i * 4);
 		if (v != 0 && v != 0xffffffff)
 		{
 			if (!xb.masterPub)
@@ -77,7 +77,7 @@ int kvCheckHash(void)
 
 void kvSet(uint8_t *buf)
 {
-	memcpy(kvBuf, buf, 0x4000);
+	memcpy(kvBuf, buf, KV_SIZE);
 	kvLoaded = 1;
 	kv = kvBuf;
 	log_printf(1, "decrypted keyvault has been set for reference\n");
@@ -85,8 +85,8 @@ void kvSet(uint8_t *buf)
 	{
 		if (xb.type != BUILD_RETAIL)
 		{
-			memcpy(buf + 0x100, dvdKey, 16);
-			memcpy(kv + 0x100, dvdKey, 16);
+			memcpy(buf + KV_DVD_KEY, dvdKey, 16);
+			memcpy(kv + KV_DVD_KEY, dvdKey, 16);
 			log_printf(1, "dvd key patched into keyvault\n");
 		}
 		else
@@ -106,7 +106,7 @@ int kvGetGameRegion(void)
 	{
 		return 0;
 	}
-	x = *(uint16_t *)(kv + 0x1c);
+	x = *(uint16_t *)(kv + KV_ODD_FEATURES);
 	f = ((x & 0xff) << 8) + (x >> 8);
 	if (f)
 	{
@@ -128,7 +128,7 @@ uint8_t *kvGetDvdKey(void)
 	{
 		return 0;
 	}
-	return kv + 0x100;
+	return kv + KV_DVD_KEY;
 }
 
 uint8_t *kvGetConsoleId(void)
@@ -137,7 +137,7 @@ uint8_t *kvGetConsoleId(void)
 	{
 		return 0;
 	}
-	return kv + 0xb0;
+	return kv + KV_CONSOLE_SERIAL;
 }
 
 int kvGetSerial(char *out)
@@ -149,7 +149,7 @@ int kvGetSerial(char *out)
 
 	if (kvLoaded && out)
 	{
-		p = kv + 0x9ca;
+		p = kv + KV_CONSOLE_ID;
 		v = *p++;
 		for (i = 1; i < 5; i++)
 		{
@@ -171,7 +171,7 @@ uint8_t *kvGetConsoleCert(void)
 	{
 		return 0;
 	}
-	return kv + 0xc0;
+	return kv + KV_MOBO_SERIAL;
 }
 
 int kvGetMfgDate(char *out)
@@ -180,7 +180,8 @@ int kvGetMfgDate(char *out)
 	{
 		return 0;
 	}
-	sprintf(out, "%c%c/%c%c/20%c%c", kv[0x9e4], kv[0x9e5], kv[0x9e7], kv[0x9e8], kv[0x9ea], kv[0x9eb]);
+	sprintf(out, "%c%c/%c%c/20%c%c", kv[KV_MFG_DATE], kv[KV_MFG_DATE + 1],
+		kv[KV_MFG_DATE + 3], kv[KV_MFG_DATE + 4], kv[KV_MFG_DATE + 6], kv[KV_MFG_DATE + 7]);
 	return 1;
 }
 

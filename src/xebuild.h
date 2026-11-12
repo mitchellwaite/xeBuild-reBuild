@@ -361,10 +361,12 @@ struct fileent
 	uint32_t fsOffset;		/* where that part starts */
 };
 
-/* an entry of the flash filesystem's file table */
+/* an entry of the flash filesystem's file table; a name is at most
+   FS_NAME_SIZE - 1 characters */
+#define FS_NAME_SIZE 0x16
 struct fsent
 {
-	char name[0x16];
+	char name[FS_NAME_SIZE];
 	uint16_t block;
 	uint32_t size;
 	uint32_t time;
@@ -385,6 +387,27 @@ struct fsent
 #define FLASH_JTAG_CF 0x70000		/* JTAG: cfOffset, sysUpdateAddr */
 #define FLASH_NETKD 0x80		/* a dump's network KD follows the header */
 #define NETKD_MAGIC 0xca4a
+
+struct flashhdr
+{
+	uint16_t magic;
+	uint16_t build;
+	uint16_t qfe;
+	uint16_t flags;
+	uint32_t cbOffset;		/* entry: the CB */
+	uint32_t cfOffset;
+	char copyright[0x40];
+	uint8_t reserved[0x10];
+	uint32_t kvSize;
+	uint32_t sysUpdateAddr;		/* the CF */
+	uint16_t sysUpdateCount;
+	uint16_t kvVersion;
+	uint32_t kvAddr;
+	uint32_t patchSlotSize;
+	uint32_t smcConfigAddr;
+	uint32_t smcBootSize;
+	uint32_t smcBootAddr;
+};
 
 /* the SMC's sizes: SMC_SIZE_CORONA (Corona, Winchester) is at
    FLASH_SMC_ADDR_CORONA; both end at FLASH_KV_ADDR */
@@ -409,34 +432,55 @@ struct fsent
 #define BL_FLAG_CB_B 0x800		/* a CB's flags: a CB_B follows it */
 #define BL_SIZE_OFFSET 0xc		/* the header's size field */
 #define BL_NONCE 0x10
+#define BL_BODY 0x20			/* what the RC4 encrypts */
 #define BL_CF_NONCE 0x20
+#define BL_CF_BODY 0x30
+
+/* in a decrypted CB (or SB): the pairing data (3 bytes) and the LDV after
+   them; the console type and lock down sequences fileutil.c's
+   showExpectedFuses reads (big endian: the fuse type, FUSE_TYPE_x, in the
+   top byte, the CB's sequence below it, then the sequences it allows) */
+#define CB_PAIRING 0x20
+#define CB_LDV 0x23
+#define CB_FUSE_FLAGS 0x3b0
+
+/* in an SB: the public key the SC and SD are signed with, and their
+   signatures' salts; in an SD, the SE's hash */
+#define SB_PUBKEY 0x268			/* XECRYPT_RSAPUB_2048 */
+#define SB_SC_SALT 0x388
+#define SB_SD_SALT 0x392
+#define SD_SE_HASH 0x24c
+
+/* in a decrypted CF: the pairing data and LDV (as CB_PAIRING) and the CG's
+   HMAC key */
+#define CF_PAIRING 0x21c
+#define CF_LDV 0x21f
+#define CF_CG_KEY 0x330
 
 /* the highest CF lock down value (cfldv) */
 #define CF_LDV_MAX 32
 
-/* a keyvault (decrypted, or as in the flash) */
-#define KV_SIZE 0x4000
+/* ---- Keyvault ----
 
-struct flashhdr
-{
-	uint16_t magic;
-	uint16_t build;
-	uint16_t qfe;
-	uint16_t flags;
-	uint32_t cbOffset;		/* entry: the CB */
-	uint32_t cfOffset;
-	char copyright[0x40];
-	uint8_t reserved[0x10];
-	uint32_t kvSize;
-	uint32_t sysUpdateAddr;		/* the CF */
-	uint16_t sysUpdateCount;
-	uint16_t kvVersion;
-	uint32_t kvAddr;
-	uint32_t patchSlotSize;
-	uint32_t smcConfigAddr;
-	uint32_t smcBootSize;
-	uint32_t smcBootAddr;
-};
+   A decrypted keyvault: 0x10 bytes of HMAC (keyed with the CPU key) of the
+   rest, which also make its RC4 key; then 8 bytes of salt (keys.c's kvSalt)
+   and the fields.  A type 2 one is signed with the master key over the
+   bytes from KV_ODD_FEATURES on, but for the key at 0xf0 and the signature
+   itself (xboxrom.c's kvVerifySig). */
+#define KV_SIZE 0x4000
+#define KV_SALT 0x10			/* 8 bytes */
+#define KV_ODD_FEATURES 0x1c		/* big endian 16 bits */
+#define KV_CONSOLE_SERIAL 0xb0		/* 12 characters */
+#define KV_MOBO_SERIAL 0xc0		/* the 8 bytes main.c shows as MoboSerial */
+#define KV_DVD_KEY 0x100		/* 0x10 bytes */
+#define KV_CONSOLE_ID 0x9ca		/* the certificate's console id, 5 bytes */
+#define KV_MFG_DATE 0x9e4		/* the certificate's "MM-DD-YY" */
+#define KV_SIGNATURE 0x1df8		/* 0x100 bytes */
+
+/* the security files' sizes */
+#define FCRT_SIZE 0x4000
+#define EXTENDED_SIZE 0x4000		/* extended.bin */
+#define SECDATA_SIZE 0x400
 
 /* consoleinfo.version: updsvr version above the low byte, the hv patches'
    version in it */
@@ -455,12 +499,16 @@ struct flashhdr
 #define HW_CONSOLE_SHIFT 28
 #define HW_HDD 0x20			/* internal HDD present */
 
+/* consoleinfo.usvrFlags: the files USVR offers */
+#define USVR_BLMOD 2
+#define USVR_ADDONS 4
+
 /* what xeBuild's client (the console side) reports */
 struct consoleinfo
 {
 	uint32_t version;		/* updsvr version; low byte: hv patches */
 	uint32_t kernel;
-	uint32_t usvrFlags;		/* files USVR offers: 2 blmod, 4 addons */
+	uint32_t usvrFlags;		/* files USVR offers: USVR_x */
 	uint32_t bootstrap;		/* hack type in the top bits */
 	uint32_t hwFlags;		/* console type in the top 4 bits; 0x20: has HDD */
 	uint32_t nandSize;		/* system area */
@@ -521,6 +569,13 @@ struct manifest
    The bound sets gcc's trip count estimate for loops over the files (build.c's
    only match with 19 to 21). */
 #define XB_ADDONS 19
+
+/* the lists the ini and command line fill: [flashfs] firmware files, the
+   addon patches (-a, the ini's), [rawpatch] files and [security] files */
+#define XB_FIRMWARE 0x100
+#define XB_ADDON_PATCHES 0x10
+#define XB_RAWPATCHES 0x10
+#define XB_SECURITY 10
 
 struct xebuild
 {
@@ -595,11 +650,11 @@ struct xebuild
 	char baseDir[0x400];		/* -d */
 	char dataDir[0x400];		/* -f */
 	char commonDir[0x400];
-	char firmware[0x100][0x400];	/* the ini's firmware files */
-	uint32_t firmwareCrc[0x100];
+	char firmware[XB_FIRMWARE][0x400];	/* the ini's firmware files */
+	uint32_t firmwareCrc[XB_FIRMWARE];
 	uint32_t nFirmware;
 	struct fileent files[XB_ADDONS];
-	struct fileent addons[0x10];
+	struct fileent addons[XB_ADDON_PATCHES];
 	char blSuffix[0x40];		/* -r */
 	int numPatches;			/* entries used in addons */
 	int nFiles;
@@ -608,13 +663,13 @@ struct xebuild
 	{
 		char name[0x400];
 		uint32_t offset;
-	} rawPatch[0x10];
+	} rawPatch[XB_RAWPATCHES];
 	uint32_t nRawPatches;
-	char flashFiles[10][0x16];	/* security files */
-	uint8_t *flashBuf[10];		/* their data from a dump */
-	uint32_t flashSize[10];
-	uint32_t flashTime[10];
-	uint32_t flashCrc[10];
+	char flashFiles[XB_SECURITY][FS_NAME_SIZE];	/* security files */
+	uint8_t *flashBuf[XB_SECURITY];	/* their data from a dump */
+	uint32_t flashSize[XB_SECURITY];
+	uint32_t flashTime[XB_SECURITY];
+	uint32_t flashCrc[XB_SECURITY];
 	uint32_t nFlashFiles2;		/* the security file count */
 	union
 	{

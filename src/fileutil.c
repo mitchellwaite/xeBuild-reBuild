@@ -24,7 +24,7 @@ const char *consoleTypeStr[] = {
 
 const char *getConsoleTypeStr(int type)
 {
-	if (type <= 6)
+	if (type <= CONSOLE_CORONA)	/* not CONSOLE_WINCHESTER */
 	{
 		return consoleTypeStr[type];
 	}
@@ -687,28 +687,28 @@ void showExpectedFuses(unsigned int flags, unsigned short cb, unsigned char *fus
 	}
 	switch (type)
 	{
-	case 0:
+	case FUSE_TYPE_DEVKIT:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0F0F0F (devkit)\n");
 		if (fuses)
 		{
 			setBeU64(0x0F0F0F0F0F0F0F0FULL, fuses + 8);
 		}
 		break;
-	case 1:
+	case FUSE_TYPE_RETAIL:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0F0FF0 (retail)\n");
 		if (fuses)
 		{
 			setBeU64(0x0F0F0F0F0F0F0FF0ULL, fuses + 8);
 		}
 		break;
-	case 2:
+	case FUSE_TYPE_TESTKIT:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0FF00F (testkit)\n");
 		if (fuses)
 		{
 			setBeU64(0x0F0F0F0F0F0FF00FULL, fuses + 8);
 		}
 		break;
-	case 3:
+	case FUSE_TYPE_SLIM:
 		log_printf(1, "\tfuseset 01: 0F0F0F0F0F0FF0F0 (retail slim)\n");
 		if (fuses)
 		{
@@ -756,7 +756,7 @@ void showFuses(int level, const char *title, const unsigned char *fuses)
 	{
 		log_printf(level, title);
 	}
-	for (i = 0; i < 96; i++)
+	for (i = 0; i < FUSES_SIZE; i++)
 	{
 		if (i % 8 == 0)
 		{

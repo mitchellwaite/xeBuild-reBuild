@@ -637,7 +637,7 @@ uint32_t parseIni(char *path)
 		end = off + memFindChar(&buf[off], '[', size - off);
 		log_printf(1, "\nini: label [rawpatch] found\n");
 		pos = off;
-		for (i = xb.nRawPatches; i < 16; i++)
+		for (i = xb.nRawPatches; i < XB_RAWPATCHES; i++)
 		{
 			p = &buf[pos];
 			nul = memFindChar(p, 0, size - pos);
@@ -683,12 +683,12 @@ uint32_t parseIni(char *path)
 			}
 			if (pos >= end)
 			{
-				i = 16;
+				i = XB_RAWPATCHES;
 			}
 		}
 		if (pos < end)
 		{
-			log_printf(0, "\n******* ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, 16);
+			log_printf(0, "\n******* ERROR: %d of %d [rawpatch] slots are already full!\n", xb.nRawPatches, XB_RAWPATCHES);
 			free(buf);
 			return 0;
 		}
@@ -705,7 +705,7 @@ uint32_t parseIni(char *path)
 		xb.nFirmware = 0;
 		log_printf(1, "\nini: label [flashfs] found\n");
 		pos = off;
-		for (i = 0; i < 256; i++)
+		for (i = 0; i < XB_FIRMWARE; i++)
 		{
 			p = &buf[pos];
 			nul = memFindChar(p, 0, size - pos);
@@ -721,7 +721,7 @@ uint32_t parseIni(char *path)
 			{
 				strncpy(xb.firmware[i], (char *)p, len);
 				xb.firmware[i][len] = 0;
-				if (len > 21)
+				if (len > FS_NAME_SIZE - 1)
 				{
 					s = strrchr(xb.firmware[i], '/');
 					if (s == NULL)
@@ -729,9 +729,9 @@ uint32_t parseIni(char *path)
 						s = strrchr(xb.firmware[i], '\\');
 					}
 					s = s ? s + 1 : xb.firmware[i];
-					if (strlen(s) > 21)
+					if (strlen(s) > FS_NAME_SIZE - 1)
 					{
-						log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", 21);
+						log_printf(0, "\n******* ERROR: file in [flashfs] has greater than %d chars in it's name!\n", FS_NAME_SIZE - 1);
 						log_printf(0, "\n        Line: %s\n", xb.firmware[i]);
 						free(buf);
 						return 0;
@@ -777,7 +777,7 @@ uint32_t parseIni(char *path)
 			}
 			if (pos >= size)
 			{
-				i = 256;
+				i = XB_FIRMWARE;
 			}
 		}
 	}
@@ -796,7 +796,7 @@ uint32_t parseIni(char *path)
 		log_printf(1, "\nini: label [security] found\n");
 		end = off + memFindChar(&buf[off], '[', size - off);
 		pos = off;
-		for (i = 0; i < 10; i++)
+		for (i = 0; i < XB_SECURITY; i++)
 		{
 			p = &buf[pos];
 			findField(p, size - pos, &comma, &nul);
@@ -810,7 +810,7 @@ uint32_t parseIni(char *path)
 				noCrc = 0;
 				len = comma;
 			}
-			if (len <= 21)
+			if (len <= FS_NAME_SIZE - 1)
 			{
 				strncpy(xb.flashFiles[i], (char *)p, len);
 				xb.flashFiles[i][len] = 0;
@@ -847,13 +847,13 @@ uint32_t parseIni(char *path)
 			}
 			else
 			{
-				log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", 21);
+				log_printf(0, "\n******* ERROR: file in [security] has greater than %d chars in it's name!\n", FS_NAME_SIZE - 1);
 				free(buf);
 				return 0;
 			}
 			if (pos >= end)
 			{
-				i = 10;
+				i = XB_SECURITY;
 			}
 		}
 	}

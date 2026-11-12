@@ -324,7 +324,7 @@ int mode_build(int argc, char **argv)
 				log_printf(0, "\n\n***** ERROR: option flag -a on command line but no argument provided!\n", argv[i]);
 				build_usage();
 			}
-			if (xb.numPatches < 16)
+			if (xb.numPatches < XB_ADDON_PATCHES)
 			{
 				strcpy(xb.addons[xb.numPatches].name, argv[i]);
 				strcat(xb.addons[xb.numPatches].name, ".bin");

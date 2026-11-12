@@ -4,6 +4,15 @@
 
 #include "xebuild.h"
 
+/* fileTable's entries (stfs.c's stfsEnt): the name (STFS_NAME bytes), and
+   the size (big endian) at STFS_ENTRY_SIZE_OFF */
+#define STFS_ENTRY 64
+#define STFS_NAME 40
+#define STFS_ENTRY_SIZE_OFF 52
+
+/* stfsLoad's magic: a system update's "SUPD" */
+#define SUPD_MAGIC 0x53555044
+
 /* an STFS package being read */
 typedef struct
 {
