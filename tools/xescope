@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # xescope: browse xeBuild's sources with cscope.
 #
-#   xescope [cscope args...]            launch cscope on the database in .xescope/
-#                                       (built first if it doesn't exist yet)
-#   xescope -recreate [cscope args...]  rebuild the database, then launch
+#   tools/xescope [cscope args...]            launch cscope on the database in
+#                                             .xescope/ at the repository root
+#                                             (built first if it doesn't exist yet)
+#   tools/xescope -recreate [cscope args...]  rebuild the database, then launch
 #
-# The database indexes every file under src/. Other arguments go to cscope
-# unchanged, e.g. a line-mode query: xescope -L -1 main
+# The database indexes every file under src/ except hidden ones (editor swap
+# files). Other arguments go to cscope unchanged, e.g. a line-mode query:
+# tools/xescope -L -1 main
 # File names in cscope's output are relative to the repository root.
 
 set -euo pipefail
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 dbdir=.xescope
 db=$dbdir/cscope.out
 list=$dbdir/cscope.files
@@ -42,11 +44,11 @@ if [ "$recreate" -eq 1 ]; then
 	mkdir -p "$dbdir"
 	rm -f "$db" "$db.in" "$db.po" "$dbdir/cscope.in.out" "$dbdir/cscope.po.out"
 	# cscope.files wants names with blanks quoted.
-	find src -type f | LC_ALL=C sort | sed 's/.*[[:space:]].*/"&"/' > "$list"
+	find src -name '.*' -prune -o -type f -print | LC_ALL=C sort | sed 's/.*[[:space:]].*/"&"/' > "$list"
 	# -b build only, -q inverted index, -k no /usr/include (mingw target).
 	cscope -b -q -k -i "$list" -f "$db"
 	echo "xescope: indexed $(wc -l < "$list") files under src/" >&2
 fi
 
-# -d: use the database as is; xescope -recreate refreshes it.
+# -d: use the database as is; tools/xescope -recreate refreshes it.
 exec cscope -d -k -f "$db" "${args[@]+"${args[@]}"}"
