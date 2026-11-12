@@ -1,5 +1,9 @@
 # xeBuild rebuild
 
+[![win64](https://img.shields.io/github/check-runs/mitchellwaite/xeBuild-reBuild/master?nameFilter=windows%20%28MINGW64%29&label=win64)](https://github.com/mitchellwaite/xeBuild-reBuild/actions/workflows/build.yml)
+[![macOS](https://img.shields.io/github/check-runs/mitchellwaite/xeBuild-reBuild/master?nameFilter=macos&label=macOS)](https://github.com/mitchellwaite/xeBuild-reBuild/actions/workflows/build.yml)
+[![linux](https://img.shields.io/github/check-runs/mitchellwaite/xeBuild-reBuild/master?nameFilter=linux&label=linux)](https://github.com/mitchellwaite/xeBuild-reBuild/actions/workflows/build.yml)
+
 A C source rebuild of `xeBuild.exe` (v1.21 build 810) that compiles back to
 the exact same bytes as the released binary. With matching source, xeBuild's
 bugs can be fixed in C instead of by patching the executable.
@@ -10,21 +14,35 @@ The reference binary is `xeBuild.exe` in this folder, SHA256
 ## Status
 
 - [x] Produce xeBuild from C
-- [ ] De-slopification of the decompiled source
-- [ ] Fix bugs
+- [x] Initial de-slopification of the decompiled source
+- [ ] Fix bugs and add features
 
 The rebuild is complete: all of the program's code is C, and the build
-reproduces the original exe byte for byte. The decompiled C still reads like
-compiler-matching output, so we're doing de-slopification next: turning it
-into readable source while it keeps building to the same bytes. Bug fixes
-come after that.
+reproduces the original exe byte for byte. We've finished the initial
+de-slopification, turning the compiler-matching output into readable source
+that still builds to the same bytes, and are moving on to bug fixes and
+features.
 
 - **Application:** 25 source files (432 functions), rebuilt by hand from the
   binary.
 - **Crypto:** 41 source files (185 functions) from XeCrypt, its crypto
   library, used as published.
-- **Runtime:** the MinGW startup code, libraries and import tables come from
-  the toolchain itself, linked the way gcc links any program.
+
+## Fixes and enhancements
+
+Compared with plain xeBuild 1.21.810, builds with `XEBUILD_FIXES` (every
+platform but `win32`, see [Building](#building)) have:
+
+- **Flash header fixes:** the patch slot size defaults to 0x10000 (the
+  original left it 0 for Xenon, Zephyr, Falcon and Jasper XSB images), and
+  Xenon and Zephyr images keep their KV size instead of 0. JRunner patched
+  both after every build (`fixBuggyXeBuildImage`); XeLL needs the KV size to
+  find the KV.
+- **Version banner:** names the build and the compiler's target triple, e.g.
+  `xeBuild reBuild (x86_64-linux-gnu)`.
+- **Usage text:** lists every `-t` image type and `-c` console type the
+  parser accepts, the `ini` mode and `-norandom`.
+- **Console info:** names big block Corona and Winchester consoles.
 
 ## How it was done
 
@@ -91,15 +109,8 @@ The Makefile detects the platform (or set `PLATFORM=`):
 
 Only `win32` reproduces the reference, so it builds the original's
 behaviour. Every other platform compiles with `-DXEBUILD_FIXES`, which turns
-on new behaviour and bug fixes. So far:
-
-- the version banner names the build and the compiler's target triple, e.g.
-  `xeBuild reBuild (x86_64-linux-gnu)`;
-- the flash header: the patch slot size defaults to 0x10000 (the original
-  left it 0 for Xenon, Zephyr, Falcon and Jasper XSB images), and Xenon and
-  Zephyr images keep their KV size instead of 0. JRunner patched both after
-  every build (`fixBuggyXeBuildImage`); XeLL needs the KV size to find the
-  KV.
+on new behaviour and bug fixes (listed under
+[Fixes and enhancements](#fixes-and-enhancements)).
 
 Every fix or enhancement goes under `XEBUILD_FIXES`: `#ifdef XEBUILD_FIXES`
 compiles in new behaviour (with the original in an `#else` where it
