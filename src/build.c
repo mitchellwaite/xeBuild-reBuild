@@ -24,8 +24,25 @@
 #include "timeutil.h"
 #include "xboxrom.h"
 
+/* the built-in freeboot core (FILE_FREEBOOT) and payload (FILE_PAYLOAD) */
+#define DEF_CORE_SIZE 0xd40
+#define DEF_PAYLOAD_SIZE 0x200
+
+/* the most the patches with their addons can be */
+#define PATCHES_MAX 0x4000
+
+/* an ini crc of ffffffff: not checked (the kits' SC, SD and SE) */
+#define CRC_ANY 0xffffffff
+
+/* the room xell gets after the bootloaders (calcBlAreaSize) */
+#define XELL_SIZE 0x40000
+
+/* where blmod.bin's data must end: the CB_B's, else the CD's */
+#define BLMOD_CBB_END 0xc000
+#define BLMOD_CD_END 0x10000
+
 /* .data, in the original's order reversed (gcc emits data last to first) */
-uint8_t defCore[0xd40] = {
+uint8_t defCore[DEF_CORE_SIZE] = {
 	0x3c, 0x20, 0x80, 0x00, 0x78, 0x21, 0x07, 0xc6, 0x64, 0x21, 0x1e, 0x00,
 	0x7f, 0xdf, 0xfa, 0xa6, 0x7b, 0xc4, 0x83, 0xe4, 0x7c, 0x24, 0x08, 0x50,
 	0x38, 0x21, 0xff, 0x80, 0x7c, 0x71, 0xfa, 0xa6, 0x38, 0x80, 0x00, 0x01,
@@ -310,7 +327,7 @@ uint8_t defCore[0xd40] = {
 	0x00, 0x00, 0x00, 0x00, 0x61, 0x6c, 0x74, 0x20, 0x66, 0x69, 0x72, 0x6d,
 	0x77, 0x61, 0x72, 0x65, 0x00, 0x00, 0x00, 0x00,
 };
-uint8_t defPayload[0x200] = {
+uint8_t defPayload[DEF_PAYLOAD_SIZE] = {
 	0x80, 0x13, 0x1d, 0xb0, 0x80, 0x13, 0x03, 0xa0, 0x00, 0x00, 0x00, 0x00,
 	0x02, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x80, 0x13, 0x03, 0x74,
 	0x80, 0x13, 0x03, 0x74, 0x80, 0x13, 0x03, 0x7c, 0x80, 0x13, 0x03, 0x7c,
@@ -355,7 +372,7 @@ uint8_t defPayload[0x200] = {
 	0x80, 0x07, 0x02, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90, 0x30,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-uint8_t defBl60[0x60] = {
+uint8_t defBl60[FUSES_SIZE] = {
 	0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x0f, 0x0f, 0x0f,
 	0x0f, 0x0f, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -780,12 +797,12 @@ int setFileData(struct fileent *e, const void *data, size_t size)
 void appendAddonPatches(struct fileent *e)
 {
 	uint32_t size = e->size - 4;
-	uint8_t *buf = malloc(0x4000);
+	uint8_t *buf = malloc(PATCHES_MAX);
 	uint32_t added = 0;
 	struct fileent *a;
 	int i;
 
-	memset(buf, 0xff, 0x4000);
+	memset(buf, 0xff, PATCHES_MAX);
 	memcpy(buf, e->data, size);
 	if (xb.numPatches)
 	{
@@ -796,11 +813,11 @@ void appendAddonPatches(struct fileent *e)
 			{
 				if (!(a->size & 3))
 				{
-					if (getBeU32(a->data + a->size - 4) == 0xffffffff)
+					if (getBeU32(a->data + a->size - 4) == PATCHES_END)
 					{
 						a->size -= 4;
 					}
-					if (size + a->size <= 0x4000)
+					if (size + a->size <= PATCHES_MAX)
 					{
 						memcpy(buf + size, a->data, a->size);
 						added += a->size;
@@ -824,7 +841,7 @@ void appendAddonPatches(struct fileent *e)
 			}
 		}
 	}
-	*(uint32_t *)(buf + size) = 0xffffffff;
+	*(uint32_t *)(buf + size) = PATCHES_END;
 	setBeU32(added, buf + size + 4);
 	size += 8;
 	if (e->data)
@@ -1101,23 +1118,23 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	   a miss (the Linux build re-tests the loop condition after a hit) */
 	i = 0;
 	found = 0;
-	while (i + 0x200 <= size && found != 1)
+	while (i + NAND_PAGE <= size && found != 1)
 	{
 		found = smcConfigOk(buf + i);
 		if (found != 1)
 		{
-			i += 0x200;
+			i += NAND_PAGE;
 		}
 	}
 	if (!found)
 	{
 		i = 0;
-		while (i + 0x210 <= size && found != 1)
+		while (i + NAND_RAW_PAGE <= size && found != 1)
 		{
 			found = smcConfigOk(buf + i);
 			if (found != 1)
 			{
-				i += 0x210;
+				i += NAND_RAW_PAGE;
 			}
 		}
 	}
@@ -1125,7 +1142,8 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 	{
 		goto notfound;
 	}
-	if (checkZeros(buf + i + 0x20c, 4))
+	/* 0x20c-0x20f: in the raw layout, the first page's ECD */
+	if (checkZeros(buf + i + NAND_PAGE + 0xc, 4))
 	{
 		log_printf(1, "extracting config\n");
 		if (size - i >= SMCCFG_SIZE)
@@ -1133,12 +1151,12 @@ int extractSmcConfig(struct fileent *e, uint8_t *buf, int size)
 			memcpy(e->data, buf + i, SMCCFG_SIZE);
 		}
 	}
-	else if (size - i >= 0x4200)
+	else if (size - i >= NAND_RAW_BLOCK)
 	{
 		log_printf(1, "extracting config raw\n");
 		for (j = 0; j < 8; j++)
 		{
-			memcpy(e->data + j * 0x200, buf + i + j * 0x210, 0x200);
+			memcpy(e->data + j * NAND_PAGE, buf + i + j * NAND_RAW_PAGE, NAND_PAGE);
 		}
 	}
 	else
@@ -1184,7 +1202,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 	uint32_t blsize, c = 0;
 	int m, r = 0;
 
-	blsize = getBeU32(bl + 12);
+	blsize = getBeU32(bl + BL_SIZE_OFFSET);
 	if (blsize > size)
 	{
 		r = -3;
@@ -1210,7 +1228,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x30);
+					memset(bl + BL_NONCE, 0, 0x30);
 					c = crc32(bl, blsize);
 					if (c != crc)
 					{
@@ -1226,7 +1244,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x10);
+					memset(bl + BL_NONCE, 0, 0x10);
 					c = crc32(bl, blsize);
 					if (c != crc)
 					{
@@ -1242,7 +1260,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x10);
+					memset(bl + BL_NONCE, 0, 0x10);
 					c = crc32(bl, blsize);
 					if (c != crc)
 					{
@@ -1263,7 +1281,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x20, 0, 0x210);
+					memset(bl + BL_CF_NONCE, 0, 0x210);
 					c = crc32(bl, blsize);
 					if (c != crc)
 					{
@@ -1284,7 +1302,7 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x10);
+					memset(bl + BL_NONCE, 0, 0x10);
 					c = crc32(bl, blsize);
 					if (c != crc)
 					{
@@ -1299,8 +1317,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x10);
-					if (crc != 0xffffffff)
+					memset(bl + BL_NONCE, 0, 0x10);
+					if (crc != CRC_ANY)
 					{
 						c = crc32(bl, blsize);
 						if (c != crc)
@@ -1317,8 +1335,8 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x10);
-					if (crc != 0xffffffff)
+					memset(bl + BL_NONCE, 0, 0x10);
+					if (crc != CRC_ANY)
 					{
 						c = crc32(bl, blsize);
 						if (c != crc)
@@ -1335,10 +1353,10 @@ int checkBl(uint8_t *bl, uint32_t size, int type, uint32_t crc)
 				}
 				else
 				{
-					memset(bl + 0x10, 0, 0x10);
+					memset(bl + BL_NONCE, 0, 0x10);
 					c = crc32(bl, blsize);
 					raiseKernel(getBeU16(bl), getBeU16(bl + 2), getBeU16(bl + 4));
-					if (crc != 0xffffffff)
+					if (crc != CRC_ANY)
 					{
 						c = crc32(bl, blsize);
 						if (c != crc)
@@ -1505,16 +1523,16 @@ static int useBuiltIn(struct fileent *e, const uint8_t *data, uint32_t size)
 	return 0;
 }
 
-/* the default 0x60-byte bootloader (type 24). */
+/* the default virtual fuses (FILE_FUSES). */
 static int defaultBl60(struct fileent *e)
 {
-	e->data = malloc(0x60);
+	e->data = malloc(FUSES_SIZE);
 	if (!e->data)
 	{
 		return 1;
 	}
-	e->size = 0x60;
-	memmove(e->data, defBl60, 0x60);
+	e->size = FUSES_SIZE;
+	memmove(e->data, defBl60, FUSES_SIZE);
 	return 0;
 }
 
@@ -1538,14 +1556,14 @@ static int loadXell(struct fileent *e)
 	return loadLocalFile(e);
 }
 
-/* case 24's file, or the default 0x60 bytes in its place. */
+/* the fuses file, or the default fuses in its place. */
 static int loadBl24(struct fileent *e)
 {
 	if (loadBaseFile(e->name, e))
 	{
 		return defaultBl60(e);
 	}
-	if (e->size != 0x60)
+	if (e->size != FUSES_SIZE)
 	{
 		return defaultBl60(e);
 	}
@@ -1673,16 +1691,16 @@ int loadBlFiles(void)
 				{
 					break;
 				}
-				log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, 0x200);
-				r = useBuiltIn(e, defPayload, 0x200);
+				log_printf(1, "could not read %s%s, using built in payload (0x%x bytes)\n", xb.binDir, e->name, DEF_PAYLOAD_SIZE);
+				r = useBuiltIn(e, defPayload, DEF_PAYLOAD_SIZE);
 				break;
 			case FILE_FREEBOOT:
 				if (!loadBinFile(e))
 				{
 					break;
 				}
-				log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, 0xd40);
-				r = useBuiltIn(e, defCore, 0xd40);
+				log_printf(1, "could not read %s%s, using built in core (0x%x bytes)\n", xb.binDir, e->name, DEF_CORE_SIZE);
+				r = useBuiltIn(e, defCore, DEF_CORE_SIZE);
 				break;
 			case FILE_XELL:
 				r = loadXell(e);
@@ -2128,7 +2146,7 @@ int patchBlsResign(void)
 		{
 			addr = getBeU32(d + off);
 			t = off + 4;
-			if (addr != 0xffffffff)
+			if (addr != PATCHES_END)
 			{
 				len = getBeU32(d + t) * 4;
 				off += 8;
@@ -2137,7 +2155,7 @@ int patchBlsResign(void)
 					if (addr + len > xb.files[cd].size)
 					{
 						xb.files[cd].size = align16(addr + len);
-						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
+						setBeU32(xb.files[cd].size, xb.files[cd].data + BL_SIZE_OFFSET);
 					}
 					for (i = 0; i < len; i++)
 					{
@@ -2228,7 +2246,7 @@ void patchBlsBlmod(const void *blmod, int size)
 		{
 			addr = getBeU32(d + off);
 			t = off + 4;
-			if (addr != 0xffffffff)
+			if (addr != PATCHES_END)
 			{
 				len = getBeU32(d + t) * 4;
 				off += 8;
@@ -2237,7 +2255,7 @@ void patchBlsBlmod(const void *blmod, int size)
 					if (addr + len > xb.files[cbb].size)
 					{
 						xb.files[cbb].size = align16(addr + len);
-						setBeU32(xb.files[cbb].size, xb.files[cbb].data + 12);
+						setBeU32(xb.files[cbb].size, xb.files[cbb].data + BL_SIZE_OFFSET);
 					}
 					for (i = 0; i < len; i++)
 					{
@@ -2249,7 +2267,7 @@ void patchBlsBlmod(const void *blmod, int size)
 					if (addr + len > xb.files[cd].size)
 					{
 						xb.files[cd].size = align16(addr + len);
-						setBeU32(xb.files[cd].size, xb.files[cd].data + 12);
+						setBeU32(xb.files[cd].size, xb.files[cd].data + BL_SIZE_OFFSET);
 					}
 					for (i = 0; i < len; i++)
 					{
@@ -2281,8 +2299,8 @@ void patchBlsBlmod(const void *blmod, int size)
 		{
 			cbb = cd;
 		}
-		max = xb.cbb ? 0xc000 : 0x10000;
-		off = getBeU32(xb.files[cbb].data + 12);
+		max = xb.cbb ? BLMOD_CBB_END : BLMOD_CD_END;
+		off = getBeU32(xb.files[cbb].data + BL_SIZE_OFFSET);
 		end = align16(off + size);
 		if (end > max)
 		{
@@ -2296,7 +2314,7 @@ void patchBlsBlmod(const void *blmod, int size)
 		xb.hdr[HDR_BLMOD_SIZE] = i >> 8;
 		xb.hdr[HDR_BLMOD_SIZE + 1] = i;
 		xb.files[cbb].size = end;
-		setBeU32(end, xb.files[cbb].data + 12);
+		setBeU32(end, xb.files[cbb].data + BL_SIZE_OFFSET);
 	}
 	log_printf(1, "Done!\n");
 }
@@ -2325,7 +2343,7 @@ void fixupPatchSet(void)
 		{
 			v = getBeU32(p + off);
 			t = off + 4;
-			if (v != 0xffffffff)
+			if (v != PATCHES_END)
 			{
 				off += getBeU32(p + t) * 4 + 8;
 			}
@@ -2348,7 +2366,7 @@ void fixupPatchSet(void)
 void addBlsToImage(void)
 {
 	struct fileent *e;
-	uint16_t ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
+	uint16_t ecc = imgBigBlock() ? IMG_NO_CHAIN : FS_CHAIN_RESERVED;
 	uint32_t i;
 	int type, j, off = 0;
 
@@ -2356,7 +2374,7 @@ void addBlsToImage(void)
 	{
 		e = &xb.files[i];
 		type = e->type;
-		if (e->offset != 0xffffffff)
+		if (e->offset != FILE_FOLLOWS)
 		{
 			off = e->offset;
 		}
@@ -2403,11 +2421,11 @@ void addBlsToImage(void)
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
 			{
-				off += 0x60;
+				off += FUSES_SIZE;
 			}
 			else if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 			{
-				off += 0x60;
+				off += FUSES_SIZE;
 			}
 			else
 			{
@@ -2496,7 +2514,7 @@ int isUpdateBl(int type)
 void addUpdateBls(void)
 {
 	struct fileent *e;
-	uint16_t ecc = imgBigBlock() ? 0xf1f1 : 0x1ffb;
+	uint16_t ecc = imgBigBlock() ? IMG_NO_CHAIN : FS_CHAIN_RESERVED;
 	uint32_t i;
 	int type, j, off = 0;
 
@@ -2508,7 +2526,7 @@ void addUpdateBls(void)
 		{
 			continue;
 		}
-		if (e->offset != 0xffffffff)
+		if (e->offset != FILE_FOLLOWS)
 		{
 			off = e->offset;
 		}
@@ -2525,7 +2543,7 @@ void addUpdateBls(void)
 			off = imgCfOffset() + imgCfSize();
 			if (xb.glitch2mfg)
 			{
-				off += 0x60;
+				off += FUSES_SIZE;
 			}
 			else
 			{
@@ -2782,7 +2800,7 @@ int encodeBls(uint8_t *salt, int ldv)
 			switch (type)
 			{
 			case FILE_PAYLOAD:
-				if (!memcmp(e->data, defPayload, 0x200))
+				if (!memcmp(e->data, defPayload, DEF_PAYLOAD_SIZE))
 				{
 					patchPayloadSize(e->data, e->size, xb.files[findFile(FILE_FREEBOOT)].size);
 				}
@@ -2834,7 +2852,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case FILE_FREEBOOT:
-				if (!memcmp(e->data, defCore, 0xd40))
+				if (!memcmp(e->data, defCore, DEF_CORE_SIZE))
 				{
 					patchFreeboot(e->data, e->size);
 				}
@@ -3111,13 +3129,13 @@ uint32_t calcBlAreaSize(void)
 			if (xb.files[x].offset > size)
 			{
 				xs = xb.files[x].size;
-				if (xs > 0x40000)
+				if (xs > XELL_SIZE)
 				{
 					log_printf(0, "***** WARNING: xell is unexpectedly larger than 256KiB!!\n");
 				}
 				else
 				{
-					xs = 0x40000;
+					xs = XELL_SIZE;
 				}
 				size = xb.files[x].offset + xs;
 			}
@@ -3126,9 +3144,9 @@ uint32_t calcBlAreaSize(void)
 		setPatchSlot(size);
 		size += 2 * imgCfSize();
 	}
-	if (size & 0x3fff)
+	if (size & NAND_BLOCK_MASK)
 	{
-		size = (size + 0x3fff) & ~0x3fff;
+		size = (size + NAND_BLOCK_MASK) & ~NAND_BLOCK_MASK;
 	}
 	return size;
 }
@@ -3212,11 +3230,11 @@ int buildFlash(void)
 	area = calcBlAreaSize();
 	if (!blocks)
 	{
-		blocks = area >> 14;
+		blocks = area >> NAND_BLOCK_SHIFT;
 	}
 	else
 	{
-		area = blocks << 14;
+		area = blocks << NAND_BLOCK_SHIFT;
 	}
 	if (xb.type == BUILD_GLITCH)
 	{
@@ -3298,7 +3316,7 @@ int buildFlash(void)
 	}
 	if (fsStartBlock())
 	{
-		imgSetSize(fsStartBlock() << 14);
+		imgSetSize(fsStartBlock() << NAND_BLOCK_SHIFT);
 	}
 
 	/* the CG's patch slot overflow goes in the filesystem */
@@ -3548,11 +3566,11 @@ int buildFlash(void)
 
 		switch (k)
 		{
-		case 9:
+		case MOBILE_STATISTICS:
 			strcpy(f.name, "Statistics.settings");
 			raw = statisticsOffset(xb.bigBlock, xb.type > BUILD_DEVGL16, (xb.flags & NAND_MMC) != 0, NULL, NULL);
 			break;
-		case 10:
+		case MOBILE_MANUFACTURING:
 			strcpy(f.name, "Manufacturing.data");
 			raw = manufacturingOffset(xb.bigBlock, xb.type > BUILD_DEVGL16, (xb.flags & NAND_MMC) != 0, NULL, NULL);
 			break;
@@ -3576,7 +3594,7 @@ int buildFlash(void)
 				if (t && k <= 8)
 				{
 					setBeU16(t, (uint8_t *)&xb.mobileTab[k].type);
-					setBeU16(xb.files[xb.nFlashFiles].size >= 0x4000 ? 0 : xb.files[xb.nFlashFiles].size, (uint8_t *)&xb.mobileTab[k].size);
+					setBeU16(xb.files[xb.nFlashFiles].size >= NAND_BLOCK ? 0 : xb.files[xb.nFlashFiles].size, (uint8_t *)&xb.mobileTab[k].size);
 				}
 			}
 		}
@@ -3595,7 +3613,7 @@ int buildFlash(void)
 				if (t && k <= 8)
 				{
 					setBeU16(t, (uint8_t *)&xb.mobileTab[k].type);
-					setBeU16(xb.mobile[k].size > 0x3fff ? 0 : xb.mobile[k].size, (uint8_t *)&xb.mobileTab[k].size);
+					setBeU16(xb.mobile[k].size > NAND_BLOCK_MASK ? 0 : xb.mobile[k].size, (uint8_t *)&xb.mobileTab[k].size);
 				}
 			}
 		}

@@ -265,7 +265,7 @@ void clientKeys(void)
    loses the first (glitch2 keeps 16 bytes of 0xff in its place) */
 int checkPatches(uint8_t *buf, size_t *len, uint32_t type)
 {
-	uint32_t marker = 0xffffffff;
+	uint32_t marker = PATCHES_END;
 	uint8_t *p;
 	size_t n, i, off;
 
@@ -528,31 +528,31 @@ void clientWriteBlocks(const char *file, const char *sstart)
 /* copy data into raw NAND pages (512 data + 16 spare) at logical offset off */
 void patchNand(uint8_t *buf, int off, const uint8_t *data, int len)
 {
-	uint8_t *spare = buf + 512;
+	uint8_t *spare = buf + NAND_PAGE;
 
-	while (off >= 512)
+	while (off >= NAND_PAGE)
 	{
-		buf += 528;
-		spare += 528;
-		off -= 512;
+		buf += NAND_RAW_PAGE;
+		spare += NAND_RAW_PAGE;
+		off -= NAND_PAGE;
 	}
 	if (off)
 	{
-		memcpy(buf + off, data, 512 - off);
-		len -= 512 - off;
+		memcpy(buf + off, data, NAND_PAGE - off);
+		len -= NAND_PAGE - off;
 		calcPageEcc(buf, spare);
-		data += 512 - off;
-		buf += 528;
-		spare += 528;
+		data += NAND_PAGE - off;
+		buf += NAND_RAW_PAGE;
+		spare += NAND_RAW_PAGE;
 	}
-	while (len >= 512)
+	while (len >= NAND_PAGE)
 	{
-		memcpy(buf, data, 512);
+		memcpy(buf, data, NAND_PAGE);
 		calcPageEcc(buf, spare);
-		len -= 512;
-		data += 512;
-		spare += 528;
-		buf += 528;
+		len -= NAND_PAGE;
+		data += NAND_PAGE;
+		spare += NAND_RAW_PAGE;
+		buf += NAND_RAW_PAGE;
 	}
 	if (len)
 	{
@@ -575,8 +575,8 @@ void clientBinPatch(const char *file, const char *soff)
 	off = myatoh32(soff, -1);
 	if (cinfo->nandSize != NAND_SIZE_MMC)
 	{
-		size = cinfo->nandSize / 0x4200 * 0x4000;
-		bs = cinfo->blockSize / 0x4200 * 0x4000;
+		size = cinfo->nandSize / NAND_RAW_BLOCK * NAND_BLOCK;
+		bs = cinfo->blockSize / NAND_RAW_BLOCK * NAND_BLOCK;
 	}
 	if (off != -1)
 	{

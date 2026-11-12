@@ -63,8 +63,8 @@ int buildImage(void)
 	}
 	if (xb.flags & NAND_BIG_BLOCK)
 	{
-		xb.blocks = 0x1000;
-		xb.smcConfigOffset = 0x3be0000;
+		xb.blocks = NAND_SIZE_64M / NAND_BLOCK;
+		xb.smcConfigOffset = SMCCFG_OFFSET_BB;
 		xb.bigBlock = 1;
 		xb.spare9 = 4;
 		xb.spare7 = 0x10;
@@ -72,7 +72,7 @@ int buildImage(void)
 		{
 			xb.fsStart = 0x2e0;
 			xb.fsEnd = 0xee0;
-			userSize = 0x4000000;
+			userSize = NAND_SIZE_64M;
 			xb.spare8 = 0x60;
 			xb.muBlocks = 0x5c;
 		}
@@ -80,50 +80,50 @@ int buildImage(void)
 		{
 			xb.fsStart = 0xae0;
 			xb.fsEnd = 0xee0;
-			userSize = 0x4000000;
+			userSize = NAND_SIZE_64M;
 			xb.spare8 = 0x20;
 			xb.muBlocks = 0x15c;
 		}
-		spareSize = 0x200000;
+		spareSize = NAND_RAW_64M - NAND_SIZE_64M;
 		bigBlock = 1;
-		rawSize = 0x4200000;
+		rawSize = NAND_RAW_64M;
 	}
 	else if (xb.type != BUILD_DEVKIT && xb.type != BUILD_TESTKIT)
 	{
 		if (xb.flags & NAND_MMC)
 		{
-			xb.blocks = 0xc00;
-			xb.smcConfigOffset = 0x2ffc000;
-			userSize = 0x3000000;
+			xb.blocks = NAND_SIZE_MMC / NAND_BLOCK;
+			xb.smcConfigOffset = SMCCFG_OFFSET_MMC;
+			userSize = NAND_SIZE_MMC;
 			xb.fsStart = 0;
 			xb.fsEnd = 0xbfa;
-			spareSize = 0x180000;
+			spareSize = 0x180000;	/* as if it had spare bytes */
 			rawSize = 0x3180000;
 		}
 		else
 		{
-			xb.blocks = 0x400;
-			xb.smcConfigOffset = 0xf7c000;
-			userSize = 0x1000000;
+			xb.blocks = NAND_SIZE_16M / NAND_BLOCK;
+			xb.smcConfigOffset = SMCCFG_OFFSET_16M;
+			userSize = NAND_SIZE_16M;
 			xb.fsStart = 0;
 			xb.fsEnd = 0x3dc;
-			spareSize = 0x80000;
-			rawSize = 0x1080000;
+			spareSize = NAND_RAW_16M - NAND_SIZE_16M;
+			rawSize = NAND_RAW_16M;
 		}
 		xb.bigBlock = 0;
 		bigBlock = 0;
 	}
 	else
 	{
-		xb.blocks = 0x1000;
-		xb.smcConfigOffset = 0x3dfc000;
-		userSize = 0x4000000;
+		xb.blocks = NAND_SIZE_64M / NAND_BLOCK;
+		xb.smcConfigOffset = SMCCFG_OFFSET_64M;
+		userSize = NAND_SIZE_64M;
 		xb.bigBlock = 0;
 		xb.fsStart = 0;
-		spareSize = 0x200000;
+		spareSize = NAND_RAW_64M - NAND_SIZE_64M;
 		xb.fsEnd = 0xf7c;
 		bigBlock = 0;
-		rawSize = 0x4200000;
+		rawSize = NAND_RAW_64M;
 	}
 	xb.rawSize = rawSize;
 	xb.spareSize = spareSize;
@@ -143,8 +143,8 @@ int buildImage(void)
 	memset(fsFileEnts, 0, sizeof(fsFileEnts));
 	memset(fsChain, 0, sizeof(fsChain));
 	memset(&flashHdr, 0, sizeof(flashHdr));
-	flashHdr.magic = 0x4fff;
-	flashHdr.build = 0x6007;
+	flashHdr.magic = SWAP16_IMAGE_WRITE(FLASH_MAGIC);
+	flashHdr.build = SWAP16_IMAGE_WRITE(FLASH_BUILD);
 	memset(xb.mmcAnchor, 0, sizeof(xb.mmcAnchor));
 
 	// Stock XeBuild doesn't set the patch slot size for
@@ -153,20 +153,23 @@ int buildImage(void)
 	// it to 0x10000 if it's unset in the header as a
 	// workaround, so we're setting this as the default
 	#ifdef XEBUILD_FIXES
-		flashHdr.patchSlotSize = 0x100;
+		flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 	#endif
 
 	if (xb.type != BUILD_JTAG)
 	{
-		flashHdr.cbOffset = xb.type - BUILD_TESTKIT < 2 ? 0xc00000 : 0x800000;
+		/* xb.type - BUILD_TESTKIT < 2: BUILD_TESTKIT or BUILD_TESTKIT16 */
+		flashHdr.cbOffset = xb.type - BUILD_TESTKIT < 2 ? SWAP32_IMAGE_WRITE(FLASH_CB_OFFSET_TESTKIT)
+			: SWAP32_IMAGE_WRITE(FLASH_CB_OFFSET);
 		cf = SWAP32_IMAGE_WRITE((uint32_t)findFileOffset(FILE_CF));
-		flashHdr.sysUpdateCount = 0x0200;
-		flashHdr.kvVersion = 0x1207;
-		flashHdr.kvAddr = 0x400000;
-		flashHdr.smcBootSize = 0x300000;
-		flashHdr.smcBootAddr = 0x100000;
-		imgUsed = 0x8000;
-		flashHdr.kvSize = xb.type - BUILD_TESTKIT < 2 ? 0x800000 : 0x400000;
+		flashHdr.sysUpdateCount = SWAP16_IMAGE_WRITE(FLASH_SU_COUNT);
+		flashHdr.kvVersion = SWAP16_IMAGE_WRITE(FLASH_KV_VERSION);
+		flashHdr.kvAddr = SWAP32_IMAGE_WRITE(FLASH_KV_ADDR);
+		flashHdr.smcBootSize = SWAP32_IMAGE_WRITE(SMC_SIZE);
+		flashHdr.smcBootAddr = SWAP32_IMAGE_WRITE(FLASH_SMC_ADDR);
+		imgUsed = FLASH_CB_OFFSET;
+		flashHdr.kvSize = xb.type - BUILD_TESTKIT < 2 ? SWAP32_IMAGE_WRITE(2 * KV_SIZE)
+			: SWAP32_IMAGE_WRITE(KV_SIZE);
 		flashHdr.cfOffset = cf;
 		flashHdr.sysUpdateAddr = cf;
 		switch (xb.flags & CONSOLE_MASK)
@@ -192,26 +195,28 @@ int buildImage(void)
 			if (xb.flags & NAND_BB_CONTROLLER)
 			{
 				xb.bbController = 1;
-				flashHdr.patchSlotSize = 0x100;
+				flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 			}
 			if (xb.bigBlock)
 			{
-				flashHdr.patchSlotSize = 0x200;
+				flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT_BB);
 			}
 			copyright[10] = '9';
 			break;
 		case CONSOLE_TRINITY:
 			xb.bbController = 1;
-			flashHdr.patchSlotSize = 0x100;
+			flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 			copyright[9] = '1';
 			copyright[10] = '0';
 			break;
 		case CONSOLE_CORONA:
 		case CONSOLE_WINCHESTER:
 			xb.bbController = 1;
-			flashHdr.patchSlotSize = 0x100;
+			flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 			copyright[9] = '1';
 			copyright[10] = '0';
+			/* not byte swapped (0x80000 and 0x380000 as read): the SMC is
+			   0x3800 bytes at 0x800, which smcSetLoad sets when it loads it */
 			flashHdr.smcBootAddr = 0x800;
 			flashHdr.smcBootSize = 0x3800;
 			break;
@@ -219,26 +224,26 @@ int buildImage(void)
 	}
 	else
 	{
-		flashHdr.cbOffset = 0x800000;
-		flashHdr.cfOffset = 0x700;
-		flashHdr.kvSize = 0x400000;
-		flashHdr.sysUpdateAddr = 0x700;
-		flashHdr.sysUpdateCount = 0x0200;
-		flashHdr.kvVersion = 0x1207;
-		flashHdr.kvAddr = 0x400000;
-		flashHdr.smcBootSize = 0x300000;
-		flashHdr.smcBootAddr = 0x100000;
-		imgUsed = 0x8000;
+		flashHdr.cbOffset = SWAP32_IMAGE_WRITE(FLASH_CB_OFFSET);
+		flashHdr.cfOffset = SWAP32_IMAGE_WRITE(FLASH_JTAG_CF);
+		flashHdr.kvSize = SWAP32_IMAGE_WRITE(KV_SIZE);
+		flashHdr.sysUpdateAddr = SWAP32_IMAGE_WRITE(FLASH_JTAG_CF);
+		flashHdr.sysUpdateCount = SWAP16_IMAGE_WRITE(FLASH_SU_COUNT);
+		flashHdr.kvVersion = SWAP16_IMAGE_WRITE(FLASH_KV_VERSION);
+		flashHdr.kvAddr = SWAP32_IMAGE_WRITE(FLASH_KV_ADDR);
+		flashHdr.smcBootSize = SWAP32_IMAGE_WRITE(SMC_SIZE);
+		flashHdr.smcBootAddr = SWAP32_IMAGE_WRITE(FLASH_SMC_ADDR);
+		imgUsed = FLASH_CB_OFFSET;
 		if ((xb.flags & CONSOLE_MASK) == CONSOLE_JASPER)
 		{
 			if (xb.flags & NAND_BB_CONTROLLER)
 			{
 				xb.bbController = 1;
-				flashHdr.patchSlotSize = 0x100;
+				flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 			}
 			if (bigBlock)
 			{
-				flashHdr.patchSlotSize = 0x100;
+				flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 			}
 			copyright[10] = '8';
 		}
@@ -264,9 +269,10 @@ int buildImage(void)
 	if (xb.type > BUILD_DEVGL16)
 	{
 		copyright[9] = '1';
-		flashHdr.qfe = 0x80;
+		flashHdr.qfe = SWAP16_IMAGE_WRITE(0x8000);
 		copyright[10] = '0';
-		flashHdr.patchSlotSize = xb.bigBlock ? 0x200 : 0x100;
+		flashHdr.patchSlotSize = xb.bigBlock ? SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT_BB)
+			: SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 	}
 	else if (!checkZeros(xb.cpuKey, 16) && !xb.cfLdv)
 	{
@@ -306,17 +312,23 @@ void imageFree(void)
 	}
 }
 
+/* the ECD: an LFSR over a page's 0x1000 data bits and the first 0x66 bits of
+   its spare bytes */
+#define ECD_POLY 0x6954559
+#define ECD_DATA_BITS 0x1000
+#define ECD_BITS 0x1066
+
 /* the 26-bit ECD of a page: its 512 data bytes and 12 spare bytes */
 uint32_t calcEcd(uint8_t *datc, uint8_t *spare)
 {
 	unsigned int i = 0, val = 0;
 	unsigned int v = 0;
 	unsigned int *data = (unsigned int *)datc;
-	for (i = 0; i < 0x1066; i++)
+	for (i = 0; i < ECD_BITS; i++)
 	{
 		if (!(i & 31))
 		{
-			if (i == 0x1000)
+			if (i == ECD_DATA_BITS)
 			{
 				data = (unsigned int *)spare;
 			}
@@ -326,7 +338,7 @@ uint32_t calcEcd(uint8_t *datc, uint8_t *spare)
 		v >>= 1;
 		if (val & 1)
 		{
-			val ^= 0x6954559;
+			val ^= ECD_POLY;
 		}
 		val >>= 1;
 	}
@@ -349,11 +361,11 @@ int pageEccOk(uint8_t *datc, uint8_t *spare)
 	unsigned int v = 0;
 	unsigned int *data = (unsigned int *)datc;
 
-	for (i = 0; i < 0x1066; i++)
+	for (i = 0; i < ECD_BITS; i++)
 	{
 		if (!(i & 31))
 		{
-			if (i == 0x1000)
+			if (i == ECD_DATA_BITS)
 			{
 				data = (unsigned int *)spare;
 			}
@@ -363,7 +375,7 @@ int pageEccOk(uint8_t *datc, uint8_t *spare)
 		v >>= 1;
 		if (val & 1)
 		{
-			val ^= 0x6954559;
+			val ^= ECD_POLY;
 		}
 		val >>= 1;
 	}
@@ -390,15 +402,15 @@ int pageEccOk(uint8_t *datc, uint8_t *spare)
 /* a raw block (data and spare interleaved) */
 int blockEccOk(uint8_t *blk, int bigBlock)
 {
-	int i, pages = bigBlock ? 256 : 32;
+	int i, pages = bigBlock ? NAND_BB_PAGES : NAND_BLOCK_PAGES;
 
 	for (i = 0; i < pages; i++)
 	{
-		if (pageErased(blk + i * 528, blk + i * 528 + 512))
+		if (pageErased(blk + i * NAND_RAW_PAGE, blk + i * NAND_RAW_PAGE + NAND_PAGE))
 		{
 			continue;
 		}
-		if (pageEccOk(blk + i * 528, blk + i * 528 + 512))
+		if (pageEccOk(blk + i * NAND_RAW_PAGE, blk + i * NAND_RAW_PAGE + NAND_PAGE))
 		{
 			continue;
 		}
@@ -411,14 +423,14 @@ int pageErased(const uint8_t *data, const uint8_t *spare)
 {
 	int i;
 
-	for (i = 0; i < 512; i++)
+	for (i = 0; i < NAND_PAGE; i++)
 	{
 		if (data[i] != 0xff)
 		{
 			return 0;
 		}
 	}
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < NAND_SPARE; i++)
 	{
 		if (spare[i] != 0xff)
 		{
@@ -430,16 +442,16 @@ int pageErased(const uint8_t *data, const uint8_t *spare)
 
 int blockErased(uint8_t *blk, int bigBlock)
 {
-	return isErased(blk, (bigBlock ? 256 : 32) * 528);
+	return isErased(blk, (bigBlock ? NAND_BB_PAGES : NAND_BLOCK_PAGES) * NAND_RAW_PAGE);
 }
 
 int blockPagesErased(uint8_t *data, uint8_t *spare, int bigBlock)
 {
-	int i, pages = bigBlock ? 256 : 32;
+	int i, pages = bigBlock ? NAND_BB_PAGES : NAND_BLOCK_PAGES;
 
 	for (i = 0; i < pages; i++)
 	{
-		if (!pageErased(data + i * 512, spare + i * 16))
+		if (!pageErased(data + i * NAND_PAGE, spare + i * NAND_SPARE))
 		{
 			return 0;
 		}
@@ -451,7 +463,7 @@ int blockIsFF(const uint8_t *p)
 {
 	int i;
 
-	for (i = 0; i < 0x4000; i++)
+	for (i = 0; i < NAND_BLOCK; i++)
 	{
 		if (p[i] != 0xff)
 		{
@@ -478,13 +490,13 @@ int isErased(const uint8_t *p, uint32_t len)
 /* LBA and ECD of each page of a raw block */
 void setBlockSpare(uint8_t *blk, uint32_t lba, int bigBlock)
 {
-	int i, pages = bigBlock ? 256 : 32;
+	int i, pages = bigBlock ? NAND_BB_PAGES : NAND_BLOCK_PAGES;
 
 	for (i = 0; i < pages; i++)
 	{
-		struct sp *s = (struct sp *)(blk + i * 528 + 512);
+		struct sp *s = (struct sp *)(blk + i * NAND_RAW_PAGE + NAND_PAGE);
 
-		memset(s, 0, 16);
+		memset(s, 0, NAND_SPARE);
 		if (bigBlock)
 		{
 			s->b2lo = lba >> 8;
@@ -503,15 +515,15 @@ void setBlockSpare(uint8_t *blk, uint32_t lba, int bigBlock)
 			s->b5 = 0xff;
 			s->b0 = lba;
 		}
-		calcPageEcc(blk + i * 528, (uint8_t *)s);
+		calcPageEcc(blk + i * NAND_RAW_PAGE, (uint8_t *)s);
 	}
 }
 
 uint32_t imgSizeAligned(void)
 {
-	uint32_t r = imgUsed % 0x4000;
+	uint32_t r = imgUsed % NAND_BLOCK;
 
-	return r ? imgUsed + 0x4000 - r : imgUsed;
+	return r ? imgUsed + NAND_BLOCK - r : imgUsed;
 }
 
 void setFlashBuild(uint16_t build)
@@ -526,15 +538,15 @@ uint32_t smcSetLoad(uint32_t size)
 {
 	uint32_t *h = (uint32_t *)xb.hdr;
 
-	if (size > 0x3800)
+	if (size > SMC_SIZE_CORONA)
 	{
 		log_printf(0, "\n***** ERROR: SMC size 0x%x not supported!!!\n\n", size);
 		return 0;
 	}
 	h[30] = SWAP32_IMAGE_WRITE(size);
-	h[31] = SWAP32_IMAGE_WRITE(0x4000 - size);
+	h[31] = SWAP32_IMAGE_WRITE(FLASH_KV_ADDR - size);
 	log_printf(1, "reset smc load address to 0x%x size 0x%x\n", SWAP32_IMAGE_WRITE(h[31]), SWAP32_IMAGE_WRITE(h[30]));
-	return 0x4000 - size;
+	return FLASH_KV_ADDR - size;
 }
 
 uint32_t imgSmcOffset(void)
@@ -553,17 +565,17 @@ uint32_t setPatchSlot(uint32_t off)
 	}
 	if (xb.bigBlock)
 	{
-		off = (off + 0x1ffff) & ~0x1ffff;
+		off = (off + NAND_BB_MASK) & ~NAND_BB_MASK;
 		if (xb.type == BUILD_RETAIL)
 		{
 			uint32_t cf = SWAP32_IMAGE_WRITE(h[28]);
 
-			xb.spare7 = (off + (cf ? cf * 2 : 0x20000)) >> 17;
+			xb.spare7 = (off + (cf ? cf * 2 : 2 * FLASH_PATCH_SLOT)) >> NAND_BB_SHIFT;
 		}
 	}
 	else
 	{
-		off = (off + 0x3fff) & ~0x3fff;
+		off = (off + NAND_BLOCK_MASK) & ~NAND_BLOCK_MASK;
 	}
 	v = SWAP32_IMAGE_WRITE(off);
 	h[25] = v;
@@ -584,7 +596,7 @@ uint32_t imgCfSize(void)
 	uint32_t *h = (uint32_t *)xb.hdr;
 	uint32_t v = SWAP32_IMAGE_WRITE(h[28]);
 
-	return v ? v : 0x10000;
+	return v ? v : FLASH_PATCH_SLOT;
 }
 
 uint32_t imgSize(void)
@@ -623,9 +635,9 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	{
 		return -1;
 	}
-	x = off & 0x3fff;
-	start = (off - x) >> 14;
-	first = x ? 0x4000 - x : 0;
+	x = off & NAND_BLOCK_MASK;
+	start = (off - x) >> NAND_BLOCK_SHIFT;
+	first = x ? NAND_BLOCK - x : 0;
 	if (len <= first)
 	{
 		blocks = 1;
@@ -634,15 +646,15 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	else
 	{
 		rem = len - first;
-		if (rem < 0x4000)
+		if (rem < NAND_BLOCK)
 		{
 			tail = rem;
 		}
 		else
 		{
-			tail = rem % 0x4000;
+			tail = rem % NAND_BLOCK;
 		}
-		blocks = rem / 0x4000;
+		blocks = rem / NAND_BLOCK;
 		if (tail)
 		{
 			blocks++;
@@ -657,43 +669,43 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 	{
 		if (tail)
 		{
-			memset(xb.hdr + off + len, 0, ((off + len + 0x3fff) & ~0x3fff) - (off + len));
+			memset(xb.hdr + off + len, 0, ((off + len + NAND_BLOCK_MASK) & ~NAND_BLOCK_MASK) - (off + len));
 		}
 	}
 #define BLK (start + b)
 	for (b = 0; b < blocks; b++)
 	{
-		small = type != 0 && type != '0';
-		partial = len < 0x4000;
-		npages = 32;
+		small = type != 0 && type != SPARE_FS_ROOT;
+		partial = len < NAND_BLOCK;
+		npages = NAND_BLOCK_PAGES;
 		if (partial > 0)
 		{
 			if (small)
 			{
-				if (len % 512)
+				if (len % NAND_PAGE)
 				{
-					npages = (len + 512) / 512;
+					npages = (len + NAND_PAGE) / NAND_PAGE;
 				}
 				else
 				{
-					npages = len / 512;
+					npages = len / NAND_PAGE;
 				}
 			}
 		}
 		p = 0;
-		t = type - '1';
+		t = type - SPARE_MOBILE_B;
 		if (t < 15)
 		{
-			p = xb.bigBlock ? off & 0x1ffff : off & 0x3fff;
+			p = xb.bigBlock ? off & NAND_BB_MASK : off & NAND_BLOCK_MASK;
 			if (p)
 			{
-				p /= 512;
+				p /= NAND_PAGE;
 			}
 		}
 		for (end = p + npages; p < end; p++)
 		{
-			s = xb.spare + (start * 32 + p + b * 32) * 16;
-			memset(s, 0, 16);
+			s = xb.spare + (start * NAND_BLOCK_PAGES + p + b * NAND_BLOCK_PAGES) * NAND_SPARE;
+			memset(s, 0, NAND_SPARE);
 			if (xb.bigBlock)
 			{
 				((struct spb *)s)->b2lo = (start + b) >> 8;
@@ -702,19 +714,19 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 				if (type > 1)
 				{
 					((struct spt *)s)->type = type;
-					if (type != 0x2a && type != 0x2c)
+					if (type != SPARE_FILE_BB && type != SPARE_FS_ROOT_BB)
 					{
-						pages = len >> 9;
-						if (len & 511)
+						pages = len >> NAND_PAGE_SHIFT;
+						if (len & (NAND_PAGE - 1))
 						{
 							pages++;
 						}
-						if (off & 0x1ffff)
+						if (off & NAND_BB_MASK)
 						{
-							int used[2] = { (off & 0x1ffff) / 512, 0 };
+							int used[2] = { (off & NAND_BB_MASK) / NAND_PAGE, 0 };
 							int k;
 
-							left = 256;
+							left = NAND_BB_PAGES;
 							for (k = 0; k < 2; k++)
 							{
 								left -= used[k];
@@ -722,7 +734,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 						}
 						else
 						{
-							left = 256;
+							left = NAND_BB_PAGES;
 						}
 						if ((int)pages & 3)
 						{
@@ -735,7 +747,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 					}
 					else
 					{
-						if (type == 0x2c)
+						if (type == SPARE_FS_ROOT_BB)
 						{
 							s[5] = 1;
 						}
@@ -747,16 +759,16 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 			}
 			else
 			{
-				pages = len % 512 ? len / 512 + 1 : len / 512;
+				pages = len % NAND_PAGE ? len / NAND_PAGE + 1 : len / NAND_PAGE;
 				((struct sps *)s)->b1lo = BLK >> 8;
 				((struct sps *)s)->b5 = 0xff;
 				s[0] = BLK;
 				if (type > 1)
 				{
 					((struct spt *)s)->type = type;
-					s[9] = 32 - pages;
+					s[9] = NAND_BLOCK_PAGES - pages;
 					s[2] = 1;
-					if (type != '0')
+					if (type != SPARE_FS_ROOT)
 					{
 						s[8] = len >> 8;
 						s[7] = len;
@@ -766,12 +778,12 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 		}
 	}
 #undef BLK
-	if (next != 0xf1f1)
+	if (next != IMG_NO_CHAIN)
 	{
 
 		for (i = 0; i < blocks; i++)
 		{
-			if (next != 0 && next != 0xffff)
+			if (next != 0 && next != IMG_CHAIN)
 			{
 				fsChain[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(next);
 			}
@@ -780,9 +792,9 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
 				fsChain[start + i - xb.fsStart] = SWAP16_IMAGE_WRITE(start + i - xb.fsStart + 1);
 			}
 		}
-		if (next == 0xffff)
+		if (next == IMG_CHAIN)
 		{
-			fsChain[start - xb.fsStart + blocks - 1] = SWAP16_IMAGE_WRITE(0x1fff);
+			fsChain[start - xb.fsStart + blocks - 1] = SWAP16_IMAGE_WRITE(FS_CHAIN_END);
 		}
 	}
 	imgUsed = off + len;
@@ -794,7 +806,7 @@ int imgAdd(uint32_t off, const void *src, uint32_t len, uint8_t type, uint16_t n
    and the threading of the head block */
 int imgFits(uint32_t off, uint32_t len)
 {
-	if ((xb.fsEnd - 1) * 0x4000 >= off + len)
+	if ((xb.fsEnd - 1) * NAND_BLOCK >= off + len)
 	{
 		return 1;
 	}
@@ -807,17 +819,17 @@ void imgAddFile(const char *name, const void *data, const uint32_t *time, uint32
 
 	if (imgFits(off, len))
 	{
-		fsFileEnts[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> 14) - xb.fsStart);
+		fsFileEnts[nFsFiles].block = SWAP16_IMAGE_WRITE((uint16_t)(off >> NAND_BLOCK_SHIFT) - xb.fsStart);
 		fsFileEnts[nFsFiles].size = SWAP32_IMAGE_WRITE(len);
 		strcpy(fsFileEnts[nFsFiles].name, name);
 		fsFileEnts[nFsFiles].time = *time;
 		if (!xb.bigBlock)
 		{
-			imgAdd(off, data, len, 0, 0xffff, 1);
+			imgAdd(off, data, len, 0, IMG_CHAIN, 1);
 		}
 		else
 		{
-			imgAdd(off, data, len, 0x2a, 0xffff, 1);
+			imgAdd(off, data, len, SPARE_FILE_BB, IMG_CHAIN, 1);
 		}
 		nFsFiles++;
 	}
@@ -844,22 +856,22 @@ uint32_t imgAddMobile(const void *data, uint32_t len, uint8_t type)
 		if (!mobileOffset)
 		{
 			mobileOffset = imgSizeAligned();
-			if (mobileOffset & 0x1ffff)
+			if (mobileOffset & NAND_BB_MASK)
 			{
-				mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
+				mobileOffset = (mobileOffset + NAND_BB_BLOCK) & ~NAND_BB_MASK;
 			}
 		}
-		else if ((mobileOffset & ~0x1ffff) + 0x20000 < mobileOffset + len)
+		else if ((mobileOffset & ~NAND_BB_MASK) + NAND_BB_BLOCK < mobileOffset + len)
 		{
-			mobileOffset = (mobileOffset + 0x20000) & ~0x1ffff;
+			mobileOffset = (mobileOffset + NAND_BB_BLOCK) & ~NAND_BB_MASK;
 		}
 		off = mobileOffset;
 		if (imgFits(off, len))
 		{
 			log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
 				type + 17, type, off, len, off + len);
-			imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
-			ret = mobileOffset >> 17;
+			imgAdd(mobileOffset, data, len, type, FS_CHAIN_FREE, 0);
+			ret = mobileOffset >> NAND_BB_SHIFT;
 			mobileOffset += len;
 			if (mobileOffset & 0x7ff)
 			{
@@ -876,8 +888,8 @@ uint32_t imgAddMobile(const void *data, uint32_t len, uint8_t type)
 	{
 		log_printf(1, "\tadding Mobile%c.dat as type 0x%x at raw offset 0x%x len 0x%x (end 0x%x)\n",
 			type + 17, type, off, len, off + len);
-		ret = mobileOffset >> 14;
-		imgAdd(mobileOffset, data, len, type, 0x1ffe, 0);
+		ret = mobileOffset >> NAND_BLOCK_SHIFT;
+		imgAdd(mobileOffset, data, len, type, FS_CHAIN_FREE, 0);
 		return ret;
 	}
 	log_printf(0, "\n******* ERROR: adding Mobile%c.dat will exceed available flash space! Skipped!\n\n",
@@ -889,11 +901,11 @@ void fixupFsTable(uint32_t off)
 {
 	uint32_t i;
 
-	for (i = 0; i < off >> 14; i++)
+	for (i = 0; i < off >> NAND_BLOCK_SHIFT; i++)
 	{
-		if (fsChain[i - xb.fsStart] != SWAP16_IMAGE_WRITE(0x1ffb))
+		if (fsChain[i - xb.fsStart] != SWAP16_IMAGE_WRITE(FS_CHAIN_RESERVED))
 		{
-			fsChain[i - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffb);
+			fsChain[i - xb.fsStart] = SWAP16_IMAGE_WRITE(FS_CHAIN_RESERVED);
 		}
 	}
 }
@@ -902,9 +914,9 @@ void fixupEmptyFsBlocks(uint32_t off)
 {
 	uint32_t b, i, n;
 
-	for (b = off >> 14; b < xb.fsEnd; b++)
+	for (b = off >> NAND_BLOCK_SHIFT; b < xb.fsEnd; b++)
 	{
-		fsChain[b - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffe);
+		fsChain[b - xb.fsStart] = SWAP16_IMAGE_WRITE(FS_CHAIN_FREE);
 	}
 	if (!xb.bigBlock)
 	{
@@ -915,7 +927,7 @@ void fixupEmptyFsBlocks(uint32_t off)
 		}
 		for (i = 0; i < n; i++)
 		{
-			fsChain[xb.fsEnd + i] = SWAP16_IMAGE_WRITE(0x1ffb);
+			fsChain[xb.fsEnd + i] = SWAP16_IMAGE_WRITE(FS_CHAIN_RESERVED);
 		}
 	}
 	if (xb.type == BUILD_JTAG)
@@ -928,35 +940,35 @@ void fixupEmptyFsBlocks(uint32_t off)
 int addSmcConfig(const uint8_t *cfg, uint32_t len)
 {
 	memset(smcPage, 0xff, sizeof(smcPage));
-	memcpy(smcPage, cfg, 0x400);
+	memcpy(smcPage, cfg, SMCCFG_SIZE);
 	log_printf(1, "adding smc config to offset 0x%08x, len 0x%x\n", xb.smcConfigOffset, len);
 	if (xb.bigBlock)
 	{
-		return imgAdd(xb.smcConfigOffset, smcPage, 0x1000, 1, 0xf1f1, 0);
+		return imgAdd(xb.smcConfigOffset, smcPage, sizeof(smcPage), 1, IMG_NO_CHAIN, 0);
 	}
-	return imgAdd(xb.smcConfigOffset, smcPage, 0x1000, 1, 0x1ffb, 0);
+	return imgAdd(xb.smcConfigOffset, smcPage, sizeof(smcPage), 1, FS_CHAIN_RESERVED, 0);
 }
 
 void writeInitialHeader(void)
 {
 	if (xb.bigBlock)
 	{
-		imgAdd(0, &flashHdr, sizeof(flashHdr), 0, 0xf1f1, 1);
+		imgAdd(0, &flashHdr, sizeof(flashHdr), 0, IMG_NO_CHAIN, 1);
 	}
 	else
 	{
-		imgAdd(0, &flashHdr, sizeof(flashHdr), 0, 0x1ffb, 1);
+		imgAdd(0, &flashHdr, sizeof(flashHdr), 0, FS_CHAIN_RESERVED, 1);
 	}
 	if (xb.netKd.data && xb.netKd.size)
 	{
 		log_printf(1, "Inserting netKd data from dump into header\n");
 		if (xb.bigBlock)
 		{
-			imgAdd(0x80, xb.netKd.data, xb.netKd.size, 0, 0xf1f1, 1);
+			imgAdd(FLASH_NETKD, xb.netKd.data, xb.netKd.size, 0, IMG_NO_CHAIN, 1);
 		}
 		else
 		{
-			imgAdd(0x80, xb.netKd.data, xb.netKd.size, 0, 0x1ffb, 1);
+			imgAdd(FLASH_NETKD, xb.netKd.data, xb.netKd.size, 0, FS_CHAIN_RESERVED, 1);
 		}
 	}
 }
@@ -974,12 +986,12 @@ long checkBootImage(int write)
 	build = SWAP16_IMAGE_WRITE(b->build);
 	size = SWAP32_IMAGE_WRITE(b->size);
 	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CB)\n", magic >> 8, magic & 0xff, build, off, size);
-	if ((magic & 0x43ff) != 0x4342)
+	if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CB)
 	{
 		return -1;
 	}
 	off = (off + size + 15) & ~15;
-	if (SWAP16_IMAGE_WRITE(b->flags) & 0x800)
+	if (SWAP16_IMAGE_WRITE(b->flags) & BL_FLAG_CB_B)
 	{
 		b = (struct blhdr *)(xb.bl.data + off);
 		magic = SWAP16_IMAGE_WRITE(b->magic);
@@ -987,13 +999,13 @@ long checkBootImage(int write)
 	build = SWAP16_IMAGE_WRITE(b->build);
 		size = SWAP32_IMAGE_WRITE(b->size);
 		log_printf(1, "%c%c v%d at 0x%x size 0x%x (dual CB)\n", magic >> 8, magic & 0xff, build, off, size);
-		if ((magic & 0x43ff) != 0x4342)
+		if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CB)
 		{
 			return -1;
 		}
 		off = (off + size + 15) & ~15;
 	}
-	else if (magic & 0x1000)
+	else if (magic & BL_MAGIC_KIT)
 	{
 		b = (struct blhdr *)(xb.bl.data + off);
 		magic = SWAP16_IMAGE_WRITE(b->magic);
@@ -1001,7 +1013,7 @@ long checkBootImage(int write)
 	build = SWAP16_IMAGE_WRITE(b->build);
 		size = SWAP32_IMAGE_WRITE(b->size);
 		log_printf(1, "%c%c v%d at 0x%x size 0x%x (devkit CC)\n", magic >> 8, magic & 0xff, build, off, size);
-		if ((magic & 0x43ff) != 0x4343)
+		if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CC)
 		{
 			return -1;
 		}
@@ -1012,7 +1024,7 @@ long checkBootImage(int write)
 	build = SWAP16_IMAGE_WRITE(b->build);
 	size = SWAP32_IMAGE_WRITE(b->size);
 	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CD)\n", magic >> 8, magic & 0xff, build, off, size);
-	if ((magic & 0x43ff) != 0x4344)
+	if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CD)
 	{
 		return -1;
 	}
@@ -1021,7 +1033,7 @@ long checkBootImage(int write)
 	magic = SWAP16_IMAGE_WRITE(b->magic);
 	build = SWAP16_IMAGE_WRITE(b->build);
 	log_printf(1, "%c%c v%d at 0x%x size 0x%x (CE)\n", magic >> 8, magic & 0xff, build, off, SWAP32_IMAGE_WRITE(b->size));
-	if ((magic & 0x43ff) != 0x4345)
+	if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CE)
 	{
 		return -1;
 	}
@@ -1031,11 +1043,11 @@ long checkBootImage(int write)
 	{
 		if (xb.bigBlock)
 		{
-			imgAdd(0, xb.bl.data, xb.bl.size, 0, 0xf1f1, 1);
+			imgAdd(0, xb.bl.data, xb.bl.size, 0, IMG_NO_CHAIN, 1);
 		}
 		else
 		{
-			imgAdd(0, xb.bl.data, xb.bl.size, 0, 0x1ffb, 1);
+			imgAdd(0, xb.bl.data, xb.bl.size, 0, FS_CHAIN_RESERVED, 1);
 		}
 	}
 	return 0;
@@ -1048,14 +1060,14 @@ void writeFsTable(uint32_t off)
 	int i;
 	uint32_t len;
 
-	blk = off >> 14;
-	if (xb.bigBlock && (off & 0x1ffff))
+	blk = off >> NAND_BLOCK_SHIFT;
+	if (xb.bigBlock && (off & NAND_BB_MASK))
 	{
-		off = (off + 0x20000) & ~0x1ffff;
-		blk = off >> 14;
+		off = (off + NAND_BB_BLOCK) & ~NAND_BB_MASK;
+		blk = off >> NAND_BLOCK_SHIFT;
 	}
-	fsChain[blk - xb.fsStart] = SWAP16_IMAGE_WRITE(0x1ffd);
-	buf = malloc(0x4000);
+	fsChain[blk - xb.fsStart] = SWAP16_IMAGE_WRITE(FS_CHAIN_ROOT);
+	buf = malloc(NAND_BLOCK);
 	p = buf;
 	for (i = 0; i < 16; i++)
 	{
@@ -1070,10 +1082,10 @@ void writeFsTable(uint32_t off)
 	{
 		goto small;
 	}
-	imgAdd(off, buf, len, 0x2c, 0x1ffe, 0);
+	imgAdd(off, buf, len, SPARE_FS_ROOT_BB, FS_CHAIN_FREE, 0);
 	goto done;
 small:
-	imgAdd(off, buf, len, 0x30, 0x1ffd, 0);
+	imgAdd(off, buf, len, SPARE_FS_ROOT, FS_CHAIN_ROOT, 0);
 done:
 	setBeU16(blk, (uint8_t *)&xb.fsBlock);
 	setBeU16(0, (uint8_t *)&xb.fsReserved);
@@ -1082,7 +1094,7 @@ done:
 
 void copyAnchorBlock(int n)
 {
-	uint32_t off = n != 1 ? 0x2fec000 : 0x2fe8000;
+	uint32_t off = n != 1 ? MMC_ANCHOR1 : MMC_ANCHOR0;
 
 	log_printf(1, "copying anchor block %d to offset 0x%x\n", n, off);
 	memset(xb.hdr + off, 0, 0x1000);
@@ -1093,7 +1105,7 @@ int spareUsed(const uint8_t *s)
 {
 	int i;
 
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < NAND_SPARE; i++)
 	{
 		if (s[i] != 0xff)
 		{
@@ -1107,10 +1119,10 @@ uint8_t *imageGetBuffer(uint32_t *size)
 {
 	if (xb.flags & NAND_MMC)
 	{
-		*size = 0x3000000;
+		*size = NAND_SIZE_MMC;
 		return xb.hdr;
 	}
-	*size = xb.blocks * 0x4200;
+	*size = xb.blocks * NAND_RAW_BLOCK;
 	return xb.raw;
 }
 
@@ -1127,10 +1139,10 @@ int writeImage(char *name)
 	log_printf(1, "writing file '%s' to disk...", name);
 	if (xb.flags & NAND_MMC)
 	{
-		if (fwrite(xb.hdr, 0x3000000, 1, f) != 1)
+		if (fwrite(xb.hdr, NAND_SIZE_MMC, 1, f) != 1)
 		{
 			log_printf(1, "failed!\n");
-			log_printf(0, "\n***** ERROR: was not able to write %d bytes to the file %s!\n", 0x3000000, name);
+			log_printf(0, "\n***** ERROR: was not able to write %d bytes to the file %s!\n", NAND_SIZE_MMC, name);
 			fclose(f);
 			return 1;
 		}
@@ -1139,7 +1151,7 @@ int writeImage(char *name)
 			uint8_t hash[20];
 
 			log_printf(1, "done!\ncreating SHA-1 hash from system area data...");
-			XeCryptSha(xb.hdr, 0x3000000, 0, 0, 0, 0, hash, 20);
+			XeCryptSha(xb.hdr, NAND_SIZE_MMC, 0, 0, 0, 0, hash, 20);
 			log_printf(1, "done!\nwriting SHA-1 to file...");
 			writeSha1File(xb.sha1File, name, hash);
 		}
@@ -1149,10 +1161,10 @@ int writeImage(char *name)
 		XECRYPT_SHA_STATE sha;
 		uint8_t hash[20];
 
-		if (fwrite(xb.raw, xb.blocks * 0x4200, 1, f) != 1)
+		if (fwrite(xb.raw, xb.blocks * NAND_RAW_BLOCK, 1, f) != 1)
 		{
 			log_printf(1, "failed!\n");
-			log_printf(0, "\n***** ERROR: was not able to write %d bytes to the file %s!\n", xb.blocks * 0x4200, name);
+			log_printf(0, "\n***** ERROR: was not able to write %d bytes to the file %s!\n", xb.blocks * NAND_RAW_BLOCK, name);
 			fclose(f);
 			return 1;
 		}
@@ -1160,7 +1172,7 @@ int writeImage(char *name)
 		{
 			log_printf(1, "done!\ncreating SHA-1 hash from system area data...");
 			XeCryptShaInit(&sha);
-			XeCryptShaUpdate(&sha, xb.raw, xb.blocks * 0x4200);
+			XeCryptShaUpdate(&sha, xb.raw, xb.blocks * NAND_RAW_BLOCK);
 		}
 		if (xb.nandMu && (xb.optFlags & OPT_NANDMU))
 		{
@@ -1209,13 +1221,13 @@ int finalizeImage(void)
 	if (xb.bigBlock)
 	{
 		log_printf(1, "fixing up big block LBA numbers in spare...");
-		n = xb.blocks / 8;
+		n = xb.blocks / (NAND_BB_BLOCK / NAND_BLOCK);
 		spare = xb.spare;
 		for (b = 0; b < n; b++)
 		{
-			for (p = 0; p < 256; p++)
+			for (p = 0; p < NAND_BB_PAGES; p++)
 			{
-				s = spare + b * 0x1000 + p * 16;
+				s = spare + b * (NAND_BB_PAGES * NAND_SPARE) + p * NAND_SPARE;
 				if (((struct sp *)s)->b2lo == 0xf && s[1] == 0xff)
 				{
 					continue;
@@ -1229,18 +1241,18 @@ int finalizeImage(void)
 	else if (xb.bbController)
 	{
 		log_printf(1, "fixing up big block controller on small block NAND LBA numbers...");
-		for (i = 0; i < xb.blocks * 32; i++)
+		for (i = 0; i < xb.blocks * NAND_BLOCK_PAGES; i++)
 		{
 			uint8_t t;
 
-			if (!spareUsed(xb.spare + i * 16))
+			if (!spareUsed(xb.spare + i * NAND_SPARE))
 			{
 				continue;
 			}
-			t = xb.spare[i * 16];
-			xb.spare[i * 16] = xb.spare[i * 16 + 2];
-			xb.spare[i * 16 + 2] = xb.spare[i * 16 + 1];
-			xb.spare[i * 16 + 1] = t;
+			t = xb.spare[i * NAND_SPARE];
+			xb.spare[i * NAND_SPARE] = xb.spare[i * NAND_SPARE + 2];
+			xb.spare[i * NAND_SPARE + 2] = xb.spare[i * NAND_SPARE + 1];
+			xb.spare[i * NAND_SPARE + 1] = t;
 		}
 		log_printf(1, "done!\n");
 	}
@@ -1248,17 +1260,17 @@ int finalizeImage(void)
 	raw = (uint8_t *)mem;
 	for (b = 0; b < xb.blocks; b++)
 	{
-		for (p = 0; p < 32; p++)
+		for (p = 0; p < NAND_BLOCK_PAGES; p++)
 		{
 			const uint8_t *q = xb.spare;
 			uint8_t *h = xb.hdr;
 
-			if (pageErased(h + (b * 32 + p) * 512, q + (b * 32 + p) * 16) <= 0)
+			if (pageErased(h + (b * NAND_BLOCK_PAGES + p) * NAND_PAGE, q + (b * NAND_BLOCK_PAGES + p) * NAND_SPARE) <= 0)
 			{
 				uint32_t val;
 
-				s = xb.spare + (b * 32 + p) * 16;
-				val = calcEcd(h + (b * 32 + p) * 512, s);
+				s = xb.spare + (b * NAND_BLOCK_PAGES + p) * NAND_SPARE;
+				val = calcEcd(h + (b * NAND_BLOCK_PAGES + p) * NAND_PAGE, s);
 				s[12] = (s[12] & 0x3f) + (val << 6);
 				s[13] = val >> 2;
 				s[14] = val >> 10;
@@ -1271,8 +1283,8 @@ int finalizeImage(void)
 			   it as &MEM[raw + 528], so no pass sets ALIGN on raw (tree dumps, checked
 			   with iw22align.py) and the 512-byte memcpy gets its alignment prologue */
 			{
-				static const uint32_t partSize[2] = { 512, 16 };
-				const uint8_t *from[2] = { h + (b * 32 + p) * 512, q + (b * 32 + p) * 16 };
+				static const uint32_t partSize[2] = { NAND_PAGE, NAND_SPARE };
+				const uint8_t *from[2] = { h + (b * NAND_BLOCK_PAGES + p) * NAND_PAGE, q + (b * NAND_BLOCK_PAGES + p) * NAND_SPARE };
 				int k;
 
 				for (k = 0; k < 2; k++)
@@ -1287,14 +1299,14 @@ int finalizeImage(void)
 	if (xb.nandMu && (xb.optFlags & OPT_NANDMU))
 	{
 		log_printf(1, "attempting to restore NAND MU data to big block unit from dump...");
-		raw = xb.raw + xb.spare7 * 0x21000;
+		raw = xb.raw + xb.spare7 * NAND_RAW_BB_BLOCK;
 		for (b = xb.spare7; b < xb.muBlocks; b++)
 		{
-			for (p = 0; p < 256; p++)
+			for (p = 0; p < NAND_BB_PAGES; p++)
 			{
-				memcpy(raw, xb.dump + b * 0x20000 + p * 512, 512);
-				memcpy(raw + 512, xb.dumpSpare + b * 0x1000 + p * 16, 16);
-				raw += 528;
+				memcpy(raw, xb.dump + b * NAND_BB_BLOCK + p * NAND_PAGE, NAND_PAGE);
+				memcpy(raw + NAND_PAGE, xb.dumpSpare + b * (NAND_BB_PAGES * NAND_SPARE) + p * NAND_SPARE, NAND_SPARE);
+				raw += NAND_RAW_PAGE;
 			}
 		}
 		log_printf(1, "done!\n");
@@ -1309,13 +1321,13 @@ int finalizeImage(void)
 			log_printf(1, "remapping %d blocks\n", xb.numBad);
 			if (xb.bigBlock)
 			{
-				size = 0x21000;
-				blocks = 0x200;
+				size = NAND_RAW_BB_BLOCK;
+				blocks = NAND_SIZE_64M / NAND_BB_BLOCK;
 			}
 			else
 			{
-				size = 0x4200;
-				blocks = xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT ? 0x1000 : 0x400;
+				size = NAND_RAW_BLOCK;
+				blocks = xb.type == BUILD_DEVKIT || xb.type == BUILD_TESTKIT ? NAND_SIZE_64M / NAND_BLOCK : NAND_SIZE_16M / NAND_BLOCK;
 			}
 			for (i = 0; i < xb.numBad; i++)
 			{
@@ -1336,7 +1348,7 @@ int finalizeImage(void)
 					}
 					log_printf(1, "done!\n");
 				}
-				else if (xb.badRemap[i] != 0xfffffffb)
+				else if (xb.badRemap[i] != REMAP_NONE)
 				{
 					log_printf(1, "\n\n***** ERROR: Remapping block 0x%x to block 0x%x is not sane on a NAND with 0x%x blocks!\n",
 						from, xb.badRemap[i], blocks);
@@ -1528,10 +1540,10 @@ void imgAddRaw(const char *name, const void *data, uint32_t len, uint32_t off)
 	log_printf(1, "\tadding %s at raw offset 0x%x len 0x%x (end 0x%x)\n", name, off, len, off + len);
 	if (xb.bigBlock)
 	{
-		imgAdd(off, data, 0x1000, 1, 0xf1f1, 0);
+		imgAdd(off, data, RAWFILE_SIZE, 1, IMG_NO_CHAIN, 0);
 	}
 	else
 	{
-		imgAdd(off, data, 0x1000, 1, 0x1ffb, 0);
+		imgAdd(off, data, RAWFILE_SIZE, 1, FS_CHAIN_RESERVED, 0);
 	}
 }

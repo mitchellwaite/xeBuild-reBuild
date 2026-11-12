@@ -97,6 +97,67 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
 #define NAND_SIZE_MMC 0x3000000		/* 48MiB eMMC, no spare data */
 #define NAND_SIZE_BIG_BLOCK 0x4200000	/* 64MiB big block NAND with its spare data */
 
+/* ---- NAND geometry ----
+
+   A page is NAND_PAGE bytes of data and NAND_SPARE spare bytes (LBA, block
+   type, ECD), which a raw image interleaves.  A small block NAND's block is
+   0x20 pages, a big block one's 0x100; xb.blocks and the FS count 16K
+   (small) blocks either way.  The eMMC has no spare data. */
+#define NAND_PAGE 0x200
+#define NAND_PAGE_SHIFT 9
+#define NAND_SPARE 0x10
+#define NAND_RAW_PAGE 0x210
+#define NAND_BLOCK 0x4000
+#define NAND_BLOCK_SHIFT 14
+#define NAND_BLOCK_MASK 0x3fff
+#define NAND_BLOCK_PAGES 0x20
+#define NAND_RAW_BLOCK 0x4200
+#define NAND_BB_BLOCK 0x20000		/* a big block */
+#define NAND_BB_SHIFT 17
+#define NAND_BB_MASK 0x1ffff
+#define NAND_BB_PAGES 0x100
+#define NAND_RAW_BB_BLOCK 0x21000
+
+/* image sizes: user data, and raw (data and spare); NAND_SIZE_MMC */
+#define NAND_SIZE_16M 0x1000000
+#define NAND_SIZE_64M 0x4000000
+#define NAND_RAW_16M 0x1080000
+#define NAND_RAW_64M 0x4200000
+
+/* where the SMC config is, per layout (image_write.c's buildImage,
+   image_read.c's findSmcConfig) */
+#define SMCCFG_OFFSET_16M 0xf7c000
+#define SMCCFG_OFFSET_64M 0x3dfc000	/* small block (kits) */
+#define SMCCFG_OFFSET_BB 0x3be0000	/* big block */
+#define SMCCFG_OFFSET_MMC 0x2ffc000
+
+/* the eMMC's two anchor blocks (xb.mmcAnchor; image_write.c's
+   copyAnchorBlock, image_read.c's anchor checks) */
+#define MMC_ANCHOR0 0x2fe8000
+#define MMC_ANCHOR1 0x2fec000
+
+/* ---- The flash filesystem ----
+
+   fsChain (the FS table's block chain, big endian) entries other than a
+   next block, and imgAdd's next argument: one of these, a block for every
+   block it writes, IMG_CHAIN (chain the blocks, the last FS_CHAIN_END) or
+   IMG_NO_CHAIN (big block's system area: no FS table entry). */
+#define FS_CHAIN_RESERVED 0x1ffb	/* the bootloaders, the SMC config */
+#define FS_CHAIN_ROOT 0x1ffd		/* the FS table's block (small block) */
+#define FS_CHAIN_FREE 0x1ffe		/* also Mobile*.dat, big block's FS table */
+#define FS_CHAIN_END 0x1fff
+#define IMG_CHAIN 0xffff
+#define IMG_NO_CHAIN 0xf1f1
+
+/* the block type in a page's spare (image_write.c's struct spt, image_read.c's
+   fsBlockType) for imgAdd's type: Mobile*.dat are '1' (MobileB) to '9'
+   (MobileJ) */
+#define SPARE_FILE_BB 0x2a		/* an FS file's block (big block) */
+#define SPARE_FS_ROOT_BB 0x2c		/* the FS table (big block) */
+#define SPARE_FS_ROOT '0'		/* the FS table (small block) */
+#define SPARE_MOBILE_B '1'
+#define SPARE_MOBILE_J '9'
+
 /* xb.type: the build type (-t, or from the dump's bootstrap in
    consoleinfo.c).  BUILD_GLITCH covers glitch, glitch2 and glitch2m
    (xb.glitch2, xb.glitch2mfg); devgl and devgl16 share an ini.  Above
@@ -254,6 +315,20 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
 					   files are loaded before they're moved */
 #define FILE_SMC_CONFIG 27		/* smc_config.bin */
 
+/* a file's offset (xb.files[].offset) right after the file before it */
+#define FILE_FOLLOWS 0xffffffff
+
+/* virtual fuses (FILE_FUSES, consoleinfo.fuses): 12 lines of 8 bytes */
+#define FUSES_SIZE 0x60
+
+/* the patches (FILE_PATCHES) are sections of {address, word count, words},
+   each ended by PATCHES_END */
+#define PATCHES_END 0xffffffff
+
+/* xb.mobile: MobileB-J.dat, then these two */
+#define MOBILE_STATISTICS 9		/* Statistics.settings */
+#define MOBILE_MANUFACTURING 10		/* Manufacturing.data */
+
 /* ---- xb.mode ----
 
    The command line's mode (main.c). */
@@ -295,8 +370,53 @@ struct fsent
 	uint32_t time;
 };
 
-/* the flash image's header (big endian) */
+/* the flash image's header (big endian), and the values xeBuild writes
+   (image_write.c's buildImage) and checks a dump's against (image_read.c) */
 #define FLASH_MAGIC 0xff4f
+#define FLASH_BUILD 1888
+#define FLASH_KV_VERSION 0x712
+#define FLASH_SU_COUNT 2		/* sysUpdateCount */
+#define FLASH_CB_OFFSET 0x8000
+#define FLASH_CB_OFFSET_TESTKIT 0xc000	/* after its two KVs */
+#define FLASH_KV_ADDR 0x4000		/* the SMC ends here */
+#define FLASH_SMC_ADDR 0x1000
+#define FLASH_PATCH_SLOT 0x10000	/* patchSlotSize, the default */
+#define FLASH_PATCH_SLOT_BB 0x20000	/* big block */
+#define FLASH_JTAG_CF 0x70000		/* JTAG: cfOffset, sysUpdateAddr */
+#define FLASH_NETKD 0x80		/* a dump's network KD follows the header */
+#define NETKD_MAGIC 0xca4a
+
+/* the SMC's sizes: SMC_SIZE_CORONA (Corona, Winchester) is at
+   FLASH_SMC_ADDR_CORONA; both end at FLASH_KV_ADDR */
+#define SMC_SIZE 0x3000
+#define SMC_SIZE_CORONA 0x3800
+#define FLASH_SMC_ADDR_CORONA 0x800
+
+/* ---- Bootloaders ----
+
+   Each starts with image_write.c's struct blhdr (big endian): a magic of two
+   letters, the first 'C' or (the kits') 'S', which BL_MAGIC_MASK makes 'C';
+   then the RC4 key's nonce, and the encrypted body (a CF has another 0x10
+   bytes of header before its nonce). */
+#define BL_MAGIC_MASK 0x43ff
+#define BL_MAGIC_KIT 0x1000		/* 'S' */
+#define BL_MAGIC_CB 0x4342		/* "CB" */
+#define BL_MAGIC_CC 0x4343		/* "CC": the kits' SC */
+#define BL_MAGIC_CD 0x4344
+#define BL_MAGIC_CE 0x4345
+#define BL_MAGIC_CF 0x4346
+#define BL_MAGIC_CG 0x4347
+#define BL_FLAG_CB_B 0x800		/* a CB's flags: a CB_B follows it */
+#define BL_SIZE_OFFSET 0xc		/* the header's size field */
+#define BL_NONCE 0x10
+#define BL_CF_NONCE 0x20
+
+/* the highest CF lock down value (cfldv) */
+#define CF_LDV_MAX 32
+
+/* a keyvault (decrypted, or as in the flash) */
+#define KV_SIZE 0x4000
+
 struct flashhdr
 {
 	uint16_t magic;
@@ -348,8 +468,8 @@ struct consoleinfo
 	uint32_t pairing;		/* ldv in the low byte */
 	uint8_t cpuKey[0x10];
 	uint8_t dvdKey[0x10];
-	uint8_t fuses[0x60];
-	uint8_t vfuses[0x60];
+	uint8_t fuses[FUSES_SIZE];
+	uint8_t vfuses[FUSES_SIZE];
 	uint8_t key1bl[0x10];
 	XECRYPT_RSAPUB_2048 pub1bl;
 	XECRYPT_RSAPUB_2048 pubPirs;

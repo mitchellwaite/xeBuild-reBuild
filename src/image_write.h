@@ -4,6 +4,10 @@
 
 #include "xebuild.h"
 
+/* Statistics.settings and Manufacturing.data: imgAddRaw's size, at
+   statisticsOffset and manufacturingOffset */
+#define RAWFILE_SIZE 0x1000
+
 int buildImage(void);
 void imageFree(void);
 void calcPageEcc(uint8_t *data, uint8_t *spare);

@@ -114,7 +114,7 @@ void getImageLdv(void)
 
 	if (!size)
 	{
-		size = 0x10000;
+		size = FLASH_PATCH_SLOT;
 	}
 	pairing = cfBestPairing(xb.dump + SWAP32(h->sysUpdateAddr), size);
 	if (!pairing)
@@ -153,9 +153,9 @@ void getImageLdv(void)
 	{
 		log_printf(1, "LDV was already set to %d\n", xb.cfLdv);
 	}
-	else if ((uint8_t)ldv > 32)
+	else if ((uint8_t)ldv > CF_LDV_MAX)
 	{
-		xb.cfLdv = 32;
+		xb.cfLdv = CF_LDV_MAX;
 	}
 	else
 	{
@@ -222,39 +222,39 @@ void getImageSmc(void)
 	if (ok <= 0)
 	{
 		log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-		addr = 0x1000;
+		addr = FLASH_SMC_ADDR;
 	}
 	t = addr;
-	if (t != 0x1000)
+	if (t != FLASH_SMC_ADDR)
 	{
-		if (t != 0x800)
+		if (t != FLASH_SMC_ADDR_CORONA)
 		{
 			goto badAddr;
 		}
 	}
 fixSize:
-	bad = size != 0x3000 && size != 0x3800;
+	bad = size != SMC_SIZE && size != SMC_SIZE_CORONA;
 	if (bad <= 0)
 	{
 		goto sizeOk;
 	}
-	o = addr != 0x800;
+	o = addr != FLASH_SMC_ADDR_CORONA;
 	if (o > 0)
 	{
 		goto use3000;
 	}
-	size = 0x3800;
+	size = SMC_SIZE_CORONA;
 	log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3800\n", size);
 	goto check;
 badAddr:
 	log_printf(1, "smc.bin should not be at 0x%x, trying 0x1000\n", addr);
-	addr = 0x1000;
+	addr = FLASH_SMC_ADDR;
 	goto fixSize;
 use3000:
-	size = 0x3000;
+	size = SMC_SIZE;
 	log_printf(1, "smc.bin should not be 0x%x bytes, using 0x3000\n", size);
 check:
-	lim = 528 * xb.dumpPages;
+	lim = NAND_RAW_PAGE * xb.dumpPages;
 	if ((unsigned)addr != lim)
 	{
 		out = (unsigned)addr >= lim;
@@ -268,7 +268,7 @@ check:
 	return;
 sizeOk:
 	{
-		int excess = (size & ~0x800u) - 0x3000;
+		int excess = (size & ~0x800u) - SMC_SIZE;
 
 		addr += excess;
 	}
@@ -285,21 +285,21 @@ void getImageKv(void)
 	if (!addr)
 	{
 		log_printf(1, "KeyVault cannot be at 0x0, trying 0x4000\n", addr);
-		addr = 0x4000;
+		addr = FLASH_KV_ADDR;
 	}
-	if (size != 0x4000 && size != 0x8000)
+	if (size != KV_SIZE && size != 2 * KV_SIZE)
 	{
 		log_printf(1, "KeyVault cannot be 0x%x bytes, using 0x4000\n", size);
-		size = 0x4000;
+		size = KV_SIZE;
 	}
-	if (addr + size < 528 * xb.dumpPages)
+	if (addr + size < NAND_RAW_PAGE * xb.dumpPages)
 	{
-		xb.kv.data = malloc(0x4000);
+		xb.kv.data = malloc(KV_SIZE);
 		if (xb.kv.data)
 		{
-			log_printf(1, "decrypting KeyVault at address 0x%x of size 0x%x\n", addr, 0x4000);
-			xb.kv.size = 0x4000;
-			memcpy(xb.kv.data, xb.dump + addr, 0x4000);
+			log_printf(1, "decrypting KeyVault at address 0x%x of size 0x%x\n", addr, KV_SIZE);
+			xb.kv.size = KV_SIZE;
+			memcpy(xb.kv.data, xb.dump + addr, KV_SIZE);
 			ok = verifyExtended(xb.kv.data, xb.kv.size);
 			if (ok)
 			{
@@ -323,15 +323,15 @@ void getImageKv(void)
 	{
 		log_printf(1, "KeyVault at address 0x%x of size 0x4000 is not sane, skipping KeyVault in NAND image\n", addr);
 	}
-	if (ok && size == 0x8000)
+	if (ok && size == 2 * KV_SIZE)
 	{
-		addr += 0x4000;
-		xb.kvAlt.data = malloc(0x4000);
+		addr += KV_SIZE;
+		xb.kvAlt.data = malloc(KV_SIZE);
 		if (xb.kvAlt.data)
 		{
-			log_printf(1, "decrypting alt KeyVault at address 0x%x of size 0x%x\n", addr, 0x4000);
-			xb.kvAlt.size = 0x4000;
-			memcpy(xb.kvAlt.data, xb.dump + addr, 0x4000);
+			log_printf(1, "decrypting alt KeyVault at address 0x%x of size 0x%x\n", addr, KV_SIZE);
+			xb.kvAlt.size = KV_SIZE;
+			memcpy(xb.kvAlt.data, xb.dump + addr, KV_SIZE);
 			if (verifyExtended(xb.kvAlt.data, xb.kvAlt.size))
 			{
 				log_printf(1, "alt KeyVault decrypted OK, will use if no kv_alt.bin is provided\n");
@@ -383,33 +383,33 @@ void getImageMobiles(void)
 		}
 	}
 	off = statisticsOffset(xb.dumpBigBlock, 0, xb.dumpMmc, 0, 0);
-	if (!isErased(xb.dump + off, 0x1000))
+	if (!isErased(xb.dump + off, RAWFILE_SIZE))
 	{
-		log_printf(1, "Statistics.settings found at offset 0x%x, size %d (0x%x) bytes\n", off, 0x1000, 0x1000);
-		xb.mobile[9].data = malloc(0x1000);
+		log_printf(1, "Statistics.settings found at offset 0x%x, size %d (0x%x) bytes\n", off, RAWFILE_SIZE, RAWFILE_SIZE);
+		xb.mobile[9].data = malloc(RAWFILE_SIZE);
 		if (xb.mobile[9].data)
 		{
-			memcpy(xb.mobile[9].data, xb.dump + off, 0x1000);
-			xb.mobile[9].size = 0x1000;
+			memcpy(xb.mobile[9].data, xb.dump + off, RAWFILE_SIZE);
+			xb.mobile[9].size = RAWFILE_SIZE;
 		}
 		else
 		{
-			log_printf(1, "Unable to allocate memory for Statistics.settings 0x%x bytes\n", 0x1000);
+			log_printf(1, "Unable to allocate memory for Statistics.settings 0x%x bytes\n", RAWFILE_SIZE);
 		}
 	}
 	off = manufacturingOffset(xb.dumpBigBlock, 0, xb.dumpMmc, 0, 0);
-	if (!isErased(xb.dump + off, 0x1000))
+	if (!isErased(xb.dump + off, RAWFILE_SIZE))
 	{
-		log_printf(1, "Manufacturing.data found at offset 0x%x, size %d (0x%x) bytes\n", off, 0x1000, 0x1000);
-		xb.mobile[10].data = malloc(0x1000);
+		log_printf(1, "Manufacturing.data found at offset 0x%x, size %d (0x%x) bytes\n", off, RAWFILE_SIZE, RAWFILE_SIZE);
+		xb.mobile[10].data = malloc(RAWFILE_SIZE);
 		if (!xb.mobile[10].data)
 		{
-			log_printf(1, "Unable to allocate memory for Manufacturing.data 0x%x bytes\n", 0x1000);
+			log_printf(1, "Unable to allocate memory for Manufacturing.data 0x%x bytes\n", RAWFILE_SIZE);
 		}
 		else
 		{
-			memcpy(xb.mobile[10].data, xb.dump + off, 0x1000);
-			xb.mobile[10].size = 0x1000;
+			memcpy(xb.mobile[10].data, xb.dump + off, RAWFILE_SIZE);
+			xb.mobile[10].size = RAWFILE_SIZE;
 		}
 	}
 }
@@ -420,12 +420,12 @@ void getNetKd(void)
 	uint32_t ver;
 
 	xb.netKd.data = 0;
-	if (getBeU16(xb.dump + 0x80) != 0xca4a)
+	if (getBeU16(xb.dump + FLASH_NETKD) != NETKD_MAGIC)
 	{
 		return;
 	}
 	img = xb.dump;
-	p = img + 0x80;
+	p = img + FLASH_NETKD;
 	ver = getBeU32(img + 0x90);
 	xb.netKd.size = getBeU32(xb.dump + 0x8c);
 	log_printf(1, "netKd info found, size 0x%x\n", xb.netKd.size);
@@ -446,24 +446,24 @@ void getNetKd(void)
 
 int loadFlashFile(int i, uint32_t block)
 {
-	uint32_t off = fsOffset + (block << 14);
+	uint32_t off = fsOffset + (block << NAND_BLOCK_SHIFT);
 	uint32_t left = xb.flashSize[i];
 	uint32_t done = 0;
 
 	xb.flashBuf[i] = calloc(left, 1);
-	while (left > 0x4000)
+	while (left > NAND_BLOCK)
 	{
-		memcpy(xb.flashBuf[i] + done, xb.dump + off, 0x4000);
-		left -= 0x4000;
-		done += 0x4000;
+		memcpy(xb.flashBuf[i] + done, xb.dump + off, NAND_BLOCK);
+		left -= NAND_BLOCK;
+		done += NAND_BLOCK;
 		block = SWAP16(fs->map[block]) & 0x1fff;
-		off = fsOffset + (block << 14);
+		off = fsOffset + (block << NAND_BLOCK_SHIFT);
 	}
 	/* off is already this: the extra statements (gone after PRE) make the function
 	   too big to inline into imgGetSecurityFiles: IPA size 45 -> growth over 40 */
 	if (left)
 	{
-		off = fsOffset + (block << 14);
+		off = fsOffset + (block << NAND_BLOCK_SHIFT);
 		memcpy(xb.flashBuf[i] + done, xb.dump + off, left);
 	}
 	return verifyFlashFile(i);
@@ -502,7 +502,7 @@ void listFlashFiles(void)
 		block = SWAP16(b16);
 		time = e->time;
 		log_printf(1, "sector: 0x%04x offset: 0x%08x size: 0x%08x timestamp: 0x%08x name: %s\n",
-			   block, fsOffset + (block << 14), SWAP32(size), SWAP32(time), e->name);
+			   block, fsOffset + (block << NAND_BLOCK_SHIFT), SWAP32(size), SWAP32(time), e->name);
 	}
 }
 
@@ -517,17 +517,17 @@ int fsGetFile(const char *name, uint8_t **buf, uint32_t *size, uint32_t *time)
 
 		if (fsFind(name, &block, &len, &t, 1))
 		{
-			off = fsOffset + (block << 14);
+			off = fsOffset + (block << NAND_BLOCK_SHIFT);
 			p = calloc(len, 1);
 			left = len;
 			done = 0;
-			while (left > 0x4000)
+			while (left > NAND_BLOCK)
 			{
-				memcpy(p + done, xb.dump + off, 0x4000);
-				left -= 0x4000;
-				done += 0x4000;
+				memcpy(p + done, xb.dump + off, NAND_BLOCK);
+				left -= NAND_BLOCK;
+				done += NAND_BLOCK;
 				block = SWAP16(fs->map[block]) & 0x1fff;
-				off = fsOffset + (block << 14);
+				off = fsOffset + (block << NAND_BLOCK_SHIFT);
 			}
 			if (left)
 			{
@@ -548,9 +548,9 @@ int findAnchor(void)
 	uint32_t ok0, ok1;
 
 	log_printf(1, "attempting to find valid anchor block\n");
-	v0 = getBeU32(xb.dump + 0x2fe8018);
-	v1 = getBeU32(xb.dump + 0x2fec018);
-	ok0 = shaSelfCheck(xb.dump + 0x2fe8000);
+	v0 = getBeU32(xb.dump + MMC_ANCHOR0 + 0x18);
+	v1 = getBeU32(xb.dump + MMC_ANCHOR1 + 0x18);
+	ok0 = shaSelfCheck(xb.dump + MMC_ANCHOR0);
 	if (ok0)
 	{
 		log_printf(1, "anchor block v %d at 0x2fe8000 is valid\n", v0);
@@ -559,7 +559,7 @@ int findAnchor(void)
 	{
 		log_printf(1, "anchor block at 0x2fe8000 is invalid\n");
 	}
-	ok1 = shaSelfCheck(xb.dump + 0x2fec000);
+	ok1 = shaSelfCheck(xb.dump + MMC_ANCHOR1);
 	if (ok1)
 	{
 		log_printf(1, "anchor block v %d at 0x2fec000 is valid\n", v1);
@@ -594,7 +594,7 @@ check:
 		return 0;
 	}
 	log_printf(1, "anchor block v %d at 0x2fec000 is selected\n", v1);
-	memcpy(anchor, xb.dump + 0x2fec000, 0x200);
+	memcpy(anchor, xb.dump + MMC_ANCHOR1, sizeof(anchor));
 	return 1;
 	/* written out of line so these strings are emitted in the original's order */
 invalid1:
@@ -602,7 +602,7 @@ invalid1:
 	goto check;
 select0:
 	log_printf(1, "anchor block v %d at 0x2fe8000 is selected\n", v0);
-	memcpy(anchor, xb.dump + 0x2fe8000, 0x200);
+	memcpy(anchor, xb.dump + MMC_ANCHOR0, sizeof(anchor));
 	return 1;
 }
 
@@ -625,14 +625,14 @@ int mmcFindMobiles(void)
 		len = getBeU16(anchor + 0x1e + i * 4);
 		if (!len && !i)
 		{
-			len = 0x4000;
+			len = NAND_BLOCK;
 		}
 		if (len)
 		{
 			mobiles[i].page = i;
 			mobiles[i].found = 1;
 			mobiles[i].version = 1;
-			mobiles[i].offset = block << 14;
+			mobiles[i].offset = block << NAND_BLOCK_SHIFT;
 			mobiles[i].spare = 0;
 			mobiles[i].len = len;
 		}
@@ -671,27 +671,27 @@ void showMobilePages(void)
 	if (!xb.dumpBigBlock)
 	{
 		end = xb.dumpPages - 1152;
-		fsType = 48;
+		fsType = SPARE_FS_ROOT;
 	}
 	else
 	{
 		end = xb.dumpPages - 9216;
-		fsType = 44;
+		fsType = SPARE_FS_ROOT_BB;
 	}
 	log_printf(2, separator);
 	log_printf(2, "Showing all pages with mobile info:\n");
 	log_printf(2, separator);
-	page = SWAP32(h->sysUpdateAddr) >> 9;
-	if (page & 0x1f)
+	page = SWAP32(h->sysUpdateAddr) >> NAND_PAGE_SHIFT;
+	if (page & (NAND_BLOCK_PAGES - 1))
 	{
-		page = (page & ~0x1f) + 32;
+		page = (page & ~(NAND_BLOCK_PAGES - 1)) + NAND_BLOCK_PAGES;
 	}
-	off = page * 512;
+	off = page * NAND_PAGE;
 	log_printf(2, "starting mobile scan at page 0x%x (offset 0x%x) of 0x%x pages (0x%x total)\n",
 		   page, off, end, xb.dumpPages);
 	for (; page < end; page++)
 	{
-		uint8_t *s = xb.dumpSpare + page * 16;
+		uint8_t *s = xb.dumpSpare + page * NAND_SPARE;
 		uint8_t t = s[12] & 0x3f;
 		int letter, i;
 		uint32_t ver;
@@ -700,9 +700,9 @@ void showMobilePages(void)
 		if (t == fsType)
 		{
 			letter = 'A';
-			len = 0x4000;
+			len = NAND_BLOCK;
 		}
-		else if (t >= 0x31 && t <= 0x39)
+		else if (t >= SPARE_MOBILE_B && t <= SPARE_MOBILE_J)
 		{
 			letter = t + 17;
 			len = s[7] + (s[8] << 8);
@@ -713,10 +713,10 @@ void showMobilePages(void)
 		}
 		ver = spareVersion(s);
 		log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
-			   (uint32_t)letter, ver, page << 9, page * 528, s[9], len, page);
-		for (i = 0; i < 16; i++)
+			   (uint32_t)letter, ver, page << NAND_PAGE_SHIFT, page * NAND_RAW_PAGE, s[9], len, page);
+		for (i = 0; i < NAND_SPARE; i++)
 		{
-			log_printf(2, "%02x ", xb.dumpSpare[page * 16 + i]);
+			log_printf(2, "%02x ", xb.dumpSpare[page * NAND_SPARE + i]);
 		}
 		if (len & 0x8000)
 		{
@@ -739,38 +739,38 @@ int scanMobiles(void)
 	if (!xb.dumpBigBlock)
 	{
 		end = xb.dumpPages - 1152;
-		fsType = 48;
+		fsType = SPARE_FS_ROOT;
 	}
 	else
 	{
 		end = xb.dumpPages - 9216;
-		fsType = 44;
+		fsType = SPARE_FS_ROOT_BB;
 	}
 	if (log_get_verbose() == 2)
 	{
 		log_printf(2, "\n");
 		showMobilePages();
 	}
-	page = SWAP32(h->sysUpdateAddr) >> 9;
-	page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
+	page = SWAP32(h->sysUpdateAddr) >> NAND_PAGE_SHIFT;
+	page = (page & (NAND_BLOCK_PAGES - 1)) ? (page & ~(NAND_BLOCK_PAGES - 1)) + NAND_BLOCK_PAGES : page;
 	while (page < end)
 	{
-		uint8_t *s = xb.dumpSpare + page * 16;
+		uint8_t *s = xb.dumpSpare + page * NAND_SPARE;
 		uint8_t t = s[12] & 0x3f;
 		int n, i;
 		uint16_t len;
 		uint32_t ver;
 
 		/* sink moves this into spareVersion's join, after lo */
-		off = page << 9;
+		off = page << NAND_PAGE_SHIFT;
 		if (t == fsType)
 		{
 			n = 0;
-			len = 0x4000;
+			len = NAND_BLOCK;
 		}
-		else if (t >= 0x31 && t <= 0x39)
+		else if (t >= SPARE_MOBILE_B && t <= SPARE_MOBILE_J)
 		{
-			n = t - 48;
+			n = t - SPARE_FS_ROOT;
 			len = s[7] + (s[8] << 8);
 		}
 		else
@@ -781,10 +781,10 @@ int scanMobiles(void)
 		if (log_get_verbose() == 2)
 		{
 			log_printf(2, "mobile%c.dat ver %02d offset 0x%08x (dump:0x%08x) count 0x%02x len 0x%04x page 0x%08x ",
-				   n + 'A', ver, off, page * 528, s[9], len, page);
-			for (i = 0; i < 16; i++)
+				   n + 'A', ver, off, page * NAND_RAW_PAGE, s[9], len, page);
+			for (i = 0; i < NAND_SPARE; i++)
 			{
-				log_printf(2, "%02x ", xb.dumpSpare[page * 16 + i]);
+				log_printf(2, "%02x ", xb.dumpSpare[page * NAND_SPARE + i]);
 			}
 			if (len & 0x8000)
 			{
@@ -809,7 +809,7 @@ int scanMobiles(void)
 			}
 			mobiles[n].found = 1;
 			mobiles[n].version = ver;
-			mobiles[n].spare = page * 16;
+			mobiles[n].spare = page * NAND_SPARE;
 			mobiles[n].page = page;
 			mobiles[n].len = len;
 			mobiles[n].offset = off;
@@ -833,8 +833,8 @@ int scanMobiles(void)
 				goto next;
 			}
 		}
-		page += len >> 9;
-		if (len & 0x1ff)
+		page += len >> NAND_PAGE_SHIFT;
+		if (len & (NAND_PAGE - 1))
 		{
 			page++;
 		}
@@ -846,7 +846,7 @@ align:
 		continue;
 next:
 		page++;
-		page = (page & 0x1f) ? (page & ~0x1f) + 32 : page;
+		page = (page & (NAND_BLOCK_PAGES - 1)) ? (page & ~(NAND_BLOCK_PAGES - 1)) + NAND_BLOCK_PAGES : page;
 	}
 	return mobiles[0].found;
 }
@@ -861,7 +861,7 @@ void setFsOffset(void)
 		return;
 	}
 	meta = xb.dumpSpare[mobiles[0].spare + 8] << 5;
-	fsOffset = (3808 - meta) << 14;
+	fsOffset = (3808 - meta) << NAND_BLOCK_SHIFT;
 	log_printf(1, "bigblock file system offset set to 0x%x fsb: %x meta: %x lbaend: %x\n",
 		   fsOffset, 3808 - meta, meta, 3808);
 }
@@ -933,24 +933,24 @@ void findSmcConfig(void)
 
 	if (xb.dumpMmc)
 	{
-		off = 0x2ffc000;
-		end = 0x3000000;
+		off = SMCCFG_OFFSET_MMC;
+		end = NAND_SIZE_MMC;
 	}
 	else if (xb.dumpBigBlock)
 	{
-		off = 0x3be0000;
-		end = 0x4000000;
+		off = SMCCFG_OFFSET_BB;
+		end = NAND_SIZE_64M;
 	}
 	else
 	{
 		end = xb.dumpSize;
-		if (end == 0x1000000)
+		if (end == NAND_SIZE_16M)
 		{
-			off = 0xf7c000;
+			off = SMCCFG_OFFSET_16M;
 		}
-		else if (end == 0x4000000)
+		else if (end == NAND_SIZE_64M)
 		{
-			off = 0x3dfc000;
+			off = SMCCFG_OFFSET_64M;
 		}
 		else
 		{
@@ -958,7 +958,7 @@ void findSmcConfig(void)
 		}
 	}
 	log_printf(1, "seeking smc config in dump...");
-	for (; off < end; off += 512)
+	for (; off < end; off += NAND_PAGE)
 	{
 		if (!smcConfigOk(xb.dump + off))
 		{
@@ -1018,19 +1018,19 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 
 	if (blockErased(b, xb.dumpBigBlock))
 	{
-		return -2;
+		return BLK_ERASED;
 	}
-	lba = -1;
+	lba = BLK_BAD;
 	if (xb.dumpBigBlock)
 	{
-		struct bigSpare *s = (struct bigSpare *)(b + 512);
+		struct bigSpare *s = (struct bigSpare *)(b + NAND_PAGE);
 
 		if (s->badBlock == 0xff && b[68096] == 0xff)
 		{
 			lba = s->blockId1 + s->blockId0 * 256;
 			if (lba >= numBlocks - 1)
 			{
-				lba = -3;
+				lba = BLK_BAD_LBA;
 			}
 			else if (!xb.muChecked)
 			{
@@ -1054,15 +1054,15 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 			{
 				if (lba > 0 && block < numBlocks - 34 && lba != block)
 				{
-					lba = -3;
+					lba = BLK_BAD_LBA;
 				}
 			}
 		}
 	}
 	else
 	{
-		struct bigSpare *big = (struct bigSpare *)(b + 512);
-		struct smallSpare *s = (struct smallSpare *)(b + 512);
+		struct bigSpare *big = (struct bigSpare *)(b + NAND_PAGE);
+		struct smallSpare *s = (struct smallSpare *)(b + NAND_PAGE);
 
 		if (s->badBlock == 0xff && b[8965] == 0xff)
 		{
@@ -1072,7 +1072,7 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 			{
 				if (block && block == lba0)
 				{
-					lba = -6;
+					lba = BLK_MIXED_LBA;
 				}
 				else
 				{
@@ -1083,31 +1083,31 @@ int checkBlock(uint8_t *b, int block, int numBlocks)
 			{
 				if (block && block == lba1)
 				{
-					lba = -6;
+					lba = BLK_MIXED_LBA;
 				}
 				else
 				{
 					lba = lba0;
 				}
 			}
-			if (lba != -6)
+			if (lba != BLK_MIXED_LBA)
 			{
 				if (lba >= numBlocks - 1)
 				{
-					lba = -3;
+					lba = BLK_BAD_LBA;
 				}
 				else if (lba > 0 && block < numBlocks - 34 && block != lba)
 				{
-					lba = -3;
+					lba = BLK_BAD_LBA;
 				}
 			}
 		}
 	}
-	if (lba != -1)
+	if (lba != BLK_BAD)
 	{
 		if (!(xb.optFlags & OPT_NOECDREMAP) && !blockEccOk(b, xb.dumpBigBlock))
 		{
-			lba = -4;
+			lba = BLK_ECC;
 		}
 	}
 	return lba;
@@ -1124,7 +1124,7 @@ int addRemap(int block, int dest, int numBlocks)
 		   the lower free name, and the compare prints block first */
 		uint32_t d = dest;
 
-		if (block == xb.badBlocks[i] && xb.badRemap[i] == -1 && dest < numBlocks)
+		if (block == xb.badBlocks[i] && xb.badRemap[i] == REMAP_UNSET && dest < numBlocks)
 		{
 			log_printf(1, "block 0x%x was remapped to block 0x%x at remap instance %d\n", block, dest, i);
 			xb.badRemap[i] = d;
@@ -1137,7 +1137,7 @@ int addRemap(int block, int dest, int numBlocks)
 	}
 	if (xb.numBad < 32)
 	{
-		if (dest != -1)
+		if (dest != REMAP_UNSET)
 		{
 			log_printf(1, "block 0x%x was remapped to block 0x%x, entering remap instance %d\n", block, dest, xb.numBad + 1);
 		}
@@ -1155,7 +1155,7 @@ int findFreeRemap(int numBlocks)
 	int b, used;
 	int i;
 
-	for (b = numBlocks - 1; b >= numBlocks - 32; b--)
+	for (b = numBlocks - 1; b >= numBlocks - REMAP_BLOCKS; b--)
 	{
 		used = 0;
 		for (i = 0; i < xb.numBad; i++)
@@ -1182,11 +1182,11 @@ void remapBadBlocks(int numBlocks)
 	log_printf(1, "cleaning up stray remaps\n");
 	for (i = 0; i < xb.numBad; i++)
 	{
-		if (xb.badRemap[i] != -1)
+		if (xb.badRemap[i] != REMAP_UNSET)
 		{
 			continue;
 		}
-		if (xb.badBlocks[i] < numBlocks - 32)
+		if (xb.badBlocks[i] < numBlocks - REMAP_BLOCKS)
 		{
 			b = findFreeRemap(numBlocks);
 			if (b)
@@ -1202,7 +1202,7 @@ void remapBadBlocks(int numBlocks)
 		else
 		{
 			log_printf(1, "block 0x%x had no need of remap, it's in the wear area\n", xb.badBlocks[i]);
-			xb.badRemap[i] = -5;
+			xb.badRemap[i] = REMAP_NONE;
 		}
 	}
 	log_printf(1, "done!\n");
@@ -1219,7 +1219,7 @@ unsigned long spareLbaOk(int pages)
 
 	for (i = 1; i < pages; i++)
 	{
-		if (memcmp(xb.dumpSpare, xb.dumpSpare + i * 16, 3))
+		if (memcmp(xb.dumpSpare, xb.dumpSpare + i * NAND_SPARE, 3))
 		{
 			return 0;
 		}
@@ -1249,7 +1249,7 @@ uint32_t copyMmcImage(uint8_t *raw)
 
 unsigned long parseDump(uint8_t *raw)
 {
-	int ppb = xb.dumpBigBlock ? 256 : 32;
+	int ppb = xb.dumpBigBlock ? NAND_BB_PAGES : NAND_BLOCK_PAGES;
 	int blocks = xb.dumpPages / ppb;
 	int blk, dst, p, used;
 	/* the summary loop's counter, unsigned though printed with %d: as int, one more
@@ -1267,18 +1267,18 @@ unsigned long parseDump(uint8_t *raw)
 	log_printf(1, "parsing dump into user and spare...\n");
 	for (blk = 0; blk < blocks; blk++)
 	{
-		src = raw + blk * 528 * ppb;
+		src = raw + blk * NAND_RAW_PAGE * ppb;
 		dst = checkBlock(src, blk, blocks);
 		/* `<= 0` rather than a plain test: opcode positive gives P(used) 73 where
 		   == -2 has 72, which moves the entry frequency (after inlining's rebuild)
 		   from 60 to 59, under 10 x the summary's tail, so that bb-reorder copies
 		   the epilogue to it.  VRP folds it to != 0 afterwards */
-		used = dst != -2;
+		used = dst != BLK_ERASED;
 		if (used <= 0)
 		{
 			continue;
 		}
-		if (dst == -1)
+		if (dst == BLK_BAD)
 		{
 			log_printf(1, "bad block at 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
 			if (!addRemap(blk, dst, blocks))
@@ -1287,21 +1287,21 @@ unsigned long parseDump(uint8_t *raw)
 			}
 			goto next;
 		}
-		if (dst == -3)
+		if (dst == BLK_BAD_LBA)
 		{
 			log_printf(0, "***** WARNING: nanddump.bin has a bad LBA at block 0x%x (raw offset 0x%x), block LBA ignored\n", blk, src - raw);
 			continue;
 		}
-		if (dst == -6)
+		if (dst == BLK_MIXED_LBA)
 		{
 			log_printf(0, "***** WARNING: nanddump.bin has a mixed controller LBA at block 0x%x (raw offset 0x%x), block ignored\n", blk, src - raw);
 			log_printf(0, "               this is likely caused by previously using jaspersb on a jasper type console!\n", blk, src - raw);
 			continue;
 		}
-		if (dst == -4)
+		if (dst == BLK_ECC)
 		{
 			log_printf(1, "ECD error at block 0x%x (raw offset 0x%x), block will be remapped\n", blk, src - raw);
-			if (!addRemap(blk, -1, blocks))
+			if (!addRemap(blk, REMAP_UNSET, blocks))
 			{
 				return 0;
 			}
@@ -1309,7 +1309,7 @@ unsigned long parseDump(uint8_t *raw)
 		}
 		if (dst != blk)
 		{
-			if (blk >= blocks - 32)
+			if (blk >= blocks - REMAP_BLOCKS)
 			{
 				log_printf(1, "copying nanddump data from block 0x%x to block 0x%x for file extraction integrity\n", blk, dst);
 			}
@@ -1336,8 +1336,8 @@ unsigned long parseDump(uint8_t *raw)
 		}
 		for (p = 0; p < ppb; p++)
 		{
-			memcpy(xb.dump + (dst * ppb + p) * 512, raw + (blk * ppb + p) * 528, 512);
-			memcpy(xb.dumpSpare + (dst * ppb + p) * 16, raw + (blk * ppb + p) * 528 + 512, 16);
+			memcpy(xb.dump + (dst * ppb + p) * NAND_PAGE, raw + (blk * ppb + p) * NAND_RAW_PAGE, NAND_PAGE);
+			memcpy(xb.dumpSpare + (dst * ppb + p) * NAND_SPARE, raw + (blk * ppb + p) * NAND_RAW_PAGE + NAND_PAGE, NAND_SPARE);
 		}
 		if (dst != blk && !addRemap(dst, blk, blocks))
 		{
@@ -1362,7 +1362,7 @@ next:
 		log_printf(1, "--remap summary--\n");
 		for (i = 0; i < xb.numBad; i++)
 		{
-			if (xb.badRemap[i] == -5)
+			if (xb.badRemap[i] == REMAP_NONE)
 			{
 				log_printf(1, "%d: source: 0x%04x dest: (NONE/BAD)\n", i, xb.badBlocks[i]);
 			}
@@ -1383,12 +1383,12 @@ uint32_t copyMuData(FILE *out, void *sha)
 	uint8_t *buf;
 	int len;
 
-	if (dumpSize != dumpSize / 0x4200000 * 0x4200000)
+	if (dumpSize != dumpSize / NAND_RAW_64M * NAND_RAW_64M)
 	{
-		log_printf(0, "size is not a multiple of %d bytes, not copying data..\n", 0x4200000);
+		log_printf(0, "size is not a multiple of %d bytes, not copying data..\n", NAND_RAW_64M);
 		return 0;
 	}
-	if (dumpSize <= 0x4200000)
+	if (dumpSize <= NAND_RAW_64M)
 	{
 		log_printf(0, "no data to copy..\n");
 		return 0;
@@ -1401,13 +1401,13 @@ uint32_t copyMuData(FILE *out, void *sha)
 		log_printf(0, "could not re-open '%s' for reading, not copying data..\n", name);
 		return 0;
 	}
-	if (fseek(fp, 0x4200000, SEEK_END))
+	if (fseek(fp, NAND_RAW_64M, SEEK_END))
 	{
-		log_printf(0, "could not seek to 0x%x, not copying data..\n", 0x4200000);
+		log_printf(0, "could not seek to 0x%x, not copying data..\n", NAND_RAW_64M);
 		fclose(fp);
 		return 0;
 	}
-	len = dumpSize - 0x4200000;
+	len = dumpSize - NAND_RAW_64M;
 	buf = malloc(len);
 	if (!buf)
 	{
@@ -1416,14 +1416,14 @@ uint32_t copyMuData(FILE *out, void *sha)
 		return 0;
 	}
 	log_printf(1, "reading nanddump.bin...\n");
-	fread(buf, dumpSize - 0x4200000, 1, fp);
+	fread(buf, dumpSize - NAND_RAW_64M, 1, fp);
 	fclose(fp);
 	log_printf(1, "writing nanddump.bin MU area to output file...");
 	if (sha)
 	{
-		XeCryptShaUpdate(sha, buf, dumpSize - 0x4200000);
+		XeCryptShaUpdate(sha, buf, dumpSize - NAND_RAW_64M);
 	}
-	fwrite(buf, dumpSize - 0x4200000, 1, out);
+	fwrite(buf, dumpSize - NAND_RAW_64M, 1, out);
 	free(buf);
 	return 1;
 }
@@ -1433,7 +1433,7 @@ int detectController(uint8_t *raw, int size)
 	int i, n;
 	int found;
 
-	if (size == 0x3000000)
+	if (size == NAND_SIZE_MMC)
 	{
 		log_printf(1, "\tNAND dump is from a mmc machine\n");
 		log_printf(1, "\tNAND dump uses big block controller\n");
@@ -1443,11 +1443,11 @@ int detectController(uint8_t *raw, int size)
 		xb.dumpMmc = 1;
 		return 1;
 	}
-	if (raw[512] == 0xff)
+	if (raw[NAND_PAGE] == 0xff)
 	{
 		log_printf(1, "\tNAND dump is from a big block machine\n");
 		log_printf(1, "\tNAND dump uses big block controller\n");
-		if (size < 0x4200000)
+		if (size < NAND_RAW_64M)
 		{
 			log_printf(0, "***** WARNING: NAND dump too small to be from a big block machine, discarding dump!\n");
 			return 0;
@@ -1458,16 +1458,16 @@ int detectController(uint8_t *raw, int size)
 	}
 	if (raw[517] == 0xff)
 	{
-		n = size / 16896;
+		n = size / NAND_RAW_BLOCK;
 		log_printf(1, "\tNAND dump is from a small block machine\n");
 		xb.dumpBigBlock = 0;
 		xb.muChecked = 1;
 		found = 0;
 		for (i = 1; i < n; i++)
 		{
-			uint8_t *b = raw + i * 16896;
-			struct bigSpare *big = (struct bigSpare *)(b + 512);
-			struct smallSpare *s = (struct smallSpare *)(b + 512);
+			uint8_t *b = raw + i * NAND_RAW_BLOCK;
+			struct bigSpare *big = (struct bigSpare *)(b + NAND_PAGE);
+			struct smallSpare *s = (struct smallSpare *)(b + NAND_PAGE);
 
 			if (b[517] != 0xff || b[513] == 0xff)
 			{
@@ -1497,21 +1497,21 @@ int detectController(uint8_t *raw, int size)
 int checkHeader(const char *name, FILE *fp)
 {
 	struct flashhdr hdr;
-	uint8_t page[0x210];
+	uint8_t page[NAND_RAW_PAGE];
 	uint32_t magic;
 	long long size;
 	uint32_t count;
 
 	size = getFileSize64(fp);
 	log_printf(1, "%s file size: 0x%llx\n", name, size);
-	if (size < 0x1080000)
+	if (size < NAND_RAW_16M)
 	{
 		log_printf(0, "******* ERROR loading '%s', file size 0x%llx is not large enough\n", name, size);
 		return 0;
 	}
-	fread(&hdr, 0x80, 1, fp);
+	fread(&hdr, sizeof(hdr), 1, fp);
 	rewind(fp);
-	if (SWAP16(hdr.magic) != 0xff4f)
+	if (SWAP16(hdr.magic) != FLASH_MAGIC)
 	{
 		log_printf(0, "******* ERROR loading '%s', flash header magic is incorrect\n", name);
 		return 0;
@@ -1526,7 +1526,7 @@ int checkHeader(const char *name, FILE *fp)
 		log_printf(0, "******* ERROR loading '%s', flash header Size is too large\n", name);
 		return 0;
 	}
-	if (SWAP32(hdr.kvSize) > 0x8000)
+	if (SWAP32(hdr.kvSize) > 2 * KV_SIZE)
 	{
 		log_printf(0, "******* ERROR loading '%s', flash header KeyVaultSize is too large\n", name);
 		return 0;
@@ -1546,11 +1546,11 @@ badSysUpdate:
 		log_printf(0, "******* ERROR loading '%s', flash header SysUpdateAddr is malformed\n", name);
 		return 0;
 	}
-	if (count != 2)
+	if (count != FLASH_SU_COUNT)
 	{
 		log_printf(0, "******* ERROR loading '%s', flash header SysUpdateCount is not 2, continuing anyway\n", name);
 	}
-	if (SWAP16(hdr.kvVersion) != 0x712)
+	if (SWAP16(hdr.kvVersion) != FLASH_KV_VERSION)
 	{
 		log_printf(0, "******* ERROR loading '%s', flash header KeyVaultVersion is not 0x0712, continuing anyway\n", name);
 	}
@@ -1568,7 +1568,7 @@ badSysUpdate:
 	{
 		log_printf(0, "******* ERROR loading '%s', flash header SmcConfigAddr is not 0, continuing anyway\n", name);
 	}
-	if (SWAP32(hdr.smcBootSize) != 0x3000 && SWAP32(hdr.smcBootSize) != 0x3800)
+	if (SWAP32(hdr.smcBootSize) != SMC_SIZE && SWAP32(hdr.smcBootSize) != SMC_SIZE_CORONA)
 	{
 		log_printf(0, "******* ERROR loading '%s', flash header SmcBootSize is not 0x3000 or 0x3800\n", name);
 		return 0;
@@ -1578,30 +1578,30 @@ badSysUpdate:
 		log_printf(0, "******* ERROR loading '%s', flash header SmcBootAddr is too large\n", name);
 		return 0;
 	}
-	if (size > 0x3000000)
+	if (size > NAND_SIZE_MMC)
 	{
-		fseeko64(fp, 0x3000000, SEEK_SET);
+		fseeko64(fp, NAND_SIZE_MMC, SEEK_SET);
 		fread(&magic, 4, 1, fp);
 		rewind(fp);
-		if (getBeU32((uint8_t *)&magic) == 0x58544146)
+		if (getBeU32((uint8_t *)&magic) == 0x58544146)	/* "XTAF" */
 		{
 			log_printf(1, "FATX magic found, truncating load size to 0x3000000 bytes for mmc consoles\n");
-			size = 0x3000000;
+			size = NAND_SIZE_MMC;
 		}
 		else
 		{
 			rewind(fp);
-			fread(page, 0x210, 1, fp);
+			fread(page, sizeof(page), 1, fp);
 			rewind(fp);
-			if (!pageEccOk(page, page + 512))
+			if (!pageEccOk(page, page + NAND_PAGE))
 			{
 				log_printf(1, "First page does not contain a valid ECC, assuming this is an mmc dump and truncating load size to 0x3000000 bytes!\n");
-				size = 0x3000000;
+				size = NAND_SIZE_MMC;
 			}
-			else if (size > 0x4200000)
+			else if (size > NAND_RAW_64M)
 			{
 				log_printf(1, "First page contains a valid ECC, assuming this is a big block flash overdump and truncating load size to 0x4200000 bytes\n");
-				size = 0x4200000;
+				size = NAND_RAW_64M;
 			}
 		}
 	}
@@ -1621,14 +1621,14 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4342)
+	if ((__builtin_bswap16(*(uint16_t *)p) & BL_MAGIC_MASK) != BL_MAGIC_CB)
 	{
 		log_printf(1, "**** Warning: error getting CB/CBA Nonce, aborting!\n");
 		return;
 	}
-	setCbaNonce(xb.dump + off + 16);
-	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
-	if (p[6] & 8)
+	setCbaNonce(xb.dump + off + BL_NONCE);
+	off += (SWAP32(*(uint32_t *)(p + BL_SIZE_OFFSET)) + 15) & ~15;
+	if (p[6] & 8)	/* BL_FLAG_CB_B */
 	{
 		if (off >= xb.dumpSize)
 		{
@@ -1636,13 +1636,13 @@ void getNonces(void)
 			return;
 		}
 		p = xb.dump + off;
-		if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4342)
+		if ((__builtin_bswap16(*(uint16_t *)p) & BL_MAGIC_MASK) != BL_MAGIC_CB)
 		{
 			log_printf(1, "**** Warning: error getting CBB Nonce, offset 0x%x aborting!\n", off);
 			return;
 		}
-		setCbbNonce(xb.dump + off + 16);
-		off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
+		setCbbNonce(xb.dump + off + BL_NONCE);
+		off += (SWAP32(*(uint32_t *)(p + BL_SIZE_OFFSET)) + 15) & ~15;
 	}
 	if (off >= xb.dumpSize)
 	{
@@ -1650,24 +1650,24 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4344)
+	if ((__builtin_bswap16(*(uint16_t *)p) & BL_MAGIC_MASK) != BL_MAGIC_CD)
 	{
 		log_printf(1, "**** Warning: error getting CD Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setCdNonce(xb.dump + off + 16);
-	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
+	setCdNonce(xb.dump + off + BL_NONCE);
+	off += (SWAP32(*(uint32_t *)(p + BL_SIZE_OFFSET)) + 15) & ~15;
 	if (off >= xb.dumpSize)
 	{
 		log_printf(1, "**** Warning: error getting CE Nonce offset, aborting!\n");
 		return;
 	}
-	if ((__builtin_bswap16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4345)
+	if ((__builtin_bswap16(*(uint16_t *)(xb.dump + off)) & BL_MAGIC_MASK) != BL_MAGIC_CE)
 	{
 		log_printf(1, "**** Warning: error getting CE Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setCeNonce(xb.dump + off + 16);
+	setCeNonce(xb.dump + off + BL_NONCE);
 	off = SWAP32(h->sysUpdateAddr);
 	if (off >= xb.dumpSize)
 	{
@@ -1675,24 +1675,24 @@ void getNonces(void)
 		return;
 	}
 	p = xb.dump + off;
-	if ((__builtin_bswap16(*(uint16_t *)p) & 0x43ff) != 0x4346)
+	if ((__builtin_bswap16(*(uint16_t *)p) & BL_MAGIC_MASK) != BL_MAGIC_CF)
 	{
 		log_printf(1, "**** Warning: error getting CF Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setCfNonce(xb.dump + off + 32);
-	off += (SWAP32(*(uint32_t *)(p + 12)) + 15) & ~15;
+	setCfNonce(xb.dump + off + BL_CF_NONCE);
+	off += (SWAP32(*(uint32_t *)(p + BL_SIZE_OFFSET)) + 15) & ~15;
 	if (off >= xb.dumpSize)
 	{
 		log_printf(1, "**** Warning: error getting CG Nonce offset, aborting!\n");
 		return;
 	}
-	if ((__builtin_bswap16(*(uint16_t *)(xb.dump + off)) & 0x43ff) != 0x4347)
+	if ((__builtin_bswap16(*(uint16_t *)(xb.dump + off)) & BL_MAGIC_MASK) != BL_MAGIC_CG)
 	{
 		log_printf(1, "**** Warning: error getting CG Nonce, offset 0x%x aborting!\n", off);
 		return;
 	}
-	setCgNonce(xb.dump + off + 16);
+	setCgNonce(xb.dump + off + BL_NONCE);
 	xb.randomKeys = 0;
 }
 
@@ -1729,24 +1729,24 @@ uint32_t loadDump(const char *path)
 		return 0;
 	}
 	dumpSize = size;
-	if (size == 0x3000000)
+	if (size == NAND_SIZE_MMC)
 	{
-		xb.dumpPages = 0x18000;
-		rawSize = 0x3000000;
+		xb.dumpPages = NAND_SIZE_MMC / NAND_PAGE;
+		rawSize = NAND_SIZE_MMC;
 	}
-	else if (!(size % 528))
+	else if (!(size % NAND_RAW_PAGE))
 	{
-		if (size >= 0x4200000)
+		if (size >= NAND_RAW_64M)
 		{
-			rawSize = 0x4200000;
-			pages = 0x20000;
-			size = 0x4200000;
+			rawSize = NAND_RAW_64M;
+			pages = NAND_RAW_64M / NAND_RAW_PAGE;
+			size = NAND_RAW_64M;
 		}
 		else
 		{
-			rawSize = 0x1080000;
-			pages = 0x8000;
-			if (size != 0x1080000)
+			rawSize = NAND_RAW_16M;
+			pages = NAND_RAW_16M / NAND_RAW_PAGE;
+			if (size != NAND_RAW_16M)
 			{
 				log_printf(1, "NAND dump '%s' is not a correct raw (with ecc) dump size (0x%x bytes), ignoring\n", name, size);
 				fclose(fp);
@@ -1772,10 +1772,10 @@ uint32_t loadDump(const char *path)
 	fread(raw, rawSize, 1, fp);
 	fclose(fp);
 	log_printf(1, "done!\n", name);
-	xb.dumpSize = xb.dumpPages << 9;
-	xb.dumpSpareSize = xb.dumpPages * 16;
-	xb.dump = malloc(xb.dumpPages << 9);
-	xb.dumpSpare = malloc(xb.dumpPages * 16);
+	xb.dumpSize = xb.dumpPages << NAND_PAGE_SHIFT;
+	xb.dumpSpareSize = xb.dumpPages * NAND_SPARE;
+	xb.dump = malloc(xb.dumpPages << NAND_PAGE_SHIFT);
+	xb.dumpSpare = malloc(xb.dumpPages * NAND_SPARE);
 	if (!xb.dump || !xb.dumpSpare)
 	{
 		log_printf(0, "******* ERROR loading '%s', unable to allocate user/spare memory\n", name);

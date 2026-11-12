@@ -58,7 +58,7 @@ void suExtractBl(void)
 		ver = getBeU16(data + 2);
 		size = getBeU32(data + 12);
 		cfLen = (size + 15) & ~15;
-		if (magic == 0x4346)
+		if (magic == BL_MAGIC_CF)
 		{
 			cf = calloc(cfLen, 1);
 			if (cf)
@@ -72,7 +72,7 @@ void suExtractBl(void)
 					ver = getBeU16(data + size + 2);
 					cgSize = getBeU32(data + size + 12);
 					cgLen = (cgSize + 15) & ~15;
-					if (magic == 0x4347)
+					if (magic == BL_MAGIC_CG)
 					{
 						cg = calloc(cgLen, 1);
 						if (cg)
