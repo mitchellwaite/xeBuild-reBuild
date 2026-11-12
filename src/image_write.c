@@ -996,7 +996,6 @@ long checkBootImage(int write)
 		b = (struct blhdr *)(xb.bl.data + off);
 		magic = SWAP16_IMAGE_WRITE(b->magic);
 		build = SWAP16_IMAGE_WRITE(b->build);
-	build = SWAP16_IMAGE_WRITE(b->build);
 		size = SWAP32_IMAGE_WRITE(b->size);
 		log_printf(1, "%c%c v%d at 0x%x size 0x%x (dual CB)\n", magic >> 8, magic & 0xff, build, off, size);
 		if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CB)
@@ -1010,7 +1009,6 @@ long checkBootImage(int write)
 		b = (struct blhdr *)(xb.bl.data + off);
 		magic = SWAP16_IMAGE_WRITE(b->magic);
 		build = SWAP16_IMAGE_WRITE(b->build);
-	build = SWAP16_IMAGE_WRITE(b->build);
 		size = SWAP32_IMAGE_WRITE(b->size);
 		log_printf(1, "%c%c v%d at 0x%x size 0x%x (devkit CC)\n", magic >> 8, magic & 0xff, build, off, size);
 		if ((magic & BL_MAGIC_MASK) != BL_MAGIC_CC)

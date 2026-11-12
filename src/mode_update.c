@@ -70,7 +70,7 @@ uint32_t getBadBlocks(void)
 			log_printf(1, "no bad blocks found on device\n");
 		}
 		netFree(list);
-			return 1;
+		return 1;
 	}
 	log_printf(0, "\n\n***** ERROR: unable to retrieve bad block list from device!\n");
 	return 0;
