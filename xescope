@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# xescope: browse xeBuild's sources with cscope.
+#
+#   xescope [cscope args...]            launch cscope on the database in .xescope/
+#                                       (built first if it doesn't exist yet)
+#   xescope -recreate [cscope args...]  rebuild the database, then launch
+#
+# The database indexes every file under src/. Other arguments go to cscope
+# unchanged, e.g. a line-mode query: xescope -L -1 main
+# File names in cscope's output are relative to the repository root.
+
+set -euo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+dbdir=.xescope
+db=$dbdir/cscope.out
+list=$dbdir/cscope.files
+
+if ! command -v cscope > /dev/null 2>&1; then
+	echo "xescope: cscope not found on PATH" >&2
+	exit 1
+fi
+
+recreate=0
+args=()
+for arg in "$@"; do
+	if [ "$arg" = "-recreate" ]; then
+		recreate=1
+	else
+		args+=("$arg")
+	fi
+done
+
+cd "$root"
+
+if [ "$recreate" -eq 0 ] && [ ! -f "$db" ]; then
+	echo "xescope: no database in $root/$dbdir, creating it" >&2
+	recreate=1
+fi
+
+if [ "$recreate" -eq 1 ]; then
+	mkdir -p "$dbdir"
+	rm -f "$db" "$db.in" "$db.po" "$dbdir/cscope.in.out" "$dbdir/cscope.po.out"
+	# cscope.files wants names with blanks quoted.
+	find src -type f | LC_ALL=C sort | sed 's/.*[[:space:]].*/"&"/' > "$list"
+	# -b build only, -q inverted index, -k no /usr/include (mingw target).
+	cscope -b -q -k -i "$list" -f "$db"
+	echo "xescope: indexed $(wc -l < "$list") files under src/" >&2
+fi
+
+# -d: use the database as is; xescope -recreate refreshes it.
+exec cscope -d -k -f "$db" "${args[@]+"${args[@]}"}"

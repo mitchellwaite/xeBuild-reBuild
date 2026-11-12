@@ -19,3 +19,6 @@ build/
 __pycache__/
 *.pyc
 tools/wip/mc/var/
+
+# cscope database (xescope)
+.xescope/
