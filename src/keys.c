@@ -253,8 +253,30 @@ int setCpuKey(int level, uint8_t *key)
 	return 1;
 }
 
+/* the LDV as that many set nibbles in the fuse lines from FUSES_LDV, filled
+   from the top of the first; the original writes only the first two lines,
+   enough for its CF_LDV_MAX of 32 */
 void setFuseLdv(uint8_t *fuse, uint8_t ldv)
 {
+#ifdef XEBUILD_FIXES
+	uint32_t i, line;
+	uint64_t bits;
+
+	for (line = 0; line < FUSES_LDV_LINES; line++)
+	{
+		for (bits = 0, i = 16 * line; i < 16 * line + 16 && i < ldv; i++)
+		{
+			bits = (bits >> 4) | 0xf000000000000000ULL;
+		}
+		setBeU64(bits, fuse + FUSES_LDV + 8 * line);
+	}
+	log_printf(1, "Fuse CF LDV set to : 0x");
+	for (i = 0; i < 8 * FUSES_LDV_LINES; i++)
+	{
+		log_printf(1, "%02X", fuse[FUSES_LDV + i]);
+	}
+	log_printf(1, "\n");
+#else
 	uint32_t i;
 	uint64_t cb, cf;
 
@@ -296,6 +318,7 @@ void setFuseLdv(uint8_t *fuse, uint8_t ldv)
 		log_printf(1, "%02X", fuse[56 + i]);
 	}
 	log_printf(1, "\n");
+#endif
 }
 
 /* gcc emits a function's literals in expand-time block order, so the

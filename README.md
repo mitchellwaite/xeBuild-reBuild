@@ -41,6 +41,10 @@ platform but `win32`, see [Building](#building)) have:
 - **Usage text:** lists every `-t` image type and `-c` console type the
   parser accepts, the `ini` mode and `-norandom`.
 - **Console info:** names big block Corona and Winchester consoles.
+- **CF LDV up to 80:** `cfldv` (and an LDV read from a dump) is capped at
+  80, the console's real maximum, not 32, and the virtual fuses get all five
+  LDV lines (7–11), not just the first two (so lines 9–11 of a `fuses.bin`
+  no longer pass through as they were).
 
 ## How it was done
 

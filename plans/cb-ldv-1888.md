@@ -49,8 +49,8 @@ xeBuild writes has LDV 0. The real value is in `xb.cfLdv` (the next byte).
 
 | Source | Where | Notes |
 |---|---|---|
-| `cfldv=` on the command line | `options.c` | 1..32; `cfldv=0` is rejected |
-| `cfldv` in options.ini | `options.c`, only if still 0 | capped at 32 |
+| `cfldv=` on the command line | `options.c` | 1..`CF_LDV_MAX` (32, or 80 with fixes); `cfldv=0` is rejected |
+| `cfldv` in options.ini | `options.c`, only if still 0 | capped at `CF_LDV_MAX` |
 | input dump's CF | `getImageLdv` (src/image_read.c), only if still 0 | `cfBestPairing` |
 | input dump's CB | `getImageLdv`, fallback | **LDV masked off**, see below |
 | **guess 1** | `getImageLdv`, when neither decrypts | "could not find a non-zero CF LDV, setting it to 1" |

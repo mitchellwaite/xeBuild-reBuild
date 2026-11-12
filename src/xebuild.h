@@ -318,8 +318,11 @@ _Static_assert(sizeof(short) == 2, "xeBuild needs a 16-bit short");
 /* a file's offset (xb.files[].offset) right after the file before it */
 #define FILE_FOLLOWS 0xffffffff
 
-/* virtual fuses (FILE_FUSES, consoleinfo.fuses): 12 lines of 8 bytes */
+/* virtual fuses (FILE_FUSES, consoleinfo.fuses): 12 lines of 8 bytes; the
+   CF LDV is in lines 7-11 */
 #define FUSES_SIZE 0x60
+#define FUSES_LDV 56
+#define FUSES_LDV_LINES 5
 
 /* the patches (FILE_PATCHES) are sections of {address, word count, words},
    each ended by PATCHES_END */
@@ -457,8 +460,14 @@ struct flashhdr
 #define CF_LDV 0x21f
 #define CF_CG_KEY 0x330
 
-/* the highest CF lock down value (cfldv) */
+/* the highest CF lock down value (cfldv): one per set nibble in the fuse
+   lines from FUSES_LDV, 80 in all; the original stops at 32, the two lines
+   its setFuseLdv writes */
+#ifdef XEBUILD_FIXES
+#define CF_LDV_MAX 80
+#else
 #define CF_LDV_MAX 32
+#endif
 
 /* ---- Keyvault ----
 

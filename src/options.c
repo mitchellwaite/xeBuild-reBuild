@@ -16,6 +16,10 @@
 #include "log.h"
 #include "options.h"
 
+/* a macro's value as a string literal (CF_LDV_MAX in the cfldv warnings) */
+#define STRVAL(x) STRVAL_(x)
+#define STRVAL_(x) #x
+
 int baseFileExists(const char *name)
 {
 	char path[1024];
@@ -868,7 +872,7 @@ uint32_t parseOption(char *opt)
 			xb.cfLdv = myatou32(val, 0);
 			if (xb.cfLdv > CF_LDV_MAX)
 			{
-				log_printf(0, "***** WARNING: cfldv value %d on command line is too large, setting to max value of 32\n", xb.cfLdv);
+				log_printf(0, "***** WARNING: cfldv value %d on command line is too large, setting to max value of " STRVAL(CF_LDV_MAX) "\n", xb.cfLdv);
 				xb.cfLdv = CF_LDV_MAX;
 			}
 			else if (!xb.cfLdv)
@@ -974,7 +978,7 @@ void applyIniOptions(void)
 		xb.cfLdv = optIniInt("cfldv", 0);
 		if (xb.cfLdv > CF_LDV_MAX)
 		{
-			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of 32\n", xb.cfLdv);
+			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of " STRVAL(CF_LDV_MAX) "\n", xb.cfLdv);
 			xb.cfLdv = CF_LDV_MAX;
 		}
 	}
