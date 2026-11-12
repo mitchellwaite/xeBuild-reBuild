@@ -59,8 +59,8 @@ Spare bytes 7 and 8 are counts in big blocks, so they halve:
   the MU area), set by `setPatchSlot` as
   `(off + 2 * cf) >> NAND_BB_SHIFT`. With a 0x40000 slot and shift 18 it
   comes out in 256KB units by itself.
-- byte 9 (`xb.spare9`) stays 4 in J-Runner's output. To verify: with 4KB
-  physical pages one might expect 8.
+- byte 9 (`xb.spare9`) stays 4: every FS table and FS file page of the
+  working image (Findings) has 4.
 
 ## Where xeBuild hard-codes 128KB
 
@@ -102,8 +102,9 @@ dump's.
 
 - `buildImage`: a 1g branch inside `NAND_BIG_BLOCK`: `fsStart` 0x2c0,
   `fsEnd` 0xec0, `smcConfigOffset` 0x3BC0000, `spare8` 0x30, `spare7`'s
-  initial value 0x08 (half of 0x10; only retail builds overwrite it in
-  `setPatchSlot`, so verify the kit/JTAG value),
+  initial value 0x08 (half of 0x10, the same byte offset 0x200000; only
+  retail builds overwrite it in `setPatchSlot`; see Findings for why not
+  the working image's 5),
   `muBlocks` 0x2c (0xB00000 >> 18). `xb.blocks`, `userSize`, `rawSize`
   and `spareSize` are unchanged (64MB system area).
 - Patch slot size: every place that sets `FLASH_PATCH_SLOT_BB` (the Jasper
@@ -119,9 +120,9 @@ dump's.
 - `imgAdd`'s big block branch: the block number written to spare bytes 1-2
   (fixed up later, below), the Mobile/anchor files' pages-left count
   (`left = NAND_BB_PAGES`), and `p = off & NAND_BB_MASK`. The
-  `(int)pages & 3` rounding pads Mobile files to a 2KB physical page; with
-  4KB physical pages that is probably `& 7`. To verify against a real
-  1GB dump or J-Runner's output.
+  `(int)pages & 3` rounding (2KB) and `s[9] = (left - pages) >> 2` stay
+  as they are: the working image's Mobiles are 2KB apart, and its byte 9
+  counts down from 0x7f, which is `(0x200 - 4) >> 2` (Findings).
 - The "fixing up big block LBA numbers in spare" pass in `buildRaw`
   (image_write.c, `n = xb.blocks / (NAND_BB_BLOCK / NAND_BLOCK)`): follows
   from the runtime geometry.
@@ -156,7 +157,7 @@ dump's.
 - `scanMobiles` / `showMobilePages`: the scan ends at
   `xb.dumpPages - 9216` (0x3B80000, the 128KB config area). 1g:
   `xb.dumpPages - 10240` (0x3B00000). The `(page + 3) & ~3` alignment
-  after a Mobile file is the same 2KB-vs-4KB question as `imgAdd`.
+  after a Mobile file stays (2KB, as in `imgAdd`).
 - `setFsOffset`: `meta = s[8] << 5` and the end 3808 (0xee0); 1g:
   `s[8] << 6` and 0xec0.
 - `findSmcConfig`, statistics and manufacturing reads: through
@@ -208,9 +209,51 @@ No 1GB hardware is assumed. Two checks:
   xeBuild detects 256KB blocks, finds the FS root, Mobiles, SMC config, KV
   and statistics, and that an update (`-u`-style) rebuild round-trips.
 
-## Open questions
+## Findings from a working image
 
-- Mobile file padding: 2KB (`& 3`) or 4KB (`& 7`) on 4KB physical pages.
-- Spare byte 9 (`spare9`): 4 (J-Runner) or 8.
-- Whether the first config block (0x3B80000 today, before manufacturing)
-  holds anything xeBuild writes; it is written the same way either way.
+A working Corona 1GB image (raw 0x4200000; a 17489 devkit build: SB/SC/
+SD/SE, qfe 0x8000, no CF) answers the open questions. It was converted
+from a 48MB eMMC devkit image of the same build, not written by a 1GB
+console: its FS data, SMC config and statistics are byte-identical to
+the eMMC image's (eMMC 0xf4000, 0x2ffc000, 0x2ff8000). So its spare bytes
+come from the converter. What it shows is a set of values that boots,
+not what a 1GB console's kernel writes itself.
+
+- **Block numbers**: spare bytes 1-2 are `page / 0x200` on every used page
+  (0 mismatches; `page / 0x100` mismatches on nearly all).
+- **Header**: `patchSlotSize` 0x40000, `sysUpdateAddr` 0x100000. The SE
+  ends at 0xd21e2; rounding up to 256KB gives 0x100000 (128KB would give
+  0xe0000), so `setPatchSlot`'s rounding with the 256KB mask is right.
+  The two slots (0x100000-0x180000) are empty, as for any kit build.
+- **FS pages**: types 0x2c (FS table) and 0x2a (file) all have bytes
+  7/8/9 = 05/30/04; the FS table pages have byte 5 = a version (1 for the
+  one at 0xb00000), file pages 0. Byte 9 is **4**.
+- **Mobiles** (in block 0x2d, 0xb40000): every entry starts 4 pages (2KB)
+  after the previous; one-page entries leave 3 pages unused. Byte 9 goes
+  0x7f, 0x7e, ... down by one per entry: `(0x200 - used - pages) >> 2` with
+  pages rounded up to 4. So padding is **2KB** (`& 3`, `>> 2`), with
+  `NAND_BB_PAGES` = 0x200. Bytes 7-8 are the length (0x800 for a full
+  entry), as today.
+- **Layout**: FS table at 0xb00000, Mobiles at 0xb40000, files from
+  0xb80000. Config window: statistics at 0x3b80000, SMC config at
+  0x3bc0000, each in the first 128KB of its 256KB block with the second
+  half erased. 0x3b00000 and 0x3b40000 (manufacturing) are erased; the
+  eMMC source had nothing there either. No block from 0xf0 (reserve) is
+  used.
+- **Spare byte 7 for kits**: this image has 5 (0x140000). That is
+  J-Runner's fixed tag (0x0A halved), not anything derived from this
+  image: xeBuild's retail formula `(sysUpdateAddr + 2 * patchSlotSize)
+  >> 18` gives 6 here (0x180000, the end of the two 0x40000 slots). 5
+  boots with both slots empty, but it puts the area after the slots
+  inside the second slot, so for 1g:
+  - retail: keep `setPatchSlot`'s formula, which with the 0x40000 slot
+    gives the end of the slots;
+  - kit/JTAG: 0x08 (legacy's 0x10 halved, still 0x200000), clear of
+    both slots. 5 is known to boot if 0x08 turns out not to.
+- **Other**: 0x300000 holds 128KB of zeros (block number 0x0c, valid ECD)
+  with the second half erased. That looks like a 128KB bad-block zero
+  fill carried through the conversion. When xeBuild remaps a 1g block it
+  zero-fills the whole 256KB.
+
+The eMMC source image has no spare data, so it says nothing more about
+these questions.
