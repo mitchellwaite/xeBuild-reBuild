@@ -38,8 +38,6 @@ platform but `win32`, see [Building](#building)) have:
   Xenon and Zephyr images keep their KV size instead of 0. JRunner patched
   both after every build (`fixBuggyXeBuildImage`); XeLL needs the KV size to
   find the KV.
-- **Version banner:** names the build and the compiler's target triple, e.g.
-  `xeBuild reBuild (x86_64-linux-gnu)`.
 - **Usage text:** lists every `-t` image type and `-c` console type the
   parser accepts, the `ini` mode and `-norandom`.
 - **Console info:** names big block Corona and Winchester consoles.
