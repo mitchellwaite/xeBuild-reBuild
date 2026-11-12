@@ -13,6 +13,15 @@ All 1GB machines use the big flash filesystem (48MB, like `<x>bigffs`).
 There is no small-FS 1GB variant: each `<x>1g` name implies
 `NAND_BIG_BLOCK | NAND_BIG_FFS`.
 
+1GB NANDs were never an official console configuration: Microsoft
+shipped none, so there is no factory image, no retail dump and no spec to
+match. The layout here comes from what the community has built and tested
+(J-Runner's converter and images people have booted), not from a known
+reference. "Works" in this plan means "people have booted it". Where the
+plan picks a value, it is the tested one or our best guess, and better
+evidence (a dump a 1GB console's own kernel has written to) should
+override it.
+
 Everything goes under `XEBUILD_FIXES`, so `make check` is unaffected, and
 gets one line in README.md's list of fixes.
 
