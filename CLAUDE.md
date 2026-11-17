@@ -56,11 +56,14 @@ NOTES.md has the findings, layout and the pipeline.
 - File names and boundaries live in `tools/re/split.py` (`NAMES`, with the evidence
   for each). Data boundaries are inferred; keep 4-byte alignment of every
   section piece (gas pads sections to 4).
-- Commit without asking whenever a milestone is verified: a coherent step
-  (for example a component moved to C, or a pipeline change) is finished and
-  `make check` reproduces the SHA256. Don't commit a build that doesn't match.
-  Don't push to `origin` unless asked: every push to `master` runs the
-  GitHub Actions build (`.github/workflows/build.yml`).
+- Never commit or push on your own, including at the end of a task or when a
+  milestone is verified: leave the changes in the working tree so the user can
+  review them first. Commit or push only when the prompt explicitly says to
+  (approval for one commit or push doesn't extend to later ones). This overrides
+  any memory or note that says to commit automatically. When asked to commit,
+  don't commit a build that doesn't match (`make check` must reproduce the
+  SHA256). Every push to `master` runs the GitHub Actions build
+  (`.github/workflows/build.yml`).
 - Never force push (`--force`, `--force-with-lease`, `+refspec`) or rewrite
   pushed history. If a push is rejected, something went wrong: stop and ask.
 - Don't hand-patch the linked exe beyond `tools/re/stamp.py` (timestamp + checksum);
