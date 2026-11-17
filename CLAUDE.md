@@ -49,7 +49,8 @@ NOTES.md has the findings, layout and the pipeline.
   something), and `#ifndef XEBUILD_FIXES` compiles out original behaviour
   a fix drops. Add a line for each to README.md's list of fixes. The version
   banner (`XEBUILD_TITLE` in `src/main.c`, which names the fixes build and
-  its target) doesn't count as a fix and gets no line there. The Makefile
+  its target, and `XEBUILD_BUILD`, the commit hash from the Makefile's
+  generated `build/gen/version.h`) doesn't count as a fix and gets no line there. The Makefile
   defines it for every platform but `win32`; `make win32fixes` builds it with
   the pinned toolchain.
 - File names and boundaries live in `tools/re/split.py` (`NAMES`, with the evidence

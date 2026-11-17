@@ -208,6 +208,25 @@ PLAT_CFLAGS += -DXEBUILD_TARGET='"$(TARGET_TRIPLE)"'
 endif
 endif
 
+# The fixes build's version banner ends in the abbreviated commit hash, not
+# the original's build number, with " unc" appended when tracked files have
+# uncommitted changes: $(VERSION_H) defines XEBUILD_COMMIT for main.c
+# ("unknown" outside a git checkout).  It's regenerated on every make but
+# rewritten only when that string changes, so main.o recompiles only then.
+GEN := build/gen
+VERSION_H := $(GEN)/version.h
+ifeq ($(FIXES),1)
+PLAT_CFLAGS += -I$(GEN)
+$(VERSION_H): FORCE
+	@mkdir -p $(@D)
+	@h=$$(git rev-parse --short HEAD 2>/dev/null) || h=; \
+	  if [ -n "$$h" ] && [ -n "$$(git status --porcelain -uno 2>/dev/null)" ]; \
+	  then h="$$h unc"; fi; \
+	  line="#define XEBUILD_COMMIT \"$${h:-unknown}\""; \
+	  [ "$$(cat $@ 2>/dev/null)" = "$$line" ] || echo "$$line" > $@
+$(OBJ)/main.o: $(VERSION_H)
+endif
+
 REF := xeBuild.exe
 REF_SHA256 := 10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c
 # original link time; ld 2.27 can't take a fixed timestamp itself

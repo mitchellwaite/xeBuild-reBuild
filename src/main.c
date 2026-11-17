@@ -33,7 +33,17 @@
 #endif
 #define XEBUILD_MAJOR 1
 #define XEBUILD_MINOR 21
+#ifdef XEBUILD_FIXES
+/* and ends in the abbreviated commit hash, after a space (then " unc" for
+   uncommitted changes): version.h, which the Makefile generates, defines
+   XEBUILD_COMMIT */
+#include "version.h"
+#define XEBUILD_BUILD_SEP " "
+#define XEBUILD_BUILD XEBUILD_COMMIT
+#else
+#define XEBUILD_BUILD_SEP "."
 #define XEBUILD_BUILD "810"
+#endif
 
 /* gcc emits these in reverse: separator comes first in .data */
 int promptEnter = 1;
@@ -521,8 +531,8 @@ int main(int argc, char **argv)
 	installSignals();
 	log_init();
 	log_printf(0, separator);
-	log_printf(0, "     %s v%d.%02d.%s\n", XEBUILD_TITLE, XEBUILD_MAJOR,
-		   XEBUILD_MINOR, XEBUILD_BUILD);
+	log_printf(0, "     %s v%d.%02d" XEBUILD_BUILD_SEP "%s\n", XEBUILD_TITLE,
+		   XEBUILD_MAJOR, XEBUILD_MINOR, XEBUILD_BUILD);
 	log_printf(0, separator);
 	if (argc > 1)
 	{
