@@ -99,7 +99,7 @@ SD/SE in types 7/8.
 
 ## Matching
 
-As in plans/cb-ldv-1888.md: everything below sits
+As in plans/xenon64.md: everything below sits
 behind `#ifdef XEBUILD_FIXES`, the default build's preprocessed source must
 not change, and `make check` must still end with
 `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c`.

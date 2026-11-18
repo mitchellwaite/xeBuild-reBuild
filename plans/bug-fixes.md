@@ -473,8 +473,8 @@ the addon check.
 src/bootloaders.c:97-128: `if (ldv1 >= ldv0) p0 = p1;` also picks slot 1
 when it failed (`p1 = 0`, `ldv1 = 0`) and slot 0 decrypted with LDV 0. The
 result is 0, so `getImageLdv` falls back to the CB's pairing or to the
-guessed LDV 1. Fix: `if (p1 && ldv1 >= ldv0)`. Related:
-plans/cb-ldv-1888.md (the CB's LDV is never set).
+guessed LDV 1. Fix: `if (p1 && ldv1 >= ldv0)`.
+Fixed in 825817bd (`if (p1 && (!p0 || ldv1 >= ldv0))`).
 
 ### M22. `client -keys` fails once the key files exist
 
@@ -673,7 +673,8 @@ Conventions (CLAUDE.md), both resolved in the commit that added this plan:
 - `buildImage` writes Corona's `smcBootAddr`/`smcBootSize` unswapped
   (image_write.c:220-221). Harmless, since `smcSetLoad` overwrites both
   when the SMC is loaded, but wrong if that ever changes.
-- plans/cb-ldv-1888.md: `xb.cbLdv` is never set, so every CB's LDV is 0.
+- `xb.cbLdv` is set only for a retail CE 1888 image with no patch slots,
+  which gets the CF LDV (4000031a); every other CB's LDV is 0.
 
 ## Testing
 
