@@ -39,7 +39,8 @@ platform but `win32`, see [Building](#building)) have:
   both after every build (`fixBuggyXeBuildImage`); XeLL needs the KV size to
   find the KV.
 - **Usage text:** lists every `-t` image type and `-c` console type the
-  parser accepts, the `ini` mode and `-norandom`.
+  parser accepts, the `ini` mode and `-norandom`, and ends with a credits
+  section.
 - **Console info:** names big block Corona and Winchester consoles.
 - **CF LDV up to 80:** `cfldv` (and an LDV read from a dump) is capped at
   80, the console's real maximum, not 32, and the virtual fuses get all five

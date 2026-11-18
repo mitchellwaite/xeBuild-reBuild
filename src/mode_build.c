@@ -89,6 +89,10 @@ void build_usage(void)
 	log_printf(0, "      add 0x to offset to specify hexadecimal, otherwise it will be read as decimal\n");
 	log_printf(0, "      example: -8 myfile.bin,0x12345\n");
 	log_printf(0, "      example: -8 myfile.bin,0x12345;myotherfile.bin,0x54321\n");
+#ifdef XEBUILD_FIXES
+	log_printf(0, "\nCredits  :\n");
+	log_printf(0, "   Thanks to cOz for the original XeBuild implementation. Sorry i couldn't wait for the official source release, I wanted to try my hand at an AI decomp project ;)\n");
+#endif
 	log_printf(0, separator);
 	if (promptEnter)
 	{
