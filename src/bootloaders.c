@@ -60,7 +60,13 @@ uint32_t cbGetPairing(uint8_t *cb)
 		XeCryptRc4(key, 16, buf + BL_BODY, len - BL_BODY);
 		if (checkZeros(buf + 0x270, 0x120))
 		{
+#ifdef XEBUILD_FIXES
+			/* keep the CB's LDV (CB_LDV, the low byte): with empty patch
+			   slots it is the image's LDV, e.g. a downgraded one's */
+			pairing = getBeU32(buf + CB_PAIRING);
+#else
 			pairing = getBeU32(buf + CB_PAIRING) & 0xffffff00;
+#endif
 			log_printf(1, "CB decrypted OK, pairing bytes extracted as: 0x%08x\n", pairing);
 		}
 		else
@@ -120,7 +126,12 @@ uint32_t cfBestPairing(uint8_t *data, uint32_t size)
 		log_printf(1, "CF slot 1 decrypted ok LDV 0x%02x Pairing: 0x%06x\n", ldv1, p1 >> 8);
 	}
 	free(buf);
+#ifdef XEBUILD_FIXES
+	/* an empty slot 1 (LDV 0 too) mustn't win over a slot 0 with LDV 0 */
+	if (p1 && (!p0 || ldv1 >= ldv0))
+#else
 	if (ldv1 >= ldv0)
+#endif
 	{
 		p0 = p1;
 	}

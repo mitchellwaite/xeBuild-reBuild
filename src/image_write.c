@@ -274,7 +274,11 @@ int buildImage(void)
 		flashHdr.patchSlotSize = xb.bigBlock ? SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT_BB)
 			: SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT);
 	}
+#ifdef XEBUILD_FIXES
+	else if (!checkZeros(xb.cpuKey, 16) && !xb.cfLdv && !xb.cfLdvSet)
+#else
 	else if (!checkZeros(xb.cpuKey, 16) && !xb.cfLdv)
+#endif
 	{
 		log_printf(0, "***** WARNING: cfldv was not set anywhere, setting it to 1\n");
 		if (xb.type != BUILD_JTAG)

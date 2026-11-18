@@ -141,7 +141,11 @@ void getImageLdv(void)
 	}
 	else
 	{
+#ifdef XEBUILD_FIXES
+		if (!xb.cfLdvSet)
+#else
 		if (!xb.cfLdv)
+#endif
 		{
 			log_printf(1, "setting LDV from image to %d\n", pairing & 0xff);
 		}
@@ -149,7 +153,11 @@ void getImageLdv(void)
 		setPairing(pairing >> 8);
 		ldv = pairing;
 	}
+#ifdef XEBUILD_FIXES
+	if (xb.cfLdvSet)
+#else
 	if (xb.cfLdv)
+#endif
 	{
 		log_printf(1, "LDV was already set to %d\n", xb.cfLdv);
 	}
@@ -161,6 +169,15 @@ void getImageLdv(void)
 	{
 		xb.cfLdv = ldv;
 	}
+#ifdef XEBUILD_FIXES
+	/* an LDV read from the image is real, even 0: with empty patch slots the
+	   CB's is used (0 on a launch or devkit console, non-zero once
+	   downgraded); the defaults above aren't */
+	if (pairing)
+	{
+		xb.cfLdvSet = 1;
+	}
+#endif
 }
 
 static void loadSmc(int addr, int size)

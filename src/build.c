@@ -1632,6 +1632,10 @@ int loadBlFiles(void)
 					/* an SE where the CF goes */
 					e->type = type = FILE_SE;
 					xb.cfLdv = 0;
+#ifdef XEBUILD_FIXES
+					/* keep the original's write-time cfldv fallback for an SE */
+					xb.cfLdvSet = 0;
+#endif
 					xb.seReplacesCf = 1;
 				}
 				r = checkBl(e->data, e->size, type, e->crc);

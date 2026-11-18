@@ -869,16 +869,27 @@ uint32_t parseOption(char *opt)
 		}
 		if (!stricmp(opt, "cfldv"))
 		{
+#ifdef XEBUILD_FIXES
+			/* 0 is a valid LDV; only an unparsable value is bad (myatou32
+			   reads hex letters like "abc" as 0, so a digit must lead) */
+			if (val[0] < '0' || val[0] > '9' || myatou32(val, -1) == (uint32_t)-1)
+			{
+				goto bad;
+			}
+			xb.cfLdvSet = 1;
+#endif
 			xb.cfLdv = myatou32(val, 0);
 			if (xb.cfLdv > CF_LDV_MAX)
 			{
 				log_printf(0, "***** WARNING: cfldv value %d on command line is too large, setting to max value of " STRVAL(CF_LDV_MAX) "\n", xb.cfLdv);
 				xb.cfLdv = CF_LDV_MAX;
 			}
+#ifndef XEBUILD_FIXES
 			else if (!xb.cfLdv)
 			{
 				goto bad;
 			}
+#endif
 			log_printf(1, "Using CFLDV option, value %d\n", xb.cfLdv);
 			return 1;
 		}
@@ -973,9 +984,21 @@ void applyIniOptions(void)
 	OPT("nosecurity", OPT_NOSECURITY, 0);
 	OPT("nosusecurity", OPT_NOSUSECURITY, 0);
 	OPT("smcnocheck", OPT_SMCNOCHECK, 0);
+#ifdef XEBUILD_FIXES
+	if (!xb.cfLdvSet)
+	{
+		/* -1 when cfldv is absent or invalid, so cfldv = 0 counts as set */
+		i = optIniInt("cfldv", -1);
+		if (i != -1)
+		{
+			xb.cfLdvSet = 1;
+			xb.cfLdv = i;
+		}
+#else
 	if (!xb.cfLdv)
 	{
 		xb.cfLdv = optIniInt("cfldv", 0);
+#endif
 		if (xb.cfLdv > CF_LDV_MAX)
 		{
 			log_printf(0, "***** WARNING: cfldv value %d in options.ini is too large, setting to max value of " STRVAL(CF_LDV_MAX) "\n", xb.cfLdv);

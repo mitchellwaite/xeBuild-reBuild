@@ -623,6 +623,9 @@ struct xebuild
 	uint32_t dualButton;
 	uint8_t cbLdv;
 	uint8_t cfLdv;
+#ifdef XEBUILD_FIXES
+	uint8_t cfLdvSet;		/* cfLdv came from an option, the image or the console, so 0 is real */
+#endif
 	struct smcopts smcOpts;		/* all -1 (unset) until the ini sets them */
 	uint8_t *dump;			/* the nand dump's user data, ECC stripped */
 	uint8_t *dumpSpare;		/* its spare data, 16 bytes a page */

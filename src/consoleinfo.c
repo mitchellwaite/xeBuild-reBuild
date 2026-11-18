@@ -525,6 +525,9 @@ int parseConsoleInfo(int level, const char *dir, const char *optDir, int *update
 		    && getFlashHdrOpts(level, dir))
 		{
 			xb.cfLdv = info->pairing;
+#ifdef XEBUILD_FIXES
+			xb.cfLdvSet = 1;
+#endif
 			log_printf(level, "CF LDV          : %d\n", xb.cfLdv);
 			log_printf(level, "Pairing Value   : 0x%06x ", info->pairing >> 8);
 			if (update)

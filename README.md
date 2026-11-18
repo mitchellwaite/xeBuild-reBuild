@@ -45,6 +45,12 @@ platform but `win32`, see [Building](#building)) have:
   80, the console's real maximum, not 32, and the virtual fuses get all five
   LDV lines (7–11), not just the first two (so lines 9–11 of a `fuses.bin`
   no longer pass through as they were).
+- **CF LDV 0:** `cfldv=0` is accepted on the command line and in
+  options.ini, and an LDV of 0 read from a dump (its CF, or its CB when the
+  patch slots are empty) or from the console is kept, with no "cfldv was not set" warning or reset to 1; a dump's CF
+  slot 0 with LDV 0 is no longer lost to an empty slot 1, and with empty
+  patch slots the CB's own LDV is used (the original dropped it, giving 0). Only when no LDV
+  is found anywhere do the old defaults (0 for devkit/testkit, else 1) apply.
 - **Retail images for early CBs:** a single CB with an LDV of 2 or less
   doesn't use the CPU key in the CD key derivation, so its CD is no longer
   encrypted with the CPU key mixed in.
