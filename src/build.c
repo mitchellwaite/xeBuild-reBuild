@@ -2795,6 +2795,23 @@ int encodeBls(uint8_t *salt, int ldv)
 	/* the single CB's LDV (cseq), read before the CB is encrypted for the CD
 	   that follows it; 0xff (no CB) keeps the CPU key */
 	uint8_t cseq = 0xff;
+
+	/* retail with the 1888 CE and no patch slots: no CF carries the LDV, so
+	   the paired CB's auth data (CB_LDV, hashed with the pairing data) must,
+	   or the image won't boot on a console whose CF LDV is above 0 */
+	if (xb.type == BUILD_RETAIL && !xb.seReplacesCf)
+	{
+		e = &xb.files[findFile(FILE_CF)];
+		if (e->type != FILE_CF || (!strnicmp(e->name, "none", 4) && !e->crc))
+		{
+			e = &xb.files[findFile(FILE_CE)];
+			if (e->type == FILE_CE && e->data && getBeU16(e->data + 2) == 1888)
+			{
+				log_printf(1, "Retail 1888 image, setting CB auth LDV to %d\n", xb.cfLdv);
+				xb.cbLdv = xb.cfLdv;
+			}
+		}
+	}
 #endif
 
 	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++)

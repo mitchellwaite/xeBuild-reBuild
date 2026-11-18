@@ -7,6 +7,9 @@
 uint32_t verifyExtended(uint8_t *buf, uint32_t size);
 int unscramble(uint8_t *buf, uint32_t len);
 uint32_t cbGetPairing(uint8_t *cb);
+#ifdef XEBUILD_FIXES
+uint32_t cbbGetPairing(uint8_t *cba);
+#endif
 uint32_t cfBestPairing(uint8_t *data, uint32_t size);
 int cfDecrypt(uint8_t *cf, uint32_t size);
 int cgDecrypt(uint8_t *cg, uint8_t *cfKey, uint32_t size);

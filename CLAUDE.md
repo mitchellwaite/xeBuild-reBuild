@@ -10,6 +10,9 @@ NOTES.md has the findings, layout and the pipeline.
 - Success is measured by bytes: `make check` must end with SHA256
   `10dac648197fa5cdbb82d975ab9ff11f64075c9686908dfd9a33edc533f1971c` (it also
   runs `tools/re/execmp.py`, which names any differing header field or byte).
+  If it doesn't match, run `make clean` and `make check` again before
+  investigating: the user may have built another mode (e.g. `XEBUILD_FIXES`)
+  in a separate terminal, leaving stale objects in `build/`.
 - The build is the `Makefile` (GNU make; `make check -j8`). Every object is C;
   it compiles only `.c` files, in the link order of its `OBJECTS`
   list (the original's; `tools/re/split.py`'s `NAMES` has the

@@ -47,10 +47,18 @@ platform but `win32`, see [Building](#building)) have:
   no longer pass through as they were).
 - **CF LDV 0:** `cfldv=0` is accepted on the command line and in
   options.ini, and an LDV of 0 read from a dump (its CF, or its CB when the
-  patch slots are empty) or from the console is kept, with no "cfldv was not set" warning or reset to 1; a dump's CF
-  slot 0 with LDV 0 is no longer lost to an empty slot 1, and with empty
-  patch slots the CB's own LDV is used (the original dropped it, giving 0). Only when no LDV
-  is found anywhere do the old defaults (0 for devkit/testkit, else 1) apply.
+  patch slots are empty) or from the console is kept, with no "cfldv was
+  not set" warning or reset to 1; a dump's CF slot 0 with LDV 0 is no
+  longer lost to an empty slot 1, and with empty patch slots the CB's own
+  LDV is used (the original dropped it, giving 0). Only when no LDV is
+  found anywhere do the old defaults (0 for devkit/testkit, else 1) apply.
+- **Retail 1888 images on LDV > 0 consoles:** a retail image with the 1888
+  CE and no patch slots puts the CF LDV in the CB's auth data (the LDV
+  byte after the pairing data), which the original always left 0, so it
+  boots on a console whose CF LDV is above 0.
+- **Pairing from a split CB:** with empty patch slots, a dump with a split
+  CB has its pairing data and LDV read from the CB_B (decrypted with the
+  CPU key), not from the unpaired CB_A, which gave 0.
 - **Retail images for early CBs:** a single CB with an LDV of 2 or less
   doesn't use the CPU key in the CD key derivation, so its CD is no longer
   encrypted with the CPU key mixed in.

@@ -120,6 +120,15 @@ void getImageLdv(void)
 	if (!pairing)
 	{
 		pairing = cbGetPairing(xb.dump + SWAP32(h->kvAddr) + SWAP32(h->kvSize));
+#ifdef XEBUILD_FIXES
+		uint8_t *cb = xb.dump + SWAP32(h->kvAddr) + SWAP32(h->kvSize);
+
+		/* a split CB's pairing data and LDV are in the CB_B */
+		if (getBeU16(cb + 6) & BL_FLAG_CB_B)
+		{
+			pairing = cbbGetPairing(cb);
+		}
+#endif
 	}
 	if (!pairing)
 	{

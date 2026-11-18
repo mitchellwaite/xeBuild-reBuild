@@ -612,6 +612,8 @@ void cbbEncrypt(uint8_t *salt, uint8_t *cbb, uint8_t *cbaKey, uint8_t *cba, uint
 	uint8_t hdr[16];
 
 	memcpy(cbb + BL_NONCE, cbbNonce, 16);
+	/* the CB_B key derivation (to the HMAC below) is duplicated in
+	   bootloaders.c's cbbDecrypt; keep the two in step */
 	ck = !(flags & 1) ? xb.cpuKey : zeroKey;
 	if (flags & BL_FLAG_CB_B)
 	{

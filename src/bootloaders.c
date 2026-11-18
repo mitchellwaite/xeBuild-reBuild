@@ -78,6 +78,78 @@ uint32_t cbGetPairing(uint8_t *cb)
 	return pairing;
 }
 
+#ifdef XEBUILD_FIXES
+/* decrypted copy (free it) of the CB_B that follows the CB_A cba, 0 if
+   there is none or it doesn't decrypt.  The check: 0x40-0x13f, a CB_A's
+   RSA signature, is all zeros in a CB_B (which the 1BL doesn't sign), as
+   in cbb_1928.bin.  The key derivation duplicates keys.c's cbbEncrypt (an
+   inline helper shared by both doesn't match the original's code); keep
+   the two in step */
+static uint8_t *cbbDecrypt(uint8_t *cba)
+{
+	uint8_t *cbb = cba + BL_SIZE(cba);
+	uint16_t flags = getBeU16(cba + 6);
+	uint8_t zero[16], cbaKey[16], key[16], hdr[16];
+	uint8_t *ck = xb.cpuKey;
+	uint8_t *buf;
+	uint32_t len;
+
+	if (!BL_MAGIC(cbb, 'B'))
+	{
+		log_printf(0, "***** WARNING: CB_B not found after the CB!\n");
+		return 0;
+	}
+	if (flags & 1)
+	{
+		memset(zero, 0, 16);
+		ck = zero;
+	}
+	XeCryptHmacSha(xb.key1bl, 16, cba + BL_NONCE, 16, 0, 0, 0, 0, cbaKey, 16);
+	if (flags & 0x1000)
+	{
+		memcpy(hdr, cba, 16);
+		hdr[6] = 0;
+		hdr[7] = 0;
+		XeCryptHmacSha(cbaKey, 16, cbb + BL_NONCE, 16, ck, 16, hdr, 16, key, 16);
+	}
+	else
+	{
+		XeCryptHmacSha(cbaKey, 16, cbb + BL_NONCE, 16, ck, 16, 0, 0, key, 16);
+	}
+	len = BL_SIZE(cbb);
+	buf = malloc(len);
+	if (buf)
+	{
+		memcpy(buf, cbb, len);
+		XeCryptRc4(key, 16, buf + BL_BODY, len - BL_BODY);
+		if (!checkZeros(buf + 0x40, 0x100))
+		{
+			free(buf);
+			buf = 0;
+		}
+	}
+	return buf;
+}
+
+/* a split CB's pairing data and LDV: the CB_B's, since the CB_A isn't
+   paired */
+uint32_t cbbGetPairing(uint8_t *cba)
+{
+	uint8_t *buf = cbbDecrypt(cba);
+	uint32_t pairing;
+
+	if (!buf)
+	{
+		log_printf(0, "***** WARNING: CB_B decrypt failed (wrong CPU key?)! Unable to get pairing data!\n");
+		return 0;
+	}
+	pairing = getBeU32(buf + CB_PAIRING);
+	log_printf(1, "CB_B decrypted OK, pairing bytes extracted as: 0x%08x\n", pairing);
+	free(buf);
+	return pairing;
+}
+#endif
+
 uint32_t cfGetPairing(uint8_t *cf, uint32_t size)
 {
 	uint32_t len;
