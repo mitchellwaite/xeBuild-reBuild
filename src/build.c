@@ -2798,6 +2798,9 @@ int encodeBls(uint8_t *salt, int ldv)
 		type = e->type;
 		if (xb.type == BUILD_JTAG)
 		{
+			/* JTAG (locJtag): the exploit chain at the CB offset (JTAG_CB..JTAG_CG),
+			   the patch slots (CF, CG) at 0x80000, freeboot, and the second CB/CD
+			   copy at 0xd5060 */
 			log_printf(1, "encoding %s size 0x%x (JTAG)\n", e->name, e->size);
 			switch (type)
 			{
@@ -2817,11 +2820,13 @@ int encodeBls(uint8_t *salt, int ldv)
 				kvPrepare(e, 0);
 				break;
 			case FILE_CB:
+				/* the CB copy at 0xd5060: paired to the console */
 				j = findFile(FILE_FUSES);
 				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), xb.files[j].data, xb.seReplacesCf);
 				cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				break;
 			case FILE_CD:
+				/* the CD after it: CB key only, no CPU key */
 				j = findFile(FILE_CB);
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
@@ -2834,6 +2839,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				cgEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
 			case FILE_JTAG_CB:
+				/* the exploit chain's CB: no pairing data, no per-box hash */
 				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				cbaEncrypt2(salt, e->data, e->key, e->size, 1);
 				break;
@@ -2867,6 +2873,9 @@ int encodeBls(uint8_t *salt, int ldv)
 		}
 		else if (xb.type > BUILD_GLITCH)
 		{
+			/* devgl and devgl16 (locDevgl: SB, SC, then a retail CD..CG) and the
+			   kits, devkit and testkit and their 16MiB variants (locDevk,
+			   locTestk: SB..SE, KIT_CF, KIT_CG) */
 			if (type != FILE_FUSES)
 			{
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
@@ -2886,6 +2895,7 @@ int encodeBls(uint8_t *salt, int ldv)
 				kvPrepare(e, 1);
 				break;
 			case FILE_CD:
+				/* devgl only: the retail CD follows the SC */
 				j = findFile(FILE_SC);
 				cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				break;
@@ -2904,6 +2914,7 @@ int encodeBls(uint8_t *salt, int ldv)
 			case FILE_SB:
 				if (xb.type == BUILD_DEVGL || xb.type == BUILD_DEVGL16)
 				{
+					/* devgl: always zero-paired, virtual fuses get the CPU key */
 					j = findFile(FILE_FUSES);
 					if IS_SLIM
 					{
@@ -2918,6 +2929,7 @@ int encodeBls(uint8_t *salt, int ldv)
 					cbaEncryptZero(e->data, e->key, e->size);
 					break;
 				}
+				/* devkit, testkit: paired unless the CPU key is all zeros */
 				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (checkZeros(xb.cpuKey, 16))
 				{
@@ -2960,6 +2972,8 @@ int encodeBls(uint8_t *salt, int ldv)
 		}
 		else
 		{
+			/* retail and glitch (glitch, glitch2, glitch2m), locRetail: CB, CB_B
+			   (xb.cbb: a split CB), CD..CG */
 			if (type != FILE_FUSES || xb.glitch2mfg)
 			{
 				log_printf(1, "encoding %s size 0x%x\n", e->name, e->size);
@@ -2978,20 +2992,25 @@ int encodeBls(uint8_t *salt, int ldv)
 			case FILE_CB:
 				if (xb.cbb)
 				{
+					/* split CB, retail or glitch: the CB_A is not paired, the CB_B is */
 					cbaEncrypt(salt, e->data, e->key, e->size, 1);
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
 				if (xb.type != BUILD_RETAIL)
 				{
+					/* single CB, glitch: zero-paired */
 					cbaEncryptZero(e->data, e->key, e->size);
 				}
 				else
 				{
+					/* single CB, retail: paired to the console */
 					cbaEncrypt(salt, e->data, e->key, e->size, 0);
 				}
 				break;
 			case FILE_CB_B:
+				/* split CB only, retail or glitch: paired, or zero-paired when the
+				   CPU key is all zeros */
 				if (!xb.cbb)
 				{
 					break;
@@ -3017,6 +3036,7 @@ int encodeBls(uint8_t *salt, int ldv)
 			case FILE_CD:
 				if (xb.cbb)
 				{
+					/* split CB, retail or glitch: keyed from the CB_B, no CPU key */
 					j = findFile(FILE_CB_B);
 					cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 				}
@@ -3025,11 +3045,32 @@ int encodeBls(uint8_t *salt, int ldv)
 					j = findFile(FILE_CB);
 					if (xb.type != BUILD_RETAIL)
 					{
+						/* single CB, glitch: keyed from the CB, no CPU key */
 						cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
 					}
 					else
 					{
+#ifdef XEBUILD_FIXES
+						/* single CB, retail: a CB with an LDV (cseq, as in
+						   showExpectedFuses) of 2 or less doesn't use the CPU key
+						   in the CD key derivation; later ones mix it in unless the
+						   CB is zero-paired, which only the glitch path above does */
+						uint8_t cseq = getBeU32(xb.files[j].data + CB_FUSE_FLAGS) >> 16;
+
+						if (cseq <= 2)
+						{
+							cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
+						}
+						else
+						{
+							cdEncryptCpu(e->data, xb.files[j].key, e->key, e->size);
+						}
+#else
+						/* single CB, retail: keyed from the CB and the CPU key; CBs
+						   with an LDV of 2 or less don't use the CPU key here, so
+						   their images fail at POST 0xAD */
 						cdEncryptCpu(e->data, xb.files[j].key, e->key, e->size);
+#endif
 					}
 				}
 				break;

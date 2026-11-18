@@ -45,6 +45,9 @@ platform but `win32`, see [Building](#building)) have:
   80, the console's real maximum, not 32, and the virtual fuses get all five
   LDV lines (7–11), not just the first two (so lines 9–11 of a `fuses.bin`
   no longer pass through as they were).
+- **Retail images for early CBs:** a single CB with an LDV of 2 or less
+  doesn't use the CPU key in the CD key derivation, so its CD is no longer
+  encrypted with the CPU key mixed in.
 
 ## How it was done
 
