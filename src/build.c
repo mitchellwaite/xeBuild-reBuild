@@ -2787,6 +2787,11 @@ int encodeBls(uint8_t *salt, int ldv)
 	struct fileent *e;
 	uint32_t i;
 	int type, zero, j;
+#ifdef XEBUILD_FIXES
+	/* the single CB's LDV (cseq), read before the CB is encrypted for the CD
+	   that follows it; 0xff (no CB) keeps the CPU key */
+	uint8_t cseq = 0xff;
+#endif
 
 	for (i = 1; i < (uint32_t)xb.nFlashFiles; i++)
 	{
@@ -2997,6 +3002,9 @@ int encodeBls(uint8_t *salt, int ldv)
 					break;
 				}
 				showExpectedFuses(getBeU32(e->data + CB_FUSE_FLAGS), getBeU16(e->data + 2), NULL, xb.seReplacesCf);
+#ifdef XEBUILD_FIXES
+				cseq = getBeU32(e->data + CB_FUSE_FLAGS) >> 16;
+#endif
 				if (xb.type != BUILD_RETAIL)
 				{
 					/* single CB, glitch: zero-paired */
@@ -3054,9 +3062,9 @@ int encodeBls(uint8_t *salt, int ldv)
 						/* single CB, retail: a CB with an LDV (cseq, as in
 						   showExpectedFuses) of 2 or less doesn't use the CPU key
 						   in the CD key derivation; later ones mix it in unless the
-						   CB is zero-paired, which only the glitch path above does */
-						uint8_t cseq = getBeU32(xb.files[j].data + CB_FUSE_FLAGS) >> 16;
-
+						   CB is zero-paired, which only the glitch path above does.
+						   cseq was read in the FILE_CB case: the CB is encrypted
+						   by now */
 						if (cseq <= 2)
 						{
 							cdEncrypt(e->data, xb.files[j].key, e->key, e->size);
