@@ -266,6 +266,19 @@ int buildImage(void)
 			copyright[10] = '7';
 		}
 	}
+
+	// On big block NAND a patch slot is one logical erase block,
+	// but stock XeBuild only sizes it that way for Jasper (not
+	// JTAG) and leaves Trinity/Corona/Winchester at 0x10000.
+	// 256KiB block NAND (1GB) needs 0x40000; that flash isn't
+	// supported yet, it's coming later.
+	#ifdef XEBUILD_FIXES
+		if (xb.bigBlock)
+		{
+			flashHdr.patchSlotSize = SWAP32_IMAGE_WRITE(FLASH_PATCH_SLOT_BB);
+		}
+	#endif
+
 	if (xb.type > BUILD_DEVGL16)
 	{
 		copyright[9] = '1';

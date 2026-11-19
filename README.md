@@ -38,6 +38,9 @@ platform but `win32`, see [Building](#building)) have:
   Xenon and Zephyr images keep their KV size instead of 0. JRunner patched
   both after every build (`fixBuggyXeBuildImage`); XeLL needs the KV size to
   find the KV.
+- **Big block patch slots:** on big block NAND every console (and JTAG
+  Jasper) gets 0x20000 patch slots, one erase block; the original gave
+  Trinity, Corona and Winchester 0x10000.
 - **Usage text:** lists every `-t` image type and `-c` console type the
   parser accepts, the `ini` mode and `-norandom`, and ends with a credits
   section.
