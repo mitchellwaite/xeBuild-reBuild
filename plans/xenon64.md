@@ -154,6 +154,30 @@ jaspersb64. They can't tell jaspersb from jasper at 16MiB today either:
 `showImageType` returns plain `Jasper`, which `setConsoleType` makes
 `NAND_BB_CONTROLLER`.
 
+### 7. With the kit build types
+
+The kit types only come from `-t` in build mode: client and update mode
+set `BUILD_JTAG` or `BUILD_GLITCH` (`showImageType`).
+
+- `devkit`, `testkit`: these already build 64MiB small block, and every
+  test the new flag reaches (`IS_64M_SMALL`, the kit FS rule, the kit
+  header, the Mobile offsets) is already true from the type. So
+  `-t devkit -c xenon64` builds the same bytes as `-t devkit -c xenon`
+  (and `jaspersb64` the same as `jaspersb`). Only the file name differs
+  (`..._devk_xenon64.bin`). Nothing to add.
+- `devkit16`, `testkit16`: the two contradict. As written above, the flag
+  wins: a 64MiB image from `_devkit16.ini`/`_testkit16.ini`, while
+  `showConsoleInfo` prints "64MiB (small block)" next to "Devkit16".
+  Refuse it instead, in `mode_build` right after the console type is
+  settled (the `iniConsoleType()` / `getIniValue("type")` test) and before
+  the ini name is built: "devkit16/testkit16 build a 16MiB image, use
+  devkit/testkit for a 64MiB console". `mode_build` does force
+  `NAND_BIG_FFS` for a big block devkit, but forcing the type here would
+  also switch the ini the user picked, so refuse.
+- `devgl16` is `devgl` everywhere but the Build line (both build 16MiB
+  today), so with a new type it would build 64MiB like `devgl`. Refuse
+  it with the other two so that a `16` build type always means 16MiB.
+
 ## Not expected to change
 
 - Header template: `cbOffset` and `kvSize` depend on build type and
